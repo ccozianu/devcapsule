@@ -434,6 +434,8 @@ def build_docker_args(
         "/var/tmp:rw,exec,nosuid,nodev,size=1g",
         "--ipc",
         "private",
+        "--network",
+        "host",
         "--pids-limit",
         "4096",
     ]

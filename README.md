@@ -473,6 +473,15 @@ Manual validation checkpoint, 2026-07-23:
 
 Current task:
 
+- On 2026-07-25, the PyCharm ambient-host-network bug was reopened and widened
+  to cover `run-image` Docker-option parity. Removing the ambient default also
+  removed the explicit host-network behavior required by dogfood, so the user
+  temporarily restored the legacy launcher argument. `run-image` also lacks
+  the previous PyCharm surface for a custom Docker socket, Docker-in-Docker,
+  native debugging, writable root, and raw Docker arguments. Keep the bug open
+  until a shared runtime-options model restores explicit `--network host` and
+  the accepted expert Docker controls without making host networking ambient.
+  Capability-first dogfood validation waits on that correction.
 - On 2026-07-24, the first executable capability-first dogfood slice was
   implemented. Top-level `init`, `lock`, `state adopt`, `config resolve`, and
   `run` now create and consume the adopted manifest, platform-lock,
@@ -526,7 +535,12 @@ Current task:
   implicit PyCharm host network is tracked separately as
   `devcapsule/implementation-notes/bugs/2026-07-23-pycharm-ambient-host-network.md`.
 
-1. Manually validate the first capability-first dogfood launch on the host:
+1. Fix the reopened PyCharm `run-image` network and Docker-option parity bug,
+   beginning with explicit `--network host` support required for dogfood and a
+   shared runtime-options model for the accepted expert Docker controls.
+   Preserve bridge networking as the default and remove the temporary ambient
+   host-network workaround. Then manually validate the first capability-first
+   dogfood launch on the host:
    adopt the six existing PyCharm state directories, resolve local checkout
    configuration, and launch `mycodespace.ai/pycharm:debug-v018` with
    `devcapsule run --docker-daemon host-socket --development-sudo`. Inspect the

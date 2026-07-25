@@ -324,9 +324,9 @@ once, before the planned `state adopt` command persists those mappings:
 ./dist/devcapsule.pex run-image mycodespace.ai/pycharm:debug-v018 \
   --global-settings ~/.config/docker-pycharm-codex/state/ \
   --plugins ~/.config/docker-pycharm-codex/plugins \
-  --project "$HOME/work.provisional/costin3/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/" \
+  --project "$HOST_PROJECT_ROOT" \
   --project-mount /workspace/301e4208ef81-ChatGPT_Codex \
-  --project-state /home/costin/work.provisional/costin3/.state/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex \
+  --project-state "$PROJECT_STATE" \
   --docker-daemon host-socket \
   --development-sudo
 ```

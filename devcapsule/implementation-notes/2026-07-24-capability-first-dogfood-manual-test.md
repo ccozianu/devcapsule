@@ -2,7 +2,9 @@
 
 Date prepared: 2026-07-24
 
-Status: ready for human execution on the Docker host
+Status: waiting for the reopened `run-image` network and Docker-option parity
+bug; do not execute until explicit `--network host` replaces the ambient
+dogfood workaround
 
 Requirements: R-IDE-CONFIG-001, R-STATE-001, R-SCOPE-001, R-DOCKER-001,
 R-FRAMEWORK-001
@@ -23,8 +25,10 @@ Run the preparation and launch commands on the host, outside the current
 DevCapsule container. The expected host values are:
 
 ```bash
-export PROJECT="$HOME/work.provisional/costin3/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex"
-export PROJECT_STATE="/home/costin/work.provisional/costin3/.state/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex"
+export MONOREPO_ROOT="${MONOREPO_ROOT:?Set this to the private host monorepo root}"
+export HOST_PROJECT_ROOT="${HOST_PROJECT_ROOT:?Set this to the DevCapsule checkout}"
+export PROJECT_STATE="${PROJECT_STATE:?Set this to the checkout's existing state directory}"
+export PROJECT="$HOST_PROJECT_ROOT"
 export LEGACY_STATE="$HOME/.config/docker-pycharm-codex/state"
 export LEGACY_PLUGINS="$HOME/.config/docker-pycharm-codex/plugins"
 export DEVCAPSULE="$PROJECT/devcapsule/dist/devcapsule.pex"

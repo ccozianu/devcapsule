@@ -90,7 +90,7 @@ same change.
 
 ## Bugs
 
-- [PyCharm uses host networking without authorization](devcapsule/implementation-notes/bugs/2026-07-23-pycharm-ambient-host-network.md)
+- [PyCharm run-image network and Docker-option parity](devcapsule/implementation-notes/bugs/2026-07-23-pycharm-ambient-host-network.md)
 - [Codium grants ambient passwordless sudo by default](devcapsule/implementation-notes/bugs/2026-07-16-codium-ambient-sudo-default.md)
 - [PyCharm build emits fragile multiline RUN shell quoting](devcapsule/implementation-notes/bugs/2026-07-16-pycharm-build-multiline-exec-rendering.md)
 - [Codium run lacks shared developer runtime options](devcapsule/implementation-notes/bugs/2026-07-13-codium-run-option-parity.md)

@@ -1,24 +1,45 @@
-# Bug: PyCharm Uses Host Networking Without Authorization
+# Bug: PyCharm Run-Image Network And Docker-Option Parity
 
 Date opened: 2026-07-23
 
-Status: partially fixed in repository; manual validation and explicit
-host-network selection remain open
+Status: reopened; open pending an explicit network option and broader
+`run-image` Docker-option parity
 
 Requirements: R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, root R-PRODUCT-002
 
 ## Symptom
 
-Both `devcapsule pycharm run` and `devcapsule run-image` launch compatible
-PyCharm images with Docker host networking even when the operator did not
-request or persistently authorize that isolation relaxation.
+Removing PyCharm's ambient host networking also removed the only way the
+PyCharm dogfood launch could use host networking. `devcapsule run-image IMAGE`
+does not expose an explicit network choice, even though `--network host` is
+essential for the current dogfood environment.
+
+More broadly, `devcapsule run-image IMAGE` is not yet runtime-equivalent to the
+previous `devcapsule pycharm run --image IMAGE` path. Several Docker runtime
+choices supported by the configuration-specific command cannot be selected on
+the expert compatibility path.
 
 ## Evidence
 
-The shared PyCharm launcher's `build_docker_args` function unconditionally
-includes `--network=host`. Docker-daemon inspection of the running dogfood
-container confirmed `NetworkMode=host` even though its `run-image` command did
-not contain a network option.
+Docker-daemon inspection originally confirmed `NetworkMode=host` even though
+the `run-image` command did not contain a network option. On 2026-07-24 the
+unconditional launcher argument was removed, but `run-image` gained no
+replacement `--network` option.
+
+The current `run-image` surface has `--docker-daemon [none|host-socket]` and
+`--development-sudo`. The transitional PyCharm run surface additionally has:
+
+- `--docker-socket` for a non-default host daemon socket;
+- `--docker-in-docker` / `--dind`;
+- `--debug-native`;
+- `--writable-root`;
+- repeatable `--docker-arg` values for expert Docker-run control.
+
+The PyCharm launcher can consume those choices, but `run-image` cannot express
+them. Neither PyCharm surface currently has a proper explicit run-network
+option. The uncommitted dogfood workaround restored the launcher's historical
+unconditional `--network host`, proving the immediate need but also restoring
+the ambient-host-network defect until a real option is implemented.
 
 ## Expected Behavior
 
@@ -33,46 +54,63 @@ forbidden-option list, while still applying restrictive workstation policy.
 
 ## Actual Behavior
 
-Host networking is ambient and cannot be distinguished from an intentional
-operator choice in the resulting Docker plan.
+The implementation currently has two bad states: without the dogfood
+workaround, required host networking cannot be selected; with the workaround,
+host networking is ambient and cannot be distinguished from an intentional
+operator choice. Other expert Docker runtime choices are also lost when moving
+from `pycharm run` to `run-image`.
 
 ## Root Cause
 
 The Python launcher retained the historical PyCharm prototype's unconditional
-host-network setting while runtime authorization was being refactored.
+host-network setting while runtime authorization was being refactored. The
+subsequent fix removed the default at the shared launcher layer before the
+expert command had a shared runtime-options model capable of passing an
+explicit replacement and the other existing Docker choices.
 
 ## Fix Progress
 
 On 2026-07-24 the unconditional `--network=host` argument was removed from the
-shared PyCharm launcher. The capability-first end-to-end planning test now
-asserts that the generated default Docker command does not contain host
-networking. Normal `devcapsule run` accepts only bridge networking in this
-first slice and directs expert exceptions to `run-image`.
+shared PyCharm launcher, and an end-to-end planning test asserted bridge-like
+default behavior. That was only half of the required fix: the explicit
+host-network choice was not added to `run-image`. The user restored the legacy
+launcher argument ad hoc to keep dogfood usable.
 
-The bug remains open because the shared explicit network option and
-Docker-daemon inspection targets have not yet been implemented and validated.
+The bug is therefore reopened. Keep it open while the workaround is present
+and until explicit network selection plus the accepted expert Docker-option
+surface are implemented and validated.
 
 ## Proposed Fix Direction
 
-- Remove the unconditional `--network=host` argument.
-- Add a shared network-mode value whose safe default is `bridge`.
+- Replace the restored unconditional `--network host` workaround with a shared
+  network-mode value whose safe default is `bridge`.
 - Allow developer-owned checkout configuration and explicit command-line
   options to select `host`.
 - Let committed configuration recommend, but not activate, host networking.
 - Include the effective network mode in sanitized runtime-plan output.
+- Make `run-image` accept an explicit `--network MODE` choice, including
+  `--network host` for the current dogfood launch.
+- Define and implement the accepted `run-image` parity surface for custom host
+  Docker sockets, Docker-in-Docker, native debugging, writable root, and raw
+  repeatable Docker arguments. Prefer the shared runtime-options model already
+  planned by the Codium parity bug over another command-specific translation.
 - Preserve expert custom Docker arguments for `run-image`, subject only to
   structural plan validation and restrictive workstation policy.
 
 ## Verification Target
 
 1. Automated: both PyCharm launch paths default to bridge networking.
-2. Automated: explicit and checkout-owned host-network selections emit
+2. Automated: explicit `run-image` and checkout-owned host-network selections emit
    `--network=host`.
 3. Automated: a committed recommendation alone does not enable host networking.
-4. Manual: inspect a default and explicitly host-networked dogfood container.
+4. Automated: accepted Docker modes and expert arguments produce the same
+   launcher plan through `run-image` as through the legacy PyCharm surface.
+5. Manual: inspect a default and explicitly host-networked dogfood container,
+   including the Docker access and development options used for dogfood.
 
 ## Close Criteria
 
 Close when host networking is absent by default, remains available through an
-explicit developer-owned choice, both launch paths share the behavior, and the
-automated plus Docker-daemon inspection targets pass.
+explicit developer-owned choice, `run-image` retains the accepted Docker-run
+capabilities of the previous PyCharm path, both launch paths share the behavior,
+and the automated plus Docker-daemon inspection targets pass.

@@ -319,12 +319,15 @@ or an explicitly approved external state mapping.
 
 The current DevCapsule dogfood environment is launched with:
 
+The developer supplies `MONOREPO_ROOT`, `HOST_PROJECT_ROOT`, and
+`PROJECT_STATE`; no private host directory layout is committed here.
+
 ```text
 ./dist/devcapsule.pex pycharm run \
   --global-settings ~/.config/docker-pycharm-codex/state/ \
   --plugins ~/.config/docker-pycharm-codex/plugins \
-  --project $HOME/work.provisional/costin3/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/ \
-  --project-state /home/costin/work.provisional/costin3/.state/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex \
+  --project "$HOST_PROJECT_ROOT" \
+  --project-state "$PROJECT_STATE" \
   --image mycodespace.ai/pycharm:debug-v017 \
   --docker \
   --dev-sudo
@@ -349,7 +352,7 @@ use only the persistent home or to publish different slots.
 First, the existing checkout adopts the capability-first project model:
 
 ```text
-cd $HOME/work.provisional/costin3/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/
+cd "$HOST_PROJECT_ROOT"
 devcapsule init \
   --need python \
   --need python-ide \
@@ -368,11 +371,11 @@ devcapsule state adopt pycharm/config \
 devcapsule state adopt pycharm/plugins \
   --from ~/.config/docker-pycharm-codex/plugins
 devcapsule state adopt pycharm/system \
-  --from /home/costin/work.provisional/costin3/.state/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/system
+  --from "$PROJECT_STATE/system"
 devcapsule state adopt pycharm/log \
-  --from /home/costin/work.provisional/costin3/.state/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/log
+  --from "$PROJECT_STATE/log"
 devcapsule state adopt pycharm/cache \
-  --from /home/costin/work.provisional/costin3/.state/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/home/.cache
+  --from "$PROJECT_STATE/home/.cache"
 ```
 
 These commands record developer-owned local mappings and approvals. They do
@@ -388,7 +391,7 @@ the expert path:
 
 ```text
 devcapsule run-image mycodespace.ai/pycharm:debug-v018 \
-  --project $HOME/work.provisional/costin3/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/ \
+  --project "$HOST_PROJECT_ROOT" \
   --project-mount /workspace/301e4208ef81-ChatGPT_Codex \
   --docker-daemon host-socket \
   --development-sudo
@@ -417,7 +420,7 @@ developer-owned checkout configuration, reducing the normal dogfood launch to:
 
 ```text
 devcapsule run-image mycodespace.ai/pycharm:debug-v018 \
-  --project $HOME/work.provisional/costin3/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/ \
+  --project "$HOST_PROJECT_ROOT" \
   --project-mount /workspace/301e4208ef81-ChatGPT_Codex
 ```
 
