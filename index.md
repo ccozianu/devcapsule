@@ -7,7 +7,8 @@ same change.
 
 ## Start Here
 
-- [Project brief and handoff](README.md)
+- [Developer overview](README.md)
+- [Current status and handoff](CURRENT-STATUS.md)
 - [Documentation index](index.md)
 - [Agent instructions](AGENTS.md)
 - [Requirements overview and index](REQUIREMENTS.md)
