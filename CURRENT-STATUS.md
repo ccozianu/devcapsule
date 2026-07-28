@@ -389,6 +389,23 @@ Manual validation checkpoint, 2026-07-23:
   home mount. Restart validation indicates this also restores license
   continuity; the full pytest suite passes with 61 tests.
 
+Engineering cleanup checkpoint, 2026-07-28:
+
+- The task-0 test and coverage foundation is complete. Normal pytest runs now
+  measure statement and branch coverage across the `devcapsule` source package;
+  the establishing run passed all 62 tests at 76% total coverage.
+- GitHub Actions runs the test suite automatically for `main`, supports manual
+  branch/tag/commit runs, and coalesces rapid pushes through cancellation plus
+  a short debounce window. Coverage is published in the job summary and as XML
+  and HTML workflow artifacts.
+- The repository welcome page now shows GitHub-native test status and a
+  repository-owned coverage SVG. After a successful `main` run, a separate
+  least-privilege job regenerates that SVG locally from `coverage.xml` and
+  commits it only when its value changes. The user confirmed the workflow,
+  tests, and both badges work on GitHub.
+- This closes the initial basic-engineering cleanup slice. The active
+  implementation task returns to the shared runtime-options cleanup below.
+
 Current task:
 
 - On 2026-07-26, the user confirmed that the capability-first dogfood path
