@@ -118,8 +118,10 @@ updates over one large retrospective rewrite.
 
 Use markdown files with distinct responsibilities:
 
-- `README.md`: project brief, current state, and the active next task list.
-  The final section is the handoff point.
+- `README.md`: stable, developer-facing welcome page, project overview, setup,
+  and documentation entry points.
+- `CURRENT-STATUS.md`: active handoff, current state, validation evidence, and
+  next task list. Refresh it whenever durable project state changes.
 - `REQUIREMENTS.md`: implementation-agnostic requirement overview and index for
   project-level goals and concrete requirements.
 - `docs/requirements/`: one markdown file per root requirement, with
@@ -213,7 +215,7 @@ Use this documentation split:
 - Target user docs such as `devcapsule/README.md` describe how the user does
   it: installation path, command path, common examples, validation expectations,
   and current limitations.
-- The root `README.md` final section records current state, recent changes, and
+- Root `CURRENT-STATUS.md` records current state, recent changes, and
   next work for future agents.
 - Implementation notes record design rationale, rejected alternatives, and
   evidence that would distract from user instructions.
@@ -531,9 +533,9 @@ In the mounted project, ask the agent:
 ```text
 Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
-Create or update AGENTS.md, README.md, REQUIREMENTS.md, docs/requirements/, and
-implementation-notes/ as appropriate. Preserve existing project docs and adapt
-the process to this repository.
+Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
+docs/requirements/, and implementation-notes/ as appropriate. Preserve
+existing project docs and adapt the process to this repository.
 ```
 
 At minimum, add or update these files in the target project:
@@ -541,6 +543,7 @@ At minimum, add or update these files in the target project:
 ```text
 AGENTS.md
 README.md
+CURRENT-STATUS.md
 REQUIREMENTS.md
 docs/requirements/
 implementation-notes/

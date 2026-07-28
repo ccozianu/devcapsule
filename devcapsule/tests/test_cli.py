@@ -257,10 +257,59 @@ def test_top_level_commands_are_discovered() -> None:
     assert "pycharm" in commands
     assert "vscode_with_claude" in commands
     assert "codium_with_claude" in commands
+    assert "init" in commands
+    assert "lock" in commands
+    assert "config" in commands
+    assert "state" in commands
+    assert "run" in commands
     assert "bootstrap-project" not in commands
-    assert "run" not in commands
     assert "build" not in commands
     assert "check" not in commands
+
+
+def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    state_roots = {slot: tmp_path / slot.replace("/", "-") for slot in (
+        "home", "pycharm/config", "pycharm/plugins", "pycharm/system", "pycharm/log", "pycharm/cache"
+    )}
+    for path in state_roots.values():
+        path.mkdir()
+
+    env = {
+        "DISPLAY": ":1",
+        "HOME": str(tmp_path / "host-home"),
+        "XDG_CONFIG_HOME": str(config_home),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+        "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        assert cli.main([
+            "init", str(project), "--creator", "dev@example.test",
+            "--project-mount", "/workspace/existing", "--need", "python", "--need", "python-ide",
+        ]) == 0
+        manifest = project / ".devcapsule" / "devcapsule.toml"
+        original = manifest.read_bytes()
+        assert cli.main(["init", str(project), "--creator", "dev@example.test", "--need", "python"]) == 2
+        assert manifest.read_bytes() == original
+        assert cli.main(["lock", "--project", str(project), "--image", "local/pycharm:dogfood"]) == 0
+        for slot, path in state_roots.items():
+            assert cli.main(["state", "adopt", slot, "--from", str(path), "--project", str(project)]) == 0
+        assert cli.main(["config", "resolve", "--project", str(project)]) == 0
+
+        with (
+            patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+            patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        ):
+            run.return_value.returncode = 0
+            assert cli.main(["run", "--project", str(project)]) == 0
+
+    command = run.call_args.args[0]
+    assert "local/pycharm:dogfood" in command
+    assert "--network=host" not in command
+    assert f"type=bind,src={state_roots['home'].resolve()},dst=/home/devcapsule" in command
+    assert f"type=bind,src={state_roots['pycharm/system'].resolve()},dst=/ide-project-state/system" in command
 
 
 def test_noun_first_pycharm_command_order_is_not_supported() -> None:

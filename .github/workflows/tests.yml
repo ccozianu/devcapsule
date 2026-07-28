@@ -1,0 +1,79 @@
+name: Tests and coverage
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      checkout_ref:
+        description: Branch, tag, or commit SHA to test (blank uses the selected workflow branch)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  # Rapid pushes to the same branch cancel older runs. Manual runs are independent.
+  group: tests-${{ github.event_name == 'push' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: Python 3.12
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: devcapsule
+
+    steps:
+      - name: Wait for newer pushes
+        if: github.event_name == 'push'
+        run: sleep 30
+        working-directory: .
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || github.ref }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: devcapsule/dev-requirements.txt
+
+      - name: Install contributor dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r dev-requirements.txt
+          python -m pip install -e . --no-deps
+
+      - name: Run tests with coverage
+        run: >-
+          python -m pytest tests/
+          --cov-report=term-missing
+          --cov-report=xml:coverage.xml
+          --cov-report=html:htmlcov
+
+      - name: Publish coverage summary
+        if: ${{ always() && hashFiles('devcapsule/.coverage') != '' }}
+        run: |
+          {
+            echo '## Python test coverage'
+            echo
+            python -m coverage report --format=markdown
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage reports
+        if: ${{ always() && hashFiles('devcapsule/coverage.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage
+          path: |
+            devcapsule/coverage.xml
+            devcapsule/htmlcov/
+          if-no-files-found: error
+          retention-days: 30

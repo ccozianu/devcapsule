@@ -67,6 +67,9 @@ class PycharmRunOptions:
     persistent_home: Path | None = None
     project_state: Path | None = None
     project_state_root: Path | None = None
+    ide_system: Path | None = None
+    ide_log: Path | None = None
+    tool_cache: Path | None = None
     config_mode: IdeConfigMode | None = None
     ide_config: Path | None = None
     project_mount: str | None = None
@@ -262,19 +265,22 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
 
     legacy_project_state = options.project_state is not None or options.project_state_root is not None
     ide_system = resolve_existing_or_create(
-        project_state / "system"
+        options.ide_system
+        or (project_state / "system"
         if legacy_project_state
-        else cache_namespace / "components" / "pycharm" / "system"
+        else cache_namespace / "components" / "pycharm" / "system")
     )
     ide_log = resolve_existing_or_create(
-        project_state / "log"
+        options.ide_log
+        or (project_state / "log"
         if legacy_project_state
-        else state_namespace / "components" / "pycharm" / "log"
+        else state_namespace / "components" / "pycharm" / "log")
     )
     tool_cache = resolve_existing_or_create(
-        project_state / "home" / ".cache"
+        options.tool_cache
+        or (project_state / "home" / ".cache"
         if legacy_project_state
-        else cache_namespace / "components" / "pycharm" / "cache"
+        else cache_namespace / "components" / "pycharm" / "cache")
     )
 
     if not ignore_config_lock and ide_config_mode != "project" and (ide_config / ".lock").exists():
@@ -358,7 +364,6 @@ def build_docker_args(
         "-i",
         "--name",
         config.name,
-        "--network=host",
         "--workdir",
         config.project_mount,
         "--env",
@@ -429,6 +434,8 @@ def build_docker_args(
         "/var/tmp:rw,exec,nosuid,nodev,size=1g",
         "--ipc",
         "private",
+        "--network",
+        "host",
         "--pids-limit",
         "4096",
     ]

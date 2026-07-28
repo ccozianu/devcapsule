@@ -6,7 +6,8 @@ PyCharm settings, per-project IDE state, and plugins persistent on the host.
 
 ## Related project notes
 
-- `../README.md` for project-wide requirements, backlog, and the current state
+- `../README.md` for the developer overview and `../CURRENT-STATUS.md` for the
+  project-wide backlog and current state
   and next step recorded at the end of the file.
 - `../REQUIREMENTS.md` for accepted requirements, priority, status, and links
   to implementation and validation evidence.

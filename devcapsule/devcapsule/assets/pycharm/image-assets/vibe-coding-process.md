@@ -18,7 +18,8 @@ documented, the user can ask:
 ```text
 Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
-Create or update AGENTS.md, README.md, REQUIREMENTS.md, docs/requirements/, and
+Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
+docs/requirements/, and
 implementation-notes/ as appropriate. Preserve existing project docs and adapt
 the process to this repository.
 ```

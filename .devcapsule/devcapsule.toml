@@ -1,0 +1,15 @@
+devcapsule-schema-version = 1
+
+[capabilities]
+need = ["docker-cli", "gemini", "python", "python-ide"]
+
+[project]
+name = "DevCapsule"
+slug = "devcapsule"
+creator = "https://github.com/ccozianu"
+mount = "/workspace/301e4208ef81-ChatGPT_Codex"
+
+[host.docker.mode.recommended]
+value = "host-socket"
+justification = "Required to run peer DevCapsule instances during the full test suite."
+enables = ["full-test-suite"]

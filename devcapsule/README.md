@@ -149,6 +149,49 @@ at a writable directory or unset it if PEX warns about an unwritable cache.
 
 ## Commands
 
+### Capability-first dogfood path
+
+The first capability-first slice supports a locally built PyCharm image. New
+projects can create a declaration and current-platform dogfood lock with:
+
+```bash
+devcapsule init . --creator https://github.com/example \
+  --need python --need python-ide --need docker-cli --need gemini
+devcapsule lock --image mycodespace.ai/pycharm:debug-v018
+```
+
+`init` is create-only and leaves an existing `.devcapsule/` untouched. Adopt
+the six existing dogfood state directories once, then generate the local
+developer-owned resolution:
+
+```bash
+devcapsule state adopt home --from ~/.config/docker-pycharm-codex/state/home
+devcapsule state adopt pycharm/config --from ~/.config/docker-pycharm-codex/state/config
+devcapsule state adopt pycharm/plugins --from ~/.config/docker-pycharm-codex/plugins
+devcapsule state adopt pycharm/system --from /path/to/project-state/system
+devcapsule state adopt pycharm/log --from /path/to/project-state/log
+devcapsule state adopt pycharm/cache --from /path/to/project-state/home/.cache
+devcapsule config resolve
+```
+
+Normal launch then uses the committed manifest and platform lock plus that
+checkout-local resolution:
+
+```bash
+devcapsule run --docker-daemon host-socket --development-sudo
+```
+
+Those two host relaxations are run-once choices and are not granted by the
+committed Docker recommendation. They can be recorded manually in the
+developer-owned checkout file's `[host]` table for this initial slice. The
+PyCharm runtime now uses Docker bridge networking unless an expert path adds a
+different explicit Docker choice.
+
+This is intentionally a dogfood bridge, not the complete V1 resolver: `lock`
+currently pins a local image tag supplied with `--image`; immutable image
+digest resolution and general curated capability selection remain follow-up
+work.
+
 DevCapsule uses a configuration-first command model:
 
 ```text
@@ -281,9 +324,9 @@ once, before the planned `state adopt` command persists those mappings:
 ./dist/devcapsule.pex run-image mycodespace.ai/pycharm:debug-v018 \
   --global-settings ~/.config/docker-pycharm-codex/state/ \
   --plugins ~/.config/docker-pycharm-codex/plugins \
-  --project "$HOME/work.provisional/costin3/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex/" \
+  --project "$HOST_PROJECT_ROOT" \
   --project-mount /workspace/301e4208ef81-ChatGPT_Codex \
-  --project-state /home/costin/work.provisional/costin3/.state/myProjects/zExperiments/IDEsInDocker/DockerIsolationIDE/ChatGPT_Codex \
+  --project-state "$PROJECT_STATE" \
   --docker-daemon host-socket \
   --development-sudo
 ```

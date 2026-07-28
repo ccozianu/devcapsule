@@ -18,7 +18,8 @@ documented, the user can ask:
 ```text
 Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
-Create or update AGENTS.md, README.md, REQUIREMENTS.md, docs/requirements/, and
+Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
+docs/requirements/, and
 implementation-notes/ as appropriate. Preserve existing project docs and adapt
 the process to this repository.
 ```
@@ -30,8 +31,8 @@ If you are the agent receiving that prompt:
 1. Inspect the current repository before editing.
 2. Preserve existing project documentation and conventions.
 3. Create or update `AGENTS.md` so future agents read the project brief first.
-4. Ensure `README.md` contains or links to the project purpose, current state,
-   and active next task list.
+4. Ensure `README.md` is a stable developer welcome page and
+   `CURRENT-STATUS.md` records current state and the active next task list.
 5. Create or update `REQUIREMENTS.md` as the overview and index for the
    project's root requirements, and create or update canonical detailed
    requirement files under `docs/requirements/`.
@@ -74,7 +75,7 @@ If the brief does not define a planned next step, ask the user to choose the
 next step to work on.
 
 When completing a stage, retiring a task, changing project state materially, or
-ending a session, update the final section of `README.md` so the next
+ending a session, update `CURRENT-STATUS.md` so the next
 agent/model pair can resume from the current state.
 ````
 
@@ -162,9 +163,9 @@ external_refs: []
 Add or adapt this near the end of `README.md`:
 
 ````markdown
-## Current State And Next Step
+# Current Status And Next Step
 
-This section is the project handoff point. Future agents should update it when
+This file is the project handoff point. Future agents should update it when
 completing a stage, changing the project state materially, retiring a task, or
 ending a session.
 

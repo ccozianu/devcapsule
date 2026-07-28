@@ -7,7 +7,8 @@ same change.
 
 ## Start Here
 
-- [Project brief and handoff](README.md)
+- [Developer overview](README.md)
+- [Current status and handoff](CURRENT-STATUS.md)
 - [Documentation index](index.md)
 - [Agent instructions](AGENTS.md)
 - [Requirements overview and index](REQUIREMENTS.md)
@@ -86,10 +87,11 @@ same change.
 - [Docker in containerized development environments TLDR](docker4pycharm/implementation-notes/docker_in_devcontainer_tldr.md)
 - [Using PyCharm v0 for real Python projects](docker4pycharm/implementation-notes/using-v0-for-real-python-projects.md)
 - [Docker Hub namespace and publication plan](devcapsule/implementation-notes/2026-07-15-docker-hub-namespace-and-publication-plan.md)
+- [Capability-first PyCharm dogfood manual test](devcapsule/implementation-notes/2026-07-24-capability-first-dogfood-manual-test.md)
 
 ## Bugs
 
-- [PyCharm uses host networking without authorization](devcapsule/implementation-notes/bugs/2026-07-23-pycharm-ambient-host-network.md)
+- [PyCharm run-image network and Docker-option parity](devcapsule/implementation-notes/bugs/2026-07-23-pycharm-ambient-host-network.md)
 - [Codium grants ambient passwordless sudo by default](devcapsule/implementation-notes/bugs/2026-07-16-codium-ambient-sudo-default.md)
 - [PyCharm build emits fragile multiline RUN shell quoting](devcapsule/implementation-notes/bugs/2026-07-16-pycharm-build-multiline-exec-rendering.md)
 - [Codium run lacks shared developer runtime options](devcapsule/implementation-notes/bugs/2026-07-13-codium-run-option-parity.md)

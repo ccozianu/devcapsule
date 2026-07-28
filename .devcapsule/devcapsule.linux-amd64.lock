@@ -1,0 +1,10 @@
+devcapsule-lock-format-version = 1
+resolution-matrix-version = "dogfood-v1"
+manifest-digest = "cd4e4d02fa30b302016b0db09d50cf1c44ea34152be0089d26b05d97c503483d"
+platform = "linux-amd64"
+
+[image]
+reference = "mycodespace.ai/pycharm:debug-v018"
+
+[components]
+interactive-surface = "pycharm"

@@ -1,0 +1,7 @@
+# DevCapsule project declarations and platform locks are repository inputs.
+# Keep them visible even when a developer has a broad .devcapsule ignore in a
+# global Git excludes file. Developer-owned checkout and resolved files live
+# beneath the XDG configuration root, not in this directory.
+!/.devcapsule/
+!/.devcapsule/devcapsule.toml
+!/.devcapsule/devcapsule.*.lock
