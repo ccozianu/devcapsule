@@ -77,3 +77,52 @@ jobs:
             devcapsule/htmlcov/
           if-no-files-found: error
           retention-days: 30
+
+  publish-coverage-badge:
+    name: Publish coverage badge
+    needs: pytest
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: devcapsule/dev-requirements.txt
+
+      - name: Install badge generator
+        run: python -m pip install -r devcapsule/dev-requirements.txt
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: python-coverage
+          path: devcapsule
+
+      - name: Generate coverage badge
+        run: >-
+          genbadge coverage
+          --input-file devcapsule/coverage.xml
+          --output-file docs/badges/coverage.svg
+          --local
+
+      - name: Commit coverage badge when changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/badges/coverage.svg
+          if git diff --cached --quiet; then
+            echo "Coverage badge is already current."
+            exit 0
+          fi
+          git commit -m "chore: update coverage badge [skip ci]"
+          git push origin HEAD:main
