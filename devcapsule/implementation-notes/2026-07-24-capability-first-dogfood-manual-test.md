@@ -2,9 +2,9 @@
 
 Date prepared: 2026-07-24
 
-Status: waiting for the reopened `run-image` network and Docker-option parity
-bug; do not execute until explicit `--network host` replaces the ambient
-dogfood workaround
+Status: positive capability-first launch validated on 2026-07-26; network and
+negative-authorization acceptance remain open because the dogfood image still
+uses the ambient host-network workaround
 
 Requirements: R-IDE-CONFIG-001, R-STATE-001, R-SCOPE-001, R-DOCKER-001,
 R-FRAMEWORK-001
