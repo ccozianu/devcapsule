@@ -68,15 +68,16 @@ reuse generic initialization without copying it.
 The package should use focused modules with clear contracts, for example:
 
 ```text
-devcapsule_runtime/
-  entrypoint.py
-  contract.py
-  identity.py
-  filesystem.py
-  git.py
-  docker.py
-  graphics.py
-  components/jetbrains.py
+devcapsule/
+  container_runtime/
+    entrypoint.py
+    contract.py
+    identity.py
+    filesystem.py
+    git.py
+    docker.py
+    graphics.py
+    components/jetbrains.py
 ```
 
 Python orchestrates existing system tools such as `gosu` and `dockerd`; it
@@ -137,4 +138,3 @@ the new image can dogfood successfully.
   R-PYTHON-MVP-003, R-SCOPE-001, R-DOCKER-001
 - Architecture: D-0001 capability-first CLI model, especially curated
   resolution, locked materialization inputs, and workstation-local image state
-

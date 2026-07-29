@@ -38,6 +38,7 @@ dev = [
 
 [project.scripts]
 devcapsule = "devcapsule.cli:main"
+devcapsule-runtime = "devcapsule.container_runtime.entrypoint:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -408,6 +408,27 @@ Engineering cleanup checkpoint, 2026-07-28:
 
 Current task:
 
+- On 2026-07-29, the first Python-runtime package slice was implemented as
+  `devcapsule.container_runtime`. It provides a strict version-1 JSON runtime-plan
+  contract, generic persistent-home/XDG/state-slot planning, conservative
+  graphics defaults, a `gosu` privilege-drop command boundary, a parameterized
+  JetBrains adapter, and a thin entrypoint that writes the product properties
+  file and execs the foreground IDE process. The adapter does not embed a
+  PyCharm installation or launcher default; those values and the state-slot
+  mapping come from the runtime plan. The package is exposed as the
+  `devcapsule-runtime` console script.
+- Automated coverage includes the container runtime through the main
+  `devcapsule` package. Contract validation, generic filesystem planning,
+  JetBrains property/command generation, graphics overrides, privilege-drop
+  planning, and the final property-write/exec boundary are tested. The full
+  `cd devcapsule && .venv/bin/python -m nox -s build` gate passed with 73
+  tests, type checking, source smoke tests, PEX construction, and PEX smoke
+  tests.
+- This is only the entrypoint/package foundation. The next implementation
+  slice remains the JetBrains-free redistributable base image plus the lock
+  delivery fields, vendor notice, direct pinned download and digest failure
+  handling, and deterministic workstation-local PyCharm materialization.
+
 - On 2026-07-29, the user prioritized image formation ahead of the reopened
   network and Docker-option parity work. The active next slice replaces the
   `mycodespace.ai/pycharm:debug-v018` local-image bridge with a distributable
