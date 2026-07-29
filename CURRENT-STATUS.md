@@ -408,6 +408,20 @@ Engineering cleanup checkpoint, 2026-07-28:
 
 Current task:
 
+- On 2026-07-29, the user prioritized image formation ahead of the reopened
+  network and Docker-option parity work. The active next slice replaces the
+  `mycodespace.ai/pycharm:debug-v018` local-image bridge with a distributable
+  base containing a generic tested Python runtime entrypoint plus a
+  workstation-local, checksum-verified PyCharm materialization downloaded
+  directly from JetBrains. The detailed architecture, licensing notice,
+  delivery policies, and dogfood closure criteria are recorded in
+  `devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md`.
+- The published/base image must contain no JetBrains binaries. The final local
+  image uses a parameterized JetBrains adapter, leaves EULA acceptance and
+  licensing to the user, and must reproduce or improve the validated dogfood
+  behavior. The generic runtime contract should accommodate later shared
+  Docker/network work without pulling all option-parity work into this slice.
+
 - On 2026-07-26, the user confirmed that the capability-first dogfood path
   launches this checkout successfully through `devcapsule run`. This manually
   validates the manifest, platform lock, developer-owned checkout and adopted
@@ -527,10 +541,15 @@ Current task:
 
 Next task:
 
-1. Run the documented state-adoption sequence and manually validate
-   `devcapsule run` against the existing PyCharm dogfood environment. Then add
-   a developer-owned command for persisting host choices and replace the
-   local-tag dogfood lock bridge with immutable curated resolution.
+1. Implement the local PyCharm materialization and Python-entrypoint task in
+   `devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md`.
+   Finish by building a JetBrains-free redistributable base, downloading and
+   verifying the lock-pinned current PyCharm artifact on the workstation,
+   materializing the final image locally, passing the full Nox gate, and
+   manually running the existing dogfood environment successfully through
+   `devcapsule run`.
+2. Resume the reopened PyCharm network and Docker-option parity work after the
+   new materialized-image dogfood path is established.
 
 Standing rule:
 
