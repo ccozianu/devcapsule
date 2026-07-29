@@ -71,6 +71,12 @@ For CLI installation and usage, see [`devcapsule/README.md`](devcapsule/README.m
 - [`docs/decisions/`](docs/decisions/) — durable architectural decisions.
 - [`docs/specifications/`](docs/specifications/) — product specifications.
 
+## License
+
+DevCapsule is licensed under the [Apache License 2.0](LICENSE). Third-party
+components acquired, installed, or used with DevCapsule remain subject to
+their respective owners' licenses and terms; see [NOTICE](NOTICE).
+
 ## Current Status
 
 Detailed progress, validation evidence, open work, and the planned next step
