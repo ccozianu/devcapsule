@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
+from typing import Sequence
 
 from . import contract as rtcontract
 
@@ -29,16 +30,21 @@ def run(plan: rtcontract.RuntimePlan) -> None:
     os.execvpe(command[0], command, os.environ)
 
 
-def main() -> None:
-    if len(sys.argv) != 2:
-        print("usage: devcapsule-runtime RUNTIME_PLAN.json", file=sys.stderr)
-        raise SystemExit(2)
+def main(argv: Sequence[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments == ["--help"]:
+        print("usage: devcapsule runtime RUNTIME_PLAN.json")
+        return 0
+    if len(arguments) != 1:
+        print("usage: devcapsule runtime RUNTIME_PLAN.json", file=sys.stderr)
+        return 2
     try:
-        run(RuntimePlan.from_file(sys.argv[1]))
+        run(RuntimePlan.from_file(arguments[0]))
     except RuntimePlanError as error:
         print(f"devcapsule runtime plan error: {error}", file=sys.stderr)
-        raise SystemExit(2) from error
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

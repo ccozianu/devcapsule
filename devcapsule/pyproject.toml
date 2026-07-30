@@ -64,6 +64,12 @@ pythonpath = ["."]
 addopts = [
   "--cov=devcapsule",
   "--cov-report=term-missing",
+  "-m",
+  "not integration and not e2e",
+]
+markers = [
+  "integration: crosses packaging or process boundaries without Docker",
+  "e2e: builds or runs real Docker images and containers",
 ]
 
 [tool.coverage.run]

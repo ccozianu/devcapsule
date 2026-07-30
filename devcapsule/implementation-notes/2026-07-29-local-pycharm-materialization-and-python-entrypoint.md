@@ -45,6 +45,243 @@ recipe describes installation. PyCharm uses `local-materialization`:
 The committed platform lock describes immutable materialization inputs. The
 resulting local image ID and materialization cache are workstation state.
 
+Materialization is a host-side image-formation step that completes before the
+project container starts. When the required completed image is absent, the
+DevCapsule client downloads and verifies the locked PyCharm archive, then uses
+the locked redistributable base to build a new workstation-local image that
+contains both `/opt/jetbrains/pycharm` and the component runtime plan. It then
+runs that completed image. The client does not run the bare base and ask its
+container entrypoint to download or install PyCharm just in time. The runtime
+entrypoint performs no component acquisition; it only initializes the capsule
+from the embedded plan and executes the already-installed foreground IDE.
+
+### Local image identity and discovery
+
+A completed PyCharm image uses this local repository and tag pattern:
+
+```text
+devcapsule-local-pycharm:<materialization-identity>
+```
+
+`<materialization-identity>` is the first 20 hexadecimal characters of a
+SHA-256 identity derived from the immutable base identity, the locked PyCharm
+version and artifact digest, and the materialization recipe version. For
+example:
+
+```text
+devcapsule-local-pycharm:5d4f9c0e7a31b8926f10
+```
+
+The stable `devcapsule-local-pycharm` prefix makes these images recognizable
+in the ordinary local image list, while the content-derived tag makes reuse
+deterministic and prevents different materialization inputs from sharing a
+tag. Materialized images also carry machine-readable labels including:
+
+- `devcapsule.image.kind=materialized`;
+- `devcapsule.materialization.recipe-version=<version>`;
+- `devcapsule.component.jetbrains.version=<version>`;
+- `devcapsule.component.jetbrains.sha256=<digest>`.
+
+The labels support reliable inspection and filtering independently of the
+human-readable repository name. DevCapsule checks for the deterministic image
+name before downloading the archive or rebuilding, and reuses the local image
+when it already exists.
+
+### Intended clean-clone user experience
+
+The acceptance scenario begins with the DevCapsule client already installed
+and Docker plus the host GUI prerequisites available. The project repository
+already contains `.devcapsule/devcapsule.toml` and the matching committed
+platform lock, so an ordinary user does not run `devcapsule init`, generate a
+lock, build the base, supply a PyCharm archive, or invoke an IDE-specific build
+command.
+
+The intended operator-level script is:
+
+```bash
+set -euo pipefail
+
+git clone "$PROJECT_GIT_URL" "$CHECKOUT"
+cd "$CHECKOUT"
+
+test -f .devcapsule/devcapsule.toml
+test -f .devcapsule/devcapsule.linux-amd64.lock
+
+devcapsule config resolve
+devcapsule run
+```
+
+For V1, configuration before those final two commands is an iterative CLI
+process, with direct editing of the developer-owned checkout TOML also
+available. DevCapsule distinguishes required choices from optional choices
+with defaults. `config resolve` is the user's explicit signal that the choices
+are complete; it validates them and writes the generated plan, or reports the
+remaining decisions without materializing or launching. V2 is intended to
+make `devcapsule run` the primary interaction and subsume this resolution step
+through a graphical configuration flow, initially envisioned as an embedded
+local web application opened in the browser. That V2 flow removes the separate
+command from ordinary interaction but retains the logical review boundary
+before acquisition, image formation, host exposure, and launch.
+
+On a new checkout, `config resolve` must be able to establish the
+developer-owned checkout record and safe convention-based state roots without
+requiring the user to adopt legacy directories. It validates the manifest and
+matching platform lock, records no host authorization merely because the
+project recommends it, and writes the generated local resolution. Adopting or
+sharing existing state remains a separate explicit action.
+
+On the first `run`, DevCapsule must:
+
+1. discover and validate the project, checkout, generated resolution, and
+   current-platform lock;
+2. derive the deterministic completed-image name and reuse it if it is already
+   present;
+3. otherwise ensure the exact locked redistributable base is local, display
+   the JetBrains vendor notice, download the locked PyCharm archive directly
+   from JetBrains on the host, and verify its SHA-256 digest;
+4. stop before building or launching if verification fails;
+5. build the `devcapsule-local-pycharm:<materialization-identity>` image on the
+   host and record its materialization labels;
+6. start that completed image with the project, managed persistent home, and
+   component state mounted, using bridge networking and no ambient Docker
+   socket, sudo, credentials, devices, or other host permissions; and
+7. keep PyCharm foreground-attached so closing the IDE ends the container.
+
+The acquisition notice is not JetBrains EULA acceptance. Product licensing,
+login, and EULA interaction remain between the user and JetBrains inside the
+launched IDE.
+
+For this repository, controlling the host Docker daemon is recommended only
+for work that needs the full test suite. The user authorizes that relaxation
+separately, for example as a run-once choice:
+
+```bash
+devcapsule run --docker-daemon host-socket
+```
+
+The committed recommendation must never turn into access implicitly. A second
+ordinary `devcapsule run` with unchanged locked inputs must reuse the local
+artifact cache and completed image without downloading or rebuilding. IDE and
+tool state from the first session must remain available through the persistent
+state mounts.
+
+Useful acceptance inspection after the IDE exits includes:
+
+```bash
+docker image ls devcapsule-local-pycharm
+docker image ls --filter label=devcapsule.image.kind=materialized
+```
+
+The current transitional implementation does not yet satisfy this complete
+script: the committed dogfood lock still names an already-local image,
+`config resolve` cannot bootstrap a clean default checkout record, and
+`devcapsule run` does not yet invoke the materialization primitives. Closing
+those gaps is part of wiring the implemented base and materialization layers
+into the capability-first path.
+
+## Redistributable Default Base Image
+
+The first redistributable base is a complete, curated Linux development base,
+not a minimal Python image and not an IDE image. It uses Ubuntu 24.04 as its
+root filesystem and contains the common development and runtime utilities that
+are presently installed by the Python-owned PyCharm image builder. This
+includes the compiler/debugger toolchain, Git and SSH clients, network and
+process diagnostics, Docker client and optional daemon tooling, X11 and Mesa
+runtime libraries, `tini`, `gosu`, and the public-default Node.js/npm/Gemini
+tooling baseline. The exact package and tool versions remain deterministic
+image-formation inputs and must be represented by the base recipe/version and
+immutable base-image identity in the platform lock.
+
+The base contains Python **3.12**. “Python 12” is not a Python release name;
+for this implementation it means the Python 3.12 interpreter supplied for the
+PEX. Ubuntu 24.04 is the initial platform because its supported distribution
+Python is 3.12. The image must expose `python3.12`, and the PEX shebang and
+automated inspection must select that interpreter rather than an unpinned
+ambient Python version.
+
+The normal DevCapsule distribution artifact is reused inside the image:
+
+```text
+/opt/devcapsule/bin/devcapsule.pex
+```
+
+The base-image build copies the already-built `devcapsule.pex` into that
+location with executable mode. It does not separately copy
+`devcapsule/container_runtime`, install a second DevCapsule wheel, or maintain
+a container-only dependency set. The PEX already contains the host CLI,
+`devcapsule.container_runtime`, their shared contract/object model, and pinned
+Python dependencies. Consequently the exact same PEX digest can be inspected
+and compared outside and inside the image.
+
+The generic OCI process configuration is:
+
+```dockerfile
+ENTRYPOINT ["/usr/bin/tini", "--", "/opt/devcapsule/bin/devcapsule.pex", "runtime"]
+CMD ["/etc/devcapsule/runtime-plan.json"]
+```
+
+Splitting `ENTRYPOINT` and `CMD` this way makes the executable role immutable
+while leaving the plan path visible and overrideable for inspection and
+testing. The base does not contain a PyCharm plan. Running the bare base either
+with its default missing plan or with an invalid plan must fail clearly before
+starting an application. Local materialization adds the component installation
+and writes the deterministic plan at `/etc/devcapsule/runtime-plan.json`.
+
+PEX extraction and interpreter caches must not depend on a writable image
+root. The PEX is built with `/tmp/devcapsule-pex-root` as its runtime root;
+`/tmp` remains the per-container writable location under the normal read-only
+root profile. Persistent application configuration and state belong only in
+the declared home and state slots, never in the PEX cache.
+
+The base image carries at least these labels:
+
+- `devcapsule.image.kind=base`;
+- `devcapsule.base.recipe-version=<version>`;
+- `devcapsule.pex.sha256=<digest>`;
+- the immutable source revision used to build the PEX and image.
+
+Names and final registry coordinates remain publication configuration rather
+than runtime behavior. The build must accept a local output tag so the base can
+be built and inspected before any registry publication.
+
+The default-base build is a separate Python-owned image specification. It may
+reuse composable apt, tooling, file-copy, label, and entrypoint components from
+`devcapsule.image_build`, but it must not call the PyCharm builder or source
+assets from `devcapsule.assets.pycharm`. The subsequent workstation-local
+materialization uses the immutable base identity and adds only the verified
+JetBrains installation plus its generic runtime plan. Project scaffolding is
+not part of either image layer.
+
+### Base-image verification
+
+Automated plan and rendered-context tests must prove that:
+
+- Ubuntu 24.04 is the default root image and Python 3.12, `tini`, and `gosu`
+  are installed;
+- the selected development-utility and public-tooling baseline is present;
+- the PEX is copied once to `/opt/devcapsule/bin/devcapsule.pex`, its digest
+  label matches the input artifact, and its mode is executable;
+- OCI `ENTRYPOINT` and `CMD` have exactly the generic values above;
+- no PyCharm asset package, JetBrains URL/archive, `/opt/pycharm` tree,
+  JetBrains runtime plan, or PyCharm-specific environment/default command is
+  included;
+- `devcapsule.pex runtime` is covered by both source and PEX smoke tests.
+
+Host-level inspection of a built base must additionally record:
+
+- the base image ID and recipe/source labels;
+- `python3.12 --version` and successful PEX startup through that interpreter;
+- the SHA-256 digest of the in-image PEX compared with the host input;
+- the configured entrypoint and command;
+- a filesystem/package search demonstrating the absence of JetBrains content.
+
+The PEX is DevCapsule's Apache-2.0 distribution, but its bundled dependencies
+and all base packages/tools retain their own licenses. Publication therefore
+also requires retaining applicable license and notice material and recording a
+machine-reviewable component inventory. This does not change PyCharm's
+`local-materialization` policy or grant redistribution rights for JetBrains
+artifacts.
+
 ## Runtime Architecture
 
 The distributable base contains a versioned, tested Python runtime entrypoint,
@@ -92,9 +329,11 @@ behavior to the client-side `devcapsule init`/template path separately.
 
 This task is complete when all of the following are true:
 
-1. A new DevCapsule base image can be built and inspection proves it contains
-   the generic Python runtime entrypoint but no PyCharm/JetBrains binaries,
-   archives, installation tree, or PyCharm-specific default command.
+1. A new Ubuntu 24.04 DevCapsule base image can be built and inspection proves
+   it contains Python 3.12, the base development-tooling baseline, and the
+   normal `devcapsule.pex` wired to its generic runtime command, but no
+   PyCharm/JetBrains binaries, archives, installation tree, runtime plan, or
+   PyCharm-specific default command.
 2. The platform lock no longer points only at the prebuilt local
    `mycodespace.ai/pycharm:debug-v018` image. It pins the immutable
    redistributable base, exact PyCharm component artifact and digest, component

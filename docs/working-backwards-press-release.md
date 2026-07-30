@@ -104,6 +104,25 @@ selected project, apply the declared runtime profile, preserve IDE comfort
 state, expose only documented host resources, and point the human or agent at
 the current project memory.
 
+In V1, the one-command promise describes routine launch. The first use of a
+checkout, and any later change to configuration inputs, has a separate
+CLI-driven local resolution step. The developer iteratively supplies required
+choices and may change optional defaults through commands or the local TOML,
+then explicitly declares those choices complete. Resolution combines the
+project's committed environment with the developer's workstation choices into
+an inspectable plan. Launch consumes that plan; it does not silently rewrite
+it. This gives the developer a review point before downloads, local image
+formation, host-resource exposure, or process startup, while returning to an
+unchanged project remains one command.
+
+The V2 direction makes launch the main interactive mechanism. If choices are
+missing or stale, it presents a graphical configuration experience—initially
+envisioned as an embedded local web application opened in the browser—that
+clearly separates required decisions from optional choices and defaults. Once
+the user confirms the plan, launch performs resolution and continues. The
+interface becomes one flow, while the review and authorization boundary
+remains intact.
+
 ## Core Principles
 
 - One selected project is the primary workspace.

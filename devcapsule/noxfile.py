@@ -34,7 +34,36 @@ def check_shell_syntax(session: nox.Session) -> None:
 
 
 def run_tests(session: nox.Session) -> None:
-    session.run("python", "-m", "pytest", str(PROJECT_ROOT))
+    session.run("python", "-m", "pytest", str(PROJECT_ROOT / "tests"))
+
+
+def run_packaging_tests(session: nox.Session) -> None:
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "--no-cov",
+        "-m",
+        "integration",
+        str(PROJECT_ROOT / "tests" / "integration"),
+    )
+
+
+def run_e2e_tests(session: nox.Session) -> None:
+    environment: dict[str, str] = {}
+    base_image = session.env.get("DEVCAPSULE_E2E_BASE_IMAGE")
+    if base_image is not None:
+        environment["DEVCAPSULE_E2E_BASE_IMAGE"] = base_image
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "--no-cov",
+        "-m",
+        "e2e",
+        str(PROJECT_ROOT / "tests" / "e2e"),
+        env=environment,
+    )
 
 
 def run_typecheck(session: nox.Session) -> None:
@@ -50,6 +79,7 @@ def run_typecheck(session: nox.Session) -> None:
 
 def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "--help")
+    session.run("python", "-m", "devcapsule", "runtime", success_codes=[2])
     session.run("python", "-m", "devcapsule", "pycharm", "run", "--help")
     session.run("python", "-m", "devcapsule", "run-image", "--help")
     session.run("python", "-m", "devcapsule", "pycharm", "build", "--help")
@@ -69,6 +99,7 @@ def build_pex(session: nox.Session) -> None:
 
 def smoke_pex(session: nox.Session) -> None:
     session.run("python", str(PEX_PATH), "--help")
+    session.run("python", str(PEX_PATH), "runtime", success_codes=[2])
     session.run("python", str(PEX_PATH), "pycharm", "run", "--help")
     session.run("python", str(PEX_PATH), "run-image", "--help")
     session.run("python", str(PEX_PATH), "pycharm", "build", "--help")
@@ -112,6 +143,20 @@ def pex(session: nox.Session) -> None:
 
 
 @nox.session(python="3.12")
+def integration(session: nox.Session) -> None:
+    install_locked(session)
+    build_pex(session)
+    run_packaging_tests(session)
+
+
+@nox.session(python="3.12")
+def e2e(session: nox.Session) -> None:
+    install_locked(session)
+    build_pex(session)
+    run_e2e_tests(session)
+
+
+@nox.session(python="3.12")
 def build(session: nox.Session) -> None:
     install_locked(session)
     check_python_syntax(session)
@@ -121,3 +166,4 @@ def build(session: nox.Session) -> None:
     run_smoke(session)
     build_pex(session)
     smoke_pex(session)
+    run_packaging_tests(session)

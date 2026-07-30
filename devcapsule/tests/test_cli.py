@@ -20,6 +20,15 @@ def test_top_level_help_returns_success(capsys) -> None:
     assert "pycharm" in output
     assert "vscode_with_claude" in output
     assert "codium_with_claude" in output
+    assert "runtime" in output
+
+
+def test_runtime_command_forwards_arguments_to_container_entrypoint() -> None:
+    with patch("devcapsule.commands.runtime.runtime_main", return_value=17) as runtime_main:
+        result = cli.main(["runtime", "plan.json", "--future-option", "value"])
+
+    assert result == 17
+    runtime_main.assert_called_once_with(["plan.json", "--future-option", "value"])
 
 
 def test_run_pycharm_uses_translated_python_launcher(tmp_path: Path) -> None:

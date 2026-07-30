@@ -7,7 +7,7 @@ import pytest
 
 from devcapsule.container_runtime.components.jetbrains import plan as plan_jetbrains
 from devcapsule.container_runtime.contract import RuntimePlan, RuntimePlanError
-from devcapsule.container_runtime.entrypoint import run
+from devcapsule.container_runtime.entrypoint import main, run
 from devcapsule.container_runtime.filesystem import FilesystemPlan, plan_filesystem, prepare_filesystem
 from devcapsule.container_runtime.graphics import environment as graphics_environment
 from devcapsule.container_runtime.identity import foreground_command
@@ -143,3 +143,14 @@ def test_entrypoint_prepares_properties_and_execs_foreground(
     assert executed[0] == "/opt/jetbrains/pycharm/bin/pycharm.sh"
     assert executed[1] == ("/opt/jetbrains/pycharm/bin/pycharm.sh", "/workspace/project")
     assert executed[2]["PYCHARM_PROPERTIES"] == str(properties_path)  # type: ignore[index]
+
+
+def test_entrypoint_main_accepts_forwarded_arguments(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["--help"]) == 0
+    assert "usage: devcapsule runtime RUNTIME_PLAN.json" in capsys.readouterr().out
+
+    assert main([]) == 2
+    assert "usage: devcapsule runtime RUNTIME_PLAN.json" in capsys.readouterr().err
+
+    assert main([str(tmp_path / "missing.json")]) == 2
+    assert "cannot read runtime plan" in capsys.readouterr().err

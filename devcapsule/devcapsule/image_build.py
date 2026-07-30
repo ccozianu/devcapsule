@@ -47,6 +47,7 @@ class ImageBuildPlan:
     files: tuple[FileCopy, ...] = ()
     exec_steps: tuple[ExecStep, ...] = ()
     entrypoint: tuple[str, ...] = ()
+    command: tuple[str, ...] = ()
 
     def add_apt_packages(self, *packages: str) -> ImageBuildPlan:
         return replace(self, apt_packages=self.apt_packages + tuple(packages))
@@ -71,6 +72,9 @@ class ImageBuildPlan:
 
     def set_entrypoint(self, *args: str) -> ImageBuildPlan:
         return replace(self, entrypoint=tuple(args))
+
+    def set_command(self, *args: str) -> ImageBuildPlan:
+        return replace(self, command=tuple(args))
 
 
 class BuildComponent(Protocol):
@@ -142,6 +146,14 @@ class EntrypointComponent:
 
     def apply(self, plan: ImageBuildPlan) -> ImageBuildPlan:
         return plan.set_entrypoint(*self.args)
+
+
+@dataclass(frozen=True)
+class CommandComponent:
+    args: tuple[str, ...]
+
+    def apply(self, plan: ImageBuildPlan) -> ImageBuildPlan:
+        return plan.set_command(*self.args)
 
 
 @dataclass(frozen=True)
@@ -228,6 +240,8 @@ def render_build_context(plan: ImageBuildPlan, context_root: Path) -> Path:
         dockerfile_lines.append(f"LABEL {name}={shell_env_value(value)}")
     if plan.entrypoint:
         dockerfile_lines.append(f"ENTRYPOINT {json.dumps(list(plan.entrypoint))}")
+    if plan.command:
+        dockerfile_lines.append(f"CMD {json.dumps(list(plan.command))}")
 
     dockerfile_path = context_root / "Dockerfile"
     dockerfile_path.write_text("\n".join(dockerfile_lines) + "\n", encoding="utf-8")

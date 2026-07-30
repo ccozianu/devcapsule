@@ -408,6 +408,25 @@ Engineering cleanup checkpoint, 2026-07-28:
 
 Current task:
 
+- D-0004, `Configuration Resolution And Guided Run Experience`, is now a
+  proposed decision record preserving the current product-design discussion.
+  Its working direction keeps V1 CLI/TOML configuration iterative, uses
+  `config resolve` as the explicit completion and validation boundary, treats
+  state and secrets as typed configuration with distinct safety semantics, and
+  makes a browser-based guided `run` the V2 direction. It records thirteen
+  unanswered questions, including final CLI grammar, state-command migration,
+  secret providers, vendor acknowledgement, progress and inspection UX, local
+  alternatives, client installation, workflow bootstrap, and local-web-app
+  security. The record remains `proposed`; only the human may adopt it after
+  review.
+- WIP checkpoint validation on 2026-07-30 passed the full
+  `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
+  shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
+  and PEX smoke tests, PEX construction, and the built-PEX integration test.
+  Docker E2E was not rerun for this documentation and checkpoint commit; its
+  latest successful evidence remains the expanded materialization E2E recorded
+  below.
+
 - On 2026-07-29, the first Python-runtime package slice was implemented as
   `devcapsule.container_runtime`. It provides a strict version-1 JSON runtime-plan
   contract, generic persistent-home/XDG/state-slot planning, conservative
@@ -428,6 +447,98 @@ Current task:
   slice remains the JetBrains-free redistributable base image plus the lock
   delivery fields, vendor notice, direct pinned download and digest failure
   handling, and deterministic workstation-local PyCharm materialization.
+- The single-file PEX now exposes `devcapsule runtime [...]` and forwards the
+  remaining arguments without interpretation to
+  `devcapsule.container_runtime.entrypoint.main(...)`. This establishes the
+  intended container distribution boundary: images can carry Python 3.12 and
+  the normal `devcapsule.pex`, rather than separately installing a runtime
+  package, while host-side and container-side code share the same packaged
+  contracts and object model. Source and PEX smoke gates exercise the runtime
+  dispatch path.
+- The active implementation note now specifies the proposed redistributable
+  default-base packaging for human review: Ubuntu 24.04, Python 3.12, the
+  existing curated Linux development/public-tooling baseline, and the normal
+  `devcapsule.pex` at `/opt/devcapsule/bin/devcapsule.pex`. The proposed OCI
+  wiring is `tini -- devcapsule.pex runtime` as `ENTRYPOINT` with the generic
+  runtime-plan path as `CMD`. It also defines PEX cache behavior, labels,
+  license/inventory obligations, separation from PyCharm assets, and automated
+  plus host inspection evidence. No image implementation was changed for this
+  documentation review checkpoint.
+- The first explicit integration/E2E test structure is now present and
+  documented in `devcapsule/tests/README.md`. Fast tests remain Docker-free;
+  the `integration` Nox session builds and executes the PEX; the explicit
+  `e2e` session builds a uniquely tagged disposable image from a selected
+  already-local Python-3.12-capable base, inspects its generic OCI process
+  configuration, runs `devcapsule.pex runtime --help` with networking disabled,
+  and cleans up the image. The normal build gate includes integration but not
+  Docker E2E. Runtime `--help` is owned by and forwarded to the container
+  entrypoint so these tests cross the intended dispatch boundary.
+- Validation passed on 2026-07-29: the full Nox build gate passed with 75 fast
+  tests plus the new built-PEX integration test, and the explicit `nox -s e2e`
+  session passed against local `mycodespace.ai/pycharm:debug-v018`. The E2E run
+  rebuilt the PEX, built and inspected a disposable wrapper image, executed
+  runtime-owned help through `tini` and the in-image PEX with `--network none`,
+  and removed the test image successfully.
+- Initial default-base and local-materialization implementation now exists.
+  Top-level `build-base` plans an Ubuntu 24.04 image using the established
+  development/tooling baseline, embeds the exact PEX at
+  `/opt/devcapsule/bin/devcapsule.pex`, records its digest and recipe/source
+  labels, and configures generic `ENTRYPOINT` plus runtime-plan `CMD`.
+  Host-side materialization provides content-addressed acquisition with
+  mandatory SHA-256 verification, safe archive extraction, deterministic local
+  image naming from base/artifact/recipe identities, a generated parameterized
+  JetBrains runtime plan, and reuse before acquisition when the local image
+  already exists.
+- The expanded Docker E2E passed with 79 fast tests and clean mypy. It uses the
+  production base specification over the already-provisioned dogfood root for
+  speed, verifies Python 3.12, PEX identity, labels and OCI configuration, then
+  materializes a checksum-pinned JetBrains-shaped fixture and proves a second
+  call performs neither download nor rebuild. Both uniquely named images are
+  cleaned up. The official JetBrains metadata currently identifies PyCharm
+  2026.2.0.1 at a roughly 1.28 GB Linux archive plus vendor checksum endpoint;
+  this real download is reserved for a separately explicit vendor E2E.
+- The acquisition/materialization primitives are not yet wired into
+  capability-first `devcapsule run` or the committed lock schema. That is the
+  next implementation step; current `run` still expects an already-local image
+  reference.
+- A product-facing V1 user-experience draft now traces the clean-clone journey,
+  explains the distinct roles of the committed declaration, platform lock,
+  developer-owned checkout state, and workstation-local image, and separates
+  the batteries-included default from personal state, host authorization,
+  alternative environments, and the expert image path. It is explicitly a
+  design draft rather than current CLI instructions and records the remaining
+  installation, vendor-notice, progress, inspection, alternative-resolution,
+  and workflow-bootstrap questions.
+- The draft now makes local resolution a deliberate planning and review phase
+  separate from realization and launch. `config resolve` owns safe checkout
+  bootstrap, input and authorization validation, and the inspectable generated
+  plan without acquisition or container side effects; `run` requires that plan
+  to be fresh, then materializes and launches it. Routine return-to-work remains
+  one command, while first use and configuration changes retain an explicit
+  review boundary.
+- The interaction roadmap now distinguishes V1 from V2. In V1, users make
+  required and optional configuration choices iteratively through the CLI or
+  by editing developer-owned checkout TOML, then use `config resolve` as the
+  explicit completion and validation signal before `run`. In V2,
+  `devcapsule run` becomes the main interactive mechanism and subsumes ordinary
+  resolution through a graphical experience, initially envisioned as an
+  embedded local web application opened in the browser. V2 removes the command
+  boundary for interactive users but preserves logical review and explicit
+  authorization before materialization and launch.
+- The previous capability-first manual test is now explicitly classified as a
+  dogfood state-migration test. Its six `state adopt` commands are required to
+  preserve six existing PyCharm state directories before `config resolve`;
+  they are not clean-checkout onboarding requirements. Fresh V1 users should
+  be able to accept checkout-scoped managed state defaults without adoption.
+  The current dependency on `state adopt` to create the checkout record is
+  recorded as a transitional implementation gap.
+- The V1 user-experience draft now includes project-required runtime values and
+  secret bindings, using a development database as the motivating example.
+  Projects declare required names, sensitivity, defaults, and delivery shape;
+  developers supply ordinary values and secret-source bindings; secret values
+  are retrieved at launch and must not enter committed files, checkout TOML,
+  generated resolution, images, build caches, or diagnostics. The exact V1
+  input and secret-provider grammar remains open.
 
 - On 2026-07-29, the user prioritized image formation ahead of the reopened
   network and Docker-option parity work. The active next slice replaces the

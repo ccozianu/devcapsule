@@ -19,6 +19,20 @@ This procedure adopts the existing directories in place. It does not copy,
 move, or delete the old PyCharm state. The established `run-image` command
 remains the fallback.
 
+This is specifically a dogfood **migration** test, not the clean-checkout V1
+onboarding script. The six `state adopt` commands below are required by this
+test because its acceptance criteria demand reuse of the previously validated
+home, PyCharm configuration, plugins, system data, logs, and cache. They are
+the developer's explicit configuration choices before `config resolve`.
+
+A new user who wants fresh DevCapsule-managed state should not need to create
+legacy-shaped directories or run any `state adopt` command. The intended V1
+resolver supplies checkout-scoped managed defaults for those state slots. The
+current transitional implementation cannot yet bootstrap that clean default
+checkout record: `config resolve` requires the record to exist, while
+`state adopt` is currently the implemented command that creates it. That is an
+implementation gap, not a product requirement inferred from this test.
+
 ## Expected Environment
 
 Run the preparation and launch commands on the host, outside the current
@@ -145,6 +159,11 @@ Expected: `init` exits with status 2, explains that the project is already
 initialized, and the before/after hashes match.
 
 ## 3. Adopt Existing State In Place
+
+This step selects the migration branch of the user experience. It is not a
+universal prerequisite for `config resolve`. Each command says “use this
+existing directory for this state slot” instead of accepting the managed
+checkout-scoped default.
 
 Run each command from the host:
 

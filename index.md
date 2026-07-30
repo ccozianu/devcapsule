@@ -29,6 +29,7 @@ same change.
 
 - [Decision record template](docs/decisions/_template.md)
 - [D-0001 Capability-First CLI Model](docs/decisions/d-0001-capability-first-cli-model.md)
+- [D-0004 Configuration Resolution And Guided Run Experience](docs/decisions/d-0004-configuration-resolution-and-guided-run.md)
 
 ## Specifications
 
@@ -37,6 +38,8 @@ same change.
 ## Active DevCapsule Development
 
 - [DevCapsule Python CLI](devcapsule/README.md)
+- [DevCapsule V1 user experience design draft](devcapsule/docs/v1-user-experience.md)
+- [DevCapsule test suites](devcapsule/tests/README.md)
 - [DevCapsule implementation requirements overview](devcapsule/REQUIREMENTS.md)
 - [R-ENV-001 Dockerized PyCharm Runtime](devcapsule/docs/requirements/r-env-001-dockerized-pycharm-runtime.md)
 - [R-STATE-001 Persistent IDE State And Plugins](devcapsule/docs/requirements/r-state-001-persistent-ide-state-and-plugins.md)
