@@ -99,6 +99,58 @@ checks, and the product could not evolve naturally toward a guided GUI.
 Adopt Option B as the working direction, subject to human review of the open
 questions below.
 
+### 0. The observed project checkout is the CLI context
+
+Most commands operate on one observed checkout: a concrete local directory
+containing a project's committed `.devcapsule/` tree. The portable project
+identity may have several clones or worktrees on one workstation, so identity
+alone is not enough to select developer-owned configuration, state, or
+authorization. The canonical checkout path disambiguates them.
+
+The CLI should not require the user's shell to be at the checkout root. It uses
+one context-selection rule:
+
+1. a global explicit project path, when supplied; otherwise
+2. discovery from the current directory upward to the nearest directory
+   containing `.devcapsule/devcapsule.toml`.
+
+The intended forms are:
+
+```text
+# From the checkout root or any descendant directory
+devcapsule config state use pycharm/system --existing-directory PATH
+devcapsule config resolve
+devcapsule run
+
+# From anywhere, or when a script/IDE must select one checkout explicitly
+devcapsule --project /path/to/checkout config state use pycharm/system --existing-directory PATH
+devcapsule --project /path/to/checkout config resolve
+devcapsule --project /path/to/checkout run
+```
+
+`--project PATH` is a global context option and therefore precedes the command
+object. It accepts the checkout root or a path within it, resolves the nearest
+containing manifest, canonicalizes the checkout root, and verifies the matching
+developer-owned checkout record before applying local decisions. Explicit
+selection wins over current-directory discovery. Commands must reject
+conflicting legacy command-local selectors rather than guessing precedence.
+
+If neither mechanism finds a declaration, checkout-scoped commands fail with
+an actionable message: run from within a DevCapsule checkout or supply
+`--project PATH`. They do not search a registry of known project identities and
+silently choose one checkout.
+
+Commands whose purpose is to create a declaration, operate only on
+workstation-global resources, or use the lock-independent `run-image` expert
+path may define a different or optional context. Those exceptions must be
+explicit; they do not weaken the normal checkout-selection rule.
+
+The V1 public name is `--project`. It preserves the current user vocabulary and
+is clear when followed by a filesystem path. Internally it selects an observed
+checkout. `--checkout` is not the primary spelling because it is less familiar
+to ordinary users and can be mistaken for a Git operation. The compatibility
+period for existing command-local `--project` options remains open.
+
 ### 1. V1 configuration is iterative and ends explicitly
 
 V1 presents required choices separately from optional choices with documented
@@ -228,33 +280,35 @@ hatch and does not claim to reproduce the committed environment.
 This proposal intentionally preserves questions that require further design or
 human choice:
 
-1. What exact V1 commands list missing choices, set ordinary values, bind
+1. How should existing command-local `--project` options be deprecated, and
+   should supplying both global and local forms always be an error?
+2. What exact V1 commands list missing choices, set ordinary values, bind
    secrets, authorize host access, and reset a value to its default?
-2. Should `config state use` be the public spelling, should state use a generic
+3. Should `config state use` be the public spelling, should state use a generic
    `config bind` grammar, or is another model clearer?
-3. How long should the old `state adopt` command remain as a compatibility
+4. How long should the old `state adopt` command remain as a compatibility
    alias, and what migration warning should it show?
-4. Must a fresh user explicitly confirm managed state defaults, or is the safe
+5. Must a fresh user explicitly confirm managed state defaults, or is the safe
    convention sufficient unless the project marks a state choice required?
-5. Which V1 secret providers and delivery channels are supported, and how are
+6. Which V1 secret providers and delivery channels are supported, and how are
    provider readiness, redaction, rotation, and noninteractive use tested?
-6. What is displayed and acknowledged before acquiring a vendor component, and
+7. What is displayed and acknowledged before acquiring a vendor component, and
    where is that acknowledgement recorded?
-7. How are acquisition, digest verification, image-build progress, retry,
+8. How are acquisition, digest verification, image-build progress, retry,
    cancellation, failure cleanup, and offline reuse presented?
-8. Which inspection command explains every effective value, its source, its
+9. Which inspection command explains every effective value, its source, its
    default, and whether it is a recommendation, authorization, or run-once
    choice?
-9. How are curated local alternative environments pinned, displayed, shared,
-   supported, and compared with the committed lock?
-10. How is the DevCapsule client installed and updated before the clean-clone
+10. How are curated local alternative environments pinned, displayed, shared,
+    supported, and compared with the committed lock?
+11. How is the DevCapsule client installed and updated before the clean-clone
     journey begins?
-11. How is the reusable human/agent workflow offered and bootstrapped when a
+12. How is the reusable human/agent workflow offered and bootstrapped when a
     project adopts that mode?
-12. How does the V2 local web application authenticate browser requests, bind
+13. How does the V2 local web application authenticate browser requests, bind
     only to an appropriate local interface, prevent cross-origin attacks,
     handle multiple checkouts, and terminate cleanly?
-13. Does V2 open the GUI only when resolution is missing or stale, or also when
+14. Does V2 open the GUI only when resolution is missing or stale, or also when
     the user explicitly asks to review otherwise valid choices?
 
 ## Rationale
@@ -274,6 +328,8 @@ They belong in one configuration experience but require different operations.
 
 - V1 onboarding takes at least one explicit resolution command before the first
   run and whenever configuration inputs change.
+- Checkout-scoped commands share one global selector and current-directory
+  discovery rule instead of each defining its own project-path option.
 - Routine launches remain one command while retaining stale-input detection.
 - Clean managed state must be bootstrappable without legacy adoption.
 - The CLI needs a coherent configuration command family rather than more

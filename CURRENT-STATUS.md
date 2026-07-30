@@ -413,12 +413,20 @@ Current task:
   Its working direction keeps V1 CLI/TOML configuration iterative, uses
   `config resolve` as the explicit completion and validation boundary, treats
   state and secrets as typed configuration with distinct safety semantics, and
-  makes a browser-based guided `run` the V2 direction. It records thirteen
+  makes a browser-based guided `run` the V2 direction. It records fourteen
   unanswered questions, including final CLI grammar, state-command migration,
   secret providers, vendor acknowledgement, progress and inspection UX, local
   alternatives, client installation, workflow bootstrap, and local-web-app
   security. The record remains `proposed`; only the human may adopt it after
   review.
+- D-0004 now proposes the observed checkout as the shared CLI context. Commands
+  discover the nearest `.devcapsule/devcapsule.toml` upward from the current
+  directory by default, while a global selector such as
+  `devcapsule --project PATH ...` supports scripts, IDE integrations, and
+  operation from elsewhere. Users are not required to `cd`, and normal commands
+  never choose among multiple checkouts from portable project identity alone.
+  The public global spelling is `--project PATH`; compatibility with existing
+  command-local options remains open.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source

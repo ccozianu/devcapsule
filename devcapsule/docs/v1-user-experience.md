@@ -52,6 +52,32 @@ The project is already initialized. An ordinary adopter does not run
 `devcapsule init`, generate a new shared lock, build a base image, find an IDE
 archive, or invoke a product-specific image build.
 
+### Selecting the checkout
+
+DevCapsule normally discovers the checkout by searching from the current
+directory upward for `.devcapsule/devcapsule.toml`. The user may run commands
+from the checkout root or any directory beneath it.
+
+Working from elsewhere must also be supported. A global context option selects
+the checkout once for the whole command:
+
+```bash
+devcapsule --project /path/to/checkout config resolve
+devcapsule --project /path/to/checkout run
+```
+
+This is especially useful for scripts, IDE integrations, and workstations with
+multiple clones or worktrees of the same portable project identity. The path
+selects the concrete checkout and therefore its developer-owned configuration,
+state, and authorization. DevCapsule never chooses among known checkouts by
+project identity alone.
+
+The user is not required to change directories merely to operate on another
+checkout. Conversely, an explicit path or discoverable `.devcapsule/` tree is
+required for normal checkout-scoped commands. The V1 public spelling is
+`--project PATH`; internally, the resolved path identifies the observed
+checkout.
+
 ### V1: why `config resolve` and `run` are separate
 
 The commands separate deciding what may run from performing the consequential
