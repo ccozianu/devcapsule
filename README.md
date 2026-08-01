@@ -8,10 +8,12 @@ and AI coding agents. It combines a real IDE, agent-ready development tooling,
 versioned project memory, and explicit boundaries around access to the host.
 
 The active implementation is the Python package and CLI in `devcapsule/`.
-The current public command model is transitional and configuration-first:
+Project lifecycle operations and workstation image operations now have
+separate noun-oriented command trees:
 
 ```text
-devcapsule CONFIGURATION ACTION [options]
+devcapsule project [--path PATH] SUBCOMMAND [options]
+devcapsule images SUBCOMMAND [options]
 ```
 
 The adopted target model is capability-first: projects declare what their

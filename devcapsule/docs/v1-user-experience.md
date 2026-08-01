@@ -2,8 +2,8 @@
 
 Status: product design draft; this is not current CLI usage documentation
 
-Audience: developers evaluating or adopting a project that already contains a
-committed `.devcapsule/` directory
+Audience: developers creating, evaluating, or adopting a DevCapsule-enabled
+project
 
 ## The Promise
 
@@ -20,6 +20,32 @@ launch.
 The project supplies a tested default. The developer retains control of
 personal state and every meaningful exposure of the workstation.
 
+## Proposed V1 Command Shape
+
+The two principal workstation resource trees are intentionally regular:
+
+```text
+devcapsule
+├── project [--path PATH]
+│   ├── list
+│   ├── init
+│   ├── checkout register NAME
+│   ├── config set|bind|authorize|resolve ...
+│   ├── state ...
+│   ├── lock ...
+│   ├── run ...
+│   └── run-image IMAGE ...
+└── images
+    ├── list
+    └── build --type base|environment ...
+```
+
+The `project` tree owns declarations, registered checkouts, developer
+configuration and state, locks, and execution. This includes the expert,
+lock-independent `run-image` path because it still operates on project source,
+state, and host choices. The `images` tree owns the workstation's managed image
+inventory and image formation.
+
 ## Four Things With Different Owners
 
 | Item | Owner | Purpose |
@@ -35,6 +61,49 @@ prevents a normal run from silently selecting newer or different components.
 It does not contain PyCharm, credentials, personal settings, cache paths, or
 the local completed-image ID.
 
+### Where developer configuration is written
+
+The three persistent V1 configuration operations write the developer-owned
+checkout input. They never modify the cloned repository:
+
+```text
+$XDG_CONFIG_HOME/devcapsule/projects/<encoded-creator>/<encoded-slug>/devcapsule.checkout.toml
+```
+
+If `XDG_CONFIG_HOME` is unset or empty, DevCapsule uses `~/.config`, making the
+usual location:
+
+```text
+~/.config/devcapsule/projects/<encoded-creator>/<encoded-slug>/devcapsule.checkout.toml
+```
+
+The file records the decoded project identity and canonical checkout path so
+it remains understandable and recoverable. It is created with mode `0600` and
+must never contain secret values. Additional clones or worktrees use their
+accepted named-checkout files beneath the same project-identity directory so
+one checkout cannot inherit another checkout's permissions.
+
+DevCapsule documentation and successful configuration mutations show the
+actual path written. Users may edit ordinary values and non-secret provider
+references in this file directly. The adjacent `devcapsule.resolved.toml` is
+generated output and is never edited as configuration input.
+
+## Initializing A New Project
+
+A project creator initializes a new declaration at the current directory or an
+explicit target:
+
+```bash
+devcapsule project init
+devcapsule project --path /path/to/new-project init
+```
+
+Initialization is create-only and refuses to overwrite an existing
+declaration. It does not register a workstation checkout by itself. The first
+persistent `project config set`, `bind`, `authorize`, or `resolve` operation
+creates the developer-owned checkout record that later appears in `project
+list`.
+
 ## Starting From An Existing Repository
 
 The developer first installs the released DevCapsule client, then clones a
@@ -44,13 +113,37 @@ project that already carries its declaration and platform lock:
 git clone "$PROJECT_GIT_URL" "$CHECKOUT"
 cd "$CHECKOUT"
 
-devcapsule config resolve
-devcapsule run
+devcapsule project config resolve
+devcapsule project run
 ```
 
+That is the shortest path when all required choices have safe defaults. A
+project or developer may require zero or more configuration operations before
+resolution. For example:
+
+```bash
+# Ordinary checkout-owned value; validate the size before recording it.
+devcapsule project config set runtime.memory-limit 8GiB
+
+# Use an existing host directory for a declared PyCharm state slot.
+devcapsule project config bind pycharm/system --host-directory "$PYCHARM_SYSTEM"
+
+# Explicitly allow this checkout to use the host Docker daemon.
+devcapsule project config authorize docker-daemon host-socket
+
+devcapsule project config resolve
+devcapsule project run
+```
+
+The names and option spelling are the V1 design target and may be refined
+before the interface is released. Their different meanings are intentional:
+`set` records an ordinary value, `bind` selects a developer-owned provider for
+a declared logical resource, and `authorize` permits a security-sensitive host
+capability.
+
 The project is already initialized. An ordinary adopter does not run
-`devcapsule init`, generate a new shared lock, build a base image, find an IDE
-archive, or invoke a product-specific image build.
+`devcapsule project init`, generate a new shared lock, build a base image, find
+an IDE archive, or invoke a product-specific image build.
 
 ### Selecting the checkout
 
@@ -58,12 +151,12 @@ DevCapsule normally discovers the checkout by searching from the current
 directory upward for `.devcapsule/devcapsule.toml`. The user may run commands
 from the checkout root or any directory beneath it.
 
-Working from elsewhere must also be supported. A global context option selects
-the checkout once for the whole command:
+Working from elsewhere must also be supported. The `project` subtree accepts
+one optional context path before its subcommand:
 
 ```bash
-devcapsule --project /path/to/checkout config resolve
-devcapsule --project /path/to/checkout run
+devcapsule project --path /path/to/checkout config resolve
+devcapsule project --path /path/to/checkout run
 ```
 
 This is especially useful for scripts, IDE integrations, and workstations with
@@ -72,13 +165,55 @@ selects the concrete checkout and therefore its developer-owned configuration,
 state, and authorization. DevCapsule never chooses among known checkouts by
 project identity alone.
 
+If that portable identity already has a default checkout registered at another
+canonical path, the developer assigns the new checkout a workstation-owned
+name once. The second-checkout acceptance test uses the provisional form:
+
+```bash
+devcapsule project --path /path/to/second/checkout \
+  checkout register costin3-devcapsule
+```
+
+This creates the distinct
+`checkouts/costin3-devcapsule.checkout.toml`/`.resolved.toml` pair. Later
+commands select it from the observed path without repeating the name. The
+operation must fail rather than overwrite or inherit the first checkout's
+state and host authorization.
+
 The user is not required to change directories merely to operate on another
 checkout. Conversely, an explicit path or discoverable `.devcapsule/` tree is
 required for normal checkout-scoped commands. The V1 public spelling is
-`--project PATH`; internally, the resolved path identifies the observed
-checkout.
+`devcapsule project --path PATH SUBCOMMAND`; internally, the resolved path
+identifies the observed checkout. The optional positional form `project .` is
+not supported because it is ambiguous with subcommand names.
 
-### V1: why `config resolve` and `run` are separate
+### Listing registered projects and checkouts
+
+DevCapsule maintains a developer-owned registry beneath:
+
+```text
+$XDG_CONFIG_HOME/devcapsule/projects/
+```
+
+With the normal XDG default, that is `~/.config/devcapsule/projects/`.
+
+```bash
+devcapsule project list
+```
+
+The command enumerates valid checkout records from this registry. It does not
+scan Git repositories, home directories, or mounted filesystems for source
+trees. Merely cloning a DevCapsule-enabled repository—or running `project init`
+to create a declaration—does not register that checkout. It first appears
+after a persistent `project config set`, `bind`, `authorize`, or `resolve`
+operation creates its developer-owned checkout record.
+
+The list identifies the portable project, checkout name when applicable,
+canonical checkout path, and status. A registered checkout whose source path
+has disappeared remains visible as `missing` so cleanup is deliberate rather
+than silent.
+
+### V1: why `project config resolve` and `project run` are separate
 
 The commands separate deciding what may run from performing the consequential
 work of building and launching it.
@@ -94,7 +229,7 @@ After making the required choices and any desired optional changes, the
 developer runs:
 
 ```bash
-devcapsule config resolve
+devcapsule project config resolve
 ```
 
 This command is the explicit “my configuration choices are complete” signal.
@@ -104,7 +239,7 @@ the final inspectable local resolution. If required decisions are still
 missing or contradictory, it fails with actionable CLI or TOML instructions
 instead of partially resolving or launching.
 
-`devcapsule config resolve` is the local planning and review phase. It:
+`devcapsule project config resolve` is the local planning and review phase. It:
 
 - combines the committed declaration and platform lock with workstation
   defaults and this developer's checkout-owned choices;
@@ -122,7 +257,16 @@ or personal state into a container, grant a recommendation, or start the IDE.
 It is therefore safe to run as a preflight and useful in review,
 troubleshooting, and noninteractive automation.
 
-`devcapsule run` is the realization and execution phase. It:
+Each preceding `set`, `bind`, or `authorize` operation performs the strongest
+useful local validation before writing the checkout input. For example, a
+memory limit must parse and satisfy applicable policy; a host-directory binding
+must name a suitable existing directory and expose its mount consequences; and
+host Docker authorization must display the risk of control over the host
+daemon. `project config resolve` then performs the holistic validation that no
+single operation can: completeness, cross-field consistency, project and lock
+compatibility, policy, source digests, and the combined host-exposure plan.
+
+`devcapsule project run` is the realization and execution phase. It:
 
 - requires a present, fresh generated resolution and refuses an unexplained
   change of inputs;
@@ -135,22 +279,22 @@ Keeping these phases separate creates a review point before network downloads,
 image construction, host-resource exposure, or process launch. It also means
 that typing `run` cannot silently rewrite developer-owned configuration or
 turn a changed project recommendation into authorization. A missing or stale
-resolution produces an actionable instruction to run `devcapsule config
-resolve`; it is not regenerated implicitly as a side effect of launch.
+resolution produces an actionable instruction to run `devcapsule project
+config resolve`; it is not regenerated implicitly as a side effect of launch.
 
 The cost is one explicit command for a new checkout and after configuration
 inputs change. The normal return-to-work experience remains one command:
 
 ```bash
-devcapsule run
+devcapsule project run
 ```
 
 That is the “launch in one command” product promise. Resolution is setup and
 change review, not a step repeated before every session.
 
-### V2 direction: configuration inside `devcapsule run`
+### V2 direction: configuration inside `devcapsule project run`
 
-In V2, `devcapsule run` becomes the main user mechanism and subsumes the
+In V2, `devcapsule project run` becomes the main user mechanism and subsumes the
 separate resolution command for ordinary interactive use. When configuration
 is absent, stale, or incomplete, `run` opens a graphical configuration
 experience, expected initially as an embedded local web application displayed
@@ -172,7 +316,7 @@ command-level interruption, not the security and review boundary between
 configuration and execution. Noninteractive use must still require a complete,
 fresh resolution and must never infer missing authorization.
 
-The explicit `config resolve` operation may remain available in V2 for
+The explicit `project config resolve` operation may remain available in V2 for
 automation, diagnostics, and users who prefer CLI workflows, but it is no
 longer the primary interactive path.
 
@@ -203,14 +347,14 @@ State selection illustrates the V1 iterative configuration model:
 For example, the earlier PyCharm dogfood migration test intentionally runs:
 
 ```bash
-devcapsule state adopt home --from "$LEGACY_STATE/home"
-devcapsule state adopt pycharm/config --from "$LEGACY_STATE/config"
-devcapsule state adopt pycharm/plugins --from "$LEGACY_PLUGINS"
-devcapsule state adopt pycharm/system --from "$PROJECT_STATE/system"
-devcapsule state adopt pycharm/log --from "$PROJECT_STATE/log"
-devcapsule state adopt pycharm/cache --from "$PROJECT_STATE/home/.cache"
+devcapsule project state adopt home --from "$LEGACY_STATE/home"
+devcapsule project state adopt pycharm/config --from "$LEGACY_STATE/config"
+devcapsule project state adopt pycharm/plugins --from "$LEGACY_PLUGINS"
+devcapsule project state adopt pycharm/system --from "$PROJECT_STATE/system"
+devcapsule project state adopt pycharm/log --from "$PROJECT_STATE/log"
+devcapsule project state adopt pycharm/cache --from "$PROJECT_STATE/home/.cache"
 
-devcapsule config resolve
+devcapsule project config resolve
 ```
 
 Those commands do not install or configure PyCharm. They tell DevCapsule to
@@ -218,11 +362,55 @@ mount six existing host directories instead of allocating fresh managed state.
 They are required for that migration test's continuity criteria, not for an
 ordinary clean clone.
 
-The current implementation makes this distinction awkward because
-`config resolve` requires a developer checkout file and `state adopt` is the
-implemented path that creates one. V1 must add clean-checkout bootstrap so a
-user accepting managed defaults can reach `config resolve` without performing
-a fictitious adoption.
+The current implementation makes this distinction awkward because its
+top-level `config resolve` requires a developer checkout file and top-level
+`state adopt` is the implemented path that creates one. V1 must add
+clean-checkout bootstrap so a user accepting managed defaults can reach
+`project config resolve` without performing a fictitious adoption.
+
+The V1 replacement models those migrations as resource bindings. The first
+clean-clone dogfood milestone only needs the existing-host-directory provider:
+
+```bash
+devcapsule project config bind home --host-directory "$LEGACY_STATE/home"
+devcapsule project config bind pycharm/config --host-directory "$LEGACY_STATE/config"
+devcapsule project config bind pycharm/plugins --host-directory "$LEGACY_PLUGINS"
+devcapsule project config bind pycharm/system --host-directory "$PROJECT_STATE/system"
+devcapsule project config bind pycharm/log --host-directory "$PROJECT_STATE/log"
+devcapsule project config bind pycharm/cache --host-directory "$PROJECT_STATE/home/.cache"
+```
+
+Managed state is the safe default and requires no binding command. The exact
+compatibility lifetime of `state adopt` and the reset-to-managed spelling
+remain migration details to settle before release.
+
+### What can be bound
+
+A binding connects a logical resource declared by the project or one of its
+components to a developer-owned provider. It is not a generic spelling for all
+Docker options.
+
+The next dogfood milestone supports one provider:
+
+- **Existing host directory:** persistent component state such as `home` or
+  `pycharm/system`. DevCapsule validates the path and explains that it will be
+  exposed to the container before recording it.
+
+Potential later providers include:
+
+- a host file for non-secret configuration or a certificate;
+- an environment variable, narrowly scoped secret file, operating-system
+  keychain, or password-manager entry as a secret source;
+- a local agent socket such as an SSH or GPG agent endpoint;
+- a named developer profile whose state contract is known to DevCapsule; and
+- another persistent storage backend, such as a named Docker volume, when its
+  lifecycle and portability rules are specified.
+
+These are candidates, not current V1 commitments. Every added provider needs a
+readiness check, container delivery contract, inspection behavior,
+noninteractive semantics, and redaction rules where secrets are involved.
+Devices, Docker-daemon access, host networking, privilege changes, and port
+publication are authorizations rather than generic bindings.
 
 ### Project runtime values and secret bindings
 
@@ -259,17 +447,18 @@ checkout TOML. The exact input and secret-binding command grammar remains to be
 specified; secret values must never be accepted into the TOML merely because
 manual editing is supported.
 
-`config resolve` then verifies that every required ordinary value has an
-effective value and every required secret has a valid binding. Its generated
-plan records the secret's logical name, provider reference, delivery method,
-and readiness status, but never the secret value. A missing required binding
-blocks resolution. Optional inputs use their documented defaults or remain
-disabled.
+`project config resolve` then verifies that every required ordinary value has
+an effective value and every required secret has a valid binding. Its
+generated plan records the secret's logical name, provider reference, delivery
+method, and readiness status, but never the secret value. A missing required
+binding blocks resolution. Optional inputs use their documented defaults or
+remain disabled.
 
-At `run`, DevCapsule retrieves each secret as late as practical, injects it only
-through the declared channel, redacts it from output, and does not allow it to
-affect the materialized image or Docker build cache. Rotating a value behind an
-unchanged binding therefore does not require a new project lock or image.
+At `project run`, DevCapsule retrieves each secret as late as practical,
+injects it only through the declared channel, redacts it from output, and does
+not allow it to affect the materialized image or Docker build cache. Rotating
+a value behind an unchanged binding therefore does not require a new project
+lock or image.
 
 Database configuration may also imply a separate host-boundary decision. For
 example, reaching a database bound only to the host may require an explicit
@@ -279,8 +468,8 @@ credentials.
 
 ## What Happens On The First Run
 
-`devcapsule run` discovers the project and uses the committed lock. If the
-completed local image is absent, DevCapsule:
+`devcapsule project run` discovers the project and uses the committed lock. If
+the completed local image is absent, DevCapsule:
 
 1. ensures the exact locked, redistributable base is available;
 2. explains that PyCharm is a JetBrains product that will be downloaded
@@ -298,9 +487,254 @@ initializes the already-completed environment and starts the foreground IDE.
 JetBrains EULA acceptance, licensing, and login remain interactions between
 the developer and JetBrains.
 
-Closing the IDE ends the container. A later `devcapsule run` reuses the cached
-artifact and completed image when the locked identities have not changed, and
-reuses the checkout's persistent home and component state.
+Closing the IDE ends the container. A later `devcapsule project run` reuses the
+cached artifact and completed image when the locked identities have not
+changed, and reuses the checkout's persistent home and component state.
+
+### Local image names and developer builds
+
+Materialized images have a stable, advertised local naming contract:
+
+```text
+devcapsule-local-<component>:<materialization-identity>
+```
+
+For the initial PyCharm environment this is:
+
+```text
+devcapsule-local-pycharm:<materialization-identity>
+```
+
+The identity comes from immutable formation inputs, not from the project name.
+Projects using identical base, component artifact, and recipe identities can
+therefore reuse the same image while retaining separate source mounts, state,
+configuration, and authorization.
+
+#### How several projects share one materialized image
+
+Each project lock selects inputs; it does not create a project-owned copy of
+the image. DevCapsule forms a versioned canonical descriptor from the target
+platform, immutable base-image identity, every component artifact identity and
+digest, the materialization recipe and its formation parameters, and the
+generic component runtime-template digest. It computes the full SHA-256 of
+that descriptor.
+
+Project identity, the lock-file digest itself, checkout paths, source, local
+resolution, project mounts, developer UID/GID choices, state, credentials,
+authorization, and aliases are excluded. Consequently:
+
+```text
+Project A lock ─┐
+                ├─ identical formation descriptor
+Project B lock ─┘              │
+                               ▼
+          devcapsule-local-pycharm:<identity>
+```
+
+When Project B reaches materialization, DevCapsule computes the same full
+identity, parses the canonical formation descriptor stored in the image
+metadata, verifies that its hash is the full identity, and reuses the image
+only when its base, recipe, and complete component identities match. An
+identity label without the matching descriptor is insufficient. A malformed
+or conflicting canonical tag causes an actionable failure rather than silent
+use or replacement. No sharing declaration or project-to-project reference is
+needed.
+
+Projects cannot force reuse when formation inputs differ. They receive
+distinct content-addressed images even if a human assigns similar aliases.
+This preserves each project's lock contract while still deduplicating the
+common case automatically.
+
+The shared image contains only immutable component formation and a generic
+runtime template. At `project run`, DevCapsule supplies the checkout-specific
+launch plan read-only from outside the image. Project source, actual mount
+paths, developer identity, state directories, authorizations, and secrets
+therefore remain separate for every run.
+
+Ordinary users never need to invent this name or build the image directly.
+After configuration resolution, `devcapsule project run` reports the expected
+name, reuses it when present, and otherwise performs locked materialization
+before launch.
+
+DevCapsule developers have two explicit operations:
+
+```bash
+# Build the JetBrains-free generic runtime base from the current PEX.
+devcapsule images build \
+  --type base \
+  --recipe ubuntu-24.04 \
+  --pex dist/devcapsule.pex \
+  --source-revision "$(git rev-parse HEAD)" \
+  --network host \
+  --tag devcapsule-base:debug-v019
+
+# Materialize this project's required components onto a local or registry base.
+devcapsule images build \
+  --type environment \
+  --project "$CHECKOUT" \
+  --base devcapsule-base:debug-v019 \
+  --alias devcapsule-local-pycharm:debug-v019
+```
+
+The second command still creates the canonical content-addressed image first.
+The optional alias is a local debugging convenience and is never presented as
+the reproducible identity. A registry base uses the same operation with an
+immutable reference, for example:
+
+```bash
+devcapsule images build \
+  --type environment \
+  --project "$CHECKOUT" \
+  --base docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST
+```
+
+`images build --type environment` acquires, verifies, and assembles without
+launching. It
+shows the selected base identity, component artifact identities, recipe, and
+canonical output name. An explicit base override is displayed as a deviation
+from the project's lock and does not silently become the supported project
+default.
+
+#### What `images build --type base` produces
+
+`devcapsule images build --type base` creates one reusable OCI
+development-runtime image. It
+does not create a complete project environment and does not launch anything.
+The initial Linux contract includes:
+
+- Ubuntu 24.04 as the default root image;
+- Python 3.12, pip, virtual-environment and development-header support;
+- Git, OpenSSH, compiler/build tools, GDB/LLDB, and common process, filesystem,
+  shell, and network diagnostics;
+- Docker CLI, buildx, Compose, and daemon binaries;
+- X11/GTK, font, audio, and Mesa libraries needed by later GUI components;
+- `tini`, `gosu`, and `sudo` without granting sudo or Docker access;
+- the recipe-selected Node.js/npm and Gemini CLI public-tooling baseline; and
+- the selected DevCapsule PEX at
+  `/opt/devcapsule/bin/devcapsule.pex` with an inspectable SHA-256 identity.
+
+The base builder exposes two curated recipes:
+
+```text
+ubuntu-24.04       default; Ubuntu 24.04 plus the developer baseline above
+nvidia-cuda-devel  WIP; NVIDIA CUDA 12.8.1 development image for Ubuntu 24.04
+                   plus the same developer baseline
+```
+
+The CUDA recipe does not authorize or expose a host GPU. Runtime device access
+is a separate developer-owned authorization. The recipe is intentionally
+marked WIP in command output and image metadata until the V1-blocking NVIDIA
+host E2E task proves the CUDA compiler/runtime, positive GPU launch, negative
+launch without device authorization, and a small real CUDA workload.
+
+For the current v019 checkpoint, the public-tool recipe selects Node.js
+`v22.23.1` and Gemini CLI `0.50.0`; npm is the version bundled by that verified
+Node.js distribution. The build report and component inventory remain the
+authority for the exact installed package versions in a particular image.
+
+The PEX contains both the host CLI and the generic in-container runtime. The
+base starts that runtime through:
+
+```text
+ENTRYPOINT ["/usr/bin/tini", "--", "/opt/devcapsule/bin/devcapsule.pex", "runtime"]
+CMD ["/etc/devcapsule/runtime-plan.json"]
+```
+
+The base deliberately does not provide the referenced runtime plan. A bare
+base therefore reports a missing-plan error. `images build --type environment`
+supplies a generic component runtime template together with the selected IDE
+or other component. At launch, `project run` supplies the checkout-specific
+plan read-only at the runtime-plan path; that plan is never baked into the
+shared image.
+
+The base contains none of the following:
+
+- PyCharm, another IDE, vendor archives, or a product-specific entrypoint;
+- project source, `.devcapsule/` project files, or checkout configuration;
+- developer home/state, credentials, secrets, or agent login data;
+- host mounts, Docker-daemon authorization, host networking, devices, or sudo
+  authorization; or
+- vendor EULA or license acceptance.
+
+Installing Docker and sudo binaries is not authorization to use them. Runtime
+access remains controlled by the project's resolved plan and explicit
+developer-owned decisions.
+
+`--recipe` defaults to `ubuntu-24.04`; `--from` accepts a local or registry
+root-image reference and overrides that recipe's default root. DevCapsule
+reuses the selected image from the local Docker store when present and
+otherwise obtains that reference from its registry. When DevCapsule is itself running
+from a PEX, that PEX is the default embedded artifact; `--pex PATH` selects one
+explicitly. `--tag` is the requested local output name, and
+`--source-revision` records the source identity used to produce the PEX and
+recipe.
+
+`--network` accepts `default`, `host`, or `none` and is forwarded to Docker
+buildx. The default uses Docker's normal build network. `none` disables build
+networking. `host` is an explicit build-time isolation relaxation for builds
+that require services or routing available through the host network; DevCapsule
+also supplies BuildKit's required `network.host` entitlement. This choice
+affects only image construction and grants no host networking to a later
+capsule run.
+
+The build may still use network access for declared package and tooling
+installation. DevCapsule records the immutable base identity actually used, so
+later materialization does not confuse two different images that happened to
+use the same mutable tag. A digest-pinned project base is never silently
+replaced by different registry content.
+
+On success, the command reports:
+
+- the requested output tag and immutable local image ID;
+- resolved root-image identity and base-recipe version;
+- source revision and embedded PEX SHA-256;
+- selected public-tool versions; and
+- the package/component inventory needed for inspection and licensing.
+
+A local debug build may start from a convenience tag such as `ubuntu:24.04`,
+but its resolved immutable image ID becomes part of the later materialization
+identity. A publishable base requires pinned formation inputs and complete
+license/inventory evidence.
+
+#### How `images list` identifies DevCapsule images
+
+`devcapsule images list` reads the local Docker image store and shows only
+images carrying the V1 managed-image marker. Names are not used as proof: an
+image remains recognizable after retagging, while an unrelated image does not
+become managed merely because somebody names it `devcapsule-local-something`.
+
+Every V1 DevCapsule image carries:
+
+```text
+devcapsule.image.managed=true
+devcapsule.metadata.version=1
+devcapsule.image.kind=base|materialized
+```
+
+Base images additionally identify their recipe, embedded PEX digest, and
+source revision. Materialized environment images identify their full formation
+identity, base identity, recipe, primary component and artifact digest, and
+canonical `devcapsule-local-<component>:<short-identity>` name.
+
+The default display has one row per immutable local image ID, even when the
+image has several tags. It shows:
+
+```text
+KIND  CANONICAL NAME  ALIASES  IMAGE ID  COMPONENT  RECIPE  CREATED  SIZE
+```
+
+Unknown metadata versions remain visible as `unsupported-metadata`; malformed
+label sets appear as `invalid-metadata`. Listing is classification rather than
+a security decision, so launch and reuse still verify the platform lock and
+formation identities.
+
+The earlier `devcapsule.configuration=pycharm` label is legacy metadata and is
+not sufficient for the default list. Developers may inspect those transitional
+images explicitly with:
+
+```bash
+devcapsule images list --include-legacy
+```
 
 ## Batteries Included Without Taking Away Choice
 
@@ -328,10 +762,25 @@ For example, this repository recommends host Docker-daemon access for its full
 test suite. An explicit run-once authorization is conceptually:
 
 ```bash
-devcapsule run --docker-daemon host-socket
+devcapsule project run --docker-daemon host-socket
 ```
 
 The recommendation alone must never mount the Docker socket.
+
+Persistent authorization examples in the V1 design are:
+
+```bash
+devcapsule project config authorize docker-daemon host-socket
+devcapsule project config authorize network host
+devcapsule project config authorize development-sudo true
+```
+
+The first permits broad control of the host Docker daemon, the second relaxes
+network isolation for this checkout, and the third permits the declared
+development-sudo behavior. DevCapsule must validate each value, explain its
+specific security effect, show the checkout file receiving the decision, and
+respect more restrictive workstation policy. The exact released option and
+value spelling remains subject to the D-0004 review.
 
 ### Select a different environment explicitly
 
@@ -345,8 +794,11 @@ fully pinned, materialized under a distinct identity, and shown conspicuously
 as a deviation from the committed default. The representation and support
 contract for local alternatives remain an open V1 design question.
 
-`devcapsule run-image` remains the expert escape hatch for an arbitrary local
-image. It does not claim to reproduce the committed environment.
+`devcapsule project [--path PATH] run-image IMAGE` remains the expert escape
+hatch for an arbitrary local image. It does not claim to reproduce the
+committed environment and does not read the project lock. When a declaration
+is discoverable, it may use declared project defaults; otherwise the selected
+path or current directory is used directly as the source directory.
 
 ## Human And Agent Work Resume Together
 
@@ -368,6 +820,12 @@ from the transitional implementation.
 
 Available in the current dogfood path:
 
+- the `project [--path PATH]` subtree for `list`, `init`, named checkout
+  registration, `config resolve`, `state adopt`, `lock`, `run`, and
+  `run-image`, with no top-level compatibility aliases;
+- XDG registry listing with `ready`, `missing`, and `uninitialized` status;
+- clean-checkout creation of the default developer record during the first
+  `project config resolve`;
 - committed capability declaration and Linux platform lock;
 - developer-owned checkout resolution and adopted persistent state;
 - explicit Docker and development-sudo choices;
@@ -380,9 +838,9 @@ Not yet available as the complete clean-clone experience:
 - a published redistributable default base;
 - a platform lock that pins base and PyCharm materialization inputs instead of
   the old completed dogfood image tag;
-- clean-checkout creation of safe developer configuration without legacy state
-  adoption;
-- automatic materialization invoked by `devcapsule run`;
+- the `config set`, `config bind`, and `config authorize` V1 command families;
+- existing-host-directory binding through the new configuration surface;
+- automatic materialization invoked by `devcapsule project run`;
 - the vendor-notice interaction; and
 - a defined local-alternative environment workflow.
 
@@ -391,6 +849,16 @@ resolution are V2 direction, not V1 implementation scope.
 
 Until those items are implemented and validated, current executable commands
 and workarounds remain documented in `devcapsule/README.md`.
+
+The workstation-specific executable acceptance procedure for this planned
+flow is `tests/manual/v1-second-checkout-dogfood.sh`. It clones DevCapsule at
+`~/work/provisional/costin3/myProjects/devcapsule`, gives that observed checkout
+its own local identity and configuration pair, exercises `set`, `bind`,
+`authorize`, `resolve`, and `run`, and verifies that the existing checkout's
+developer-owned record is not reused or modified. The test deliberately uses a
+new `debug-v019` checkpoint so configuration-driven runtime changes are tested
+through the generic in-image Python entrypoint; v018 remains only the known-good
+legacy comparison.
 
 ## Questions This Narrative Must Settle
 
@@ -407,8 +875,10 @@ would otherwise hide:
    that deviation pinned, displayed, shared, and supported?
 6. How is the reusable human/agent workflow bootstrapped into an adopter's
    repository when they choose it?
-7. What is the V1 grammar and provider contract for ordinary runtime inputs,
-   secret bindings, late secret retrieval, redaction, and noninteractive use?
+7. What exact option and reset syntax completes the accepted `config set`,
+   `config bind`, and `config authorize` families?
+8. Which later secret providers support late retrieval, redaction, rotation,
+   and noninteractive use after host-directory binding proves the model?
 
 These questions are part of the product surface. They should be answered in
 the user experience before their answers become accidental CLI behavior.

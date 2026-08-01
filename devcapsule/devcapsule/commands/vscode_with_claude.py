@@ -1,4 +1,4 @@
-"""VS Code plus Claude command adapter."""
+"""WIP VS Code plus Claude command adapter."""
 
 from __future__ import annotations
 
@@ -23,4 +23,3 @@ class VscodeWithClaudeCommand(BaseCommand):
 
 
 COMMAND = VscodeWithClaudeCommand
-

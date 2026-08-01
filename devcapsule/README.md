@@ -149,36 +149,95 @@ at a writable directory or unset it if PEX warns about an unwritable cache.
 
 ## Commands
 
+### Managed local images
+
+List only V1 DevCapsule-managed images from the local Docker image store:
+
+```bash
+devcapsule images list
+devcapsule images list --include-legacy
+```
+
+The default view requires the managed-image metadata labels and does not infer
+ownership from a repository or tag prefix. `--include-legacy` also shows older
+images carrying the transitional `devcapsule.configuration` label. Listing is
+read-only and performs no registry access.
+
+Build the JetBrains-free DevCapsule base:
+
+```bash
+# From a source/editable installation, identify the PEX to embed.
+devcapsule images build \
+  --type base \
+  --tag devcapsule-base:debug-v019 \
+  --pex dist/devcapsule.pex \
+  --source-revision "$(git rev-parse HEAD)" \
+  --network host
+
+# When invoked from a PEX, that PEX is embedded by default.
+python3.12 dist/devcapsule.pex images build \
+  --type base \
+  --tag devcapsule-base:debug-v019 \
+  --source-revision "$(git rev-parse HEAD)"
+
+# WIP: build the NVIDIA CUDA development variant for specialized validation.
+python3.12 dist/devcapsule.pex images build \
+  --type base \
+  --recipe nvidia-cuda-devel \
+  --tag devcapsule-base:cuda-v019 \
+  --source-revision "$(git rev-parse HEAD)"
+```
+
+`--recipe` accepts `ubuntu-24.04` or `nvidia-cuda-devel`. The default
+`ubuntu-24.04` recipe uses `ubuntu:24.04` and installs the established
+DevCapsule developer utilities. The WIP `nvidia-cuda-devel` recipe uses
+`nvidia/cuda:12.8.1-devel-ubuntu24.04` and installs the same utilities on top
+of the CUDA compiler/runtime development baseline. It emits a WIP warning and
+remains blocked for V1 release until the specialized NVIDIA host E2E task is
+complete.
+
+`--from IMAGE` overrides the selected recipe's root image. The builder reuses
+that root image when it is already local and otherwise allows Docker to obtain
+the reference.
+`--network` accepts `default`, `host`, or `none` and is forwarded to Docker
+buildx. Host mode is an explicit build-time isolation relaxation and adds the
+BuildKit `network.host` entitlement; it does not configure the network of later
+runtime containers.
+The resulting image carries the V1 managed marker, metadata version, base kind,
+canonical name, recipe name/status/version, PEX digest, and source revision
+labels. `images build --type base` is the sole supported base-build command;
+there is no compatibility `build-base` alias.
+
 ### Capability-first dogfood path
 
 The first capability-first slice supports a locally built PyCharm image. New
 projects can create a declaration and current-platform dogfood lock with:
 
 ```bash
-devcapsule init . --creator https://github.com/example \
+devcapsule project --path . init --creator https://github.com/example \
   --need python --need python-ide --need docker-cli --need gemini
-devcapsule lock --image mycodespace.ai/pycharm:debug-v018
+devcapsule project lock --image mycodespace.ai/pycharm:debug-v018
 ```
 
-`init` is create-only and leaves an existing `.devcapsule/` untouched. Adopt
-the six existing dogfood state directories once, then generate the local
+`project init` is create-only and leaves an existing `.devcapsule/` untouched.
+Adopt the six existing dogfood state directories once, then generate the local
 developer-owned resolution:
 
 ```bash
-devcapsule state adopt home --from ~/.config/docker-pycharm-codex/state/home
-devcapsule state adopt pycharm/config --from ~/.config/docker-pycharm-codex/state/config
-devcapsule state adopt pycharm/plugins --from ~/.config/docker-pycharm-codex/plugins
-devcapsule state adopt pycharm/system --from /path/to/project-state/system
-devcapsule state adopt pycharm/log --from /path/to/project-state/log
-devcapsule state adopt pycharm/cache --from /path/to/project-state/home/.cache
-devcapsule config resolve
+devcapsule project state adopt home --from ~/.config/docker-pycharm-codex/state/home
+devcapsule project state adopt pycharm/config --from ~/.config/docker-pycharm-codex/state/config
+devcapsule project state adopt pycharm/plugins --from ~/.config/docker-pycharm-codex/plugins
+devcapsule project state adopt pycharm/system --from /path/to/project-state/system
+devcapsule project state adopt pycharm/log --from /path/to/project-state/log
+devcapsule project state adopt pycharm/cache --from /path/to/project-state/home/.cache
+devcapsule project config resolve
 ```
 
 Normal launch then uses the committed manifest and platform lock plus that
 checkout-local resolution:
 
 ```bash
-devcapsule run --docker-daemon host-socket --development-sudo
+devcapsule project run --docker-daemon host-socket --development-sudo
 ```
 
 Those two host relaxations are run-once choices and are not granted by the
@@ -191,6 +250,16 @@ This is intentionally a dogfood bridge, not the complete V1 resolver: `lock`
 currently pins a local image tag supplied with `--image`; immutable image
 digest resolution and general curated capability selection remain follow-up
 work.
+
+Registered checkout records can be listed without scanning source trees:
+
+```bash
+devcapsule project list
+```
+
+Use `devcapsule project --path /path/to/checkout SUBCOMMAND` when operating
+outside a checkout. Otherwise project commands discover the nearest
+`.devcapsule/devcapsule.toml` upward from the current directory.
 
 DevCapsule uses a configuration-first command model:
 
@@ -220,7 +289,7 @@ devcapsule pycharm run --project /path/to/project
 devcapsule pycharm run
 devcapsule pycharm run --project /path/to/project --config-mode project
 devcapsule pycharm run --profile codex --project-state-root /path/to/workspace/.state
-devcapsule run-image pycharm-isolated:latest --project /path/to/project
+devcapsule project --path /path/to/project run-image pycharm-isolated:latest
 devcapsule pycharm build --pycharm /path/to/pycharm.tar.gz
 devcapsule pycharm check-runtime
 devcapsule vscode_with_claude --help
@@ -321,10 +390,10 @@ The first dogfood validation intentionally supplies the existing directories
 once, before the planned `state adopt` command persists those mappings:
 
 ```bash
-./dist/devcapsule.pex run-image mycodespace.ai/pycharm:debug-v018 \
+./dist/devcapsule.pex project --path "$HOST_PROJECT_ROOT" \
+  run-image mycodespace.ai/pycharm:debug-v018 \
   --global-settings ~/.config/docker-pycharm-codex/state/ \
   --plugins ~/.config/docker-pycharm-codex/plugins \
-  --project "$HOST_PROJECT_ROOT" \
   --project-mount /workspace/301e4208ef81-ChatGPT_Codex \
   --project-state "$PROJECT_STATE" \
   --docker-daemon host-socket \
@@ -336,6 +405,7 @@ adopted PyCharm workspace and interpreter configuration. Omitting it during
 this migration makes saved paths such as
 `/workspace/301e4208ef81-ChatGPT_Codex/.venv/bin/python` appear missing.
 
-Unsupported command shapes such as `devcapsule run pycharm`,
-`devcapsule build pycharm`, and `devcapsule bootstrap-project` are
-intentionally not part of the Python CLI.
+Unsupported command shapes such as top-level `devcapsule run`,
+`devcapsule run-image`, `devcapsule config`, `devcapsule state`, and
+`devcapsule lock`, as well as `devcapsule build pycharm` and
+`devcapsule bootstrap-project`, are intentionally not part of the Python CLI.

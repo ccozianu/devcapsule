@@ -23,7 +23,8 @@ Current status:
   `devcapsule CONFIGURATION ACTION [options]` paths are transitional.
 - `codium_with_claude` is the active next proof-point configuration. It is a
   distinct VSCodium plus Claude Code environment; the earlier
-  `vscode_with_claude` placeholder remains separate.
+  `vscode_with_claude` placeholder remains separate and is explicitly marked
+  WIP in its user-facing command help.
 
 Recent documentation cleanup:
 
@@ -411,22 +412,203 @@ Current task:
 - D-0004, `Configuration Resolution And Guided Run Experience`, is now a
   proposed decision record preserving the current product-design discussion.
   Its working direction keeps V1 CLI/TOML configuration iterative, uses
-  `config resolve` as the explicit completion and validation boundary, treats
-  state and secrets as typed configuration with distinct safety semantics, and
-  makes a browser-based guided `run` the V2 direction. It records fourteen
-  unanswered questions, including final CLI grammar, state-command migration,
+  `project config resolve` as the explicit completion and validation boundary,
+  treats state and secrets as typed configuration with distinct safety
+  semantics, and makes a browser-based guided `project run` the V2 direction.
+  It records fourteen unanswered questions, including state-command migration,
   secret providers, vendor acknowledgement, progress and inspection UX, local
   alternatives, client installation, workflow bootstrap, and local-web-app
   security. The record remains `proposed`; only the human may adopt it after
   review.
-- D-0004 now proposes the observed checkout as the shared CLI context. Commands
-  discover the nearest `.devcapsule/devcapsule.toml` upward from the current
-  directory by default, while a global selector such as
-  `devcapsule --project PATH ...` supports scripts, IDE integrations, and
-  operation from elsewhere. Users are not required to `cd`, and normal commands
-  never choose among multiple checkouts from portable project identity alone.
-  The public global spelling is `--project PATH`; compatibility with existing
-  command-local options remains open.
+- D-0004 now proposes `devcapsule project [--path PATH] SUBCOMMAND` as the V1
+  project/checkout command subtree. `list`, `init`, checkout registration,
+  `config`, `state`, `lock`, and `run` share this mental model. Omitted `--path`
+  discovers the nearest `.devcapsule/devcapsule.toml` upward from the current
+  directory; an explicit path may be the root or a descendant. The ambiguous
+  positional `project . SUBCOMMAND` form is excluded. If D-0004 is adopted,
+  `project run` deliberately supersedes D-0001's top-level `run` spelling and
+  `project run-image IMAGE` becomes the lock-independent expert escape hatch.
+  The transitional top-level project commands are removed without aliases.
+- `devcapsule project list` reads valid developer-owned checkout records only
+  from `$XDG_CONFIG_HOME/devcapsule/projects/`, normally
+  `~/.config/devcapsule/projects/`. It does not scan source trees. A clone or
+  `project init` is not registered until the first persistent `project config
+  set|bind|authorize|resolve` operation creates its checkout record. Missing
+  checkout paths remain visible for deliberate cleanup.
+- The specified project command tree is now implemented. Top-level `init`,
+  `lock`, `config`, `state`, `run`, and `run-image` modules were removed without
+  aliases. `project --path PATH` supplies one lazy shared context to `init`,
+  checkout registration, `config resolve`, `state adopt`, `lock`, `run`, and
+  `run-image`; omitted paths use current-directory discovery where a
+  declaration is required. `project run-image` also accepts a plain source
+  directory without a declaration. The first `project config resolve` creates
+  a safe default checkout record, while `project checkout register NAME`
+  creates a distinct named record when the portable project identity already
+  belongs to another canonical checkout.
+- `project list` now enumerates the XDG registry without scanning source trees
+  and reports `ready`, `missing`, or `uninitialized`. Focused tests cover clean
+  registration, upward discovery, named second-checkout selection, missing
+  paths, lack of source scanning, expert `run-image`, and rejection of the old
+  top-level commands. The full Nox build gate passed with clean mypy over 57
+  source files, 95 fast tests at 79% coverage, source and rebuilt-PEX help
+  smokes for the project tree, PEX construction, and the PEX integration test.
+  No host container was launched for this CLI-only refactor.
+- D-0004 review has now settled the conceptual V1 configuration loop: a clean
+  checkout performs zero or more typed `project config set`, `bind`, and
+  `authorize` operations, each with immediate value/provider validation,
+  followed by holistic `project config resolve` and then `project run`.
+  Persistent operations write the developer-owned `devcapsule.checkout.toml`
+  under the XDG project-identity directory and must show the actual path
+  written.
+- `set` is for ordinary values such as a checkout memory limit; `bind` maps a
+  declared logical resource to a developer-owned provider; and `authorize`
+  records security-sensitive host decisions such as Docker-daemon access,
+  host networking, or development sudo. The next clean-clone dogfood milestone
+  deliberately supports only existing-host-directory bindings for component
+  state. Secret, host-file, socket, profile, and alternative-storage providers
+  remain later contract work, while devices, Docker, networking, privilege,
+  and port publication remain authorization rather than generic binding.
+- The next implementation is grounded by the executable, intentionally
+  not-yet-passing manual user test at
+  `devcapsule/tests/manual/v1-second-checkout-dogfood.sh`. On the current
+  laptop it clones the repository to
+  `~/work/provisional/costin3/myProjects/devcapsule`, registers the distinct
+  `costin3-devcapsule` checkout, preserves the existing default checkout
+  record, applies an 8 GiB memory setting, binds shared home/config/plugins and
+  new checkout-specific PyCharm system/log/cache directories, persists the
+  observed Docker/network/sudo authorizations, resolves, inspects the live
+  container plan, and launches twice for persistence validation. It now treats
+  `devcapsule-local-pycharm:debug-v019` as an explicit prerequisite and verifies
+  its embedded PEX, runtime plan, materialization labels, and generic Python
+  entrypoint before launching.
+- Inspection of running container `322ca969a6d9` established the grounding
+  values: image `mycodespace.ai/pycharm:debug-v018`, unprivileged `1000:1000`,
+  project destination `/workspace/301e4208ef81-ChatGPT_Codex`, explicit host
+  Docker and development sudo, six legacy state mounts, foreground auto-remove
+  lifecycle, and the known temporary host-network relaxation. X11, generated
+  account files, Docker group IDs, and the selected NVIDIA runtime are launcher
+  outputs rather than developer configuration values.
+- `debug-v018` is sufficient as the known-good legacy comparison but not as the
+  image under test for the next slice: it is a 5.54 GB monolithic image whose
+  OCI entrypoint is still `/usr/local/bin/entrypoint.sh`, with no embedded PEX
+  or runtime-plan command. The v019 checkpoint is allowed to evolve the
+  container runtime contract for dynamic checkout configuration, explicit
+  development sudo, and the new launch plan before the final content-addressed
+  `devcapsule-local-pycharm:<materialization-identity>` naming becomes the V1
+  user-facing realization model.
+- D-0004 now locks the advertised canonical local-image pattern as
+  `devcapsule-local-<component>:<materialization-identity>`. Project identity is
+  intentionally absent so identical immutable formation inputs can be reused
+  without sharing project configuration or state. The proposed developer CLI
+  separates `devcapsule images build --type base` for a JetBrains-free runtime
+  base from project-aware
+  `devcapsule images build --type environment --project PATH` for combining a
+  locked component with either its locked base or an explicit local/registry
+  base. Optional aliases such as `devcapsule-local-pycharm:debug-v019` are
+  conspicuous local debugging names, never the canonical reproducible identity.
+- Cross-project image reuse is now specified as automatic content-addressed
+  sharing. Each project lock selects a normalized formation descriptor rather
+  than owning an image; platform, immutable base identity, all component
+  identities/digests, materialization recipe parameters, and the generic
+  runtime-template contract determine its RFC 8785/SHA-256 identity. Project
+  and lock-file identities, checkout paths, resolution, mounts, UID/GID, state,
+  credentials, authorization, and aliases are excluded. A matching canonical
+  local image is reused only after full metadata verification; conflicts fail
+  rather than being silently used or overwritten. Checkout-specific launch
+  plans are supplied outside the shared image at `project run`. The current
+  materialization primitive is narrower: it hashes a simple base/artifact list,
+  bakes a runtime plan, and trusts `image_exists`. Implementing `--type
+  environment` must replace that shortcut with the specified descriptor,
+  metadata verification, and external checkout launch plan.
+- The advertised `devcapsule images build --type base` contract is now
+  explicit. It produces
+  one reusable, JetBrains-free OCI development-runtime image: Ubuntu 24.04,
+  Python 3.12, compiler/debug/network/process tooling, Docker client/buildx/
+  Compose/daemon binaries, GUI runtime libraries, `tini`, `gosu`, non-authorized
+  sudo, the recipe-selected Node/npm/Gemini baseline, and one digest-labelled
+  DevCapsule PEX. Its OCI command invokes `devcapsule.pex runtime` with the
+  materialization-owned plan path. The base contains no runtime plan, IDE,
+  project, personal state, credentials, host authorization, or vendor license
+  acceptance and therefore is not a runnable project environment by itself.
+- V1 DevCapsule images are identified authoritatively by
+  `devcapsule.image.managed=true`, `devcapsule.metadata.version=1`, and
+  `devcapsule.image.kind=base|materialized` labels. `devcapsule images list`
+  reads only the local Docker store, deduplicates aliases by image ID, and does
+  not infer ownership from repository/tag prefixes. Unknown or malformed
+  metadata remains visible, while old `devcapsule.configuration` images require
+  `--include-legacy`. Labels classify rather than establish trust; lock and
+  formation identities are still verified before reuse.
+- The proposed `images build` commands no longer expose a `--pull` policy.
+  They use the selected base from the local Docker store when present and
+  otherwise obtain its registry reference. This removes a low-value option
+  while retaining immutable-identity reporting and digest-pin protection.
+- The first `images` implementation slice is complete. `devcapsule images
+  list [--include-legacy]` reads the local Docker store, selects V1 images by
+  the managed/version/kind label contract, keeps unknown or malformed managed
+  metadata visible, groups tags by image ID, and optionally shows transitional
+  `devcapsule.configuration` images. Live source and built-PEX checks hide the
+  legacy v018 image by default and show it correctly with `--include-legacy`.
+- `devcapsule images build --type base --tag IMAGE` now builds through the
+  Python-owned base planner. It supports `--from`, `--pex`, and
+  `--source-revision`; a running PEX embeds itself by default, while source or
+  editable execution requires an explicit PEX. Bases now receive managed,
+  metadata-version, kind, canonical-name, recipe, PEX-digest, and source labels.
+  Materialized PyCharm planning was aligned with the same metadata contract and
+  records formation, base, component, artifact, and canonical-name identities.
+- Validation on 2026-08-01 passed the full
+  `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
+  shell syntax checks, clean mypy over 62 source files, 87 fast tests at 79%
+  statement/branch coverage, source and built-PEX command smoke tests, PEX
+  construction, and the PEX integration test. The actual large base image has
+  not yet been built; that host build is the next minimal manual validation
+  before proceeding to `--type environment`.
+- `devcapsule images build` now accepts
+  `--network [default|host|none]`. The selected mode is forwarded through the
+  base builder to Docker buildx; `host` follows the existing explicit path that
+  also grants BuildKit's `network.host` entitlement. This affects build-time
+  networking only and does not authorize host networking for runtime
+  containers. Focused tests, clean mypy, 88 fast tests, the full Nox build
+  gate, and the rebuilt PEX help surface all passed after the change.
+- `devcapsule images build --type base` now exposes two curated recipes through
+  `--recipe`. `ubuntu-24.04` is the ready default and retains the existing
+  Ubuntu 24.04 developer-tooling plan. `nvidia-cuda-devel` is a WIP recipe that
+  starts from `nvidia/cuda:12.8.1-devel-ubuntu24.04`, installs the same
+  developer baseline, records NVIDIA/CUDA/WIP labels, and emits a warning. Its
+  specialized host validation is a V1 release blocker recorded in
+  `devcapsule/implementation-notes/2026-08-01-nvidia-cuda-base-recipe-validation.md`.
+  NVIDIA CUDA E2E is available on the maintainer's laptops, but this container
+  session has no GPU access. AMD ROCm and other GPU families require an
+  interested partner or cloud test infrastructure and remain outside required
+  V1 scope. GPU image formation remains separate from explicit runtime device
+  authorization. The CUDA registry tag was confirmed to publish amd64 and
+  arm64 manifests. Focused tests passed, followed by the full Nox build gate:
+  clean mypy across 62 source files, 92 fast tests at 79% coverage, source and
+  rebuilt-PEX command smokes, PEX construction, and the PEX integration test.
+  No real base image or GPU workload was run in this container session.
+- The user subsequently reported that the first external NVIDIA recipe test
+  succeeded: `images build --type base --recipe nvidia-cuda-devel` produced a
+  local NVIDIA GPU base image on an NVIDIA laptop. The exact image inspection,
+  `nvcc`, positive/negative device authorization, CUDA workload, and
+  materialized-environment checks remain open in the V1-blocking specialized
+  validation task.
+- The obsolete top-level `build-base` compatibility command was removed.
+  `devcapsule images build --type base` is now the sole base-build command and
+  no compatibility layer is promised. The full Nox build gate passed after
+  removal with clean mypy over 61 source files, 92 fast tests, source and
+  rebuilt-PEX command smokes, PEX construction, and the PEX integration test;
+  neither help surface advertises `build-base`.
+- Research also confirmed an optional low-administration NVIDIA CI path:
+  GitHub-hosted Linux GPU larger runners provide one Tesla T4 and can run CUDA
+  Docker job containers with `--gpus all`, as demonstrated by LightGBM's
+  current workflow. The runner costs $0.052/minute, but requires a GitHub Team
+  or Enterprise Cloud organization and is billed even for public repositories.
+- At the user's explicit request, the development ritual now supports durable
+  session records under `implementation-notes/session-records/`. Recording is
+  opt-in only; detailed sanitized reconstruction is the default, summaries are
+  available on request, and `verbatim` requires a user/IDE-supplied export.
+  Session records supplement rather than replace decisions, requirements,
+  current status, bugs, and user docs. This session is preserved at
+  `devcapsule/implementation-notes/session-records/2026-08-01-d-0004-configuration-and-images-cli.md`.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -488,7 +670,7 @@ Current task:
   runtime-owned help through `tini` and the in-image PEX with `--network none`,
   and removed the test image successfully.
 - Initial default-base and local-materialization implementation now exists.
-  Top-level `build-base` plans an Ubuntu 24.04 image using the established
+  The base-image planner builds an Ubuntu 24.04 image using the established
   development/tooling baseline, embeds the exact PEX at
   `/opt/devcapsule/bin/devcapsule.pex`, records its digest and recipe/source
   labels, and configures generic `ENTRYPOINT` plus runtime-plan `CMD`.
@@ -681,15 +863,17 @@ Current task:
 
 Next task:
 
-1. Implement the local PyCharm materialization and Python-entrypoint task in
-   `devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md`.
-   Finish by building a JetBrains-free redistributable base, downloading and
-   verifying the lock-pinned current PyCharm artifact on the workstation,
-   materializing the final image locally, passing the full Nox gate, and
-   manually running the existing dogfood environment successfully through
-   `devcapsule run`.
-2. Resume the reopened PyCharm network and Docker-option parity work after the
-   new materialized-image dogfood path is established.
+1. Implement `devcapsule images build --type environment` against the settled
+   formation contract. Replace the current simplified materialization identity
+   and `image_exists` shortcut with the canonical formation descriptor and
+   verified cross-project reuse; validate the selected DevCapsule base; acquire
+   and checksum-cache the locked PyCharm artifact on the host with concurrency
+   protection; unpack only into temporary build context; build the generic
+   shared environment image; and keep checkout-specific launch plans outside
+   the image. Do not launch a container or download from the entrypoint.
+2. Pass the full Nox gate, then build and inspect the v019 environment on the
+   host before continuing the second-checkout dogfood path and reopened runtime
+   option-parity work.
 
 Standing rule:
 

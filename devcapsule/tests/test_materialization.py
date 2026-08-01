@@ -8,7 +8,13 @@ import tarfile
 import pytest
 
 from devcapsule.compat import CliError
-from devcapsule.materialization import ArtifactSpec, acquire_artifact, ensure_materialized_pycharm
+from devcapsule.materialization import (
+    ArtifactSpec,
+    acquire_artifact,
+    ensure_materialized_pycharm,
+    materialization_identity,
+    pycharm_materialization_spec,
+)
 
 
 def fixture_archive(path: Path) -> bytes:
@@ -55,3 +61,30 @@ def test_materialization_skips_download_and_build_when_image_exists(tmp_path: Pa
     assert image.startswith("devcapsule-local-pycharm:")
     assert created is False
     assert builds == []
+
+
+def test_materialized_image_has_managed_identity_labels(tmp_path: Path) -> None:
+    pycharm = tmp_path / "pycharm"
+    pycharm.mkdir()
+    runtime_plan = tmp_path / "runtime-plan.json"
+    runtime_plan.write_text("{}\n", encoding="utf-8")
+    artifact = ArtifactSpec("2026.2", "https://example.test/pycharm.tar.gz", "a" * 64)
+    image = "devcapsule-local-pycharm:0123456789abcdef0123"
+
+    plan = pycharm_materialization_spec(
+        base_image="base@sha256:abc",
+        image=image,
+        pycharm_root=pycharm,
+        runtime_plan=runtime_plan,
+        artifact=artifact,
+    ).build_plan()
+
+    assert ("devcapsule.image.managed", "true") in plan.labels
+    assert ("devcapsule.metadata.version", "1") in plan.labels
+    assert ("devcapsule.image.kind", "materialized") in plan.labels
+    assert ("devcapsule.image.canonical-name", image) in plan.labels
+    assert ("devcapsule.materialization.base-identity", "base@sha256:abc") in plan.labels
+    assert ("devcapsule.materialization.identity", materialization_identity("base@sha256:abc", artifact)) in plan.labels
+    assert ("devcapsule.component.id", "pycharm") in plan.labels
+    assert ("devcapsule.component.version", "2026.2") in plan.labels
+    assert ("devcapsule.component.sha256", "a" * 64) in plan.labels

@@ -81,6 +81,27 @@ remain manual dogfood checks. Automated E2E tests must not use host networking,
 privileged mode, Docker socket mounts, credentials, or unrelated host paths.
 Every Docker resource must have a unique name/label and deterministic cleanup.
 
+### Manual user-journey tests
+
+`tests/manual/v1-second-checkout-dogfood.sh` is the executable acceptance test
+for the planned D-0004 clean-clone configuration journey on the current
+dogfood laptop. It intentionally targets V1 commands that are not implemented
+yet. It clones the repository at a second host path, registers a distinct
+checkout identity, records ordinary values, state bindings, and host
+authorizations, resolves the complete plan, and launches PyCharm twice. It
+requires the local `devcapsule-local-pycharm:debug-v019` checkpoint alias and
+verifies that the image uses the embedded DevCapsule PEX, versioned runtime
+plan, and generic Python entrypoint rather than v018's PyCharm-specific Bash
+entrypoint. It also verifies the V1 managed-image marker, metadata version,
+materialized kind, formation/base/component identities, and canonical-name
+label used by `devcapsule images list`.
+
+The test is deliberately excluded from Nox and CI. It shares explicitly chosen
+credential-bearing state, opens a GUI, enables host Docker, host networking,
+and development sudo, and therefore requires an informed human running it from
+the intended workstation. It is both the acceptance procedure and a concrete
+debugging target for the next implementation slice.
+
 ## Adding tests
 
 Use a fast test unless behavior genuinely crosses a packaging, process, or

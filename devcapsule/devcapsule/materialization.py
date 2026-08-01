@@ -18,6 +18,7 @@ from devcapsule.image_build import (
     LabelComponent,
     normalize_archive_directory,
 )
+from devcapsule.image_metadata import MATERIALIZED_KIND, managed_labels
 
 
 @dataclass(frozen=True)
@@ -71,12 +72,16 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def local_image_name(base_identity: str, artifact: ArtifactSpec) -> str:
+def materialization_identity(base_identity: str, artifact: ArtifactSpec) -> str:
     identity = json.dumps(
         [base_identity, artifact.version, artifact.sha256, MATERIALIZATION_RECIPE_VERSION],
         separators=(",", ":"),
     )
-    return f"devcapsule-local-pycharm:{hashlib.sha256(identity.encode()).hexdigest()[:20]}"
+    return hashlib.sha256(identity.encode()).hexdigest()
+
+
+def local_image_name(base_identity: str, artifact: ArtifactSpec) -> str:
+    return f"devcapsule-local-pycharm:{materialization_identity(base_identity, artifact)[:20]}"
 
 
 def pycharm_materialization_spec(
@@ -89,9 +94,14 @@ def pycharm_materialization_spec(
             DirectoryComponent(pycharm_root, "/opt/jetbrains/pycharm"),
             FileComponent(runtime_plan, "/etc/devcapsule/runtime-plan.json", permissions=0o644),
             LabelComponent(
-                (
-                    ("devcapsule.image.kind", "materialized"),
+                managed_labels(MATERIALIZED_KIND, image)
+                + (
+                    ("devcapsule.materialization.identity", materialization_identity(base_image, artifact)),
                     ("devcapsule.materialization.recipe-version", MATERIALIZATION_RECIPE_VERSION),
+                    ("devcapsule.materialization.base-identity", base_image),
+                    ("devcapsule.component.id", "pycharm"),
+                    ("devcapsule.component.version", artifact.version),
+                    ("devcapsule.component.sha256", artifact.sha256),
                     ("devcapsule.component.jetbrains.version", artifact.version),
                     ("devcapsule.component.jetbrains.sha256", artifact.sha256),
                 )

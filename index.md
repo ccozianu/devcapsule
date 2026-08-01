@@ -81,6 +81,8 @@ same change.
 
 ## Implementation Notes And Decisions
 
+- [User-requested session-record policy](devcapsule/implementation-notes/session-records/README.md)
+- [D-0004 configuration and images CLI session record](devcapsule/implementation-notes/session-records/2026-08-01-d-0004-configuration-and-images-cli.md)
 - [Per-project IDE state split](docker4pycharm/implementation-notes/2026-06-21-per-project-ide-state-split.md)
 - [Git identity and remote credential transport](docker4pycharm/implementation-notes/2026-06-22-git-identity-and-credentials.md)
 - [Default JetBrains GL to Mesa software rendering](docker4pycharm/implementation-notes/2026-06-22-mesa-software-gl-default.md)
@@ -92,6 +94,7 @@ same change.
 - [Docker Hub namespace and publication plan](devcapsule/implementation-notes/2026-07-15-docker-hub-namespace-and-publication-plan.md)
 - [Capability-first PyCharm dogfood manual test](devcapsule/implementation-notes/2026-07-24-capability-first-dogfood-manual-test.md)
 - [Local PyCharm materialization and Python entrypoint](devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md)
+- [NVIDIA CUDA base recipe specialized validation](devcapsule/implementation-notes/2026-08-01-nvidia-cuda-base-recipe-validation.md)
 
 ## Bugs
 
