@@ -101,7 +101,9 @@ def pex_build_info(options: BaseImageBuildOptions) -> BuildInfo:
     if options.source_revision is not None and options.source_revision != info.source_revision:
         raise CliError(
             f"Expected source revision {options.source_revision}, but the selected PEX embeds "
-            f"{info.source_revision}. Rebuild the PEX from the intended public commit."
+            f"{info.source_revision}. Nox writes local-only dist/devcapsule-local.pex; rebuild the "
+            "public artifact with 'scripts/build-pex.sh', verify 'dist/devcapsule.pex version --json', "
+            "and retry with dist/devcapsule.pex."
         )
     if not options.allow_local_source and options.source_revision is None:
         raise CliError(
@@ -110,8 +112,9 @@ def pex_build_info(options: BaseImageBuildOptions) -> BuildInfo:
         )
     if not options.allow_local_source and not info.has_public_revision:
         raise CliError(
-            "The selected PEX does not embed a full public GitHub revision; rebuild it with the "
-            "default scripts/build-pex.sh contract after pushing the commit."
+            "The selected PEX does not embed a full public GitHub revision. Nox writes local-only "
+            "dist/devcapsule-local.pex; after pushing the commit, run 'scripts/build-pex.sh' and "
+            "verify 'dist/devcapsule.pex version --json'."
         )
     return info
 

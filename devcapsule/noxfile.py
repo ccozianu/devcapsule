@@ -11,7 +11,7 @@ nox.options.reuse_existing_virtualenvs = True
 
 PROJECT_ROOT = Path(__file__).parent
 REPO_ROOT = PROJECT_ROOT.parent
-PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
+TEST_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule-local.pex"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -95,30 +95,32 @@ def run_smoke(session: nox.Session) -> None:
     session.run(str(REPO_ROOT / "docker4pycharm" / "run-pycharm-container.sh"), "--help", external=True)
 
 
-def build_pex(session: nox.Session) -> None:
+def build_test_pex(session: nox.Session) -> None:
     session.run(
         str(PROJECT_ROOT / "scripts" / "build-pex.sh"),
+        "--output",
+        str(TEST_PEX_PATH),
         "--allow-local-source",
         env={"PYTHON": "python"},
         external=True,
     )
 
 
-def smoke_pex(session: nox.Session) -> None:
-    session.run("python", str(PEX_PATH), "--help")
-    session.run("python", str(PEX_PATH), "version", "--json")
-    session.run("python", str(PEX_PATH), "runtime", success_codes=[2])
-    session.run("python", str(PEX_PATH), "pycharm", "run", "--help")
-    session.run("python", str(PEX_PATH), "project", "--help")
-    session.run("python", str(PEX_PATH), "project", "list", "--help")
-    session.run("python", str(PEX_PATH), "project", "config", "resolve", "--help")
-    session.run("python", str(PEX_PATH), "project", "run-image", "--help")
-    session.run("python", str(PEX_PATH), "images", "list", "--help")
-    session.run("python", str(PEX_PATH), "images", "build", "--help")
-    session.run("python", str(PEX_PATH), "pycharm", "build", "--help")
-    session.run("python", str(PEX_PATH), "vscode_with_claude", "--help")
-    session.run("python", str(PEX_PATH), "codium_with_claude", "build", "--help")
-    session.run("python", str(PEX_PATH), "codium_with_claude", "run", "--help")
+def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
+    session.run("python", str(path), "--help")
+    session.run("python", str(path), "version", "--json")
+    session.run("python", str(path), "runtime", success_codes=[2])
+    session.run("python", str(path), "pycharm", "run", "--help")
+    session.run("python", str(path), "project", "--help")
+    session.run("python", str(path), "project", "list", "--help")
+    session.run("python", str(path), "project", "config", "resolve", "--help")
+    session.run("python", str(path), "project", "run-image", "--help")
+    session.run("python", str(path), "images", "list", "--help")
+    session.run("python", str(path), "images", "build", "--help")
+    session.run("python", str(path), "pycharm", "build", "--help")
+    session.run("python", str(path), "vscode_with_claude", "--help")
+    session.run("python", str(path), "codium_with_claude", "build", "--help")
+    session.run("python", str(path), "codium_with_claude", "run", "--help")
 
 
 @nox.session(python="3.12")
@@ -151,21 +153,21 @@ def typecheck(session: nox.Session) -> None:
 def pex(session: nox.Session) -> None:
     install_locked(session)
     check_shell_syntax(session)
-    build_pex(session)
+    build_test_pex(session)
     smoke_pex(session)
 
 
 @nox.session(python="3.12")
 def integration(session: nox.Session) -> None:
     install_locked(session)
-    build_pex(session)
+    build_test_pex(session)
     run_packaging_tests(session)
 
 
 @nox.session(python="3.12")
 def e2e(session: nox.Session) -> None:
     install_locked(session)
-    build_pex(session)
+    build_test_pex(session)
     run_e2e_tests(session)
 
 
@@ -177,6 +179,6 @@ def build(session: nox.Session) -> None:
     run_typecheck(session)
     run_tests(session)
     run_smoke(session)
-    build_pex(session)
+    build_test_pex(session)
     smoke_pex(session)
     run_packaging_tests(session)

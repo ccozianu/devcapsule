@@ -738,6 +738,18 @@ Current task:
   coverage, source and PEX command smokes, PEX construction, and two PEX
   integration tests. Strict public-revision success awaits pushing this exact
   implementation commit, after which it is the required v020 packaging path.
+- The first external v020 attempt exposed a packaging-handoff gap: the full
+  Nox gate had written its deliberate unknown-revision development PEX to the
+  same `dist/devcapsule.pex` path later used for publication. The base builder
+  correctly rejected the mismatch, but tests had not distinguished artifact
+  roles. Nox now writes and tests only `dist/devcapsule-local.pex`, asserts its
+  unknown/local identity at the packaging boundary, and never creates or
+  overwrites `dist/devcapsule.pex`. The latter is reserved for the default
+  strict public-source build. Mismatch diagnostics identify both filenames and
+  the exact rebuild/inspection commands. The full Nox gate passed with clean
+  mypy over 64 files, 122 fast tests at 80% coverage, local-PEX command smokes,
+  and two packaging integration tests that assert the local filename and
+  unknown revision.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source

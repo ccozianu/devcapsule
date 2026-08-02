@@ -138,6 +138,11 @@ For normal development, prefer the project build gate:
 python -m nox -s pex
 ```
 
+Nox writes its intentionally local-only artifact to
+`dist/devcapsule-local.pex`; it never creates or overwrites the publication
+path `dist/devcapsule.pex`. Use the local filename for development smoke tests
+and the strict script output for a base intended to be shared or published.
+
 If the contributor environment is not activated, point the script at it:
 
 ```bash
@@ -267,6 +272,11 @@ Public source is the base-build default. A local PEX with dirty or unpublished
 source is accepted only with `--allow-local-source`; use that flag at both PEX
 packaging and image build, and omit `--source-revision`, for an explicitly
 non-public development checkpoint.
+
+Do not use `dist/devcapsule-local.pex` for a public base. If a revision
+mismatch reports that the selected PEX embeds `unknown`, rebuild
+`dist/devcapsule.pex` with the default `scripts/build-pex.sh`, inspect it with
+`dist/devcapsule.pex version --json`, and retry.
 
 Build the lock-selected local environment after creating a fresh checkout
 resolution:

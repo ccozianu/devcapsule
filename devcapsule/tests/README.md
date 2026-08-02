@@ -28,9 +28,11 @@ python -m nox -s integration
 python -m pytest --no-cov -m integration tests/integration
 ```
 
-The Nox session builds `dist/devcapsule.pex` before running the tests. Direct
-pytest uses that same conventional path and fails with an actionable message
-when the artifact has not been built.
+The Nox session builds `dist/devcapsule-local.pex` before running the tests.
+That explicit local-only filename carries an unknown revision and prevents the
+development gate from overwriting or masquerading as the strict public artifact
+at `dist/devcapsule.pex`. Direct pytest uses the local test path and fails with
+an actionable message when it has not been built.
 
 ### End-to-end tests
 

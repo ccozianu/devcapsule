@@ -7,10 +7,14 @@ Usage:
   scripts/build-pex.sh [options]
 
 Options:
-  --output PATH             Output archive. Default: dist/devcapsule.pex
+  --output PATH             Output archive. Defaults by source policy.
   --source-revision SHA     Assert and embed this full source commit.
   --source-repository URL   Public HTTPS GitHub repository URL.
   --allow-local-source      Permit dirty/unpublished inputs and disclose unknown revision.
+
+Output policy:
+  strict public source     dist/devcapsule.pex
+  --allow-local-source     dist/devcapsule-local.pex
 
 Build a single-file DevCapsule PEX archive from the local package and the
 pinned runtime dependency lock file.
@@ -32,6 +36,7 @@ USAGE
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_dir="$(cd "${script_dir}/.." && pwd)"
 output="${project_dir}/dist/devcapsule.pex"
+output_explicit=0
 source_revision="${DEVCAPSULE_SOURCE_REVISION:-}"
 source_repository="${DEVCAPSULE_SOURCE_REPOSITORY:-}"
 allow_local_source=0
@@ -44,6 +49,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       output="$2"
+      output_explicit=1
       shift 2
       ;;
     --source-revision)
@@ -82,6 +88,9 @@ python_bin="${PYTHON:-python}"
 pex_shebang="${DOCKER4IDES_PEX_SHEBANG:-/usr/bin/env python3.12}"
 runtime_pex_root="${DOCKER4IDES_RUNTIME_PEX_ROOT:-/tmp/devcapsule-pex-root}"
 
+if [[ ${allow_local_source} -eq 1 && ${output_explicit} -eq 0 ]]; then
+  output="${project_dir}/dist/devcapsule-local.pex"
+fi
 if [[ "${output}" != /* ]]; then
   output="${project_dir}/${output}"
 fi

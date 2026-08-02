@@ -127,7 +127,7 @@ def test_base_image_rejects_revision_that_disagrees_with_pex(tmp_path: Path) -> 
     pex = pex_fixture(tmp_path / "devcapsule.pex")
     options = BaseImageBuildOptions(pex, source_revision="b" * 40)
 
-    with pytest.raises(CliError, match="selected PEX embeds"):
+    with pytest.raises(CliError, match="devcapsule-local.pex"):
         build_base_image_spec(options)
 
 
