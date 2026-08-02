@@ -660,4 +660,5 @@ def test_build_pex_script_is_available() -> None:
 
     assert completed.returncode == 0
     assert "dist/devcapsule.pex" in completed.stdout
+    assert "--allow-unpublished-revision" in completed.stdout
     assert "--allow-local-source" in completed.stdout

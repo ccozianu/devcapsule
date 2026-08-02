@@ -127,10 +127,16 @@ scripts/build-pex.sh
 dist/devcapsule.pex version --json
 ```
 
-For an explicit dirty or unpublished development build, use
+For an explicit dirty development build, use
 `scripts/build-pex.sh --allow-local-source`. That PEX discloses an `unknown`
 revision instead of presenting local bytes as public source. The Nox build
 gate uses this escape hatch because it validates changes before commit.
+
+For a clean commit that has not been pushed yet, use
+`scripts/build-pex.sh --allow-unpublished-revision`. It embeds the exact local
+`HEAD` and canonical commit URL while deliberately omitting only the GitHub
+revision-existence check. The resulting artifact is suitable for local tests;
+rerun the default strict command after pushing before publication.
 
 For a deliberately local-only development artifact, use:
 
@@ -141,10 +147,10 @@ python -m nox -s pex
 This session writes its intentionally local-only artifact to
 `dist/devcapsule-local.pex`. The full `nox -s build` gate always builds and
 tests that local artifact too. If the repository is clean, the full gate also
-runs the strict public-source build and smoke-tests `dist/devcapsule.pex`. If
-the repository is dirty, it clearly reports that the public artifact was not
-built. A clean revision that is not advertised by the public GitHub repository
-still fails the strict build rather than producing a misleading artifact.
+builds and smoke-tests `dist/devcapsule.pex` with the exact local `HEAD`, even
+when that commit is not on GitHub yet. If the repository is dirty, it clearly
+reports that the revision-bearing artifact was not built. The standalone
+default `scripts/build-pex.sh` command retains the remote publication check.
 
 If the contributor environment is not activated, point the script at it:
 

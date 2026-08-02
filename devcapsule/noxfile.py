@@ -129,6 +129,7 @@ def build_public_pex_if_clean(session: nox.Session) -> bool:
         str(PROJECT_ROOT / "scripts" / "build-pex.sh"),
         "--output",
         str(PUBLIC_PEX_PATH),
+        "--allow-unpublished-revision",
         env={"PYTHON": "python"},
         external=True,
     )

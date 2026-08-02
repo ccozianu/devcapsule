@@ -48,6 +48,7 @@ def test_public_pex_is_built_for_clean_repository() -> None:
             str(noxfile.PROJECT_ROOT / "scripts" / "build-pex.sh"),
             "--output",
             str(noxfile.PUBLIC_PEX_PATH),
+            "--allow-unpublished-revision",
             env={"PYTHON": "python"},
             external=True,
         ),

@@ -10,10 +10,13 @@ Options:
   --output PATH             Output archive. Defaults by source policy.
   --source-revision SHA     Assert and embed this full source commit.
   --source-repository URL   Public HTTPS GitHub repository URL.
-  --allow-local-source      Permit dirty/unpublished inputs and disclose unknown revision.
+  --allow-unpublished-revision
+                            Embed clean HEAD without checking that GitHub advertises it.
+  --allow-local-source      Permit dirty inputs and disclose unknown revision.
 
 Output policy:
   strict public source     dist/devcapsule.pex
+  clean unpublished HEAD  dist/devcapsule.pex
   --allow-local-source     dist/devcapsule-local.pex
 
 Build a single-file DevCapsule PEX archive from the local package and the
@@ -40,6 +43,7 @@ output_explicit=0
 source_revision="${DEVCAPSULE_SOURCE_REVISION:-}"
 source_repository="${DEVCAPSULE_SOURCE_REPOSITORY:-}"
 allow_local_source=0
+allow_unpublished_revision=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -70,6 +74,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --allow-local-source)
       allow_local_source=1
+      shift
+      ;;
+    --allow-unpublished-revision)
+      allow_unpublished_revision=1
       shift
       ;;
     -h|--help)
@@ -123,7 +131,10 @@ if [[ -n "${repo_root}" ]]; then
   fi
 fi
 
-if [[ ${allow_local_source} -eq 1 && -n "${source_revision}" ]]; then
+if [[ ${allow_local_source} -eq 1 && ${allow_unpublished_revision} -eq 1 ]]; then
+  echo "scripts/build-pex.sh: --allow-local-source cannot be combined with --allow-unpublished-revision" >&2
+  exit 2
+elif [[ ${allow_local_source} -eq 1 && -n "${source_revision}" ]]; then
   echo "scripts/build-pex.sh: --allow-local-source cannot be combined with --source-revision" >&2
   exit 2
 elif [[ ${allow_local_source} -eq 1 ]]; then
@@ -171,7 +182,8 @@ if [[ ${allow_local_source} -eq 0 ]]; then
     echo "scripts/build-pex.sh: public-revision builds require a public HTTPS GitHub repository" >&2
     exit 1
   fi
-  if ! git ls-remote "${source_repository}.git" 2>/dev/null | cut -f1 | grep -Fqx "${source_revision}"; then
+  if [[ ${allow_unpublished_revision} -eq 0 ]] && \
+    ! git ls-remote "${source_repository}.git" 2>/dev/null | cut -f1 | grep -Fqx "${source_revision}"; then
     echo "scripts/build-pex.sh: source revision is not advertised by the public GitHub repository" >&2
     exit 1
   fi

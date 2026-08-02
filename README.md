@@ -49,9 +49,11 @@ python -m nox -s build
 The full gate includes compilation, shell syntax checks, pytest, type checks,
 CLI smoke tests, PEX construction, and PEX smoke tests. It always creates the
 local-only `dist/devcapsule-local.pex`. On a clean repository it also creates
-and smoke-tests the public-source `dist/devcapsule.pex`; on a dirty repository
-it explicitly reports that the public artifact was skipped. To deliberately
-discard cached Nox environments, add `--no-reuse-existing-virtualenvs`.
+and smoke-tests `dist/devcapsule.pex` with the exact `HEAD` revision, without
+requiring that revision to have been pushed already. On a dirty repository it
+explicitly reports that the revision-bearing artifact was skipped. To
+deliberately discard cached Nox environments, add
+`--no-reuse-existing-virtualenvs`.
 
 For CLI installation and usage, see [`devcapsule/README.md`](devcapsule/README.md).
 

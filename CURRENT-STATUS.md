@@ -750,14 +750,18 @@ Current task:
 - The full `nox -s build` contract now combines those roles safely. It always
   builds and tests `dist/devcapsule-local.pex`. On a dirty repository it
   explicitly reports that `dist/devcapsule.pex` was not built and that any
-  existing file there may be stale. On a clean repository it also invokes the
-  strict public-source builder and smoke-tests `dist/devcapsule.pex`; therefore
-  a clean but unpublished revision fails instead of producing a misleading
-  artifact. `nox -s pex` remains the deliberately local-only session. The
-  dirty-tree path passed the full gate with clean mypy over 65 files, 124 fast
-  tests at 80% coverage, local-PEX command smokes, and two packaging
-  integration tests; focused tests cover both the clean-build and dirty-skip
-  branches.
+  existing file there may be stale. On a clean repository it builds and
+  smoke-tests `dist/devcapsule.pex` with the exact local `HEAD`, without
+  requiring GitHub to advertise the revision yet. The dedicated
+  `--allow-unpublished-revision` source policy preserves clean inputs, full
+  revision identity, canonical repository metadata, and the commit URL while
+  omitting only the remote revision-existence check. The standalone default
+  `scripts/build-pex.sh` remains strict for publication, and `nox -s pex`
+  remains deliberately local-only. Focused integration coverage proved that
+  a clean synthetic commit absent from GitHub builds with its exact revision
+  and canonical commit URL. The full dirty-tree gate passed with clean mypy
+  over 65 files, 124 fast tests at 80% coverage, local-PEX command smokes, and
+  all three packaging integration tests.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
