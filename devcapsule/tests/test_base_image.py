@@ -77,7 +77,9 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
 
 def test_nvidia_cuda_recipe_keeps_developer_baseline_and_is_marked_wip(tmp_path: Path) -> None:
     pex = pex_fixture(tmp_path / "devcapsule.pex")
-    options = BaseImageBuildOptions(pex, "test-cuda-base:latest", recipe="nvidia-cuda-devel")
+    options = BaseImageBuildOptions(
+        pex, "test-cuda-base:latest", source_revision="a" * 40, recipe="nvidia-cuda-devel"
+    )
 
     plan = build_base_image_spec(options).build_plan()
 
@@ -99,6 +101,7 @@ def test_recipe_root_image_can_be_overridden(tmp_path: Path) -> None:
         pex,
         "test-cuda-base:latest",
         root_image="local/cuda:test",
+        source_revision="a" * 40,
         recipe="nvidia-cuda-devel",
     )
 
@@ -110,7 +113,7 @@ def test_recipe_root_image_can_be_overridden(tmp_path: Path) -> None:
 
 def test_base_image_build_forwards_host_network_to_buildx(tmp_path: Path) -> None:
     pex = pex_fixture(tmp_path / "devcapsule.pex")
-    options = BaseImageBuildOptions(pex, "test-base:latest")
+    options = BaseImageBuildOptions(pex, "test-base:latest", source_revision="a" * 40)
     builder = Mock()
 
     build_base_image(options, builder=builder, network="host")
@@ -128,9 +131,23 @@ def test_base_image_rejects_revision_that_disagrees_with_pex(tmp_path: Path) -> 
         build_base_image_spec(options)
 
 
-def test_base_image_can_require_public_pex_revision(tmp_path: Path) -> None:
+def test_base_image_requires_explicit_source_revision_by_default(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
+
+    with pytest.raises(CliError, match="--source-revision is required"):
+        build_base_image_spec(BaseImageBuildOptions(pex))
+
+
+def test_base_image_requires_public_pex_revision_by_default(tmp_path: Path) -> None:
     pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
-    options = BaseImageBuildOptions(pex, require_public_revision=True)
+    options = BaseImageBuildOptions(pex, source_revision="unknown")
 
     with pytest.raises(CliError, match="does not embed a full public GitHub revision"):
         build_base_image_spec(options)
+
+
+def test_base_image_allows_explicit_local_source_escape_hatch(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    plan = build_base_image_spec(BaseImageBuildOptions(pex, allow_local_source=True)).build_plan()
+
+    assert ("devcapsule.source.revision", "unknown") in plan.labels

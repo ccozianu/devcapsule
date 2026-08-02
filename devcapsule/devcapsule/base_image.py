@@ -67,7 +67,7 @@ class BaseImageBuildOptions:
     image: str = DEFAULT_OUTPUT_IMAGE
     root_image: str | None = None
     source_revision: str | None = None
-    require_public_revision: bool = False
+    allow_local_source: bool = False
     install_baseline: bool = True
     recipe: str = DEFAULT_BASE_RECIPE
 
@@ -103,10 +103,15 @@ def pex_build_info(options: BaseImageBuildOptions) -> BuildInfo:
             f"Expected source revision {options.source_revision}, but the selected PEX embeds "
             f"{info.source_revision}. Rebuild the PEX from the intended public commit."
         )
-    if options.require_public_revision and not info.has_public_revision:
+    if not options.allow_local_source and options.source_revision is None:
         raise CliError(
-            "The selected PEX does not embed a full public GitHub revision; rebuild it with "
-            "scripts/build-pex.sh --require-public-revision."
+            "--source-revision is required for a base build; use --allow-local-source only for an "
+            "explicit dirty or unpublished development build."
+        )
+    if not options.allow_local_source and not info.has_public_revision:
+        raise CliError(
+            "The selected PEX does not embed a full public GitHub revision; rebuild it with the "
+            "default scripts/build-pex.sh contract after pushing the commit."
         )
     return info
 

@@ -722,18 +722,19 @@ Current task:
   embeds a versioned build-information record containing the package version,
   normalized public repository, full source revision, and canonical GitHub
   commit URL. `devcapsule version --json` exposes that record without a source
-  checkout. Dirty ordinary development builds deliberately record an unknown
-  revision; `scripts/build-pex.sh --require-public-revision` requires clean PEX
-  inputs, a full checkout-HEAD commit, an HTTPS GitHub repository, and an exact
-  revision advertised by that public repository.
+  checkout. Packaging now requires clean PEX inputs, a full checkout-HEAD
+  commit, an HTTPS GitHub repository, and an exact revision advertised by that
+  public repository by default. `--allow-local-source` is the explicit dirty
+  or unpublished development escape hatch and records an unknown revision.
 - Base-image planning reads the selected PEX metadata without executing the
-  artifact. `--source-revision` is now an assertion and a mismatch fails before
-  Docker build; `--require-public-revision` rejects placeholder metadata. The
+  artifact. `--source-revision` is now required by default, acts as an
+  assertion, and a mismatch or non-public PEX fails before Docker build.
+  `--allow-local-source` explicitly permits a local unknown-source PEX. The
   matching values populate `devcapsule.source.repository`, `.revision`, and
   `.url` plus OCI `org.opencontainers.image.source` and `.revision` labels.
   This closes the implementation part of the V1 disclosure task while making
   no provenance, reproducibility, signature, attestation, or SBOM claim. The
-  full Nox gate passed with clean mypy over 64 files, 119 fast tests at 80%
+  full Nox gate passed with clean mypy over 64 files, 122 fast tests at 80%
   coverage, source and PEX command smokes, PEX construction, and two PEX
   integration tests. Strict public-revision success awaits pushing this exact
   implementation commit, after which it is the required v020 packaging path.

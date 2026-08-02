@@ -117,17 +117,20 @@ cd devcapsule
 scripts/build-pex.sh
 ```
 
-The script embeds source identity without modifying the checkout. When the
-PEX-relevant inputs are clean, it records the full `HEAD` revision, normalized
-public GitHub repository, and canonical commit URL. If those inputs are dirty,
-an ordinary development build records `unknown` instead of claiming the bytes
-came from the checked-in commit. Build a publication candidate only after its
-commit is pushed:
+The script embeds source identity without modifying the checkout. By default
+it requires clean PEX inputs and a full `HEAD` revision advertised by the
+public GitHub repository, then records the repository, revision, and canonical
+commit URL. Build a publication candidate only after its commit is pushed:
 
 ```bash
-scripts/build-pex.sh --require-public-revision
+scripts/build-pex.sh
 dist/devcapsule.pex version --json
 ```
+
+For an explicit dirty or unpublished development build, use
+`scripts/build-pex.sh --allow-local-source`. That PEX discloses an `unknown`
+revision instead of presenting local bytes as public source. The Nox build
+gate uses this escape hatch because it validates changes before commit.
 
 For normal development, prefer the project build gate:
 
@@ -184,23 +187,20 @@ devcapsule images build \
   --tag devcapsule-base:debug-v020 \
   --pex dist/devcapsule.pex \
   --source-revision "$(git rev-parse HEAD)" \
-  --require-public-revision \
   --network host
 
 # When invoked from a PEX, that PEX is embedded by default.
 python3.12 dist/devcapsule.pex images build \
   --type base \
   --tag devcapsule-base:debug-v020 \
-  --source-revision "$(git rev-parse HEAD)" \
-  --require-public-revision
+  --source-revision "$(git rev-parse HEAD)"
 
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
 python3.12 dist/devcapsule.pex images build \
   --type base \
   --recipe nvidia-cuda-devel \
   --tag devcapsule-base:cuda-v020 \
-  --source-revision "$(git rev-parse HEAD)" \
-  --require-public-revision
+  --source-revision "$(git rev-parse HEAD)"
 ```
 
 `--recipe` accepts `ubuntu-24.04` or `nvidia-cuda-devel`. The default
@@ -262,6 +262,11 @@ assertion against the PEX rather than an independent label value, so the image
 cannot silently claim a different commit. `images build --type base` is the
 sole supported base-build command; there is no compatibility `build-base`
 alias.
+
+Public source is the base-build default. A local PEX with dirty or unpublished
+source is accepted only with `--allow-local-source`; use that flag at both PEX
+packaging and image build, and omit `--source-revision`, for an explicitly
+non-public development checkpoint.
 
 Build the lock-selected local environment after creating a fresh checkout
 resolution:

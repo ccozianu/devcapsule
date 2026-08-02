@@ -98,6 +98,7 @@ def run_smoke(session: nox.Session) -> None:
 def build_pex(session: nox.Session) -> None:
     session.run(
         str(PROJECT_ROOT / "scripts" / "build-pex.sh"),
+        "--allow-local-source",
         env={"PYTHON": "python"},
         external=True,
     )

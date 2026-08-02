@@ -569,13 +569,12 @@ DevCapsule developers have two explicit operations:
 
 ```bash
 # Build the JetBrains-free generic runtime base from the current PEX.
-scripts/build-pex.sh --require-public-revision
+scripts/build-pex.sh
 devcapsule images build \
   --type base \
   --recipe ubuntu-24.04 \
   --pex dist/devcapsule.pex \
   --source-revision "$(git rev-parse HEAD)" \
-  --require-public-revision \
   --network host \
   --tag devcapsule-base:debug-v020
 
@@ -720,8 +719,9 @@ from a PEX, that PEX is the default embedded artifact; `--pex PATH` selects one
 explicitly. `--tag` is the requested local output name. The PEX embeds its
 source repository, full revision, and canonical public commit URL when
 packaged. `--source-revision` asserts that embedded revision rather than
-supplying a second independent value, and `--require-public-revision` rejects
-placeholders or non-public metadata before image construction.
+supplying a second independent value. Public source is mandatory by default;
+`--allow-local-source` is the explicit dirty/unpublished development escape
+hatch and records an unknown revision.
 
 `--network` accepts `default`, `host`, or `none` and is forwarded to Docker
 buildx. The default uses Docker's normal build network. `none` disables build

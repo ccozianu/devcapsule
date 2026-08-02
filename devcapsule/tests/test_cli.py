@@ -401,7 +401,6 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
                 str(pex),
                 "--source-revision",
                 "revision-1",
-                "--require-public-revision",
                 "--network",
                 "host",
             ]
@@ -413,7 +412,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
     assert options.image == "devcapsule-base:debug-v019"
     assert options.root_image == "local-root:test"
     assert options.source_revision == "revision-1"
-    assert options.require_public_revision is True
+    assert options.allow_local_source is False
     assert options.recipe == "ubuntu-24.04"
     assert build.call_args.kwargs == {"network": "host"}
     assert "Image ID: sha256:abc123" in capsys.readouterr().out
@@ -449,6 +448,8 @@ def test_images_build_base_selects_wip_nvidia_cuda_recipe(tmp_path: Path, capsys
                 "devcapsule-base:cuda",
                 "--pex",
                 str(pex),
+                "--source-revision",
+                "a" * 40,
             ]
         )
 
@@ -464,7 +465,18 @@ def test_images_build_base_selects_wip_nvidia_cuda_recipe(tmp_path: Path, capsys
 
 def test_images_build_base_requires_pex_from_source(tmp_path: Path, capsys) -> None:
     with patch("devcapsule.commands.images.sys.argv", [str(tmp_path / "devcapsule")]):
-        result = cli.main(["images", "build", "--type", "base", "--tag", "test:latest"])
+        result = cli.main(
+            [
+                "images",
+                "build",
+                "--type",
+                "base",
+                "--tag",
+                "test:latest",
+                "--source-revision",
+                "a" * 40,
+            ]
+        )
 
     assert result == 2
     assert "--pex is required" in capsys.readouterr().err
@@ -481,10 +493,28 @@ def test_images_build_base_defaults_to_running_pex(tmp_path: Path) -> None:
         patch("devcapsule.commands.images.build_base_image") as build,
         patch("devcapsule.commands.images.inspect_local_image", return_value=inspected),
     ):
-        assert cli.main(["images", "build", "--type", "base", "--tag", "test:latest"]) == 0
+        assert (
+            cli.main(
+                ["images", "build", "--type", "base", "--tag", "test:latest", "--allow-local-source"]
+            )
+            == 0
+        )
 
     assert build.call_args.args[0].pex == pex.resolve()
     assert build.call_args.args[0].recipe == "ubuntu-24.04"
+    assert build.call_args.args[0].allow_local_source is True
+
+
+def test_images_build_base_requires_public_revision_by_default(tmp_path: Path, capsys) -> None:
+    pex = tmp_path / "devcapsule.pex"
+    pex.write_bytes(b"pex")
+
+    result = cli.main(
+        ["images", "build", "--type", "base", "--tag", "test:latest", "--pex", str(pex)]
+    )
+
+    assert result == 2
+    assert "--source-revision is required" in capsys.readouterr().err
 
 
 def test_images_build_environment_uses_fresh_project_lock_and_verified_base(tmp_path: Path, capsys) -> None:
@@ -630,4 +660,4 @@ def test_build_pex_script_is_available() -> None:
 
     assert completed.returncode == 0
     assert "dist/devcapsule.pex" in completed.stdout
-    assert "--require-public-revision" in completed.stdout
+    assert "--allow-local-source" in completed.stdout

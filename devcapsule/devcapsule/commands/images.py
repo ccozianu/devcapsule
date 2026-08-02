@@ -82,9 +82,9 @@ class ImagesCommand(BaseCommand):
             help="Assert the source revision already embedded in the selected PEX.",
         )
         @click.option(
-            "--require-public-revision",
+            "--allow-local-source",
             is_flag=True,
-            help="Reject a base build unless the PEX identifies a full public GitHub commit.",
+            help="Allow a PEX built from dirty or unpublished local source.",
         )
         @click.option(
             "--project",
@@ -111,7 +111,7 @@ class ImagesCommand(BaseCommand):
             root_image: str | None,
             pex: Path | None,
             source_revision: str | None,
-            require_public_revision: bool,
+            allow_local_source: bool,
             project: Path | None,
             base_override: str | None,
             alias: str | None,
@@ -125,6 +125,11 @@ class ImagesCommand(BaseCommand):
                 )
             if tag is None:
                 raise CliError("--tag is required for 'images build --type base'.")
+            if source_revision is None and not allow_local_source:
+                raise CliError(
+                    "--source-revision is required for a base build; use --allow-local-source "
+                    "only for an explicit dirty or unpublished development build."
+                )
             if project is not None or base_override is not None or alias is not None:
                 raise CliError("--project, --base, and --alias apply only to environment builds.")
             selected_pex = pex.expanduser().resolve() if pex is not None else _running_pex()
@@ -134,7 +139,7 @@ class ImagesCommand(BaseCommand):
                 image=tag,
                 root_image=root_image,
                 source_revision=source_revision,
-                require_public_revision=require_public_revision,
+                allow_local_source=allow_local_source,
                 recipe=recipe,
             )
             if selected_recipe.status == "wip":

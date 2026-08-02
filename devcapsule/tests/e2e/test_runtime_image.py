@@ -54,6 +54,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
             pex=built_pex,
             image=image,
             root_image=base_image,
+            allow_local_source=True,
             install_baseline=False,
         )
     )

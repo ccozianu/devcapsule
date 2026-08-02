@@ -10,7 +10,7 @@ Options:
   --output PATH             Output archive. Default: dist/devcapsule.pex
   --source-revision SHA     Assert and embed this full source commit.
   --source-repository URL   Public HTTPS GitHub repository URL.
-  --require-public-revision Fail unless clean public source identity is embedded.
+  --allow-local-source      Permit dirty/unpublished inputs and disclose unknown revision.
 
 Build a single-file DevCapsule PEX archive from the local package and the
 pinned runtime dependency lock file.
@@ -34,7 +34,7 @@ project_dir="$(cd "${script_dir}/.." && pwd)"
 output="${project_dir}/dist/devcapsule.pex"
 source_revision="${DEVCAPSULE_SOURCE_REVISION:-}"
 source_repository="${DEVCAPSULE_SOURCE_REPOSITORY:-}"
-require_public_revision=0
+allow_local_source=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,8 +62,8 @@ while [[ $# -gt 0 ]]; do
       source_repository="${2%.git}"
       shift 2
       ;;
-    --require-public-revision)
-      require_public_revision=1
+    --allow-local-source)
+      allow_local_source=1
       shift
       ;;
     -h|--help)
@@ -114,7 +114,12 @@ if [[ -n "${repo_root}" ]]; then
   fi
 fi
 
-if [[ -z "${source_revision}" ]]; then
+if [[ ${allow_local_source} -eq 1 && -n "${source_revision}" ]]; then
+  echo "scripts/build-pex.sh: --allow-local-source cannot be combined with --source-revision" >&2
+  exit 2
+elif [[ ${allow_local_source} -eq 1 ]]; then
+  source_revision="unknown"
+elif [[ -z "${source_revision}" ]]; then
   if [[ ${source_inputs_dirty} -eq 0 && -n "${head_revision}" ]]; then
     source_revision="${head_revision}"
   else
@@ -144,7 +149,7 @@ if [[ "${source_revision}" != "unknown" && "${source_repository}" != "unknown" ]
   source_url="${source_repository}/commit/${source_revision}"
 fi
 
-if [[ ${require_public_revision} -eq 1 ]]; then
+if [[ ${allow_local_source} -eq 0 ]]; then
   if [[ ${source_inputs_dirty} -ne 0 ]]; then
     echo "scripts/build-pex.sh: public-revision builds require clean PEX inputs" >&2
     exit 1
