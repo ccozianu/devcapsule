@@ -13,7 +13,7 @@
 
 set -Eeuo pipefail
 
-REPOSITORY_URL=${REPOSITORY_URL:-git@github.com:ccozianu/ChatGpt_Codex.git}
+REPOSITORY_URL=${REPOSITORY_URL:-git@github.com:ccozianu/devcapsule.git}
 REPOSITORY_REVISION=${REPOSITORY_REVISION:-main}
 NEW_CHECKOUT=${NEW_CHECKOUT:-"$HOME/work/provisional/costin3/myProjects/devcapsule"}
 CHECKOUT_NAME=${CHECKOUT_NAME:-costin3-devcapsule}

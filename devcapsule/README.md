@@ -282,6 +282,14 @@ source is accepted only with `--allow-local-source`; use that flag at both PEX
 packaging and image build, and omit `--source-revision`, for an explicitly
 non-public development checkpoint.
 
+Before starting Docker buildx, the default base build performs a live `HEAD`
+request against the exact canonical GitHub commit URL embedded in the PEX. A
+missing commit or network failure stops the build before an image is created.
+This deliberately complements `nox -s build`, which may embed a clean local
+commit before it is pushed so that the PEX itself can be tested. Use
+`--allow-local-source` to bypass the live check only for an explicitly local
+image that will not be published.
+
 Do not use `dist/devcapsule-local.pex` for a public base. If a revision
 mismatch reports that the selected PEX embeds `unknown`, rebuild
 `dist/devcapsule.pex` with the default `scripts/build-pex.sh`, inspect it with

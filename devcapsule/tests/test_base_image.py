@@ -2,18 +2,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+from email.message import Message
 from pathlib import Path
+from unittest.mock import MagicMock, Mock
+import urllib.error
 from zipfile import ZipFile
 
 import pytest
-from unittest.mock import Mock
 
 from devcapsule.base_image import (
     NVIDIA_CUDA_ROOT_IMAGE,
     BaseImageBuildOptions,
     build_base_image,
     build_base_image_spec,
+    verify_public_github_revision,
 )
+from devcapsule.build_info import BuildInfo
 from devcapsule.compat import CliError
 from devcapsule.image_build import render_build_context
 
@@ -115,12 +119,26 @@ def test_base_image_build_forwards_host_network_to_buildx(tmp_path: Path) -> Non
     pex = pex_fixture(tmp_path / "devcapsule.pex")
     options = BaseImageBuildOptions(pex, "test-base:latest", source_revision="a" * 40)
     builder = Mock()
+    source_verifier = Mock()
 
-    build_base_image(options, builder=builder, network="host")
+    build_base_image(options, builder=builder, network="host", source_verifier=source_verifier)
 
+    source_verifier.assert_called_once()
     builder.build.assert_called_once()
     assert builder.build.call_args.args[0].image == "test-base:latest"
     assert builder.build.call_args.kwargs == {"network": "host"}
+
+
+def test_base_image_rejects_unreachable_revision_before_buildx(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
+    options = BaseImageBuildOptions(pex, "test-base:latest", source_revision="a" * 40)
+    builder = Mock()
+    source_verifier = Mock(side_effect=CliError("source revision is not publicly reachable"))
+
+    with pytest.raises(CliError, match="not publicly reachable"):
+        build_base_image(options, builder=builder, source_verifier=source_verifier)
+
+    builder.build.assert_not_called()
 
 
 def test_base_image_rejects_revision_that_disagrees_with_pex(tmp_path: Path) -> None:
@@ -151,3 +169,58 @@ def test_base_image_allows_explicit_local_source_escape_hatch(tmp_path: Path) ->
     plan = build_base_image_spec(BaseImageBuildOptions(pex, allow_local_source=True)).build_plan()
 
     assert ("devcapsule.source.revision", "unknown") in plan.labels
+
+
+def test_base_image_local_source_escape_hatch_skips_public_verification(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    builder = Mock()
+    source_verifier = Mock()
+
+    build_base_image(
+        BaseImageBuildOptions(pex, allow_local_source=True),
+        builder=builder,
+        source_verifier=source_verifier,
+    )
+
+    source_verifier.assert_not_called()
+    builder.build.assert_called_once()
+
+
+def test_public_revision_verification_checks_exact_commit_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    info = BuildInfo(
+        schema_version=1,
+        version="0.1.0",
+        source_repository="https://github.com/example/devcapsule",
+        source_revision="a" * 40,
+        source_url=f"https://github.com/example/devcapsule/commit/{'a' * 40}",
+    )
+    response = MagicMock()
+    response.status = 200
+    response.__enter__.return_value = response
+    urlopen = Mock(return_value=response)
+    monkeypatch.setattr("devcapsule.base_image.urllib.request.urlopen", urlopen)
+
+    verify_public_github_revision(info)
+
+    request = urlopen.call_args.args[0]
+    assert request.full_url == info.source_url
+    assert request.get_method() == "HEAD"
+
+
+def test_public_revision_verification_rejects_missing_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+    info = BuildInfo(
+        schema_version=1,
+        version="0.1.0",
+        source_repository="https://github.com/example/devcapsule",
+        source_revision="b" * 40,
+        source_url=f"https://github.com/example/devcapsule/commit/{'b' * 40}",
+    )
+    urlopen = Mock(
+        side_effect=urllib.error.HTTPError(
+            info.source_url, 404, "Not Found", hdrs=Message(), fp=None
+        )
+    )
+    monkeypatch.setattr("devcapsule.base_image.urllib.request.urlopen", urlopen)
+
+    with pytest.raises(CliError, match=r"not publicly reachable.*HTTP 404"):
+        verify_public_github_revision(info)

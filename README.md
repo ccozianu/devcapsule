@@ -1,7 +1,7 @@
 # DevCapsule
 
-[![Tests](https://github.com/ccozianu/ChatGpt_Codex/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ccozianu/ChatGpt_Codex/actions/workflows/tests.yml)
-[![Coverage](docs/badges/coverage.svg)](https://github.com/ccozianu/ChatGpt_Codex/actions/workflows/tests.yml)
+[![Tests](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
+[![Coverage](docs/badges/coverage.svg)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
 
 DevCapsule creates reproducible, resumable development environments for humans
 and AI coding agents. It combines a real IDE, agent-ready development tooling,

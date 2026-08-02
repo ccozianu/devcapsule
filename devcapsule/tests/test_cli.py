@@ -415,7 +415,9 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
     assert options.allow_local_source is False
     assert options.recipe == "ubuntu-24.04"
     assert build.call_args.kwargs == {"network": "host"}
-    assert "Image ID: sha256:abc123" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "Image ID: sha256:abc123" in output
+    assert "Source verification: public GitHub commit reachable" in output
 
 
 def test_images_build_base_selects_wip_nvidia_cuda_recipe(tmp_path: Path, capsys) -> None:
@@ -482,7 +484,7 @@ def test_images_build_base_requires_pex_from_source(tmp_path: Path, capsys) -> N
     assert "--pex is required" in capsys.readouterr().err
 
 
-def test_images_build_base_defaults_to_running_pex(tmp_path: Path) -> None:
+def test_images_build_base_defaults_to_running_pex(tmp_path: Path, capsys) -> None:
     pex = tmp_path / "devcapsule.pex"
     with zipfile.ZipFile(pex, "w") as archive:
         archive.writestr("PEX-INFO", "{}")
@@ -503,6 +505,7 @@ def test_images_build_base_defaults_to_running_pex(tmp_path: Path) -> None:
     assert build.call_args.args[0].pex == pex.resolve()
     assert build.call_args.args[0].recipe == "ubuntu-24.04"
     assert build.call_args.args[0].allow_local_source is True
+    assert "Source verification: bypassed for explicit local source" in capsys.readouterr().out
 
 
 def test_images_build_base_requires_public_revision_by_default(tmp_path: Path, capsys) -> None:

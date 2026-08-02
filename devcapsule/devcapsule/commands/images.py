@@ -165,6 +165,10 @@ class ImagesCommand(BaseCommand):
             click.echo(f"PEX SHA-256: {labels.get('devcapsule.pex.sha256', 'unknown')}")
             click.echo(f"Source revision: {labels.get('devcapsule.source.revision', 'unknown')}")
             click.echo(f"Source URL: {labels.get('devcapsule.source.url', 'unknown')}")
+            verification = (
+                "bypassed for explicit local source" if allow_local_source else "public GitHub commit reachable"
+            )
+            click.echo(f"Source verification: {verification}")
             click.echo(f"Build network: {network}")
             return 0
 

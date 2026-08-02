@@ -8,6 +8,16 @@ Python MVP is the active post-MVP refactoring stage.
 
 Current status:
 
+- The canonical public source repository is now
+  `https://github.com/ccozianu/devcapsule`. GitHub redirects the former
+  `ccozianu/ChatGpt_Codex` name, but current source links, dogfood clone
+  defaults, checkout `origin`, and newly built artifact metadata use the
+  canonical name directly. Historical/current workspace mount paths retaining
+  `ChatGPT_Codex` remain literal filesystem paths rather than repository URLs.
+  Live HTTPS checks confirmed the renamed repository and a known commit return
+  HTTP 200; the full dirty-tree Nox gate rebuilt the local PEX with
+  `https://github.com/ccozianu/devcapsule` as its source repository and passed
+  128 fast tests, clean mypy, command smokes, and three packaging integrations.
 - `docker4pycharm/` preserves the original working PyCharm shell/Docker
   prototype, including historical design context now stored in
   `docker4pycharm/historical-root-README.md`.
@@ -728,10 +738,21 @@ Current task:
   or unpublished development escape hatch and records an unknown revision.
 - Base-image planning reads the selected PEX metadata without executing the
   artifact. `--source-revision` is now required by default, acts as an
-  assertion, and a mismatch or non-public PEX fails before Docker build.
-  `--allow-local-source` explicitly permits a local unknown-source PEX. The
+  assertion, and a mismatch or non-public PEX fails before Docker build. The
+  default base-image execution path also performs a live HTTP `HEAD` check of
+  the exact embedded canonical GitHub commit URL before invoking Docker
+  buildx; a missing revision or unavailable verification service fails closed.
+  `--allow-local-source` explicitly permits a local unknown or unpublished
+  source PEX and bypasses the live check for local-only images. The
   matching values populate `devcapsule.source.repository`, `.revision`, and
   `.url` plus OCI `org.opencontainers.image.source` and `.revision` labels.
+  Successful CLI output now states whether the public GitHub check passed or
+  was explicitly bypassed for local source.
+  Live validation passed against a known public repository commit and rejected
+  the current unpublished `da9f92a...` commit with GitHub HTTP 404. The full
+  dirty-tree Nox gate passed with clean mypy over 65 files, 128 fast tests at
+  80% coverage, local-PEX command smokes, and all three packaging integration
+  tests; no Docker build was run by the gate.
   This closes the implementation part of the V1 disclosure task while making
   no provenance, reproducibility, signature, attestation, or SBOM claim. The
   full Nox gate passed with clean mypy over 64 files, 122 fast tests at 80%

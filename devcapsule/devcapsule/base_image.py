@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+import urllib.error
+import urllib.request
 
 from devcapsule.build_info import BuildInfo, BuildInfoError, read_pex_build_info
 from devcapsule.compat import CliError
@@ -33,6 +36,7 @@ BASE_RECIPE_VERSION = "2"
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
+PUBLIC_SOURCE_TIMEOUT_SECONDS = 10
 
 
 @dataclass(frozen=True)
@@ -119,6 +123,33 @@ def pex_build_info(options: BaseImageBuildOptions) -> BuildInfo:
     return info
 
 
+def verify_public_github_revision(info: BuildInfo) -> None:
+    """Fail unless the PEX's exact canonical commit URL is reachable."""
+
+    request = urllib.request.Request(
+        info.source_url,
+        method="HEAD",
+        headers={"User-Agent": "DevCapsule source verification"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=PUBLIC_SOURCE_TIMEOUT_SECONDS) as response:
+            status = response.status
+    except urllib.error.HTTPError as exc:
+        raise _public_source_error(info, f"GitHub returned HTTP {exc.code}") from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise _public_source_error(info, f"GitHub could not be reached ({exc})") from exc
+    if not 200 <= status < 300:
+        raise _public_source_error(info, f"GitHub returned HTTP {status}")
+
+
+def _public_source_error(info: BuildInfo, detail: str) -> CliError:
+    return CliError(
+        f"Source revision {info.source_revision} is not publicly reachable at "
+        f"{info.source_url}: {detail}. Push the commit and retry, or use "
+        "--allow-local-source only for a deliberately local image."
+    )
+
+
 def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
     pex = options.pex.expanduser().resolve()
     if not pex.is_file():
@@ -164,5 +195,9 @@ def build_base_image(
     builder: BuildxImageBuilder | None = None,
     *,
     network: str = "default",
+    source_verifier: Callable[[BuildInfo], None] = verify_public_github_revision,
 ) -> None:
-    (builder or BuildxImageBuilder()).build(build_base_image_spec(options), network=network)
+    spec = build_base_image_spec(options)
+    if not options.allow_local_source:
+        source_verifier(pex_build_info(options))
+    (builder or BuildxImageBuilder()).build(spec, network=network)
