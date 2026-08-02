@@ -22,6 +22,7 @@ def install_locked(session: nox.Session) -> None:
 
 def check_python_syntax(session: nox.Session) -> None:
     session.run("python", "-m", "compileall", "-q", str(PROJECT_ROOT / "devcapsule"))
+    session.run("python", "-m", "compileall", "-q", str(PROJECT_ROOT / "devcapsule_runtime"))
 
 
 def check_shell_syntax(session: nox.Session) -> None:
@@ -73,6 +74,7 @@ def run_typecheck(session: nox.Session) -> None:
         "-m",
         "mypy",
         str(PROJECT_ROOT / "devcapsule"),
+        str(PROJECT_ROOT / "devcapsule_runtime"),
         str(PROJECT_ROOT / "tests"),
         str(PROJECT_ROOT / "noxfile.py"),
     )

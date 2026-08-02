@@ -38,7 +38,7 @@ dev = [
 
 [project.scripts]
 devcapsule = "devcapsule.cli:main"
-devcapsule-runtime = "devcapsule.container_runtime.entrypoint:main"
+devcapsule-runtime = "devcapsule_runtime.entrypoint:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -77,7 +77,7 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["devcapsule"]
+source = ["devcapsule", "devcapsule_runtime"]
 
 [tool.coverage.report]
 show_missing = true
@@ -85,7 +85,7 @@ skip_covered = true
 
 [tool.mypy]
 python_version = "3.12"
-files = ["devcapsule", "tests", "noxfile.py"]
+files = ["devcapsule", "devcapsule_runtime", "tests", "noxfile.py"]
 warn_unused_configs = true
 show_error_codes = true
 pretty = true
