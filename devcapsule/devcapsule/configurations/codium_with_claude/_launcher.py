@@ -94,8 +94,6 @@ def build_codium_run_command(options: CodiumRunOptions, env: Mapping[str, str] |
         "--volume",
         f"{runtime_plan.project_state}:/ide-project-state",
         "--volume",
-        f"{runtime_plan.gemini_state}:/ide-global-settings/home/.gemini",
-        "--volume",
         "/tmp/.X11-unix:/tmp/.X11-unix:ro",
         *options.extra_docker_args,
         options.image,

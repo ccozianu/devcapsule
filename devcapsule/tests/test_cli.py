@@ -13,6 +13,7 @@ from devcapsule import cli, compat
 from devcapsule.configurations.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.configurations.vscode_with_claude import VscodeWithClaudeConfiguration
 from devcapsule.image_metadata import LocalImageRecord
+from devcapsule.materialization import ImageDetails
 
 
 def test_top_level_help_returns_success(capsys) -> None:
@@ -480,6 +481,102 @@ def test_images_build_base_defaults_to_running_pex(tmp_path: Path) -> None:
 
     assert build.call_args.args[0].pex == pex.resolve()
     assert build.call_args.args[0].recipe == "ubuntu-24.04"
+
+
+def test_images_build_environment_uses_fresh_project_lock_and_verified_base(tmp_path: Path, capsys) -> None:
+    lock = {
+        "platform": "linux-amd64",
+        "base": {"reference": "locked-base@sha256:manifest", "identity": "sha256:base"},
+        "components": {
+            "interactive-surface": "pycharm",
+            "pycharm": {
+                "version": "2026.2.0.1",
+                "variant": "professional",
+                "delivery-policy": "local-materialization",
+                "url": "https://example.test/pycharm.tar.gz",
+                "sha256": "a" * 64,
+            },
+        },
+        "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
+    }
+    project = SimpleNamespace(lock=lock, resolution={"runtime": {"component": "pycharm"}})
+    base = ImageDetails(
+        "locked-base@sha256:manifest",
+        "sha256:base",
+        {
+            "devcapsule.image.managed": "true",
+            "devcapsule.metadata.version": "1",
+            "devcapsule.image.kind": "base",
+        },
+        "linux",
+        "amd64",
+    )
+    completed = ImageDetails(
+        "devcapsule-local-pycharm:0123456789abcdef0123",
+        "sha256:environment",
+        {"devcapsule.materialization.identity": "f" * 64},
+        "linux",
+        "amd64",
+    )
+
+    with (
+        patch("devcapsule.commands.images.fresh_resolved_project", return_value=project) as fresh,
+        patch("devcapsule.commands.images._ensure_local_image", return_value=base),
+        patch(
+            "devcapsule.commands.images.ensure_materialized_pycharm",
+            return_value=(completed.reference, True),
+        ) as materialize,
+        patch("devcapsule.commands.images._required_local_image", return_value=completed),
+        patch("devcapsule.commands.images._add_alias") as add_alias,
+        patch.dict(os.environ, {"HOME": str(tmp_path / "home"), "XDG_CACHE_HOME": str(tmp_path / "cache")}),
+    ):
+        result = cli.main(
+            [
+                "images",
+                "build",
+                "--type",
+                "environment",
+                "--project",
+                str(tmp_path / "project"),
+                "--alias",
+                "devcapsule-local-pycharm:debug-v019",
+            ]
+        )
+
+    assert result == 0
+    fresh.assert_called_once_with(tmp_path / "project")
+    assert materialize.call_args.kwargs["base_reference"] == "locked-base@sha256:manifest"
+    assert materialize.call_args.kwargs["base_identity"] == "sha256:base"
+    assert materialize.call_args.kwargs["platform"] == "linux-amd64"
+    assert materialize.call_args.kwargs["cache_root"] == (tmp_path / "cache" / "devcapsule")
+    add_alias.assert_called_once_with(completed, "devcapsule-local-pycharm:debug-v019")
+    output = capsys.readouterr().out
+    assert "Built DevCapsule environment image" in output
+    assert "No container was launched" in output
+
+
+def test_images_build_environment_requires_immutable_locked_base(capsys) -> None:
+    lock = {
+        "platform": "linux-amd64",
+        "base": {"reference": "devcapsule-base:debug-v019"},
+        "components": {
+            "interactive-surface": "pycharm",
+            "pycharm": {
+                "version": "2026.2.0.1",
+                "variant": "professional",
+                "delivery-policy": "local-materialization",
+                "url": "https://example.test/pycharm.tar.gz",
+                "sha256": "a" * 64,
+            },
+        },
+        "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
+    }
+    project = SimpleNamespace(lock=lock, resolution={"runtime": {"component": "pycharm"}})
+    with patch("devcapsule.commands.images.fresh_resolved_project", return_value=project):
+        result = cli.main(["images", "build", "--type", "environment"])
+
+    assert result == 2
+    assert "lock base is not immutable" in capsys.readouterr().err
 
 
 def test_bootstrap_project_alias_is_not_supported() -> None:

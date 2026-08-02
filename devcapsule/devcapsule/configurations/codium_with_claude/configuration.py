@@ -1,4 +1,4 @@
-"""Public VSCodium configuration with pinned public-default CLI tooling."""
+"""Public VSCodium configuration with pinned Node.js/npm tooling."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from ._launcher import CodiumRunOptions, run_codium
 
 class CodiumWithClaudeConfiguration:
     name = "codium_with_claude"
-    help = "Build and run VSCodium with pinned Node/npm and Gemini CLI tooling."
+    help = "Build and run VSCodium with pinned Node.js/npm tooling."
     ide = "vscodium"
     agent = "claude-code"
 
@@ -40,7 +40,7 @@ class CodiumWithClaudeConfiguration:
                     help="Local VSCodium .tar.gz archive containing bin/codium; skips the VSCodium apt repository.",
                 ),
             ],
-            help="Build VSCodium with Python 3.12, pinned Node.js/npm, and bundled Gemini CLI support.",
+            help="Build VSCodium with Python 3.12 and pinned Node.js/npm tooling.",
         )
 
     def run_command(self) -> click.Command:

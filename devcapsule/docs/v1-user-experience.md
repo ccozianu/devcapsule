@@ -540,6 +540,15 @@ or conflicting canonical tag causes an actionable failure rather than silent
 use or replacement. No sharing declaration or project-to-project reference is
 needed.
 
+The committed base input uses a globally resolvable, digest-pinned OCI
+distribution reference such as
+`docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST`. It does not use a
+workstation-local image ID, daemon-local tag, mutable tag, or `docker://` URI.
+Those local forms remain available only as explicit developer-owned
+overrides. The committed platform lock is therefore the reviewed default that
+a fresh checkout can obtain on another compatible workstation, subject to
+registry reachability and workstation policy.
+
 Projects cannot force reuse when formation inputs differ. They receive
 distinct content-addressed images even if a human assigns similar aliases.
 This preserves each project's lock contract while still deduplicating the
@@ -595,6 +604,21 @@ canonical output name. An explicit base override is displayed as a deviation
 from the project's lock and does not silently become the supported project
 default.
 
+V1 deliberately supports two base-trust paths. A developer may build a managed
+base locally with `images build --type base` and select that inspected image
+explicitly through `--base`. Or the developer may authorize the exact
+digest-pinned registry base recommended by the project after reviewing its
+release information, published checksum, and basic security scan. The lock is
+a recommendation and cannot authorize its own executable artifact. Persistent
+authorization belongs to the developer-owned checkout record and is scoped to
+one immutable digest or inspected local image ID, never to a mutable tag,
+repository, organization, or future digest.
+
+V1 checksum publication proves byte identity, and its basic scan reports known
+findings at one point in time; neither proves source equivalence or absence of
+malicious behavior. Signed SBOMs, build provenance/attestations, artifact
+signatures, and automated trust-policy verification are explicit V2 work.
+
 #### What `images build --type base` produces
 
 `devcapsule images build --type base` creates one reusable OCI
@@ -609,9 +633,32 @@ The initial Linux contract includes:
 - Docker CLI, buildx, Compose, and daemon binaries;
 - X11/GTK, font, audio, and Mesa libraries needed by later GUI components;
 - `tini`, `gosu`, and `sudo` without granting sudo or Docker access;
-- the recipe-selected Node.js/npm and Gemini CLI public-tooling baseline; and
+- the recipe-selected Node.js/npm language-tooling baseline; and
 - the selected DevCapsule PEX at
   `/opt/devcapsule/bin/devcapsule.pex` with an inspectable SHA-256 identity.
+
+Users do not have to infer this inventory from a published image. The
+repository-owned Python plan is intentionally auditable:
+
+- [`../devcapsule/base_image.py`](../devcapsule/base_image.py) defines the base
+  recipes, root images, labels, embedded PEX, and generic OCI process contract.
+- [`../devcapsule/configurations/pycharm/_image_build.py`](../devcapsule/configurations/pycharm/_image_build.py)
+  currently contains `BASE_APT_PACKAGES`, the exact shared Ubuntu package
+  baseline. Its transitional location does not add PyCharm to the base.
+- [`../devcapsule/image_tooling.py`](../devcapsule/image_tooling.py) contains
+  the pinned Node.js/npm acquisition and verification plan.
+- [`../devcapsule/image_build.py`](../devcapsule/image_build.py) renders the
+  Python component plan into the Dockerfile/build context used by buildx.
+- [`../devcapsule/container_runtime/`](../devcapsule/container_runtime/)
+  contains the generic runtime shipped inside the embedded PEX.
+
+In plain language, the default is Ubuntu 24.04 plus Python 3.12, native build
+and debugging tools, Git/SSH, shell/process/filesystem/network diagnostics,
+Docker client/buildx/Compose/daemon binaries, desktop runtime libraries,
+`tini`, `gosu`, non-authorized `sudo`, pinned Node.js/npm tooling, and the
+DevCapsule PEX. The base is deliberately IDE- and agent-neutral and contains no
+project, personal state, credentials, host access, or vendor license
+acceptance.
 
 The base builder exposes two curated recipes:
 
@@ -627,10 +674,13 @@ marked WIP in command output and image metadata until the V1-blocking NVIDIA
 host E2E task proves the CUDA compiler/runtime, positive GPU launch, negative
 launch without device authorization, and a small real CUDA workload.
 
-For the current v019 checkpoint, the public-tool recipe selects Node.js
-`v22.23.1` and Gemini CLI `0.50.0`; npm is the version bundled by that verified
-Node.js distribution. The build report and component inventory remain the
-authority for the exact installed package versions in a particular image.
+The public-tool recipe selects Node.js `v22.23.1`; npm is the version bundled
+by that verified Node.js distribution. No AI-agent CLI is installed in the V1
+default base. Agent CLIs change on an independent cadence and may carry
+different terms, authentication, state, and trust implications, so they belong
+to explicit optional components rather than the ambient runtime. The build
+report and component inventory remain the authority for exact installed
+versions in a particular image.
 
 The PEX contains both the host CLI and the generic in-container runtime. The
 base starts that runtime through:
@@ -831,16 +881,20 @@ Available in the current dogfood path:
 - explicit Docker and development-sudo choices;
 - foreground PyCharm lifecycle;
 - generic Python runtime entrypoint foundation;
-- tested base-image and checksum-verified local-materialization primitives.
+- tested base-image and checksum-verified local-materialization primitives;
+- a formation-input platform lock for the current PyCharm dogfood checkout;
+  and
+- explicit `images build --type environment` with a canonical descriptor,
+  strict metadata-verified reuse, concurrent artifact/cache protection, and
+  optional local aliases.
 
 Not yet available as the complete clean-clone experience:
 
 - a published redistributable default base;
-- a platform lock that pins base and PyCharm materialization inputs instead of
-  the old completed dogfood image tag;
 - the `config set`, `config bind`, and `config authorize` V1 command families;
 - existing-host-directory binding through the new configuration surface;
 - automatic materialization invoked by `devcapsule project run`;
+- external delivery of the checkout-specific runtime plan at launch;
 - the vendor-notice interaction; and
 - a defined local-alternative environment workflow.
 

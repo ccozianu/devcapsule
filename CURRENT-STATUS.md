@@ -89,7 +89,8 @@ Recent implementation fix:
   Gemini CLI tooling as the public-default developer CLI baseline. The old
   PyCharm-specific `--ai-agent` image-build toggle was removed in favor of a
   shared active-tooling baseline across the current Python-owned IDE build
-  paths.
+  paths. D-0005 later supersedes the ambient Gemini portion of this historical
+  checkpoint.
 
 Recent manual validation:
 
@@ -152,7 +153,9 @@ Current proof-point implementation:
   Codium launchers bind-mount a host Gemini CLI state directory into the
   container home at `~/.gemini`. By default that source is the host
   `~/.gemini`; `DEVCAPSULE_GEMINI_STATE_DIR` overrides it when a different
-  persistent Gemini state root is required.
+  persistent Gemini state root is required. D-0005 later removes this
+  agent-specific ambient host mount from active launchers; optional components
+  must use persistent home or declared state.
 
 Current architectural direction:
 
@@ -294,8 +297,8 @@ Uncommitted changes:
 Open decisions referenced by D-0001 but not yet written:
 
 - D-0002 agent autonomy inside the capsule.
-- D-0003 Gemini CLI as the default agent capability. The redistribution
-  rationale currently survives only in chat history and should be recorded.
+- The former D-0003 Gemini-default reservation is retired by accepted D-0005,
+  which makes the base agent-neutral and agent CLIs optional components.
 - A later decision may consider curated internal use or import compatibility
   for devcontainer Features; D-0001 now rejects them as the project-facing
   capability format.
@@ -525,7 +528,7 @@ Current task:
   one reusable, JetBrains-free OCI development-runtime image: Ubuntu 24.04,
   Python 3.12, compiler/debug/network/process tooling, Docker client/buildx/
   Compose/daemon binaries, GUI runtime libraries, `tini`, `gosu`, non-authorized
-  sudo, the recipe-selected Node/npm/Gemini baseline, and one digest-labelled
+  sudo, the recipe-selected Node/npm baseline, and one digest-labelled
   DevCapsule PEX. Its OCI command invokes `devcapsule.pex runtime` with the
   materialization-owned plan path. The base contains no runtime plan, IDE,
   project, personal state, credentials, host authorization, or vendor license
@@ -609,6 +612,111 @@ Current task:
   Session records supplement rather than replace decisions, requirements,
   current status, bugs, and user docs. This session is preserved at
   `devcapsule/implementation-notes/session-records/2026-08-01-d-0004-configuration-and-images-cli.md`.
+- `devcapsule images build --type environment` is now implemented. It requires
+  a fresh project resolution, parses the lock-selected base and PyCharm
+  formation inputs, validates the selected image as a managed metadata-v1 base
+  for the locked platform, and obtains a missing registry reference without
+  launching a container. `--base` remains an explicit developer override and
+  `--alias` adds only a secondary local tag.
+- Materialization now hashes a versioned canonical formation descriptor that
+  includes platform, immutable inspected base ID, exact PyCharm component and
+  artifact digest, recipe parameters, and the generic runtime-template and
+  entrypoint contracts. The full digest is the reuse authority. Existing
+  canonical tags are reused only after their descriptor is parsed,
+  canonicalized, re-hashed, and matched against the base, recipe, and complete
+  component metadata; malformed or conflicting tags fail instead of being
+  overwritten.
+- Artifact acquisition and each formation identity use filesystem locks under
+  the XDG DevCapsule cache. The verified archive remains checksum-addressed;
+  extraction and the large Docker build context live in cache-backed temporary
+  directories rather than the system `/tmp`, and are removed after the build.
+  The shared image embeds a generic component template but deliberately omits
+  the checkout-specific `/etc/devcapsule/runtime-plan.json`.
+- On 2026-08-02, the user successfully pushed dogfood base tag
+  `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v019`. Docker Hub
+  assigned digest
+  `sha256:637f646a9de962cb399025c2bf3817b08e242d2a4416b49a202cf06763852feb`,
+  which resolves to the validated local image ID
+  `sha256:7e81e49d7b9c3a82faae8af4de4e3eed927f13261d8f0040af0aa23f64963dee`.
+  The committed Linux dogfood lock now uses that globally resolvable digest
+  reference plus PyCharm Professional 2026.2.0.1 and the vendor-published
+  artifact SHA-256. The v019 tag remains a dogfood checkpoint, not an official
+  V1 release version. An isolated `project config resolve` followed by the
+  rebuilt PEX `images build --type environment` resolved the committed digest
+  to the same immutable base and strictly reused the existing canonical
+  PyCharm environment without downloading, rebuilding, or launching. A direct
+  digest pull also succeeded from this credential-isolated capsule, confirming
+  anonymous registry access and digest resolution; a genuinely clean Docker
+  store pull remains part of release-candidate validation.
+- Real PEX validation downloaded and verified the 1.28 GB JetBrains archive,
+  built canonical environment
+  `devcapsule-local-pycharm:d3240f8fbbb362a0d298` with full formation identity
+  `d3240f8fbbb362a0d2985299ef13f3289340c8dc23218c470d3de16adc4a05b2`,
+  and added alias `devcapsule-local-pycharm:debug-v019`. Inspection confirmed
+  the generic PEX entrypoint/CMD, PyCharm launcher, component template, absent
+  checkout runtime plan, labels, descriptor, base identity, and identical
+  canonical/alias image ID. A second invocation strictly reused the image in
+  under one second without downloading or rebuilding. No IDE container was
+  launched.
+- Final validation passed the full Nox build gate: compilation and shell
+  syntax checks, clean mypy over 57 source files, 104 fast tests at 79%
+  statement/branch coverage, source and rebuilt-PEX command smokes, PEX
+  construction, and the PEX integration test. The explicit Docker E2E also
+  passed after the formation changes, in addition to the real vendor-image
+  build and inspection above.
+- On 2026-08-02, the user selected two expedient V1 base-trust paths. A
+  developer may build and explicitly select a managed base, or may record
+  developer-owned authorization for one exact published digest recommended by
+  the project after reviewing its checksum and basic security scan. The lock
+  cannot authorize itself; mutable tags and blanket publisher/repository trust
+  are excluded. Verifiable provenance, signed SBOMs, artifact signatures,
+  attestations, automated scan/policy evaluation, and client-side evidence
+  verification are an explicit V2 task rather than V1 blockers.
+- V1 user documentation now discloses the default base in plain language:
+  Ubuntu 24.04 plus Python/native development and debugging tools, Git/SSH,
+  diagnostics, Docker tooling, GUI runtime libraries, non-authorized
+  Docker/sudo capabilities, pinned Node.js/npm tooling, and the embedded
+  DevCapsule PEX. It links directly to the repository-owned Python recipe,
+  exact apt-package tuple, pinned public-tool installer, build-context renderer,
+  and generic runtime, and separately states what materialization and runtime
+  authorization add. This documentation-only checkpoint required no new test
+  run; all links and `git diff --check` were validated.
+- On 2026-08-02, accepted D-0005 replaced D-0001's ambient Gemini assumption
+  with an agent-neutral base and explicit optional agent components. Active
+  base, PyCharm, and Codium build plans now retain verified Node.js/npm but do
+  not install Gemini CLI; shared runtime planning no longer creates or directly
+  mounts host `~/.gemini`; and this dogfood manifest no longer requests a
+  `gemini` capability. User docs explain that agent CLIs have independent
+  release, licensing, authentication, state, and trust lifecycles. The current
+  immutable published v019 digest still contains Gemini and must be replaced by
+  a newly built/published base before the committed dogfood lock can satisfy
+  D-0005. Antigravity remains a later optional V1 component task; no
+  Antigravity artifact was downloaded or installed in this slice. Focused
+  agent-neutral build/launcher tests passed, followed by the full Nox gate:
+  clean mypy over 57 source files, 104 fast tests at 79% coverage, source and
+  rebuilt-PEX command smokes, PEX construction, and the PEX integration test.
+  A replacement base image was not built or published in this capsule.
+- On 2026-08-02, component persistence was moved behind a generic declared
+  interface rather than shared runtime fields. The versioned component
+  template now declares persistent-home and home-relative XDG use plus any
+  exceptional component-local slots, including lifecycle, sensitivity, scope,
+  storage, concurrency, ownership/permissions, deletion, reconstruction, and
+  explicit home-overlay semantics. Generic planning namespaces those slots,
+  allocates directory storage beneath the matching XDG data/state/cache root,
+  honors developer-owned adopted bindings, orders home before overlays, and
+  produces the component-neutral in-container runtime plan. PyCharm owns its
+  config, plugins, system, log, and cache declarations; its JetBrains adapter
+  maps local slot names to IDE properties. Shared runtime code has no Gemini,
+  Antigravity, PyCharm, or other tool-named state option. A component using
+  only standard `HOME`/XDG locations declares zero custom slots.
+- This persistence-interface change alters the hashed component template, so
+  the prior canonical PyCharm environment remains an accurate old formation
+  but is not reusable for the new formation identity; the next environment
+  build will create a new canonical local image. The full Nox build gate
+  passed: compilation and shell checks, clean mypy over 61 source files, 113
+  fast tests at 79% coverage, source and rebuilt-PEX command smokes, PEX
+  construction, and the built-PEX integration test. Docker E2E and a real
+  environment rebuild were not run for this contract-only formation change.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -850,30 +958,85 @@ Current task:
    redaction, source and PEX help surfaces, and at least one manual failing IDE
    startup that leaves useful diagnostics.
 
-4. Claim and prepare the Docker Hub publication namespace for V1 release
-   images, then validate a real push/pull path for user-facing prebuilt
-   images.
+4. Complete the V1-blocking release-artifact publication task. The
+   organization namespace `mycodespaceai`, repository
+   `mycodespaceai/devcapsule-base`, and first authenticated push path are
+   validated. Official artifacts must use semantic product versions such as
+   `ubuntu-24.04-1.0.0-rc.1` and `ubuntu-24.04-1.0.0`, plus versioned PEX names
+   such as `devcapsule-1.0.0.pex`, rather than internal `v019` checkpoints.
+   They must record a real source revision, publish checksums/digests and a
+   basic security-scan result, and pass clean pull/download validation.
+   Committed platform locks must use globally resolvable,
+   digest-pinned OCI distribution references such as
+   `docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST`; they must reject
+   workstation-local image IDs, daemon-local aliases, and mutable tag-only
+   references. Local bases remain available only through developer-owned or
+   run-once `--base` overrides.
    Notes: `devcapsule/implementation-notes/2026-07-15-docker-hub-namespace-and-publication-plan.md`
    Requirements: root `R-PRODUCT-001`, root `R-DOCS-002`,
    `devcapsule/REQUIREMENTS.md` R-PYTHON-MVP-002 and R-DOCS-002.
-   Verification: confirm the chosen Docker Hub namespace exists under the
-   intended account/organization, document the repository naming scheme, push
-   at least one release-candidate image, and verify a clean pull from that
-   namespace.
+   Verification: build from the intended V1 source revision, publish at least
+   one release candidate and the accepted V1 artifacts, verify their labels and
+   checksums/digests, and prove clean pull/download from the documented release
+   locations.
 
 Next task:
 
-1. Implement `devcapsule images build --type environment` against the settled
-   formation contract. Replace the current simplified materialization identity
-   and `image_exists` shortcut with the canonical formation descriptor and
-   verified cross-project reuse; validate the selected DevCapsule base; acquire
-   and checksum-cache the locked PyCharm artifact on the host with concurrency
-   protection; unpack only into temporary build context; build the generic
-   shared environment image; and keep checkout-specific launch plans outside
-   the image. Do not launch a container or download from the entrypoint.
-2. Pass the full Nox gate, then build and inspect the v019 environment on the
-   host before continuing the second-checkout dogfood path and reopened runtime
-   option-parity work.
+1. Implement the V1 developer-owned base selection and trust contract. Preserve
+   the existing path for a developer to build a managed base and select it
+   explicitly through `--base`. Add an exact-artifact authorization path,
+   provisionally `project config authorize base-image REFERENCE`, for adopting
+   the lock-recommended published base after reviewing its checksum and basic
+   security scan. Persist only an immutable registry digest or inspected local
+   image ID; never authorize a mutable tag, repository, organization, or future
+   digest. A lock change must stale the authorization. Also enforce that
+   committed locks reject workstation-local IDs, aliases, and tag-only
+   references, then prove both trust paths from clean checkout configuration.
+2. Wire the verified canonical environment into `devcapsule project run`.
+   Generate the checkout-specific runtime plan from the fresh resolution,
+   deliver it read-only at `/etc/devcapsule/runtime-plan.json`, and retain the
+   shared image's generic component template. Normal run should strictly reuse
+   or automatically materialize the locked image and must not bake project,
+   state, credential, authorization, UID/GID, or mount choices into it.
+3. Continue the second-checkout dogfood path by implementing the scoped
+   `project config set`, `bind`, and `authorize` operations needed by
+   `tests/manual/v1-second-checkout-dogfood.sh`, then address explicit host
+   networking and the reopened shared runtime-option parity work. Preserve
+   bridge networking and no host access as defaults.
+4. Implement Antigravity CLI as the first optional V1 agent component in a
+   later dedicated slice. Before acquiring it, settle its supported platforms,
+   exact version/artifact identity and checksum source, license and install
+   behavior, persistent-home or namespaced-state contract, authentication and
+   host-access disclosure, formation-descriptor inputs, and update policy.
+   Materialize it only when explicitly selected; never restore an ambient
+   agent CLI or direct host agent-state mount. Validate source and PEX command
+   surfaces plus an explicit host launch. No Antigravity artifact was
+   downloaded or installed during the D-0005 base cleanup.
+5. Add V1 public source-revision disclosure across the published base and PEX.
+   Record the full commit and public repository through standard OCI
+   `org.opencontainers.image.source` / `revision` annotations plus DevCapsule
+   metadata; embed the same commit and canonical GitHub commit URL in the PEX
+   and expose it through a read-only inspection command. Release checks must
+   reject placeholders and compare the two artifacts. Treat this as useful
+   traceability, not an SBOM, attestation, signature, reproducible-build claim,
+   or cryptographic provenance guarantee.
+
+V2 candidate task:
+
+1. Add safe, reversible image and cache lifecycle management. Users should be
+   able to inspect DevCapsule ownership and disk usage, preview removals,
+   remove selected materialized images and aliases, and prune unreferenced
+   artifacts/build caches. Running or lock-referenced images require explicit
+   handling, and cleanup must never touch project source, persistent state,
+   credentials, or unrelated Docker resources. If V1 closes early, this is a
+   candidate to pull forward deliberately rather than an implicit V1 blocker.
+2. Add verifiable software supply-chain provenance for published DevCapsule
+   artifacts: generated SBOMs, artifact signatures, public build provenance
+   and attestations tied to source and recipe inputs, automated vulnerability
+   scanning and policy evaluation, and client-side verification of the expected
+   publisher and evidence before execution. This supersedes V1's expedient
+   exact-digest authorization plus published checksum/basic-scan evidence; it
+   is not an implicit V1 blocker.
 
 Standing rule:
 

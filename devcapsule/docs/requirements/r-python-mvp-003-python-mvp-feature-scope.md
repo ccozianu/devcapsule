@@ -37,6 +37,27 @@ post-MVP framework work.
 - Provide acceptable user documentation for supported V1 behavior
 - Close obvious quality-gate gaps in the Python project itself
 - Keep tests focused on non-GUI-regression-prone behavior
+- Publish official, semantically versioned V1 artifacts under the
+  organization-owned namespace. At minimum this includes the supported base
+  image and distributable PEX with immutable digests/checksums, real source
+  revision metadata, a basic documented security scan, and clean pull/download
+  validation.
+- Make the public source revision inspectable from both published image
+  metadata and the PEX itself. The image must carry the full commit in standard
+  OCI source/revision annotations plus DevCapsule metadata; the PEX must embed
+  and expose the same full commit and canonical public GitHub commit URL
+  without relying on the source checkout. Release validation must compare the
+  two values and reject placeholders such as `unknown`. This is transparent
+  traceability, not cryptographic build provenance.
+- Support both V1 base-trust paths: an explicit managed base built and selected
+  by the developer, and developer-owned authorization of one exact published
+  registry digest recommended by a project lock. Mutable tags and blanket
+  repository or publisher trust are not authorization.
+- Keep V1 default bases agent-neutral. Agent CLIs are explicit optional
+  materialized components with independent acquisition, version, state,
+  licensing, and trust contracts. Antigravity CLI is the first planned V1
+  component; it is not downloaded or installed until that task is implemented
+  and reviewed.
 
 ## Explicit V1 Deferrals
 
@@ -45,7 +66,10 @@ post-MVP framework work.
 - Extension/plugin installation workflows beyond persistent plugin state
 - Translating `pycharm check-runtime` and `bootstrap project` away from shell
   delegation
-- Formal release automation, signing, checksums, or publishing
+- Verifiable supply-chain provenance, signed SBOMs, cryptographic artifact
+  signatures, build attestations, automated provenance/policy enforcement, and
+  fully automated release orchestration beyond the checksums, source metadata,
+  and basic security scan required for the manually validated V1 artifacts
 - Alternative GUI transports
 - GPU/device profiles
 - Deferred GitHub SSH/HTTPS remote push validation from the PyCharm v0 pass

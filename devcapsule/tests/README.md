@@ -57,9 +57,11 @@ implicitly, keeping network access and external image changes explicit.
 
 The same E2E test then creates a small deterministic JetBrains-shaped archive,
 acquires it through the production SHA-256 cache, materializes a second local
-image, and verifies the unpacked launcher. It removes the original fixture and
-invokes orchestration again to prove the already-materialized image avoids
-both download and rebuild. The real vendor archive is intentionally excluded
+image, verifies the unpacked launcher and formation metadata, and confirms that
+only the generic component template—not a checkout-specific runtime plan—is
+baked into the shared image. It removes the original fixture and invokes
+orchestration again to prove the already-materialized image avoids both
+download and rebuild after strict descriptor verification. The real vendor archive is intentionally excluded
 from this default E2E because the current Linux download is approximately
 1.28 GB; a separately explicit vendor test will cover that path.
 
@@ -90,9 +92,9 @@ yet. It clones the repository at a second host path, registers a distinct
 checkout identity, records ordinary values, state bindings, and host
 authorizations, resolves the complete plan, and launches PyCharm twice. It
 requires the local `devcapsule-local-pycharm:debug-v019` checkpoint alias and
-verifies that the image uses the embedded DevCapsule PEX, versioned runtime
-plan, and generic Python entrypoint rather than v018's PyCharm-specific Bash
-entrypoint. It also verifies the V1 managed-image marker, metadata version,
+verifies that the image uses the embedded DevCapsule PEX, generic component
+template, externally supplied runtime-plan boundary, and generic Python
+entrypoint rather than v018's PyCharm-specific Bash entrypoint. It also verifies the V1 managed-image marker, metadata version,
 materialized kind, formation/base/component identities, and canonical-name
 label used by `devcapsule images list`.
 

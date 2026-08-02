@@ -19,7 +19,7 @@ from devcapsule.image_build import (
     ImageBuildSpec,
     LabelComponent,
 )
-from devcapsule.image_tooling import public_default_cli_tooling_component
+from devcapsule.image_tooling import node_tooling_component
 from devcapsule.image_metadata import BASE_KIND, managed_labels
 
 
@@ -28,7 +28,7 @@ NVIDIA_CUDA_ROOT_IMAGE = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
 DEFAULT_OUTPUT_IMAGE = "devcapsule-base:latest"
 PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
-BASE_RECIPE_VERSION = "1"
+BASE_RECIPE_VERSION = "2"
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
@@ -102,7 +102,7 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
         components.extend(
             [
                 AptPackagesComponent(BASE_APT_PACKAGES),
-                public_default_cli_tooling_component(),
+                node_tooling_component(),
             ]
         )
     components.extend(

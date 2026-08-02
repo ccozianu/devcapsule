@@ -23,7 +23,7 @@ from devcapsule.image_build import (
     normalize_pycharm_source,
     resource_to_tempdir,
 )
-from devcapsule.image_tooling import NODE_CURRENT_BIN, public_default_cli_tooling_component
+from devcapsule.image_tooling import NODE_CURRENT_BIN, node_tooling_component
 
 DEFAULT_BASE_IMAGE = "ubuntu:24.04"
 DEFAULT_IMAGE = "pycharm-isolated:latest"
@@ -199,7 +199,7 @@ def build_pycharm_image_spec(
                 "&& mkdir -p /ide-config /var/lib/docker /usr/local/share/docker4ide",
             ),
         ),
-        public_default_cli_tooling_component(),
+        node_tooling_component(),
         EnvComponent(DEFAULT_ENV),
         LabelComponent((("devcapsule.configuration", "pycharm"), ("devcapsule.builder", "python-on-whales"))),
         EntrypointComponent(("/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh")),

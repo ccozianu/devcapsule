@@ -49,11 +49,13 @@ Materialization is a host-side image-formation step that completes before the
 project container starts. When the required completed image is absent, the
 DevCapsule client downloads and verifies the locked PyCharm archive, then uses
 the locked redistributable base to build a new workstation-local image that
-contains both `/opt/jetbrains/pycharm` and the component runtime plan. It then
-runs that completed image. The client does not run the bare base and ask its
-container entrypoint to download or install PyCharm just in time. The runtime
-entrypoint performs no component acquisition; it only initializes the capsule
-from the embedded plan and executes the already-installed foreground IDE.
+contains both `/opt/jetbrains/pycharm` and a reusable component runtime
+template. It then runs that completed image with a checkout-specific runtime
+plan supplied from outside the image. The client does not run the bare base
+and ask its container entrypoint to download or install PyCharm just in time.
+The runtime entrypoint performs no component acquisition; it only initializes
+the capsule from the supplied plan and executes the already-installed
+foreground IDE.
 
 ### Local image identity and discovery
 
@@ -172,12 +174,13 @@ docker image ls devcapsule-local-pycharm
 docker image ls --filter label=devcapsule.image.kind=materialized
 ```
 
-The current transitional implementation does not yet satisfy this complete
-script: the committed dogfood lock still names an already-local image,
-`config resolve` cannot bootstrap a clean default checkout record, and
-`devcapsule run` does not yet invoke the materialization primitives. Closing
-those gaps is part of wiring the implemented base and materialization layers
-into the capability-first path.
+The committed dogfood lock now pins the local v019 base identity, PyCharm
+2026.2.0.1 artifact and digest, variant, delivery policy, and materialization
+recipe. `config resolve` bootstraps a clean default checkout record, and
+`images build --type environment` creates or strictly reuses the canonical
+materialized image. The remaining integration gap is `project run`: it does
+not yet invoke materialization automatically or deliver a checkout-specific
+runtime plan from outside the shared image.
 
 ## Redistributable Default Base Image
 
@@ -187,7 +190,7 @@ root filesystem and contains the common development and runtime utilities that
 are presently installed by the Python-owned PyCharm image builder. This
 includes the compiler/debugger toolchain, Git and SSH clients, network and
 process diagnostics, Docker client and optional daemon tooling, X11 and Mesa
-runtime libraries, `tini`, `gosu`, and the public-default Node.js/npm/Gemini
+runtime libraries, `tini`, `gosu`, and the public-default Node.js/npm
 tooling baseline. The exact package and tool versions remain deterministic
 image-formation inputs and must be represented by the base recipe/version and
 immutable base-image identity in the platform lock.
@@ -225,7 +228,8 @@ while leaving the plan path visible and overrideable for inspection and
 testing. The base does not contain a PyCharm plan. Running the bare base either
 with its default missing plan or with an invalid plan must fail clearly before
 starting an application. Local materialization adds the component installation
-and writes the deterministic plan at `/etc/devcapsule/runtime-plan.json`.
+and reusable component template; launch supplies the deterministic plan at
+`/etc/devcapsule/runtime-plan.json`.
 
 PEX extraction and interpreter caches must not depend on a writable image
 root. The PEX is built with `/tmp/devcapsule-pex-root` as its runtime root;
@@ -249,8 +253,8 @@ reuse composable apt, tooling, file-copy, label, and entrypoint components from
 `devcapsule.image_build`, but it must not call the PyCharm builder or source
 assets from `devcapsule.assets.pycharm`. The subsequent workstation-local
 materialization uses the immutable base identity and adds only the verified
-JetBrains installation plus its generic runtime plan. Project scaffolding is
-not part of either image layer.
+JetBrains installation plus its generic component template. Project
+scaffolding is not part of either image layer.
 
 ### Base-image verification
 
@@ -301,6 +305,15 @@ configuration declares the installation path, launcher, properties environment
 variable, state-slot mapping, and other JetBrains-product details. The adapter
 generates the IDE properties file and foreground command. Other IDE adapters
 reuse generic initialization without copying it.
+
+Persistence belongs to the component interface rather than shared runtime
+options. The component template declares persistent-home/XDG use and any
+exceptional component-local slots, including lifecycle, sensitivity, scope,
+storage, concurrency, ownership, deletion, and reconstruction semantics.
+Generic host planning namespaces and binds those declarations; the adapter may
+map its own configuration keys to local slot names. A component that uses only
+standard `HOME` or XDG locations declares no slots and requires no named field
+in shared runtime code.
 
 The package should use focused modules with clear contracts, for example:
 

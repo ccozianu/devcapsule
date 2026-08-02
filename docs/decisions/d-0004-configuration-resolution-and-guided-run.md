@@ -50,8 +50,9 @@ dogfood test it is specifically a migration operation used to retain six
 existing PyCharm directories. A clean user should be able to accept managed
 state without performing a fictitious adoption.
 
-D-0002 and D-0003 remain reserved in the handoff for agent autonomy and Gemini
-CLI policy respectively, so this discussion is recorded as D-0004.
+D-0002 remains reserved in the handoff for agent autonomy. The former D-0003
+Gemini-default topic is now resolved by accepted D-0005, which makes agent CLIs
+optional components; this configuration discussion remains D-0004.
 
 ## Options Considered
 
@@ -241,13 +242,33 @@ devcapsule project config bind pycharm/system --host-directory PATH
 ```
 
 `authorize` records an explicit developer decision for a security-sensitive
-host capability. Candidate examples include:
+host capability or exact executable artifact. Candidate examples include:
 
 ```text
 devcapsule project config authorize docker-daemon host-socket
 devcapsule project config authorize network host
 devcapsule project config authorize development-sudo true
+devcapsule project config authorize base-image docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST
 ```
+
+V1 offers two explicit base-trust paths. A developer may build a managed base
+locally through `images build --type base` and select that inspected immutable
+image through the existing `--base` development override. Alternatively, the
+developer may authorize the exact digest recommended by the committed lock
+after reviewing the project's release information, published checksum, and
+basic security-scan result. The exact persistent and run-once command spelling
+remains an implementation task, but authorization is always scoped to one
+immutable registry digest or one inspected local image ID. It never grants
+blanket trust to a registry namespace, repository, tag, or future digest.
+
+The committed lock remains a project recommendation and cannot authorize its
+own executable base. The developer-owned checkout record stores the trust
+decision; a changed lock digest or changed local image identity makes the
+resolution stale and requires a new decision. A published checksum establishes
+byte identity and a vulnerability scan reports known findings at scan time;
+neither proves build provenance, source equivalence, or absence of malicious
+behavior. Signed SBOMs, attestations, automated provenance verification, and
+policy-based publisher trust are V2 work.
 
 The command grammar may still be refined before V1, but these three semantic
 operations are distinct. A scalar service endpoint is an ordinary value;
@@ -311,7 +332,8 @@ The configuration experience distinguishes at least:
 - state bindings, which select managed state or an existing external directory;
 - secret bindings, which identify a developer-owned provider or source without
   containing the secret value;
-- host authorization, which permits a specific workstation exposure; and
+- authorization, which permits a specific workstation exposure or exact
+  executable base artifact; and
 - project recommendations, which explain a useful choice but grant nothing.
 
 Projects declare required and optional inputs, sensitivity, safe defaults, and
@@ -377,6 +399,16 @@ digests, and materialization recipe. It neither embeds nor redistributes
 PyCharm and does not contain personal state, credentials, host authorization,
 cache paths, or a local completed-image ID.
 
+The committed base reference must be globally resolvable through an OCI/Docker
+registry and pinned by digest, for example
+`docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST`. Docker and buildx use
+this distribution-reference grammar directly; `docker://` is not part of the
+V1 lock spelling. A workstation-only tag, local image ID, daemon-local alias,
+or mutable tag may be used through an explicit developer-owned override, but
+must not appear as the project's committed default. This keeps the platform
+lock usable by a fresh checkout on another compatible workstation while still
+allowing conspicuous local development deviations.
+
 When the completed image is absent, the client downloads the locked PyCharm
 archive directly from JetBrains on the host, verifies it, builds a deterministic
 `devcapsule-local-pycharm:<materialization-identity>` image from the locked
@@ -430,7 +462,7 @@ The default `ubuntu-24.04` Linux base recipe produces one OCI image with:
 - X11, GTK, font, audio, and Mesa runtime libraries needed by curated GUI
   components;
 - `tini`, `gosu`, and the `sudo` binary, without ambient sudo authorization;
-- the recipe-pinned public Node.js/npm and Gemini CLI baseline; and
+- the recipe-pinned public Node.js/npm language-tooling baseline; and
 - exactly one executable DevCapsule PEX at
   `/opt/devcapsule/bin/devcapsule.pex`, identical by SHA-256 to the selected
   host artifact.
@@ -689,6 +721,15 @@ human choice:
     handle multiple checkouts, and terminate cleanly?
 14. Does V2 open the GUI only when resolution is missing or stale, or also when
     the user explicitly asks to review otherwise valid choices?
+15. How does V2 provide safe image and cache lifecycle management: ownership
+    inspection, reclaimable-size reporting, dry-run removal, protection for
+    running or lock-referenced images, and an explicit guarantee that project
+    source, persistent state, credentials, and unrelated Docker resources are
+    never removed?
+16. Which SBOM, signing, attestation, vulnerability-policy, and provenance
+    standards implement V2 artifact verification, how is publisher trust
+    bootstrapped and rotated, and which failures block execution rather than
+    warn?
 
 ## Rationale
 

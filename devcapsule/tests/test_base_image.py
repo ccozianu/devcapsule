@@ -30,6 +30,9 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert "gosu" in plan.apt_packages
     assert "/opt/pycharm" not in dockerfile
     assert "JetBrains" not in dockerfile
+    assert "nodejs.org/dist/${node_version}" in dockerfile
+    assert "@google/gemini-cli" not in dockerfile
+    assert "gemini --version" not in dockerfile
     assert 'ENTRYPOINT ["/usr/bin/tini", "--", "/opt/devcapsule/bin/devcapsule.pex", "runtime"]' in dockerfile
     assert 'CMD ["/etc/devcapsule/runtime-plan.json"]' in dockerfile
     assert ("devcapsule.image.managed", "true") in plan.labels
@@ -37,6 +40,7 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
+    assert ("devcapsule.base.recipe-version", "2") in plan.labels
     assert ("devcapsule.base.recipe-status", "ready") in plan.labels
     assert ("devcapsule.pex.sha256", hashlib.sha256(b"pex fixture").hexdigest()) in plan.labels
 
@@ -52,6 +56,8 @@ def test_nvidia_cuda_recipe_keeps_developer_baseline_and_is_marked_wip(tmp_path:
     assert "python3" in plan.apt_packages
     assert "gdb" in plan.apt_packages
     assert "tini" in plan.apt_packages
+    install_script = "\n".join(" ".join(step.args) for step in plan.exec_steps)
+    assert "@google/gemini-cli" not in install_script
     assert ("devcapsule.base.recipe", "nvidia-cuda-devel") in plan.labels
     assert ("devcapsule.base.recipe-status", "wip") in plan.labels
     assert ("devcapsule.base.gpu.vendor", "nvidia") in plan.labels

@@ -172,12 +172,19 @@ class ImageBuildSpec:
 class BuildxImageBuilder:
     """Build a planned image through the local Docker CLI via python-on-whales."""
 
+    def __init__(self, temporary_root: Path | None = None) -> None:
+        self.temporary_root = temporary_root
+
     def build(self, spec: ImageBuildSpec, *, network: str = "default") -> None:
         plan = spec.build_plan()
-        with tempfile.TemporaryDirectory(prefix="devcapsule-buildx-context-") as temp_dir:
-            context_root = Path(temp_dir)
-            dockerfile_path = render_build_context(plan, context_root)
-            try:
+        if self.temporary_root is not None:
+            self.temporary_root.mkdir(parents=True, exist_ok=True)
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="devcapsule-buildx-context-", dir=self.temporary_root
+            ) as temp_dir:
+                context_root = Path(temp_dir)
+                dockerfile_path = render_build_context(plan, context_root)
                 if network == "host":
                     docker.build(
                         context_root,
@@ -195,8 +202,11 @@ class BuildxImageBuilder:
                         load=True,
                         network=network,
                     )
-            except DockerException as exc:
-                raise CliError(str(exc)) from exc
+        except DockerException as exc:
+            raise CliError(str(exc)) from exc
+        except OSError as exc:
+            location = self.temporary_root or Path(tempfile.gettempdir())
+            raise CliError(f"Cannot prepare Docker build context beneath {location}: {exc}") from exc
 
 
 def render_build_context(plan: ImageBuildPlan, context_root: Path) -> Path:

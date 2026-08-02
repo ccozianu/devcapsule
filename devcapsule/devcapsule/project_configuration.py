@@ -34,6 +34,18 @@ class RegisteredCheckout:
     status: str
 
 
+@dataclass(frozen=True)
+class ResolvedProject:
+    root: Path
+    manifest: dict[str, Any]
+    lock_path: Path
+    lock: dict[str, Any]
+    checkout_path: Path
+    checkout: dict[str, Any]
+    resolution_path: Path
+    resolution: dict[str, Any]
+
+
 def discover_project(path: Path) -> Path:
     candidate = path.expanduser().resolve()
     if candidate.is_file():
@@ -248,6 +260,41 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
     if value.get("manifest-digest") != expected:
         raise ProjectConfigurationError(f"{path} is stale; run 'devcapsule project lock'.")
     return path, value
+
+
+def fresh_resolved_project(project: Path) -> ResolvedProject:
+    """Load one checkout and require its generated resolution to be fresh."""
+
+    root, manifest = manifest_for(project)
+    lock_path, lock = lock_for(root, manifest)
+    checkout_path, resolution_path = checkout_record_paths(manifest, root)
+    if not checkout_path.is_file() or not resolution_path.is_file():
+        raise ProjectConfigurationError(
+            "Local resolution is missing; run 'devcapsule project config resolve'."
+        )
+    checkout = load_toml(checkout_path)
+    resolution = load_toml(resolution_path)
+    expected = {
+        "manifest": canonical_digest(manifest),
+        "platform-lock": canonical_digest(lock),
+        "checkout-input": canonical_digest(checkout),
+    }
+    actual = resolution.get("sources", {})
+    stale = [name for name, digest in expected.items() if actual.get(name) != digest]
+    if stale:
+        raise ProjectConfigurationError(
+            f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
+        )
+    return ResolvedProject(
+        root=root,
+        manifest=manifest,
+        lock_path=lock_path,
+        lock=lock,
+        checkout_path=checkout_path,
+        checkout=checkout,
+        resolution_path=resolution_path,
+        resolution=resolution,
+    )
 
 
 def render_checkout(

@@ -32,8 +32,11 @@ def plan(runtime: RuntimePlan) -> JetBrainsLaunch:
         raise RuntimePlanError("JetBrains component state_slot_mapping must be an object")
     properties: list[str] = []
     for property_name in ("config", "system", "plugins", "log"):
-        slot_name = mapping.get(property_name)
-        if not isinstance(slot_name, str) or slot_name not in slots:
+        local_slot_name = mapping.get(property_name)
+        if not isinstance(local_slot_name, str):
+            raise RuntimePlanError(f"JetBrains {property_name} mapping must name a declared state slot")
+        slot_name = runtime.component.slot_name(local_slot_name)
+        if slot_name not in slots:
             raise RuntimePlanError(f"JetBrains {property_name} mapping must name a declared state slot")
         properties.append(f"idea.{property_name}.path={slots[slot_name]}")
     installation_path = Path(_string(config, "installation_path"))

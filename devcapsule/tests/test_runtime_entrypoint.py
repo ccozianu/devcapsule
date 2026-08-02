@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 
 from devcapsule.container_runtime.components.jetbrains import plan as plan_jetbrains
-from devcapsule.container_runtime.contract import RuntimePlan, RuntimePlanError
+from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
+from devcapsule.container_runtime.contract import (
+    ComponentRuntimeTemplate,
+    Identity,
+    RuntimePlan,
+    RuntimePlanError,
+)
 from devcapsule.container_runtime.entrypoint import main, run
 from devcapsule.container_runtime.filesystem import FilesystemPlan, plan_filesystem, prepare_filesystem
 from devcapsule.container_runtime.graphics import environment as graphics_environment
@@ -26,6 +32,7 @@ def runtime_document(tmp_path: Path) -> dict[str, object]:
             {"name": "jetbrains/log", "path": str(tmp_path / "log")},
         ],
         "component": {
+            "id": "jetbrains",
             "adapter": "jetbrains",
             "configuration": {
                 "installation_path": "/opt/jetbrains/pycharm",
@@ -33,10 +40,10 @@ def runtime_document(tmp_path: Path) -> dict[str, object]:
                 "properties_path": str(tmp_path / "idea.properties"),
                 "properties_environment_variable": "PYCHARM_PROPERTIES",
                 "state_slot_mapping": {
-                    "config": "jetbrains/config",
-                    "system": "jetbrains/system",
-                    "plugins": "jetbrains/plugins",
-                    "log": "jetbrains/log",
+                    "config": "config",
+                    "system": "system",
+                    "plugins": "plugins",
+                    "log": "log",
                 },
             },
         },
@@ -50,12 +57,55 @@ def test_contract_parses_versioned_runtime_plan(tmp_path: Path) -> None:
     assert plan.slots_by_name()["jetbrains/config"] == str(tmp_path / "config")
 
 
+def test_component_declares_persistence_and_generates_generic_runtime_plan() -> None:
+    template = ComponentRuntimeTemplate.from_json(json.dumps(pycharm_runtime_template().to_mapping()))
+    assert template.persistence.home == "required"
+    assert template.persistence.xdg == "home-relative"
+    assert template.persistence.state_slots[0].kind == "durable"
+    assert template.logical_slot_name("config") == "pycharm/config"
+
+    runtime = RuntimePlan.for_component(
+        template,
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000),
+    )
+    assert runtime.slots_by_name()["pycharm/config"] == "/ide-config"
+    assert runtime.slots_by_name()["pycharm/cache"] == "/home/devcapsule/.cache"
+
+
+def test_home_only_component_needs_no_runtime_special_case() -> None:
+    template = ComponentRuntimeTemplate.from_mapping(
+        {
+            "version": 1,
+            "component": {
+                "id": "home-tool",
+                "adapter": "fixture",
+                "configuration": {},
+                "persistence": {
+                    "home": "required",
+                    "xdg": "home-relative",
+                    "state_slots": [],
+                },
+            },
+        }
+    )
+    runtime = RuntimePlan.for_component(
+        template,
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000),
+    )
+    assert runtime.state_slots == ()
+
+
 @pytest.mark.parametrize(
     ("change", "message"),
     [
         (lambda doc: doc.update(version=2), "unsupported runtime plan version"),
         (lambda doc: doc.update(identity={"uid": True, "gid": 1}), "identity.uid"),
         (lambda doc: doc.update(state_slots=[{"name": "same", "path": "/a"}, {"name": "same", "path": "/b"}]), "duplicate state slot"),
+        (lambda doc: doc["component"].update(id="Tool/unsafe"), "component.id"),  # type: ignore[index]
     ],
 )
 def test_contract_rejects_invalid_input(tmp_path: Path, change: object, message: str) -> None:
@@ -63,6 +113,15 @@ def test_contract_rejects_invalid_input(tmp_path: Path, change: object, message:
     change(document)  # type: ignore[operator]
     with pytest.raises(RuntimePlanError, match=message):
         RuntimePlan.from_mapping(document)
+
+
+def test_component_contract_requires_explicit_home_overlay() -> None:
+    document = pycharm_runtime_template().to_mapping()
+    persistence = document["component"]["persistence"]  # type: ignore[index]
+    cache = persistence["state_slots"][-1]  # type: ignore[index]
+    cache.pop("home_overlay")
+    with pytest.raises(RuntimePlanError, match="must declare home_overlay"):
+        ComponentRuntimeTemplate.from_mapping(document)
 
 
 def test_generic_filesystem_plan_uses_persistent_home_and_declared_slots(tmp_path: Path) -> None:

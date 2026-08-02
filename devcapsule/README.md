@@ -196,6 +196,43 @@ of the CUDA compiler/runtime development baseline. It emits a WIP warning and
 remains blocked for V1 release until the specialized NVIDIA host E2E task is
 complete.
 
+#### What is in the base, and where to audit it
+
+TL;DR: the default base starts from Ubuntu 24.04 and adds a broad Python and
+native-development workstation baseline. It contains Python 3.12 and headers,
+Git and OpenSSH, GCC/G++ plus Make/CMake/pkg-config, GDB/LLDB/strace, common
+shell/process/filesystem/network diagnostics, Docker CLI/buildx/Compose and
+daemon binaries, X11/GTK/audio/font/Mesa runtime libraries, `tini`, `gosu`, and
+the `sudo` binary. It also installs the pinned language-tooling baseline—Node.js
+`v22.23.1` and its bundled npm—and embeds the selected
+DevCapsule PEX at `/opt/devcapsule/bin/devcapsule.pex`.
+
+The repository-owned Python build plan is the inspectable source of truth:
+
+- [`devcapsule/base_image.py`](devcapsule/base_image.py) defines the curated
+  `ubuntu-24.04` and WIP `nvidia-cuda-devel` recipes, root images, managed-image
+  labels, embedded PEX, and generic entrypoint/CMD.
+- [`devcapsule/configurations/pycharm/_image_build.py`](devcapsule/configurations/pycharm/_image_build.py)
+  currently owns `BASE_APT_PACKAGES`, the exact Ubuntu package list shared by
+  the Python-owned base planner. Despite that transitional module location,
+  the base remains JetBrains-free.
+- [`devcapsule/image_tooling.py`](devcapsule/image_tooling.py) pins and verifies
+  the Node.js/npm runtime.
+- [`devcapsule/image_build.py`](devcapsule/image_build.py) shows how those
+  components become the generated Dockerfile/build context and are executed
+  through Docker buildx.
+- [`devcapsule/container_runtime/`](devcapsule/container_runtime/) is the
+  generic runtime embedded in the PEX and invoked when a completed environment
+  is launched.
+
+The base does **not** contain an IDE or vendor archive, project source,
+developer state, credentials, host mounts, host authorization, license/EULA
+acceptance, or an ambient AI-agent CLI. Installing Docker and `sudo` binaries
+grants no Docker-daemon or sudo access. Materialization adds the
+checksum-verified IDE/component; the
+developer-owned runtime resolution separately controls project/state mounts,
+networking, devices, Docker access, privilege, and secrets.
+
 `--from IMAGE` overrides the selected recipe's root image. The builder reuses
 that root image when it is already local and otherwise allows Docker to obtain
 the reference.
@@ -208,6 +245,62 @@ canonical name, recipe name/status/version, PEX digest, and source revision
 labels. `images build --type base` is the sole supported base-build command;
 there is no compatibility `build-base` alias.
 
+Build the lock-selected local environment after creating a fresh checkout
+resolution:
+
+```bash
+devcapsule project --path /path/to/checkout config resolve
+devcapsule images build \
+  --type environment \
+  --project /path/to/checkout \
+  --alias devcapsule-local-pycharm:debug-v019
+```
+
+The platform lock must select a DevCapsule base plus a
+`local-materialization` PyCharm component with an exact version, variant,
+download URL, SHA-256, and supported materialization recipe. A locked base
+must use a digest-pinned reference or record its expected immutable local image
+ID. `--base IMAGE` is an explicit development override; it never rewrites the
+lock or resolution.
+
+This repository's current Linux dogfood lock uses published digest
+`docker.io/mycodespaceai/devcapsule-base@sha256:637f646a9de962cb399025c2bf3817b08e242d2a4416b49a202cf06763852feb`.
+The associated `ubuntu-24.04-v019` tag is only a dogfood discovery tag;
+official V1 artifacts will use semantic release versions and committed locks
+will continue to use immutable digests.
+
+That immutable v019 image predates agent-neutral base recipe version 2 and
+still contains Gemini CLI. It remains usable only as the already-validated
+dogfood bridge. A newly built and published recipe-v2 base must replace the
+committed digest before the dogfood lock and V1 release candidate satisfy the
+current no-ambient-agent contract.
+
+The command obtains the selected base when it is not local, verifies that it
+is a managed metadata-v1 base for the locked platform, and downloads the
+locked JetBrains archive into `$XDG_CACHE_HOME/devcapsule` (normally
+`~/.cache/devcapsule`). Artifact acquisition and formation are protected by
+per-identity locks. The archive is checksum-verified and unpacked only into a
+temporary build context.
+
+The canonical output name is
+`devcapsule-local-pycharm:<formation-identity-prefix>`. Existing canonical
+images are reused only after their stored canonical descriptor, full digest,
+base identity, recipe, and component metadata all match. A conflicting tag
+fails with cleanup guidance instead of being overwritten. `--alias` adds an
+extra local debugging tag without changing the formation identity.
+
+Environment images contain the generic PyCharm component template, but no
+project source, checkout state, credentials, host authorization, or
+checkout-specific runtime plan. This command never launches a container.
+The template declares that PyCharm uses the persistent home and home-relative
+XDG roots, and owns its exceptional config, plugins, system, log, and cache
+slots with their lifecycle and storage semantics. Components that keep state
+entirely under standard `HOME`/XDG locations declare no custom slots; shared
+runtime planning contains no agent- or IDE-named state field.
+Automatic materialization and external runtime-plan delivery from `project
+run` remain the next integration slice; use `project run-image` only for
+deliberate interim inspection of a locally built checkpoint.
+
 ### Capability-first dogfood path
 
 The first capability-first slice supports a locally built PyCharm image. New
@@ -215,7 +308,7 @@ projects can create a declaration and current-platform dogfood lock with:
 
 ```bash
 devcapsule project --path . init --creator https://github.com/example \
-  --need python --need python-ide --need docker-cli --need gemini
+  --need python --need python-ide --need docker-cli
 devcapsule project lock --image mycodespace.ai/pycharm:debug-v018
 ```
 
@@ -269,9 +362,9 @@ devcapsule CONFIGURATION ACTION [options]
 
 `CONFIGURATION` names an IDE-plus-agent environment. `pycharm` and
 `codium_with_claude` are implemented configurations. The active public-default
-image builds bundle pinned Node.js/npm plus the Gemini CLI as command-line
-tooling. `codium_with_claude` is VSCodium plus that CLI/tooling baseline and
-is distinct from the registered,
+image builds bundle pinned Node.js/npm but no ambient AI-agent CLI.
+`codium_with_claude` remains a transitional proof-point name and is distinct
+from the registered,
 unimplemented `vscode_with_claude` placeholder.
 
 End users should be able to:
@@ -306,8 +399,7 @@ devcapsule bootstrap project --project /path/to/project
 
 `pycharm build` and `codium_with_claude build` use Ubuntu 24.04 and install
 Python plus a pinned Node.js archive under `/opt/node/node-{version}`, expose
-that runtime through `/opt/node/current` and `/usr/local/bin`, and install a
-pinned Gemini CLI version with that bundled npm. The Codium image also installs
+that runtime through `/opt/node/current` and `/usr/local/bin`. The Codium image also installs
 VSCodium plus `xterm` for basic X11 validation and `strace` for process-level
 diagnostics. Update the pinned versions in source when intentionally advancing
 the public-default tooling baseline. Use
@@ -317,8 +409,8 @@ Pass `--ide-archive PATH` to install VSCodium from a local `.tar.gz` (or other
 tar format recognized by Python) containing an executable `bin/codium`. In
 that mode the build does not configure or contact the VSCodium apt repository;
 the archive is installed under `/opt/codium`. The pinned Node.js archive and
-Gemini CLI are still fetched during the image build from their configured
-upstream sources.
+checksum file are still fetched during the image build from their configured
+upstream source.
 
 `codium_with_claude run` currently targets Linux X11. It mounts the selected
 project at `/workspace/project` by default, a persistent VSCodium/Claude home
@@ -332,12 +424,8 @@ overrides the in-container project path explicitly. It passes `DISPLAY` and
 uses ordinary Docker bridge networking so VSCodium and Claude Code can reach
 their services. It does not mount the Docker socket, SSH agent, host home,
 devices, or other credentials by default. Claude authentication written under
-its container home persists in the explicit global state directory. Gemini CLI
-state is also bind-mounted directly from the host by default: the host
-`~/.gemini` directory is exposed as `~/.gemini` inside the container so
-existing Gemini authentication, settings, and trusted-folder state can be
-reused across DevCapsule launches. Set `DEVCAPSULE_GEMINI_STATE_DIR` to point
-at a different host directory when needed.
+its container home persists in the explicit global state directory. No
+agent-specific host credential/state directory is mounted automatically.
 Use `--debug-shell` to run interactive Bash through the normal image
 entrypoint with the same project, state, and X11 mounts instead of starting
 VSCodium.
@@ -366,8 +454,8 @@ debugging, sudo, and additional filesystem options available from
 
 `pycharm run` defaults `--project` to the current directory. Its default
 persistent home is checkout-scoped beneath `$XDG_DATA_HOME/devcapsule/` and is
-mounted at `/home/devcapsule`; standard `HOME`, Codex, Gemini, Claude, and other
-tool state naturally persist there. `--home DIR` or `DEVCAPSULE_HOME_DIR`
+mounted at `/home/devcapsule`; standard IDE, agent, and shell state beneath
+`HOME` naturally persists there. `--home DIR` or `DEVCAPSULE_HOME_DIR`
 selects a developer-owned alternative. The developer's actual host home is
 never mounted as the container home.
 

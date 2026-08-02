@@ -9,6 +9,7 @@ from typing import Any
 import click
 
 from devcapsule.commands.base import BaseCommand
+from devcapsule.components.pycharm import logical_state_slots as pycharm_state_slots
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
 from devcapsule.project import sanitize_name
 from devcapsule.project_configuration import (
@@ -30,7 +31,7 @@ from devcapsule.project_configuration import (
 )
 
 
-KNOWN_SLOTS = {"home", "pycharm/config", "pycharm/plugins", "pycharm/system", "pycharm/log", "pycharm/cache"}
+KNOWN_SLOTS = {"home", *pycharm_state_slots()}
 
 
 @dataclass(frozen=True)
@@ -220,8 +221,11 @@ def _config_command() -> click.Command:
             raise ProjectConfigurationError(f"{input_path} does not match observed checkout {root}.")
         image = lock.get("image", {}).get("reference")
         component = lock.get("components", {}).get("interactive-surface")
-        if not image or component != "pycharm":
-            raise ProjectConfigurationError("The first run slice requires a lock selecting a PyCharm image.")
+        has_formation = isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict)
+        if component != "pycharm" or (not image and not has_formation):
+            raise ProjectConfigurationError(
+                "The V1 slice requires a lock selecting either a completed PyCharm image or PyCharm formation inputs."
+            )
         state = checkout.get("state", {}).get("adopted", {})
         host = checkout.get("host", {})
         lines = [
@@ -234,10 +238,11 @@ def _config_command() -> click.Command:
             'workstation-config = "absent"',
             "",
             "[runtime]",
-            f"image = {quote_toml(str(image))}",
             f"component = {quote_toml(str(component))}",
             f"project-mount = {quote_toml(str(manifest['project']['mount']))}",
         ]
+        if image:
+            lines.append(f"image = {quote_toml(str(image))}")
         if state:
             lines.extend(["", "[state.adopted]"])
             lines.extend(

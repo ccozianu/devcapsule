@@ -3,10 +3,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import shutil
+import tomllib
 from unittest.mock import patch
 
 from devcapsule import cli
 from devcapsule.project_configuration import registered_checkouts
+from devcapsule.project_configuration import canonical_digest
 
 
 def initialize_project(project: Path) -> None:
@@ -132,3 +134,55 @@ def test_project_list_does_not_scan_unregistered_source_trees(tmp_path: Path, ca
         assert cli.main(["project", "list"]) == 0
 
     assert "No registered DevCapsule project checkouts" in capsys.readouterr().out
+
+
+def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        manifest_path = project / ".devcapsule" / "devcapsule.toml"
+        with manifest_path.open("rb") as stream:
+            manifest = tomllib.load(stream)
+        lock_path = project / ".devcapsule" / "devcapsule.linux-amd64.lock"
+        lock_path.write_text(
+            "\n".join(
+                [
+                    "devcapsule-lock-format-version = 1",
+                    'resolution-matrix-version = "formation-v1"',
+                    f'manifest-digest = "{canonical_digest(manifest)}"',
+                    'platform = "linux-amd64"',
+                    "",
+                    "[base]",
+                    'reference = "base@sha256:manifest"',
+                    "",
+                    "[components]",
+                    'interactive-surface = "pycharm"',
+                    "",
+                    "[components.pycharm]",
+                    'version = "2026.2.0.1"',
+                    'variant = "professional"',
+                    'delivery-policy = "local-materialization"',
+                    'url = "https://example.test/pycharm.tar.gz"',
+                    f'sha256 = "{"a" * 64}"',
+                    "",
+                    "[materialization]",
+                    'recipe = "jetbrains-local-materialization"',
+                    'recipe-version = "1"',
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+
+        records = registered_checkouts()
+        resolved_path = records[0].record_path.with_name("devcapsule.resolved.toml")
+        with resolved_path.open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert resolved["runtime"]["component"] == "pycharm"
+        assert "image" not in resolved["runtime"]

@@ -30,6 +30,7 @@ same change.
 - [Decision record template](docs/decisions/_template.md)
 - [D-0001 Capability-First CLI Model](docs/decisions/d-0001-capability-first-cli-model.md)
 - [D-0004 Configuration Resolution And Guided Run Experience](docs/decisions/d-0004-configuration-resolution-and-guided-run.md)
+- [D-0005 Agent-Neutral Base And Optional Agent Components](docs/decisions/d-0005-agent-neutral-base-and-optional-agent-components.md)
 
 ## Specifications
 

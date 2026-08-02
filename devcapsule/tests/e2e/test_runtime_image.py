@@ -14,7 +14,7 @@ import pytest
 
 from devcapsule.base_image import BaseImageBuildOptions, build_base_image_spec, file_sha256
 from devcapsule.image_build import render_build_context
-from devcapsule.materialization import ArtifactSpec, ensure_materialized_pycharm
+from devcapsule.materialization import ArtifactSpec, ImageDetails, ensure_materialized_pycharm
 
 DEFAULT_BASE_IMAGE = "mycodespace.ai/pycharm:debug-v018"
 
@@ -103,8 +103,18 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
         cache = tmp_path / "materialization-cache"
         build_count = 0
 
-        def image_exists(candidate: str) -> bool:
-            return command(docker, "image", "inspect", candidate, check=False).returncode == 0
+        def inspect_image(candidate: str) -> ImageDetails | None:
+            inspected = command(docker, "image", "inspect", candidate, check=False)
+            if inspected.returncode != 0:
+                return None
+            value = json.loads(inspected.stdout)[0]
+            return ImageDetails(
+                reference=candidate,
+                identity=value["Id"],
+                labels=value["Config"].get("Labels") or {},
+                operating_system=value["Os"],
+                architecture=value["Architecture"],
+            )
 
         def build_materialized(materialization_spec) -> None:
             nonlocal build_count
@@ -115,10 +125,12 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
             command(docker, "build", "--pull=false", "--tag", materialization_spec.image, str(context))
 
         materialized_image, created = ensure_materialized_pycharm(
-            base_image=image,
+            base_reference=image,
+            base_identity=inspection["Id"],
+            platform=f"{inspection['Os']}-{inspection['Architecture']}",
             artifact=artifact,
             cache_root=cache,
-            image_exists=image_exists,
+            inspect_image=inspect_image,
             build=build_materialized,
         )
         assert created is True
@@ -133,13 +145,36 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
             "-x",
             "/opt/jetbrains/pycharm/bin/pycharm.sh",
         )
+        command(
+            docker,
+            "run",
+            "--rm",
+            "--entrypoint",
+            "test",
+            materialized_image,
+            "-r",
+            "/etc/devcapsule/component-runtime-template.json",
+        )
+        command(
+            docker,
+            "run",
+            "--rm",
+            "--entrypoint",
+            "test",
+            materialized_image,
+            "!",
+            "-e",
+            "/etc/devcapsule/runtime-plan.json",
+        )
 
         archive.unlink()
         reused_image, created = ensure_materialized_pycharm(
-            base_image=image,
+            base_reference=image,
+            base_identity=inspection["Id"],
+            platform=f"{inspection['Os']}-{inspection['Architecture']}",
             artifact=artifact,
             cache_root=cache,
-            image_exists=image_exists,
+            inspect_image=inspect_image,
             build=build_materialized,
         )
         assert reused_image == materialized_image

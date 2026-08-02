@@ -1,15 +1,14 @@
-"""Shared image-tooling install snippets for active DevCapsule images."""
+"""Shared Node.js install plan for active DevCapsule images."""
 
 from __future__ import annotations
 
 from devcapsule.image_build import ExecComponent
 
 NODE_VERSION = "v22.23.1"
-GEMINI_CLI_VERSION = "0.50.0"
 NODE_CURRENT_BIN = "/opt/node/current/bin"
 
 
-def public_default_cli_tooling_component() -> ExecComponent:
+def node_tooling_component() -> ExecComponent:
     commands = [
         'arch="$(dpkg --print-architecture)"',
         'case "$arch" in amd64) node_arch="x64" ;; arm64) node_arch="arm64" ;; *) echo "Unsupported Node.js architecture: $arch" >&2; exit 1 ;; esac',
@@ -24,10 +23,8 @@ def public_default_cli_tooling_component() -> ExecComponent:
         'tar -xJf "${node_archive}" -C /opt/node',
         'ln -sfn "/opt/node/${node_dist}" /opt/node/current',
         f'export PATH="{NODE_CURRENT_BIN}:$PATH"',
-        f'npm install -g @google/gemini-cli@{GEMINI_CLI_VERSION}',
         'node --version',
         'npm --version',
-        'gemini --version',
         'npm cache clean --force',
         'rm -f "${node_archive}" SHASUMS256.txt',
     ]

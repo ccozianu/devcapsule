@@ -194,7 +194,7 @@ class PycharmConfiguration:
                     help="Extra apt package to install into the image. Repeat as needed.",
                 ),
             ],
-            help="Build the current Dockerized PyCharm image with pinned Node/npm and Gemini CLI support.",
+            help="Build the current Dockerized PyCharm image with pinned Node.js/npm tooling.",
         )
 
     def check_runtime_command(self, *, name: str = "check-runtime") -> click.Command:

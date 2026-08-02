@@ -143,6 +143,7 @@ def _managed_classification(labels: Mapping[str, str]) -> tuple[str, str, str]:
             recipe = f"{recipe} [WIP]"
     else:
         required = (
+            "devcapsule.materialization.descriptor",
             "devcapsule.materialization.identity",
             "devcapsule.materialization.recipe-version",
             "devcapsule.materialization.base-identity",

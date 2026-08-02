@@ -21,6 +21,7 @@ NEW_STATE_ROOT=${NEW_STATE_ROOT:-"$HOME/work/provisional/costin3/.state/myProjec
 CONTAINER_NAME=${CONTAINER_NAME:-devcapsule-dogfood-costin3}
 MEMORY_LIMIT=${MEMORY_LIMIT:-8GiB}
 DOGFOOD_IMAGE=${DOGFOOD_IMAGE:-devcapsule-local-pycharm:debug-v019}
+BASE_IMAGE=${BASE_IMAGE:-devcapsule-local-base:v019}
 PYTHON_BIN=${PYTHON_BIN:-python3.12}
 RUN_BUILD_GATE=${RUN_BUILD_GATE:-1}
 
@@ -50,6 +51,7 @@ echo "  checkout identity: $CHECKOUT_NAME"
 echo "  new state root:   $NEW_STATE_ROOT"
 echo "  memory limit:     $MEMORY_LIMIT"
 echo "  dogfood image:    $DOGFOOD_IMAGE"
+echo "  locked base:      $BASE_IMAGE"
 
 require_command git
 require_command docker
@@ -62,7 +64,7 @@ test -d "$SHARED_HOME" || fail "missing shared persistent home: $SHARED_HOME"
 test -d "$SHARED_PYCHARM_CONFIG" || fail "missing shared PyCharm config: $SHARED_PYCHARM_CONFIG"
 test -d "$SHARED_PYCHARM_PLUGINS" || fail "missing shared PyCharm plugins: $SHARED_PYCHARM_PLUGINS"
 docker image inspect "$DOGFOOD_IMAGE" >/dev/null || \
-  fail "run 'devcapsule images build --type environment --project CHECKOUT --alias $DOGFOOD_IMAGE' first"
+  fail "run 'devcapsule images build --type environment --project CHECKOUT --base $BASE_IMAGE --alias $DOGFOOD_IMAGE' first"
 
 IMAGE_INSPECTION=$(mktemp "${TMPDIR:-/tmp}/devcapsule-v019-image.XXXXXX.json")
 docker image inspect "$DOGFOOD_IMAGE" >"$IMAGE_INSPECTION"
@@ -85,11 +87,13 @@ assert config.get("Entrypoint") == [
 assert config.get("Cmd") == ["/etc/devcapsule/runtime-plan.json"], config.get("Cmd")
 assert labels.get("devcapsule.image.kind") == "materialized", labels
 assert labels.get("devcapsule.materialization.identity"), "missing materialization identity"
+assert labels.get("devcapsule.materialization.descriptor"), "missing canonical formation descriptor"
 assert labels.get("devcapsule.materialization.base-identity"), "missing base identity"
 assert labels.get("devcapsule.component.id") == "pycharm", labels
 assert labels.get("devcapsule.image.canonical-name"), "missing canonical image name"
 assert labels.get("devcapsule.pex.sha256"), "missing embedded PEX identity"
 assert labels.get("devcapsule.component.sha256"), "missing component artifact identity"
+assert labels.get("devcapsule.component.variant"), "missing component variant"
 print("v019 generic image contract: PASS")
 PY
 rm -f "$IMAGE_INSPECTION"
@@ -97,7 +101,9 @@ rm -f "$IMAGE_INSPECTION"
 docker run --rm --network none "$DOGFOOD_IMAGE" --help | \
   grep -F "usage: devcapsule runtime RUNTIME_PLAN.json" >/dev/null
 docker run --rm --network none --entrypoint test "$DOGFOOD_IMAGE" \
-  -r /etc/devcapsule/runtime-plan.json
+  -r /etc/devcapsule/component-runtime-template.json
+docker run --rm --network none --entrypoint test "$DOGFOOD_IMAGE" \
+  ! -e /etc/devcapsule/runtime-plan.json
 
 if docker container inspect devcapsule-dogfood-v1 >/dev/null 2>&1; then
   fail "close the existing devcapsule-dogfood-v1 container before sharing its home/config/plugins"
