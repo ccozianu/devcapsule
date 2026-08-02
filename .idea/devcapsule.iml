@@ -3,9 +3,13 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/devcapsule">
       <sourceFolder url="file://$MODULE_DIR$/devcapsule" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/devcapsule/build/lib" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/devcapsule/devcapsule" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/devcapsule/tests" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/devcapsule/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/devcapsule/devcapsule/assets" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.12 (docker4ides)" jdkType="Python SDK" />
+    <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

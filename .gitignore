@@ -5,3 +5,6 @@
 !/.devcapsule/
 !/.devcapsule/devcapsule.toml
 !/.devcapsule/devcapsule.*.lock
+
+# JetBrains records the developer's workstation-specific Python SDK here.
+/.idea/misc.xml
