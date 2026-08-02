@@ -12,6 +12,7 @@ nox.options.reuse_existing_virtualenvs = True
 PROJECT_ROOT = Path(__file__).parent
 REPO_ROOT = PROJECT_ROOT.parent
 TEST_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule-local.pex"
+PUBLIC_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -106,6 +107,34 @@ def build_test_pex(session: nox.Session) -> None:
     )
 
 
+def build_public_pex_if_clean(session: nox.Session) -> bool:
+    status = session.run(
+        "git",
+        "-C",
+        str(REPO_ROOT),
+        "status",
+        "--porcelain",
+        external=True,
+        silent=True,
+    )
+    if str(status).strip():
+        session.log(
+            "Not building dist/devcapsule.pex: the repository has uncommitted "
+            "changes. Any existing file at that path is unchanged and may be "
+            "stale. The local validation artifact is dist/devcapsule-local.pex."
+        )
+        return False
+
+    session.run(
+        str(PROJECT_ROOT / "scripts" / "build-pex.sh"),
+        "--output",
+        str(PUBLIC_PEX_PATH),
+        env={"PYTHON": "python"},
+        external=True,
+    )
+    return True
+
+
 def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run("python", str(path), "--help")
     session.run("python", str(path), "version", "--json")
@@ -182,3 +211,5 @@ def build(session: nox.Session) -> None:
     build_test_pex(session)
     smoke_pex(session)
     run_packaging_tests(session)
+    if build_public_pex_if_clean(session):
+        smoke_pex(session, PUBLIC_PEX_PATH)

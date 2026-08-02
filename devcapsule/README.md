@@ -132,16 +132,19 @@ For an explicit dirty or unpublished development build, use
 revision instead of presenting local bytes as public source. The Nox build
 gate uses this escape hatch because it validates changes before commit.
 
-For normal development, prefer the project build gate:
+For a deliberately local-only development artifact, use:
 
 ```bash
 python -m nox -s pex
 ```
 
-Nox writes its intentionally local-only artifact to
-`dist/devcapsule-local.pex`; it never creates or overwrites the publication
-path `dist/devcapsule.pex`. Use the local filename for development smoke tests
-and the strict script output for a base intended to be shared or published.
+This session writes its intentionally local-only artifact to
+`dist/devcapsule-local.pex`. The full `nox -s build` gate always builds and
+tests that local artifact too. If the repository is clean, the full gate also
+runs the strict public-source build and smoke-tests `dist/devcapsule.pex`. If
+the repository is dirty, it clearly reports that the public artifact was not
+built. A clean revision that is not advertised by the public GitHub repository
+still fails the strict build rather than producing a misleading artifact.
 
 If the contributor environment is not activated, point the script at it:
 
