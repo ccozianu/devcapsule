@@ -29,6 +29,8 @@ same change.
 
 - [Decision record template](docs/decisions/_template.md)
 - [D-0001 Capability-First CLI Model](docs/decisions/d-0001-capability-first-cli-model.md)
+- [D-0004 Configuration Resolution And Guided Run Experience](docs/decisions/d-0004-configuration-resolution-and-guided-run.md)
+- [D-0005 Agent-Neutral Base And Optional Agent Components](docs/decisions/d-0005-agent-neutral-base-and-optional-agent-components.md)
 
 ## Specifications
 
@@ -37,6 +39,8 @@ same change.
 ## Active DevCapsule Development
 
 - [DevCapsule Python CLI](devcapsule/README.md)
+- [DevCapsule V1 user experience design draft](devcapsule/docs/v1-user-experience.md)
+- [DevCapsule test suites](devcapsule/tests/README.md)
 - [DevCapsule implementation requirements overview](devcapsule/REQUIREMENTS.md)
 - [R-ENV-001 Dockerized PyCharm Runtime](devcapsule/docs/requirements/r-env-001-dockerized-pycharm-runtime.md)
 - [R-STATE-001 Persistent IDE State And Plugins](devcapsule/docs/requirements/r-state-001-persistent-ide-state-and-plugins.md)
@@ -78,6 +82,8 @@ same change.
 
 ## Implementation Notes And Decisions
 
+- [User-requested session-record policy](devcapsule/implementation-notes/session-records/README.md)
+- [D-0004 configuration and images CLI session record](devcapsule/implementation-notes/session-records/2026-08-01-d-0004-configuration-and-images-cli.md)
 - [Per-project IDE state split](docker4pycharm/implementation-notes/2026-06-21-per-project-ide-state-split.md)
 - [Git identity and remote credential transport](docker4pycharm/implementation-notes/2026-06-22-git-identity-and-credentials.md)
 - [Default JetBrains GL to Mesa software rendering](docker4pycharm/implementation-notes/2026-06-22-mesa-software-gl-default.md)
@@ -89,6 +95,7 @@ same change.
 - [Docker Hub namespace and publication plan](devcapsule/implementation-notes/2026-07-15-docker-hub-namespace-and-publication-plan.md)
 - [Capability-first PyCharm dogfood manual test](devcapsule/implementation-notes/2026-07-24-capability-first-dogfood-manual-test.md)
 - [Local PyCharm materialization and Python entrypoint](devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md)
+- [NVIDIA CUDA base recipe specialized validation](devcapsule/implementation-notes/2026-08-01-nvidia-cuda-base-recipe-validation.md)
 
 ## Bugs
 

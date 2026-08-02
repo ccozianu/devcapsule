@@ -3,13 +3,17 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
+import zipfile
 
 import click
 
 from devcapsule import cli, compat
 from devcapsule.configurations.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.configurations.vscode_with_claude import VscodeWithClaudeConfiguration
+from devcapsule.image_metadata import LocalImageRecord
+from devcapsule.materialization import ImageDetails
 
 
 def test_top_level_help_returns_success(capsys) -> None:
@@ -20,6 +24,18 @@ def test_top_level_help_returns_success(capsys) -> None:
     assert "pycharm" in output
     assert "vscode_with_claude" in output
     assert "codium_with_claude" in output
+    assert "runtime" in output
+    assert "version" in output
+    assert "images" in output
+    assert "project" in output
+
+
+def test_runtime_command_forwards_arguments_to_container_entrypoint() -> None:
+    with patch("devcapsule.commands.runtime.runtime_main", return_value=17) as runtime_main:
+        result = cli.main(["runtime", "plan.json", "--future-option", "value"])
+
+    assert result == 17
+    runtime_main.assert_called_once_with(["plan.json", "--future-option", "value"])
 
 
 def test_run_pycharm_uses_translated_python_launcher(tmp_path: Path) -> None:
@@ -83,10 +99,11 @@ def test_run_image_uses_pycharm_persistence_adapter(tmp_path: Path) -> None:
         run.return_value.returncode = 0
         result = cli.main(
             [
+                "project",
+                "--path",
+                str(project),
                 "run-image",
                 "mycodespace.ai/pycharm:debug-v017",
-                "--project",
-                str(project),
                 "--project-mount",
                 "/workspace/existing-checkout",
                 "--global-settings",
@@ -257,11 +274,16 @@ def test_top_level_commands_are_discovered() -> None:
     assert "pycharm" in commands
     assert "vscode_with_claude" in commands
     assert "codium_with_claude" in commands
-    assert "init" in commands
-    assert "lock" in commands
-    assert "config" in commands
-    assert "state" in commands
-    assert "run" in commands
+    assert "project" in commands
+    assert "images" in commands
+    assert "version" in commands
+    assert "init" not in commands
+    assert "lock" not in commands
+    assert "config" not in commands
+    assert "state" not in commands
+    assert "run" not in commands
+    assert "run-image" not in commands
+    assert "build-base" not in commands
     assert "bootstrap-project" not in commands
     assert "build" not in commands
     assert "check" not in commands
@@ -286,24 +308,30 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
     }
     with patch.dict(os.environ, env, clear=False):
         assert cli.main([
-            "init", str(project), "--creator", "dev@example.test",
+            "project", "--path", str(project), "init", "--creator", "dev@example.test",
             "--project-mount", "/workspace/existing", "--need", "python", "--need", "python-ide",
         ]) == 0
         manifest = project / ".devcapsule" / "devcapsule.toml"
         original = manifest.read_bytes()
-        assert cli.main(["init", str(project), "--creator", "dev@example.test", "--need", "python"]) == 2
+        assert cli.main([
+            "project", "--path", str(project), "init", "--creator", "dev@example.test", "--need", "python"
+        ]) == 2
         assert manifest.read_bytes() == original
-        assert cli.main(["lock", "--project", str(project), "--image", "local/pycharm:dogfood"]) == 0
+        assert cli.main([
+            "project", "--path", str(project), "lock", "--image", "local/pycharm:dogfood"
+        ]) == 0
         for slot, path in state_roots.items():
-            assert cli.main(["state", "adopt", slot, "--from", str(path), "--project", str(project)]) == 0
-        assert cli.main(["config", "resolve", "--project", str(project)]) == 0
+            assert cli.main([
+                "project", "--path", str(project), "state", "adopt", slot, "--from", str(path)
+            ]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
 
         with (
             patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
             patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
         ):
             run.return_value.returncode = 0
-            assert cli.main(["run", "--project", str(project)]) == 0
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
 
     command = run.call_args.args[0]
     assert "local/pycharm:dogfood" in command
@@ -318,6 +346,276 @@ def test_noun_first_pycharm_command_order_is_not_supported() -> None:
     assert cli.main(["check", "runtime", "pycharm"]) == 2
 
 
+def test_images_list_prints_managed_local_inventory(capsys) -> None:
+    record = LocalImageRecord(
+        kind="base",
+        canonical_name="devcapsule-base:debug-v019",
+        aliases=("devcapsule-base:test",),
+        image_id="1234567890ab",
+        component="-",
+        recipe="1",
+        created="2026-08-01",
+        size="1.0 GiB",
+    )
+    with patch("devcapsule.commands.images.list_local_images", return_value=(record,)) as list_images:
+        result = cli.main(["images", "list", "--include-legacy"])
+
+    assert result == 0
+    list_images.assert_called_once_with(include_legacy=True)
+    output = capsys.readouterr().out
+    assert "CANONICAL" in output
+    assert "devcapsule-base:debug-v019" in output
+    assert "devcapsule-base:test" in output
+    assert "1234567890ab" in output
+
+
+def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
+    pex = tmp_path / "devcapsule.pex"
+    pex.write_bytes(b"pex")
+    inspected = SimpleNamespace(
+        id="sha256:abc123",
+        config=SimpleNamespace(
+            labels={
+                "devcapsule.base.recipe-version": "1",
+                "devcapsule.pex.sha256": "a" * 64,
+                "devcapsule.source.revision": "revision-1",
+            }
+        ),
+    )
+
+    with (
+        patch("devcapsule.commands.images.build_base_image") as build,
+        patch("devcapsule.commands.images.inspect_local_image", return_value=inspected),
+    ):
+        result = cli.main(
+            [
+                "images",
+                "build",
+                "--type",
+                "base",
+                "--tag",
+                "devcapsule-base:debug-v019",
+                "--from",
+                "local-root:test",
+                "--pex",
+                str(pex),
+                "--source-revision",
+                "revision-1",
+                "--network",
+                "host",
+            ]
+        )
+
+    assert result == 0
+    options = build.call_args.args[0]
+    assert options.pex == pex.resolve()
+    assert options.image == "devcapsule-base:debug-v019"
+    assert options.root_image == "local-root:test"
+    assert options.source_revision == "revision-1"
+    assert options.allow_local_source is False
+    assert options.recipe == "ubuntu-24.04"
+    assert build.call_args.kwargs == {"network": "host"}
+    output = capsys.readouterr().out
+    assert "Image ID: sha256:abc123" in output
+    assert "Source verification: public GitHub commit reachable" in output
+
+
+def test_images_build_base_selects_wip_nvidia_cuda_recipe(tmp_path: Path, capsys) -> None:
+    pex = tmp_path / "devcapsule.pex"
+    pex.write_bytes(b"pex")
+    inspected = SimpleNamespace(
+        id="sha256:cuda123",
+        config=SimpleNamespace(
+            labels={
+                "devcapsule.base.recipe": "nvidia-cuda-devel",
+                "devcapsule.base.recipe-version": "1",
+                "devcapsule.base.recipe-status": "wip",
+            }
+        ),
+    )
+
+    with (
+        patch("devcapsule.commands.images.build_base_image") as build,
+        patch("devcapsule.commands.images.inspect_local_image", return_value=inspected),
+    ):
+        result = cli.main(
+            [
+                "images",
+                "build",
+                "--type",
+                "base",
+                "--recipe",
+                "nvidia-cuda-devel",
+                "--tag",
+                "devcapsule-base:cuda",
+                "--pex",
+                str(pex),
+                "--source-revision",
+                "a" * 40,
+            ]
+        )
+
+    assert result == 0
+    options = build.call_args.args[0]
+    assert options.recipe == "nvidia-cuda-devel"
+    assert options.root_image is None
+    captured = capsys.readouterr()
+    assert "nvidia/cuda:12.8.1-devel-ubuntu24.04" in captured.out
+    assert "nvidia-cuda-devel@1 (WIP)" in captured.out
+    assert "requires specialized NVIDIA GPU E2E validation" in captured.err
+
+
+def test_images_build_base_requires_pex_from_source(tmp_path: Path, capsys) -> None:
+    with patch("devcapsule.commands.images.sys.argv", [str(tmp_path / "devcapsule")]):
+        result = cli.main(
+            [
+                "images",
+                "build",
+                "--type",
+                "base",
+                "--tag",
+                "test:latest",
+                "--source-revision",
+                "a" * 40,
+            ]
+        )
+
+    assert result == 2
+    assert "--pex is required" in capsys.readouterr().err
+
+
+def test_images_build_base_defaults_to_running_pex(tmp_path: Path, capsys) -> None:
+    pex = tmp_path / "devcapsule.pex"
+    with zipfile.ZipFile(pex, "w") as archive:
+        archive.writestr("PEX-INFO", "{}")
+    inspected = SimpleNamespace(id="sha256:abc", config=SimpleNamespace(labels={}))
+
+    with (
+        patch("devcapsule.commands.images.sys.argv", [str(pex)]),
+        patch("devcapsule.commands.images.build_base_image") as build,
+        patch("devcapsule.commands.images.inspect_local_image", return_value=inspected),
+    ):
+        assert (
+            cli.main(
+                ["images", "build", "--type", "base", "--tag", "test:latest", "--allow-local-source"]
+            )
+            == 0
+        )
+
+    assert build.call_args.args[0].pex == pex.resolve()
+    assert build.call_args.args[0].recipe == "ubuntu-24.04"
+    assert build.call_args.args[0].allow_local_source is True
+    assert "Source verification: bypassed for explicit local source" in capsys.readouterr().out
+
+
+def test_images_build_base_requires_public_revision_by_default(tmp_path: Path, capsys) -> None:
+    pex = tmp_path / "devcapsule.pex"
+    pex.write_bytes(b"pex")
+
+    result = cli.main(
+        ["images", "build", "--type", "base", "--tag", "test:latest", "--pex", str(pex)]
+    )
+
+    assert result == 2
+    assert "--source-revision is required" in capsys.readouterr().err
+
+
+def test_images_build_environment_uses_fresh_project_lock_and_verified_base(tmp_path: Path, capsys) -> None:
+    lock = {
+        "platform": "linux-amd64",
+        "base": {"reference": "locked-base@sha256:manifest", "identity": "sha256:base"},
+        "components": {
+            "interactive-surface": "pycharm",
+            "pycharm": {
+                "version": "2026.2.0.1",
+                "variant": "professional",
+                "delivery-policy": "local-materialization",
+                "url": "https://example.test/pycharm.tar.gz",
+                "sha256": "a" * 64,
+            },
+        },
+        "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
+    }
+    project = SimpleNamespace(lock=lock, resolution={"runtime": {"component": "pycharm"}})
+    base = ImageDetails(
+        "locked-base@sha256:manifest",
+        "sha256:base",
+        {
+            "devcapsule.image.managed": "true",
+            "devcapsule.metadata.version": "1",
+            "devcapsule.image.kind": "base",
+        },
+        "linux",
+        "amd64",
+    )
+    completed = ImageDetails(
+        "devcapsule-local-pycharm:0123456789abcdef0123",
+        "sha256:environment",
+        {"devcapsule.materialization.identity": "f" * 64},
+        "linux",
+        "amd64",
+    )
+
+    with (
+        patch("devcapsule.commands.images.fresh_resolved_project", return_value=project) as fresh,
+        patch("devcapsule.commands.images._ensure_local_image", return_value=base),
+        patch(
+            "devcapsule.commands.images.ensure_materialized_pycharm",
+            return_value=(completed.reference, True),
+        ) as materialize,
+        patch("devcapsule.commands.images._required_local_image", return_value=completed),
+        patch("devcapsule.commands.images._add_alias") as add_alias,
+        patch.dict(os.environ, {"HOME": str(tmp_path / "home"), "XDG_CACHE_HOME": str(tmp_path / "cache")}),
+    ):
+        result = cli.main(
+            [
+                "images",
+                "build",
+                "--type",
+                "environment",
+                "--project",
+                str(tmp_path / "project"),
+                "--alias",
+                "devcapsule-local-pycharm:debug-v019",
+            ]
+        )
+
+    assert result == 0
+    fresh.assert_called_once_with(tmp_path / "project")
+    assert materialize.call_args.kwargs["base_reference"] == "locked-base@sha256:manifest"
+    assert materialize.call_args.kwargs["base_identity"] == "sha256:base"
+    assert materialize.call_args.kwargs["platform"] == "linux-amd64"
+    assert materialize.call_args.kwargs["cache_root"] == (tmp_path / "cache" / "devcapsule")
+    add_alias.assert_called_once_with(completed, "devcapsule-local-pycharm:debug-v019")
+    output = capsys.readouterr().out
+    assert "Built DevCapsule environment image" in output
+    assert "No container was launched" in output
+
+
+def test_images_build_environment_requires_immutable_locked_base(capsys) -> None:
+    lock = {
+        "platform": "linux-amd64",
+        "base": {"reference": "devcapsule-base:debug-v019"},
+        "components": {
+            "interactive-surface": "pycharm",
+            "pycharm": {
+                "version": "2026.2.0.1",
+                "variant": "professional",
+                "delivery-policy": "local-materialization",
+                "url": "https://example.test/pycharm.tar.gz",
+                "sha256": "a" * 64,
+            },
+        },
+        "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
+    }
+    project = SimpleNamespace(lock=lock, resolution={"runtime": {"component": "pycharm"}})
+    with patch("devcapsule.commands.images.fresh_resolved_project", return_value=project):
+        result = cli.main(["images", "build", "--type", "environment"])
+
+    assert result == 2
+    assert "lock base is not immutable" in capsys.readouterr().err
+
+
 def test_bootstrap_project_alias_is_not_supported() -> None:
     assert cli.main(["bootstrap-project", "--project", "/tmp/example"]) == 2
 
@@ -327,6 +625,8 @@ def test_vscode_with_claude_configuration_is_registered(capsys) -> None:
 
     assert result == 0
     output = capsys.readouterr().out
+    assert "WIP" in output
+    assert "not implemented" in output
     assert "run" in output
     assert "build" in output
 
@@ -363,3 +663,5 @@ def test_build_pex_script_is_available() -> None:
 
     assert completed.returncode == 0
     assert "dist/devcapsule.pex" in completed.stdout
+    assert "--allow-unpublished-revision" in completed.stdout
+    assert "--allow-local-source" in completed.stdout

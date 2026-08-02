@@ -47,6 +47,7 @@ class ImageBuildPlan:
     files: tuple[FileCopy, ...] = ()
     exec_steps: tuple[ExecStep, ...] = ()
     entrypoint: tuple[str, ...] = ()
+    command: tuple[str, ...] = ()
 
     def add_apt_packages(self, *packages: str) -> ImageBuildPlan:
         return replace(self, apt_packages=self.apt_packages + tuple(packages))
@@ -71,6 +72,9 @@ class ImageBuildPlan:
 
     def set_entrypoint(self, *args: str) -> ImageBuildPlan:
         return replace(self, entrypoint=tuple(args))
+
+    def set_command(self, *args: str) -> ImageBuildPlan:
+        return replace(self, command=tuple(args))
 
 
 class BuildComponent(Protocol):
@@ -145,6 +149,14 @@ class EntrypointComponent:
 
 
 @dataclass(frozen=True)
+class CommandComponent:
+    args: tuple[str, ...]
+
+    def apply(self, plan: ImageBuildPlan) -> ImageBuildPlan:
+        return plan.set_command(*self.args)
+
+
+@dataclass(frozen=True)
 class ImageBuildSpec:
     image: str
     base_image: str
@@ -160,12 +172,19 @@ class ImageBuildSpec:
 class BuildxImageBuilder:
     """Build a planned image through the local Docker CLI via python-on-whales."""
 
+    def __init__(self, temporary_root: Path | None = None) -> None:
+        self.temporary_root = temporary_root
+
     def build(self, spec: ImageBuildSpec, *, network: str = "default") -> None:
         plan = spec.build_plan()
-        with tempfile.TemporaryDirectory(prefix="devcapsule-buildx-context-") as temp_dir:
-            context_root = Path(temp_dir)
-            dockerfile_path = render_build_context(plan, context_root)
-            try:
+        if self.temporary_root is not None:
+            self.temporary_root.mkdir(parents=True, exist_ok=True)
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="devcapsule-buildx-context-", dir=self.temporary_root
+            ) as temp_dir:
+                context_root = Path(temp_dir)
+                dockerfile_path = render_build_context(plan, context_root)
                 if network == "host":
                     docker.build(
                         context_root,
@@ -183,8 +202,11 @@ class BuildxImageBuilder:
                         load=True,
                         network=network,
                     )
-            except DockerException as exc:
-                raise CliError(str(exc)) from exc
+        except DockerException as exc:
+            raise CliError(str(exc)) from exc
+        except OSError as exc:
+            location = self.temporary_root or Path(tempfile.gettempdir())
+            raise CliError(f"Cannot prepare Docker build context beneath {location}: {exc}") from exc
 
 
 def render_build_context(plan: ImageBuildPlan, context_root: Path) -> Path:
@@ -228,6 +250,8 @@ def render_build_context(plan: ImageBuildPlan, context_root: Path) -> Path:
         dockerfile_lines.append(f"LABEL {name}={shell_env_value(value)}")
     if plan.entrypoint:
         dockerfile_lines.append(f"ENTRYPOINT {json.dumps(list(plan.entrypoint))}")
+    if plan.command:
+        dockerfile_lines.append(f"CMD {json.dumps(list(plan.command))}")
 
     dockerfile_path = context_root / "Dockerfile"
     dockerfile_path.write_text("\n".join(dockerfile_lines) + "\n", encoding="utf-8")

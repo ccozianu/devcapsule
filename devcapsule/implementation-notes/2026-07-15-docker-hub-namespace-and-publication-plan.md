@@ -2,7 +2,7 @@
 
 Date: 2026-07-15
 
-Status: open V1 publication task
+Status: namespace and initial push path validated; official V1 artifacts remain blocking
 
 ## Why This Note Exists
 
@@ -53,44 +53,112 @@ immediately before public release.
 For V1, prefer an organization-owned Docker Hub namespace rather than a
 personal namespace.
 
-Recommended target shape:
+Adopted organization namespace:
 
 ```text
-mycodespaceai/devcapsule
+mycodespaceai
 ```
 
-Potential repository/tag examples:
+The reusable development base uses a dedicated repository:
 
 ```text
-mycodespaceai/devcapsule:pycharm-latest
-mycodespaceai/devcapsule:codium-latest
-mycodespaceai/devcapsule:pycharm-v1
-mycodespaceai/devcapsule:codium-v1
+mycodespaceai/devcapsule-base:<recipe-and-release>
 ```
 
-Whether PyCharm and Codium should share one repository with differentiated tags
-or use separate repositories should be decided as part of the release process.
+Environment-image publication remains a separate later decision because the
+current PyCharm environment is materialized locally from the published base
+and checksum-pinned vendor artifact.
+
+## Initial Push Validation
+
+On 2026-08-02, the user confirmed a successful host-authenticated push of:
+
+```text
+docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v019
+```
+
+Docker Hub assigned repository digest:
+
+```text
+sha256:637f646a9de962cb399025c2bf3817b08e242d2a4416b49a202cf06763852feb
+```
+
+The digest resolves locally to image ID
+`sha256:7e81e49d7b9c3a82faae8af4de4e3eed927f13261d8f0040af0aa23f64963dee`,
+the same content used to form the validated v019 dogfood environment. The
+committed Linux dogfood lock now uses the globally resolvable digest reference,
+not the mutable discovery tag or workstation-local image ID.
+
+This validates the namespace and push path only. The image records source
+revision `unknown`, a local canonical-name label, and the superseded ambient
+Gemini CLI baseline, so it is not an official V1 release artifact. The next
+candidate must use agent-neutral base recipe version 2 or later.
+
+A subsequent digest pull succeeded from the credential-isolated dogfood
+capsule, confirming that the repository is public and the reference resolves
+without the user's Docker Hub credentials. Because the layers were already
+present in the shared Docker store, the required clean-store pull validation
+remains open.
+
+## V1 Release Versioning
+
+Internal checkpoint tags such as `v019` are dogfood identifiers and must not
+be presented as polished V1 versions. Release candidates and general
+availability artifacts use semantic product versions:
+
+```text
+mycodespaceai/devcapsule-base:ubuntu-24.04-1.0.0-rc.1
+mycodespaceai/devcapsule-base:ubuntu-24.04-1.0.0
+devcapsule-1.0.0-rc.1.pex
+devcapsule-1.0.0.pex
+```
+
+Floating convenience tags may be considered only after the immutable release
+is validated. Committed locks always use the registry digest, never a version
+tag. Official artifacts must record the actual source revision and version,
+publish checksums/digests and a basic security-scan result, and pass clean
+pull/download checks. These are V1 trust inputs for a human authorizing one
+exact digest; they are not verifiable build provenance. Signed SBOMs,
+attestations, automated provenance/publisher verification, and policy
+enforcement are deferred to the explicit V2 supply-chain task.
+
+Source disclosure is now consistent across artifact boundaries. Base images
+carry `org.opencontainers.image.source` and
+`org.opencontainers.image.revision` in addition to the existing
+`devcapsule.source.revision`; the source value must identify the public GitHub
+repository and the revision must be a full public commit. The PEX embeds
+the same commit and canonical GitHub commit URL at packaging time and exposes
+them through the read-only `devcapsule version --json`, even when
+the PEX is copied away from its source checkout. Release validation compares
+the image and PEX values, verifies that the URL resolves publicly, and rejects
+`unknown`, a dirty-tree pseudo-revision, abbreviated hashes, or unrelated
+commits. This improves inspectability but does not claim that the artifacts are
+reproducible or cryptographically proven to derive from the disclosed commit.
 
 ## Required V1 Follow-Up Work
 
-1. Claim the chosen Docker Hub namespace, ideally as an organization.
+1. Keep the `mycodespaceai` Docker Hub organization and repository ownership
+   documented.
 2. Verify whether `mycodespace.ai` should also be added as a verified domain
    for the Docker organization/company account.
-3. Choose the public repository naming scheme:
-   - single repository with tags per IDE; or
-   - separate repositories per IDE/runtime family.
+3. Retain `mycodespaceai/devcapsule-base` for reusable bases and decide later
+   whether any pre-materialized environment family warrants another repository.
 4. Decide which Docker subscription tier is acceptable for projected pull
    volume and private/public needs.
 5. Build release-ready images from the active `devcapsule` implementation.
-6. Perform a real push/pull validation using the target namespace.
-7. Document the end-user pull commands in current user docs.
+6. Use the implemented strict PEX/image source-disclosure checks for each
+   publication candidate and retain their output with the release evidence.
+7. Perform a clean pull validation using the published digest; the initial push
+   path is already validated.
+8. Document the end-user pull commands in current user docs.
 
 ## Minimal Push Flow To Reuse Later
 
 ```bash
 docker login
-docker tag devcapsule:latest mycodespaceai/devcapsule:latest
-docker push mycodespaceai/devcapsule:latest
+docker tag devcapsule-base:release-candidate \
+  mycodespaceai/devcapsule-base:ubuntu-24.04-1.0.0-rc.1
+docker push mycodespaceai/devcapsule-base:ubuntu-24.04-1.0.0-rc.1
 ```
 
 Adjust the repository and tag names once the final publication layout is
@@ -98,9 +166,8 @@ chosen.
 
 ## Open Questions
 
-- Which Docker Hub namespace is actually available and preferable:
-  `mycodespaceai`, `mycodespace`, or another close variant?
-- Should V1 ship one repository with multiple image tags, or distinct
-  repositories per environment?
+- Should V1 publish only the default Ubuntu base, or also promote the CUDA
+  recipe after its specialized validation closes?
+- Which release host should publish the PEX and checksum manifest?
 - Is a Personal account sufficient for early testing, or should V1 start on an
   organization-backed paid plan immediately?

@@ -44,3 +44,10 @@ index.md
 Whenever you add a new `.md` file, delete an existing `.md` file, or rename or
 move a `.md` file, update `index.md` in the same change so it continues to list
 all markdown documentation using relative links grouped by category.
+
+Persist a consequential chat or working session beneath the relevant
+`implementation-notes/session-records/` directory only when the user explicitly
+requests it. Default to a detailed, sanitized agent-authored record; use a
+summary when requested, and call a record verbatim only when the user or IDE
+supplies an export. Follow `WORKFLOW.md` and the directory README, keep canonical
+decisions/requirements/status in their normal files, and update `index.md`.

@@ -1,10 +1,23 @@
 devcapsule-lock-format-version = 1
 resolution-matrix-version = "dogfood-v1"
-manifest-digest = "cd4e4d02fa30b302016b0db09d50cf1c44ea34152be0089d26b05d97c503483d"
+manifest-digest = "8fd7b824f96cc3daf8000390f75197e94de924352474c1aea18c176490106a56"
 platform = "linux-amd64"
 
-[image]
-reference = "mycodespace.ai/pycharm:debug-v018"
+[base]
+# Globally resolvable dogfood base. The digest, rather than the mutable v019
+# discovery tag, is the committed formation input.
+reference = "docker.io/mycodespaceai/devcapsule-base@sha256:637f646a9de962cb399025c2bf3817b08e242d2a4416b49a202cf06763852feb"
 
 [components]
 interactive-surface = "pycharm"
+
+[components.pycharm]
+version = "2026.2.0.1"
+variant = "professional"
+delivery-policy = "local-materialization"
+url = "https://download.jetbrains.com/python/pycharm-2026.2.0.1.tar.gz"
+sha256 = "4a37cb2d15703553c61e814d8e014bfa47308508470de5f968c4e9645b771675"
+
+[materialization]
+recipe = "jetbrains-local-materialization"
+recipe-version = "1"

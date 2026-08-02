@@ -11,7 +11,8 @@ nox.options.reuse_existing_virtualenvs = True
 
 PROJECT_ROOT = Path(__file__).parent
 REPO_ROOT = PROJECT_ROOT.parent
-PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
+TEST_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule-local.pex"
+PUBLIC_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -35,7 +36,36 @@ def check_shell_syntax(session: nox.Session) -> None:
 
 
 def run_tests(session: nox.Session) -> None:
-    session.run("python", "-m", "pytest", str(PROJECT_ROOT))
+    session.run("python", "-m", "pytest", str(PROJECT_ROOT / "tests"))
+
+
+def run_packaging_tests(session: nox.Session) -> None:
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "--no-cov",
+        "-m",
+        "integration",
+        str(PROJECT_ROOT / "tests" / "integration"),
+    )
+
+
+def run_e2e_tests(session: nox.Session) -> None:
+    environment: dict[str, str] = {}
+    base_image = session.env.get("DEVCAPSULE_E2E_BASE_IMAGE")
+    if base_image is not None:
+        environment["DEVCAPSULE_E2E_BASE_IMAGE"] = base_image
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "--no-cov",
+        "-m",
+        "e2e",
+        str(PROJECT_ROOT / "tests" / "e2e"),
+        env=environment,
+    )
 
 
 def run_typecheck(session: nox.Session) -> None:
@@ -52,8 +82,15 @@ def run_typecheck(session: nox.Session) -> None:
 
 def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "--help")
+    session.run("python", "-m", "devcapsule", "version", "--json")
+    session.run("python", "-m", "devcapsule", "runtime", success_codes=[2])
     session.run("python", "-m", "devcapsule", "pycharm", "run", "--help")
-    session.run("python", "-m", "devcapsule", "run-image", "--help")
+    session.run("python", "-m", "devcapsule", "project", "--help")
+    session.run("python", "-m", "devcapsule", "project", "list", "--help")
+    session.run("python", "-m", "devcapsule", "project", "config", "resolve", "--help")
+    session.run("python", "-m", "devcapsule", "project", "run-image", "--help")
+    session.run("python", "-m", "devcapsule", "images", "list", "--help")
+    session.run("python", "-m", "devcapsule", "images", "build", "--help")
     session.run("python", "-m", "devcapsule", "pycharm", "build", "--help")
     session.run("python", "-m", "devcapsule", "vscode_with_claude", "--help")
     session.run("python", "-m", "devcapsule", "codium_with_claude", "build", "--help")
@@ -61,22 +98,61 @@ def run_smoke(session: nox.Session) -> None:
     session.run(str(REPO_ROOT / "docker4pycharm" / "run-pycharm-container.sh"), "--help", external=True)
 
 
-def build_pex(session: nox.Session) -> None:
+def build_test_pex(session: nox.Session) -> None:
     session.run(
         str(PROJECT_ROOT / "scripts" / "build-pex.sh"),
+        "--output",
+        str(TEST_PEX_PATH),
+        "--allow-local-source",
         env={"PYTHON": "python"},
         external=True,
     )
 
 
-def smoke_pex(session: nox.Session) -> None:
-    session.run("python", str(PEX_PATH), "--help")
-    session.run("python", str(PEX_PATH), "pycharm", "run", "--help")
-    session.run("python", str(PEX_PATH), "run-image", "--help")
-    session.run("python", str(PEX_PATH), "pycharm", "build", "--help")
-    session.run("python", str(PEX_PATH), "vscode_with_claude", "--help")
-    session.run("python", str(PEX_PATH), "codium_with_claude", "build", "--help")
-    session.run("python", str(PEX_PATH), "codium_with_claude", "run", "--help")
+def build_public_pex_if_clean(session: nox.Session) -> bool:
+    status = session.run(
+        "git",
+        "-C",
+        str(REPO_ROOT),
+        "status",
+        "--porcelain",
+        external=True,
+        silent=True,
+    )
+    if str(status).strip():
+        session.log(
+            "Not building dist/devcapsule.pex: the repository has uncommitted "
+            "changes. Any existing file at that path is unchanged and may be "
+            "stale. The local validation artifact is dist/devcapsule-local.pex."
+        )
+        return False
+
+    session.run(
+        str(PROJECT_ROOT / "scripts" / "build-pex.sh"),
+        "--output",
+        str(PUBLIC_PEX_PATH),
+        "--allow-unpublished-revision",
+        env={"PYTHON": "python"},
+        external=True,
+    )
+    return True
+
+
+def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
+    session.run("python", str(path), "--help")
+    session.run("python", str(path), "version", "--json")
+    session.run("python", str(path), "runtime", success_codes=[2])
+    session.run("python", str(path), "pycharm", "run", "--help")
+    session.run("python", str(path), "project", "--help")
+    session.run("python", str(path), "project", "list", "--help")
+    session.run("python", str(path), "project", "config", "resolve", "--help")
+    session.run("python", str(path), "project", "run-image", "--help")
+    session.run("python", str(path), "images", "list", "--help")
+    session.run("python", str(path), "images", "build", "--help")
+    session.run("python", str(path), "pycharm", "build", "--help")
+    session.run("python", str(path), "vscode_with_claude", "--help")
+    session.run("python", str(path), "codium_with_claude", "build", "--help")
+    session.run("python", str(path), "codium_with_claude", "run", "--help")
 
 
 @nox.session(python="3.12")
@@ -109,8 +185,22 @@ def typecheck(session: nox.Session) -> None:
 def pex(session: nox.Session) -> None:
     install_locked(session)
     check_shell_syntax(session)
-    build_pex(session)
+    build_test_pex(session)
     smoke_pex(session)
+
+
+@nox.session(python="3.12")
+def integration(session: nox.Session) -> None:
+    install_locked(session)
+    build_test_pex(session)
+    run_packaging_tests(session)
+
+
+@nox.session(python="3.12")
+def e2e(session: nox.Session) -> None:
+    install_locked(session)
+    build_test_pex(session)
+    run_e2e_tests(session)
 
 
 @nox.session(python="3.12")
@@ -121,5 +211,8 @@ def build(session: nox.Session) -> None:
     run_typecheck(session)
     run_tests(session)
     run_smoke(session)
-    build_pex(session)
+    build_test_pex(session)
     smoke_pex(session)
+    run_packaging_tests(session)
+    if build_public_pex_if_clean(session):
+        smoke_pex(session, PUBLIC_PEX_PATH)

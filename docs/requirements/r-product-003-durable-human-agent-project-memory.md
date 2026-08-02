@@ -33,6 +33,8 @@ durable files for project memory and those files are actually used during work.
 Verification evidence may include:
 
 - workflow docs that define the project-memory protocol;
+- explicitly requested consequential-session records that link back to the
+  canonical decisions, requirements, validation, and handoff they influenced;
 - handoff state in `README.md`;
 - bug, decision, and completed-task records under durable paths.
 

@@ -1,17 +1,19 @@
 # DevCapsule
 
-[![Tests](https://github.com/ccozianu/ChatGpt_Codex/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ccozianu/ChatGpt_Codex/actions/workflows/tests.yml)
-[![Coverage](docs/badges/coverage.svg)](https://github.com/ccozianu/ChatGpt_Codex/actions/workflows/tests.yml)
+[![Tests](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
+[![Coverage](docs/badges/coverage.svg)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
 
 DevCapsule creates reproducible, resumable development environments for humans
 and AI coding agents. It combines a real IDE, agent-ready development tooling,
 versioned project memory, and explicit boundaries around access to the host.
 
 The active implementation is the Python package and CLI in `devcapsule/`.
-The current public command model is transitional and configuration-first:
+Project lifecycle operations and workstation image operations now have
+separate noun-oriented command trees:
 
 ```text
-devcapsule CONFIGURATION ACTION [options]
+devcapsule project [--path PATH] SUBCOMMAND [options]
+devcapsule images SUBCOMMAND [options]
 ```
 
 The adopted target model is capability-first: projects declare what their
@@ -45,8 +47,13 @@ python -m nox -s build
 ```
 
 The full gate includes compilation, shell syntax checks, pytest, type checks,
-CLI smoke tests, PEX construction, and PEX smoke tests. To deliberately discard
-cached Nox environments, add `--no-reuse-existing-virtualenvs`.
+CLI smoke tests, PEX construction, and PEX smoke tests. It always creates the
+local-only `dist/devcapsule-local.pex`. On a clean repository it also creates
+and smoke-tests `dist/devcapsule.pex` with the exact `HEAD` revision, without
+requiring that revision to have been pushed already. On a dirty repository it
+explicitly reports that the revision-bearing artifact was skipped. To
+deliberately discard cached Nox environments, add
+`--no-reuse-existing-virtualenvs`.
 
 For CLI installation and usage, see [`devcapsule/README.md`](devcapsule/README.md).
 

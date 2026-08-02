@@ -163,6 +163,28 @@ postgres/data
 They are not a fixed list. An IDE that keeps all durable state correctly under
 `HOME` need not declare any IDE-specific slots.
 
+The versioned component runtime template is the authoritative interface. It
+declares whether the component expects the persistent home and its standard
+home-relative XDG roots, plus any exceptional component-local slots. For
+example, a tool that stores everything conventionally declares `home =
+"required"`, `xdg = "home-relative"`, and no slots. DevCapsule must not add a
+tool-named field or mount to shared runtime code for such a component.
+
+Component-local names become namespaced logical names only when plans are
+combined: PyCharm's local `config` declaration becomes `pycharm/config`.
+Adapter configuration refers to component-local names; generic planning owns
+namespacing, lifecycle-root selection, container-path conflict checks, and
+parent-before-overlay mount ordering. A slot below the persistent home must
+explicitly declare that it is a home overlay.
+
+The reusable component template contains no checkout paths. Developer-owned
+checkout resolution binds `home` and the selected logical slots to managed or
+explicitly adopted host storage, then generates the checkout-specific runtime
+plan. The in-container runtime receives only the persistent container home,
+the generic resolved slot names and container paths, and adapter
+configuration; it neither chooses host storage nor recognizes component
+names.
+
 ## Slot Storage
 
 Directory-backed slots are allocated beneath the matching XDG root:

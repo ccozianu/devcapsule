@@ -24,7 +24,7 @@ from devcapsule.image_build import (
     LabelComponent,
     resource_to_tempdir,
 )
-from devcapsule.image_tooling import NODE_CURRENT_BIN, public_default_cli_tooling_component
+from devcapsule.image_tooling import NODE_CURRENT_BIN, node_tooling_component
 
 DEFAULT_BASE_IMAGE = "ubuntu:24.04"
 DEFAULT_IMAGE = "codium-with-claude:latest"
@@ -186,7 +186,7 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/vscodiu
             if install_lines
             else ()
         ),
-        public_default_cli_tooling_component(),
+        node_tooling_component(),
         ExecComponent(
             (
                 "bash",

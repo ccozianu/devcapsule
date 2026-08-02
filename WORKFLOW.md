@@ -140,11 +140,46 @@ Use markdown files with distinct responsibilities:
 - `implementation-notes/completed-tasks/`: one file per completed, retired,
   manually validated, or no-longer-reproduced task. This is the retrospective
   archive.
+- `implementation-notes/session-records/`: user-requested preservation of a
+  consequential human/agent session. These records are historical context,
+  not canonical decisions, requirements, handoff state, or active backlog.
 - Target-specific docs such as `docker4pycharm/README.md`: operational usage
   for one subproject or runtime target.
 - Subproject implementation notes: strategy, decisions, retired issues,
   validation details, debugging history, and tradeoffs specific to one
   implementation path.
+
+## User-Requested Session Records
+
+Create a repository session record only when the user explicitly asks for the
+conversation or session to be preserved. Do not infer this request merely from
+session length, importance, a checkpoint, or session closure.
+
+Store the record beneath the relevant subproject's
+`implementation-notes/session-records/` directory. If the session is truly
+repository-wide and no subproject is the natural owner, use a root
+`implementation-notes/session-records/` directory.
+
+The default capture mode is `detailed`: an agent-authored chronological record
+of important user instructions, decisions, rationale, examples, changes,
+validation, rejected alternatives, and open work. Use `summary` when the user
+asks for a concise record. Use `verbatim` only when the user or IDE supplies an
+export and explicitly asks to store it; an agent reconstruction must never be
+represented as an exact transcript.
+
+Before writing, remove credentials, secret values, unrelated personal data,
+hidden model reasoning, and raw output that does not improve durable project
+memory. Record material omissions or redactions when they affect
+interpretation.
+
+Session records supplement the canonical project files. Propagate decisions,
+requirements, bugs, validation, current state, and next work to their normal
+artifacts, then link those artifacts from the session record. Never require a
+future agent to read a session record to discover the current next task.
+
+Use `YYYY-MM-DD-short-session-topic.md`, include capture metadata, and update
+`index.md` for every record added, removed, or renamed. The detailed policy and
+template guidance live in the `README.md` of each session-record directory.
 
 ## Subproject Roles
 

@@ -6,10 +6,10 @@ import click
 
 
 class VscodeWithClaudeConfiguration:
-    """Public interface for the VS Code plus Claude proof-point configuration."""
+    """WIP interface for the VS Code plus Claude proof-point configuration."""
 
     name = "vscode_with_claude"
-    help = "Build and run the VS Code plus Claude configuration."
+    help = "WIP: VS Code plus Claude is registered but not implemented."
     ide = "vscode"
     agent = "claude"
     implemented = False
@@ -54,4 +54,3 @@ class VscodeWithClaudeConfiguration:
 
 
 __all__ = ["VscodeWithClaudeConfiguration"]
-

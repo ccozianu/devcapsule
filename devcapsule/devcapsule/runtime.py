@@ -17,7 +17,6 @@ class SharedRuntimeOptions:
     project_state: str | Path | None = None
     project_state_root: str | Path | None = None
     project_mount: str | None = None
-    gemini_state: str | Path | None = None
 
 
 @dataclass(frozen=True)
@@ -28,7 +27,6 @@ class SharedRuntimePlan:
     profile_root: Path | None
     global_settings: Path
     project_state: Path
-    gemini_state: Path
 
 
 def resolve_existing_or_create(path: str | Path) -> Path:
@@ -94,11 +92,6 @@ def plan_shared_runtime(
         or project_state_from_root(options.project_state_root, project_plan.project_path)
         or default_project_state(project_plan)
     )
-    gemini_state = resolve_existing_or_create(
-        options.gemini_state
-        or env.get("DEVCAPSULE_GEMINI_STATE_DIR")
-        or Path(env.get("HOME", "~")).expanduser() / ".gemini"
-    )
     return SharedRuntimePlan(
         project=project_plan.project_path,
         project_id=project_plan.project_id,
@@ -106,5 +99,4 @@ def plan_shared_runtime(
         profile_root=profile_root,
         global_settings=global_settings,
         project_state=project_state,
-        gemini_state=gemini_state,
     )

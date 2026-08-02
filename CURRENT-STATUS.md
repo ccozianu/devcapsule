@@ -8,6 +8,16 @@ Python MVP is the active post-MVP refactoring stage.
 
 Current status:
 
+- The canonical public source repository is now
+  `https://github.com/ccozianu/devcapsule`. GitHub redirects the former
+  `ccozianu/ChatGpt_Codex` name, but current source links, dogfood clone
+  defaults, checkout `origin`, and newly built artifact metadata use the
+  canonical name directly. Historical/current workspace mount paths retaining
+  `ChatGPT_Codex` remain literal filesystem paths rather than repository URLs.
+  Live HTTPS checks confirmed the renamed repository and a known commit return
+  HTTP 200; the full dirty-tree Nox gate rebuilt the local PEX with
+  `https://github.com/ccozianu/devcapsule` as its source repository and passed
+  128 fast tests, clean mypy, command smokes, and three packaging integrations.
 - `docker4pycharm/` preserves the original working PyCharm shell/Docker
   prototype, including historical design context now stored in
   `docker4pycharm/historical-root-README.md`.
@@ -23,7 +33,8 @@ Current status:
   `devcapsule CONFIGURATION ACTION [options]` paths are transitional.
 - `codium_with_claude` is the active next proof-point configuration. It is a
   distinct VSCodium plus Claude Code environment; the earlier
-  `vscode_with_claude` placeholder remains separate.
+  `vscode_with_claude` placeholder remains separate and is explicitly marked
+  WIP in its user-facing command help.
 
 Recent documentation cleanup:
 
@@ -88,7 +99,8 @@ Recent implementation fix:
   Gemini CLI tooling as the public-default developer CLI baseline. The old
   PyCharm-specific `--ai-agent` image-build toggle was removed in favor of a
   shared active-tooling baseline across the current Python-owned IDE build
-  paths.
+  paths. D-0005 later supersedes the ambient Gemini portion of this historical
+  checkpoint.
 
 Recent manual validation:
 
@@ -151,7 +163,9 @@ Current proof-point implementation:
   Codium launchers bind-mount a host Gemini CLI state directory into the
   container home at `~/.gemini`. By default that source is the host
   `~/.gemini`; `DEVCAPSULE_GEMINI_STATE_DIR` overrides it when a different
-  persistent Gemini state root is required.
+  persistent Gemini state root is required. D-0005 later removes this
+  agent-specific ambient host mount from active launchers; optional components
+  must use persistent home or declared state.
 
 Current architectural direction:
 
@@ -293,8 +307,8 @@ Uncommitted changes:
 Open decisions referenced by D-0001 but not yet written:
 
 - D-0002 agent autonomy inside the capsule.
-- D-0003 Gemini CLI as the default agent capability. The redistribution
-  rationale currently survives only in chat history and should be recorded.
+- The former D-0003 Gemini-default reservation is retired by accepted D-0005,
+  which makes the base agent-neutral and agent CLIs optional components.
 - A later decision may consider curated internal use or import compatibility
   for devcontainer Features; D-0001 now rejects them as the project-facing
   capability format.
@@ -549,28 +563,76 @@ Current task:
    redaction, source and PEX help surfaces, and at least one manual failing IDE
    startup that leaves useful diagnostics.
 
-4. Claim and prepare the Docker Hub publication namespace for V1 release
-   images, then validate a real push/pull path for user-facing prebuilt
-   images.
+4. Complete the V1-blocking release-artifact publication task. The
+   organization namespace `mycodespaceai`, repository
+   `mycodespaceai/devcapsule-base`, and first authenticated push path are
+   validated. Official artifacts must use semantic product versions such as
+   `ubuntu-24.04-1.0.0-rc.1` and `ubuntu-24.04-1.0.0`, plus versioned PEX names
+   such as `devcapsule-1.0.0.pex`, rather than internal `v019` checkpoints.
+   They must record a real source revision, publish checksums/digests and a
+   basic security-scan result, and pass clean pull/download validation.
+   Committed platform locks must use globally resolvable,
+   digest-pinned OCI distribution references such as
+   `docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST`; they must reject
+   workstation-local image IDs, daemon-local aliases, and mutable tag-only
+   references. Local bases remain available only through developer-owned or
+   run-once `--base` overrides.
    Notes: `devcapsule/implementation-notes/2026-07-15-docker-hub-namespace-and-publication-plan.md`
    Requirements: root `R-PRODUCT-001`, root `R-DOCS-002`,
    `devcapsule/REQUIREMENTS.md` R-PYTHON-MVP-002 and R-DOCS-002.
-   Verification: confirm the chosen Docker Hub namespace exists under the
-   intended account/organization, document the repository naming scheme, push
-   at least one release-candidate image, and verify a clean pull from that
-   namespace.
+   Verification: build from the intended V1 source revision, publish at least
+   one release candidate and the accepted V1 artifacts, verify their labels and
+   checksums/digests, and prove clean pull/download from the documented release
+   locations.
 
 Next task:
 
-1. Implement the local PyCharm materialization and Python-entrypoint task in
-   `devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md`.
-   Finish by building a JetBrains-free redistributable base, downloading and
-   verifying the lock-pinned current PyCharm artifact on the workstation,
-   materializing the final image locally, passing the full Nox gate, and
-   manually running the existing dogfood environment successfully through
-   `devcapsule run`.
-2. Resume the reopened PyCharm network and Docker-option parity work after the
-   new materialized-image dogfood path is established.
+1. Implement the V1 developer-owned base selection and trust contract. Preserve
+   the existing path for a developer to build a managed base and select it
+   explicitly through `--base`. Add an exact-artifact authorization path,
+   provisionally `project config authorize base-image REFERENCE`, for adopting
+   the lock-recommended published base after reviewing its checksum and basic
+   security scan. Persist only an immutable registry digest or inspected local
+   image ID; never authorize a mutable tag, repository, organization, or future
+   digest. A lock change must stale the authorization. Also enforce that
+   committed locks reject workstation-local IDs, aliases, and tag-only
+   references, then prove both trust paths from clean checkout configuration.
+2. Wire the verified canonical environment into `devcapsule project run`.
+   Generate the checkout-specific runtime plan from the fresh resolution,
+   deliver it read-only at `/etc/devcapsule/runtime-plan.json`, and retain the
+   shared image's generic component template. Normal run should strictly reuse
+   or automatically materialize the locked image and must not bake project,
+   state, credential, authorization, UID/GID, or mount choices into it.
+3. Continue the second-checkout dogfood path by implementing the scoped
+   `project config set`, `bind`, and `authorize` operations needed by
+   `tests/manual/v1-second-checkout-dogfood.sh`, then address explicit host
+   networking and the reopened shared runtime-option parity work. Preserve
+   bridge networking and no host access as defaults.
+4. Implement Antigravity CLI as the first optional V1 agent component in a
+   later dedicated slice. Before acquiring it, settle its supported platforms,
+   exact version/artifact identity and checksum source, license and install
+   behavior, persistent-home or namespaced-state contract, authentication and
+   host-access disclosure, formation-descriptor inputs, and update policy.
+   Materialize it only when explicitly selected; never restore an ambient
+   agent CLI or direct host agent-state mount. Validate source and PEX command
+   surfaces plus an explicit host launch. No Antigravity artifact was
+   downloaded or installed during the D-0005 base cleanup.
+V2 candidate task:
+
+1. Add safe, reversible image and cache lifecycle management. Users should be
+   able to inspect DevCapsule ownership and disk usage, preview removals,
+   remove selected materialized images and aliases, and prune unreferenced
+   artifacts/build caches. Running or lock-referenced images require explicit
+   handling, and cleanup must never touch project source, persistent state,
+   credentials, or unrelated Docker resources. If V1 closes early, this is a
+   candidate to pull forward deliberately rather than an implicit V1 blocker.
+2. Add verifiable software supply-chain provenance for published DevCapsule
+   artifacts: generated SBOMs, artifact signatures, public build provenance
+   and attestations tied to source and recipe inputs, automated vulnerability
+   scanning and policy evaluation, and client-side verification of the expected
+   publisher and evidence before execution. This supersedes V1's expedient
+   exact-digest authorization plus published checksum/basic-scan evidence; it
+   is not an implicit V1 blocker.
 
 Standing rule:
 
