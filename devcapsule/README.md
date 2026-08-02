@@ -300,30 +300,45 @@ resolution:
 
 ```bash
 devcapsule project --path /path/to/checkout config resolve
+devcapsule project --path /path/to/checkout config authorize base-image \
+  docker.io/mycodespaceai/devcapsule-base@sha256:d1fa4a5ea1ca3f2b9408dd1347cfb4651115fc4d77ebc1f24877b32b83fadbec
+devcapsule project --path /path/to/checkout config resolve
 devcapsule images build \
   --type environment \
   --project /path/to/checkout \
-  --alias devcapsule-local-pycharm:debug-v019
+  --alias devcapsule-local-pycharm:debug-v020
 ```
 
 The platform lock must select a DevCapsule base plus a
 `local-materialization` PyCharm component with an exact version, variant,
 download URL, SHA-256, and supported materialization recipe. A locked base
-must use a digest-pinned reference or record its expected immutable local image
-ID. `--base IMAGE` is an explicit development override; it never rewrites the
-lock or resolution.
+must use an explicit global registry and digest-pinned reference. Local image
+IDs, daemon-local aliases, and mutable tags are rejected in committed locks.
+
+The committed recommendation is not authorization. The command
+`project config authorize base-image REFERENCE` records a decision for this
+checkout only after the
+developer reviews the exact reference and available checksum/scan evidence.
+The argument must exactly equal the current lock reference, and the record is
+bound to the full lock digest: any lock change requires review and
+reauthorization. It never trusts a mutable tag, repository, organization,
+publisher, or future digest. The following `config resolve` incorporates that
+developer-owned decision into the generated local resolution.
+
+`--base IMAGE` is an explicit run-once development override and needs no
+persisted authorization. It never rewrites the lock or resolution, and the
+selected local image must still pass DevCapsule metadata, platform, and
+immutable image-ID inspection.
 
 This repository's current Linux dogfood lock uses published digest
-`docker.io/mycodespaceai/devcapsule-base@sha256:637f646a9de962cb399025c2bf3817b08e242d2a4416b49a202cf06763852feb`.
-The associated `ubuntu-24.04-v019` tag is only a dogfood discovery tag;
+`docker.io/mycodespaceai/devcapsule-base@sha256:d1fa4a5ea1ca3f2b9408dd1347cfb4651115fc4d77ebc1f24877b32b83fadbec`.
+The associated `ubuntu-24.04-v020` tag is only a dogfood discovery tag;
 official V1 artifacts will use semantic release versions and committed locks
 will continue to use immutable digests.
 
-That immutable v019 image predates agent-neutral base recipe version 2 and
-still contains Gemini CLI. It remains usable only as the already-validated
-dogfood bridge. A newly built and published recipe-v2 base must replace the
-committed digest before the dogfood lock and V1 release candidate satisfy the
-current no-ambient-agent contract.
+The immutable v020 image uses agent-neutral base recipe version 2, embeds the
+DevCapsule PEX, and exposes source revision `e414aa1...` at the canonical
+`ccozianu/devcapsule` repository. It contains no ambient agent CLI.
 
 The command obtains the selected base when it is not local, verifies that it
 is a managed metadata-v1 base for the locked platform, and downloads the

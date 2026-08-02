@@ -491,7 +491,7 @@ Current task:
   new checkout-specific PyCharm system/log/cache directories, persists the
   observed Docker/network/sudo authorizations, resolves, inspects the live
   container plan, and launches twice for persistence validation. It now treats
-  `devcapsule-local-pycharm:debug-v019` as an explicit prerequisite and verifies
+  `devcapsule-local-pycharm:debug-v020` as an explicit prerequisite and verifies
   its embedded PEX, runtime plan, materialization labels, and generic Python
   entrypoint before launching.
 - Inspection of running container `322ca969a6d9` established the grounding
@@ -504,7 +504,7 @@ Current task:
 - `debug-v018` is sufficient as the known-good legacy comparison but not as the
   image under test for the next slice: it is a 5.54 GB monolithic image whose
   OCI entrypoint is still `/usr/local/bin/entrypoint.sh`, with no embedded PEX
-  or runtime-plan command. The v019 checkpoint is allowed to evolve the
+  or runtime-plan command. The v020 checkpoint is allowed to evolve the
   container runtime contract for dynamic checkout configuration, explicit
   development sudo, and the new launch plan before the final content-addressed
   `devcapsule-local-pycharm:<materialization-identity>` naming becomes the V1
@@ -517,7 +517,7 @@ Current task:
   base from project-aware
   `devcapsule images build --type environment --project PATH` for combining a
   locked component with either its locked base or an explicit local/registry
-  base. Optional aliases such as `devcapsule-local-pycharm:debug-v019` are
+  base. Optional aliases such as `devcapsule-local-pycharm:debug-v020` are
   conspicuous local debugging names, never the canonical reproducible identity.
 - Cross-project image reuse is now specified as automatic content-addressed
   sharing. Each project lock selects a normalized formation descriptor rather
@@ -698,9 +698,10 @@ Current task:
   mounts host `~/.gemini`; and this dogfood manifest no longer requests a
   `gemini` capability. User docs explain that agent CLIs have independent
   release, licensing, authentication, state, and trust lifecycles. The current
-  immutable published v019 digest still contains Gemini and must be replaced by
-  a newly built/published base before the committed dogfood lock can satisfy
-  D-0005. Antigravity remains a later optional V1 component task; no
+  then-published v019 digest still contained Gemini and required replacement
+  before the committed dogfood lock could satisfy D-0005; the v020 publication
+  recorded below closes that replacement. Antigravity remains a later optional
+  V1 component task; no
   Antigravity artifact was downloaded or installed in this slice. Focused
   agent-neutral build/launcher tests passed, followed by the full Nox gate:
   clean mypy over 57 source files, 104 fast tests at 79% coverage, source and
@@ -783,6 +784,40 @@ Current task:
   and canonical commit URL. The full dirty-tree gate passed with clean mypy
   over 65 files, 124 fast tests at 80% coverage, local-PEX command smokes, and
   all three packaging integration tests.
+- The user published the agent-neutral recipe-v2 dogfood base as
+  `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v020`. Its immutable
+  Linux/amd64 manifest digest is
+  `sha256:d1fa4a5ea1ca3f2b9408dd1347cfb4651115fc4d77ebc1f24877b32b83fadbec`;
+  registry inspection confirmed the managed base labels, embedded PEX digest,
+  and canonical public source revision `e414aa1...`. The committed Linux lock
+  now selects that global digest directly, replacing the v019 Gemini-bearing
+  bridge.
+- V1 exact-base trust is now implemented. Formation locks reject local image
+  IDs, daemon aliases, implicit registries, mutable tags, and malformed digest
+  references; committed bases must be globally named OCI repositories pinned
+  by a full SHA-256 digest. `project config authorize base-image REFERENCE`
+  accepts only the current lock's exact digest, writes the decision beneath
+  this checkout's XDG-owned input, and binds it to the canonical full lock
+  digest. A changed lock or base is stale and requires explicit review and
+  reauthorization. Normal environment materialization requires this decision
+  before pulling; explicit `--base IMAGE` remains the run-once developer-owned
+  path for an inspected managed local base. Resolution exposes the accepted
+  exact reference without turning the committed recommendation into trust.
+- The real isolated-XDG dogfood flow registered this checkout, resolved the
+  lock, authorized the exact v020 digest, resolved again, and materialized the
+  next canonical environment without launching a container. It built
+  `devcapsule-local-pycharm:e46ad1abe76b37aa8533`, full formation identity
+  `e46ad1abe76b37aa85335e5078d672b23c33a5d323efc46ef8b9d519a6ff77b9`,
+  image ID
+  `sha256:d6ab215ac8e0712e5474dcd2f17808554ad9d5630a595762fe49b50b3aeab0fd`,
+  and alias `devcapsule-local-pycharm:debug-v020`. Inspection confirmed the
+  exact v020 base config identity, PyCharm 2026.2.0.1 artifact digest, generic
+  PEX entrypoint/runtime-plan command, canonical descriptor, and identical
+  canonical/alias image IDs. The full Nox gate passed with clean mypy over 65
+  files, 135 fast tests at 80% coverage, source/local-PEX command smokes, and
+  all three packaging integration tests. A second fresh-XDG authorization and
+  resolution pass strictly reused the same canonical environment in about one
+  second without downloading, rebuilding, or launching.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -1048,28 +1083,18 @@ Current task:
 
 Next task:
 
-1. Implement the V1 developer-owned base selection and trust contract. Preserve
-   the existing path for a developer to build a managed base and select it
-   explicitly through `--base`. Add an exact-artifact authorization path,
-   provisionally `project config authorize base-image REFERENCE`, for adopting
-   the lock-recommended published base after reviewing its checksum and basic
-   security scan. Persist only an immutable registry digest or inspected local
-   image ID; never authorize a mutable tag, repository, organization, or future
-   digest. A lock change must stale the authorization. Also enforce that
-   committed locks reject workstation-local IDs, aliases, and tag-only
-   references, then prove both trust paths from clean checkout configuration.
-2. Wire the verified canonical environment into `devcapsule project run`.
+1. Wire the verified canonical environment into `devcapsule project run`.
    Generate the checkout-specific runtime plan from the fresh resolution,
    deliver it read-only at `/etc/devcapsule/runtime-plan.json`, and retain the
    shared image's generic component template. Normal run should strictly reuse
    or automatically materialize the locked image and must not bake project,
    state, credential, authorization, UID/GID, or mount choices into it.
-3. Continue the second-checkout dogfood path by implementing the scoped
+2. Continue the second-checkout dogfood path by implementing the scoped
    `project config set`, `bind`, and `authorize` operations needed by
    `tests/manual/v1-second-checkout-dogfood.sh`, then address explicit host
    networking and the reopened shared runtime-option parity work. Preserve
    bridge networking and no host access as defaults.
-4. Implement Antigravity CLI as the first optional V1 agent component in a
+3. Implement Antigravity CLI as the first optional V1 agent component in a
    later dedicated slice. Before acquiring it, settle its supported platforms,
    exact version/artifact identity and checksum source, license and install
    behavior, persistent-home or namespaced-state contract, authentication and

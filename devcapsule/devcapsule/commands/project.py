@@ -14,6 +14,7 @@ from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run
 from devcapsule.project import sanitize_name
 from devcapsule.project_configuration import (
     ProjectConfigurationError,
+    authorized_base_reference,
     atomic_write,
     canonical_digest,
     checkout_record_paths,
@@ -22,6 +23,7 @@ from devcapsule.project_configuration import (
     find_checkout_record,
     load_toml,
     lock_for,
+    locked_base_reference,
     manifest_for,
     named_checkout_record_paths,
     platform_alias,
@@ -228,6 +230,9 @@ def _config_command() -> click.Command:
             )
         state = checkout.get("state", {}).get("adopted", {})
         host = checkout.get("host", {})
+        authorized_base = None
+        if "base" in lock:
+            authorized_base = authorized_base_reference(lock, checkout, required=False)
         lines = [
             "devcapsule-resolved-schema-version = 1",
             "",
@@ -253,11 +258,65 @@ def _config_command() -> click.Command:
             for key, value in sorted(host.items()):
                 rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
                 lines.append(f"{key} = {rendered}")
+        if authorized_base is not None:
+            lines.extend(
+                [
+                    "",
+                    "[authorization.base-image]",
+                    f"reference = {quote_toml(authorized_base)}",
+                    f"lock-digest = {quote_toml(canonical_digest(lock))}",
+                ]
+            )
         atomic_write(output, "\n".join(lines) + "\n")
         click.echo(f"Resolved {output} from {lock_path.name}")
         return 0
 
     group.add_command(resolve)
+    group.add_command(_config_authorize_command())
+    return group
+
+
+def _config_authorize_command() -> click.Command:
+    group = click.Group(
+        name="authorize",
+        help="Record checkout-owned authorization of exact recommended artifacts.",
+        no_args_is_help=True,
+    )
+
+    @click.command("base-image")
+    @click.argument("reference")
+    @click.pass_obj
+    def authorize_base_image(context: ProjectCommandContext, reference: str) -> int:
+        root, manifest = manifest_for(context.start_path())
+        lock_path, lock = lock_for(root, manifest)
+        recommended = locked_base_reference(lock, source=str(lock_path))
+        if reference != recommended:
+            raise ProjectConfigurationError(
+                f"The current lock recommends exact base {recommended}, not {reference!r}. "
+                "Authorization never applies to a tag, repository, publisher, or future digest."
+            )
+
+        input_path, _output_path = checkout_record_paths(manifest, root)
+        checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
+        recorded_path = checkout.get("checkout", {}).get("path")
+        if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
+            raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
+        state = dict(checkout.get("state", {}).get("adopted", {}))
+        host = dict(checkout.get("host", {}))
+        authorization = dict(checkout.get("authorization", {}))
+        authorization["base-image"] = {
+            "reference": recommended,
+            "lock-digest": canonical_digest(lock),
+        }
+        atomic_write(input_path, render_checkout(manifest, root, state, host, authorization))
+        click.echo(f"Authorized exact base image for this checkout: {recommended}")
+        click.echo(f"Lock digest: {canonical_digest(lock)}")
+        click.echo(f"Checkout input: {input_path}")
+        click.echo("This does not authorize another tag, repository, publisher, or future digest.")
+        click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
+        return 0
+
+    group.add_command(authorize_base_image)
     return group
 
 
@@ -280,8 +339,9 @@ def _state_command() -> click.Command:
             raise ProjectConfigurationError(f"{path} belongs to another checkout: {recorded_path}")
         state = dict(checkout.get("state", {}).get("adopted", {}))
         host = dict(checkout.get("host", {}))
+        authorization = dict(checkout.get("authorization", {}))
         state[slot] = str(source)
-        atomic_write(path, render_checkout(manifest, root, state, host))
+        atomic_write(path, render_checkout(manifest, root, state, host, authorization))
         click.echo(f"Adopted {slot}: {source}")
         click.echo("Run 'devcapsule project config resolve' before launch.")
         return 0

@@ -22,6 +22,9 @@ class ProjectConfigurationError(CliError):
 
 
 CHECKOUT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+OCI_REPOSITORY_COMPONENT_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
+OCI_REGISTRY_HOST_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -259,7 +262,93 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
     expected = canonical_digest(manifest)
     if value.get("manifest-digest") != expected:
         raise ProjectConfigurationError(f"{path} is stale; run 'devcapsule project lock'.")
+    if "base" in value:
+        locked_base_reference(value, source=str(path))
     return path, value
+
+
+def immutable_registry_reference(reference: str) -> str:
+    """Require a globally named OCI repository pinned by one SHA-256 digest."""
+
+    name, separator, digest = reference.rpartition("@sha256:")
+    if not separator or not SHA256_PATTERN.fullmatch(digest):
+        raise ProjectConfigurationError(
+            "Base references in committed locks must end with one immutable @sha256:<64-hex-digest>."
+        )
+    registry, slash, repository = name.partition("/")
+    if not slash or not repository:
+        raise ProjectConfigurationError(
+            "Base references in committed locks must include an explicit global registry such as docker.io."
+        )
+    registry_host, colon, port = registry.rpartition(":")
+    if not colon:
+        registry_host = registry
+    elif not port.isdigit():
+        raise ProjectConfigurationError("The registry port in a committed base reference must be numeric.")
+    normalized_host = registry_host.lower()
+    if (
+        not OCI_REGISTRY_HOST_PATTERN.fullmatch(normalized_host)
+        or ".." in normalized_host
+        or "." not in normalized_host
+        or normalized_host == "localhost"
+        or normalized_host.startswith("127.")
+        or normalized_host == "0.0.0.0"
+    ):
+        raise ProjectConfigurationError(
+            "Base references in committed locks must use a globally resolvable registry, not a local daemon name."
+        )
+    if registry != registry.lower() or repository != repository.lower():
+        raise ProjectConfigurationError("Committed base registry and repository names must be lowercase.")
+    if ":" in repository or any(
+        not OCI_REPOSITORY_COMPONENT_PATTERN.fullmatch(component)
+        for component in repository.split("/")
+    ):
+        raise ProjectConfigurationError(
+            "Committed base references must name an OCI repository without a mutable tag."
+        )
+    return reference
+
+
+def locked_base_reference(lock: Mapping[str, Any], *, source: str = "platform lock") -> str:
+    base = lock.get("base")
+    if not isinstance(base, dict):
+        raise ProjectConfigurationError(f"{source} does not define formation base inputs.")
+    reference = base.get("reference")
+    if not isinstance(reference, str) or not reference:
+        raise ProjectConfigurationError(f"{source} base.reference must be a non-empty string.")
+    try:
+        return immutable_registry_reference(reference)
+    except ProjectConfigurationError as exc:
+        raise ProjectConfigurationError(f"Invalid {source} base.reference {reference!r}: {exc}") from exc
+
+
+def authorized_base_reference(
+    lock: Mapping[str, Any],
+    checkout: Mapping[str, Any],
+    *,
+    required: bool = True,
+) -> str | None:
+    reference = locked_base_reference(lock)
+    authorization_root = checkout.get("authorization")
+    authorization = (
+        authorization_root.get("base-image") if isinstance(authorization_root, dict) else None
+    )
+    command = f"devcapsule project config authorize base-image {reference}"
+    if not isinstance(authorization, dict):
+        if required:
+            raise ProjectConfigurationError(
+                f"The lock recommends base {reference}, but this checkout has not authorized it; run '{command}'."
+            )
+        return None
+    authorized_reference = authorization.get("reference")
+    authorized_lock = authorization.get("lock-digest")
+    expected_lock = canonical_digest(lock)
+    if authorized_reference != reference or authorized_lock != expected_lock:
+        raise ProjectConfigurationError(
+            "The checkout's base-image authorization is stale or selects a different artifact; "
+            f"review the current lock and run '{command}'."
+        )
+    return reference
 
 
 def fresh_resolved_project(project: Path) -> ResolvedProject:
@@ -298,7 +387,11 @@ def fresh_resolved_project(project: Path) -> ResolvedProject:
 
 
 def render_checkout(
-    manifest: Mapping[str, Any], project_root: Path, state: Mapping[str, str], host: Mapping[str, Any]
+    manifest: Mapping[str, Any],
+    project_root: Path,
+    state: Mapping[str, str],
+    host: Mapping[str, Any],
+    authorization: Mapping[str, Any] | None = None,
 ) -> str:
     identity = manifest["project"]
     lines = [
@@ -319,4 +412,17 @@ def render_checkout(
         for key, value in sorted(host.items()):
             rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
             lines.append(f"{key} = {rendered}")
+    base_authorization = (authorization or {}).get("base-image")
+    if isinstance(base_authorization, dict):
+        reference = base_authorization.get("reference")
+        lock_digest = base_authorization.get("lock-digest")
+        if reference and lock_digest:
+            lines.extend(
+                [
+                    "",
+                    "[authorization.base-image]",
+                    f"reference = {quote_toml(str(reference))}",
+                    f"lock-digest = {quote_toml(str(lock_digest))}",
+                ]
+            )
     return "\n".join(lines) + "\n"

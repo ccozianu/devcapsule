@@ -31,7 +31,11 @@ from devcapsule.materialization import (
     parse_locked_environment,
     validate_base_image,
 )
-from devcapsule.project_configuration import fresh_resolved_project
+from devcapsule.project_configuration import (
+    authorized_base_reference,
+    fresh_resolved_project,
+    locked_base_reference,
+)
 
 
 class ImagesCommand(BaseCommand):
@@ -221,11 +225,9 @@ def _build_environment(*, project: Path | None, base_override: str | None, alias
 
     base_reference = base_override or locked.base_reference
     expected_base_identity = None if base_override is not None else locked.base_identity
-    if base_override is None and expected_base_identity is None and "@sha256:" not in base_reference:
-        raise CliError(
-            "The lock base is not immutable: add base.identity or a digest-pinned base.reference, "
-            "or use --base explicitly for a local development override."
-        )
+    if base_override is None:
+        locked_base_reference(selected.lock)
+        authorized_base_reference(selected.lock, selected.checkout)
     base = _ensure_local_image(base_reference)
     validate_base_image(base, platform=locked.platform, expected_identity=expected_base_identity)
 
