@@ -90,6 +90,23 @@ def write_formation_lock(project: Path, reference: str = LOCKED_BASE) -> Path:
     return lock_path
 
 
+def append_manifest_metadata(project: Path, declaration: str) -> None:
+    manifest_path = project / ".devcapsule" / "devcapsule.toml"
+    with manifest_path.open("a", encoding="utf-8") as stream:
+        stream.write(f"\n{declaration.strip()}\n")
+    with manifest_path.open("rb") as stream:
+        manifest = tomllib.load(stream)
+    lock_path = project / ".devcapsule" / "devcapsule.linux-amd64.lock"
+    lines = lock_path.read_text(encoding="utf-8").splitlines()
+    lines = [
+        f'manifest-digest = "{canonical_digest(manifest)}"'
+        if line.startswith("manifest-digest = ")
+        else line
+        for line in lines
+    ]
+    lock_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def test_project_resolve_registers_default_checkout_and_list_uses_registry(
     tmp_path: Path,
     monkeypatch,
@@ -202,6 +219,308 @@ def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path
         assert "image" not in resolved["runtime"]
 
 
+def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."editor.theme"]
+            type = "string"
+
+            [configuration.values."runtime.memory-limit"]
+            type = "memory-size"
+            runtime-effect = "docker.memory-limit"
+            """,
+        )
+
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "set",
+                    "editor.theme",
+                    "dark",
+                ]
+            )
+            == 0
+        )
+        assert "Checkout input:" in capsys.readouterr().out
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "set",
+                    "runtime.memory-limit",
+                    "8GiB",
+                ]
+            )
+            == 0
+        )
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "set", "undeclared", "value"]
+            )
+            == 2
+        )
+        assert "is not declared" in capsys.readouterr().err
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "set",
+                    "runtime.memory-limit",
+                    "eight",
+                ]
+            )
+            == 2
+        )
+        assert "positive memory size" in capsys.readouterr().err
+
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        record = registered_checkouts()[0].record_path
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["configuration"]["values"] == {
+            "editor.theme": "dark",
+            "runtime.memory-limit": "8GiB",
+        }
+        with record.with_name("devcapsule.resolved.toml").open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert resolved["configuration"]["values"] == checkout["configuration"]["values"]
+        assert resolved["runtime"]["memory-limit-bytes"] == 8 * 1024**3
+
+
+def test_project_config_bind_uses_component_metadata_and_resolves_host_directories(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+    slots = (
+        "home",
+        "pycharm/config",
+        "pycharm/plugins",
+        "pycharm/system",
+        "pycharm/log",
+        "pycharm/cache",
+    )
+    directories = {slot: tmp_path / slot.replace("/", "-") for slot in slots}
+    for directory in directories.values():
+        directory.mkdir()
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        for slot, directory in directories.items():
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "config",
+                        "bind",
+                        slot,
+                        "--host-directory",
+                        str(directory),
+                    ]
+                )
+                == 0
+            )
+            warning = capsys.readouterr().err
+            assert "exposing host directory read-write" in warning
+            assert "Concurrency: exclusive" in warning
+
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "bind",
+                    "pycharm/unknown",
+                    "--host-directory",
+                    str(directories["home"]),
+                ]
+            )
+            == 2
+        )
+        assert "is not declared" in capsys.readouterr().err
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "bind",
+                    "home",
+                    "--host-directory",
+                    str(tmp_path / "missing"),
+                ]
+            )
+            == 2
+        )
+        assert "not an existing directory" in capsys.readouterr().err
+
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        record = registered_checkouts()[0].record_path
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        expected = {slot: str(path.resolve()) for slot, path in directories.items()}
+        assert checkout["configuration"]["bindings"]["host-directory"] == expected
+        with record.with_name("devcapsule.resolved.toml").open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert resolved["state"]["bindings"] == expected
+
+
+def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [host.docker.mode.recommended]
+            value = "host-socket"
+            justification = "Run peer development containers."
+
+            [host.network.mode.recommended]
+            value = "host"
+            justification = "Reach host-bound development services."
+
+            [host.privilege.development-sudo.recommended]
+            value = true
+            justification = "Perform reviewed development administration."
+            """,
+        )
+
+        commands = (
+            ("docker-daemon", "host-socket"),
+            ("network", "host"),
+            ("development-sudo", "true"),
+        )
+        for name, value in commands:
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "config",
+                        "authorize",
+                        name,
+                        value,
+                    ]
+                )
+                == 0
+            )
+            output = capsys.readouterr().out
+            assert f"Authorized {name} for this checkout" in output
+            assert "Checkout input:" in output
+
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "network",
+                    "bridge",
+                ]
+            )
+            == 2
+        )
+        assert "exactly 'host'" in capsys.readouterr().err
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "device",
+                    "gpu",
+                ]
+            )
+            == 2
+        )
+        assert "is not declared" in capsys.readouterr().err
+
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        record = registered_checkouts()[0].record_path
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["authorization"]["docker-daemon"]["value"] == "host-socket"
+        assert checkout["authorization"]["network"]["value"] == "host"
+        assert checkout["authorization"]["development-sudo"]["value"] is True
+        with record.with_name("devcapsule.resolved.toml").open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert resolved["authorization"] == {
+            "development-sudo": True,
+            "docker-daemon": "host-socket",
+            "network": "host",
+        }
+
+        with patch("devcapsule.commands.project.run_pycharm", return_value=0) as run:
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+        options = run.call_args.args[0]
+        assert options.docker_mode.value == "host"
+        assert options.network_mode == "host"
+        assert options.enable_sudo is True
+
+        manifest_path = project / ".devcapsule" / "devcapsule.toml"
+        manifest_path.write_text(
+            manifest_path.read_text(encoding="utf-8").replace(
+                "Reach host-bound development services.",
+                "Changed host-network justification.",
+            ),
+            encoding="utf-8",
+        )
+        with manifest_path.open("rb") as stream:
+            manifest = tomllib.load(stream)
+        lock_path = project / ".devcapsule" / "devcapsule.linux-amd64.lock"
+        lock_path.write_text(
+            "\n".join(
+                f'manifest-digest = "{canonical_digest(manifest)}"'
+                if line.startswith("manifest-digest = ")
+                else line
+                for line in lock_path.read_text(encoding="utf-8").splitlines()
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
+        assert "authorization 'network' is stale" in capsys.readouterr().err
+
+
 def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
     tmp_path: Path, capsys
 ) -> None:
@@ -222,7 +541,7 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             )
             == 2
         )
-        assert "current lock recommends exact base" in capsys.readouterr().err
+        assert "Project recommendation 'base-image' is exactly" in capsys.readouterr().err
 
         assert (
             cli.main(

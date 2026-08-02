@@ -818,6 +818,55 @@ Current task:
   all three packaging integration tests. A second fresh-XDG authorization and
   resolution pass strictly reused the same canonical environment in about one
   second without downloading, rebuilding, or launching.
+- `devcapsule project config set NAME VALUE` now implements D-0004 ordinary
+  values generically. Projects declare value metadata in `devcapsule.toml`;
+  the command accepts only declared keys, validates the metadata-selected
+  `string`, `integer`, `boolean`, or `memory-size` type, and writes the
+  normalized value to developer-owned checkout input while preserving state
+  and authorization. Runtime effects are a curated metadata catalog rather
+  than arbitrary Docker arguments.
+- This dogfood manifest now declares `runtime.memory-limit` with the
+  `docker.memory-limit` effect. Resolution converts `8GiB` to `8589934592`,
+  retains the ordinary value for inspection, and the current `project run`
+  launcher forwards the resolved byte count through Docker's `--memory`
+  option. The manifest-bound Linux lock digest was refreshed. Focused tests
+  passed, followed by the full Nox build gate: clean mypy over 65 files, 136
+  fast tests at 79% statement/branch coverage, source and rebuilt local-PEX
+  command smokes including `project config set`, PEX construction, and all
+  three packaging integration tests. No host container was launched;
+  automatic formation and generic runtime-plan delivery from `project run`
+  remain the next slice.
+- `devcapsule project config bind NAME --host-directory PATH` now implements
+  the first D-0004 provider generically. It derives `home` and the five
+  namespaced PyCharm resources from the locked component's persistence
+  metadata, rejects undeclared names and missing directories, reports the
+  exact checkout file written, and warns about the read-write exposure,
+  sensitivity, and exclusive concurrency contract. Checkout input records the
+  provider separately from transitional state adoption; resolution revalidates
+  and emits the bindings, and the current `project run` mount path consumes
+  them. Set, bind, authorize, and adopt mutations preserve one another.
+  The full Nox build gate passed with clean mypy over 65 files, 137 fast tests
+  at 79% statement/branch coverage, source and rebuilt local-PEX command smokes
+  including `project config bind`, PEX construction, and all three packaging
+  integration tests. No host directory was mounted and no project container
+  was launched by this validation.
+- `devcapsule project config authorize NAME VALUE` now implements the agreed
+  V1 catalog as one generic command: the exact lock-selected `base-image`,
+  `docker-daemon host-socket`, `network host`, and `development-sudo true`.
+  The lock supplies base metadata; this dogfood manifest now carries the three
+  explicit host recommendations and justifications. Each checkout record binds
+  the developer's decision to the exact value and relevant recommendation
+  digest. Unknown values fail, and a changed recommendation becomes stale
+  rather than silently retaining authority.
+- Resolution keeps authorizations distinct and inspectable. The current
+  `project run` path consumes Docker socket, network, and sudo decisions;
+  without them it selects no host Docker, Docker bridge networking, and no
+  development sudo. The PyCharm launcher now accepts an explicit network plan
+  so normal project launch no longer inherits its legacy ambient host-network
+  default. The full Nox build gate passed with clean mypy over 65 files, 138
+  fast tests at 80% statement/branch coverage, source and rebuilt local-PEX
+  command smokes for generic `config authorize`, PEX construction, and all
+  three packaging integration tests. No host container was launched.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -1089,11 +1138,12 @@ Next task:
    shared image's generic component template. Normal run should strictly reuse
    or automatically materialize the locked image and must not bake project,
    state, credential, authorization, UID/GID, or mount choices into it.
-2. Continue the second-checkout dogfood path by implementing the scoped
-   `project config set`, `bind`, and `authorize` operations needed by
-   `tests/manual/v1-second-checkout-dogfood.sh`, then address explicit host
-   networking and the reopened shared runtime-option parity work. Preserve
-   bridge networking and no host access as defaults.
+2. After the generic runtime-plan launch path is complete, align
+   `tests/manual/v1-second-checkout-dogfood.sh` with the existing external clone
+   and execute it. Generic metadata-driven `project config set`, its memory
+   effect, host-directory `config bind`, and the four V1 `config authorize`
+   cases are complete. Then finish the reopened shared runtime-option parity
+   work without weakening bridge networking or no-host-access defaults.
 3. Implement Antigravity CLI as the first optional V1 agent component in a
    later dedicated slice. Before acquiring it, settle its supported platforms,
    exact version/artifact identity and checksum source, license and install

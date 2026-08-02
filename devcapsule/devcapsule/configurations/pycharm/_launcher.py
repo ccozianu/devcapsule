@@ -89,6 +89,8 @@ class PycharmRunOptions:
     enable_sudo: bool = False
     ide_sudo_gid: str | None = None
     ignore_config_lock: bool = False
+    network_mode: str = "host"
+    memory_limit_bytes: int | None = None
     extra_docker_args: list[str] = field(default_factory=list)
 
 
@@ -122,6 +124,8 @@ class PycharmRunConfig:
     enable_sudo: bool
     ide_sudo_gid: int
     ignore_config_lock: bool
+    network_mode: str
+    memory_limit_bytes: int | None
     extra_docker_args: list[str] = field(default_factory=list)
     libgl_always_software: str = "1"
     mesa_loader_driver_override: str = "llvmpipe"
@@ -186,6 +190,8 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
 
     if not env.get("DISPLAY"):
         raise PycharmRunError("DISPLAY is not set; this X11 launcher needs an active X session.")
+    if options.network_mode not in {"bridge", "host", "none"}:
+        raise PycharmRunError("The Docker network mode must be bridge, host, or none.")
 
     global_settings_default = base_data_dir / "state"
 
@@ -343,6 +349,8 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         enable_sudo=enable_sudo,
         ide_sudo_gid=ide_sudo_gid,
         ignore_config_lock=ignore_config_lock,
+        network_mode=options.network_mode,
+        memory_limit_bytes=options.memory_limit_bytes,
         extra_docker_args=list(options.extra_docker_args),
         libgl_always_software=env.get("PYCHARM_LIBGL_ALWAYS_SOFTWARE", env.get("LIBGL_ALWAYS_SOFTWARE", "1")),
         mesa_loader_driver_override=env.get(
@@ -435,7 +443,7 @@ def build_docker_args(
         "--ipc",
         "private",
         "--network",
-        "host",
+        config.network_mode,
         "--pids-limit",
         "4096",
     ]
@@ -482,6 +490,10 @@ def build_docker_args(
             ]
         )
 
+    if config.memory_limit_bytes is not None:
+        if config.memory_limit_bytes <= 0:
+            raise PycharmRunError("The container memory limit must be positive.")
+        args.extend(["--memory", str(config.memory_limit_bytes)])
     args.extend(config.extra_docker_args)
     return args
 

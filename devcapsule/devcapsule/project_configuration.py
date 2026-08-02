@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 
 from devcapsule.compat import CliError
+from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 
 
 class ProjectConfigurationError(CliError):
@@ -25,6 +26,13 @@ CHECKOUT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 OCI_REPOSITORY_COMPONENT_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
 OCI_REGISTRY_HOST_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+CONFIGURATION_VALUE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$")
+MEMORY_SIZE_PATTERN = re.compile(r"^([1-9][0-9]*)(B|KiB|MiB|GiB|TiB)$")
+CONFIGURATION_VALUE_TYPES = {"string", "integer", "boolean", "memory-size"}
+RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size"}
+
+ConfigurationScalar = str | int | bool
+AuthorizationScalar = str | bool
 
 
 @dataclass(frozen=True)
@@ -47,6 +55,23 @@ class ResolvedProject:
     checkout: dict[str, Any]
     resolution_path: Path
     resolution: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ConfigurationBindingDeclaration:
+    name: str
+    container_path: str
+    sensitivity: str
+    concurrent: bool
+    description: str
+
+
+@dataclass(frozen=True)
+class AuthorizationDeclaration:
+    name: str
+    recommended_value: AuthorizationScalar
+    recommendation_digest: str
+    description: str
 
 
 def discover_project(path: Path) -> Path:
@@ -82,6 +107,339 @@ def validate_manifest(value: Mapping[str, Any], path: Path) -> None:
         raise ProjectConfigurationError(f"{path} must define project name, slug, creator, and mount.")
     if not isinstance(capabilities, dict) or not isinstance(capabilities.get("need"), list):
         raise ProjectConfigurationError(f"{path} must define capabilities.need as an array.")
+    configuration_value_declarations(value, source=str(path))
+
+
+def configuration_value_declarations(
+    manifest: Mapping[str, Any], *, source: str = "project declaration"
+) -> dict[str, Mapping[str, Any]]:
+    """Return and validate ordinary configuration-value metadata."""
+
+    configuration = manifest.get("configuration")
+    if configuration is None:
+        return {}
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError(f"{source} configuration must be a table.")
+    values = configuration.get("values", {})
+    if not isinstance(values, dict):
+        raise ProjectConfigurationError(f"{source} configuration.values must be a table.")
+
+    declarations: dict[str, Mapping[str, Any]] = {}
+    for name, declaration in values.items():
+        field = f"{source} configuration.values.{name}"
+        if not isinstance(name, str) or CONFIGURATION_VALUE_NAME_PATTERN.fullmatch(name) is None:
+            raise ProjectConfigurationError(
+                f"{source} configuration value names must be lowercase dotted or hyphenated identifiers; "
+                f"found {name!r}."
+            )
+        if not isinstance(declaration, dict):
+            raise ProjectConfigurationError(f"{field} must be a table.")
+        value_type = declaration.get("type")
+        if value_type not in CONFIGURATION_VALUE_TYPES:
+            choices = ", ".join(sorted(CONFIGURATION_VALUE_TYPES))
+            raise ProjectConfigurationError(f"{field}.type must be one of: {choices}.")
+        required = declaration.get("required", False)
+        if not isinstance(required, bool):
+            raise ProjectConfigurationError(f"{field}.required must be a boolean when present.")
+        description = declaration.get("description")
+        if description is not None and not isinstance(description, str):
+            raise ProjectConfigurationError(f"{field}.description must be a string when present.")
+        effect = declaration.get("runtime-effect")
+        if effect is not None:
+            expected_type = RUNTIME_EFFECT_TYPES.get(effect) if isinstance(effect, str) else None
+            if expected_type is None:
+                choices = ", ".join(sorted(RUNTIME_EFFECT_TYPES))
+                raise ProjectConfigurationError(f"{field}.runtime-effect must be one of: {choices}.")
+            if value_type != expected_type:
+                raise ProjectConfigurationError(
+                    f"{field}.runtime-effect {effect!r} requires type {expected_type!r}."
+                )
+        declarations[name] = declaration
+    return declarations
+
+
+def normalize_configuration_value(
+    manifest: Mapping[str, Any], name: str, value: object
+) -> ConfigurationScalar:
+    declarations = configuration_value_declarations(manifest)
+    declaration = declarations.get(name)
+    if declaration is None:
+        available = ", ".join(sorted(declarations)) or "none"
+        raise ProjectConfigurationError(
+            f"Configuration value {name!r} is not declared by this project; declared values: {available}."
+        )
+    value_type = str(declaration["type"])
+    field = f"configuration value {name!r}"
+    if value_type == "string":
+        if not isinstance(value, str) or not value or "\x00" in value:
+            raise ProjectConfigurationError(f"{field} must be a non-empty string.")
+        return value
+    if value_type == "integer":
+        if isinstance(value, bool):
+            raise ProjectConfigurationError(f"{field} must be an integer.")
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and re.fullmatch(r"-?[0-9]+", value):
+            return int(value)
+        raise ProjectConfigurationError(f"{field} must be an integer.")
+    if value_type == "boolean":
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str) and value.lower() in {"true", "false"}:
+            return value.lower() == "true"
+        raise ProjectConfigurationError(f"{field} must be true or false.")
+    if not isinstance(value, str) or MEMORY_SIZE_PATTERN.fullmatch(value) is None:
+        raise ProjectConfigurationError(
+            f"{field} must be a positive memory size using B, KiB, MiB, GiB, or TiB, for example 8GiB."
+        )
+    return value
+
+
+def resolve_configuration_values(
+    manifest: Mapping[str, Any], checkout: Mapping[str, Any]
+) -> tuple[dict[str, ConfigurationScalar], dict[str, int]]:
+    """Validate checkout values and derive curated runtime effects from metadata."""
+
+    declarations = configuration_value_declarations(manifest)
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError("Checkout configuration must be a table.")
+    raw_values = configuration.get("values", {})
+    if not isinstance(raw_values, dict):
+        raise ProjectConfigurationError("Checkout configuration.values must be a table.")
+
+    normalized: dict[str, ConfigurationScalar] = {}
+    effects: dict[str, int] = {}
+    for name, value in raw_values.items():
+        if not isinstance(name, str):
+            raise ProjectConfigurationError("Checkout configuration value names must be strings.")
+        normalized[name] = normalize_configuration_value(manifest, name, value)
+    missing = sorted(
+        name
+        for name, declaration in declarations.items()
+        if declaration.get("required", False) and name not in normalized
+    )
+    if missing:
+        commands = ", ".join(f"project config set {name} VALUE" for name in missing)
+        raise ProjectConfigurationError(f"Required configuration values are missing: {commands}.")
+
+    for name, value in normalized.items():
+        effect = declarations[name].get("runtime-effect")
+        if effect == "docker.memory-limit":
+            effects["memory-limit-bytes"] = memory_size_bytes(str(value))
+    return normalized, effects
+
+
+def configuration_binding_declarations(
+    lock: Mapping[str, Any], *, source: str = "platform lock"
+) -> dict[str, ConfigurationBindingDeclaration]:
+    """Return logical host-directory targets from the locked component metadata."""
+
+    components = lock.get("components")
+    if not isinstance(components, dict):
+        raise ProjectConfigurationError(f"{source} components must be a table.")
+    component_id = components.get("interactive-surface")
+    if component_id != "pycharm":
+        raise ProjectConfigurationError(
+            f"No V1 configuration-binding metadata is available for component {component_id!r}."
+        )
+    template = pycharm_runtime_template()
+    declarations = {
+        "home": ConfigurationBindingDeclaration(
+            name="home",
+            container_path="/home/devcapsule",
+            sensitivity="credentials",
+            concurrent=False,
+            description="Persistent container home, including developer and tool state.",
+        )
+    }
+    declarations.update(
+        {
+            template.logical_slot_name(slot.name): ConfigurationBindingDeclaration(
+                name=template.logical_slot_name(slot.name),
+                container_path=slot.container_path,
+                sensitivity=slot.sensitivity,
+                concurrent=slot.concurrent,
+                description=slot.deletion_effect,
+            )
+            for slot in template.persistence.state_slots
+        }
+    )
+    return declarations
+
+
+def resolve_configuration_bindings(
+    lock: Mapping[str, Any], checkout: Mapping[str, Any]
+) -> dict[str, str]:
+    declarations = configuration_binding_declarations(lock)
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError("Checkout configuration must be a table.")
+    bindings = configuration.get("bindings", {})
+    if not isinstance(bindings, dict):
+        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
+    host_directories = bindings.get("host-directory", {})
+    if not isinstance(host_directories, dict):
+        raise ProjectConfigurationError(
+            "Checkout configuration.bindings.host-directory must be a table."
+        )
+
+    resolved: dict[str, str] = {}
+    for name, raw_source in host_directories.items():
+        if not isinstance(name, str) or name not in declarations:
+            available = ", ".join(sorted(declarations))
+            raise ProjectConfigurationError(
+                f"Configuration binding {name!r} is not declared by the selected component; "
+                f"declared bindings: {available}."
+            )
+        if not isinstance(raw_source, str):
+            raise ProjectConfigurationError(
+                f"Host-directory binding {name!r} must contain a filesystem path string."
+            )
+        source = Path(raw_source).expanduser().resolve()
+        if not source.is_dir():
+            raise ProjectConfigurationError(
+                f"Host-directory binding {name!r} is not an existing directory: {source}"
+            )
+        resolved[name] = str(source)
+    return resolved
+
+
+def authorization_declarations(
+    manifest: Mapping[str, Any], lock: Mapping[str, Any]
+) -> dict[str, AuthorizationDeclaration]:
+    """Build the curated V1 authorization catalog from project recommendations."""
+
+    declarations: dict[str, AuthorizationDeclaration] = {}
+    if "base" in lock:
+        reference = locked_base_reference(lock)
+        declarations["base-image"] = AuthorizationDeclaration(
+            name="base-image",
+            recommended_value=reference,
+            recommendation_digest=canonical_digest(lock),
+            description="Execute the exact registry digest selected by the platform lock.",
+        )
+
+    host = manifest.get("host", {})
+    if not isinstance(host, dict):
+        raise ProjectConfigurationError("Project declaration host metadata must be a table.")
+    recommendation_paths: dict[str, tuple[tuple[str, ...], AuthorizationScalar]] = {
+        "docker-daemon": (("docker", "mode", "recommended"), "host-socket"),
+        "network": (("network", "mode", "recommended"), "host"),
+        "development-sudo": (("privilege", "development-sudo", "recommended"), True),
+    }
+    for name, (path, supported_value) in recommendation_paths.items():
+        recommendation: object = host
+        for key in path:
+            if not isinstance(recommendation, dict) or key not in recommendation:
+                recommendation = None
+                break
+            recommendation = recommendation[key]
+        if recommendation is None:
+            continue
+        if not isinstance(recommendation, dict):
+            raise ProjectConfigurationError(
+                f"Project authorization recommendation for {name!r} must be a table."
+            )
+        value = recommendation.get("value")
+        justification = recommendation.get("justification")
+        if value != supported_value:
+            raise ProjectConfigurationError(
+                f"Project recommendation {name!r} must use the supported V1 value "
+                f"{supported_value!r}; found {value!r}."
+            )
+        if not isinstance(justification, str) or not justification:
+            raise ProjectConfigurationError(
+                f"Project recommendation {name!r} must include a non-empty justification."
+            )
+        declarations[name] = AuthorizationDeclaration(
+            name=name,
+            recommended_value=supported_value,
+            recommendation_digest=canonical_digest({"name": name, "recommendation": recommendation}),
+            description=justification,
+        )
+    return declarations
+
+
+def normalize_authorization_value(
+    declaration: AuthorizationDeclaration, value: object
+) -> AuthorizationScalar:
+    expected = declaration.recommended_value
+    if isinstance(expected, bool):
+        if isinstance(value, str) and value.lower() in {"true", "false"}:
+            normalized: AuthorizationScalar = value.lower() == "true"
+        elif isinstance(value, bool):
+            normalized = value
+        else:
+            raise ProjectConfigurationError(
+                f"Authorization {declaration.name!r} requires true or false."
+            )
+    elif isinstance(value, str):
+        if not isinstance(value, str):
+            raise ProjectConfigurationError(
+                f"Authorization {declaration.name!r} requires value {expected!r}."
+            )
+        normalized = value
+    else:  # pragma: no cover - AuthorizationScalar makes this defensive only.
+        raise ProjectConfigurationError(f"Unsupported authorization metadata for {declaration.name!r}.")
+    if normalized != expected:
+        raise ProjectConfigurationError(
+            f"Project recommendation {declaration.name!r} is exactly {expected!r}, not {normalized!r}. "
+            "Authorizing a different value requires distinct reviewed metadata."
+        )
+    return normalized
+
+
+def resolved_checkout_authorizations(
+    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
+) -> dict[str, AuthorizationScalar]:
+    declarations = authorization_declarations(manifest, lock)
+    authorization = checkout.get("authorization", {})
+    if not isinstance(authorization, dict):
+        raise ProjectConfigurationError("Checkout authorization must be a table.")
+    unknown = sorted(str(name) for name in authorization if name not in declarations)
+    if unknown:
+        raise ProjectConfigurationError(
+            "Checkout contains unsupported authorization entries: " + ", ".join(unknown) + "."
+        )
+
+    resolved: dict[str, AuthorizationScalar] = {}
+    for name, record in authorization.items():
+        declaration = declarations[name]
+        if name == "base-image":
+            reference = authorized_base_reference(lock, checkout)
+            if reference is not None:
+                resolved[name] = reference
+            continue
+        if not isinstance(record, dict):
+            raise ProjectConfigurationError(f"Checkout authorization {name!r} must be a table.")
+        value = normalize_authorization_value(declaration, record.get("value"))
+        if record.get("recommendation-digest") != declaration.recommendation_digest:
+            raise ProjectConfigurationError(
+                f"Checkout authorization {name!r} is stale; review the current recommendation and run "
+                f"'devcapsule project config authorize {name} {render_authorization_value(declaration.recommended_value)}'."
+            )
+        resolved[name] = value
+    return resolved
+
+
+def render_authorization_value(value: AuthorizationScalar) -> str:
+    return str(value).lower() if isinstance(value, bool) else value
+
+
+def memory_size_bytes(value: str) -> int:
+    match = MEMORY_SIZE_PATTERN.fullmatch(value)
+    if match is None:
+        raise ProjectConfigurationError(f"Invalid memory size: {value!r}.")
+    quantity = int(match.group(1))
+    multiplier = {
+        "B": 1,
+        "KiB": 1024,
+        "MiB": 1024**2,
+        "GiB": 1024**3,
+        "TiB": 1024**4,
+    }[match.group(2)]
+    return quantity * multiplier
 
 
 def canonical_digest(value: Mapping[str, Any]) -> str:
@@ -234,6 +592,14 @@ def registered_checkouts(env: Mapping[str, str] | None = None) -> tuple[Register
 
 def quote_toml(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
+
+
+def render_toml_scalar(value: ConfigurationScalar) -> str:
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, int):
+        return str(value)
+    return quote_toml(value)
 
 
 def atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
@@ -392,6 +758,8 @@ def render_checkout(
     state: Mapping[str, str],
     host: Mapping[str, Any],
     authorization: Mapping[str, Any] | None = None,
+    values: Mapping[str, ConfigurationScalar] | None = None,
+    host_directory_bindings: Mapping[str, str] | None = None,
 ) -> str:
     identity = manifest["project"]
     lines = [
@@ -412,7 +780,35 @@ def render_checkout(
         for key, value in sorted(host.items()):
             rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
             lines.append(f"{key} = {rendered}")
+    if values:
+        lines.extend(["", "[configuration.values]"])
+        lines.extend(
+            f"{quote_toml(key)} = {render_toml_scalar(value)}"
+            for key, value in sorted(values.items())
+        )
+    if host_directory_bindings:
+        lines.extend(["", "[configuration.bindings.host-directory]"])
+        lines.extend(
+            f"{quote_toml(key)} = {quote_toml(value)}"
+            for key, value in sorted(host_directory_bindings.items())
+        )
     base_authorization = (authorization or {}).get("base-image")
+    for name, record in sorted((authorization or {}).items()):
+        if name == "base-image":
+            continue
+        if not isinstance(record, dict):
+            continue
+        value = record.get("value")
+        recommendation_digest = record.get("recommendation-digest")
+        if isinstance(value, (str, bool)) and isinstance(recommendation_digest, str):
+            lines.extend(
+                [
+                    "",
+                    f"[authorization.{quote_toml(str(name))}]",
+                    f"value = {render_toml_scalar(value)}",
+                    f"recommendation-digest = {quote_toml(recommendation_digest)}",
+                ]
+            )
     if isinstance(base_authorization, dict):
         reference = base_authorization.get("reference")
         lock_digest = base_authorization.get("lock-digest")

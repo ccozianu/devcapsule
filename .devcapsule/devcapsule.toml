@@ -9,7 +9,22 @@ slug = "devcapsule"
 creator = "https://github.com/ccozianu"
 mount = "/workspace/301e4208ef81-ChatGPT_Codex"
 
+[configuration.values."runtime.memory-limit"]
+type = "memory-size"
+runtime-effect = "docker.memory-limit"
+description = "Hard memory limit applied to the checkout's project container."
+
 [host.docker.mode.recommended]
 value = "host-socket"
 justification = "Required to run peer DevCapsule instances during the full test suite."
 enables = ["full-test-suite"]
+
+[host.network.mode.recommended]
+value = "host"
+justification = "Temporary dogfood compatibility for host-bound development services."
+enables = ["legacy-dogfood-host-services"]
+
+[host.privilege.development-sudo.recommended]
+value = true
+justification = "Required by the current dogfood development and validation workflow."
+enables = ["dogfood-development-administration"]

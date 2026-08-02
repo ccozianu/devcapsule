@@ -318,13 +318,24 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
             "project", "--path", str(project), "init", "--creator", "dev@example.test", "--need", "python"
         ]) == 2
         assert manifest.read_bytes() == original
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8")
+            + "\n[configuration.values.\"runtime.memory-limit\"]\n"
+            + 'type = "memory-size"\n'
+            + 'runtime-effect = "docker.memory-limit"\n',
+            encoding="utf-8",
+        )
         assert cli.main([
             "project", "--path", str(project), "lock", "--image", "local/pycharm:dogfood"
         ]) == 0
         for slot, path in state_roots.items():
             assert cli.main([
-                "project", "--path", str(project), "state", "adopt", slot, "--from", str(path)
+                "project", "--path", str(project), "config", "bind", slot,
+                "--host-directory", str(path)
             ]) == 0
+        assert cli.main([
+            "project", "--path", str(project), "config", "set", "runtime.memory-limit", "8GiB"
+        ]) == 0
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
 
         with (
@@ -336,7 +347,8 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
 
     command = run.call_args.args[0]
     assert "local/pycharm:dogfood" in command
-    assert "--network=host" not in command
+    assert command[command.index("--network") + 1] == "bridge"
+    assert command[command.index("--memory") + 1] == str(8 * 1024**3)
     assert f"type=bind,src={state_roots['home'].resolve()},dst=/home/devcapsule" in command
     assert f"type=bind,src={state_roots['pycharm/system'].resolve()},dst=/ide-project-state/system" in command
 

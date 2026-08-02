@@ -295,6 +295,61 @@ mismatch reports that the selected PEX embeds `unknown`, rebuild
 `dist/devcapsule.pex` with the default `scripts/build-pex.sh`, inspect it with
 `dist/devcapsule.pex version --json`, and retry.
 
+### Declared checkout configuration values
+
+Projects declare ordinary configurable values and their validation metadata in
+`.devcapsule/devcapsule.toml`. For example, this repository declares:
+
+```toml
+[configuration.values."runtime.memory-limit"]
+type = "memory-size"
+runtime-effect = "docker.memory-limit"
+description = "Hard memory limit applied to the checkout's project container."
+```
+
+The developer selects a value for one checkout with the generic command:
+
+```bash
+devcapsule project config set runtime.memory-limit 8GiB
+devcapsule project config resolve
+```
+
+`config set` accepts only keys declared by the project, validates the supplied
+value from its metadata, and writes the resulting ordinary value to the
+developer-owned checkout input reported by the command. It does not edit the
+project declaration or generated resolution. The supported V1 scalar metadata
+types are `string`, `integer`, `boolean`, and `memory-size`; runtime effects
+are a separate curated catalog rather than arbitrary Docker arguments.
+
+For `docker.memory-limit`, resolution converts the declared memory size to an
+exact byte count. `project run` supplies that value to Docker as the
+container's hard memory limit. Host access, credentials, networking, devices,
+and privilege remain outside ordinary values and require their dedicated
+binding or authorization contracts.
+
+Component persistence metadata declares the logical resources that may be
+bound to developer-owned storage. The initial provider accepts only an
+existing host directory:
+
+```bash
+devcapsule project config bind home --host-directory /path/to/home
+devcapsule project config bind pycharm/config --host-directory /path/to/config
+devcapsule project config bind pycharm/plugins --host-directory /path/to/plugins
+devcapsule project config bind pycharm/system --host-directory /path/to/system
+devcapsule project config bind pycharm/log --host-directory /path/to/log
+devcapsule project config bind pycharm/cache --host-directory /path/to/cache
+devcapsule project config resolve
+```
+
+The command is generic: it looks up the selected component's persistence
+metadata instead of hard-coding these names in its parser. It rejects an
+undeclared resource or missing directory, identifies the checkout file it
+wrote, and warns that the source becomes a read-write container mount. It also
+reports the resource's sensitivity and whether its component contract permits
+concurrent use. Resolution revalidates every directory before `project run`
+uses the bindings. Host-file, socket, secret, and alternative-storage
+providers are not part of this initial contract.
+
 Build the lock-selected local environment after creating a fresh checkout
 resolution:
 
@@ -315,15 +370,35 @@ download URL, SHA-256, and supported materialization recipe. A locked base
 must use an explicit global registry and digest-pinned reference. Local image
 IDs, daemon-local aliases, and mutable tags are rejected in committed locks.
 
-The committed recommendation is not authorization. The command
-`project config authorize base-image REFERENCE` records a decision for this
-checkout only after the
-developer reviews the exact reference and available checksum/scan evidence.
-The argument must exactly equal the current lock reference, and the record is
-bound to the full lock digest: any lock change requires review and
-reauthorization. It never trusts a mutable tag, repository, organization,
-publisher, or future digest. The following `config resolve` incorporates that
-developer-owned decision into the generated local resolution.
+The committed recommendation is not authorization. V1 supports four exact,
+developer-owned decisions:
+
+```bash
+devcapsule project config authorize base-image \
+  docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST
+devcapsule project config authorize docker-daemon host-socket
+devcapsule project config authorize network host
+devcapsule project config authorize development-sudo true
+```
+
+`config authorize NAME VALUE` accepts only the lock-selected base and curated
+host recommendations declared by the project. It writes the exact value and a
+digest of the relevant recommendation to this checkout's input file. A changed
+base lock or host recommendation is stale and requires deliberate review and
+reauthorization; a committed project change never grants access by itself.
+
+`base-image` authorizes one immutable published digest after the developer
+reviews its available checksum and scan evidence. It never trusts a mutable
+tag, repository, organization, publisher, or future digest. `docker-daemon
+host-socket` exposes the host Docker control socket, effectively granting the
+container control over the host daemon. `network host` shares the host network
+namespace instead of the default Docker bridge. `development-sudo true`
+permits the capsule's development user to elevate inside the container; it is
+not host-root authorization. The following `config resolve` incorporates the
+recorded decisions into the inspectable generated resolution, and `project
+run` applies the Docker, network, and sudo effects. Without authorization,
+normal project launch retains no Docker socket, bridge networking, and no
+development sudo.
 
 `--base IMAGE` is an explicit run-once development override and needs no
 persisted authorization. It never rewrites the lock or resolution, and the

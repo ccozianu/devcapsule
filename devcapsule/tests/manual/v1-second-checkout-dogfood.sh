@@ -2,10 +2,10 @@
 # Manual acceptance test for the planned D-0004 V1 configuration experience.
 #
 # This script intentionally describes target behavior that the transitional CLI
-# does not yet fully implement. In particular, it requires config
-# set/bind and general host authorization, persistent host
-# authorization, a container memory limit, and the v020 generic Python runtime
-# boundary.
+# does not yet fully implement. Typed set, host-directory bind, exact host
+# authorization, and the container memory limit are implemented. The remaining
+# gate is automatic environment realization plus external runtime-plan delivery
+# through the v020 generic Python runtime boundary.
 #
 # Run this script from a host terminal, not from inside a DevCapsule container.
 # It creates a new clone and new checkout-specific PyCharm system/log/cache

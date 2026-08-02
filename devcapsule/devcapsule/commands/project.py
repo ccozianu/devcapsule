@@ -14,22 +14,29 @@ from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run
 from devcapsule.project import sanitize_name
 from devcapsule.project_configuration import (
     ProjectConfigurationError,
-    authorized_base_reference,
+    authorization_declarations,
     atomic_write,
     canonical_digest,
     checkout_record_paths,
+    configuration_binding_declarations,
     config_root,
     discover_project,
     find_checkout_record,
     load_toml,
     lock_for,
-    locked_base_reference,
     manifest_for,
     named_checkout_record_paths,
+    normalize_configuration_value,
+    normalize_authorization_value,
     platform_alias,
     quote_toml,
     registered_checkouts,
     render_checkout,
+    render_authorization_value,
+    render_toml_scalar,
+    resolve_configuration_bindings,
+    resolve_configuration_values,
+    resolved_checkout_authorizations,
 )
 
 
@@ -230,9 +237,16 @@ def _config_command() -> click.Command:
             )
         state = checkout.get("state", {}).get("adopted", {})
         host = checkout.get("host", {})
-        authorized_base = None
-        if "base" in lock:
-            authorized_base = authorized_base_reference(lock, checkout, required=False)
+        values, runtime_effects = resolve_configuration_values(manifest, checkout)
+        bindings = resolve_configuration_bindings(lock, checkout)
+        overlap = sorted(set(state) & set(bindings))
+        if overlap:
+            raise ProjectConfigurationError(
+                "State resources cannot be both adopted and configuration-bound: "
+                + ", ".join(overlap)
+                + "."
+            )
+        authorizations = resolved_checkout_authorizations(manifest, lock, checkout)
         lines = [
             "devcapsule-resolved-schema-version = 1",
             "",
@@ -246,19 +260,46 @@ def _config_command() -> click.Command:
             f"component = {quote_toml(str(component))}",
             f"project-mount = {quote_toml(str(manifest['project']['mount']))}",
         ]
+        lines.extend(
+            f"{key} = {render_toml_scalar(value)}" for key, value in sorted(runtime_effects.items())
+        )
         if image:
             lines.append(f"image = {quote_toml(str(image))}")
+        if values:
+            lines.extend(["", "[configuration.values]"])
+            lines.extend(
+                f"{quote_toml(key)} = {render_toml_scalar(value)}"
+                for key, value in sorted(values.items())
+            )
         if state:
             lines.extend(["", "[state.adopted]"])
             lines.extend(
                 f"{quote_toml(str(key))} = {quote_toml(str(value))}" for key, value in sorted(state.items())
+            )
+        if bindings:
+            lines.extend(["", "[state.bindings]"])
+            lines.extend(
+                f"{quote_toml(key)} = {quote_toml(value)}"
+                for key, value in sorted(bindings.items())
             )
         if host:
             lines.extend(["", "[host]"])
             for key, value in sorted(host.items()):
                 rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
                 lines.append(f"{key} = {rendered}")
+        runtime_authorizations = {
+            key: value for key, value in authorizations.items() if key != "base-image"
+        }
+        if runtime_authorizations:
+            lines.extend(["", "[authorization]"])
+            lines.extend(
+                f"{key} = {render_toml_scalar(value)}"
+                for key, value in sorted(runtime_authorizations.items())
+            )
+        authorized_base = authorizations.get("base-image")
         if authorized_base is not None:
+            if not isinstance(authorized_base, str):
+                raise ProjectConfigurationError("Resolved base-image authorization must be a string.")
             lines.extend(
                 [
                     "",
@@ -272,29 +313,158 @@ def _config_command() -> click.Command:
         return 0
 
     group.add_command(resolve)
+    group.add_command(_config_set_command())
+    group.add_command(_config_bind_command())
     group.add_command(_config_authorize_command())
     return group
 
 
-def _config_authorize_command() -> click.Command:
-    group = click.Group(
-        name="authorize",
-        help="Record checkout-owned authorization of exact recommended artifacts.",
-        no_args_is_help=True,
-    )
-
-    @click.command("base-image")
-    @click.argument("reference")
+def _config_set_command() -> click.Command:
+    @click.command("set", help="Set one ordinary value declared by the project configuration metadata.")
+    @click.argument("name")
+    @click.argument("value")
     @click.pass_obj
-    def authorize_base_image(context: ProjectCommandContext, reference: str) -> int:
+    def set_value(context: ProjectCommandContext, name: str, value: str) -> int:
+        root, manifest = manifest_for(context.start_path())
+        normalized = normalize_configuration_value(manifest, name, value)
+        input_path, _output_path = checkout_record_paths(manifest, root)
+        checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
+        recorded_path = checkout.get("checkout", {}).get("path")
+        if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
+            raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
+        state = dict(checkout.get("state", {}).get("adopted", {}))
+        host = dict(checkout.get("host", {}))
+        authorization = dict(checkout.get("authorization", {}))
+        configuration = checkout.get("configuration", {})
+        if not isinstance(configuration, dict):
+            raise ProjectConfigurationError("Checkout configuration must be a table.")
+        existing_values = configuration.get("values", {})
+        if not isinstance(existing_values, dict):
+            raise ProjectConfigurationError("Checkout configuration.values must be a table.")
+        values = dict(existing_values)
+        values[name] = normalized
+        bindings = _checkout_host_directory_bindings(checkout)
+        atomic_write(
+            input_path,
+            render_checkout(manifest, root, state, host, authorization, values, bindings),
+        )
+        click.echo(f"Set {name} = {render_toml_scalar(normalized)}")
+        click.echo(f"Checkout input: {input_path}")
+        click.echo("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+    return set_value
+
+
+def _config_bind_command() -> click.Command:
+    @click.command("bind", help="Bind a declared logical resource to a developer-owned provider.")
+    @click.argument("name")
+    @click.option(
+        "--host-directory",
+        "source",
+        type=click.Path(path_type=Path),
+        required=True,
+        help="Existing host directory to expose read-write at the declared container path.",
+    )
+    @click.pass_obj
+    def bind(context: ProjectCommandContext, name: str, source: Path) -> int:
         root, manifest = manifest_for(context.start_path())
         lock_path, lock = lock_for(root, manifest)
-        recommended = locked_base_reference(lock, source=str(lock_path))
-        if reference != recommended:
+        declarations = configuration_binding_declarations(lock, source=str(lock_path))
+        declaration = declarations.get(name)
+        if declaration is None:
+            available = ", ".join(sorted(declarations))
             raise ProjectConfigurationError(
-                f"The current lock recommends exact base {recommended}, not {reference!r}. "
-                "Authorization never applies to a tag, repository, publisher, or future digest."
+                f"Configuration binding {name!r} is not declared by the selected component; "
+                f"declared bindings: {available}."
             )
+        source = source.expanduser().resolve()
+        if not source.is_dir():
+            raise ProjectConfigurationError(f"Binding source is not an existing directory: {source}")
+
+        input_path, _output_path = checkout_record_paths(manifest, root)
+        checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
+        recorded_path = checkout.get("checkout", {}).get("path")
+        if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
+            raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
+        state = dict(checkout.get("state", {}).get("adopted", {}))
+        if name in state:
+            raise ProjectConfigurationError(
+                f"State resource {name!r} was already adopted; remove that transitional entry before binding it."
+            )
+        host = dict(checkout.get("host", {}))
+        authorization = dict(checkout.get("authorization", {}))
+        values = _checkout_values(checkout)
+        bindings = _checkout_host_directory_bindings(checkout)
+        bindings[name] = str(source)
+        atomic_write(
+            input_path,
+            render_checkout(manifest, root, state, host, authorization, values, bindings),
+        )
+        click.echo(
+            f"WARNING: exposing host directory read-write for {name}: {source} -> "
+            f"{declaration.container_path}",
+            err=True,
+        )
+        click.echo(f"Sensitivity: {declaration.sensitivity}", err=True)
+        if not declaration.concurrent:
+            click.echo("Concurrency: exclusive; do not share this binding with a concurrent capsule.", err=True)
+        click.echo(f"Bound {name} to host directory: {source}")
+        click.echo(f"Checkout input: {input_path}")
+        click.echo("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+    return bind
+
+
+def _checkout_values(checkout: dict[str, Any]) -> dict[str, Any]:
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError("Checkout configuration must be a table.")
+    values = configuration.get("values", {})
+    if not isinstance(values, dict):
+        raise ProjectConfigurationError("Checkout configuration.values must be a table.")
+    return dict(values)
+
+
+def _checkout_host_directory_bindings(checkout: dict[str, Any]) -> dict[str, str]:
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError("Checkout configuration must be a table.")
+    bindings = configuration.get("bindings", {})
+    if not isinstance(bindings, dict):
+        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
+    host_directories = bindings.get("host-directory", {})
+    if not isinstance(host_directories, dict) or not all(
+        isinstance(name, str) and isinstance(source, str)
+        for name, source in host_directories.items()
+    ):
+        raise ProjectConfigurationError(
+            "Checkout configuration.bindings.host-directory must contain path strings."
+        )
+    return dict(host_directories)
+
+
+def _config_authorize_command() -> click.Command:
+    @click.command(
+        "authorize",
+        help="Authorize one exact security-sensitive value recommended by the project.",
+    )
+    @click.argument("name")
+    @click.argument("value")
+    @click.pass_obj
+    def authorize(context: ProjectCommandContext, name: str, value: str) -> int:
+        root, manifest = manifest_for(context.start_path())
+        _lock_path, lock = lock_for(root, manifest)
+        declarations = authorization_declarations(manifest, lock)
+        declaration = declarations.get(name)
+        if declaration is None:
+            available = ", ".join(sorted(declarations)) or "none"
+            raise ProjectConfigurationError(
+                f"Authorization {name!r} is not declared by this project and lock; "
+                f"declared authorizations: {available}."
+            )
+        normalized = normalize_authorization_value(declaration, value)
 
         input_path, _output_path = checkout_record_paths(manifest, root)
         checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
@@ -304,20 +474,31 @@ def _config_authorize_command() -> click.Command:
         state = dict(checkout.get("state", {}).get("adopted", {}))
         host = dict(checkout.get("host", {}))
         authorization = dict(checkout.get("authorization", {}))
-        authorization["base-image"] = {
-            "reference": recommended,
-            "lock-digest": canonical_digest(lock),
-        }
-        atomic_write(input_path, render_checkout(manifest, root, state, host, authorization))
-        click.echo(f"Authorized exact base image for this checkout: {recommended}")
-        click.echo(f"Lock digest: {canonical_digest(lock)}")
+        values = _checkout_values(checkout)
+        bindings = _checkout_host_directory_bindings(checkout)
+        if name == "base-image":
+            authorization[name] = {
+                "reference": normalized,
+                "lock-digest": declaration.recommendation_digest,
+            }
+        else:
+            authorization[name] = {
+                "value": normalized,
+                "recommendation-digest": declaration.recommendation_digest,
+            }
+        atomic_write(
+            input_path,
+            render_checkout(manifest, root, state, host, authorization, values, bindings),
+        )
+        click.echo(f"Authorized {name} for this checkout: {render_authorization_value(normalized)}")
+        click.echo(f"Recommendation: {declaration.description}")
+        click.echo(f"Recommendation digest: {declaration.recommendation_digest}")
         click.echo(f"Checkout input: {input_path}")
-        click.echo("This does not authorize another tag, repository, publisher, or future digest.")
+        click.echo("This authorization applies only to the exact recorded value and recommendation.")
         click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
         return 0
 
-    group.add_command(authorize_base_image)
-    return group
+    return authorize
 
 
 def _state_command() -> click.Command:
@@ -340,8 +521,17 @@ def _state_command() -> click.Command:
         state = dict(checkout.get("state", {}).get("adopted", {}))
         host = dict(checkout.get("host", {}))
         authorization = dict(checkout.get("authorization", {}))
+        values = _checkout_values(checkout)
+        bindings = _checkout_host_directory_bindings(checkout)
+        if slot in bindings:
+            raise ProjectConfigurationError(
+                f"State resource {slot!r} is already configuration-bound; it cannot also be adopted."
+            )
         state[slot] = str(source)
-        atomic_write(path, render_checkout(manifest, root, state, host, authorization))
+        atomic_write(
+            path,
+            render_checkout(manifest, root, state, host, authorization, values, bindings),
+        )
         click.echo(f"Adopted {slot}: {source}")
         click.echo("Run 'devcapsule project config resolve' before launch.")
         return 0
@@ -389,17 +579,27 @@ def _run_command() -> click.Command:
         runtime = resolved.get("runtime", {})
         if runtime.get("component") != "pycharm" or not runtime.get("image"):
             raise ProjectConfigurationError("The first run slice supports only resolved PyCharm images.")
-        state = resolved.get("state", {}).get("adopted", {})
+        memory_limit = runtime.get("memory-limit-bytes")
+        if memory_limit is not None and (
+            not isinstance(memory_limit, int) or isinstance(memory_limit, bool) or memory_limit <= 0
+        ):
+            raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
+        state_root = resolved.get("state", {})
+        state = dict(state_root.get("adopted", {}))
+        state.update(state_root.get("bindings", {}))
         host = resolved.get("host", {})
-        selected_docker_daemon = docker_daemon or host.get("docker-daemon", "none")
+        authorization = resolved.get("authorization", {})
+        selected_docker_daemon = (
+            docker_daemon
+            or authorization.get("docker-daemon")
+            or host.get("docker-daemon", "none")
+        )
         selected_sudo = development_sudo
         if selected_sudo is None:
-            selected_sudo = bool(host.get("development-sudo", False))
-        if host.get("network", "bridge") != "bridge":
-            raise ProjectConfigurationError(
-                "The normal run path supports only bridge networking; use 'devcapsule project run-image' "
-                "for an explicit exception."
+            selected_sudo = bool(
+                authorization.get("development-sudo", host.get("development-sudo", False))
             )
+        selected_network = str(authorization.get("network", host.get("network", "bridge")))
         return run_pycharm(
             PycharmRunOptions(
                 project=root,
@@ -414,6 +614,8 @@ def _run_command() -> click.Command:
                 tool_cache=Path(state["pycharm/cache"]) if "pycharm/cache" in state else None,
                 docker_mode=DockerMode.host if selected_docker_daemon == "host-socket" else DockerMode.none,
                 enable_sudo=bool(selected_sudo),
+                network_mode=selected_network,
+                memory_limit_bytes=memory_limit,
                 extra_docker_args=["--pull=never"],
                 project_state=None,
             )
