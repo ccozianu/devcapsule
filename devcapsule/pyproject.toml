@@ -45,6 +45,9 @@ where = ["."]
 include = ["devcapsule*"]
 
 [tool.setuptools.package-data]
+"devcapsule" = [
+  "_build_info.json",
+]
 "devcapsule.assets.docker4pycharm" = [
   "Dockerfile",
   "*.sh",

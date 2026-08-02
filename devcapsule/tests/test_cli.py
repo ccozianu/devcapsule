@@ -25,6 +25,7 @@ def test_top_level_help_returns_success(capsys) -> None:
     assert "vscode_with_claude" in output
     assert "codium_with_claude" in output
     assert "runtime" in output
+    assert "version" in output
     assert "images" in output
     assert "project" in output
 
@@ -275,6 +276,7 @@ def test_top_level_commands_are_discovered() -> None:
     assert "codium_with_claude" in commands
     assert "project" in commands
     assert "images" in commands
+    assert "version" in commands
     assert "init" not in commands
     assert "lock" not in commands
     assert "config" not in commands
@@ -399,6 +401,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
                 str(pex),
                 "--source-revision",
                 "revision-1",
+                "--require-public-revision",
                 "--network",
                 "host",
             ]
@@ -410,6 +413,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
     assert options.image == "devcapsule-base:debug-v019"
     assert options.root_image == "local-root:test"
     assert options.source_revision == "revision-1"
+    assert options.require_public_revision is True
     assert options.recipe == "ubuntu-24.04"
     assert build.call_args.kwargs == {"network": "host"}
     assert "Image ID: sha256:abc123" in capsys.readouterr().out
@@ -626,3 +630,4 @@ def test_build_pex_script_is_available() -> None:
 
     assert completed.returncode == 0
     assert "dist/devcapsule.pex" in completed.stdout
+    assert "--require-public-revision" in completed.stdout

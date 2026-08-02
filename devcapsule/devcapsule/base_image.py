@@ -6,6 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
+from devcapsule.build_info import BuildInfo, BuildInfoError, read_pex_build_info
 from devcapsule.compat import CliError
 from devcapsule.configurations.pycharm._image_build import BASE_APT_PACKAGES
 from devcapsule.image_build import (
@@ -65,7 +66,8 @@ class BaseImageBuildOptions:
     pex: Path
     image: str = DEFAULT_OUTPUT_IMAGE
     root_image: str | None = None
-    source_revision: str = "unknown"
+    source_revision: str | None = None
+    require_public_revision: bool = False
     install_baseline: bool = True
     recipe: str = DEFAULT_BASE_RECIPE
 
@@ -91,10 +93,29 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def pex_build_info(options: BaseImageBuildOptions) -> BuildInfo:
+    try:
+        info = read_pex_build_info(options.pex.expanduser().resolve())
+    except BuildInfoError as exc:
+        raise CliError(str(exc)) from exc
+    if options.source_revision is not None and options.source_revision != info.source_revision:
+        raise CliError(
+            f"Expected source revision {options.source_revision}, but the selected PEX embeds "
+            f"{info.source_revision}. Rebuild the PEX from the intended public commit."
+        )
+    if options.require_public_revision and not info.has_public_revision:
+        raise CliError(
+            "The selected PEX does not embed a full public GitHub revision; rebuild it with "
+            "scripts/build-pex.sh --require-public-revision."
+        )
+    return info
+
+
 def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
     pex = options.pex.expanduser().resolve()
     if not pex.is_file():
         raise CliError(f"DevCapsule PEX does not exist: {pex}")
+    build_info = pex_build_info(options)
     recipe = base_image_recipe(options.recipe)
     root_image = resolved_root_image(options)
     components: list[BuildComponent] = [BaseImageComponent(root_image)]
@@ -115,7 +136,11 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.base.recipe-version", BASE_RECIPE_VERSION),
                     ("devcapsule.base.recipe-status", recipe.status),
                     ("devcapsule.pex.sha256", file_sha256(pex)),
-                    ("devcapsule.source.revision", options.source_revision),
+                    ("devcapsule.source.repository", build_info.source_repository),
+                    ("devcapsule.source.revision", build_info.source_revision),
+                    ("devcapsule.source.url", build_info.source_url),
+                    ("org.opencontainers.image.source", build_info.source_repository),
+                    ("org.opencontainers.image.revision", build_info.source_revision),
                 )
                 + recipe.labels
             ),

@@ -717,6 +717,26 @@ Current task:
   fast tests at 79% coverage, source and rebuilt-PEX command smokes, PEX
   construction, and the built-PEX integration test. Docker E2E and a real
   environment rebuild were not run for this contract-only formation change.
+- On 2026-08-02, V1 public source traceability was implemented before the v020
+  dogfood build. PEX packaging now creates an isolated source staging tree and
+  embeds a versioned build-information record containing the package version,
+  normalized public repository, full source revision, and canonical GitHub
+  commit URL. `devcapsule version --json` exposes that record without a source
+  checkout. Dirty ordinary development builds deliberately record an unknown
+  revision; `scripts/build-pex.sh --require-public-revision` requires clean PEX
+  inputs, a full checkout-HEAD commit, an HTTPS GitHub repository, and an exact
+  revision advertised by that public repository.
+- Base-image planning reads the selected PEX metadata without executing the
+  artifact. `--source-revision` is now an assertion and a mismatch fails before
+  Docker build; `--require-public-revision` rejects placeholder metadata. The
+  matching values populate `devcapsule.source.repository`, `.revision`, and
+  `.url` plus OCI `org.opencontainers.image.source` and `.revision` labels.
+  This closes the implementation part of the V1 disclosure task while making
+  no provenance, reproducibility, signature, attestation, or SBOM claim. The
+  full Nox gate passed with clean mypy over 64 files, 119 fast tests at 80%
+  coverage, source and PEX command smokes, PEX construction, and two PEX
+  integration tests. Strict public-revision success awaits pushing this exact
+  implementation commit, after which it is the required v020 packaging path.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -1012,15 +1032,6 @@ Next task:
    agent CLI or direct host agent-state mount. Validate source and PEX command
    surfaces plus an explicit host launch. No Antigravity artifact was
    downloaded or installed during the D-0005 base cleanup.
-5. Add V1 public source-revision disclosure across the published base and PEX.
-   Record the full commit and public repository through standard OCI
-   `org.opencontainers.image.source` / `revision` annotations plus DevCapsule
-   metadata; embed the same commit and canonical GitHub commit URL in the PEX
-   and expose it through a read-only inspection command. Release checks must
-   reject placeholders and compare the two artifacts. Treat this as useful
-   traceability, not an SBOM, attestation, signature, reproducible-build claim,
-   or cryptographic provenance guarantee.
-
 V2 candidate task:
 
 1. Add safe, reversible image and cache lifecycle management. Users should be

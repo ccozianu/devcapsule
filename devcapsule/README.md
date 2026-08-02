@@ -117,6 +117,18 @@ cd devcapsule
 scripts/build-pex.sh
 ```
 
+The script embeds source identity without modifying the checkout. When the
+PEX-relevant inputs are clean, it records the full `HEAD` revision, normalized
+public GitHub repository, and canonical commit URL. If those inputs are dirty,
+an ordinary development build records `unknown` instead of claiming the bytes
+came from the checked-in commit. Build a publication candidate only after its
+commit is pushed:
+
+```bash
+scripts/build-pex.sh --require-public-revision
+dist/devcapsule.pex version --json
+```
+
 For normal development, prefer the project build gate:
 
 ```bash
@@ -169,23 +181,26 @@ Build the JetBrains-free DevCapsule base:
 # From a source/editable installation, identify the PEX to embed.
 devcapsule images build \
   --type base \
-  --tag devcapsule-base:debug-v019 \
+  --tag devcapsule-base:debug-v020 \
   --pex dist/devcapsule.pex \
   --source-revision "$(git rev-parse HEAD)" \
+  --require-public-revision \
   --network host
 
 # When invoked from a PEX, that PEX is embedded by default.
 python3.12 dist/devcapsule.pex images build \
   --type base \
-  --tag devcapsule-base:debug-v019 \
-  --source-revision "$(git rev-parse HEAD)"
+  --tag devcapsule-base:debug-v020 \
+  --source-revision "$(git rev-parse HEAD)" \
+  --require-public-revision
 
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
 python3.12 dist/devcapsule.pex images build \
   --type base \
   --recipe nvidia-cuda-devel \
-  --tag devcapsule-base:cuda-v019 \
-  --source-revision "$(git rev-parse HEAD)"
+  --tag devcapsule-base:cuda-v020 \
+  --source-revision "$(git rev-parse HEAD)" \
+  --require-public-revision
 ```
 
 `--recipe` accepts `ubuntu-24.04` or `nvidia-cuda-devel`. The default
@@ -241,9 +256,12 @@ buildx. Host mode is an explicit build-time isolation relaxation and adds the
 BuildKit `network.host` entitlement; it does not configure the network of later
 runtime containers.
 The resulting image carries the V1 managed marker, metadata version, base kind,
-canonical name, recipe name/status/version, PEX digest, and source revision
-labels. `images build --type base` is the sole supported base-build command;
-there is no compatibility `build-base` alias.
+canonical name, recipe name/status/version, PEX digest, the embedded PEX source
+identity, and OCI-standard source/revision labels. `--source-revision` is an
+assertion against the PEX rather than an independent label value, so the image
+cannot silently claim a different commit. `images build --type base` is the
+sole supported base-build command; there is no compatibility `build-base`
+alias.
 
 Build the lock-selected local environment after creating a fresh checkout
 resolution:

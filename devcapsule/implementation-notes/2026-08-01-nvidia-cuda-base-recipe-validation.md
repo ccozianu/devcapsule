@@ -54,11 +54,13 @@ partner or cloud test infrastructure and are outside required V1 scope.
 3. Build the CUDA recipe through the PEX, without overriding its root:
 
    ```bash
+   scripts/build-pex.sh --require-public-revision
    python3.12 dist/devcapsule.pex images build \
      --type base \
      --recipe nvidia-cuda-devel \
-     --tag devcapsule-base:cuda-v019 \
-     --source-revision "$(git rev-parse HEAD)"
+     --tag devcapsule-base:cuda-v020 \
+     --source-revision "$(git rev-parse HEAD)" \
+     --require-public-revision
    ```
 
 4. Inspect the image and confirm its managed-image, base-kind, recipe, WIP,

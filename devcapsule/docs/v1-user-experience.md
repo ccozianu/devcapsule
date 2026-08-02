@@ -569,20 +569,22 @@ DevCapsule developers have two explicit operations:
 
 ```bash
 # Build the JetBrains-free generic runtime base from the current PEX.
+scripts/build-pex.sh --require-public-revision
 devcapsule images build \
   --type base \
   --recipe ubuntu-24.04 \
   --pex dist/devcapsule.pex \
   --source-revision "$(git rev-parse HEAD)" \
+  --require-public-revision \
   --network host \
-  --tag devcapsule-base:debug-v019
+  --tag devcapsule-base:debug-v020
 
 # Materialize this project's required components onto a local or registry base.
 devcapsule images build \
   --type environment \
   --project "$CHECKOUT" \
-  --base devcapsule-base:debug-v019 \
-  --alias devcapsule-local-pycharm:debug-v019
+  --base devcapsule-base:debug-v020 \
+  --alias devcapsule-local-pycharm:debug-v020
 ```
 
 The second command still creates the canonical content-addressed image first.
@@ -715,9 +717,11 @@ root-image reference and overrides that recipe's default root. DevCapsule
 reuses the selected image from the local Docker store when present and
 otherwise obtains that reference from its registry. When DevCapsule is itself running
 from a PEX, that PEX is the default embedded artifact; `--pex PATH` selects one
-explicitly. `--tag` is the requested local output name, and
-`--source-revision` records the source identity used to produce the PEX and
-recipe.
+explicitly. `--tag` is the requested local output name. The PEX embeds its
+source repository, full revision, and canonical public commit URL when
+packaged. `--source-revision` asserts that embedded revision rather than
+supplying a second independent value, and `--require-public-revision` rejects
+placeholders or non-public metadata before image construction.
 
 `--network` accepts `default`, `host`, or `none` and is forwarded to Docker
 buildx. The default uses Docker's normal build network. `none` disables build
@@ -761,8 +765,9 @@ devcapsule.metadata.version=1
 devcapsule.image.kind=base|materialized
 ```
 
-Base images additionally identify their recipe, embedded PEX digest, and
-source revision. Materialized environment images identify their full formation
+Base images additionally identify their recipe, embedded PEX digest, source
+repository, full revision, and commit URL through DevCapsule and standard OCI
+metadata. Materialized environment images identify their full formation
 identity, base identity, recipe, primary component and artifact digest, and
 canonical `devcapsule-local-<component>:<short-identity>` name.
 

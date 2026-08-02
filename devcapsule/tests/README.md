@@ -18,9 +18,10 @@ python -m nox -s tests
 ### Integration tests
 
 `tests/integration/` contains tests marked `integration`. They cross process or
-packaging boundaries but do not require Docker. The initial test executes the
-freshly built `devcapsule.pex` and proves that `runtime --help` reaches the
-container-runtime command.
+packaging boundaries but do not require Docker. The tests execute the freshly
+built `devcapsule.pex`, prove that `runtime --help` reaches the
+container-runtime command, and verify that `version --json` exposes
+self-contained build/source identity without consulting the checkout.
 
 ```text
 python -m nox -s integration

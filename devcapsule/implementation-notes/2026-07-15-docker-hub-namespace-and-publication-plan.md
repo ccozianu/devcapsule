@@ -122,13 +122,13 @@ exact digest; they are not verifiable build provenance. Signed SBOMs,
 attestations, automated provenance/publisher verification, and policy
 enforcement are deferred to the explicit V2 supply-chain task.
 
-Before V1 publication, source disclosure must be consistent across artifact
-boundaries. Base images should carry `org.opencontainers.image.source` and
+Source disclosure is now consistent across artifact boundaries. Base images
+carry `org.opencontainers.image.source` and
 `org.opencontainers.image.revision` in addition to the existing
 `devcapsule.source.revision`; the source value must identify the public GitHub
-repository and the revision must be a full public commit. The PEX must embed
-the same commit and canonical GitHub commit URL at packaging time and expose
-them through a read-only command such as `devcapsule version --json`, even when
+repository and the revision must be a full public commit. The PEX embeds
+the same commit and canonical GitHub commit URL at packaging time and exposes
+them through the read-only `devcapsule version --json`, even when
 the PEX is copied away from its source checkout. Release validation compares
 the image and PEX values, verifies that the URL resolves publicly, and rejects
 `unknown`, a dirty-tree pseudo-revision, abbreviated hashes, or unrelated
@@ -146,9 +146,8 @@ reproducible or cryptographically proven to derive from the disclosed commit.
 4. Decide which Docker subscription tier is acceptable for projected pull
    volume and private/public needs.
 5. Build release-ready images from the active `devcapsule` implementation.
-6. Embed and expose one full public GitHub revision in the PEX, record the same
-   revision and public source URL in OCI metadata, and add release checks that
-   prove the two disclosures agree and resolve publicly.
+6. Use the implemented strict PEX/image source-disclosure checks for each
+   publication candidate and retain their output with the release evidence.
 7. Perform a clean pull validation using the published digest; the initial push
    path is already validated.
 8. Document the end-user pull commands in current user docs.

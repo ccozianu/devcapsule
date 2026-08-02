@@ -77,7 +77,15 @@ class ImagesCommand(BaseCommand):
         )
         @click.option("--from", "root_image", help="Override the recipe's default root image.")
         @click.option("--pex", type=click.Path(path_type=Path, exists=True, dir_okay=False))
-        @click.option("--source-revision", default="unknown", show_default=True)
+        @click.option(
+            "--source-revision",
+            help="Assert the source revision already embedded in the selected PEX.",
+        )
+        @click.option(
+            "--require-public-revision",
+            is_flag=True,
+            help="Reject a base build unless the PEX identifies a full public GitHub commit.",
+        )
         @click.option(
             "--project",
             type=click.Path(path_type=Path),
@@ -102,7 +110,8 @@ class ImagesCommand(BaseCommand):
             recipe: str,
             root_image: str | None,
             pex: Path | None,
-            source_revision: str,
+            source_revision: str | None,
+            require_public_revision: bool,
             project: Path | None,
             base_override: str | None,
             alias: str | None,
@@ -125,6 +134,7 @@ class ImagesCommand(BaseCommand):
                 image=tag,
                 root_image=root_image,
                 source_revision=source_revision,
+                require_public_revision=require_public_revision,
                 recipe=recipe,
             )
             if selected_recipe.status == "wip":
@@ -148,7 +158,8 @@ class ImagesCommand(BaseCommand):
             recipe_status = labels.get("devcapsule.base.recipe-status", selected_recipe.status)
             click.echo(f"Base recipe: {recipe_name}@{recipe_version} ({recipe_status.upper()})")
             click.echo(f"PEX SHA-256: {labels.get('devcapsule.pex.sha256', 'unknown')}")
-            click.echo(f"Source revision: {labels.get('devcapsule.source.revision', source_revision)}")
+            click.echo(f"Source revision: {labels.get('devcapsule.source.revision', 'unknown')}")
+            click.echo(f"Source URL: {labels.get('devcapsule.source.url', 'unknown')}")
             click.echo(f"Build network: {network}")
             return 0
 

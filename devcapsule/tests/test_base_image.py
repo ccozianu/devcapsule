@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
+from zipfile import ZipFile
 
+import pytest
 from unittest.mock import Mock
 
 from devcapsule.base_image import (
@@ -11,13 +14,32 @@ from devcapsule.base_image import (
     build_base_image,
     build_base_image_spec,
 )
+from devcapsule.compat import CliError
 from devcapsule.image_build import render_build_context
 
 
+def pex_fixture(path: Path, *, revision: str = "a" * 40, public: bool = True) -> Path:
+    repository = "https://github.com/example/devcapsule" if public else "unknown"
+    source_url = f"{repository}/commit/{revision}" if public else "unknown"
+    with ZipFile(path, "w") as archive:
+        archive.writestr(
+            ".deps/devcapsule-0.1.0-py3-none-any.whl/devcapsule/_build_info.json",
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "version": "0.1.0",
+                    "source_repository": repository,
+                    "source_revision": revision,
+                    "source_url": source_url,
+                }
+            ),
+        )
+    return path
+
+
 def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Path) -> None:
-    pex = tmp_path / "devcapsule.pex"
-    pex.write_bytes(b"pex fixture")
-    options = BaseImageBuildOptions(pex, "test-base:latest", source_revision="abc123")
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
+    options = BaseImageBuildOptions(pex, "test-base:latest", source_revision="a" * 40)
 
     plan = build_base_image_spec(options).build_plan()
     context = tmp_path / "context"
@@ -42,12 +64,19 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
     assert ("devcapsule.base.recipe-version", "2") in plan.labels
     assert ("devcapsule.base.recipe-status", "ready") in plan.labels
-    assert ("devcapsule.pex.sha256", hashlib.sha256(b"pex fixture").hexdigest()) in plan.labels
+    assert ("devcapsule.pex.sha256", hashlib.sha256(pex.read_bytes()).hexdigest()) in plan.labels
+    assert ("devcapsule.source.repository", "https://github.com/example/devcapsule") in plan.labels
+    assert ("devcapsule.source.revision", "a" * 40) in plan.labels
+    assert (
+        "devcapsule.source.url",
+        f"https://github.com/example/devcapsule/commit/{'a' * 40}",
+    ) in plan.labels
+    assert ("org.opencontainers.image.source", "https://github.com/example/devcapsule") in plan.labels
+    assert ("org.opencontainers.image.revision", "a" * 40) in plan.labels
 
 
 def test_nvidia_cuda_recipe_keeps_developer_baseline_and_is_marked_wip(tmp_path: Path) -> None:
-    pex = tmp_path / "devcapsule.pex"
-    pex.write_bytes(b"pex fixture")
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
     options = BaseImageBuildOptions(pex, "test-cuda-base:latest", recipe="nvidia-cuda-devel")
 
     plan = build_base_image_spec(options).build_plan()
@@ -65,8 +94,7 @@ def test_nvidia_cuda_recipe_keeps_developer_baseline_and_is_marked_wip(tmp_path:
 
 
 def test_recipe_root_image_can_be_overridden(tmp_path: Path) -> None:
-    pex = tmp_path / "devcapsule.pex"
-    pex.write_bytes(b"pex fixture")
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
     options = BaseImageBuildOptions(
         pex,
         "test-cuda-base:latest",
@@ -81,8 +109,7 @@ def test_recipe_root_image_can_be_overridden(tmp_path: Path) -> None:
 
 
 def test_base_image_build_forwards_host_network_to_buildx(tmp_path: Path) -> None:
-    pex = tmp_path / "devcapsule.pex"
-    pex.write_bytes(b"pex fixture")
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
     options = BaseImageBuildOptions(pex, "test-base:latest")
     builder = Mock()
 
@@ -91,3 +118,19 @@ def test_base_image_build_forwards_host_network_to_buildx(tmp_path: Path) -> Non
     builder.build.assert_called_once()
     assert builder.build.call_args.args[0].image == "test-base:latest"
     assert builder.build.call_args.kwargs == {"network": "host"}
+
+
+def test_base_image_rejects_revision_that_disagrees_with_pex(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
+    options = BaseImageBuildOptions(pex, source_revision="b" * 40)
+
+    with pytest.raises(CliError, match="selected PEX embeds"):
+        build_base_image_spec(options)
+
+
+def test_base_image_can_require_public_pex_revision(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    options = BaseImageBuildOptions(pex, require_public_revision=True)
+
+    with pytest.raises(CliError, match="does not embed a full public GitHub revision"):
+        build_base_image_spec(options)
