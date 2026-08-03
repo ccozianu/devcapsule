@@ -20,6 +20,20 @@ Requirements: root `R-PRODUCT-001`, root `R-PRODUCT-002`,
 
 Current stage: Stage 3, explicit runtime effects.
 
+Recommended source revision for the next v021 dogfood base:
+
+```text
+5401ce3506c0a8a63bfef40f4f9ef18d2b987436
+```
+
+That revision is the current clean branch HEAD and contains the completed
+Stages 0 through 2. Use it as both the PEX source revision and the asserted
+`images build --type base --source-revision` value. The committed platform lock
+must continue selecting the existing immutable v020 digest until the v021 base
+has been built, inspected, scanned, published, and assigned an immutable
+registry digest. Only then should the lock be changed and checkout base-image
+authorization refreshed.
+
 The original `b5d42e8` baseline above remains the historical starting point for
 this plan. Progress from that baseline is:
 
@@ -41,9 +55,10 @@ this plan. Progress from that baseline is:
   packaging integrations.
 
 No real image was pulled, built, or launched for Stages 0 through 2. The next
-action is Stage 3: verify and complete the generic Docker launch plan and its
-positive and negative authorization behavior before implementing the
-development-sudo policy in Stage 4.
+action is to build and publish the v021 base from the recommended revision,
+then continue Stage 3 by verifying and completing the generic Docker launch
+plan and its positive and negative authorization behavior before implementing
+the development-sudo policy in Stage 4.
 
 ## Executive Scope Decision: Gemini CLI Is Unsupported
 
