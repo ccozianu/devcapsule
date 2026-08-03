@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import tomllib
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -414,6 +415,96 @@ def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path
             resolved = tomllib.load(stream)
         assert resolved["runtime"]["component"] == "pycharm"
         assert "image" not in resolved["runtime"]
+
+
+def test_project_run_realizes_formation_and_launches_canonical_image(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+    canonical = "devcapsule-local-pycharm:0123456789abcdef0123"
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "base-image",
+                    LOCKED_BASE,
+                ]
+            )
+            == 0
+        )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+
+        realized = SimpleNamespace(
+            image=SimpleNamespace(reference=canonical),
+            created=False,
+        )
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized) as realize,
+            patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch,
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+
+        selected = realize.call_args.args[0]
+        assert selected.root == project.resolve()
+        assert selected.checkout_path == registered_checkouts()[0].record_path
+        assert selected.resolution_path == selected.checkout_path.with_name(
+            "devcapsule.resolved.toml"
+        )
+        assert launch.call_args.args[0].image == canonical
+        assert "Reused canonical environment" in capsys.readouterr().out
+
+
+def test_project_run_does_not_launch_when_environment_realization_fails(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "base-image",
+                    LOCKED_BASE,
+                ]
+            )
+            == 0
+        )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+
+        with (
+            patch(
+                "devcapsule.commands.project.realize_environment",
+                side_effect=ProjectConfigurationError("canonical image metadata conflict"),
+            ),
+            patch("devcapsule.commands.project.run_pycharm") as launch,
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 2
+
+        launch.assert_not_called()
+        assert "canonical image metadata conflict" in capsys.readouterr().err
 
 
 def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(

@@ -381,8 +381,9 @@ concurrent use. Resolution revalidates every directory before `project run`
 uses the bindings. Host-file, socket, secret, and alternative-storage
 providers are not part of this initial contract.
 
-Build the lock-selected local environment after creating a fresh checkout
-resolution:
+Normal `project run` now realizes the lock-selected local environment
+automatically after loading a fresh checkout resolution. To prebuild or inspect
+that same environment explicitly without launching a container, use:
 
 ```bash
 devcapsule project --path /path/to/checkout config resolve
@@ -468,9 +469,16 @@ XDG roots, and owns its exceptional config, plugins, system, log, and cache
 slots with their lifecycle and storage semantics. Components that keep state
 entirely under standard `HOME`/XDG locations declare no custom slots; shared
 runtime planning contains no agent- or IDE-named state field.
-Automatic materialization and external runtime-plan delivery from `project
-run` remain the next integration slice; use `project run-image` only for
-deliberate interim inspection of a locally built checkpoint.
+`images build --type environment` and `project run` share the same realization
+service and strict reuse checks. Normal run obtains the locked base only when it
+is missing locally, then reuses or materializes the canonical environment
+without requiring a debug alias or a separate image-build command. External
+runtime-plan delivery remains the next integration slice. At this Stage 1
+checkpoint, automatic realization is functional, but a real canonical-image
+launch is not: the transitional launcher still supplies the legacy
+`/opt/pycharm/bin/pycharm.sh` command override, which is incompatible with the
+canonical image's generic PEX entrypoint. Stage 2 removes that override and
+delivers the external plan.
 
 ### Capability-first dogfood path
 

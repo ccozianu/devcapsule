@@ -12,8 +12,9 @@ import click
 from devcapsule import cli, compat
 from devcapsule.configurations.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.configurations.vscode_with_claude import VscodeWithClaudeConfiguration
+from devcapsule.environment_realization import RealizedEnvironment
 from devcapsule.image_metadata import LocalImageRecord
-from devcapsule.materialization import ImageDetails
+from devcapsule.materialization import ImageDetails, parse_locked_environment
 from devcapsule.project_configuration import canonical_digest
 
 
@@ -581,17 +582,20 @@ def test_images_build_environment_uses_fresh_project_lock_and_verified_base(tmp_
         "linux",
         "amd64",
     )
+    realized = RealizedEnvironment(
+        image=completed,
+        base=base,
+        base_reference=base_reference,
+        locked=parse_locked_environment(lock),
+        cache=tmp_path / "cache" / "devcapsule",
+        created=True,
+        explicit_base_override=False,
+    )
 
     with (
         patch("devcapsule.commands.images.fresh_resolved_project", return_value=project) as fresh,
-        patch("devcapsule.commands.images._ensure_local_image", return_value=base),
-        patch(
-            "devcapsule.commands.images.ensure_materialized_pycharm",
-            return_value=(completed.reference, True),
-        ) as materialize,
-        patch("devcapsule.commands.images._required_local_image", return_value=completed),
+        patch("devcapsule.commands.images.realize_environment", return_value=realized) as realize,
         patch("devcapsule.commands.images._add_alias") as add_alias,
-        patch.dict(os.environ, {"HOME": str(tmp_path / "home"), "XDG_CACHE_HOME": str(tmp_path / "cache")}),
     ):
         result = cli.main(
             [
@@ -608,10 +612,7 @@ def test_images_build_environment_uses_fresh_project_lock_and_verified_base(tmp_
 
     assert result == 0
     fresh.assert_called_once_with(tmp_path / "project")
-    assert materialize.call_args.kwargs["base_reference"] == base_reference
-    assert materialize.call_args.kwargs["base_identity"] == "sha256:base"
-    assert materialize.call_args.kwargs["platform"] == "linux-amd64"
-    assert materialize.call_args.kwargs["cache_root"] == (tmp_path / "cache" / "devcapsule")
+    realize.assert_called_once_with(project, base_override=None)
     add_alias.assert_called_once_with(completed, "devcapsule-local-pycharm:debug-v019")
     output = capsys.readouterr().out
     assert "Built DevCapsule environment image" in output
@@ -670,7 +671,7 @@ def test_images_build_environment_requires_checkout_base_authorization(capsys) -
     )
     with (
         patch("devcapsule.commands.images.fresh_resolved_project", return_value=project),
-        patch("devcapsule.commands.images._ensure_local_image") as obtain,
+        patch("devcapsule.environment_realization.ensure_local_image") as obtain,
     ):
         result = cli.main(["images", "build", "--type", "environment"])
 
@@ -719,16 +720,18 @@ def test_images_build_environment_allows_explicit_local_base_override(tmp_path: 
         "linux",
         "amd64",
     )
+    realized = RealizedEnvironment(
+        image=completed,
+        base=base,
+        base_reference="local/devcapsule-base:test",
+        locked=parse_locked_environment(lock),
+        cache=tmp_path / "home" / ".cache" / "devcapsule",
+        created=False,
+        explicit_base_override=True,
+    )
     with (
         patch("devcapsule.commands.images.fresh_resolved_project", return_value=project),
-        patch("devcapsule.commands.images.authorized_base_reference") as authorize,
-        patch("devcapsule.commands.images._ensure_local_image", return_value=base) as obtain,
-        patch(
-            "devcapsule.commands.images.ensure_materialized_pycharm",
-            return_value=(completed.reference, False),
-        ),
-        patch("devcapsule.commands.images._required_local_image", return_value=completed),
-        patch.dict(os.environ, {"HOME": str(tmp_path / "home")}),
+        patch("devcapsule.commands.images.realize_environment", return_value=realized) as realize,
     ):
         result = cli.main(
             [
@@ -742,8 +745,7 @@ def test_images_build_environment_allows_explicit_local_base_override(tmp_path: 
         )
 
     assert result == 0
-    authorize.assert_not_called()
-    obtain.assert_called_once_with("local/devcapsule-base:test")
+    realize.assert_called_once_with(project, base_override="local/devcapsule-base:test")
     assert "Base selection: explicit developer override" in capsys.readouterr().err
 
 

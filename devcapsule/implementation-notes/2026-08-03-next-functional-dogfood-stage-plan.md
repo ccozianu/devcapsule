@@ -137,6 +137,8 @@ Closure evidence:
 
 ## Stage 1: Share Environment Realization With `project run`
 
+Status: implemented and validated.
+
 Extract or introduce a host-side environment realization service reusable by
 both `images build --type environment` and `project run`.
 

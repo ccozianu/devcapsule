@@ -13,10 +13,12 @@ import readchar
 from devcapsule.commands.base import BaseCommand
 from devcapsule.components.pycharm import logical_state_slots as pycharm_state_slots
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
+from devcapsule.environment_realization import realize_environment
 from devcapsule.project import sanitize_name
 from devcapsule.project_configuration import (
     AuthorizationDeclaration,
     ProjectConfigurationError,
+    ResolvedProject,
     authorization_declarations,
     atomic_write,
     canonical_digest,
@@ -858,6 +860,8 @@ def _run_command() -> click.Command:
             "checkout-input": canonical_digest(checkout),
         }
         actual = resolved.get("sources", {})
+        if not isinstance(actual, dict):
+            raise ProjectConfigurationError("Generated resolution sources must be a table.")
         stale = [name for name, digest in expected.items() if actual.get(name) != digest]
         if stale and not force:
             raise ProjectConfigurationError(
@@ -866,8 +870,26 @@ def _run_command() -> click.Command:
         if stale:
             click.echo(f"WARNING: using stale generated resolution once ({', '.join(stale)}).", err=True)
         runtime = resolved.get("runtime", {})
-        if runtime.get("component") != "pycharm" or not runtime.get("image"):
-            raise ProjectConfigurationError("The first run slice supports only resolved PyCharm images.")
+        if not isinstance(runtime, dict) or runtime.get("component") != "pycharm":
+            raise ProjectConfigurationError("The first run slice supports only resolved PyCharm environments.")
+        image = runtime.get("image")
+        if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
+            selected = ResolvedProject(
+                root=root,
+                manifest=manifest,
+                lock_path=_lock_path,
+                lock=lock,
+                checkout_path=input_path,
+                checkout=checkout,
+                resolution_path=output_path,
+                resolution=resolved,
+            )
+            realized = realize_environment(selected)
+            image = realized.image.reference
+            action = "Materialized" if realized.created else "Reused"
+            click.echo(f"{action} canonical environment: {image}")
+        if not isinstance(image, str) or not image:
+            raise ProjectConfigurationError("The resolved PyCharm environment has no runnable image.")
         memory_limit = runtime.get("memory-limit-bytes")
         if memory_limit is not None and (
             not isinstance(memory_limit, int) or isinstance(memory_limit, bool) or memory_limit <= 0
@@ -893,7 +915,7 @@ def _run_command() -> click.Command:
             PycharmRunOptions(
                 project=root,
                 project_mount=str(runtime["project-mount"]),
-                image=str(runtime["image"]),
+                image=image,
                 name=container_name,
                 persistent_home=Path(state["home"]) if "home" in state else None,
                 ide_config=Path(state["pycharm/config"]) if "pycharm/config" in state else None,
