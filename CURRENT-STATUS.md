@@ -922,12 +922,31 @@ Current task:
   exact authorization, explicit override, metadata conflict, shared images
   command behavior, automatic run realization, and no launch after a
   realization error. No real image was pulled, built, or launched.
-- This is not yet a functional canonical-image dogfood launch. After Stage 1
-  realizes the image, the transitional PyCharm adapter still supplies
-  `/opt/pycharm/bin/pycharm.sh` as a command override; the canonical image's
-  OCI entrypoint interprets that as a runtime-plan argument. Stage 2 must
-  generate and mount the checkout runtime plan, use the image's generic OCI
-  entrypoint/CMD unchanged, and clean up its temporary files.
+- Stage 1 was committed as `c07ae3b` (`Share project environment
+  realization`). Stage 2 of the active dogfood plan is implemented.
+  Formation-based `project run` now generates a version-1
+  checkout runtime plan from the exact component template used by formation.
+  It contains only the established in-container project destination,
+  `/home/devcapsule`, host UID/GID/runtime username, component adapter and
+  configuration, and the five namespaced in-container PyCharm slot
+  destinations. Serialization excludes checkout paths, host state paths,
+  authorization evidence, secrets, and credentials.
+- The launcher writes the plan to a mode-`0644` launcher-owned temporary file,
+  bind-mounts it read-only at `/etc/devcapsule/runtime-plan.json`, and tracks it
+  with the existing Xauthority/passwd/group temporary files. All are removed
+  after the foreground Docker process exits, Docker-plan preparation fails, or
+  plan serialization fails. Formation-based runs add no command after the
+  canonical image name, preserving its generic `tini -- devcapsule.pex
+  runtime` OCI entrypoint and runtime-plan CMD; legacy image runs retain the
+  PyCharm command override.
+- The Stage 2 full dirty-tree Nox gate passed with clean mypy over 69 files,
+  161 fast tests at 80% statement/branch coverage, source and local-PEX command
+  smokes, PEX construction, and all three packaging integration tests. Tests
+  cover canonical serialization and parsing, redaction boundaries, component
+  template/formation agreement, exact slot destinations, mode `0644`, the
+  read-only external mount, unchanged OCI process behavior, normal and failure
+  cleanup, and the existing assertion that no checkout runtime plan is baked
+  into a materialized image. No real image was pulled, built, or launched.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -1206,10 +1225,9 @@ for, or advertise Gemini CLI. A negative absence check is only a regression
 guard.
 
 1. Follow the active plan to wire the verified canonical environment into
-   `devcapsule project run`. Stages 0 and 1 are complete; proceed with Stage 2.
-   Generate the checkout-specific runtime
-   plan from the fresh resolution and deliver it read-only at
-   `/etc/devcapsule/runtime-plan.json`, activate authorized development sudo
+   `devcapsule project run`. Stages 0 through 2 are complete; proceed with
+   Stage 3. Validate and complete the explicit
+   runtime effects, then activate authorized development sudo
    without making it ambient, and retain the shared image's generic component
    template. Normal run should strictly reuse or automatically materialize the
    locked image and must not bake project, state, credential, authorization,

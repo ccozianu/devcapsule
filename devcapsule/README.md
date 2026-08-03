@@ -472,13 +472,19 @@ runtime planning contains no agent- or IDE-named state field.
 `images build --type environment` and `project run` share the same realization
 service and strict reuse checks. Normal run obtains the locked base only when it
 is missing locally, then reuses or materializes the canonical environment
-without requiring a debug alias or a separate image-build command. External
-runtime-plan delivery remains the next integration slice. At this Stage 1
-checkpoint, automatic realization is functional, but a real canonical-image
-launch is not: the transitional launcher still supplies the legacy
-`/opt/pycharm/bin/pycharm.sh` command override, which is incompatible with the
-canonical image's generic PEX entrypoint. Stage 2 removes that override and
-delivers the external plan.
+without requiring a debug alias or a separate image-build command.
+
+For a formation-based run, DevCapsule generates a version-1 runtime plan from
+the same component template used in the image's formation identity. The JSON
+contains only in-container project/home/state destinations, the runtime
+UID/GID/username, and component adapter configuration—never host source/state
+paths, checkout files, credentials, or authorization evidence. The launcher
+writes it to a temporary mode-`0644` file, mounts it read-only at
+`/etc/devcapsule/runtime-plan.json`, and removes it with the generated identity
+files after exit or launch preparation failure. No command follows the image
+name in `docker run`, so Docker retains the canonical image's generic PEX
+entrypoint and runtime-plan CMD. Host-level launch validation and the remaining
+explicit runtime effects continue in Stage 3 of the active dogfood plan.
 
 ### Capability-first dogfood path
 

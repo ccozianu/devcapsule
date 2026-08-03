@@ -15,6 +15,7 @@ from devcapsule.components.pycharm import logical_state_slots as pycharm_state_s
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
 from devcapsule.environment_realization import realize_environment
 from devcapsule.project import sanitize_name
+from devcapsule.project_runtime_plan import project_runtime_plan
 from devcapsule.project_configuration import (
     AuthorizationDeclaration,
     ProjectConfigurationError,
@@ -873,6 +874,8 @@ def _run_command() -> click.Command:
         if not isinstance(runtime, dict) or runtime.get("component") != "pycharm":
             raise ProjectConfigurationError("The first run slice supports only resolved PyCharm environments.")
         image = runtime.get("image")
+        checkout_runtime_plan = None
+        use_image_process = False
         if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
             selected = ResolvedProject(
                 root=root,
@@ -886,6 +889,8 @@ def _run_command() -> click.Command:
             )
             realized = realize_environment(selected)
             image = realized.image.reference
+            checkout_runtime_plan = project_runtime_plan(selected, realized.locked)
+            use_image_process = True
             action = "Materialized" if realized.created else "Reused"
             click.echo(f"{action} canonical environment: {image}")
         if not isinstance(image, str) or not image:
@@ -927,6 +932,8 @@ def _run_command() -> click.Command:
                 enable_sudo=bool(selected_sudo),
                 network_mode=selected_network,
                 memory_limit_bytes=memory_limit,
+                runtime_plan=checkout_runtime_plan,
+                use_image_process=use_image_process,
                 extra_docker_args=["--pull=never"],
                 project_state=None,
             )

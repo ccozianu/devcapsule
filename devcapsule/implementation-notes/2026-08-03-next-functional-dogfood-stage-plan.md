@@ -16,6 +16,35 @@ Requirements: root `R-PRODUCT-001`, root `R-PRODUCT-002`,
 `R-IDE-CONFIG-001`, `R-PYTHON-MVP-003`, `R-IMAGE-BUILD-001`, and
 `R-FRAMEWORK-001`.
 
+## Current Progress
+
+Current stage: Stage 3, explicit runtime effects.
+
+The original `b5d42e8` baseline above remains the historical starting point for
+this plan. Progress from that baseline is:
+
+- Stage 0 and interactive `config authorize --all-recommended` were committed
+  as `3608ffc` (`Add project configuration readiness workflow`). The full gate
+  passed with 146 fast tests at 80% coverage, clean mypy, source/local-PEX
+  smokes, PEX construction, and three packaging integrations.
+- Stage 1 was committed as `c07ae3b` (`Share project environment realization`).
+  `images build --type environment` and formation-based `project run` now use
+  one authorization-enforcing canonical realization service. Its full gate
+  passed with 155 fast tests at 80% coverage, clean mypy, and all packaging
+  checks.
+- Stage 2 is implemented and validated in the current checkpoint. It
+  generates the redacted checkout runtime plan, delivers it through an
+  external read-only mount, preserves the canonical image's OCI
+  entrypoint/CMD, and cleans plan and identity files on success or failure.
+  Its full dirty-tree gate passed with 161 fast tests at 80% coverage, clean
+  mypy over 69 files, source/local-PEX smokes, PEX construction, and all three
+  packaging integrations.
+
+No real image was pulled, built, or launched for Stages 0 through 2. The next
+action is Stage 3: verify and complete the generic Docker launch plan and its
+positive and negative authorization behavior before implementing the
+development-sudo policy in Stage 4.
+
 ## Executive Scope Decision: Gemini CLI Is Unsupported
 
 DevCapsule will not support Gemini CLI. Active code, images, manifests, locks,
@@ -51,10 +80,11 @@ Revision `b5d42e8` provides:
   smokes, three packaging integrations, and a revision-bearing PEX for
   `b5d42e8`.
 
-The current blocker is `devcapsule project run`: it still requires a legacy
-completed image in the generated resolution and invokes the legacy PyCharm
-launcher command override. Formation locks intentionally omit that completed
-image, and the v020 image intentionally omits a checkout runtime plan.
+At that baseline, the blocker was `devcapsule project run`: it required a
+legacy completed image in the generated resolution and invoked the legacy
+PyCharm launcher command override. Stages 1 and 2 above have now removed both
+parts of that baseline blocker while keeping the v020 image free of a baked
+checkout runtime plan.
 
 ## Target Outcome
 
@@ -135,6 +165,10 @@ Closure evidence:
 - user documentation explains the status vocabulary and non-destructive
   behavior after initialization.
 
+Recorded result: complete in `3608ffc`; the combined Stage 0 and interactive
+authorization gate passed 146 fast tests at 80% coverage plus clean mypy and
+all packaging checks.
+
 ## Stage 1: Share Environment Realization With `project run`
 
 Status: implemented and validated.
@@ -168,7 +202,13 @@ Closure evidence:
 - the existing `images build --type environment` behavior and output remain
   covered.
 
+Recorded result: complete in `c07ae3b`; the full gate passed 155 fast tests at
+80% coverage, clean mypy, and all packaging checks without pulling, building,
+or launching a real image.
+
 ## Stage 2: Generate And Deliver The Checkout Runtime Plan
+
+Status: implemented and validated.
 
 Generate a version-1 `RuntimePlan` from the same component template that
 participates in the formation descriptor.
@@ -211,7 +251,14 @@ Closure evidence:
 - Docker-plan tests prove the runtime plan is an external read-only mount; and
 - image inspection continues to prove no checkout runtime plan is baked in.
 
+Recorded result: complete in the current checkpoint. The full gate passed 161 fast
+tests at 80% coverage, clean mypy over 69 files, source/local-PEX smokes, PEX
+construction, and three packaging integrations. No real container was
+launched.
+
 ## Stage 3: Launch The Generic Environment With Explicit Runtime Effects
+
+Status: current next stage; not started.
 
 Build a launch plan for the canonical environment while preserving safe
 defaults and the validated dogfood behavior.

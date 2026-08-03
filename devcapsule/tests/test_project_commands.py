@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from devcapsule import cli
+from devcapsule.materialization import parse_locked_environment
 from devcapsule.project_configuration import (
     ProjectConfigurationError,
     canonical_digest,
@@ -428,7 +429,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
 
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
-        write_formation_lock(project)
+        lock_path = write_formation_lock(project)
         assert (
             cli.main(
                 [
@@ -449,6 +450,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         realized = SimpleNamespace(
             image=SimpleNamespace(reference=canonical),
             created=False,
+            locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
         )
         with (
             patch("devcapsule.commands.project.realize_environment", return_value=realized) as realize,
@@ -462,7 +464,12 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         assert selected.resolution_path == selected.checkout_path.with_name(
             "devcapsule.resolved.toml"
         )
-        assert launch.call_args.args[0].image == canonical
+        options = launch.call_args.args[0]
+        assert options.image == canonical
+        assert options.use_image_process is True
+        assert options.runtime_plan.project_path == "/workspace/project"
+        assert options.runtime_plan.home == "/home/devcapsule"
+        assert options.runtime_plan.slots_by_name()["pycharm/config"] == "/ide-config"
         assert "Reused canonical environment" in capsys.readouterr().out
 
 

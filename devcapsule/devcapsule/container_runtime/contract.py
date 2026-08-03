@@ -349,3 +349,31 @@ class RuntimePlan:
 
     def slots_by_name(self) -> dict[str, str]:
         return {slot.name: slot.path for slot in self.state_slots}
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "version": self.version,
+            "project_path": self.project_path,
+            "home": self.home,
+            "identity": {
+                "uid": self.identity.uid,
+                "gid": self.identity.gid,
+                "user": self.identity.user,
+            },
+            "state_slots": [
+                {"name": slot.name, "path": slot.path} for slot in self.state_slots
+            ],
+            "component": {
+                "id": self.component.id,
+                "adapter": self.component.adapter,
+                "configuration": dict(self.component.configuration),
+            },
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(
+            self.to_mapping(),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )

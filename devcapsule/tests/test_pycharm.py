@@ -5,13 +5,23 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
+import pytest
+
+from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.configurations.pycharm import DockerMode, IdeConfigMode, PycharmRunOptions, build_run_config
 from devcapsule.configurations.pycharm._launcher import (
     HostUser,
+    PycharmRunError,
     PycharmRunConfig,
     TempRuntimeFiles,
+    build_docker_args,
+    cleanup_temp_runtime_files,
+    prepare_temp_runtime_files,
+    run_pycharm,
     write_user_files,
 )
+from devcapsule.container_runtime.contract import Identity, RuntimePlan
+from devcapsule.materialization import RUNTIME_PLAN_PATH
 from devcapsule.project import plan_project
 
 
@@ -22,6 +32,160 @@ def base_env(tmp_path: Path) -> dict[str, str]:
         "XDG_DATA_HOME": str(tmp_path / "data"),
         "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
     }
+
+
+def external_runtime_plan() -> RuntimePlan:
+    return RuntimePlan.for_component(
+        pycharm_runtime_template(),
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000, "developer"),
+    )
+
+
+def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=external_runtime_plan(),
+            use_image_process=True,
+        ),
+        env,
+    )
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.runtime_plan_file is not None
+        assert files.runtime_plan_file.stat().st_mode & 0o777 == 0o644
+        assert RuntimePlan.from_file(files.runtime_plan_file) == external_runtime_plan()
+        args = build_docker_args(config, files, env)
+        assert (
+            f"type=bind,src={files.runtime_plan_file},dst={RUNTIME_PLAN_PATH},ro"
+            in args
+        )
+    finally:
+        cleanup_temp_runtime_files(files)
+    assert files.runtime_plan_file is not None
+    assert not files.runtime_plan_file.exists()
+
+
+def test_image_process_uses_oci_command_and_cleans_all_temporary_files(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    image = "devcapsule-local-pycharm:canonical"
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+    ):
+        run.return_value.returncode = 0
+        assert (
+            run_pycharm(
+                PycharmRunOptions(
+                    project=project,
+                    project_mount="/workspace/project",
+                    image=image,
+                    docker_mode=DockerMode.none,
+                    network_mode="bridge",
+                    runtime_plan=external_runtime_plan(),
+                    use_image_process=True,
+                ),
+                env,
+            )
+            == 0
+        )
+
+    command = run.call_args.args[0]
+    assert command[-1] == image
+    assert "/opt/pycharm/bin/pycharm.sh" not in command
+    temporary_sources = [
+        Path(next(part.removeprefix("src=") for part in argument.split(",") if part.startswith("src=")))
+        for argument in command
+        if argument.startswith("type=bind,src=")
+        and any(
+            destination in argument
+            for destination in (
+                "dst=/tmp/.docker.xauth",
+                "dst=/etc/passwd",
+                "dst=/etc/group",
+                f"dst={RUNTIME_PLAN_PATH}",
+            )
+        )
+    ]
+    assert len(temporary_sources) == 4
+    assert all(not path.exists() for path in temporary_sources)
+
+
+def test_launch_preparation_failure_cleans_runtime_and_identity_files(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch(
+            "devcapsule.configurations.pycharm._launcher.cleanup_temp_runtime_files",
+            wraps=cleanup_temp_runtime_files,
+        ) as cleanup,
+    ):
+        with pytest.raises(PycharmRunError, match="variable is empty or unset"):
+            run_pycharm(
+                PycharmRunOptions(
+                    project=project,
+                    project_mount="/workspace/project",
+                    image="devcapsule-local-pycharm:canonical",
+                    docker_mode=DockerMode.none,
+                    network_mode="bridge",
+                    git_token_env="MISSING_TOKEN",
+                    runtime_plan=external_runtime_plan(),
+                    use_image_process=True,
+                ),
+                env,
+            )
+
+    files = cleanup.call_args.args[0]
+    assert files.runtime_plan_file is not None
+    assert all(
+        path is None or not path.exists()
+        for path in (
+            files.xauth_file,
+            files.passwd_file,
+            files.group_file,
+            files.runtime_plan_file,
+        )
+    )
+
+
+def test_runtime_plan_serialization_failure_leaves_no_temporary_files(tmp_path: Path) -> None:
+    runtime_directory = tmp_path / "runtime"
+    config = cast(
+        PycharmRunConfig,
+        SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan()),
+    )
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch.object(RuntimePlan, "to_json", side_effect=ValueError("serialization failed")),
+    ):
+        with pytest.raises(ValueError, match="serialization failed"):
+            prepare_temp_runtime_files(
+                config,
+                {"XDG_RUNTIME_DIR": str(runtime_directory)},
+            )
+
+    assert runtime_directory.is_dir()
+    assert list(runtime_directory.iterdir()) == []
 
 
 def test_generated_passwd_home_matches_persistent_container_home(tmp_path: Path) -> None:

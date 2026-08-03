@@ -16,6 +16,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Mapping
 
+from ...container_runtime.contract import RuntimePlan
+from ...materialization import RUNTIME_PLAN_PATH
 from ...project import ProjectMountError
 from ...runtime import (
     plan_shared_runtime,
@@ -55,6 +57,7 @@ class TempRuntimeFiles:
     group_file: Path
     shadow_file: Path | None = None
     token_file: Path | None = None
+    runtime_plan_file: Path | None = None
 
 
 @dataclass
@@ -91,6 +94,8 @@ class PycharmRunOptions:
     ignore_config_lock: bool = False
     network_mode: str = "host"
     memory_limit_bytes: int | None = None
+    runtime_plan: RuntimePlan | None = None
+    use_image_process: bool = False
     extra_docker_args: list[str] = field(default_factory=list)
 
 
@@ -126,6 +131,8 @@ class PycharmRunConfig:
     ignore_config_lock: bool
     network_mode: str
     memory_limit_bytes: int | None
+    runtime_plan: RuntimePlan | None
+    use_image_process: bool
     extra_docker_args: list[str] = field(default_factory=list)
     libgl_always_software: str = "1"
     mesa_loader_driver_override: str = "llvmpipe"
@@ -141,10 +148,10 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
     try:
         docker_args = build_docker_args(config, files, runtime_env)
         print_storage_summary(config)
-        completed = subprocess.run(
-            ["docker", "run", *docker_args, config.image, "/opt/pycharm/bin/pycharm.sh", config.project_mount],
-            check=False,
-        )
+        command = ["docker", "run", *docker_args, config.image]
+        if not config.use_image_process:
+            command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
+        completed = subprocess.run(command, check=False)
         return completed.returncode
     finally:
         cleanup_temp_runtime_files(files)
@@ -192,6 +199,8 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         raise PycharmRunError("DISPLAY is not set; this X11 launcher needs an active X session.")
     if options.network_mode not in {"bridge", "host", "none"}:
         raise PycharmRunError("The Docker network mode must be bridge, host, or none.")
+    if options.use_image_process and options.runtime_plan is None:
+        raise PycharmRunError("Using the image process requires an external runtime plan.")
 
     global_settings_default = base_data_dir / "state"
 
@@ -318,6 +327,14 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
 
     git_token_file = options.git_token_file or env.get("PYCHARM_GIT_TOKEN_FILE") or env.get("GITHUB_TOKEN_FILE")
 
+    if options.runtime_plan is not None:
+        if options.runtime_plan.project_path != runtime_plan.project_mount:
+            raise PycharmRunError(
+                "The external runtime plan project path does not match the Docker project mount."
+            )
+        if options.runtime_plan.home != "/home/devcapsule":
+            raise PycharmRunError("The external runtime plan home must be /home/devcapsule.")
+
     return PycharmRunConfig(
         image=options.image or env.get("IMAGE", "pycharm-isolated:latest"),
         name=options.name or f"pycharm-isolated-{host_user.name}-{int(time.time())}",
@@ -351,6 +368,8 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ignore_config_lock=ignore_config_lock,
         network_mode=options.network_mode,
         memory_limit_bytes=options.memory_limit_bytes,
+        runtime_plan=options.runtime_plan,
+        use_image_process=options.use_image_process,
         extra_docker_args=list(options.extra_docker_args),
         libgl_always_software=env.get("PYCHARM_LIBGL_ALWAYS_SOFTWARE", env.get("LIBGL_ALWAYS_SOFTWARE", "1")),
         mesa_loader_driver_override=env.get(
@@ -450,6 +469,13 @@ def build_docker_args(
 
     if config.enable_sudo and files.shadow_file:
         args.extend(["--mount", f"type=bind,src={files.shadow_file},dst=/etc/shadow,ro"])
+    if files.runtime_plan_file is not None:
+        args.extend(
+            [
+                "--mount",
+                f"type=bind,src={files.runtime_plan_file},dst={RUNTIME_PLAN_PATH},ro",
+            ]
+        )
     if config.git_user_name:
         args.extend(["--env", f"GIT_USER_NAME={config.git_user_name}"])
     if config.git_user_email:
@@ -568,11 +594,19 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
         passwd_file=make_temp(runtime_parent, "pycharm-docker-passwd."),
         group_file=make_temp(runtime_parent, "pycharm-docker-group."),
     )
-    write_xauthority(files.xauth_file, env)
-    write_user_files(config, files)
-    if config.enable_sudo:
-        print_sudo_warning()
-    return files
+    try:
+        write_xauthority(files.xauth_file, env)
+        write_user_files(config, files)
+        if config.runtime_plan is not None:
+            files.runtime_plan_file = make_temp(runtime_parent, "devcapsule-runtime-plan.")
+            files.runtime_plan_file.write_text(config.runtime_plan.to_json() + "\n", encoding="utf-8")
+            files.runtime_plan_file.chmod(0o644)
+        if config.enable_sudo:
+            print_sudo_warning()
+        return files
+    except BaseException:
+        cleanup_temp_runtime_files(files)
+        raise
 
 
 def make_temp(parent: Path, prefix: str) -> Path:
@@ -670,7 +704,14 @@ def resolve_git_token_file(
 
 
 def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
-    for path in [files.xauth_file, files.passwd_file, files.group_file, files.shadow_file, files.token_file]:
+    for path in [
+        files.xauth_file,
+        files.passwd_file,
+        files.group_file,
+        files.shadow_file,
+        files.token_file,
+        files.runtime_plan_file,
+    ]:
         if path:
             path.unlink(missing_ok=True)
 
