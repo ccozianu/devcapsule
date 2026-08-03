@@ -96,6 +96,8 @@ class PycharmRunOptions:
     memory_limit_bytes: int | None = None
     runtime_plan: RuntimePlan | None = None
     use_image_process: bool = False
+    additional_state_mounts: dict[str, tuple[Path, str]] = field(default_factory=dict)
+    secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
 
 
@@ -133,6 +135,8 @@ class PycharmRunConfig:
     memory_limit_bytes: int | None
     runtime_plan: RuntimePlan | None
     use_image_process: bool
+    additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
+    secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
     libgl_always_software: str = "1"
     mesa_loader_driver_override: str = "llvmpipe"
@@ -151,7 +155,7 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
         command = ["docker", "run", *docker_args, config.image]
         if not config.use_image_process:
             command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
-        completed = subprocess.run(command, check=False)
+        completed = subprocess.run(command, check=False, env=runtime_env)
         return completed.returncode
     finally:
         cleanup_temp_runtime_files(files)
@@ -335,6 +339,40 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         if options.runtime_plan.home != "/home/devcapsule":
             raise PycharmRunError("The external runtime plan home must be /home/devcapsule.")
 
+    additional_state_mounts: list[tuple[str, str, str]] = []
+    runtime_slots = options.runtime_plan.slots_by_name() if options.runtime_plan is not None else {}
+    ancillary_ids = {
+        component.id for component in options.runtime_plan.ancillary_components
+    } if options.runtime_plan is not None else set()
+    for logical_name, (source, destination) in sorted(options.additional_state_mounts.items()):
+        namespace, separator, _local_name = logical_name.partition("/")
+        planned_destination = runtime_slots.get(logical_name)
+        if not separator or namespace not in ancillary_ids:
+            raise PycharmRunError(
+                f"Additional state mount {logical_name!r} is not owned by a declared ancillary component."
+            )
+        if planned_destination is not None and planned_destination != destination:
+            raise PycharmRunError(
+                f"Additional state mount {logical_name!r} conflicts with the external runtime plan."
+            )
+        destination_path = Path(destination)
+        if not destination_path.is_absolute() or ".." in destination_path.parts:
+            raise PycharmRunError(
+                f"Additional state mount {logical_name!r} must use an absolute container destination."
+            )
+        resolved_source = resolve_existing_or_create(source)
+        additional_state_mounts.append((logical_name, str(resolved_source), destination))
+    fixed_environment = options.runtime_plan.component_environment() if options.runtime_plan else {}
+    for name in options.secret_environment:
+        if name in fixed_environment:
+            raise PycharmRunError(
+                f"Secret environment variable {name!r} conflicts with component runtime metadata."
+            )
+        if name not in env:
+            raise PycharmRunError(
+                f"Bound secret environment variable {name!r} is not set on the host."
+            )
+
     return PycharmRunConfig(
         image=options.image or env.get("IMAGE", "pycharm-isolated:latest"),
         name=options.name or f"pycharm-isolated-{host_user.name}-{int(time.time())}",
@@ -370,6 +408,8 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         memory_limit_bytes=options.memory_limit_bytes,
         runtime_plan=options.runtime_plan,
         use_image_process=options.use_image_process,
+        additional_state_mounts=tuple(additional_state_mounts),
+        secret_environment=tuple(sorted(set(options.secret_environment))),
         extra_docker_args=list(options.extra_docker_args),
         libgl_always_software=env.get("PYCHARM_LIBGL_ALWAYS_SOFTWARE", env.get("LIBGL_ALWAYS_SOFTWARE", "1")),
         mesa_loader_driver_override=env.get(
@@ -401,8 +441,6 @@ def build_docker_args(
         f"PROJECT_PATH={config.project_mount}",
         "--env",
         "HOME=/home/devcapsule",
-        "--env",
-        "CODEX_HOME=/home/devcapsule/.codex",
         "--env",
         "XDG_CONFIG_HOME=/home/devcapsule/.config",
         "--env",
@@ -466,6 +504,15 @@ def build_docker_args(
         "--pids-limit",
         "4096",
     ]
+
+    if config.runtime_plan is not None:
+        for name, value in sorted(config.runtime_plan.component_environment().items()):
+            args.extend(["--env", f"{name}={value}"])
+    for name in config.secret_environment:
+        args.extend(["--env", name])
+
+    for _logical_name, source, destination in config.additional_state_mounts:
+        args.extend(["--mount", f"type=bind,src={source},dst={destination}"])
 
     if config.enable_sudo and files.shadow_file:
         args.extend(["--mount", f"type=bind,src={files.shadow_file},dst=/etc/shadow,ro"])
@@ -847,6 +894,16 @@ or rerun with --ignore-config-lock to let PyCharm decide."""
 
 
 def print_storage_summary(config: PycharmRunConfig) -> None:
+    browser_disclosure = ""
+    if config.runtime_plan is not None:
+        properties = config.runtime_plan.component.configuration.get("additional_properties", {})
+        if isinstance(properties, dict) and properties.get("ide.browser.jcef.sandbox.enable") == "false":
+            browser_disclosure = """
+
+Embedded browser security:
+  JCEF's inner Chromium sandbox is disabled for V1 container compatibility.
+  Embedded content inherits the IDE user's project, state, network, and any
+  separately authorized Docker access. Docker's outer isolation is unchanged."""
     print(
         f"""PyCharm storage:
   Persistent home:       {config.persistent_home}
@@ -855,7 +912,7 @@ def print_storage_summary(config: PycharmRunConfig) -> None:
   PyCharm system:         {config.ide_system}
   PyCharm logs:           {config.ide_log}
   Tool cache:             {config.tool_cache}
-  Container project path: {config.project_mount}""",
+  Container project path: {config.project_mount}{browser_disclosure}""",
         file=sys.stderr,
     )
 

@@ -18,6 +18,7 @@ from devcapsule.materialization import (
 )
 from devcapsule.project_configuration import ResolvedProject
 from devcapsule.project_runtime_plan import project_runtime_plan
+from devcapsule_runtime.contract import RuntimePlan as LegacyRuntimePlan
 
 
 def selected_project(tmp_path: Path) -> tuple[ResolvedProject, LockedEnvironment]:
@@ -130,4 +131,33 @@ def test_runtime_plan_and_formation_use_the_same_component_template(tmp_path: Pa
         "id": template.component.id,
         "adapter": template.component.adapter,
         "configuration": dict(template.component.configuration),
+        "environment": dict(template.component.environment),
     }
+
+
+def test_project_runtime_plan_includes_locked_codex_component(tmp_path: Path) -> None:
+    selected, locked = selected_project(tmp_path)
+    selected.lock["components"]["codex"] = {
+        "version": "0.145.0",
+        "delivery-policy": "local-materialization",
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://example.test/codex.tgz",
+                "sha256": "c" * 64,
+                "archive-member": "package/vendor/x86_64-unknown-linux-musl/bin/codex",
+            }
+        },
+    }
+    plan = project_runtime_plan(selected, locked, uid=1000, gid=1000, user="developer")
+
+    assert "codex/home" not in plan.slots_by_name()
+    assert plan.ancillary_components[0].id == "codex"
+    assert plan.component_environment() == {
+        "CODEX_HOME": "/home/devcapsule/.codex",
+        "JAVA_TOOL_OPTIONS": "-Dide.browser.jcef.sandbox.enable=false",
+    }
+    encoded = plan.to_json()
+    legacy = LegacyRuntimePlan.from_json(encoded)
+    assert "codex/home" not in legacy.slots_by_name()
+    assert "OPENAI_API_KEY" not in encoded
+    assert "auth.json" not in encoded

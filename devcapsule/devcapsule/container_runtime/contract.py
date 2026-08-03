@@ -60,6 +60,7 @@ class Component:
     id: str
     adapter: str
     configuration: Mapping[str, object]
+    environment: Mapping[str, str]
 
     def slot_name(self, local_name: str) -> str:
         return f"{self.id}/{local_name}"
@@ -166,6 +167,9 @@ class ComponentRuntimeTemplate:
         configuration = component_value.get("configuration", {})
         if not isinstance(configuration, dict):
             raise RuntimePlanError("component.configuration must be an object")
+        environment = _environment_mapping(
+            component_value.get("environment", {}), "component.environment"
+        )
         persistence_value = component_value.get("persistence")
         if not isinstance(persistence_value, dict):
             raise RuntimePlanError("component.persistence must be an object")
@@ -183,6 +187,7 @@ class ComponentRuntimeTemplate:
                 component_id,
                 _required_string(component_value.get("adapter"), "component.adapter"),
                 configuration,
+                environment,
             ),
             persistence=PersistenceContract(
                 home=_required_choice(
@@ -232,18 +237,21 @@ class ComponentRuntimeTemplate:
         return self.component.slot_name(local_name)
 
     def to_mapping(self) -> dict[str, object]:
+        component: dict[str, object] = {
+            "id": self.component.id,
+            "adapter": self.component.adapter,
+            "configuration": dict(self.component.configuration),
+            "persistence": {
+                "home": self.persistence.home,
+                "xdg": self.persistence.xdg,
+                "state_slots": [slot.to_mapping() for slot in self.persistence.state_slots],
+            },
+        }
+        if self.component.environment:
+            component["environment"] = dict(self.component.environment)
         return {
             "version": self.version,
-            "component": {
-                "id": self.component.id,
-                "adapter": self.component.adapter,
-                "configuration": dict(self.component.configuration),
-                "persistence": {
-                    "home": self.persistence.home,
-                    "xdg": self.persistence.xdg,
-                    "state_slots": [slot.to_mapping() for slot in self.persistence.state_slots],
-                },
-            },
+            "component": component,
         }
 
 
@@ -255,6 +263,7 @@ class RuntimePlan:
     identity: Identity
     state_slots: tuple[StateSlot, ...]
     component: Component
+    ancillary_components: tuple[Component, ...] = ()
 
     @classmethod
     def for_component(
@@ -264,17 +273,23 @@ class RuntimePlan:
         project_path: str,
         home: str,
         identity: Identity,
+        ancillary_templates: tuple[ComponentRuntimeTemplate, ...] = (),
+        include_ancillary_state: bool = True,
     ) -> RuntimePlan:
+        templates = (template, *ancillary_templates)
+        cls._validate_components(tuple(item.component for item in templates))
         return cls(
             version=1,
             project_path=_absolute_path(project_path, "project_path"),
             home=_absolute_path(home, "home"),
             identity=identity,
             state_slots=tuple(
-                StateSlot(template.logical_slot_name(slot.name), slot.container_path)
-                for slot in template.persistence.state_slots
+                StateSlot(item.logical_slot_name(slot.name), slot.container_path)
+                for item in (templates if include_ancillary_state else (template,))
+                for slot in item.persistence.state_slots
             ),
             component=template.component,
+            ancillary_components=tuple(item.component for item in ancillary_templates),
         )
 
     @classmethod
@@ -320,38 +335,81 @@ class RuntimePlan:
                 raise RuntimePlanError(f"duplicate state slot: {name}")
             names.add(name)
             slots.append(StateSlot(name, _absolute_path(slot.get("path"), f"state_slots[{index}].path")))
-        component_value = document.get("component")
-        if not isinstance(component_value, dict):
-            raise RuntimePlanError("component must be an object")
-        configuration = component_value.get("configuration", {})
-        if not isinstance(configuration, dict):
-            raise RuntimePlanError("component.configuration must be an object")
-        component_id = _identifier(component_value.get("id"), "component.id")
-        prefix = f"{component_id}/"
+        component = cls._component_from_mapping(document.get("component"), "component")
+        ancillary_value = document.get("ancillary_components", [])
+        if not isinstance(ancillary_value, list):
+            raise RuntimePlanError("ancillary_components must be an array")
+        ancillary = tuple(
+            cls._component_from_mapping(value, f"ancillary_components[{index}]")
+            for index, value in enumerate(ancillary_value)
+        )
+        cls._validate_components((component, *ancillary))
+        prefixes = {item.id for item in (component, *ancillary)}
         for slot in slots:
-            if not slot.name.startswith(prefix):
+            namespace, separator, local_name = slot.name.partition("/")
+            if not separator or namespace not in prefixes:
                 raise RuntimePlanError(
-                    f"runtime state slot {slot.name!r} must be namespaced by component {component_id!r}"
+                    f"runtime state slot {slot.name!r} must be namespaced by a declared component"
                 )
-            _identifier(slot.name[len(prefix) :], f"runtime state slot {slot.name!r}")
+            _identifier(local_name, f"runtime state slot {slot.name!r}")
         return cls(
             version=1,
             project_path=_absolute_path(document.get("project_path"), "project_path"),
             home=_absolute_path(document.get("home"), "home"),
             identity=Identity(uid, gid, _required_string(identity_value.get("user", "devcapsule"), "identity.user")),
             state_slots=tuple(slots),
-            component=Component(
-                component_id,
-                _required_string(component_value.get("adapter"), "component.adapter"),
-                configuration,
-            ),
+            component=component,
+            ancillary_components=ancillary,
         )
+
+    @staticmethod
+    def _component_from_mapping(value: object, field: str) -> Component:
+        if not isinstance(value, dict):
+            raise RuntimePlanError(f"{field} must be an object")
+        configuration = value.get("configuration", {})
+        if not isinstance(configuration, dict):
+            raise RuntimePlanError(f"{field}.configuration must be an object")
+        return Component(
+            _identifier(value.get("id"), f"{field}.id"),
+            _required_string(value.get("adapter"), f"{field}.adapter"),
+            configuration,
+            _environment_mapping(value.get("environment", {}), f"{field}.environment"),
+        )
+
+    @staticmethod
+    def _validate_components(components: tuple[Component, ...]) -> None:
+        identifiers: set[str] = set()
+        environment: dict[str, str] = {}
+        for component in components:
+            if component.id in identifiers:
+                raise RuntimePlanError(f"duplicate runtime component: {component.id}")
+            identifiers.add(component.id)
+            for name, value in component.environment.items():
+                previous = environment.get(name)
+                if previous is not None and previous != value:
+                    raise RuntimePlanError(
+                        f"runtime components declare conflicting values for environment variable {name}"
+                    )
+                environment[name] = value
+
+    def component_environment(self) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for component in (self.component, *self.ancillary_components):
+            result.update(component.environment)
+        return result
 
     def slots_by_name(self) -> dict[str, str]:
         return {slot.name: slot.path for slot in self.state_slots}
 
     def to_mapping(self) -> dict[str, object]:
-        return {
+        component: dict[str, object] = {
+            "id": self.component.id,
+            "adapter": self.component.adapter,
+            "configuration": dict(self.component.configuration),
+        }
+        if self.component.environment:
+            component["environment"] = dict(self.component.environment)
+        result: dict[str, object] = {
             "version": self.version,
             "project_path": self.project_path,
             "home": self.home,
@@ -363,12 +421,13 @@ class RuntimePlan:
             "state_slots": [
                 {"name": slot.name, "path": slot.path} for slot in self.state_slots
             ],
-            "component": {
-                "id": self.component.id,
-                "adapter": self.component.adapter,
-                "configuration": dict(self.component.configuration),
-            },
+            "component": component,
         }
+        if self.ancillary_components:
+            result["ancillary_components"] = [
+                _runtime_component_mapping(item) for item in self.ancillary_components
+            ]
+        return result
 
     def to_json(self) -> str:
         return json.dumps(
@@ -377,3 +436,25 @@ class RuntimePlan:
             sort_keys=True,
             separators=(",", ":"),
         )
+
+
+def _environment_mapping(value: object, field: str) -> dict[str, str]:
+    if not isinstance(value, dict):
+        raise RuntimePlanError(f"{field} must be an object")
+    environment: dict[str, str] = {}
+    for name, raw_value in value.items():
+        if not isinstance(name, str) or re.fullmatch(r"[A-Z_][A-Z0-9_]*", name) is None:
+            raise RuntimePlanError(f"{field} names must be uppercase environment identifiers")
+        environment[name] = _required_string(raw_value, f"{field}.{name}")
+    return environment
+
+
+def _runtime_component_mapping(component: Component) -> dict[str, object]:
+    value: dict[str, object] = {
+        "id": component.id,
+        "adapter": component.adapter,
+        "configuration": dict(component.configuration),
+    }
+    if component.environment:
+        value["environment"] = dict(component.environment)
+    return value

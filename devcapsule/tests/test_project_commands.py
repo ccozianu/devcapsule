@@ -17,6 +17,7 @@ from devcapsule.project_configuration import (
     immutable_registry_reference,
     registered_checkouts,
 )
+from devcapsule.project import project_namespace
 
 
 LOCKED_BASE = f"docker.io/example/devcapsule-base@sha256:{'b' * 64}"
@@ -92,6 +93,23 @@ def write_formation_lock(project: Path, reference: str = LOCKED_BASE) -> Path:
     return lock_path
 
 
+def select_codex_component(project: Path) -> None:
+    lock_path = project / ".devcapsule" / "devcapsule.linux-amd64.lock"
+    with lock_path.open("a", encoding="utf-8") as stream:
+        stream.write(
+            """
+[components.codex]
+version = "0.145.0"
+delivery-policy = "local-materialization"
+
+[components.codex.artifacts.linux-amd64]
+url = "https://example.test/codex.tgz"
+sha256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+archive-member = "package/vendor/x86_64-unknown-linux-musl/bin/codex"
+"""
+        )
+
+
 def append_manifest_metadata(project: Path, declaration: str) -> None:
     manifest_path = project / ".devcapsule" / "devcapsule.toml"
     with manifest_path.open("a", encoding="utf-8") as stream:
@@ -117,7 +135,11 @@ def test_project_resolve_registers_default_checkout_and_list_uses_registry(
     project = tmp_path / "project"
     project.mkdir()
     config_home = tmp_path / "config"
-    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(config_home),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+    }
 
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
@@ -224,6 +246,7 @@ def test_project_config_list_materializes_default_checkout_and_reports_readiness
             """,
         )
         write_formation_lock(project)
+        select_codex_component(project)
 
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         output = capsys.readouterr().out
@@ -233,6 +256,9 @@ def test_project_config_list_materializes_default_checkout_and_reports_readiness
         assert "runtime.memory-limit" in output
         assert "unset-optional" in output
         assert "managed-default" in output
+        assert "codex/openai-api-key" in output
+        assert "optional-unbound" in output
+        assert "OPENAI_API_KEY" in output
         assert "missing-required" in output
         assert "missing-recommended" in output
         assert "unresolved" in output
@@ -424,12 +450,18 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
     project = tmp_path / "project"
     project.mkdir()
     config_home = tmp_path / "config"
-    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(config_home),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+        "OPENAI_API_KEY": "sk-test-never-persist",
+    }
     canonical = "devcapsule-local-pycharm:0123456789abcdef0123"
 
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
         lock_path = write_formation_lock(project)
+        select_codex_component(project)
         assert (
             cli.main(
                 [
@@ -440,6 +472,21 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                     "authorize",
                     "base-image",
                     LOCKED_BASE,
+                ]
+            )
+            == 0
+        )
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "bind",
+                    "codex/openai-api-key",
+                    "--host-environment-variable",
+                    "OPENAI_API_KEY",
                 ]
             )
             == 0
@@ -464,12 +511,34 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         assert selected.resolution_path == selected.checkout_path.with_name(
             "devcapsule.resolved.toml"
         )
+        assert "sk-test-never-persist" not in selected.checkout_path.read_text(encoding="utf-8")
+        assert selected.resolution["secret"]["bindings"]["host-environment"] == {
+            "codex/openai-api-key": "OPENAI_API_KEY"
+        }
         options = launch.call_args.args[0]
         assert options.image == canonical
         assert options.use_image_process is True
         assert options.runtime_plan.project_path == "/workspace/project"
         assert options.runtime_plan.home == "/home/devcapsule"
         assert options.runtime_plan.slots_by_name()["pycharm/config"] == "/ide-config"
+        codex_state, codex_destination = options.additional_state_mounts["codex/home"]
+        assert codex_state == (
+            tmp_path
+            / "data"
+            / "devcapsule"
+            / "projects"
+            / "by-path"
+            / project_namespace(project.resolve())
+            / "components"
+            / "codex"
+            / "home"
+        ).resolve()
+        assert codex_destination == "/home/devcapsule/.codex"
+        assert options.runtime_plan.component_environment() == {
+            "CODEX_HOME": "/home/devcapsule/.codex",
+            "JAVA_TOOL_OPTIONS": "-Dide.browser.jcef.sandbox.enable=false",
+        }
+        assert options.secret_environment == ("OPENAI_API_KEY",)
         assert "Reused canonical environment" in capsys.readouterr().out
 
 

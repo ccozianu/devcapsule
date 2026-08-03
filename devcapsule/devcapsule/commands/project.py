@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import os
 import sys
 from typing import Any
 
@@ -11,10 +12,9 @@ import click
 import readchar
 
 from devcapsule.commands.base import BaseCommand
-from devcapsule.components.pycharm import logical_state_slots as pycharm_state_slots
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
 from devcapsule.environment_realization import realize_environment
-from devcapsule.project import sanitize_name
+from devcapsule.project import project_namespace, sanitize_name
 from devcapsule.project_runtime_plan import project_runtime_plan
 from devcapsule.project_configuration import (
     AuthorizationDeclaration,
@@ -25,6 +25,7 @@ from devcapsule.project_configuration import (
     canonical_digest,
     checkout_record_paths,
     configuration_binding_declarations,
+    component_secret_inputs,
     configuration_value_declarations,
     config_root,
     discover_project,
@@ -43,11 +44,9 @@ from devcapsule.project_configuration import (
     render_toml_scalar,
     resolve_configuration_bindings,
     resolve_configuration_values,
+    resolve_secret_bindings,
     resolved_checkout_authorizations,
 )
-
-
-KNOWN_SLOTS = {"home", *pycharm_state_slots()}
 
 
 @dataclass(frozen=True)
@@ -246,6 +245,7 @@ def _config_command() -> click.Command:
         host = checkout.get("host", {})
         values, runtime_effects = resolve_configuration_values(manifest, checkout)
         bindings = resolve_configuration_bindings(lock, checkout)
+        secret_bindings = resolve_secret_bindings(lock, checkout)
         overlap = sorted(set(state) & set(bindings))
         if overlap:
             raise ProjectConfigurationError(
@@ -288,6 +288,12 @@ def _config_command() -> click.Command:
             lines.extend(
                 f"{quote_toml(key)} = {quote_toml(value)}"
                 for key, value in sorted(bindings.items())
+            )
+        if secret_bindings:
+            lines.extend(["", "[secret.bindings.host-environment]"])
+            lines.extend(
+                f"{quote_toml(key)} = {quote_toml(value)}"
+                for key, value in sorted(secret_bindings.items())
             )
         if host:
             lines.extend(["", "[host]"])
@@ -368,6 +374,7 @@ def _config_list_command() -> click.Command:
         rows = [
             *_configuration_value_rows(manifest, checkout),
             *_configuration_binding_rows(lock, checkout),
+            *_component_secret_rows(lock, checkout),
             *_configuration_authorization_rows(manifest, lock, checkout),
             _configuration_resolution_row(
                 manifest,
@@ -410,6 +417,32 @@ def _configuration_value_rows(
     for name, value in sorted(raw_values.items(), key=lambda item: str(item[0])):
         if name not in declarations:
             rows.append(ConfigurationListRow("value", str(name), "undeclared", repr(value)))
+    return rows
+
+
+def _component_secret_rows(
+    lock: dict[str, Any], checkout: dict[str, Any]
+) -> list[ConfigurationListRow]:
+    declarations = component_secret_inputs(lock)
+    try:
+        bindings = resolve_secret_bindings(lock, checkout)
+    except ProjectConfigurationError as exc:
+        return [ConfigurationListRow("secret", "*", "invalid", str(exc))]
+    rows: list[ConfigurationListRow] = []
+    for name, declaration in sorted(declarations.items()):
+        source = bindings.get(name)
+        if source is None:
+            status = "missing-required" if declaration.required else "optional-unbound"
+        else:
+            status = "bound" if source in os.environ else "bound-unavailable"
+        rows.append(
+            ConfigurationListRow(
+                "secret",
+                name,
+                status,
+                f"{declaration.environment_variable} ({declaration.exposure})",
+            )
+        )
     return rows
 
 
@@ -556,7 +589,16 @@ def _config_set_command() -> click.Command:
         bindings = _checkout_host_directory_bindings(checkout)
         atomic_write(
             input_path,
-            render_checkout(manifest, root, state, host, authorization, values, bindings),
+            render_checkout(
+                manifest,
+                root,
+                state,
+                host,
+                authorization,
+                values,
+                bindings,
+                _checkout_host_environment_bindings(checkout),
+            ),
         )
         click.echo(f"Set {name} = {render_toml_scalar(normalized)}")
         click.echo(f"Checkout input: {input_path}")
@@ -571,26 +613,30 @@ def _config_bind_command() -> click.Command:
     @click.argument("name")
     @click.option(
         "--host-directory",
-        "source",
+        "directory_source",
         type=click.Path(path_type=Path),
-        required=True,
         help="Existing host directory to expose read-write at the declared container path.",
     )
+    @click.option(
+        "--host-environment-variable",
+        "environment_source",
+        help="Explicitly deliver a declared secret from the same-named host environment variable.",
+    )
     @click.pass_obj
-    def bind(context: ProjectCommandContext, name: str, source: Path) -> int:
+    def bind(
+        context: ProjectCommandContext,
+        name: str,
+        directory_source: Path | None,
+        environment_source: str | None,
+    ) -> int:
+        if (directory_source is None) == (environment_source is None):
+            raise click.UsageError(
+                "Select exactly one provider: --host-directory or --host-environment-variable."
+            )
         root, manifest = manifest_for(context.start_path())
         lock_path, lock = lock_for(root, manifest)
         declarations = configuration_binding_declarations(lock, source=str(lock_path))
-        declaration = declarations.get(name)
-        if declaration is None:
-            available = ", ".join(sorted(declarations))
-            raise ProjectConfigurationError(
-                f"Configuration binding {name!r} is not declared by the selected component; "
-                f"declared bindings: {available}."
-            )
-        source = source.expanduser().resolve()
-        if not source.is_dir():
-            raise ProjectConfigurationError(f"Binding source is not an existing directory: {source}")
+        secret_declarations = component_secret_inputs(lock, source=str(lock_path))
 
         input_path, _output_path = checkout_record_paths(manifest, root)
         checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
@@ -606,11 +652,59 @@ def _config_bind_command() -> click.Command:
         authorization = dict(checkout.get("authorization", {}))
         values = _checkout_values(checkout)
         bindings = _checkout_host_directory_bindings(checkout)
-        bindings[name] = str(source)
+        secret_bindings = _checkout_host_environment_bindings(checkout)
+        if directory_source is not None:
+            declaration = declarations.get(name)
+            if declaration is None:
+                available = ", ".join(sorted(declarations))
+                raise ProjectConfigurationError(
+                    f"Configuration binding {name!r} is not declared as a directory resource; "
+                    f"declared directory bindings: {available}."
+                )
+            source = directory_source.expanduser().resolve()
+            if not source.is_dir():
+                raise ProjectConfigurationError(
+                    f"Binding source is not an existing directory: {source}"
+                )
+            bindings[name] = str(source)
+        else:
+            secret = secret_declarations.get(name)
+            if secret is None:
+                available = ", ".join(sorted(secret_declarations)) or "none"
+                raise ProjectConfigurationError(
+                    f"Configuration binding {name!r} is not a declared secret input; "
+                    f"declared secret inputs: {available}."
+                )
+            if environment_source != secret.environment_variable:
+                raise ProjectConfigurationError(
+                    f"Secret input {name!r} must use host environment variable "
+                    f"{secret.environment_variable!r}."
+                )
+            secret_bindings[name] = environment_source
         atomic_write(
             input_path,
-            render_checkout(manifest, root, state, host, authorization, values, bindings),
+            render_checkout(
+                manifest,
+                root,
+                state,
+                host,
+                authorization,
+                values,
+                bindings,
+                secret_bindings,
+            ),
         )
+        if environment_source is not None:
+            click.echo(
+                f"WARNING: {environment_source} will be visible to every process in the capsule "
+                "and through Docker container inspection while it runs.",
+                err=True,
+            )
+            click.echo(f"Bound {name} to host environment variable: {environment_source}")
+            click.echo(f"Checkout input: {input_path}")
+            click.echo("Run 'devcapsule project config resolve' before launch.")
+            return 0
+        assert declaration is not None
         click.echo(
             f"WARNING: exposing host directory read-write for {name}: {source} -> "
             f"{declaration.container_path}",
@@ -653,6 +747,24 @@ def _checkout_host_directory_bindings(checkout: dict[str, Any]) -> dict[str, str
             "Checkout configuration.bindings.host-directory must contain path strings."
         )
     return dict(host_directories)
+
+
+def _checkout_host_environment_bindings(checkout: dict[str, Any]) -> dict[str, str]:
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError("Checkout configuration must be a table.")
+    bindings = configuration.get("bindings", {})
+    if not isinstance(bindings, dict):
+        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
+    host_environment = bindings.get("host-environment", {})
+    if not isinstance(host_environment, dict) or not all(
+        isinstance(name, str) and isinstance(source, str)
+        for name, source in host_environment.items()
+    ):
+        raise ProjectConfigurationError(
+            "Checkout configuration.bindings.host-environment must contain environment names."
+        )
+    return dict(host_environment)
 
 
 def _config_authorize_command() -> click.Command:
@@ -718,7 +830,16 @@ def _config_authorize_command() -> click.Command:
             }
         atomic_write(
             input_path,
-            render_checkout(manifest, root, state, host, authorization, values, bindings),
+            render_checkout(
+                manifest,
+                root,
+                state,
+                host,
+                authorization,
+                values,
+                bindings,
+                _checkout_host_environment_bindings(checkout),
+            ),
         )
         click.echo(f"Authorized {name} for this checkout: {render_authorization_value(normalized)}")
         click.echo(f"Recommendation: {declaration.description}")
@@ -785,7 +906,16 @@ def _authorize_all_recommended(
             }
     atomic_write(
         input_path,
-        render_checkout(manifest, root, state, host, authorization, values, bindings),
+        render_checkout(
+            manifest,
+            root,
+            state,
+            host,
+            authorization,
+            values,
+            bindings,
+            _checkout_host_environment_bindings(checkout),
+        ),
     )
     click.echo(f"Authorized {len(declarations)} recommendations for this checkout.")
     click.echo(f"Checkout input: {input_path}")
@@ -797,11 +927,19 @@ def _state_command() -> click.Command:
     group = click.Group(name="state", help="Inspect and adopt checkout-scoped persistent state.", no_args_is_help=True)
 
     @click.command("adopt")
-    @click.argument("slot", type=click.Choice(sorted(KNOWN_SLOTS)))
+    @click.argument("slot")
     @click.option("--from", "source", type=click.Path(path_type=Path), required=True)
     @click.pass_obj
     def adopt(context: ProjectCommandContext, slot: str, source: Path) -> int:
         root, manifest = manifest_for(context.start_path())
+        lock_path, lock = lock_for(root, manifest)
+        declarations = configuration_binding_declarations(lock, source=str(lock_path))
+        if slot not in declarations:
+            available = ", ".join(sorted(declarations))
+            raise ProjectConfigurationError(
+                f"State resource {slot!r} is not declared by the selected components; "
+                f"declared resources: {available}."
+            )
         source = source.expanduser().resolve()
         if not source.is_dir():
             raise ProjectConfigurationError(f"State source is not a directory: {source}")
@@ -822,7 +960,16 @@ def _state_command() -> click.Command:
         state[slot] = str(source)
         atomic_write(
             path,
-            render_checkout(manifest, root, state, host, authorization, values, bindings),
+            render_checkout(
+                manifest,
+                root,
+                state,
+                host,
+                authorization,
+                values,
+                bindings,
+                _checkout_host_environment_bindings(checkout),
+            ),
         )
         click.echo(f"Adopted {slot}: {source}")
         click.echo("Run 'devcapsule project config resolve' before launch.")
@@ -903,6 +1050,22 @@ def _run_command() -> click.Command:
         state_root = resolved.get("state", {})
         state = dict(state_root.get("adopted", {}))
         state.update(state_root.get("bindings", {}))
+        secret_root = resolved.get("secret", {})
+        secret_bindings_root = (
+            secret_root.get("bindings", {}) if isinstance(secret_root, dict) else {}
+        )
+        secret_environment = (
+            secret_bindings_root.get("host-environment", {})
+            if isinstance(secret_bindings_root, dict)
+            else {}
+        )
+        if not isinstance(secret_environment, dict) or not all(
+            isinstance(name, str) and isinstance(source, str)
+            for name, source in secret_environment.items()
+        ):
+            raise ProjectConfigurationError(
+                "Resolved secret.bindings.host-environment must contain environment names."
+            )
         host = resolved.get("host", {})
         authorization = resolved.get("authorization", {})
         selected_docker_daemon = (
@@ -934,12 +1097,59 @@ def _run_command() -> click.Command:
                 memory_limit_bytes=memory_limit,
                 runtime_plan=checkout_runtime_plan,
                 use_image_process=use_image_process,
+                additional_state_mounts=_additional_component_state_mounts(
+                    root,
+                    lock,
+                    state,
+                    checkout_runtime_plan,
+                ),
+                secret_environment=tuple(sorted(secret_environment.values())),
                 extra_docker_args=["--pull=never"],
                 project_state=None,
             )
         )
 
     return run_project
+
+
+def _additional_component_state_mounts(
+    root: Path,
+    lock: dict[str, Any],
+    configured_state: dict[str, Any],
+    runtime_plan: Any,
+) -> dict[str, tuple[Path, str]]:
+    if runtime_plan is None:
+        return {}
+    declarations = configuration_binding_declarations(lock)
+    ancillary_ids = {component.id for component in runtime_plan.ancillary_components}
+    mounts: dict[str, tuple[Path, str]] = {}
+    for name, declaration in declarations.items():
+        if declaration.component_id not in ancillary_ids:
+            continue
+        configured = configured_state.get(name)
+        source = (
+            Path(str(configured)).expanduser().resolve()
+            if configured is not None
+            else _managed_binding_path(root, declaration)
+        )
+        source.mkdir(parents=True, exist_ok=True, mode=0o700)
+        if configured is None:
+            source.chmod(0o700)
+        mounts[name] = (source, declaration.container_path)
+    return mounts
+
+
+def _managed_binding_path(root: Path, declaration: Any) -> Path:
+    home = Path(os.environ.get("HOME", "~")).expanduser()
+    roots = {
+        "durable": Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share"),
+        "state": Path(os.environ.get("XDG_STATE_HOME") or home / ".local" / "state"),
+        "cache": Path(os.environ.get("XDG_CACHE_HOME") or home / ".cache"),
+    }
+    namespace = roots[declaration.kind] / "devcapsule" / "projects" / "by-path" / project_namespace(root)
+    if declaration.name == "home":
+        return namespace / "home"
+    return namespace / "components" / str(declaration.component_id) / str(declaration.slot_name)
 
 
 def _run_image_command() -> click.Command:

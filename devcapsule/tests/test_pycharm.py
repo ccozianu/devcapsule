@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
+from devcapsule.components.codex import runtime_template as codex_runtime_template
 from devcapsule.configurations.pycharm import DockerMode, IdeConfigMode, PycharmRunOptions, build_run_config
 from devcapsule.configurations.pycharm._launcher import (
     HostUser,
@@ -17,6 +18,7 @@ from devcapsule.configurations.pycharm._launcher import (
     build_docker_args,
     cleanup_temp_runtime_files,
     prepare_temp_runtime_files,
+    print_storage_summary,
     run_pycharm,
     write_user_files,
 )
@@ -69,6 +71,10 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         assert files.runtime_plan_file.stat().st_mode & 0o777 == 0o644
         assert RuntimePlan.from_file(files.runtime_plan_file) == external_runtime_plan()
         args = build_docker_args(config, files, env)
+        assert "JAVA_TOOL_OPTIONS=-Dide.browser.jcef.sandbox.enable=false" in args
+        assert "SYS_ADMIN" not in args
+        assert "seccomp=unconfined" not in args
+        assert "apparmor=unconfined" not in args
         assert (
             f"type=bind,src={files.runtime_plan_file},dst={RUNTIME_PLAN_PATH},ro"
             in args
@@ -77,6 +83,87 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         cleanup_temp_runtime_files(files)
     assert files.runtime_plan_file is not None
     assert not files.runtime_plan_file.exists()
+
+
+def test_jcef_disclosure_is_printed_for_component_policy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=external_runtime_plan(),
+            use_image_process=True,
+        ),
+        base_env(tmp_path),
+    )
+
+    print_storage_summary(config)
+
+    disclosure = capsys.readouterr().err
+    assert "JCEF's inner Chromium sandbox is disabled" in disclosure
+    assert "Docker's outer isolation is unchanged" in disclosure
+
+
+def test_selected_codex_state_and_explicit_secret_are_delivered(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    env["OPENAI_API_KEY"] = "sk-test-never-in-docker-args"
+    runtime = RuntimePlan.for_component(
+        pycharm_runtime_template(),
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000, "developer"),
+        ancillary_templates=(codex_runtime_template(),),
+    )
+    state = tmp_path / "codex-home"
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=runtime,
+            use_image_process=True,
+            additional_state_mounts={"codex/home": (state, "/home/devcapsule/.codex")},
+            secret_environment=("OPENAI_API_KEY",),
+        ),
+        env,
+    )
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        args = build_docker_args(config, files, env)
+    finally:
+        cleanup_temp_runtime_files(files)
+
+    assert "CODEX_HOME=/home/devcapsule/.codex" in args
+    assert "OPENAI_API_KEY" in args
+    assert "sk-test-never-in-docker-args" not in args
+    assert f"type=bind,src={state.resolve()},dst=/home/devcapsule/.codex" in args
+
+
+def test_bound_secret_must_exist_on_host(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    with pytest.raises(PycharmRunError, match="is not set on the host"):
+        build_run_config(
+            PycharmRunOptions(
+                project=project,
+                docker_mode=DockerMode.none,
+                secret_environment=("OPENAI_API_KEY",),
+            ),
+            base_env(tmp_path),
+        )
 
 
 def test_image_process_uses_oci_command_and_cleans_all_temporary_files(tmp_path: Path) -> None:

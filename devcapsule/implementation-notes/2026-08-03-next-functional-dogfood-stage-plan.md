@@ -77,6 +77,40 @@ regression guard. That check does not make Gemini a supported component or a
 dogfood dependency. Historical records and historical images may continue to
 describe the Gemini-bearing behavior they actually had.
 
+## Optional Codex Component Checkpoint
+
+The product owner selected Codex as the dogfood agent component while keeping
+the base agent-neutral. The dogfood manifest advertises `codex-agent`; the
+platform lock pins the JetBrains ACP integration, Codex CLI version, license,
+platform artifact URL, exact SHA-256, and archive member. Its trusted runtime
+contract owns credential-bearing `codex/home` state at
+`/home/devcapsule/.codex` and contributes `CODEX_HOME` only when selected.
+
+Curated components explicitly inherit a trusted abstract Python contract for
+runtime templates, state-to-environment mappings, optional-secret inputs, and
+lock-pinned artifacts. Codex uses it to install the verified CLI at
+`/usr/local/bin/codex`, map `codex/home` to `CODEX_HOME`, and advertise an
+optional `OPENAI_API_KEY` input without importing it automatically. The user
+authenticates with normal `codex login` inside the running capsule; the result
+persists in component state. As an explicit higher-exposure alternative, the
+existing generic `config bind` action can bind the declared same-named host
+environment variable; only its name enters checkout/resolution data, and the
+CLI warns that all capsule processes and Docker inspection can observe the
+value while the container runs.
+
+The key and `auth.json` must remain absent from committed metadata, checkout
+TOML, generated resolution, runtime plans, Docker arguments, images, and logs.
+External acceptance must confirm the CLI is ready on `PATH`, terminal or
+JetBrains authentication persists, ACP uses the mounted component state, and
+a second launch retains it. Real artifact acquisition, API-key login, and the
+GUI/ACP restart check remain external validation work.
+
+The refined implementation passed the full dirty-tree gate with 172 fast
+tests at 80% coverage, clean mypy over 73 source files, source and local-PEX
+command smokes, PEX construction, and all three packaging integrations. Tests
+also prove that built-in components explicitly inherit the abstract contract
+and that an incomplete implementation cannot be instantiated.
+
 ## Starting Point
 
 Revision `b5d42e8` provides:
@@ -309,9 +343,19 @@ Closure evidence:
 
 ## Stage 4: Activate Authorized Development Sudo Without Rebuilding v021
 
+Status: externally reproduced gap; implementation pending.
+
 The existing v021 image contains `sudo` but no
 `/etc/sudoers.d/ide-sudo` policy. Do not make sudo ambient and do not require a
 new base merely for this dogfood checkpoint.
+
+External v021 dogfood confirmed that configuration and resolution are working:
+the selected checkout's generated TOML contains
+`[authorization] development-sudo = true`. The launch path currently converts
+that value only into `ENABLE_SUDO=1` and supplementary group `44000`; the
+generic runtime does not consume the legacy flag, and the image has no
+`NOPASSWD` sudoers entry. Consequently, `sudo COMMAND` prompts for a password.
+This is the exact Stage 4 gap, not an authorization or resolution failure.
 
 When and only when `development-sudo true` is resolved, the launcher should:
 

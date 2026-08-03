@@ -957,6 +957,150 @@ Current task:
   explicitly refresh their base-image authorization and resolve again before
   launch; `config authorize --all-recommended` previews and accepts the new
   exact digest.
+- External v021 dogfood exposed the first accepted V1 follow-up backlog item:
+  the pinned Node.js `v22.23.1` installation exists under
+  `/opt/node/current`, but `/opt/node/current/bin` is absent from runtime
+  `PATH`, so `node`, `npm`, and `npx` are unusable by name. This is not a
+  regression from v018, but it violates the intended usable development
+  baseline. Implement generic, schema-validated component runtime-path
+  metadata that participates in formation identity and is applied by the
+  generic runtime; do not add a Node-specific launcher path. The reproduction,
+  security constraints, verification target, and close criteria are recorded
+  in
+  `devcapsule/implementation-notes/bugs/2026-08-03-component-tooling-runtime-path.md`.
+- The same external dogfood session exposed a second accepted V1 onboarding
+  backlog item: a fresh checkout still required manual `python -m venv`,
+  activation, and dependency installation before normal development. Add a
+  resolved, versioned ecosystem-bootstrap adapter contract so Python, Java,
+  Node.js, and later ecosystems receive distinct curated preparation and
+  readiness behavior. Plans must be inspectable, idempotent, checkout-scoped,
+  safe to retry, and explicitly accepted before first executing dependency or
+  project-controlled code. Runtime and IDE processes should consume the
+  prepared environment without manual activation. The detailed contract and
+  close criteria are recorded in
+  `devcapsule/implementation-notes/bugs/2026-08-03-ecosystem-aware-project-bootstrap.md`.
+- The v021 PyCharm 2026.2.0.1 session also suspended JCEF Markdown preview and
+  misleadingly offered to install a host AppArmor profile from inside the
+  container. Research and live logs show that JetBrains maps a failed
+  `unshare` probe to Ubuntu's AppArmor guidance, while this host's immediate
+  denial is Docker's default seccomp profile. The offered install failed, and
+  the fallback persisted `ide.browser.jcef.sandbox.enable=false`, weakening
+  embedded-web isolation. The product owner accepted an intentionally
+  unsandboxed JCEF browser for V1: configure it before IDE startup so preview
+  works without the misleading prompt, disclose that embedded content
+  inherits the IDE user's project/state and separately authorized access, and
+  keep Docker's outer seccomp/AppArmor/capability boundary unchanged. Do not
+  add `SYS_ADMIN`, unconfined profiles, privileged mode, or host AppArmor
+  installation. Evidence, rationale, disclosure requirements, later
+  sandbox-hardening direction, and close criteria are recorded in
+  `devcapsule/implementation-notes/bugs/2026-08-03-jcef-sandbox-container-preview.md`.
+- The accepted V1 JCEF workaround is now implemented in the PyCharm component
+  contract. It supplies `ide.browser.jcef.sandbox.enable=false` through both
+  generated JetBrains properties and a JVM startup option, so the setting is
+  applied before JCEF probes namespaces and remains compatible with v021's
+  embedded runtime. The launcher discloses that embedded content inherits the
+  IDE user's project/state/network and separately authorized Docker access.
+  Focused tests prove the property and startup option are present while
+  `SYS_ADMIN`, privileged mode, and unconfined seccomp/AppArmor remain absent.
+  The combined dirty-tree full Nox gate passed with clean Python and shell
+  compilation, clean mypy over 73 source files, 171 fast tests at 80%
+  statement/branch coverage, source and local-PEX command smokes, PEX
+  construction, and all three packaging integrations. Fresh external
+  Markdown/SVG preview and log validation remain pending.
+- External dogfood also confirmed the existing Stage 4 development-sudo gap.
+  The named checkout's resolved TOML correctly contains
+  `development-sudo = true`, but v021 has no `NOPASSWD` sudoers policy and the
+  launcher currently applies only `ENABLE_SUDO=1` plus supplementary group
+  `44000`. The generic runtime does not consume that legacy flag, so every
+  `sudo` command prompts for a password. This is not a configuration or
+  authorization failure. Implement the already planned temporary read-only
+  sudoers-policy mount, positive `sudo -n true`, negative no-authorization
+  behavior, and cleanup tests without making sudo ambient or rebuilding the
+  base.
+- The same external run printed JetBrains Runtime's slow-X11 warning and
+  automatically disabled image alpha compositing. No visual or performance
+  symptom has been reported, so this is a low-priority review rather than a V1
+  blocker. Keep `-Dremote.x11.workaround=auto` until a controlled comparison
+  of `auto`, `true`, and `false` demonstrates a reason to override the vendor
+  heuristic. The review and escalation criteria are recorded in
+  `devcapsule/implementation-notes/bugs/2026-08-03-jbr-slow-x11-alpha-compositing.md`.
+- PyCharm also warned that DevCapsule launches `bin/pycharm.sh` instead of the
+  preferred native `bin/pycharm`. The pinned archive's `product-info.json`
+  declares the native path and the executable is present; current
+  materialization and tests deliberately select the script. Record this as a
+  low-priority V1 review: a switch must preserve foreground ownership under
+  `tini`, signals, restart/exit behavior, project arguments, runtime
+  properties, and canonical formation identity. Details and close criteria
+  are in
+  `devcapsule/implementation-notes/bugs/2026-08-03-jetbrains-native-launcher.md`.
+- The product owner reported that `devcapsule project run` is substantially
+  more comfortable than the historical launch workflow and is nearly ready to
+  become the primary development entry point from the new checkout. This is a
+  strong positive dogfood signal, not final completion of Stages 3 through 8.
+  The requested detailed, sanitized session reconstruction is
+  `devcapsule/implementation-notes/session-records/2026-08-03-v021-external-dogfood-and-v1-backlog.md`.
+- JetBrains AI Assistant's Codex ACP integration failed in the fresh v021 home
+  even though API-key connection testing succeeded. OpenAI's current manual
+  says an explicitly set `CODEX_HOME` must already exist. The PyCharm launcher
+  unconditionally exports `/home/devcapsule/.codex`, while the agent-neutral
+  generic runtime correctly does not create that directory; preserved home and
+  ACP logs confirmed the exact mismatch. Remove the ambient override and let
+  Codex use its default `~/.codex` beneath persistent home. A future explicit
+  Codex component may declare/create a custom path, but do not add agent state
+  to every runtime or mount host Codex state. The immediate dogfood workaround,
+  official source, evidence, tests, and close criteria are in
+  `devcapsule/implementation-notes/bugs/2026-08-03-codex-acp-missing-home.md`.
+- The product owner created the missing `$CODEX_HOME` mode `0700` inside the
+  external capsule and confirmed the workaround unblocked Codex ACP. Exact
+  installed-artifact inspection also confirmed Apache-2.0 metadata for
+  JetBrains `@agentclientprotocol/codex-acp` 1.1.9, ACP SDK 1.3.0, OpenAI
+  `@openai/codex` 0.145.0, and its Linux x64 package; the adapter ships an
+  Apache 2.0 LICENSE naming JetBrains, and OpenAI's official Codex repository
+  ships Apache 2.0. This license applies to those local software artifacts,
+  not automatically to JetBrains AI Assistant, hosted OpenAI models/API
+  service terms, or every transitive dependency. Any future DevCapsule
+  redistribution still requires pinning, checksums, complete notices, and
+  service/auth disclosure.
+- The product owner then selected Codex as the first optional V1 agent
+  component. The current worktree advertises `codex-agent` in the dogfood
+  manifest and locks JetBrains ACP 1.1.9 plus Codex CLI 0.145.0 and its exact
+  Linux x64 npm tarball SHA-256. The trusted component contract declares
+  checkout-scoped credential state `codex/home` at
+  `/home/devcapsule/.codex`, mode `0700`, and contributes `CODEX_HOME` only
+  when selected. The runtime contract now supports ancillary component slots
+  and validated environment contributions generically. For compatibility with
+  v021's embedded parser, the checkout plan carries the additive ancillary
+  declaration but leaves its slot out of the legacy `state_slots` array; the
+  generic host launcher applies the declared state mount and environment, and
+  newer runtimes consume the same contribution directly before starting the
+  IDE. The former unconditional launcher environment override is removed.
+- The initial host-side `project component codex login` design was removed
+  after UX review. Curated components now explicitly inherit a formal trusted
+  abstract Python contract with runtime-template, state-to-environment,
+  optional-secret, and lock-pinned artifact declarations. Codex uses that
+  interface to request one credential-bearing state directory exposed as
+  `CODEX_HOME`, advertise the
+  optional `OPENAI_API_KEY` secret and its container-environment exposure, and
+  contribute its verified CLI executable to `/usr/local/bin/codex` during
+  ordinary local environment materialization. Users authenticate naturally
+  with `codex login` inside the running capsule, and the mounted component
+  state retains the result. No host API key is imported automatically. The
+  existing generic `project config bind` command now also accepts
+  `--host-environment-variable` for declared secret inputs, records only the
+  source name, requires the host value at launch, passes Docker `--env NAME`
+  without placing the value in argv, and warns that container processes and
+  Docker inspection can observe an explicitly delivered environment secret.
+- Focused validation for the refined component design covers explicit abstract
+  contract inheritance, rejection of incomplete implementations,
+  state-derived environment delivery, optional-secret inspection, exact
+  archive-member extraction, formation identity, executable image delivery,
+  legacy v021 runtime-plan compatibility, managed state, and the PyCharm
+  mount. The refined design's full dirty-tree gate passed with clean Python and
+  shell compilation, clean mypy over 73 source files, 172 fast tests at 80%
+  coverage, source and local-PEX command smokes, PEX construction, and all
+  three packaging integrations. Automated tests used a tiny checksum-pinned
+  fixture rather than downloading the real Codex artifact; real
+  materialization, login, and GUI/ACP restart remain external checks.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -1251,8 +1395,10 @@ guard.
    effect, host-directory `config bind`, and the four V1 `config authorize`
    cases are complete. Then finish the reopened shared runtime-option parity
    work without weakening bridge networking or no-host-access defaults.
-3. Implement Antigravity CLI as the first optional V1 agent component in a
-   later dedicated slice. Before acquiring it, settle its supported platforms,
+3. Complete and externally dogfood the newly selected Codex optional
+   component, including JetBrains ACP reuse of its component-owned
+   `CODEX_HOME` and persisted API-key login. Antigravity remains a possible
+   later optional component; before acquiring it, settle its supported platforms,
    exact version/artifact identity and checksum source, license and install
    behavior, persistent-home or namespaced-state contract, authentication and
    host-access disclosure, formation-descriptor inputs, and update policy.

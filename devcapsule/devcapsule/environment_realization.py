@@ -93,6 +93,7 @@ def realize_environment(
         base_identity=base.identity,
         platform=locked.platform,
         artifact=locked.artifact,
+        ancillary_artifacts=locked.ancillary_artifacts,
         cache_root=selected_cache,
         inspect_image=inspect,
         build=build,

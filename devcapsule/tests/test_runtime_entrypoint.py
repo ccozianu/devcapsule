@@ -160,6 +160,21 @@ def test_jetbrains_adapter_generates_properties_and_foreground_command(tmp_path:
     assert f"idea.plugins.path={tmp_path / 'plugins'}\n" in launch.properties
 
 
+def test_pycharm_component_disables_jcef_sandbox_before_startup() -> None:
+    runtime = RuntimePlan.for_component(
+        pycharm_runtime_template(),
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000),
+    )
+    launch = plan_jetbrains(runtime)
+
+    assert "ide.browser.jcef.sandbox.enable=false\n" in launch.properties
+    assert runtime.component.environment == {
+        "JAVA_TOOL_OPTIONS": "-Dide.browser.jcef.sandbox.enable=false"
+    }
+
+
 def test_jetbrains_adapter_requires_declared_slot(tmp_path: Path) -> None:
     document = runtime_document(tmp_path)
     configuration = document["component"]["configuration"]  # type: ignore[index]
@@ -183,7 +198,16 @@ def test_identity_adds_gosu_only_when_root(monkeypatch: pytest.MonkeyPatch) -> N
 def test_entrypoint_prepares_properties_and_execs_foreground(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    runtime = RuntimePlan.from_mapping(runtime_document(tmp_path))
+    document = runtime_document(tmp_path)
+    document["ancillary_components"] = [
+        {
+            "id": "codex",
+            "adapter": "ancillary",
+            "configuration": {},
+            "environment": {"CODEX_HOME": str(tmp_path / "codex-home")},
+        }
+    ]
+    runtime = RuntimePlan.from_mapping(document)
     executed: list[object] = []
 
     def capture_exec(executable: str, command: tuple[str, ...], environment: dict[str, str]) -> None:
@@ -202,6 +226,7 @@ def test_entrypoint_prepares_properties_and_execs_foreground(
     assert executed[0] == "/opt/jetbrains/pycharm/bin/pycharm.sh"
     assert executed[1] == ("/opt/jetbrains/pycharm/bin/pycharm.sh", "/workspace/project")
     assert executed[2]["PYCHARM_PROPERTIES"] == str(properties_path)  # type: ignore[index]
+    assert executed[2]["CODEX_HOME"] == str(tmp_path / "codex-home")  # type: ignore[index]
 
 
 def test_entrypoint_main_accepts_forwarded_arguments(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

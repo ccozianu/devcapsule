@@ -369,6 +369,9 @@ devcapsule project config bind pycharm/plugins --host-directory /path/to/plugins
 devcapsule project config bind pycharm/system --host-directory /path/to/system
 devcapsule project config bind pycharm/log --host-directory /path/to/log
 devcapsule project config bind pycharm/cache --host-directory /path/to/cache
+devcapsule project config bind codex/home --host-directory /path/to/codex-home
+devcapsule project config bind codex/openai-api-key \
+  --host-environment-variable OPENAI_API_KEY
 devcapsule project config resolve
 ```
 
@@ -378,8 +381,39 @@ undeclared resource or missing directory, identifies the checkout file it
 wrote, and warns that the source becomes a read-write container mount. It also
 reports the resource's sensitivity and whether its component contract permits
 concurrent use. Resolution revalidates every directory before `project run`
-uses the bindings. Host-file, socket, secret, and alternative-storage
-providers are not part of this initial contract.
+uses the bindings. The initial secret provider records only the declared host
+environment-variable name, never its value. Host-file, socket, and
+alternative-storage providers are not part of this initial contract.
+
+This repository's dogfood declaration explicitly requests the optional
+`codex-agent` capability. Its lock pins the Codex CLI artifact and JetBrains
+ACP integration metadata. Local environment materialization verifies and
+installs the CLI as `/usr/local/bin/codex`; no agent is added to the shared
+base. The component declares a namespaced `codex/home` state slot mounted at
+`/home/devcapsule/.codex`, and its Python component interface derives
+`CODEX_HOME` from that slot for the IDE process. Projects that do not select
+Codex receive none of these contributions.
+
+Authenticate naturally from a terminal inside the running capsule:
+
+```bash
+codex login
+codex login status
+```
+
+Codex falls back to file-backed authentication beneath `$CODEX_HOME` when no
+container keyring is available, so its login and configuration survive later
+launches. The component interface also declares `OPENAI_API_KEY` as an
+optional secret input. `project config list` shows that input and warns that
+environment delivery exposes it to every process in the capsule and through
+Docker inspection while the container runs. DevCapsule never imports it
+ambiently: the developer must explicitly bind the declared same-named host
+variable as shown above, and launch fails if it is unavailable. Interactive
+`codex login` remains the lower-exposure default because its file-backed result
+persists in `codex/home`. A resulting `auth.json` is a plaintext credential
+and must be protected like a password. OpenAI API-key use is billed under the
+developer's OpenAI Platform account and does not grant ChatGPT workspace or
+cloud-task entitlements.
 
 Normal `project run` now realizes the lock-selected local environment
 automatically after loading a fresh checkout resolution. To prebuild or inspect
@@ -425,12 +459,16 @@ tag, repository, organization, publisher, or future digest. `docker-daemon
 host-socket` exposes the host Docker control socket, effectively granting the
 container control over the host daemon. `network host` shares the host network
 namespace instead of the default Docker bridge. `development-sudo true`
-permits the capsule's development user to elevate inside the container; it is
-not host-root authorization. The following `config resolve` incorporates the
-recorded decisions into the inspectable generated resolution, and `project
-run` applies the Docker, network, and sudo effects. Without authorization,
-normal project launch retains no Docker socket, bridge networking, and no
-development sudo.
+authorizes the launcher to let the capsule's development user elevate inside
+the container; it is not host-root authorization. The following `config
+resolve` incorporates the recorded decisions into the inspectable generated
+resolution, and `project run` applies the Docker and network effects.
+Development-sudo authorization is
+currently recorded and resolved, but the v021 project launcher does not yet
+deliver the required sudoers policy; `sudo` therefore still prompts for a
+password. That externally reproduced gap is Stage 4 of the active dogfood
+plan. Without authorization, normal project launch retains no Docker socket,
+bridge networking, and no development sudo.
 
 `--base IMAGE` is an explicit run-once development override and needs no
 persisted authorization. It never rewrites the lock or resolution, and the
@@ -473,6 +511,16 @@ runtime planning contains no agent- or IDE-named state field.
 service and strict reuse checks. Normal run obtains the locked base only when it
 is missing locally, then reuses or materializes the canonical environment
 without requiring a debug alias or a separate image-build command.
+
+For V1 container compatibility, the PyCharm component intentionally sets
+`ide.browser.jcef.sandbox.enable=false` before IDE startup. This keeps Markdown
+and other JCEF previews working without `SYS_ADMIN`, unconfined seccomp or
+AppArmor profiles, privileged mode, or host policy installation. The tradeoff
+is explicit: embedded content runs with the IDE user's access to project
+source, persistent state, networking, and any separately authorized Docker
+socket. Treat the embedded browser as a project preview surface, not as a
+general-purpose browser for untrusted sites. Docker's outer isolation policy
+is unchanged.
 
 For a formation-based run, DevCapsule generates a version-1 runtime plan from
 the same component template used in the image's formation identity. The JSON

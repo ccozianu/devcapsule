@@ -1,7 +1,7 @@
 devcapsule-schema-version = 1
 
 [capabilities]
-need = ["docker-cli", "python", "python-ide"]
+need = ["codex-agent", "docker-cli", "python", "python-ide"]
 
 [project]
 name = "DevCapsule"

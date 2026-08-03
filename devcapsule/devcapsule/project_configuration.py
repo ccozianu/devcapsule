@@ -15,7 +15,11 @@ from urllib.parse import quote
 
 
 from devcapsule.compat import CliError
-from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
+from devcapsule.components.catalog import (
+    ComponentCatalogError,
+    selected_component_definitions,
+    selected_runtime_templates,
+)
 
 
 class ProjectConfigurationError(CliError):
@@ -64,6 +68,9 @@ class ConfigurationBindingDeclaration:
     sensitivity: str
     concurrent: bool
     description: str
+    kind: str
+    component_id: str | None = None
+    slot_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -72,6 +79,15 @@ class AuthorizationDeclaration:
     recommended_value: AuthorizationScalar
     recommendation_digest: str
     description: str
+
+
+@dataclass(frozen=True)
+class SecretInputMetadata:
+    name: str
+    environment_variable: str
+    required: bool
+    description: str
+    exposure: str
 
 
 def discover_project(path: Path) -> Path:
@@ -238,12 +254,10 @@ def configuration_binding_declarations(
     components = lock.get("components")
     if not isinstance(components, dict):
         raise ProjectConfigurationError(f"{source} components must be a table.")
-    component_id = components.get("interactive-surface")
-    if component_id != "pycharm":
-        raise ProjectConfigurationError(
-            f"No V1 configuration-binding metadata is available for component {component_id!r}."
-        )
-    template = pycharm_runtime_template()
+    try:
+        interactive, ancillary = selected_runtime_templates(lock)
+    except ComponentCatalogError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
     declarations = {
         "home": ConfigurationBindingDeclaration(
             name="home",
@@ -251,21 +265,91 @@ def configuration_binding_declarations(
             sensitivity="credentials",
             concurrent=False,
             description="Persistent container home, including developer and tool state.",
+            kind="durable",
         )
     }
-    declarations.update(
-        {
+    for template in (interactive, *ancillary):
+        declarations.update(
+            {
             template.logical_slot_name(slot.name): ConfigurationBindingDeclaration(
                 name=template.logical_slot_name(slot.name),
                 container_path=slot.container_path,
                 sensitivity=slot.sensitivity,
                 concurrent=slot.concurrent,
                 description=slot.deletion_effect,
+                kind=slot.kind,
+                component_id=template.component.id,
+                slot_name=slot.name,
             )
             for slot in template.persistence.state_slots
-        }
-    )
+            }
+        )
     return declarations
+
+
+def component_secret_inputs(
+    lock: Mapping[str, Any], *, source: str = "platform lock"
+) -> dict[str, SecretInputMetadata]:
+    """Return optional/required secret inputs declared by selected components."""
+
+    try:
+        interactive, ancillary = selected_component_definitions(lock)
+    except ComponentCatalogError as exc:
+        raise ProjectConfigurationError(f"{source}: {exc}") from exc
+    result: dict[str, SecretInputMetadata] = {}
+    for component in (interactive, *ancillary):
+        for declaration in component.secret_inputs():
+            logical_name = f"{component.id}/{declaration.name}"
+            result[logical_name] = SecretInputMetadata(
+                name=logical_name,
+                environment_variable=declaration.environment_variable,
+                required=declaration.required,
+                description=declaration.description,
+                exposure=declaration.exposure,
+            )
+    return result
+
+
+def resolve_secret_bindings(
+    lock: Mapping[str, Any], checkout: Mapping[str, Any]
+) -> dict[str, str]:
+    """Resolve secret source names without reading or serializing secret values."""
+
+    declarations = component_secret_inputs(lock)
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError("Checkout configuration must be a table.")
+    bindings = configuration.get("bindings", {})
+    if not isinstance(bindings, dict):
+        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
+    raw = bindings.get("host-environment", {})
+    if not isinstance(raw, dict):
+        raise ProjectConfigurationError(
+            "Checkout configuration.bindings.host-environment must be a table."
+        )
+    resolved: dict[str, str] = {}
+    for name, source in raw.items():
+        declaration = declarations.get(str(name))
+        if declaration is None:
+            available = ", ".join(sorted(declarations)) or "none"
+            raise ProjectConfigurationError(
+                f"Secret input {name!r} is not declared by the selected components; "
+                f"declared secret inputs: {available}."
+            )
+        if source != declaration.environment_variable:
+            raise ProjectConfigurationError(
+                f"Secret input {name!r} must bind its declared host environment variable "
+                f"{declaration.environment_variable!r}."
+            )
+        resolved[str(name)] = source
+    missing = sorted(
+        name for name, declaration in declarations.items() if declaration.required and name not in resolved
+    )
+    if missing:
+        raise ProjectConfigurationError(
+            "Required secret bindings are missing: " + ", ".join(missing) + "."
+        )
+    return resolved
 
 
 def resolve_configuration_bindings(
@@ -760,6 +844,7 @@ def render_checkout(
     authorization: Mapping[str, Any] | None = None,
     values: Mapping[str, ConfigurationScalar] | None = None,
     host_directory_bindings: Mapping[str, str] | None = None,
+    host_environment_bindings: Mapping[str, str] | None = None,
 ) -> str:
     identity = manifest["project"]
     lines = [
@@ -791,6 +876,12 @@ def render_checkout(
         lines.extend(
             f"{quote_toml(key)} = {quote_toml(value)}"
             for key, value in sorted(host_directory_bindings.items())
+        )
+    if host_environment_bindings:
+        lines.extend(["", "[configuration.bindings.host-environment]"])
+        lines.extend(
+            f"{quote_toml(key)} = {quote_toml(value)}"
+            for key, value in sorted(host_environment_bindings.items())
         )
     base_authorization = (authorization or {}).get("base-image")
     for name, record in sorted((authorization or {}).items()):

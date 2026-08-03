@@ -6,12 +6,12 @@ import os
 import pwd
 
 from devcapsule.compat import CliError
+from devcapsule.components.catalog import ComponentCatalogError, selected_runtime_templates
 from devcapsule.container_runtime.contract import (
-    ComponentRuntimeTemplate,
     Identity,
     RuntimePlan,
 )
-from devcapsule.materialization import LockedEnvironment, component_runtime_template
+from devcapsule.materialization import LockedEnvironment
 from devcapsule.project_configuration import ResolvedProject
 
 
@@ -32,7 +32,10 @@ def project_runtime_plan(
     if not isinstance(project_mount, str) or not project_mount:
         raise CliError("Resolved runtime configuration must define project-mount.")
 
-    template = ComponentRuntimeTemplate.from_mapping(component_runtime_template())
+    try:
+        template, ancillary_templates = selected_runtime_templates(selected.lock)
+    except ComponentCatalogError as exc:
+        raise CliError(str(exc)) from exc
     if template.component.id != locked.component_id:
         raise CliError(
             f"Component runtime template selects {template.component.id!r}, "
@@ -47,4 +50,10 @@ def project_runtime_plan(
         project_path=project_mount,
         home="/home/devcapsule",
         identity=Identity(runtime_uid, runtime_gid, runtime_user),
+        ancillary_templates=ancillary_templates,
+        # v021's embedded runtime accepts additive component metadata but still
+        # requires every state_slots entry to belong to the interactive
+        # component. The host launcher mounts ancillary state from the same
+        # trusted declarations until a later base advertises the wider parser.
+        include_ancillary_state=False,
     )

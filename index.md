@@ -83,6 +83,7 @@ same change.
 ## Implementation Notes And Decisions
 
 - [User-requested session-record policy](devcapsule/implementation-notes/session-records/README.md)
+- [v021 external dogfood and V1 backlog session record](devcapsule/implementation-notes/session-records/2026-08-03-v021-external-dogfood-and-v1-backlog.md)
 - [D-0004 configuration and images CLI session record](devcapsule/implementation-notes/session-records/2026-08-01-d-0004-configuration-and-images-cli.md)
 - [Per-project IDE state split](docker4pycharm/implementation-notes/2026-06-21-per-project-ide-state-split.md)
 - [Git identity and remote credential transport](docker4pycharm/implementation-notes/2026-06-22-git-identity-and-credentials.md)
@@ -100,6 +101,12 @@ same change.
 
 ## Bugs
 
+- [Codex ACP fails because explicit CODEX_HOME does not exist](devcapsule/implementation-notes/bugs/2026-08-03-codex-acp-missing-home.md)
+- [PyCharm recommends its native launcher](devcapsule/implementation-notes/bugs/2026-08-03-jetbrains-native-launcher.md)
+- [JetBrains Runtime disables alpha compositing on slow X11](devcapsule/implementation-notes/bugs/2026-08-03-jbr-slow-x11-alpha-compositing.md)
+- [JetBrains embedded browser is suspended in the container](devcapsule/implementation-notes/bugs/2026-08-03-jcef-sandbox-container-preview.md)
+- [Fresh clones require manual ecosystem bootstrap](devcapsule/implementation-notes/bugs/2026-08-03-ecosystem-aware-project-bootstrap.md)
+- [Component tooling is not added to the runtime path](devcapsule/implementation-notes/bugs/2026-08-03-component-tooling-runtime-path.md)
 - [PyCharm run-image network and Docker-option parity](devcapsule/implementation-notes/bugs/2026-07-23-pycharm-ambient-host-network.md)
 - [Codium grants ambient passwordless sudo by default](devcapsule/implementation-notes/bugs/2026-07-16-codium-ambient-sudo-default.md)
 - [PyCharm build emits fragile multiline RUN shell quoting](devcapsule/implementation-notes/bugs/2026-07-16-pycharm-build-multiline-exec-rendering.md)
