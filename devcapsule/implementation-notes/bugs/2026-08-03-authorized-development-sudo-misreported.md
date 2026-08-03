@@ -2,7 +2,7 @@
 
 Date opened: 2026-08-03
 
-Status: reproduced; root cause identified; implementation pending in Stage 4
+Status: fix implemented and v022-probe validated; full project relaunch pending
 
 Requirements: R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001
 
@@ -91,6 +91,33 @@ group, make the root writable for this purpose, or claim sudo is enabled. Do
 not solve this by baking ambient sudo into the shared image, assigning a
 password, adding `SYS_ADMIN`, using privileged mode, or weakening the outer
 seccomp/AppArmor boundary.
+
+## Implemented Fix
+
+The launcher now creates the fixed group-scoped policy in a mode-`0700`
+launcher-owned temporary directory and gives the policy mode `0440`. Because a
+normal host user cannot make a file root-owned directly, it invokes the exact
+selected local image once with no network, a read-only root, all capabilities
+dropped except `CHOWN`, `no-new-privileges`, a 64-process limit, and only the
+policy file mounted. That helper changes the policy to `0:0`; the launcher
+verifies ownership before building the main Docker plan.
+
+The main capsule receives the policy read-only at
+`/etc/sudoers.d/devcapsule-development-sudo`, retains its unprivileged mapped
+user, and receives the generated group and shadow files only when authorized.
+The banner moved after successful ownership preparation and Docker-plan
+construction. Cleanup unlinks the root-owned child through its developer-owned
+temporary parent and removes that parent after normal exit or any failure.
+
+Focused tests cover positive and negative plans, content and modes, helper
+confinement and failure, banner ordering, and cleanup. A disposable container
+using `devcapsule-local-pycharm:1bae0035566680103826` (the v022-derived image)
+passed `sudo -n true` and returned UID `0` from `sudo -n id -u` with the policy
+mounted read-only. The pre-fix running container proved the negative case. The
+same policy was then installed ephemerally in that already-authorized running
+container, where both positive commands pass. The full dirty-tree Nox gate
+passes with 182 fast tests at 81% coverage, clean mypy, rebuilt local PEX
+smokes, and all three packaging integrations.
 
 ## Verification Target
 

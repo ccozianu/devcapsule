@@ -14,9 +14,12 @@ from devcapsule.configurations.pycharm._launcher import (
     HostUser,
     PycharmRunError,
     PycharmRunConfig,
+    SUDOERS_POLICY,
+    SUDOERS_POLICY_PATH,
     TempRuntimeFiles,
     build_docker_args,
     cleanup_temp_runtime_files,
+    ensure_sudoers_policy_ownership,
     prepare_temp_runtime_files,
     print_storage_summary,
     run_pycharm,
@@ -194,7 +197,18 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
         with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
             files = prepare_temp_runtime_files(config, env)
         try:
+            assert files.sudoers_file is not None
+            assert files.sudoers_directory is not None
+            sudoers_directory = files.sudoers_directory
+            assert sudoers_directory.stat().st_mode & 0o777 == 0o700
+            sudoers_file = files.sudoers_file
+            assert sudoers_file.read_text(encoding="utf-8") == SUDOERS_POLICY
+            assert sudoers_file.stat().st_mode & 0o777 == 0o440
             args = build_docker_args(config, files, env)
+            files.sudoers_file = None
+            with pytest.raises(PycharmRunError, match="shadow and sudoers files"):
+                build_docker_args(config, files, env)
+            files.sudoers_file = sudoers_file
         finally:
             cleanup_temp_runtime_files(files)
 
@@ -202,6 +216,9 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
     assert ["--memory", str(8 * 1024**3)] == args[args.index("--memory") : args.index("--memory") + 2]
     assert ["--user", "1000:1000"] == args[args.index("--user") : args.index("--user") + 2]
     assert "ENABLE_SUDO=1" in args
+    assert f"type=bind,src={sudoers_file},dst={SUDOERS_POLICY_PATH},ro" in args
+    assert not sudoers_file.exists()
+    assert not sudoers_directory.exists()
     assert "DOCKER_HOST=unix:///run/host-docker.sock" in args
     assert f"type=bind,src={docker_socket.resolve()},dst=/run/host-docker.sock" in args
     for source, destination in (
@@ -244,12 +261,14 @@ def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) 
         with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
             files = prepare_temp_runtime_files(config, env)
         try:
+            assert files.sudoers_file is None
             args = build_docker_args(config, files, env)
         finally:
             cleanup_temp_runtime_files(files)
 
     assert ["--network", "bridge"] == args[args.index("--network") : args.index("--network") + 2]
     assert "ENABLE_SUDO=0" in args
+    assert not any(SUDOERS_POLICY_PATH in argument for argument in args)
     assert "DOCKER_HOST=unix:///run/host-docker.sock" not in args
     assert not any("dst=/run/host-docker.sock" in argument for argument in args)
     assert "--memory" not in args
@@ -257,6 +276,148 @@ def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) 
     assert "no-new-privileges" in args
     assert "--read-only" in args
     assert "--privileged" not in args
+
+
+def test_sudoers_ownership_helper_is_constrained(tmp_path: Path) -> None:
+    policy = tmp_path / "sudoers"
+    policy.write_text(SUDOERS_POLICY, encoding="utf-8")
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth",
+        passwd_file=tmp_path / "passwd",
+        group_file=tmp_path / "group",
+        sudoers_file=policy,
+    )
+    config = cast(
+        PycharmRunConfig,
+        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical"),
+    )
+
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.os.chown", side_effect=PermissionError),
+        patch("devcapsule.configurations.pycharm._launcher.file_owner_uid", return_value=0),
+        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+    ):
+        run.return_value = SimpleNamespace(returncode=0, stderr="")
+        ensure_sudoers_policy_ownership(config, files, {"PATH": "/usr/bin"})
+
+    command = run.call_args.args[0]
+    assert command[:3] == ["docker", "run", "--rm"]
+    assert ["--network", "none"] == command[command.index("--network") : command.index("--network") + 2]
+    assert ["--cap-drop", "ALL"] == command[command.index("--cap-drop") : command.index("--cap-drop") + 2]
+    assert ["--cap-add", "CHOWN"] == command[command.index("--cap-add") : command.index("--cap-add") + 2]
+    assert "no-new-privileges" in command
+    assert "--read-only" in command
+    assert "--pull=never" in command
+    assert "0:0" == command[-2]
+
+
+def test_sudoers_ownership_helper_failure_is_actionable(tmp_path: Path) -> None:
+    policy = tmp_path / "sudoers"
+    policy.write_text(SUDOERS_POLICY, encoding="utf-8")
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth",
+        passwd_file=tmp_path / "passwd",
+        group_file=tmp_path / "group",
+        sudoers_file=policy,
+    )
+    config = cast(
+        PycharmRunConfig,
+        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical"),
+    )
+
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.os.chown", side_effect=PermissionError),
+        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+    ):
+        run.return_value = SimpleNamespace(returncode=1, stderr="daemon denied helper")
+        with pytest.raises(PycharmRunError, match="daemon denied helper"):
+            ensure_sudoers_policy_ownership(config, files, {})
+
+
+def test_sudo_banner_is_printed_after_complete_policy_preparation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch(
+            "devcapsule.configurations.pycharm._launcher.ensure_sudoers_policy_ownership"
+        ) as ensure,
+        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+    ):
+        run.return_value.returncode = 0
+        assert (
+            run_pycharm(
+                PycharmRunOptions(
+                    project=project,
+                    image="devcapsule-local-pycharm:canonical",
+                    docker_mode=DockerMode.none,
+                    network_mode="bridge",
+                    enable_sudo=True,
+                ),
+                env,
+            )
+            == 0
+        )
+
+    ensure.assert_called_once()
+    assert "DEVELOPMENT SUDO IS ENABLED" in capsys.readouterr().err
+    command = run.call_args.args[0]
+    assert any(SUDOERS_POLICY_PATH in argument for argument in command)
+
+
+def test_sudo_policy_preparation_failure_cleans_files_without_enabled_banner(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch(
+            "devcapsule.configurations.pycharm._launcher.ensure_sudoers_policy_ownership",
+            side_effect=PycharmRunError("sudo policy failed"),
+        ),
+        patch(
+            "devcapsule.configurations.pycharm._launcher.cleanup_temp_runtime_files",
+            wraps=cleanup_temp_runtime_files,
+        ) as cleanup,
+    ):
+        with pytest.raises(PycharmRunError, match="sudo policy failed"):
+            run_pycharm(
+                PycharmRunOptions(
+                    project=project,
+                    image="devcapsule-local-pycharm:canonical",
+                    docker_mode=DockerMode.none,
+                    network_mode="bridge",
+                    enable_sudo=True,
+                ),
+                env,
+            )
+
+    files = cleanup.call_args.args[0]
+    assert files.sudoers_file is not None
+    assert files.sudoers_directory is not None
+    assert all(
+        path is None or not path.exists()
+        for path in (
+            files.xauth_file,
+            files.passwd_file,
+            files.group_file,
+            files.shadow_file,
+            files.sudoers_file,
+        )
+    )
+    assert not files.sudoers_directory.exists()
+    assert "DEVELOPMENT SUDO IS ENABLED" not in capsys.readouterr().err
 
 
 def test_bound_secret_must_exist_on_host(tmp_path: Path) -> None:

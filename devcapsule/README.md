@@ -463,12 +463,15 @@ authorizes the launcher to let the capsule's development user elevate inside
 the container; it is not host-root authorization. The following `config
 resolve` incorporates the recorded decisions into the inspectable generated
 resolution, and `project run` applies the Docker and network effects.
-Development-sudo authorization is
-currently recorded and resolved, but the v021 project launcher does not yet
-deliver the required sudoers policy; `sudo` therefore still prompts for a
-password. That externally reproduced gap is Stage 4 of the active dogfood
-plan. Without authorization, normal project launch retains no Docker socket,
-bridge networking, and no development sudo.
+Development-sudo authorization generates a temporary group-scoped `NOPASSWD`
+policy, makes that one file root-owned through a network-disabled,
+read-only, `CHOWN`-only helper invocation of the selected local image, and
+mounts it read-only under `/etc/sudoers.d/`. The policy and its launcher-owned
+temporary directory are removed after exit or launch failure. The enabled
+banner is printed only after policy preparation and the complete Docker plan
+succeed. Without authorization, normal project launch retains no Docker
+socket, bridge networking, no policy or sudo group, a read-only root, dropped
+capabilities, and `no-new-privileges`.
 
 For developer-built base testing, `base-image` also accepts an already-local
 DevCapsule metadata-v1 base name:

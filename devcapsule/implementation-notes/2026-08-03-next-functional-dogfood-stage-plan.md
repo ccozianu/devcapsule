@@ -18,7 +18,7 @@ Requirements: root `R-PRODUCT-001`, root `R-PRODUCT-002`,
 
 ## Current Progress
 
-Current stage: Stage 4, authorized development sudo.
+Current stage: Stage 5, align the second-checkout acceptance script.
 
 Recommended source revision for the next v021 dogfood base:
 
@@ -59,6 +59,13 @@ this plan. Progress from that baseline is:
   negative plan. Its full gate passed with 178 fast tests at 81% coverage,
   clean mypy over 73 source files, source/local-PEX smokes, PEX construction,
   and all three packaging integrations.
+- Stage 4 is implemented and repository-validated. Authorized launches create
+  a group-scoped temporary sudoers policy, use a constrained no-network,
+  read-only, `CHOWN`-only helper to satisfy sudo's root-ownership requirement,
+  mount the policy read-only, and clean it after success or failure. The full
+  gate passed with 182 fast tests at 81% coverage, clean mypy over 73 source
+  files, source/local-PEX smokes, PEX construction, and all three packaging
+  integrations.
 
 No real image was pulled, built, or launched by the automated work for Stages 0
 through 2. The v021 base has since been built and published externally. The
@@ -377,7 +384,7 @@ Stage 4 policy gap rather than a Stage 3 propagation failure.
 
 ## Stage 4: Activate Authorized Development Sudo Without Rebuilding v021
 
-Status: externally reproduced gap; implementation pending.
+Status: implemented and validated against v022; full project relaunch pending.
 
 The existing v021 image contains `sudo` but no
 `/etc/sudoers.d/ide-sudo` policy. Do not make sudo ambient and do not require a
@@ -414,6 +421,16 @@ Closure evidence:
 - the positive host check is `sudo -n true`; and
 - the negative host check confirms passwordless sudo is unavailable when not
   authorized.
+
+Recorded result: focused tests cover exact policy content and modes, the
+constrained ownership helper, read-only delivery, truthful banner ordering,
+the unauthorized plan, actionable helper failure, and normal/failure cleanup.
+A disposable container using the exact v022-derived image and generated
+account-file contract passed `sudo -n true` and returned `0` from
+`sudo -n id -u`; the root-owned policy was then removed. The already-running
+authorized v022 capsule was repaired ephemerally with the same policy and
+passes both checks. Future launches use the temporary mount implementation;
+the Stage 5/8 host workflow will confirm it through full `project run`.
 
 ## Stage 5: Align The Second-Checkout Acceptance Script
 

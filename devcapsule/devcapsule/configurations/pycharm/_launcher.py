@@ -56,8 +56,14 @@ class TempRuntimeFiles:
     passwd_file: Path
     group_file: Path
     shadow_file: Path | None = None
+    sudoers_directory: Path | None = None
+    sudoers_file: Path | None = None
     token_file: Path | None = None
     runtime_plan_file: Path | None = None
+
+
+SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
+SUDOERS_POLICY = "%ide-sudo ALL=(ALL:ALL) NOPASSWD: ALL\n"
 
 
 @dataclass
@@ -150,8 +156,12 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
     config = build_run_config(options, runtime_env)
     files = prepare_temp_runtime_files(config, runtime_env)
     try:
+        if config.enable_sudo:
+            ensure_sudoers_policy_ownership(config, files, runtime_env)
         docker_args = build_docker_args(config, files, runtime_env)
         print_storage_summary(config)
+        if config.enable_sudo:
+            print_sudo_warning()
         command = ["docker", "run", *docker_args, config.image]
         if not config.use_image_process:
             command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
@@ -514,8 +524,18 @@ def build_docker_args(
     for _logical_name, source, destination in config.additional_state_mounts:
         args.extend(["--mount", f"type=bind,src={source},dst={destination}"])
 
-    if config.enable_sudo and files.shadow_file:
+    if config.enable_sudo:
+        if files.shadow_file is None or files.sudoers_file is None:
+            raise PycharmRunError(
+                "Development sudo requires generated shadow and sudoers files."
+            )
         args.extend(["--mount", f"type=bind,src={files.shadow_file},dst=/etc/shadow,ro"])
+        args.extend(
+            [
+                "--mount",
+                f"type=bind,src={files.sudoers_file},dst={SUDOERS_POLICY_PATH},ro",
+            ]
+        )
     if files.runtime_plan_file is not None:
         args.extend(
             [
@@ -644,12 +664,18 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
     try:
         write_xauthority(files.xauth_file, env)
         write_user_files(config, files)
+        if config.enable_sudo:
+            files.sudoers_directory = Path(
+                tempfile.mkdtemp(prefix="devcapsule-sudoers.", dir=runtime_parent)
+            )
+            files.sudoers_directory.chmod(0o700)
+            files.sudoers_file = files.sudoers_directory / "policy"
+            files.sudoers_file.write_text(SUDOERS_POLICY, encoding="utf-8")
+            files.sudoers_file.chmod(0o440)
         if config.runtime_plan is not None:
             files.runtime_plan_file = make_temp(runtime_parent, "devcapsule-runtime-plan.")
             files.runtime_plan_file.write_text(config.runtime_plan.to_json() + "\n", encoding="utf-8")
             files.runtime_plan_file.chmod(0o644)
-        if config.enable_sudo:
-            print_sudo_warning()
         return files
     except BaseException:
         cleanup_temp_runtime_files(files)
@@ -725,6 +751,68 @@ def write_user_files(config: PycharmRunConfig, files: TempRuntimeFiles) -> None:
     files.group_file.chmod(0o644)
 
 
+def ensure_sudoers_policy_ownership(
+    config: PycharmRunConfig,
+    files: TempRuntimeFiles,
+    env: Mapping[str, str],
+) -> None:
+    policy = files.sudoers_file
+    if not config.enable_sudo or policy is None:
+        raise PycharmRunError("Development sudo requires a generated sudoers policy.")
+    try:
+        os.chown(policy, 0, 0)
+    except PermissionError:
+        destination = "/run/devcapsule-sudoers-policy"
+        command = [
+            "docker",
+            "run",
+            "--rm",
+            "--pull=never",
+            "--network",
+            "none",
+            "--read-only",
+            "--pids-limit",
+            "64",
+            "--cap-drop",
+            "ALL",
+            "--cap-add",
+            "CHOWN",
+            "--security-opt",
+            "no-new-privileges",
+            "--user",
+            "0:0",
+            "--mount",
+            f"type=bind,src={policy},dst={destination}",
+            "--entrypoint",
+            "/bin/chown",
+            config.image,
+            "0:0",
+            destination,
+        ]
+        completed = subprocess.run(
+            command,
+            check=False,
+            env=dict(env),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if completed.returncode != 0:
+            detail = completed.stderr.strip()
+            suffix = f": {detail}" if detail else "."
+            raise PycharmRunError(
+                "Could not prepare the root-owned development-sudo policy" + suffix
+            )
+    if file_owner_uid(policy) != 0:
+        raise PycharmRunError(
+            "Development-sudo policy ownership is not root after preparation."
+        )
+
+
+def file_owner_uid(path: Path) -> int:
+    return path.stat().st_uid
+
+
 def resolve_git_token_file(
     config: PycharmRunConfig,
     files: TempRuntimeFiles,
@@ -756,11 +844,17 @@ def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
         files.passwd_file,
         files.group_file,
         files.shadow_file,
+        files.sudoers_file,
         files.token_file,
         files.runtime_plan_file,
     ]:
         if path:
             path.unlink(missing_ok=True)
+    if files.sudoers_directory:
+        try:
+            files.sudoers_directory.rmdir()
+        except FileNotFoundError:
+            pass
 
 
 def initial_docker_mode(env: Mapping[str, str]) -> str:

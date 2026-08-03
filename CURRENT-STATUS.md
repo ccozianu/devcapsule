@@ -972,6 +972,24 @@ Current task:
   is enabled, because Stage 4's temporary sudoers policy is not implemented.
   This misleading-success bug is tracked in
   `devcapsule/implementation-notes/bugs/2026-08-03-authorized-development-sudo-misreported.md`.
+- Stage 4 authorized development sudo is implemented without rebuilding the
+  v022-derived environment. The launcher creates a group-scoped mode-`0440`
+  policy under a mode-`0700` temporary directory, uses the selected local image
+  in a no-network, read-only, `CHOWN`-only helper invocation to make that one
+  file root-owned, verifies it, mounts it read-only under `/etc/sudoers.d/`,
+  and cleans both file and directory after success or failure. The enabled
+  banner now follows successful policy and Docker-plan preparation.
+- Focused tests cover policy content/modes, constrained ownership, positive and
+  negative plans, helper failure, truthful disclosure, and cleanup. The full
+  dirty-tree Nox gate passed with clean mypy over 73 source files, 182 fast
+  tests at 81% statement/branch coverage, source and rebuilt-PEX smokes, PEX
+  construction, and all three packaging integrations. A disposable container
+  using exact v022-derived image
+  `devcapsule-local-pycharm:1bae0035566680103826` passed `sudo -n true` and
+  `sudo -n id -u` with the policy mounted read-only, then proved cleanup. The
+  already-running authorized v022 capsule was repaired ephemerally with the
+  same policy and now passes both checks; a fresh full `project run` remains
+  part of the Stage 5/8 host workflow.
 - Merge checkpoint `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is the
   recommended source revision for the next v021 dogfood base. It is the current
   published base's embedded PEX revision and the base build's
@@ -1422,11 +1440,11 @@ for, or advertise Gemini CLI. A negative absence check is only a regression
 guard.
 
 1. Follow the active plan to wire the verified canonical environment into
-   `devcapsule project run`. Stages 0 through 3 are complete, and the v021
+   `devcapsule project run`. Stages 0 through 4 are complete, and the v021
    dogfood base built from source revision
    `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is published and selected by its
-   immutable digest. Proceed with Stage 4 to activate authorized development sudo
-   without making it ambient, and retain the shared image's generic component
+   immutable digest. Proceed with Stage 5 to align the second-checkout
+   acceptance script while retaining the shared image's generic component
    template. Normal run should strictly reuse or automatically materialize the
    locked image and must not bake project, state, credential, authorization,
    UID/GID, or mount choices into it.
