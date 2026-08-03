@@ -310,9 +310,40 @@ description = "Hard memory limit applied to the checkout's project container."
 The developer selects a value for one checkout with the generic command:
 
 ```bash
+devcapsule project config list
 devcapsule project config set runtime.memory-limit 8GiB
 devcapsule project config resolve
 ```
+
+`project config list` initializes the selected checkout's workstation-owned
+directory, minimal checkout input, and unresolved generated-plan placeholder
+when they do not exist, then prints every declared value, component binding,
+recommended authorization, and the generated resolution's readiness. It shows
+the materialized checkout name and exact files. Repeated calls do not rewrite
+existing choices or a resolved plan. If the same portable project identity is
+already registered for another checkout, assign a distinct name first with
+`project checkout register NAME`; the list command never invents or inherits a
+checkout name.
+
+Value statuses distinguish configured, invalid, required-but-missing, and
+optional-but-unset values. Bindings show an explicit host directory, legacy
+adoption, conflict, or managed-default storage. Authorizations show authorized,
+stale, required-but-missing, or recommended-but-missing decisions. Resolution
+is unresolved, fresh, or stale. Missing choices are reported without making a
+valid readiness listing fail.
+
+To review and accept every current authorization recommendation interactively,
+use:
+
+```bash
+devcapsule project config authorize --all-recommended
+```
+
+The command prints each exact value, justification, and recommendation digest
+before reading one terminal key. Only a lowercase `y` authorizes the complete
+set and writes the checkout once; every other key cancels without writing.
+Non-interactive workflows must continue to authorize each exact name and value
+separately.
 
 `config set` accepts only keys declared by the project, validates the supplied
 value from its metadata, and writes the resulting ordinary value to the

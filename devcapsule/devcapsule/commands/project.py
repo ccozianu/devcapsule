@@ -4,21 +4,25 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import Any
 
 import click
+import readchar
 
 from devcapsule.commands.base import BaseCommand
 from devcapsule.components.pycharm import logical_state_slots as pycharm_state_slots
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
 from devcapsule.project import sanitize_name
 from devcapsule.project_configuration import (
+    AuthorizationDeclaration,
     ProjectConfigurationError,
     authorization_declarations,
     atomic_write,
     canonical_digest,
     checkout_record_paths,
     configuration_binding_declarations,
+    configuration_value_declarations,
     config_root,
     discover_project,
     find_checkout_record,
@@ -312,11 +316,214 @@ def _config_command() -> click.Command:
         click.echo(f"Resolved {output} from {lock_path.name}")
         return 0
 
+    group.add_command(_config_list_command())
     group.add_command(resolve)
     group.add_command(_config_set_command())
     group.add_command(_config_bind_command())
     group.add_command(_config_authorize_command())
     return group
+
+
+@dataclass(frozen=True)
+class ConfigurationListRow:
+    kind: str
+    name: str
+    status: str
+    value: str
+
+
+def _config_list_command() -> click.Command:
+    @click.command("list", help="Show configured values, bindings, authorizations, and resolution readiness.")
+    @click.pass_obj
+    def list_configuration(context: ProjectCommandContext) -> int:
+        root, manifest = manifest_for(context.start_path())
+        _lock_path, lock = lock_for(root, manifest)
+        input_path, resolution_path = checkout_record_paths(manifest, root)
+        if not input_path.is_file():
+            atomic_write(input_path, render_checkout(manifest, root, {}, {}))
+            click.echo(f"Initialized checkout input: {input_path}")
+        if not resolution_path.is_file():
+            atomic_write(
+                resolution_path,
+                'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
+            )
+            click.echo(f"Initialized resolution placeholder: {resolution_path}")
+        checkout = load_toml(input_path)
+
+        identity = manifest["project"]
+        click.echo(f"Project: {identity['creator']}/{identity['slug']}")
+        click.echo(f"Checkout: {root}")
+        checkout_name = (
+            "default"
+            if input_path.name == "devcapsule.checkout.toml"
+            else input_path.name.removesuffix(".checkout.toml")
+        )
+        click.echo(f"Checkout name: {checkout_name}")
+        click.echo(f"Checkout input: {input_path}")
+        click.echo(f"Generated plan: {resolution_path}")
+
+        rows = [
+            *_configuration_value_rows(manifest, checkout),
+            *_configuration_binding_rows(lock, checkout),
+            *_configuration_authorization_rows(manifest, lock, checkout),
+            _configuration_resolution_row(
+                manifest,
+                lock,
+                checkout,
+                resolution_path,
+            ),
+        ]
+        _print_configuration_rows(rows)
+        return 0
+
+    return list_configuration
+
+
+def _configuration_value_rows(
+    manifest: dict[str, Any], checkout: dict[str, Any]
+) -> list[ConfigurationListRow]:
+    declarations = configuration_value_declarations(manifest)
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        return [ConfigurationListRow("value", "*", "invalid", "configuration is not a table")]
+    raw_values = configuration.get("values", {})
+    if not isinstance(raw_values, dict):
+        return [ConfigurationListRow("value", "*", "invalid", "values is not a table")]
+
+    rows: list[ConfigurationListRow] = []
+    for name, declaration in sorted(declarations.items()):
+        if name not in raw_values:
+            status = "missing-required" if declaration.get("required", False) else "unset-optional"
+            rows.append(ConfigurationListRow("value", name, status, "-"))
+            continue
+        try:
+            normalized = normalize_configuration_value(manifest, name, raw_values[name])
+        except ProjectConfigurationError as exc:
+            rows.append(ConfigurationListRow("value", name, "invalid", str(exc)))
+        else:
+            rows.append(
+                ConfigurationListRow("value", name, "configured", render_toml_scalar(normalized))
+            )
+    for name, value in sorted(raw_values.items(), key=lambda item: str(item[0])):
+        if name not in declarations:
+            rows.append(ConfigurationListRow("value", str(name), "undeclared", repr(value)))
+    return rows
+
+
+def _configuration_binding_rows(
+    lock: dict[str, Any], checkout: dict[str, Any]
+) -> list[ConfigurationListRow]:
+    declarations = configuration_binding_declarations(lock)
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raw_bindings: object = {}
+    else:
+        bindings = configuration.get("bindings", {})
+        raw_bindings = bindings.get("host-directory", {}) if isinstance(bindings, dict) else bindings
+    if not isinstance(raw_bindings, dict):
+        return [ConfigurationListRow("binding", "*", "invalid", "host-directory is not a table")]
+    state = checkout.get("state", {})
+    adopted = state.get("adopted", {}) if isinstance(state, dict) else {}
+    if not isinstance(adopted, dict):
+        adopted = {}
+
+    rows: list[ConfigurationListRow] = []
+    for name in sorted(declarations):
+        bound = raw_bindings.get(name)
+        legacy = adopted.get(name)
+        if bound is not None and legacy is not None:
+            rows.append(ConfigurationListRow("binding", name, "conflict", "bound and adopted"))
+        elif bound is not None:
+            path = Path(str(bound)).expanduser().resolve()
+            status = "bound" if isinstance(bound, str) and path.is_dir() else "invalid"
+            rows.append(ConfigurationListRow("binding", name, status, f"host-directory: {path}"))
+        elif legacy is not None:
+            path = Path(str(legacy)).expanduser().resolve()
+            status = "adopted-legacy" if isinstance(legacy, str) and path.is_dir() else "invalid"
+            rows.append(ConfigurationListRow("binding", name, status, str(path)))
+        else:
+            rows.append(ConfigurationListRow("binding", name, "managed-default", "managed directory"))
+    for name, value in sorted(raw_bindings.items(), key=lambda item: str(item[0])):
+        if name not in declarations:
+            rows.append(ConfigurationListRow("binding", str(name), "undeclared", str(value)))
+    return rows
+
+
+def _configuration_authorization_rows(
+    manifest: dict[str, Any], lock: dict[str, Any], checkout: dict[str, Any]
+) -> list[ConfigurationListRow]:
+    declarations = authorization_declarations(manifest, lock)
+    authorization = checkout.get("authorization", {})
+    if not isinstance(authorization, dict):
+        return [ConfigurationListRow("authorization", "*", "invalid", "authorization is not a table")]
+
+    rows: list[ConfigurationListRow] = []
+    for name, declaration in sorted(declarations.items()):
+        recommended = render_authorization_value(declaration.recommended_value)
+        record = authorization.get(name)
+        if record is None:
+            status = "missing-required" if name == "base-image" else "missing-recommended"
+            rows.append(ConfigurationListRow("authorization", name, status, recommended))
+            continue
+        if not isinstance(record, dict):
+            rows.append(ConfigurationListRow("authorization", name, "invalid", recommended))
+            continue
+        if name == "base-image":
+            raw_value = record.get("reference")
+            digest = record.get("lock-digest")
+        else:
+            raw_value = record.get("value")
+            digest = record.get("recommendation-digest")
+        try:
+            normalize_authorization_value(declaration, raw_value)
+        except ProjectConfigurationError:
+            status = "invalid"
+        else:
+            status = "authorized" if digest == declaration.recommendation_digest else "stale"
+        rows.append(ConfigurationListRow("authorization", name, status, recommended))
+    for name, value in sorted(authorization.items(), key=lambda item: str(item[0])):
+        if name not in declarations:
+            rows.append(ConfigurationListRow("authorization", str(name), "unsupported", repr(value)))
+    return rows
+
+
+def _configuration_resolution_row(
+    manifest: dict[str, Any],
+    lock: dict[str, Any],
+    checkout: dict[str, Any],
+    resolution_path: Path,
+) -> ConfigurationListRow:
+    if not resolution_path.is_file():
+        return ConfigurationListRow("resolution", "generated", "missing", str(resolution_path))
+    resolved = load_toml(resolution_path)
+    if resolved.get("devcapsule-resolved-schema-version") != 1:
+        return ConfigurationListRow(
+            "resolution", "generated", "invalid", "unsupported schema version"
+        )
+    if resolved.get("status") == "unresolved":
+        return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path))
+    expected = {
+        "manifest": canonical_digest(manifest),
+        "platform-lock": canonical_digest(lock),
+        "checkout-input": canonical_digest(checkout),
+    }
+    actual = resolved.get("sources", {})
+    if not isinstance(actual, dict):
+        return ConfigurationListRow("resolution", "generated", "invalid", "sources is not a table")
+    stale = [name for name, digest in expected.items() if actual.get(name) != digest]
+    if stale:
+        return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale))
+    return ConfigurationListRow("resolution", "generated", "fresh", str(resolution_path))
+
+
+def _print_configuration_rows(rows: list[ConfigurationListRow]) -> None:
+    headers = ("KIND", "NAME", "STATUS", "VALUE / RECOMMENDATION")
+    values = [(row.kind, row.name, row.status, row.value) for row in rows]
+    widths = [max(len(headers[index]), *(len(row[index]) for row in values)) for index in range(4)]
+    click.echo("")
+    click.echo("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
+    for row in values:
+        click.echo("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
 
 
 def _config_set_command() -> click.Command:
@@ -448,15 +655,35 @@ def _checkout_host_directory_bindings(checkout: dict[str, Any]) -> dict[str, str
 def _config_authorize_command() -> click.Command:
     @click.command(
         "authorize",
-        help="Authorize one exact security-sensitive value recommended by the project.",
+        help="Authorize exact security-sensitive values recommended by the project.",
     )
-    @click.argument("name")
-    @click.argument("value")
+    @click.argument("name", required=False)
+    @click.argument("value", required=False)
+    @click.option(
+        "--all-recommended",
+        is_flag=True,
+        help="Preview every recommendation and authorize all only after the y key is pressed.",
+    )
     @click.pass_obj
-    def authorize(context: ProjectCommandContext, name: str, value: str) -> int:
+    def authorize(
+        context: ProjectCommandContext,
+        name: str | None,
+        value: str | None,
+        all_recommended: bool,
+    ) -> int:
         root, manifest = manifest_for(context.start_path())
         _lock_path, lock = lock_for(root, manifest)
         declarations = authorization_declarations(manifest, lock)
+        if all_recommended:
+            if name is not None or value is not None:
+                raise click.UsageError(
+                    "--all-recommended cannot be combined with an authorization NAME or VALUE."
+                )
+            return _authorize_all_recommended(root, manifest, declarations)
+        if name is None or value is None:
+            raise click.UsageError(
+                "Provide NAME VALUE, or use --all-recommended for interactive bulk authorization."
+            )
         declaration = declarations.get(name)
         if declaration is None:
             available = ", ".join(sorted(declarations)) or "none"
@@ -499,6 +726,68 @@ def _config_authorize_command() -> click.Command:
         return 0
 
     return authorize
+
+
+def _authorize_all_recommended(
+    root: Path,
+    manifest: dict[str, Any],
+    declarations: dict[str, AuthorizationDeclaration],
+) -> int:
+    if not declarations:
+        raise ProjectConfigurationError("This project and lock declare no authorization recommendations.")
+
+    input_path, _output_path = checkout_record_paths(manifest, root)
+    checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
+    recorded_path = checkout.get("checkout", {}).get("path")
+    if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
+        raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
+    state = dict(checkout.get("state", {}).get("adopted", {}))
+    host = dict(checkout.get("host", {}))
+    authorization = dict(checkout.get("authorization", {}))
+    values = _checkout_values(checkout)
+    bindings = _checkout_host_directory_bindings(checkout)
+
+    click.echo(f"The following authorizations will be granted for checkout {root}:")
+    for name, declaration in sorted(declarations.items()):
+        rendered = render_authorization_value(declaration.recommended_value)
+        click.echo(f"- {name}: {rendered}")
+        click.echo(f"  Justification: {declaration.description}")
+        click.echo(f"  Recommendation digest: {declaration.recommendation_digest}")
+    if not sys.stdin.isatty():
+        raise ProjectConfigurationError(
+            "--all-recommended requires an interactive terminal; authorize each exact value "
+            "individually in non-interactive workflows."
+        )
+    click.echo("Press y to authorize every recommendation; any other key cancels: ", nl=False)
+    try:
+        accepted = readchar.readkey() == "y"
+    except (EOFError, OSError) as exc:
+        click.echo("")
+        raise ProjectConfigurationError(f"Cannot read authorization confirmation key: {exc}") from exc
+    click.echo("")
+    if not accepted:
+        click.echo("Authorization cancelled; no changes written.")
+        return 1
+
+    for name, declaration in declarations.items():
+        if name == "base-image":
+            authorization[name] = {
+                "reference": declaration.recommended_value,
+                "lock-digest": declaration.recommendation_digest,
+            }
+        else:
+            authorization[name] = {
+                "value": declaration.recommended_value,
+                "recommendation-digest": declaration.recommendation_digest,
+            }
+    atomic_write(
+        input_path,
+        render_checkout(manifest, root, state, host, authorization, values, bindings),
+    )
+    click.echo(f"Authorized {len(declarations)} recommendations for this checkout.")
+    click.echo(f"Checkout input: {input_path}")
+    click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
+    return 0
 
 
 def _state_command() -> click.Command:

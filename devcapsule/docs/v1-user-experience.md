@@ -683,6 +683,11 @@ to explicit optional components rather than the ambient runtime. The build
 report and component inventory remain the authority for exact installed
 versions in a particular image.
 
+Gemini CLI is not a supported DevCapsule component. It is not installed,
+selected, configured, or supplied with state by active V1 workflows. A check
+that it is absent guards the agent-neutral inventory; it is not a supported
+feature test.
+
 The PEX contains both the host CLI and the generic in-container runtime. The
 base starts that runtime through:
 

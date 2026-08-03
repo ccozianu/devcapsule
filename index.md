@@ -96,6 +96,7 @@ same change.
 - [Capability-first PyCharm dogfood manual test](devcapsule/implementation-notes/2026-07-24-capability-first-dogfood-manual-test.md)
 - [Local PyCharm materialization and Python entrypoint](devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md)
 - [NVIDIA CUDA base recipe specialized validation](devcapsule/implementation-notes/2026-08-01-nvidia-cuda-base-recipe-validation.md)
+- [Next functional dogfood stage from b5d42e8](devcapsule/implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md)
 
 ## Bugs
 

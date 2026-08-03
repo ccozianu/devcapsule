@@ -445,9 +445,10 @@ Current task:
 - `devcapsule project list` reads valid developer-owned checkout records only
   from `$XDG_CONFIG_HOME/devcapsule/projects/`, normally
   `~/.config/devcapsule/projects/`. It does not scan source trees. A clone or
-  `project init` is not registered until the first persistent `project config
-  set|bind|authorize|resolve` operation creates its checkout record. Missing
-  checkout paths remain visible for deliberate cleanup.
+  `project init` is not registered until initializing `project config list` or
+  the first persistent `project config set|bind|authorize|resolve` operation
+  creates its checkout record. Missing checkout paths remain visible for
+  deliberate cleanup.
 - The specified project command tree is now implemented. Top-level `init`,
   `lock`, `config`, `state`, `run`, and `run-image` modules were removed without
   aliases. `project --path PATH` supplies one lazy shared context to `init`,
@@ -867,6 +868,35 @@ Current task:
   fast tests at 80% statement/branch coverage, source and rebuilt local-PEX
   command smokes for generic `config authorize`, PEX construction, and all
   three packaging integration tests. No host container was launched.
+- `devcapsule project config list` now completes Stage 0 of the active dogfood
+  plan as an initializing readiness view. On first use it creates the selected
+  checkout's XDG project-identity directory, a valid minimal checkout input,
+  and a valid unresolved generated-plan placeholder, all without overwriting
+  existing choices or a resolved plan. It explicitly reports the default or
+  registered checkout name and both workstation-owned file paths. A second
+  checkout collision still requires `project checkout register NAME`.
+- The readiness table covers declared ordinary values, persistent home and
+  all five PyCharm state bindings, exact recommended authorizations, and
+  unresolved/fresh/stale resolution state. Focused tests cover default and
+  named initialization, mode `0600`, byte-for-byte idempotence, incomplete and
+  complete configuration, explicit bindings, authorized and stale decisions,
+  and fresh and stale plans. The full dirty-tree Nox gate passed with clean
+  mypy over 65 files, 141 fast tests at 80% statement/branch coverage, source
+  and local-PEX `project config list` help smokes, PEX construction, and all
+  three packaging integration tests. No host container was launched.
+- `project config authorize --all-recommended` adds an explicitly interactive
+  convenience for the current authorization catalog. It previews every exact
+  recommended value, justification, and recommendation digest, then uses the
+  `readchar` terminal-key package and accepts only a literal lowercase `y`.
+  Every other key cancels without changing checkout input, and non-interactive
+  use fails without reading or writing; automation retains the exact
+  `authorize NAME VALUE` form. Focused tests cover acceptance, uppercase and
+  non-affirmative cancellation, preservation of an existing checkout record,
+  and rejection without a terminal. The full dirty-tree Nox gate passed with
+  clean mypy over 65 files, 146 fast tests at 80% statement/branch coverage,
+  source and local-PEX help smokes exposing `--all-recommended`, PEX
+  construction with the pinned `readchar` dependency, and all three packaging
+  integration tests. No host authorization or container launch occurred.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -1132,12 +1162,28 @@ Current task:
 
 Next task:
 
-1. Wire the verified canonical environment into `devcapsule project run`.
-   Generate the checkout-specific runtime plan from the fresh resolution,
-   deliver it read-only at `/etc/devcapsule/runtime-plan.json`, and retain the
-   shared image's generic component template. Normal run should strictly reuse
-   or automatically materialize the locked image and must not bake project,
-   state, credential, authorization, UID/GID, or mount choices into it.
+The active execution plan for the next functional dogfood stage is
+`devcapsule/implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md`.
+It starts from branch `wip/local-pycharm-materialization` at committed revision
+`b5d42e8` and is the detailed closure contract for the following steps.
+
+The product owner has made the executive decision that DevCapsule will not
+support Gemini CLI. This retires D-0005's former open possibility of a later
+optional Gemini component without changing D-0005's accepted agent-neutral
+base direction. Active work must not install, select, configure, mount state
+for, or advertise Gemini CLI. A negative absence check is only a regression
+guard.
+
+1. Follow the active plan to wire the verified canonical environment into
+   `devcapsule project run`. Stage 0's initializing `project config list`
+   readiness view is complete; proceed with Stage 1's
+   shared environment realization, then generate the checkout-specific runtime
+   plan from the fresh resolution and deliver it read-only at
+   `/etc/devcapsule/runtime-plan.json`, activate authorized development sudo
+   without making it ambient, and retain the shared image's generic component
+   template. Normal run should strictly reuse or automatically materialize the
+   locked image and must not bake project, state, credential, authorization,
+   UID/GID, or mount choices into it.
 2. After the generic runtime-plan launch path is complete, align
    `tests/manual/v1-second-checkout-dogfood.sh` with the existing external clone
    and execute it. Generic metadata-driven `project config set`, its memory

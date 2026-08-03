@@ -199,6 +199,203 @@ def test_project_list_does_not_scan_unregistered_source_trees(tmp_path: Path, ca
     assert "No registered DevCapsule project checkouts" in capsys.readouterr().out
 
 
+def test_project_config_list_materializes_default_checkout_and_reports_readiness(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."runtime.memory-limit"]
+            type = "memory-size"
+            runtime-effect = "docker.memory-limit"
+
+            [host.docker.mode.recommended]
+            value = "host-socket"
+            justification = "Run peer development containers."
+            """,
+        )
+        write_formation_lock(project)
+
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        output = capsys.readouterr().out
+        assert "Checkout name: default" in output
+        assert "Checkout input:" in output
+        assert "Generated plan:" in output
+        assert "runtime.memory-limit" in output
+        assert "unset-optional" in output
+        assert "managed-default" in output
+        assert "missing-required" in output
+        assert "missing-recommended" in output
+        assert "unresolved" in output
+
+        records = registered_checkouts()
+        assert len(records) == 1
+        record = records[0].record_path
+        resolved_path = record.with_name("devcapsule.resolved.toml")
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout == {
+            "devcapsule-checkout-schema-version": 1,
+            "project": {"creator": "mailto:dev@example.test", "slug": "project"},
+            "checkout": {"path": str(project.resolve())},
+        }
+        with resolved_path.open("rb") as stream:
+            placeholder = tomllib.load(stream)
+        assert placeholder == {
+            "devcapsule-resolved-schema-version": 1,
+            "status": "unresolved",
+        }
+        assert record.stat().st_mode & 0o777 == 0o600
+        assert resolved_path.stat().st_mode & 0o777 == 0o600
+        original_input = record.read_bytes()
+        original_resolution = resolved_path.read_bytes()
+
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert record.read_bytes() == original_input
+        assert resolved_path.read_bytes() == original_resolution
+
+
+def test_project_config_list_materializes_named_checkout_placeholder(
+    tmp_path: Path, capsys
+) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(first)
+        shutil.copytree(first / ".devcapsule", second / ".devcapsule")
+        assert cli.main(["project", "--path", str(first), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(second), "config", "list"]) == 2
+        assert "checkout register NAME" in capsys.readouterr().err
+        assert (
+            cli.main(
+                ["project", "--path", str(second), "checkout", "register", "second-checkout"]
+            )
+            == 0
+        )
+        capsys.readouterr()
+        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        output = capsys.readouterr().out
+        assert "Checkout name: second-checkout" in output
+        records = {record.checkout_name: record for record in registered_checkouts()}
+        named = records["second-checkout"].record_path
+        assert named.with_name("second-checkout.resolved.toml").is_file()
+
+
+def test_project_config_list_reports_complete_and_stale_readiness(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    bound_home = tmp_path / "persistent-home"
+    bound_home.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."runtime.memory-limit"]
+            type = "memory-size"
+            required = true
+            runtime-effect = "docker.memory-limit"
+
+            [host.network.mode.recommended]
+            value = "host"
+            justification = "Reach host-bound development services."
+            """,
+        )
+        write_formation_lock(project)
+
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert "missing-required" in capsys.readouterr().out
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "set",
+                    "runtime.memory-limit",
+                    "8GiB",
+                ]
+            )
+            == 0
+        )
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "bind",
+                    "home",
+                    "--host-directory",
+                    str(bound_home),
+                ]
+            )
+            == 0
+        )
+        for name, value in (("base-image", LOCKED_BASE), ("network", "host")):
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "config",
+                        "authorize",
+                        name,
+                        value,
+                    ]
+                )
+                == 0
+            )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        output = capsys.readouterr().out
+        assert "runtime.memory-limit" in output and "configured" in output
+        assert "home" in output and "bound" in output
+        assert "base-image" in output and "authorized" in output
+        assert "network" in output and "authorized" in output
+        assert "generated" in output and "fresh" in output
+
+        record = registered_checkouts()[0].record_path
+        checkout_text = record.read_text(encoding="utf-8")
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        recommendation_digest = checkout["authorization"]["network"]["recommendation-digest"]
+        record.write_text(
+            checkout_text.replace(recommendation_digest, "0" * 64),
+            encoding="utf-8",
+        )
+
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        output = capsys.readouterr().out
+        network_row = next(line for line in output.splitlines() if "network" in line)
+        assert "stale" in network_row
+        resolution_row = next(line for line in output.splitlines() if "resolution" in line)
+        assert "stale" in resolution_row
+        assert "checkout-input" in resolution_row
+
+
 def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
@@ -519,6 +716,154 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
         )
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
         assert "authorization 'network' is stale" in capsys.readouterr().err
+
+
+def test_project_config_authorize_all_recommended_previews_and_requires_lowercase_y(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [host.docker.mode.recommended]
+            value = "host-socket"
+            justification = "Run peer development containers."
+
+            [host.network.mode.recommended]
+            value = "host"
+            justification = "Reach host-bound development services."
+
+            [host.privilege.development-sudo.recommended]
+            value = true
+            justification = "Perform reviewed development administration."
+            """,
+        )
+        write_formation_lock(project)
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        capsys.readouterr()
+
+        with (
+            patch("devcapsule.commands.project.sys.stdin") as terminal,
+            patch("devcapsule.commands.project.readchar.readkey", return_value="y") as readkey,
+        ):
+            terminal.isatty.return_value = True
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "config",
+                        "authorize",
+                        "--all-recommended",
+                    ]
+                )
+                == 0
+            )
+        readkey.assert_called_once_with()
+        output = capsys.readouterr().out
+        assert output.index("- base-image:") < output.index("Press y to authorize")
+        assert output.index("- docker-daemon: host-socket") < output.index("Press y to authorize")
+        assert output.index("- network: host") < output.index("Press y to authorize")
+        assert output.index("- development-sudo: true") < output.index("Press y to authorize")
+        assert "Justification: Run peer development containers." in output
+        assert "Recommendation digest:" in output
+        assert "Authorized 4 recommendations for this checkout." in output
+
+        record = registered_checkouts()[0].record_path
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert set(checkout["authorization"]) == {
+            "base-image",
+            "development-sudo",
+            "docker-daemon",
+            "network",
+        }
+        assert checkout["authorization"]["base-image"]["reference"] == LOCKED_BASE
+        assert checkout["authorization"]["docker-daemon"]["value"] == "host-socket"
+        assert checkout["authorization"]["network"]["value"] == "host"
+        assert checkout["authorization"]["development-sudo"]["value"] is True
+
+
+@pytest.mark.parametrize("key", ["Y", "n", "\n"])
+def test_project_config_authorize_all_recommended_cancels_without_lowercase_y(
+    tmp_path: Path, capsys, key: str
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        record = registered_checkouts()[0].record_path
+        original_input = record.read_bytes()
+        capsys.readouterr()
+        with (
+            patch("devcapsule.commands.project.sys.stdin") as terminal,
+            patch("devcapsule.commands.project.readchar.readkey", return_value=key),
+        ):
+            terminal.isatty.return_value = True
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "config",
+                        "authorize",
+                        "--all-recommended",
+                    ]
+                )
+                == 1
+            )
+        assert "Authorization cancelled; no changes written." in capsys.readouterr().out
+        assert record.read_bytes() == original_input
+
+
+def test_project_config_authorize_all_recommended_rejects_noninteractive_input(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        capsys.readouterr()
+        with (
+            patch("devcapsule.commands.project.sys.stdin") as terminal,
+            patch("devcapsule.commands.project.readchar.readkey") as readkey,
+        ):
+            terminal.isatty.return_value = False
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "config",
+                        "authorize",
+                        "--all-recommended",
+                    ]
+                )
+                == 2
+            )
+        readkey.assert_not_called()
+        captured = capsys.readouterr()
+        assert "The following authorizations will be granted" in captured.out
+        assert "requires an interactive terminal" in captured.err
+        assert registered_checkouts() == ()
 
 
 def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
