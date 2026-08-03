@@ -7,16 +7,59 @@ slots mean.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
+from devcapsule.components import (
+    ComponentDefinition,
+    LockedArtifactDeclaration,
+    SecretInputDeclaration,
+    StateEnvironmentDeclaration,
+)
+
+
+class PyCharmComponent(ComponentDefinition):
+    """Trusted PyCharm component implementation."""
+
+    @property
+    def id(self) -> str:
+        return "pycharm"
+
+    @property
+    def capability(self) -> str:
+        return "python-ide"
+
+    def runtime_template(self) -> ComponentRuntimeTemplate:
+        return _runtime_template()
+
+    def state_environment(self) -> tuple[StateEnvironmentDeclaration, ...]:
+        return ()
+
+    def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
+        return ()
+
+    def locked_artifacts(
+        self, metadata: Mapping[str, object], platform: str
+    ) -> tuple[LockedArtifactDeclaration, ...]:
+        # PyCharm currently uses the established whole-directory materializer;
+        # this method becomes its generic artifact adapter in a later slice.
+        return ()
 
 
 def runtime_template() -> ComponentRuntimeTemplate:
+    return DEFINITION.runtime_template()
+
+
+def _runtime_template() -> ComponentRuntimeTemplate:
     return ComponentRuntimeTemplate.from_mapping(
         {
             "version": 1,
             "component": {
                 "id": "pycharm",
                 "adapter": "jetbrains",
+                "environment": {
+                    "JAVA_TOOL_OPTIONS": "-Dide.browser.jcef.sandbox.enable=false",
+                },
                 "configuration": {
                     "installation_path": "/opt/jetbrains/pycharm",
                     "launcher": "bin/pycharm.sh",
@@ -27,6 +70,9 @@ def runtime_template() -> ComponentRuntimeTemplate:
                         "system": "system",
                         "plugins": "plugins",
                         "log": "log",
+                    },
+                    "additional_properties": {
+                        "ide.browser.jcef.sandbox.enable": "false",
                     },
                 },
                 "persistence": {
@@ -112,3 +158,6 @@ def _slot(
     if home_overlay:
         value["home_overlay"] = True
     return value
+
+
+DEFINITION: ComponentDefinition = PyCharmComponent()

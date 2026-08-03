@@ -16,6 +16,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Mapping
 
+from ...container_runtime.contract import RuntimePlan
+from ...materialization import RUNTIME_PLAN_PATH
 from ...project import ProjectMountError
 from ...runtime import (
     plan_shared_runtime,
@@ -54,7 +56,14 @@ class TempRuntimeFiles:
     passwd_file: Path
     group_file: Path
     shadow_file: Path | None = None
+    sudoers_directory: Path | None = None
+    sudoers_file: Path | None = None
     token_file: Path | None = None
+    runtime_plan_file: Path | None = None
+
+
+SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
+SUDOERS_POLICY = "%ide-sudo ALL=(ALL:ALL) NOPASSWD: ALL\n"
 
 
 @dataclass
@@ -89,6 +98,12 @@ class PycharmRunOptions:
     enable_sudo: bool = False
     ide_sudo_gid: str | None = None
     ignore_config_lock: bool = False
+    network_mode: str = "host"
+    memory_limit_bytes: int | None = None
+    runtime_plan: RuntimePlan | None = None
+    use_image_process: bool = False
+    additional_state_mounts: dict[str, tuple[Path, str]] = field(default_factory=dict)
+    secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
 
 
@@ -122,6 +137,12 @@ class PycharmRunConfig:
     enable_sudo: bool
     ide_sudo_gid: int
     ignore_config_lock: bool
+    network_mode: str
+    memory_limit_bytes: int | None
+    runtime_plan: RuntimePlan | None
+    use_image_process: bool
+    additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
+    secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
     libgl_always_software: str = "1"
     mesa_loader_driver_override: str = "llvmpipe"
@@ -135,12 +156,16 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
     config = build_run_config(options, runtime_env)
     files = prepare_temp_runtime_files(config, runtime_env)
     try:
+        if config.enable_sudo:
+            ensure_sudoers_policy_ownership(config, files, runtime_env)
         docker_args = build_docker_args(config, files, runtime_env)
         print_storage_summary(config)
-        completed = subprocess.run(
-            ["docker", "run", *docker_args, config.image, "/opt/pycharm/bin/pycharm.sh", config.project_mount],
-            check=False,
-        )
+        if config.enable_sudo:
+            print_sudo_warning()
+        command = ["docker", "run", *docker_args, config.image]
+        if not config.use_image_process:
+            command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
+        completed = subprocess.run(command, check=False, env=runtime_env)
         return completed.returncode
     finally:
         cleanup_temp_runtime_files(files)
@@ -186,6 +211,10 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
 
     if not env.get("DISPLAY"):
         raise PycharmRunError("DISPLAY is not set; this X11 launcher needs an active X session.")
+    if options.network_mode not in {"bridge", "host", "none"}:
+        raise PycharmRunError("The Docker network mode must be bridge, host, or none.")
+    if options.use_image_process and options.runtime_plan is None:
+        raise PycharmRunError("Using the image process requires an external runtime plan.")
 
     global_settings_default = base_data_dir / "state"
 
@@ -312,6 +341,48 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
 
     git_token_file = options.git_token_file or env.get("PYCHARM_GIT_TOKEN_FILE") or env.get("GITHUB_TOKEN_FILE")
 
+    if options.runtime_plan is not None:
+        if options.runtime_plan.project_path != runtime_plan.project_mount:
+            raise PycharmRunError(
+                "The external runtime plan project path does not match the Docker project mount."
+            )
+        if options.runtime_plan.home != "/home/devcapsule":
+            raise PycharmRunError("The external runtime plan home must be /home/devcapsule.")
+
+    additional_state_mounts: list[tuple[str, str, str]] = []
+    runtime_slots = options.runtime_plan.slots_by_name() if options.runtime_plan is not None else {}
+    ancillary_ids = {
+        component.id for component in options.runtime_plan.ancillary_components
+    } if options.runtime_plan is not None else set()
+    for logical_name, (source, destination) in sorted(options.additional_state_mounts.items()):
+        namespace, separator, _local_name = logical_name.partition("/")
+        planned_destination = runtime_slots.get(logical_name)
+        if not separator or namespace not in ancillary_ids:
+            raise PycharmRunError(
+                f"Additional state mount {logical_name!r} is not owned by a declared ancillary component."
+            )
+        if planned_destination is not None and planned_destination != destination:
+            raise PycharmRunError(
+                f"Additional state mount {logical_name!r} conflicts with the external runtime plan."
+            )
+        destination_path = Path(destination)
+        if not destination_path.is_absolute() or ".." in destination_path.parts:
+            raise PycharmRunError(
+                f"Additional state mount {logical_name!r} must use an absolute container destination."
+            )
+        resolved_source = resolve_existing_or_create(source)
+        additional_state_mounts.append((logical_name, str(resolved_source), destination))
+    fixed_environment = options.runtime_plan.component_environment() if options.runtime_plan else {}
+    for name in options.secret_environment:
+        if name in fixed_environment:
+            raise PycharmRunError(
+                f"Secret environment variable {name!r} conflicts with component runtime metadata."
+            )
+        if name not in env:
+            raise PycharmRunError(
+                f"Bound secret environment variable {name!r} is not set on the host."
+            )
+
     return PycharmRunConfig(
         image=options.image or env.get("IMAGE", "pycharm-isolated:latest"),
         name=options.name or f"pycharm-isolated-{host_user.name}-{int(time.time())}",
@@ -343,6 +414,12 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         enable_sudo=enable_sudo,
         ide_sudo_gid=ide_sudo_gid,
         ignore_config_lock=ignore_config_lock,
+        network_mode=options.network_mode,
+        memory_limit_bytes=options.memory_limit_bytes,
+        runtime_plan=options.runtime_plan,
+        use_image_process=options.use_image_process,
+        additional_state_mounts=tuple(additional_state_mounts),
+        secret_environment=tuple(sorted(set(options.secret_environment))),
         extra_docker_args=list(options.extra_docker_args),
         libgl_always_software=env.get("PYCHARM_LIBGL_ALWAYS_SOFTWARE", env.get("LIBGL_ALWAYS_SOFTWARE", "1")),
         mesa_loader_driver_override=env.get(
@@ -374,8 +451,6 @@ def build_docker_args(
         f"PROJECT_PATH={config.project_mount}",
         "--env",
         "HOME=/home/devcapsule",
-        "--env",
-        "CODEX_HOME=/home/devcapsule/.codex",
         "--env",
         "XDG_CONFIG_HOME=/home/devcapsule/.config",
         "--env",
@@ -435,13 +510,39 @@ def build_docker_args(
         "--ipc",
         "private",
         "--network",
-        "host",
+        config.network_mode,
         "--pids-limit",
         "4096",
     ]
 
-    if config.enable_sudo and files.shadow_file:
+    if config.runtime_plan is not None:
+        for name, value in sorted(config.runtime_plan.component_environment().items()):
+            args.extend(["--env", f"{name}={value}"])
+    for name in config.secret_environment:
+        args.extend(["--env", name])
+
+    for _logical_name, source, destination in config.additional_state_mounts:
+        args.extend(["--mount", f"type=bind,src={source},dst={destination}"])
+
+    if config.enable_sudo:
+        if files.shadow_file is None or files.sudoers_file is None:
+            raise PycharmRunError(
+                "Development sudo requires generated shadow and sudoers files."
+            )
         args.extend(["--mount", f"type=bind,src={files.shadow_file},dst=/etc/shadow,ro"])
+        args.extend(
+            [
+                "--mount",
+                f"type=bind,src={files.sudoers_file},dst={SUDOERS_POLICY_PATH},ro",
+            ]
+        )
+    if files.runtime_plan_file is not None:
+        args.extend(
+            [
+                "--mount",
+                f"type=bind,src={files.runtime_plan_file},dst={RUNTIME_PLAN_PATH},ro",
+            ]
+        )
     if config.git_user_name:
         args.extend(["--env", f"GIT_USER_NAME={config.git_user_name}"])
     if config.git_user_email:
@@ -482,6 +583,10 @@ def build_docker_args(
             ]
         )
 
+    if config.memory_limit_bytes is not None:
+        if config.memory_limit_bytes <= 0:
+            raise PycharmRunError("The container memory limit must be positive.")
+        args.extend(["--memory", str(config.memory_limit_bytes)])
     args.extend(config.extra_docker_args)
     return args
 
@@ -556,11 +661,25 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
         passwd_file=make_temp(runtime_parent, "pycharm-docker-passwd."),
         group_file=make_temp(runtime_parent, "pycharm-docker-group."),
     )
-    write_xauthority(files.xauth_file, env)
-    write_user_files(config, files)
-    if config.enable_sudo:
-        print_sudo_warning()
-    return files
+    try:
+        write_xauthority(files.xauth_file, env)
+        write_user_files(config, files)
+        if config.enable_sudo:
+            files.sudoers_directory = Path(
+                tempfile.mkdtemp(prefix="devcapsule-sudoers.", dir=runtime_parent)
+            )
+            files.sudoers_directory.chmod(0o700)
+            files.sudoers_file = files.sudoers_directory / "policy"
+            files.sudoers_file.write_text(SUDOERS_POLICY, encoding="utf-8")
+            files.sudoers_file.chmod(0o440)
+        if config.runtime_plan is not None:
+            files.runtime_plan_file = make_temp(runtime_parent, "devcapsule-runtime-plan.")
+            files.runtime_plan_file.write_text(config.runtime_plan.to_json() + "\n", encoding="utf-8")
+            files.runtime_plan_file.chmod(0o644)
+        return files
+    except BaseException:
+        cleanup_temp_runtime_files(files)
+        raise
 
 
 def make_temp(parent: Path, prefix: str) -> Path:
@@ -632,6 +751,68 @@ def write_user_files(config: PycharmRunConfig, files: TempRuntimeFiles) -> None:
     files.group_file.chmod(0o644)
 
 
+def ensure_sudoers_policy_ownership(
+    config: PycharmRunConfig,
+    files: TempRuntimeFiles,
+    env: Mapping[str, str],
+) -> None:
+    policy = files.sudoers_file
+    if not config.enable_sudo or policy is None:
+        raise PycharmRunError("Development sudo requires a generated sudoers policy.")
+    try:
+        os.chown(policy, 0, 0)
+    except PermissionError:
+        destination = "/run/devcapsule-sudoers-policy"
+        command = [
+            "docker",
+            "run",
+            "--rm",
+            "--pull=never",
+            "--network",
+            "none",
+            "--read-only",
+            "--pids-limit",
+            "64",
+            "--cap-drop",
+            "ALL",
+            "--cap-add",
+            "CHOWN",
+            "--security-opt",
+            "no-new-privileges",
+            "--user",
+            "0:0",
+            "--mount",
+            f"type=bind,src={policy},dst={destination}",
+            "--entrypoint",
+            "/bin/chown",
+            config.image,
+            "0:0",
+            destination,
+        ]
+        completed = subprocess.run(
+            command,
+            check=False,
+            env=dict(env),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if completed.returncode != 0:
+            detail = completed.stderr.strip()
+            suffix = f": {detail}" if detail else "."
+            raise PycharmRunError(
+                "Could not prepare the root-owned development-sudo policy" + suffix
+            )
+    if file_owner_uid(policy) != 0:
+        raise PycharmRunError(
+            "Development-sudo policy ownership is not root after preparation."
+        )
+
+
+def file_owner_uid(path: Path) -> int:
+    return path.stat().st_uid
+
+
 def resolve_git_token_file(
     config: PycharmRunConfig,
     files: TempRuntimeFiles,
@@ -658,9 +839,22 @@ def resolve_git_token_file(
 
 
 def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
-    for path in [files.xauth_file, files.passwd_file, files.group_file, files.shadow_file, files.token_file]:
+    for path in [
+        files.xauth_file,
+        files.passwd_file,
+        files.group_file,
+        files.shadow_file,
+        files.sudoers_file,
+        files.token_file,
+        files.runtime_plan_file,
+    ]:
         if path:
             path.unlink(missing_ok=True)
+    if files.sudoers_directory:
+        try:
+            files.sudoers_directory.rmdir()
+        except FileNotFoundError:
+            pass
 
 
 def initial_docker_mode(env: Mapping[str, str]) -> str:
@@ -794,6 +988,16 @@ or rerun with --ignore-config-lock to let PyCharm decide."""
 
 
 def print_storage_summary(config: PycharmRunConfig) -> None:
+    browser_disclosure = ""
+    if config.runtime_plan is not None:
+        properties = config.runtime_plan.component.configuration.get("additional_properties", {})
+        if isinstance(properties, dict) and properties.get("ide.browser.jcef.sandbox.enable") == "false":
+            browser_disclosure = """
+
+Embedded browser security:
+  JCEF's inner Chromium sandbox is disabled for V1 container compatibility.
+  Embedded content inherits the IDE user's project, state, network, and any
+  separately authorized Docker access. Docker's outer isolation is unchanged."""
     print(
         f"""PyCharm storage:
   Persistent home:       {config.persistent_home}
@@ -802,7 +1006,7 @@ def print_storage_summary(config: PycharmRunConfig) -> None:
   PyCharm system:         {config.ide_system}
   PyCharm logs:           {config.ide_log}
   Tool cache:             {config.tool_cache}
-  Container project path: {config.project_mount}""",
+  Container project path: {config.project_mount}{browser_disclosure}""",
         file=sys.stderr,
     )
 

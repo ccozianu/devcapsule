@@ -22,7 +22,6 @@ def install_locked(session: nox.Session) -> None:
 
 def check_python_syntax(session: nox.Session) -> None:
     session.run("python", "-m", "compileall", "-q", str(PROJECT_ROOT / "devcapsule"))
-    session.run("python", "-m", "compileall", "-q", str(PROJECT_ROOT / "devcapsule_runtime"))
 
 
 def check_shell_syntax(session: nox.Session) -> None:
@@ -74,7 +73,6 @@ def run_typecheck(session: nox.Session) -> None:
         "-m",
         "mypy",
         str(PROJECT_ROOT / "devcapsule"),
-        str(PROJECT_ROOT / "devcapsule_runtime"),
         str(PROJECT_ROOT / "tests"),
         str(PROJECT_ROOT / "noxfile.py"),
     )
@@ -87,7 +85,11 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "pycharm", "run", "--help")
     session.run("python", "-m", "devcapsule", "project", "--help")
     session.run("python", "-m", "devcapsule", "project", "list", "--help")
+    session.run("python", "-m", "devcapsule", "project", "config", "list", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "resolve", "--help")
+    session.run("python", "-m", "devcapsule", "project", "config", "set", "--help")
+    session.run("python", "-m", "devcapsule", "project", "config", "bind", "--help")
+    session.run("python", "-m", "devcapsule", "project", "config", "authorize", "--help")
     session.run("python", "-m", "devcapsule", "project", "run-image", "--help")
     session.run("python", "-m", "devcapsule", "images", "list", "--help")
     session.run("python", "-m", "devcapsule", "images", "build", "--help")
@@ -145,7 +147,11 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run("python", str(path), "pycharm", "run", "--help")
     session.run("python", str(path), "project", "--help")
     session.run("python", str(path), "project", "list", "--help")
+    session.run("python", str(path), "project", "config", "list", "--help")
     session.run("python", str(path), "project", "config", "resolve", "--help")
+    session.run("python", str(path), "project", "config", "set", "--help")
+    session.run("python", str(path), "project", "config", "bind", "--help")
+    session.run("python", str(path), "project", "config", "authorize", "--help")
     session.run("python", str(path), "project", "run-image", "--help")
     session.run("python", str(path), "images", "list", "--help")
     session.run("python", str(path), "images", "build", "--help")

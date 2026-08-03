@@ -2,10 +2,10 @@
 # Manual acceptance test for the planned D-0004 V1 configuration experience.
 #
 # This script intentionally describes target behavior that the transitional CLI
-# does not yet fully implement. In particular, it requires config
-# set/bind/authorize, persistent host
-# authorization, a container memory limit, and the v019 generic Python runtime
-# boundary.
+# does not yet fully implement. Typed set, host-directory bind, exact host
+# authorization, and the container memory limit are implemented. The remaining
+# gate is automatic environment realization plus external runtime-plan delivery
+# through the v020 generic Python runtime boundary.
 #
 # Run this script from a host terminal, not from inside a DevCapsule container.
 # It creates a new clone and new checkout-specific PyCharm system/log/cache
@@ -20,8 +20,8 @@ CHECKOUT_NAME=${CHECKOUT_NAME:-costin3-devcapsule}
 NEW_STATE_ROOT=${NEW_STATE_ROOT:-"$HOME/work/provisional/costin3/.state/myProjects/devcapsule"}
 CONTAINER_NAME=${CONTAINER_NAME:-devcapsule-dogfood-costin3}
 MEMORY_LIMIT=${MEMORY_LIMIT:-8GiB}
-DOGFOOD_IMAGE=${DOGFOOD_IMAGE:-devcapsule-local-pycharm:debug-v019}
-BASE_IMAGE=${BASE_IMAGE:-devcapsule-local-base:v019}
+DOGFOOD_IMAGE=${DOGFOOD_IMAGE:-devcapsule-local-pycharm:debug-v020}
+BASE_IMAGE=${BASE_IMAGE:-devcapsule-local-base:v020}
 PYTHON_BIN=${PYTHON_BIN:-python3.12}
 RUN_BUILD_GATE=${RUN_BUILD_GATE:-1}
 
@@ -66,7 +66,7 @@ test -d "$SHARED_PYCHARM_PLUGINS" || fail "missing shared PyCharm plugins: $SHAR
 docker image inspect "$DOGFOOD_IMAGE" >/dev/null || \
   fail "run 'devcapsule images build --type environment --project CHECKOUT --base $BASE_IMAGE --alias $DOGFOOD_IMAGE' first"
 
-IMAGE_INSPECTION=$(mktemp "${TMPDIR:-/tmp}/devcapsule-v019-image.XXXXXX.json")
+IMAGE_INSPECTION=$(mktemp "${TMPDIR:-/tmp}/devcapsule-v020-image.XXXXXX.json")
 docker image inspect "$DOGFOOD_IMAGE" >"$IMAGE_INSPECTION"
 "$PYTHON_BIN" - "$IMAGE_INSPECTION" <<'PY'
 import json
@@ -94,7 +94,7 @@ assert labels.get("devcapsule.image.canonical-name"), "missing canonical image n
 assert labels.get("devcapsule.pex.sha256"), "missing embedded PEX identity"
 assert labels.get("devcapsule.component.sha256"), "missing component artifact identity"
 assert labels.get("devcapsule.component.variant"), "missing component variant"
-print("v019 generic image contract: PASS")
+print("v020 generic image contract: PASS")
 PY
 rm -f "$IMAGE_INSPECTION"
 
@@ -155,7 +155,7 @@ test ! -e "$NEW_CHECKOUT_RECORD" || fail "named checkout record already exists: 
 test ! -e "$NEW_RESOLVED_RECORD" || fail "named resolution already exists: $NEW_RESOLVED_RECORD"
 ORIGINAL_RECORD_HASH=$(sha256sum "$ORIGINAL_CHECKOUT_RECORD")
 
-LEGACY_LOCK_IMAGE=$("$PYTHON_BIN" - "$LOCK" <<'PY'
+readarray -t LOCK_VALUES < <("$PYTHON_BIN" - "$LOCK" <<'PY'
 import sys
 import tomllib
 from pathlib import Path
@@ -163,10 +163,14 @@ from pathlib import Path
 with Path(sys.argv[1]).open("rb") as stream:
     lock = tomllib.load(stream)
 print(lock.get("image", {}).get("reference", ""))
+print(lock.get("base", {}).get("reference", ""))
 PY
 )
+LEGACY_LOCK_IMAGE=${LOCK_VALUES[0]}
+LOCKED_BASE_REFERENCE=${LOCK_VALUES[1]}
 test -z "$LEGACY_LOCK_IMAGE" || \
   fail "the cloned lock still selects completed image $LEGACY_LOCK_IMAGE instead of formation inputs"
+test -n "$LOCKED_BASE_REFERENCE" || fail "the cloned lock has no base reference"
 
 echo "Observed committed project identity: $PROJECT_CREATOR / $PROJECT_SLUG"
 echo "Observed container project path: $CONTAINER_PROJECT_PATH"
@@ -214,12 +218,13 @@ mkdir -p "$NEW_PYCHARM_SYSTEM" "$NEW_PYCHARM_LOG" "$NEW_PYCHARM_CACHE"
 # dogfood instance. Host networking is a known isolation relaxation, not a
 # default. A later bridge-network test should remove this authorization once
 # the dogfood workflow no longer needs it.
+"${DC[@]}" project --path "$NEW_CHECKOUT" config authorize base-image "$LOCKED_BASE_REFERENCE"
 "${DC[@]}" project --path "$NEW_CHECKOUT" config authorize docker-daemon host-socket
 "${DC[@]}" project --path "$NEW_CHECKOUT" config authorize network host
 "${DC[@]}" project --path "$NEW_CHECKOUT" config authorize development-sudo true
 
 # Holistic validation must create only the named generated plan. It must not
-# acquire an image or launch a container; the explicitly built v019 checkpoint
+# acquire an image or launch a container; the explicitly built v020 checkpoint
 # is already local here.
 "${DC[@]}" project --path "$NEW_CHECKOUT" config resolve
 

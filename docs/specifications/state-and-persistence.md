@@ -89,11 +89,11 @@ The container user owns this directory. DevCapsule repairs ownership only for
 its own managed directory and never recursively changes ownership on a
 developer-supplied external directory.
 
-The persistent home is the compatibility mechanism for tools without an
-explicit state contract. Codex, Gemini CLI, Claude Code, Antigravity, shell
-configuration, and future tools may persist credentials, conversations, and
-preferences in their normal locations beneath `HOME` without special cases in
-the launcher.
+The persistent home is the compatibility mechanism for supported tools without
+an explicit state contract. Codex, Claude Code, Antigravity, shell
+configuration, and future supported tools may persist credentials,
+conversations, and preferences in their normal locations beneath `HOME`
+without special cases in the launcher.
 
 No additional in-container home variable is defined. Programs already agree on
 `HOME`, and introducing `DEVCAPSULE_HOME` would create two possible answers.
@@ -332,10 +332,10 @@ pre-V1 implementation details. Their data maps into persistent home or
 component-declared slots during implementation of this specification; their
 names do not define the V1 model.
 
-Existing agent-specific mounts such as the direct host `~/.gemini` mount are
-replaced by the checkout-scoped persistent home by default. A developer who
-wants to share existing agent login state may adopt it through a named profile
-or an explicitly approved external state mapping.
+Historical agent-specific direct host-state mounts are replaced by the
+checkout-scoped persistent home by default. A developer who wants to share
+supported agent login state may adopt it through a named profile or an
+explicitly approved external state mapping.
 
 ## Dogfood Migration From The Current PyCharm Command
 
@@ -378,8 +378,7 @@ cd "$HOST_PROJECT_ROOT"
 devcapsule init \
   --need python \
   --need python-ide \
-  --need docker-cli \
-  --need gemini
+  --need docker-cli
 ```
 
 After `devcapsule init` creates `.devcapsule/`, a one-time in-place state
@@ -402,7 +401,7 @@ devcapsule state adopt pycharm/cache \
 
 These commands record developer-owned local mappings and approvals. They do
 not write host paths into `.devcapsule/devcapsule.toml` or the lock. Existing
-Gemini, Codex, Claude, or other agent state may instead be copied beneath the
+supported Codex, Claude, or other agent state may instead be copied beneath the
 adopted home in its normal tool location. DevCapsule must not mount the real
 host home merely to avoid that one-time migration.
 

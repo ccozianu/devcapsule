@@ -10,11 +10,17 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import tarfile
 from typing import Any, Callable, Iterator, Mapping
 from urllib.error import URLError
 from urllib.request import urlopen
 
 from devcapsule.compat import CliError
+from devcapsule.components.catalog import (
+    ComponentCatalogError,
+    selected_component_definitions,
+)
+from devcapsule.components import LockedArtifactDeclaration
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.image_build import (
     DirectoryComponent,
@@ -65,6 +71,7 @@ class LockedEnvironment:
     base_identity: str | None
     component_id: str
     artifact: ArtifactSpec
+    ancillary_artifacts: tuple[LockedArtifactDeclaration, ...]
     recipe_id: str
     recipe_version: str
 
@@ -148,6 +155,7 @@ def formation_descriptor(
     platform: str,
     base_identity: str,
     artifact: ArtifactSpec,
+    ancillary_artifacts: tuple[LockedArtifactDeclaration, ...] = (),
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
 ) -> dict[str, Any]:
@@ -163,7 +171,23 @@ def formation_descriptor(
                 "version": artifact.version,
                 "artifact": {"sha256": _validated_sha256(artifact.sha256, "Artifact SHA-256")},
                 "variant": artifact.variant,
-            }
+            },
+            *[
+                {
+                    "id": item.component_id,
+                    "version": item.version,
+                    "artifact": {
+                        "sha256": _validated_sha256(
+                            item.sha256, f"{item.component_id} artifact SHA-256"
+                        )
+                    },
+                    "installation": {
+                        "archive-member": item.archive_member,
+                        "destination": item.destination,
+                    },
+                }
+                for item in ancillary_artifacts
+            ],
         ],
         "recipe": {
             "id": recipe_id,
@@ -207,6 +231,10 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     if component_id != "pycharm":
         raise CliError("V1 environment materialization currently supports only a locked PyCharm surface.")
     component = _required_mapping(components, component_id, "components")
+    try:
+        _interactive, ancillary_definitions = selected_component_definitions(lock)
+    except ComponentCatalogError as exc:
+        raise CliError(str(exc)) from exc
     materialization = _required_mapping(lock, "materialization", "platform lock")
     policy = _required_string(component, "delivery-policy", f"components.{component_id}")
     if policy != "local-materialization":
@@ -218,6 +246,15 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
         variant=_required_string(component, "variant", f"components.{component_id}"),
     )
     _validated_sha256(artifact.sha256, "Locked component SHA-256")
+    ancillary_artifacts: list[LockedArtifactDeclaration] = []
+    for definition in ancillary_definitions:
+        metadata = _required_mapping(components, definition.id, "components")
+        for locked_artifact in definition.locked_artifacts(metadata, platform):
+            _validated_sha256(
+                locked_artifact.sha256,
+                f"Locked {locked_artifact.component_id} artifact SHA-256",
+            )
+            ancillary_artifacts.append(locked_artifact)
     recipe_id = _required_string(materialization, "recipe", "materialization")
     recipe_version = _required_string(materialization, "recipe-version", "materialization")
     if recipe_id != MATERIALIZATION_RECIPE_ID or recipe_version != MATERIALIZATION_RECIPE_VERSION:
@@ -234,6 +271,7 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
         base_identity=identity_value,
         component_id=component_id,
         artifact=artifact,
+        ancillary_artifacts=tuple(ancillary_artifacts),
         recipe_id=recipe_id,
         recipe_version=recipe_version,
     )
@@ -274,6 +312,7 @@ def pycharm_materialization_spec(
     pycharm_root: Path,
     component_template: Path,
     artifact: ArtifactSpec,
+    ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...] = (),
     platform: str = "linux-amd64",
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
@@ -282,6 +321,7 @@ def pycharm_materialization_spec(
         platform=platform,
         base_identity=base_identity,
         artifact=artifact,
+        ancillary_artifacts=tuple(declaration for _path, declaration in ancillary_files),
         recipe_id=recipe_id,
         recipe_version=recipe_version,
     )
@@ -292,6 +332,10 @@ def pycharm_materialization_spec(
         components=(
             DirectoryComponent(pycharm_root, "/opt/jetbrains/pycharm"),
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
+            *(
+                FileComponent(path, declaration.destination, permissions=declaration.permissions)
+                for path, declaration in ancillary_files
+            ),
             LabelComponent(
                 managed_labels(MATERIALIZED_KIND, image)
                 + (
@@ -317,6 +361,7 @@ def ensure_materialized_pycharm(
     base_identity: str,
     platform: str,
     artifact: ArtifactSpec,
+    ancillary_artifacts: tuple[LockedArtifactDeclaration, ...] = (),
     cache_root: Path,
     inspect_image: Callable[[str], ImageDetails | None],
     build: Callable[[ImageBuildSpec], None],
@@ -327,6 +372,7 @@ def ensure_materialized_pycharm(
         platform=platform,
         base_identity=base_identity,
         artifact=artifact,
+        ancillary_artifacts=ancillary_artifacts,
         recipe_id=recipe_id,
         recipe_version=recipe_version,
     )
@@ -339,6 +385,16 @@ def ensure_materialized_pycharm(
             return image, False
 
         acquisition = acquire_artifact(artifact, cache_root)
+        ancillary_acquisitions = tuple(
+            (
+                acquire_artifact(
+                    ArtifactSpec(item.version, item.url, item.sha256, item.component_id),
+                    cache_root,
+                ),
+                item,
+            )
+            for item in ancillary_artifacts
+        )
         work_root = cache_root / "work"
         work_root.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="devcapsule-materialize-", dir=work_root) as temporary_value:
@@ -354,6 +410,17 @@ def ensure_materialized_pycharm(
                 raise CliError("The verified JetBrains archive does not contain bin/pycharm.sh.")
             template_path = temporary / "component-runtime-template.json"
             template_path.write_text(canonical_json(component_runtime_template()) + "\n", encoding="utf-8")
+            ancillary_files = tuple(
+                (
+                    _extract_archive_member(
+                        acquired.path,
+                        declaration.archive_member,
+                        temporary / f"{declaration.component_id}-{index}",
+                    ),
+                    declaration,
+                )
+                for index, (acquired, declaration) in enumerate(ancillary_acquisitions)
+            )
             build(
                 pycharm_materialization_spec(
                     base_reference=base_reference,
@@ -362,6 +429,7 @@ def ensure_materialized_pycharm(
                     pycharm_root=pycharm_root,
                     component_template=template_path,
                     artifact=artifact,
+                    ancillary_files=ancillary_files,
                     platform=platform,
                     recipe_id=recipe_id,
                     recipe_version=recipe_version,
@@ -372,6 +440,31 @@ def ensure_materialized_pycharm(
             raise CliError(f"Docker build completed without creating canonical image {image!r}.")
         verify_materialized_image(completed, descriptor=descriptor, canonical_name=image)
         return image, True
+
+
+def _extract_archive_member(archive: Path, member_name: str, destination: Path) -> Path:
+    """Extract exactly one regular file from a verified tar archive."""
+
+    try:
+        with tarfile.open(archive, mode="r:gz") as package:
+            try:
+                member = package.getmember(member_name)
+            except KeyError as exc:
+                raise CliError(
+                    f"Verified component artifact does not contain {member_name!r}."
+                ) from exc
+            if not member.isfile() or member.size <= 0 or member.size > 1024**3:
+                raise CliError(f"Locked archive member {member_name!r} is not a regular executable file.")
+            source = package.extractfile(member)
+            if source is None:
+                raise CliError(f"Cannot read locked archive member {member_name!r}.")
+            with source, destination.open("wb") as output:
+                while chunk := source.read(1024 * 1024):
+                    output.write(chunk)
+    except tarfile.TarError as exc:
+        raise CliError(f"Cannot read verified component archive {archive}: {exc}") from exc
+    destination.chmod(0o700)
+    return destination
 
 
 def verify_materialized_image(

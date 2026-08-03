@@ -58,6 +58,10 @@ post-MVP framework work.
   licensing, and trust contracts. Antigravity CLI is the first planned V1
   component; it is not downloaded or installed until that task is implemented
   and reviewed.
+- Do not support Gemini CLI. Active manifests, locks, images, components,
+  launchers, state contracts, tests, and user instructions must not install,
+  select, configure, or advertise it. Negative inventory checks may prevent
+  accidental reintroduction but do not make it a supported component.
 
 ## Explicit V1 Deferrals
 

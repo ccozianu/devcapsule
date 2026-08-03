@@ -1,0 +1,90 @@
+"""Trusted Python interface exposed by curated DevCapsule components."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from collections.abc import Mapping
+from dataclasses import dataclass
+
+from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
+
+
+@dataclass(frozen=True)
+class StateEnvironmentDeclaration:
+    """Expose one component state directory through an environment variable."""
+
+    name: str
+    state_slot: str
+
+
+@dataclass(frozen=True)
+class SecretInputDeclaration:
+    """Describe a secret a developer may explicitly deliver at runtime."""
+
+    name: str
+    environment_variable: str
+    required: bool
+    description: str
+    exposure: str = "container-environment"
+
+
+@dataclass(frozen=True)
+class LockedArtifactDeclaration:
+    """One lock-pinned artifact contribution to a local environment image."""
+
+    component_id: str
+    version: str
+    url: str
+    sha256: str
+    archive_member: str
+    destination: str
+    permissions: int = 0o755
+
+
+class ComponentDefinition(ABC):
+    """Explicit contract for trusted components consumed by orchestration."""
+
+    @property
+    @abstractmethod
+    def id(self) -> str:
+        """Stable component identifier used by locks and runtime plans."""
+
+    @property
+    @abstractmethod
+    def capability(self) -> str:
+        """Project-facing capability implemented by this component."""
+
+    @abstractmethod
+    def runtime_template(self) -> ComponentRuntimeTemplate:
+        """Return the component's validated, versioned runtime contract."""
+
+    @abstractmethod
+    def state_environment(self) -> tuple[StateEnvironmentDeclaration, ...]:
+        """Declare environment variables derived from component state slots."""
+
+    @abstractmethod
+    def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
+        """Declare secret inputs that a developer may explicitly bind."""
+
+    @abstractmethod
+    def locked_artifacts(
+        self, metadata: Mapping[str, object], platform: str
+    ) -> tuple[LockedArtifactDeclaration, ...]:
+        """Resolve checksum-pinned artifacts selected by component lock metadata."""
+
+
+def resolved_state_environment(
+    template: ComponentRuntimeTemplate,
+    declarations: tuple[StateEnvironmentDeclaration, ...],
+) -> dict[str, str]:
+    slots = {slot.name: slot.container_path for slot in template.persistence.state_slots}
+    environment: dict[str, str] = {}
+    for declaration in declarations:
+        try:
+            environment[declaration.name] = slots[declaration.state_slot]
+        except KeyError as exc:
+            raise ValueError(
+                f"component {template.component.id!r} environment {declaration.name!r} "
+                f"names undeclared state slot {declaration.state_slot!r}"
+            ) from exc
+    return environment

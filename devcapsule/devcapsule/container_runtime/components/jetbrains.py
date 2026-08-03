@@ -39,6 +39,21 @@ def plan(runtime: RuntimePlan) -> JetBrainsLaunch:
         if slot_name not in slots:
             raise RuntimePlanError(f"JetBrains {property_name} mapping must name a declared state slot")
         properties.append(f"idea.{property_name}.path={slots[slot_name]}")
+    additional = config.get("additional_properties", {})
+    if not isinstance(additional, dict):
+        raise RuntimePlanError("JetBrains component additional_properties must be an object")
+    managed_properties = {f"idea.{name}.path" for name in ("config", "system", "plugins", "log")}
+    for name, value in sorted(additional.items()):
+        if (
+            not isinstance(name, str)
+            or not name
+            or any(character in name for character in "\x00\r\n= ")
+            or name in managed_properties
+        ):
+            raise RuntimePlanError("JetBrains additional property names must be safe and unmanaged")
+        if not isinstance(value, str) or "\x00" in value or "\r" in value or "\n" in value:
+            raise RuntimePlanError(f"JetBrains additional property {name!r} must be one line")
+        properties.append(f"{name}={value}")
     installation_path = Path(_string(config, "installation_path"))
     launcher = _string(config, "launcher")
     if Path(launcher).is_absolute() or ".." in Path(launcher).parts:
