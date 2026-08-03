@@ -18,7 +18,7 @@ Requirements: root `R-PRODUCT-001`, root `R-PRODUCT-002`,
 
 ## Current Progress
 
-Current stage: Stage 3, explicit runtime effects.
+Current stage: Stage 4, authorized development sudo.
 
 Recommended source revision for the next v021 dogfood base:
 
@@ -53,6 +53,12 @@ this plan. Progress from that baseline is:
   Its full dirty-tree gate passed with 161 fast tests at 80% coverage, clean
   mypy over 69 files, source/local-PEX smokes, PEX construction, and all three
   packaging integrations.
+- Stage 3 is implemented and validated. Resolved memory, Docker-daemon,
+  network, and development-sudo choices flow into the shared launch options.
+  Focused tests prove the complete authorized Docker plan and the safe
+  negative plan. Its full gate passed with 178 fast tests at 81% coverage,
+  clean mypy over 73 source files, source/local-PEX smokes, PEX construction,
+  and all three packaging integrations.
 
 No real image was pulled, built, or launched by the automated work for Stages 0
 through 2. The v021 base has since been built and published externally. The
@@ -322,7 +328,7 @@ launched.
 
 ## Stage 3: Launch The Generic Environment With Explicit Runtime Effects
 
-Status: current next stage; not started.
+Status: implemented and validated.
 
 Build a launch plan for the canonical environment while preserving safe
 defaults and the validated dogfood behavior.
@@ -355,6 +361,20 @@ Closure evidence:
 - command inspection proves project, state, X11, identity, and runtime-plan
   mounts are scoped as intended.
 
+Recorded result: focused tests cover resolved 8 GiB memory propagation and
+the exact positive and negative Docker argument plans. Inspection of the live
+formation-based dogfood capsule confirmed the generic PEX entrypoint and
+external runtime plan, unprivileged identity, host-network and Docker-socket
+effects, persistent component mounts, foreground lifecycle, and absence of
+privileged mode and ambient Gemini. That already-running instance predated the
+new checkout memory setting and initially reported `memory.max=max`. Docker's
+live resource update then applied 8 GiB to that exact instance; Docker inspect
+and cgroup inspection both reported `8589934592`. The dogfood declaration
+continues to rely on an explicit checkout value until later-V1 ordinary-value
+defaults are implemented; a configured fresh launch plan emits
+`--memory 8589934592`. The instance's failing `sudo -n true` is the known
+Stage 4 policy gap rather than a Stage 3 propagation failure.
+
 ## Stage 4: Activate Authorized Development Sudo Without Rebuilding v021
 
 Status: externally reproduced gap; implementation pending.
@@ -370,6 +390,9 @@ that value only into `ENABLE_SUDO=1` and supplementary group `44000`; the
 generic runtime does not consume the legacy flag, and the image has no
 `NOPASSWD` sudoers entry. Consequently, `sudo COMMAND` prompts for a password.
 This is the exact Stage 4 gap, not an authorization or resolution failure.
+The misleading enabled banner, reproduction, security constraints, and close
+criteria are tracked in
+`implementation-notes/bugs/2026-08-03-authorized-development-sudo-misreported.md`.
 
 When and only when `development-sudo true` is resolved, the launcher should:
 
@@ -479,6 +502,25 @@ Launch a second time and confirm settings, plugins, relevant login state, and
 checkout-specific state continuity. Record any JetBrains license or agreement
 prompt separately; file persistence does not guarantee uninterrupted
 third-party authentication or terms acceptance.
+
+## Later V1 Follow-Up: Defaults For Ordinary Configuration Values
+
+Add a generic, schema-validated `default` field to ordinary project
+configuration declarations. A committed default is an effective safe value
+when the developer has not selected a checkout-specific value; `config set`
+must override it. Resolution should record the effective value and derive its
+curated runtime effect, while `config list` distinguishes defaulted and
+overridden values. A changed default must stale prior resolution through the
+manifest digest.
+
+Defaults apply only to ordinary values. They must not grant host authorization,
+select secret sources, or create filesystem/socket/device bindings. After this
+contract is implemented, this repository should declare `default = "8GiB"`
+for `runtime.memory-limit`, so normal dogfood launches receive the limit unless
+the developer opts into another valid value.
+
+This follow-up belongs later in V1 and does not block Stages 4 through 8 of the
+current functional dogfood plan.
 
 ## Completion Criteria For The Next Functional Stage
 

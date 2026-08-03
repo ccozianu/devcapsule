@@ -947,6 +947,31 @@ Current task:
   read-only external mount, unchanged OCI process behavior, normal and failure
   cleanup, and the existing assertion that no checkout runtime plan is baked
   into a materialized image. No real image was pulled, built, or launched.
+- Stage 3 explicit runtime effects are complete. Focused tests prove that the
+  resolved 8 GiB memory value and authorized Docker daemon, host network, and
+  development sudo reach the concrete Docker plan together. Negative coverage
+  proves bridge networking, no Docker socket, no sudo group, a read-only root,
+  dropped capabilities, and `no-new-privileges` when those authorizations are
+  absent. The full dirty-tree Nox gate passed with clean mypy over 73 source
+  files, 178 fast tests at 81% statement/branch coverage, source and rebuilt-
+  PEX command smokes, PEX construction, and all three packaging integrations.
+- Inspection from the running formation-based dogfood capsule confirmed the
+  generic PEX entrypoint/runtime-plan CMD, external plan, unprivileged
+  `1000:1000` identity, host networking, host Docker socket and matching group,
+  persistent component mounts, foreground `tini` lifecycle, selected Codex
+  state, and absence of Gemini and privileged/SYS_ADMIN relaxation. That
+  already-running instance predated the 8 GiB checkout setting and initially
+  reported `memory.max=max`. A live Docker update applied an 8 GiB memory and
+  memory-plus-swap limit to the exact running container; Docker inspect now
+  reports `8589934592` for both values, while cgroup v2 reports
+  `memory.max=8589934592` and `memory.swap.max=0`. The verified fresh plan
+  emits `--memory 8589934592` when the checkout value is configured. The
+  project declaration remains optional until the later-V1 ordinary-value
+  default contract is implemented.
+  `sudo -n true` still fails even though the launcher claims passwordless sudo
+  is enabled, because Stage 4's temporary sudoers policy is not implemented.
+  This misleading-success bug is tracked in
+  `devcapsule/implementation-notes/bugs/2026-08-03-authorized-development-sudo-misreported.md`.
 - Merge checkpoint `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is the
   recommended source revision for the next v021 dogfood base. It is the current
   published base's embedded PEX revision and the base build's
@@ -1397,12 +1422,10 @@ for, or advertise Gemini CLI. A negative absence check is only a regression
 guard.
 
 1. Follow the active plan to wire the verified canonical environment into
-   `devcapsule project run`. Stages 0 through 2 are complete, and the v021
+   `devcapsule project run`. Stages 0 through 3 are complete, and the v021
    dogfood base built from source revision
    `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is published and selected by its
-   immutable digest. Proceed with Stage 3 by refreshing checkout authorization
-   and validating and completing the explicit
-   runtime effects, then activate authorized development sudo
+   immutable digest. Proceed with Stage 4 to activate authorized development sudo
    without making it ambient, and retain the shared image's generic component
    template. Normal run should strictly reuse or automatically materialize the
    locked image and must not bake project, state, credential, authorization,
@@ -1424,6 +1447,19 @@ guard.
    agent CLI or direct host agent-state mount. Validate source and PEX command
    surfaces plus an explicit host launch. No Antigravity artifact was
    downloaded or installed during the D-0005 base cleanup.
+
+Later V1 backlog:
+
+1. Add schema-validated defaults for ordinary configuration values. A project
+   default must apply when the checkout has no override, appear distinctly in
+   `config list`, participate in resolution and curated runtime effects, and
+   become stale when its manifest declaration changes. Checkout `config set`
+   remains the higher-precedence override. Defaults must never imply host
+   authorization, secret delivery, or host-resource binding. Once supported,
+   this repository should declare `default = "8GiB"` for
+   `runtime.memory-limit`. This is explicitly later V1 and does not reopen
+   Stage 3 or block the current Stage 4-through-8 dogfood sequence.
+
 V2 candidate task:
 
 1. Add safe, reversible image and cache lifecycle management. Users should be

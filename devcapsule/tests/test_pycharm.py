@@ -152,6 +152,113 @@ def test_selected_codex_state_and_explicit_secret_are_delivered(tmp_path: Path) 
     assert f"type=bind,src={state.resolve()},dst=/home/devcapsule/.codex" in args
 
 
+def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    docker_socket = tmp_path / "docker.sock"
+    docker_socket.touch()
+    home = tmp_path / "persistent-home"
+    config_dir = tmp_path / "pycharm-config"
+    plugins = tmp_path / "pycharm-plugins"
+    system = tmp_path / "pycharm-system"
+    log = tmp_path / "pycharm-log"
+    cache = tmp_path / "pycharm-cache"
+    host_user = HostUser(uid=1000, gid=1000, name="developer", group_name="developer")
+
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.current_host_user", return_value=host_user),
+        patch("devcapsule.configurations.pycharm._launcher.is_socket", return_value=True),
+    ):
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                persistent_home=home,
+                ide_config=config_dir,
+                plugins=plugins,
+                ide_system=system,
+                ide_log=log,
+                tool_cache=cache,
+                docker_mode=DockerMode.host,
+                host_docker_socket=docker_socket,
+                enable_sudo=True,
+                network_mode="host",
+                memory_limit_bytes=8 * 1024**3,
+                runtime_plan=external_runtime_plan(),
+                use_image_process=True,
+            ),
+            env,
+        )
+        with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
+            files = prepare_temp_runtime_files(config, env)
+        try:
+            args = build_docker_args(config, files, env)
+        finally:
+            cleanup_temp_runtime_files(files)
+
+    assert ["--network", "host"] == args[args.index("--network") : args.index("--network") + 2]
+    assert ["--memory", str(8 * 1024**3)] == args[args.index("--memory") : args.index("--memory") + 2]
+    assert ["--user", "1000:1000"] == args[args.index("--user") : args.index("--user") + 2]
+    assert "ENABLE_SUDO=1" in args
+    assert "DOCKER_HOST=unix:///run/host-docker.sock" in args
+    assert f"type=bind,src={docker_socket.resolve()},dst=/run/host-docker.sock" in args
+    for source, destination in (
+        (project.resolve(), "/workspace/project"),
+        (home.resolve(), "/home/devcapsule"),
+        (config_dir.resolve(), "/ide-config"),
+        (plugins.resolve(), "/ide-plugins"),
+        (system.resolve(), "/ide-project-state/system"),
+        (log.resolve(), "/ide-project-state/log"),
+        (cache.resolve(), "/home/devcapsule/.cache"),
+    ):
+        assert f"type=bind,src={source},dst={destination}" in args
+    assert "--read-only" not in args
+    assert "--privileged" not in args
+    assert "SYS_ADMIN" not in args
+
+
+def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    host_user = HostUser(uid=1000, gid=1000, name="developer", group_name="developer")
+
+    with patch(
+        "devcapsule.configurations.pycharm._launcher.current_host_user",
+        return_value=host_user,
+    ):
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="bridge",
+                runtime_plan=external_runtime_plan(),
+                use_image_process=True,
+            ),
+            env,
+        )
+        with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
+            files = prepare_temp_runtime_files(config, env)
+        try:
+            args = build_docker_args(config, files, env)
+        finally:
+            cleanup_temp_runtime_files(files)
+
+    assert ["--network", "bridge"] == args[args.index("--network") : args.index("--network") + 2]
+    assert "ENABLE_SUDO=0" in args
+    assert "DOCKER_HOST=unix:///run/host-docker.sock" not in args
+    assert not any("dst=/run/host-docker.sock" in argument for argument in args)
+    assert "--memory" not in args
+    assert ["--cap-drop", "ALL"] == args[args.index("--cap-drop") : args.index("--cap-drop") + 2]
+    assert "no-new-privileges" in args
+    assert "--read-only" in args
+    assert "--privileged" not in args
+
+
 def test_bound_secret_must_exist_on_host(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()

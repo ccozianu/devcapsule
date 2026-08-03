@@ -769,6 +769,10 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
         append_manifest_metadata(
             project,
             """
+            [configuration.values."runtime.memory-limit"]
+            type = "memory-size"
+            runtime-effect = "docker.memory-limit"
+
             [host.docker.mode.recommended]
             value = "host-socket"
             justification = "Run peer development containers."
@@ -806,6 +810,21 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
             output = capsys.readouterr().out
             assert f"Authorized {name} for this checkout" in output
             assert "Checkout input:" in output
+
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "set",
+                    "runtime.memory-limit",
+                    "8GiB",
+                ]
+            )
+            == 0
+        )
 
         assert (
             cli.main(
@@ -859,6 +878,7 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
         assert options.docker_mode.value == "host"
         assert options.network_mode == "host"
         assert options.enable_sudo is True
+        assert options.memory_limit_bytes == 8 * 1024**3
 
         manifest_path = project / ".devcapsule" / "devcapsule.toml"
         manifest_path.write_text(

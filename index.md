@@ -102,6 +102,7 @@ same change.
 ## Bugs
 
 - [Codex ACP fails because explicit CODEX_HOME does not exist](devcapsule/implementation-notes/bugs/2026-08-03-codex-acp-missing-home.md)
+- [Authorized development sudo is reported as enabled but is unusable](devcapsule/implementation-notes/bugs/2026-08-03-authorized-development-sudo-misreported.md)
 - [PyCharm recommends its native launcher](devcapsule/implementation-notes/bugs/2026-08-03-jetbrains-native-launcher.md)
 - [JetBrains Runtime disables alpha compositing on slow X11](devcapsule/implementation-notes/bugs/2026-08-03-jbr-slow-x11-alpha-compositing.md)
 - [JetBrains embedded browser is suspended in the container](devcapsule/implementation-notes/bugs/2026-08-03-jcef-sandbox-container-preview.md)
