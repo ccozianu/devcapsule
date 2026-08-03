@@ -1101,6 +1101,24 @@ Current task:
   three packaging integrations. Automated tests used a tiny checksum-pinned
   fixture rather than downloading the real Codex artifact; real
   materialization, login, and GUI/ACP restart remain external checks.
+- Local-base dogfood no longer requires pretending a mutable daemon tag is the
+  project's published recommendation. `project config authorize base-image
+  LOCAL_NAME` accepts an already-local managed metadata-v1 base after platform
+  validation, and records its immutable Docker image ID plus the current lock
+  digest in developer-owned checkout input. `config list` reports
+  `authorized-local`; resolution and realization re-inspect the alias and
+  reject deletion or retagging rather than pulling or silently selecting a
+  different image. Alternative published digests remain rejected unless the
+  project lock recommends them. Local base `devcapsule-local-base:v022`, image
+  ID `sha256:a259badeb0ad750ca44131c60b6dc9e06c0743f072b95f446333ba61e8dbac9b`,
+  embeds committed revision `43073361c8bb11fecece7913b3a511b47dd2778a` for
+  this external dogfood path; it is not yet a published lock input. An
+  isolated-XDG smoke against that real local image passed authorization,
+  resolution, and the `authorized-local` readiness view without touching the
+  developer's checkout records. The full dirty-tree Nox gate passed with clean
+  mypy over 73 source files, 176 fast tests at 80% coverage, source and
+  local-PEX command smokes, PEX construction, and all three packaging
+  integrations.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source

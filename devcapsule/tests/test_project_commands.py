@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from devcapsule import cli
-from devcapsule.materialization import parse_locked_environment
+from devcapsule.materialization import ImageDetails, parse_locked_environment
 from devcapsule.project_configuration import (
     ProjectConfigurationError,
     canonical_digest,
@@ -883,6 +883,91 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
         )
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
         assert "authorization 'network' is stale" in capsys.readouterr().err
+
+
+def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+    local_reference = "devcapsule-local-base:v022"
+    local_identity = f"sha256:{'c' * 64}"
+    local_base = ImageDetails(
+        reference=local_reference,
+        identity=local_identity,
+        labels={
+            "devcapsule.image.managed": "true",
+            "devcapsule.metadata.version": "1",
+            "devcapsule.image.kind": "base",
+        },
+        operating_system="linux",
+        architecture="amd64",
+    )
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        with patch(
+            "devcapsule.commands.project.required_local_image",
+            return_value=local_base,
+        ) as inspect_local:
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "config",
+                        "authorize",
+                        "base-image",
+                        local_reference,
+                    ]
+                )
+                == 0
+            )
+        inspect_local.assert_called_once_with(local_reference)
+        output = capsys.readouterr().out
+        assert f"Authorized base-image for this checkout: {local_reference}" in output
+        assert f"Local image ID: {local_identity}" in output
+        assert "overrides the published base recommendation" in output
+
+        record = registered_checkouts()[0].record_path
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["authorization"]["base-image"] == {
+            "reference": local_reference,
+            "lock-digest": canonical_digest(
+                tomllib.loads(
+                    (project / ".devcapsule" / "devcapsule.linux-amd64.lock").read_text(
+                        encoding="utf-8"
+                    )
+                )
+            ),
+            "image-id": local_identity,
+        }
+
+        with patch(
+            "devcapsule.commands.project.required_local_image",
+            return_value=local_base,
+        ) as inspect_resolved_local:
+            assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        inspect_resolved_local.assert_called_once_with(local_reference)
+        with record.with_name("devcapsule.resolved.toml").open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert resolved["authorization"]["base-image"] == {
+            "reference": local_reference,
+            "lock-digest": checkout["authorization"]["base-image"]["lock-digest"],
+            "image-id": local_identity,
+        }
+
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        base_row = next(
+            line for line in capsys.readouterr().out.splitlines() if "base-image" in line
+        )
+        assert "authorized-local" in base_row
+        assert local_reference in base_row
 
 
 def test_project_config_authorize_all_recommended_previews_and_requires_lowercase_y(

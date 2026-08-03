@@ -22,7 +22,7 @@ from devcapsule.materialization import (
 )
 from devcapsule.project_configuration import (
     ResolvedProject,
-    authorized_base_reference,
+    authorized_base_selection,
 )
 
 
@@ -67,13 +67,28 @@ def realize_environment(
             f"but the lock formation selects {locked.component_id!r}."
         )
 
-    explicit_override = base_override is not None
-    base_reference = base_override or locked.base_reference
-    expected_base_identity = None if explicit_override else locked.base_identity
-    if not explicit_override:
-        authorized_base_reference(selected.lock, selected.checkout)
+    local_authorization = False
+    if base_override is not None:
+        explicit_override = True
+        base_reference = base_override
+        expected_base_identity = None
+    else:
+        selection = authorized_base_selection(selected.lock, selected.checkout)
+        if selection is None:  # pragma: no cover - required selection raises instead.
+            raise CliError("The checkout has no base-image authorization.")
+        local_authorization = selection.is_local
+        explicit_override = local_authorization
+        base_reference = selection.reference
+        expected_base_identity = (
+            selection.local_image_identity if local_authorization else locked.base_identity
+        )
 
-    obtain = obtain_image or ensure_local_image
+    if obtain_image is not None:
+        obtain = obtain_image
+    elif local_authorization:
+        obtain = required_local_image
+    else:
+        obtain = ensure_local_image
     inspect = inspect_image or optional_local_image
     require = require_image or required_local_image
     base = obtain(base_reference)

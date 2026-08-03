@@ -13,13 +13,15 @@ import readchar
 
 from devcapsule.commands.base import BaseCommand
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
-from devcapsule.environment_realization import realize_environment
+from devcapsule.environment_realization import realize_environment, required_local_image
+from devcapsule.materialization import validate_base_image
 from devcapsule.project import project_namespace, sanitize_name
 from devcapsule.project_runtime_plan import project_runtime_plan
 from devcapsule.project_configuration import (
     AuthorizationDeclaration,
     ProjectConfigurationError,
     ResolvedProject,
+    authorized_base_selection,
     authorization_declarations,
     atomic_write,
     canonical_digest,
@@ -30,6 +32,7 @@ from devcapsule.project_configuration import (
     config_root,
     discover_project,
     find_checkout_record,
+    immutable_registry_reference,
     load_toml,
     lock_for,
     manifest_for,
@@ -313,14 +316,28 @@ def _config_command() -> click.Command:
         if authorized_base is not None:
             if not isinstance(authorized_base, str):
                 raise ProjectConfigurationError("Resolved base-image authorization must be a string.")
+            base_selection = authorized_base_selection(lock, checkout)
+            if base_selection is None:  # pragma: no cover - authorized_base establishes it.
+                raise ProjectConfigurationError("Resolved base-image authorization is missing.")
+            if base_selection.local_image_identity is not None:
+                local_base = required_local_image(base_selection.reference)
+                validate_base_image(
+                    local_base,
+                    platform=str(lock["platform"]),
+                    expected_identity=base_selection.local_image_identity,
+                )
             lines.extend(
                 [
                     "",
                     "[authorization.base-image]",
-                    f"reference = {quote_toml(authorized_base)}",
+                    f"reference = {quote_toml(base_selection.reference)}",
                     f"lock-digest = {quote_toml(canonical_digest(lock))}",
                 ]
             )
+            if base_selection.local_image_identity is not None:
+                lines.append(
+                    f"image-id = {quote_toml(base_selection.local_image_identity)}"
+                )
         atomic_write(output, "\n".join(lines) + "\n")
         click.echo(f"Resolved {output} from {lock_path.name}")
         return 0
@@ -505,11 +522,28 @@ def _configuration_authorization_rows(
             rows.append(ConfigurationListRow("authorization", name, "invalid", recommended))
             continue
         if name == "base-image":
-            raw_value = record.get("reference")
-            digest = record.get("lock-digest")
-        else:
-            raw_value = record.get("value")
-            digest = record.get("recommendation-digest")
+            try:
+                selection = authorized_base_selection(
+                    lock,
+                    {"authorization": {"base-image": record}},
+                )
+            except ProjectConfigurationError:
+                digest = record.get("lock-digest")
+                status = "stale" if digest != declaration.recommendation_digest else "invalid"
+                value = str(record.get("reference", recommended))
+            else:
+                if selection is None:  # pragma: no cover - record establishes it.
+                    status = "invalid"
+                    value = recommended
+                else:
+                    status = "authorized-local" if selection.is_local else "authorized"
+                    value = selection.reference
+                    if selection.local_image_identity is not None:
+                        value += f" ({selection.local_image_identity[:19]}...)"
+            rows.append(ConfigurationListRow("authorization", name, status, value))
+            continue
+        raw_value = record.get("value")
+        digest = record.get("recommendation-digest")
         try:
             normalize_authorization_value(declaration, raw_value)
         except ProjectConfigurationError:
@@ -770,7 +804,10 @@ def _checkout_host_environment_bindings(checkout: dict[str, Any]) -> dict[str, s
 def _config_authorize_command() -> click.Command:
     @click.command(
         "authorize",
-        help="Authorize exact security-sensitive values recommended by the project.",
+        help=(
+            "Authorize project-recommended host access or select an exact inspected "
+            "local DevCapsule base."
+        ),
     )
     @click.argument("name", required=False)
     @click.argument("value", required=False)
@@ -806,7 +843,30 @@ def _config_authorize_command() -> click.Command:
                 f"Authorization {name!r} is not declared by this project and lock; "
                 f"declared authorizations: {available}."
             )
-        normalized = normalize_authorization_value(declaration, value)
+        local_base_identity: str | None = None
+        local_base_value = name == "base-image" and value != declaration.recommended_value
+        if local_base_value:
+            try:
+                immutable_registry_reference(value)
+            except ProjectConfigurationError:
+                pass
+            else:
+                # A different published digest needs its own project-reviewed
+                # recommendation. Only a daemon-local selection is exempt.
+                normalize_authorization_value(declaration, value)
+            platform_name = lock.get("platform")
+            if not isinstance(platform_name, str) or not platform_name:
+                raise ProjectConfigurationError("Platform lock must name its target platform.")
+            local_base = required_local_image(value)
+            validate_base_image(
+                local_base,
+                platform=platform_name,
+                expected_identity=None,
+            )
+            normalized: str | bool = value
+            local_base_identity = local_base.identity
+        else:
+            normalized = normalize_authorization_value(declaration, value)
 
         input_path, _output_path = checkout_record_paths(manifest, root)
         checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
@@ -823,6 +883,8 @@ def _config_authorize_command() -> click.Command:
                 "reference": normalized,
                 "lock-digest": declaration.recommendation_digest,
             }
+            if local_base_identity is not None:
+                authorization[name]["image-id"] = local_base_identity
         else:
             authorization[name] = {
                 "value": normalized,
@@ -842,10 +904,20 @@ def _config_authorize_command() -> click.Command:
             ),
         )
         click.echo(f"Authorized {name} for this checkout: {render_authorization_value(normalized)}")
-        click.echo(f"Recommendation: {declaration.description}")
+        if local_base_identity is not None:
+            click.echo(f"Local image ID: {local_base_identity}")
+            click.echo(
+                "This developer-owned selection overrides the published base recommendation "
+                "for this checkout."
+            )
+        else:
+            click.echo(f"Recommendation: {declaration.description}")
         click.echo(f"Recommendation digest: {declaration.recommendation_digest}")
         click.echo(f"Checkout input: {input_path}")
-        click.echo("This authorization applies only to the exact recorded value and recommendation.")
+        click.echo(
+            "This authorization applies only to the exact recorded value, image identity when "
+            "local, and current lock."
+        )
         click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
         return 0
 

@@ -61,6 +61,20 @@ verifying and completing the generic Docker launch plan and its positive and
 negative authorization behavior before implementing the development-sudo
 policy in Stage 4.
 
+Post-v021 dogfood checkpoint: revision
+`43073361c8bb11fecece7913b3a511b47dd2778a` adds the optional Codex component,
+the accepted JCEF compatibility setting, and the explicit abstract component
+contract. A local `devcapsule-local-base:v022` embeds that exact revision.
+Developer-owned `config authorize base-image LOCAL_NAME` now supports testing
+such a managed local base without weakening committed-lock rules: it pins the
+inspected Docker image ID and current lock, and resolve/run reject a missing or
+retagged image. Publishing and locking v022 by registry digest remain pending.
+An isolated-XDG smoke against the real local v022 image passed authorization,
+resolution, and readiness inspection. The full dirty-tree Nox gate then passed
+with 176 fast tests at 80% coverage, clean mypy over 73 source files, source
+and local-PEX command smokes, PEX construction, and all three packaging
+integrations.
+
 ## Executive Scope Decision: Gemini CLI Is Unsupported
 
 DevCapsule will not support Gemini CLI. Active code, images, manifests, locks,

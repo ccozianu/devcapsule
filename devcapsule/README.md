@@ -470,6 +470,26 @@ password. That externally reproduced gap is Stage 4 of the active dogfood
 plan. Without authorization, normal project launch retains no Docker socket,
 bridge networking, and no development sudo.
 
+For developer-built base testing, `base-image` also accepts an already-local
+DevCapsule metadata-v1 base name:
+
+```bash
+devcapsule project config authorize base-image devcapsule-local-base:v022
+devcapsule project config resolve
+devcapsule project run
+```
+
+This is a developer-owned override, not a new project recommendation. At
+authorization time DevCapsule inspects the local image, validates its managed
+base metadata and platform, and records both the supplied name and immutable
+Docker image ID against the current lock. Resolve and run inspect it again;
+removing or retagging the name fails instead of pulling or silently running a
+different image. Reauthorize after deliberately rebuilding the tag.
+`config list` reports this state as `authorized-local`, while
+`authorize --all-recommended` deliberately switches back to the lock's
+published recommendation. A different published registry digest remains
+rejected unless the project lock recommends it.
+
 `--base IMAGE` is an explicit run-once development override and needs no
 persisted authorization. It never rewrites the lock or resolution, and the
 selected local image must still pass DevCapsule metadata, platform, and

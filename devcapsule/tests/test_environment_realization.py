@@ -15,7 +15,12 @@ BASE_REFERENCE = f"docker.io/example/devcapsule-base@sha256:{'b' * 64}"
 CANONICAL_IMAGE = "devcapsule-local-pycharm:0123456789abcdef0123"
 
 
-def resolved_project(tmp_path: Path, *, authorized: bool = True) -> ResolvedProject:
+def resolved_project(
+    tmp_path: Path,
+    *,
+    authorized: bool = True,
+    local_base: tuple[str, str] | None = None,
+) -> ResolvedProject:
     lock = {
         "platform": "linux-amd64",
         "base": {"reference": BASE_REFERENCE, "identity": "sha256:base"},
@@ -36,12 +41,16 @@ def resolved_project(tmp_path: Path, *, authorized: bool = True) -> ResolvedProj
     }
     checkout = {}
     if authorized:
+        reference = local_base[0] if local_base is not None else BASE_REFERENCE
+        base_authorization = {
+            "reference": reference,
+            "lock-digest": canonical_digest(lock),
+        }
+        if local_base is not None:
+            base_authorization["image-id"] = local_base[1]
         checkout = {
             "authorization": {
-                "base-image": {
-                    "reference": BASE_REFERENCE,
-                    "lock-digest": canonical_digest(lock),
-                }
+                "base-image": base_authorization,
             }
         }
     return ResolvedProject(
@@ -176,6 +185,69 @@ def test_realize_environment_allows_explicit_managed_base_override(tmp_path: Pat
     assert realized.base_reference == local_reference
     assert realized.base.identity == "sha256:local-base"
     assert realized.explicit_base_override is True
+
+
+def test_realize_environment_uses_authorized_local_base_bound_to_image_id(
+    tmp_path: Path,
+) -> None:
+    local_reference = "devcapsule-local-base:v022"
+    local_identity = f"sha256:{'c' * 64}"
+    selected = resolved_project(
+        tmp_path,
+        local_base=(local_reference, local_identity),
+    )
+    obtain = Mock(return_value=base_image(local_reference, local_identity))
+    materialize = Mock(return_value=(CANONICAL_IMAGE, False))
+
+    realized = realize_environment(
+        selected,
+        root=tmp_path / "cache",
+        obtain_image=obtain,
+        inspect_image=Mock(),
+        require_image=Mock(return_value=completed_image()),
+        build=Mock(),
+        materialize=materialize,
+    )
+
+    assert realized.base_reference == local_reference
+    assert realized.base.identity == local_identity
+    assert realized.explicit_base_override is True
+    obtain.assert_called_once_with(local_reference)
+    assert materialize.call_args.kwargs["base_identity"] == local_identity
+
+
+def test_realize_environment_rejects_retagged_authorized_local_base(tmp_path: Path) -> None:
+    local_reference = "devcapsule-local-base:v022"
+    authorized_identity = f"sha256:{'c' * 64}"
+    selected = resolved_project(
+        tmp_path,
+        local_base=(local_reference, authorized_identity),
+    )
+    materialize = Mock()
+
+    with pytest.raises(CliError, match="identity mismatch"):
+        realize_environment(
+            selected,
+            obtain_image=Mock(
+                return_value=base_image(local_reference, f"sha256:{'d' * 64}")
+            ),
+            materialize=materialize,
+        )
+
+    materialize.assert_not_called()
+
+
+def test_realize_environment_rejects_manual_alternative_published_base(
+    tmp_path: Path,
+) -> None:
+    alternative = f"docker.io/example/other-base@sha256:{'d' * 64}"
+    selected = resolved_project(
+        tmp_path,
+        local_base=(alternative, f"sha256:{'c' * 64}"),
+    )
+
+    with pytest.raises(CliError, match="not the lock-recommended digest"):
+        realize_environment(selected, obtain_image=Mock())
 
 
 def test_realize_environment_propagates_canonical_conflict_without_launch(

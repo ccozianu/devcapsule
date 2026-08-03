@@ -82,6 +82,19 @@ class AuthorizationDeclaration:
 
 
 @dataclass(frozen=True)
+class AuthorizedBaseSelection:
+    """Developer-approved base bound to the current lock and optional local image ID."""
+
+    reference: str
+    lock_digest: str
+    local_image_identity: str | None = None
+
+    @property
+    def is_local(self) -> bool:
+        return self.local_image_identity is not None
+
+
+@dataclass(frozen=True)
 class SecretInputMetadata:
     name: str
     environment_variable: str
@@ -491,9 +504,9 @@ def resolved_checkout_authorizations(
     for name, record in authorization.items():
         declaration = declarations[name]
         if name == "base-image":
-            reference = authorized_base_reference(lock, checkout)
-            if reference is not None:
-                resolved[name] = reference
+            selection = authorized_base_selection(lock, checkout)
+            if selection is not None:
+                resolved[name] = selection.reference
             continue
         if not isinstance(record, dict):
             raise ProjectConfigurationError(f"Checkout authorization {name!r} must be a table.")
@@ -772,33 +785,84 @@ def locked_base_reference(lock: Mapping[str, Any], *, source: str = "platform lo
         raise ProjectConfigurationError(f"Invalid {source} base.reference {reference!r}: {exc}") from exc
 
 
+def authorized_base_selection(
+    lock: Mapping[str, Any],
+    checkout: Mapping[str, Any],
+    *,
+    required: bool = True,
+) -> AuthorizedBaseSelection | None:
+    locked_reference = locked_base_reference(lock)
+    authorization_root = checkout.get("authorization")
+    authorization = (
+        authorization_root.get("base-image") if isinstance(authorization_root, dict) else None
+    )
+    command = f"devcapsule project config authorize base-image {locked_reference}"
+    if not isinstance(authorization, dict):
+        if required:
+            raise ProjectConfigurationError(
+                f"The lock recommends base {locked_reference}, but this checkout has not authorized it; "
+                f"run '{command}', or explicitly authorize an inspected local DevCapsule base."
+            )
+        return None
+    authorized_reference = authorization.get("reference")
+    if not isinstance(authorized_reference, str) or not authorized_reference:
+        raise ProjectConfigurationError(
+            "The checkout's base-image authorization must contain a non-empty reference."
+        )
+    authorized_lock = authorization.get("lock-digest")
+    expected_lock = canonical_digest(lock)
+    if authorized_lock != expected_lock:
+        refresh = f"devcapsule project config authorize base-image {authorized_reference}"
+        raise ProjectConfigurationError(
+            "The checkout's base-image authorization is stale for the current lock; "
+            f"review the lock and run '{refresh}'."
+        )
+    local_identity = authorization.get("image-id")
+    if authorized_reference == locked_reference:
+        if local_identity is not None:
+            raise ProjectConfigurationError(
+                "The lock-recommended base-image authorization must not contain a local image ID."
+            )
+        return AuthorizedBaseSelection(
+            reference=authorized_reference,
+            lock_digest=expected_lock,
+        )
+    try:
+        immutable_registry_reference(authorized_reference)
+    except ProjectConfigurationError:
+        pass
+    else:
+        raise ProjectConfigurationError(
+            f"Published base {authorized_reference!r} is not the lock-recommended digest; "
+            "a different published artifact requires distinct project-reviewed metadata."
+        )
+    if (
+        not isinstance(local_identity, str)
+        or not local_identity.startswith("sha256:")
+        or not SHA256_PATTERN.fullmatch(local_identity.removeprefix("sha256:"))
+    ):
+        raise ProjectConfigurationError(
+            "A non-recommended base-image authorization must be bound to an exact local "
+            "Docker image ID; rerun "
+            f"'devcapsule project config authorize base-image {authorized_reference}'."
+        )
+    return AuthorizedBaseSelection(
+        reference=authorized_reference,
+        lock_digest=expected_lock,
+        local_image_identity=local_identity,
+    )
+
+
 def authorized_base_reference(
     lock: Mapping[str, Any],
     checkout: Mapping[str, Any],
     *,
     required: bool = True,
 ) -> str | None:
-    reference = locked_base_reference(lock)
-    authorization_root = checkout.get("authorization")
-    authorization = (
-        authorization_root.get("base-image") if isinstance(authorization_root, dict) else None
-    )
-    command = f"devcapsule project config authorize base-image {reference}"
-    if not isinstance(authorization, dict):
-        if required:
-            raise ProjectConfigurationError(
-                f"The lock recommends base {reference}, but this checkout has not authorized it; run '{command}'."
-            )
-        return None
-    authorized_reference = authorization.get("reference")
-    authorized_lock = authorization.get("lock-digest")
-    expected_lock = canonical_digest(lock)
-    if authorized_reference != reference or authorized_lock != expected_lock:
-        raise ProjectConfigurationError(
-            "The checkout's base-image authorization is stale or selects a different artifact; "
-            f"review the current lock and run '{command}'."
-        )
-    return reference
+    """Compatibility accessor for consumers needing only the selected reference."""
+
+    selection = authorized_base_selection(lock, checkout, required=required)
+    return selection.reference if selection is not None else None
 
 
 def fresh_resolved_project(project: Path) -> ResolvedProject:
@@ -912,4 +976,7 @@ def render_checkout(
                     f"lock-digest = {quote_toml(str(lock_digest))}",
                 ]
             )
+            image_identity = base_authorization.get("image-id")
+            if image_identity:
+                lines.append(f"image-id = {quote_toml(str(image_identity))}")
     return "\n".join(lines) + "\n"
