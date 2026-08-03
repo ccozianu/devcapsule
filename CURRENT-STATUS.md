@@ -949,12 +949,14 @@ Current task:
   into a materialized image. No real image was pulled, built, or launched.
 - Merge checkpoint `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is the
   recommended source revision for the next v021 dogfood base. It is the current
-  clean `wip/local-pycharm-materialization` HEAD and is present on the matching
-  origin branch. Use that exact revision for PEX packaging and as the base
-  build's `--source-revision` assertion. Keep the committed v020 digest lock in
-  place until v021 is built, inspected, scanned, published, and has an
-  immutable registry digest; then update the lock and explicitly refresh the
-  checkout's base-image authorization.
+  published base's embedded PEX revision and the base build's
+  `--source-revision` assertion. The v021 image was built, inspected, scanned,
+  and published as discovery tag `ubuntu-24.04-v021` and immutable digest
+  `sha256:cd1a0e713e515234ef438c0502786353ec1678d2efd67b61a0bae6baf9fdc51e`.
+  The committed Linux lock now selects that digest. Existing checkouts must
+  explicitly refresh their base-image authorization and resolve again before
+  launch; `config authorize --all-recommended` previews and accepts the new
+  exact digest.
 - WIP checkpoint validation on 2026-07-30 passed the full
   `cd devcapsule && .venv/bin/python -m nox -s build` gate: compilation and
   shell syntax checks, clean mypy over 59 source files, 79 fast tests, source
@@ -1233,10 +1235,11 @@ for, or advertise Gemini CLI. A negative absence check is only a regression
 guard.
 
 1. Follow the active plan to wire the verified canonical environment into
-   `devcapsule project run`. Stages 0 through 2 are complete. Build the v021
-   dogfood base from recommended source revision
-   `5401ce3506c0a8a63bfef40f4f9ef18d2b987436`, publish and lock its immutable
-   digest, then proceed with Stage 3. Validate and complete the explicit
+   `devcapsule project run`. Stages 0 through 2 are complete, and the v021
+   dogfood base built from source revision
+   `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is published and selected by its
+   immutable digest. Proceed with Stage 3 by refreshing checkout authorization
+   and validating and completing the explicit
    runtime effects, then activate authorized development sudo
    without making it ambient, and retain the shared image's generic component
    template. Normal run should strictly reuse or automatically materialize the

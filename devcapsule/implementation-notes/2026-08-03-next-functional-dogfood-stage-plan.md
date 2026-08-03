@@ -26,13 +26,13 @@ Recommended source revision for the next v021 dogfood base:
 5401ce3506c0a8a63bfef40f4f9ef18d2b987436
 ```
 
-That revision is the current clean branch HEAD and contains the completed
-Stages 0 through 2. Use it as both the PEX source revision and the asserted
-`images build --type base --source-revision` value. The committed platform lock
-must continue selecting the existing immutable v020 digest until the v021 base
-has been built, inspected, scanned, published, and assigned an immutable
-registry digest. Only then should the lock be changed and checkout base-image
-authorization refreshed.
+That revision contains the completed Stages 0 through 2 and was used as both
+the PEX source revision and the asserted
+`images build --type base --source-revision` value. The resulting v021 base was
+built, inspected, scanned, and published as immutable registry digest
+`sha256:cd1a0e713e515234ef438c0502786353ec1678d2efd67b61a0bae6baf9fdc51e`.
+The committed platform lock now selects that digest; each checkout must refresh
+its exact base-image authorization before resolving again.
 
 The original `b5d42e8` baseline above remains the historical starting point for
 this plan. Progress from that baseline is:
@@ -54,11 +54,12 @@ this plan. Progress from that baseline is:
   mypy over 69 files, source/local-PEX smokes, PEX construction, and all three
   packaging integrations.
 
-No real image was pulled, built, or launched for Stages 0 through 2. The next
-action is to build and publish the v021 base from the recommended revision,
-then continue Stage 3 by verifying and completing the generic Docker launch
-plan and its positive and negative authorization behavior before implementing
-the development-sudo policy in Stage 4.
+No real image was pulled, built, or launched by the automated work for Stages 0
+through 2. The v021 base has since been built and published externally. The
+next action is to retry Stage 3 with the refreshed lock and authorization,
+verifying and completing the generic Docker launch plan and its positive and
+negative authorization behavior before implementing the development-sudo
+policy in Stage 4.
 
 ## Executive Scope Decision: Gemini CLI Is Unsupported
 
@@ -115,7 +116,7 @@ the developer can use a clean PEX to:
 2. set an 8 GiB memory limit;
 3. bind persistent home, shared PyCharm config/plugins, and checkout-specific
    PyCharm system/log/cache directories;
-4. authorize the exact v020 base digest, host Docker socket, host networking,
+4. authorize the exact v021 base digest, host Docker socket, host networking,
    and development sudo;
 5. resolve an inspectable checkout plan without downloading, building, or
    launching;
@@ -127,7 +128,7 @@ the developer can use a clean PEX to:
    checkout-specific state retained.
 
 The new capsule should reproduce the useful behavior of the running v018
-dogfood environment while deliberately using the agent-neutral v020 image and
+dogfood environment while deliberately using the agent-neutral v021 image and
 new configuration mechanics. Different host checkout/state paths and the
 absence of Gemini CLI are intentional.
 
@@ -306,9 +307,9 @@ Closure evidence:
 - command inspection proves project, state, X11, identity, and runtime-plan
   mounts are scoped as intended.
 
-## Stage 4: Activate Authorized Development Sudo Without Rebuilding v020
+## Stage 4: Activate Authorized Development Sudo Without Rebuilding v021
 
-The existing v020 image contains `sudo` but no
+The existing v021 image contains `sudo` but no
 `/etc/sudoers.d/ide-sudo` policy. Do not make sudo ambient and do not require a
 new base merely for this dogfood checkpoint.
 
@@ -347,7 +348,7 @@ Required script changes:
 - require a clean checkout at an explicit tested revision;
 - stop defaulting silently to `main` while the implementation lives on a WIP
   branch;
-- remove the `debug-v020` image prerequisite and let `project run` prove
+- remove the debug-image prerequisite and let `project run` prove
   canonical reuse or automatic materialization;
 - retain the distinct named checkout and original-record integrity checks;
 - inspect the external runtime-plan mount and require `RW=false`;
@@ -401,7 +402,7 @@ Inspect the first launched container and confirm:
 
 - the host source is the new clone and its container destination is the
   established project path;
-- the canonical v020 materialized image is used;
+- the canonical v021 materialized image is used;
 - the runtime plan is present as a read-only external bind mount;
 - persistent home, shared config/plugins, and new system/log/cache sources map
   to the declared destinations;

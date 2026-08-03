@@ -4,9 +4,9 @@ manifest-digest = "8811df649d3097b250b2a5bf2451ed4a923fde19b53744b6380bdeac6e300
 platform = "linux-amd64"
 
 [base]
-# Globally resolvable dogfood base. The digest, rather than the mutable v020
+# Globally resolvable dogfood base. The digest, rather than the mutable v021
 # discovery tag, is the committed formation input.
-reference = "docker.io/mycodespaceai/devcapsule-base@sha256:d1fa4a5ea1ca3f2b9408dd1347cfb4651115fc4d77ebc1f24877b32b83fadbec"
+reference = "docker.io/mycodespaceai/devcapsule-base@sha256:cd1a0e713e515234ef438c0502786353ec1678d2efd67b61a0bae6baf9fdc51e"
 
 [components]
 interactive-surface = "pycharm"
