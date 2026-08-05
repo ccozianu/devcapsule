@@ -482,10 +482,9 @@ Current task:
   state. Secret, host-file, socket, profile, and alternative-storage providers
   remain later contract work, while devices, Docker, networking, privilege,
   and port publication remain authorization rather than generic binding.
-- The next implementation is grounded by the executable, intentionally
-  not-yet-passing manual user test at
-  `devcapsule/tests/manual/v1-second-checkout-dogfood.sh`. On the current
-  laptop it clones the repository to
+- At that checkpoint, the next implementation was grounded by an executable,
+  intentionally not-yet-passing manual user test (retired on 2026-08-05 after
+  manual acceptance). On the dogfood laptop it cloned the repository to
   `~/work/provisional/costin3/myProjects/devcapsule`, registers the distinct
   `costin3-devcapsule` checkout, preserves the existing default checkout
   record, applies an 8 GiB memory setting, binds shared home/config/plugins and
@@ -968,9 +967,10 @@ Current task:
   emits `--memory 8589934592` when the checkout value is configured. The
   project declaration remains optional until the later-V1 ordinary-value
   default contract is implemented.
-  `sudo -n true` still fails even though the launcher claims passwordless sudo
-  is enabled, because Stage 4's temporary sudoers policy is not implemented.
-  This misleading-success bug is tracked in
+  The pre-Stage-4 v021 launch showed `sudo -n true` failing even though the
+  launcher claimed passwordless sudo was enabled, because the temporary
+  sudoers policy had not yet been implemented. This now-closed
+  misleading-success bug is tracked in
   `devcapsule/implementation-notes/bugs/2026-08-03-authorized-development-sudo-misreported.md`.
 - Stage 4 authorized development sudo is implemented without rebuilding the
   v022-derived environment. The launcher creates a group-scoped mode-`0440`
@@ -988,10 +988,10 @@ Current task:
   `devcapsule-local-pycharm:1bae0035566680103826` passed `sudo -n true` and
   `sudo -n id -u` with the policy mounted read-only, then proved cleanup. The
   already-running authorized v022 capsule was repaired ephemerally with the
-  same policy and now passes both checks; a fresh full `project run` remains
-  part of the Stage 5/8 host workflow.
-- Merge checkpoint `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is the
-  recommended source revision for the next v021 dogfood base. It is the current
+  same policy and passed both checks. The later v023 full `project run`
+  completed this Stage 4 host validation as recorded below.
+- Historical merge checkpoint `5401ce3506c0a8a63bfef40f4f9ef18d2b987436`
+  was the selected source revision for the v021 dogfood base. It is that
   published base's embedded PEX revision and the base build's
   `--source-revision` assertion. The v021 image was built, inspected, scanned,
   and published as discovery tag `ubuntu-24.04-v021` and immutable digest
@@ -1050,16 +1050,34 @@ Current task:
   statement/branch coverage, source and local-PEX command smokes, PEX
   construction, and all three packaging integrations. Fresh external
   Markdown/SVG preview and log validation remain pending.
-- External dogfood also confirmed the existing Stage 4 development-sudo gap.
-  The named checkout's resolved TOML correctly contains
-  `development-sudo = true`, but v021 has no `NOPASSWD` sudoers policy and the
-  launcher currently applies only `ENABLE_SUDO=1` plus supplementary group
-  `44000`. The generic runtime does not consume that legacy flag, so every
-  `sudo` command prompts for a password. This is not a configuration or
-  authorization failure. Implement the already planned temporary read-only
-  sudoers-policy mount, positive `sudo -n true`, negative no-authorization
-  behavior, and cleanup tests without making sudo ambient or rebuilding the
-  base.
+- The Stage 4 development-sudo gap is closed. On 2026-08-05, Docker inspection
+  of a fresh formation-based `project run` from exact source revision
+  `a33988a24a91ef382c1c5c6265ba2a34762ba115` confirmed the mapped `1000:1000`
+  user, supplementary group `44000`, writable root without privileged mode,
+  and a generated read-only sudoers-policy mount. The policy was `root:root`
+  mode `0440`; `sudo -n true` returned zero and `sudo -n id -u` printed `0`.
+  A disposable run of the same image under the unauthorized read-only,
+  capability-dropped, `no-new-privileges` profile had no policy and rejected
+  noninteractive sudo. Together with the passing positive/negative plan and
+  cleanup tests, Stage 4 is fully validated.
+- On 2026-08-05, the product owner manually accepted the functional dogfood
+  outcome after sustained satisfactory work from the second checkout in the
+  private monorepo. Stage 5's laptop-specific script implementation is waived,
+  and `devcapsule/tests/manual/v1-second-checkout-dogfood.sh` was removed. Its
+  intended portable coverage is now a substantial later V1 task for a
+  disposable multi-project E2E orchestrator.
+- The Stage 6 fast-test audit found no missing mocked-test category for Stages
+  1 through 4. Canonical realization, project-run handoff, runtime-plan
+  redaction/delivery/cleanup, authorized and unauthorized Docker effects,
+  memory propagation, and sudo preparation/failure/cleanup are covered. The
+  Docker-free `nox -s tests` gate passed all 182 selected tests at 81% coverage.
+  The closeout changes documentation and removes an obsolete host-only script,
+  so it does not require rebuilding the PEX, v023 base, or materialized image.
+- The accepted live container reported `HostConfig.Memory=0`, not 8 GiB.
+  Memory defaults and live propagation are explicitly deferred to later V1:
+  add ordinary-value defaults, declare `runtime.memory-limit = "8GiB"` for
+  this project, preserve checkout override precedence, and inspect both Docker
+  and cgroup limits in the future E2E.
 - The same external run printed JetBrains Runtime's slow-X11 warning and
   automatically disabled image alpha compositing. No visual or performance
   symptom has been reported, so this is a low-priority review rather than a V1
@@ -1425,12 +1443,12 @@ Current task:
    checksums/digests, and prove clean pull/download from the documented release
    locations.
 
-Next task:
+Next-step selection:
 
 The active execution plan for the next functional dogfood stage is
 `devcapsule/implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md`.
-It starts from branch `wip/local-pycharm-materialization` at committed revision
-`b5d42e8` and is the detailed closure contract for the following steps.
+It started from branch `wip/local-pycharm-materialization` at committed
+revision `b5d42e8` and is now closed by product-owner manual acceptance.
 
 The product owner has made the executive decision that DevCapsule will not
 support Gemini CLI. This retires D-0005's former open possibility of a later
@@ -1439,22 +1457,18 @@ base direction. Active work must not install, select, configure, mount state
 for, or advertise Gemini CLI. A negative absence check is only a regression
 guard.
 
-1. Follow the active plan to wire the verified canonical environment into
-   `devcapsule project run`. Stages 0 through 4 are complete, and the v021
-   dogfood base built from source revision
-   `5401ce3506c0a8a63bfef40f4f9ef18d2b987436` is published and selected by its
-   immutable digest. Proceed with Stage 5 to align the second-checkout
-   acceptance script while retaining the shared image's generic component
-   template. Normal run should strictly reuse or automatically materialize the
-   locked image and must not bake project, state, credential, authorization,
-   UID/GID, or mount choices into it.
-2. After the generic runtime-plan launch path is complete, align
-   `tests/manual/v1-second-checkout-dogfood.sh` with the existing external clone
-   and execute it. Generic metadata-driven `project config set`, its memory
-   effect, host-directory `config bind`, and the four V1 `config authorize`
-   cases are complete. Then finish the reopened shared runtime-option parity
-   work without weakening bridge networking or no-host-access defaults.
-3. Complete and externally dogfood the newly selected Codex optional
+The local v023 base and running canonical materialized environment carry exact
+source revision `a33988a24a91ef382c1c5c6265ba2a34762ba115`. Normal run reuses
+or automatically materializes the authorized image without baking project,
+state, credential, authorization, UID/GID, or mount choices into it. The
+retired second-checkout script is not a remaining task.
+
+No immediate implementation slice has been selected after this checkpoint.
+The user or IDE plugin should choose the next slice. Existing candidates are:
+
+1. Finish the reopened shared runtime-option parity work without weakening
+   bridge networking or no-host-access defaults.
+2. Complete and externally dogfood the selected Codex optional
    component, including JetBrains ACP reuse of its component-owned
    `CODEX_HOME` and persisted API-key login. Antigravity remains a possible
    later optional component; before acquiring it, settle its supported platforms,
@@ -1468,15 +1482,27 @@ guard.
 
 Later V1 backlog:
 
-1. Add schema-validated defaults for ordinary configuration values. A project
+1. Build an explicitly invoked, disposable multi-project E2E orchestrator. It
+   should create exact-revision DevCapsule and representative project checkouts
+   under a temporary root, isolate all XDG state, build or strictly reuse the
+   selected managed base, configure/authorize/resolve/run through production
+   commands, and inspect running containers. Cover authorized and safe
+   unauthorized cases, canonical materialization, generic OCI/runtime-plan
+   boundaries, mounts, identity, network, memory, Docker, sudo, lifecycle, and
+   persistence. Use unique ownership labels, sanitized evidence, and
+   deterministic cleanup without touching real checkouts, personal state,
+   credentials, or unrelated Docker resources.
+2. Add schema-validated defaults for ordinary configuration values. A project
    default must apply when the checkout has no override, appear distinctly in
    `config list`, participate in resolution and curated runtime effects, and
    become stale when its manifest declaration changes. Checkout `config set`
    remains the higher-precedence override. Defaults must never imply host
    authorization, secret delivery, or host-resource binding. Once supported,
    this repository should declare `default = "8GiB"` for
-   `runtime.memory-limit`. This is explicitly later V1 and does not reopen
-   Stage 3 or block the current Stage 4-through-8 dogfood sequence.
+   `runtime.memory-limit`. Prove the effective value through
+   `HostConfig.Memory` and `/sys/fs/cgroup/memory.max` in the E2E while retaining
+   checkout-override precedence. This is explicitly later V1 and does not
+   reopen the manually accepted dogfood checkpoint.
 
 V2 candidate task:
 

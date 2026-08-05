@@ -2,7 +2,7 @@
 
 Date opened: 2026-08-03
 
-Status: fix implemented and v022-probe validated; full project relaunch pending
+Status: closed; fixed and externally validated on 2026-08-05
 
 Requirements: R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001
 
@@ -118,6 +118,17 @@ same policy was then installed ephemerally in that already-authorized running
 container, where both positive commands pass. The full dirty-tree Nox gate
 passes with 182 fast tests at 81% coverage, clean mypy, rebuilt local PEX
 smokes, and all three packaging integrations.
+
+A subsequent formation-based `project run` used a materialized image carrying
+exact source revision `a33988a24a91ef382c1c5c6265ba2a34762ba115` and exercised
+the implemented launcher rather than an ephemeral repair. Docker inspection
+showed user `1000:1000`, supplementary group `44000`, a writable root without
+privileged mode, and the generated policy mounted read-only. The mounted policy
+was `root:root` mode `0440`; `sudo -n true` returned zero and
+`sudo -n id -u` printed `0`. A disposable run of the same image under the
+unauthorized read-only, capability-dropped, `no-new-privileges` profile had no
+policy and rejected noninteractive sudo. This evidence satisfies the close
+criteria together with the existing positive/negative plan and cleanup tests.
 
 ## Verification Target
 
