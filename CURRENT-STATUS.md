@@ -1078,6 +1078,15 @@ Current task:
   add ordinary-value defaults, declare `runtime.memory-limit = "8GiB"` for
   this project, preserve checkout override precedence, and inspect both Docker
   and cgroup limits in the future E2E.
+- The product owner externally tagged and pushed the validated v023 base as
+  `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v023`. Registry
+  inspection and the local image's `RepoDigests` both resolve it to
+  `sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1`;
+  the committed Linux dogfood lock now selects that immutable digest. Lock
+  parsing and manifest-digest validation passed, as did 182 fast tests, source
+  command smokes, and clean mypy over 73 source files. No PEX, base, or
+  materialized-image rebuild was warranted because the validated runtime
+  remains exact source revision `a33988a24a91ef382c1c5c6265ba2a34762ba115`.
 - The same external run printed JetBrains Runtime's slow-X11 warning and
   automatically disabled image alpha compositing. No visual or performance
   symptom has been reported, so this is a low-priority review rather than a V1
@@ -1095,9 +1104,10 @@ Current task:
   are in
   `devcapsule/implementation-notes/bugs/2026-08-03-jetbrains-native-launcher.md`.
 - The product owner reported that `devcapsule project run` is substantially
-  more comfortable than the historical launch workflow and is nearly ready to
-  become the primary development entry point from the new checkout. This is a
-  strong positive dogfood signal, not final completion of Stages 3 through 8.
+  more comfortable than the historical launch workflow and nearly ready to
+  become the primary development entry point from the new checkout. At that
+  checkpoint this was a strong positive signal rather than final completion;
+  the later acceptance and landed status are recorded above.
   The requested detailed, sanitized session reconstruction is
   `devcapsule/implementation-notes/session-records/2026-08-03-v021-external-dogfood-and-v1-backlog.md`.
 - JetBrains AI Assistant's Codex ACP integration failed in the fresh v021 home
@@ -1443,12 +1453,15 @@ Current task:
    checksums/digests, and prove clean pull/download from the documented release
    locations.
 
-Next-step selection:
+Next task:
+
+Review the current gaps to V1, and decide on a project plan to take us to V1.
 
 The active execution plan for the next functional dogfood stage is
 `devcapsule/implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md`.
 It started from branch `wip/local-pycharm-materialization` at committed
-revision `b5d42e8` and is now closed by product-owner manual acceptance.
+revision `b5d42e8` and is now landed and closed by product-owner manual
+acceptance.
 
 The product owner has made the executive decision that DevCapsule will not
 support Gemini CLI. This retires D-0005's former open possibility of a later
@@ -1458,27 +1471,15 @@ for, or advertise Gemini CLI. A negative absence check is only a regression
 guard.
 
 The local v023 base and running canonical materialized environment carry exact
-source revision `a33988a24a91ef382c1c5c6265ba2a34762ba115`. Normal run reuses
-or automatically materializes the authorized image without baking project,
-state, credential, authorization, UID/GID, or mount choices into it. The
-retired second-checkout script is not a remaining task.
-
-No immediate implementation slice has been selected after this checkpoint.
-The user or IDE plugin should choose the next slice. Existing candidates are:
-
-1. Finish the reopened shared runtime-option parity work without weakening
-   bridge networking or no-host-access defaults.
-2. Complete and externally dogfood the selected Codex optional
-   component, including JetBrains ACP reuse of its component-owned
-   `CODEX_HOME` and persisted API-key login. Antigravity remains a possible
-   later optional component; before acquiring it, settle its supported platforms,
-   exact version/artifact identity and checksum source, license and install
-   behavior, persistent-home or namespaced-state contract, authentication and
-   host-access disclosure, formation-descriptor inputs, and update policy.
-   Materialize it only when explicitly selected; never restore an ambient
-   agent CLI or direct host agent-state mount. Validate source and PEX command
-   surfaces plus an explicit host launch. No Antigravity artifact was
-   downloaded or installed during the D-0005 base cleanup.
+source revision `a33988a24a91ef382c1c5c6265ba2a34762ba115`. The product owner
+tagged and pushed that exact base as
+`docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v023`; registry inspection
+and the local image's `RepoDigests` agree on immutable digest
+`sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1`.
+The committed Linux dogfood lock now selects that digest. Normal run reuses or
+automatically materializes the authorized image without baking project, state,
+credential, authorization, UID/GID, or mount choices into it. The retired
+second-checkout script is not a remaining task.
 
 Later V1 backlog:
 
@@ -1503,6 +1504,17 @@ Later V1 backlog:
    `HostConfig.Memory` and `/sys/fs/cgroup/memory.max` in the E2E while retaining
    checkout-override precedence. This is explicitly later V1 and does not
    reopen the manually accepted dogfood checkpoint.
+3. Finish shared runtime-option parity without weakening bridge networking or
+   no-host-access defaults.
+4. Complete external Codex CLI, JetBrains ACP, authentication, and persistence
+   validation using component-owned `CODEX_HOME`. Keep Antigravity optional and
+   do not acquire it without a separate artifact, license, state,
+   authentication, and update-policy decision.
+5. Complete external GUI validation of the accepted JCEF workaround and review
+   the component runtime-path and ecosystem-aware project-bootstrap follow-ups.
+
+The V1 gap review may reorder, combine, or explicitly defer these backlog
+items; their presence here does not prejudge the resulting project plan.
 
 V2 candidate task:
 

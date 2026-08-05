@@ -1,6 +1,6 @@
 # Plan: Reach The Next Functional Dogfood Stage From `wip/local-pycharm-materialization` At `b5d42e8`
 
-Status: functional dogfood checkpoint manually accepted on 2026-08-05
+Status: landed; functional dogfood checkpoint manually accepted on 2026-08-05
 Baseline branch: `wip/local-pycharm-materialization`
 Baseline revision: `b5d42e8502919c3e1c0fa533ea02d31351b1417f`
 Date: 2026-08-03
@@ -33,7 +33,7 @@ All forward-looking stage instructions and acceptance checks refer to
 only this assignment. Literal `v020`, `v021`, and `v022` references below are
 historical evidence and must remain literal.
 
-The current local base is
+The validated local base is
 `devcapsule-local-base:${DOGFOOD_IMAGE_VERSION}`. Docker inspection records
 image ID
 `sha256:a69887edc5aea3b559aaf0fd69b9e4b451ff99488aa3099239c869e052dccbfe`
@@ -45,6 +45,20 @@ a33988a24a91ef382c1c5c6265ba2a34762ba115
 
 The running canonical materialized environment derived from that base carries
 the same exact source revision and completed the Stage 4 host validation.
+The product owner externally tagged and pushed that exact base as
+`docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v023`. Registry
+inspection resolved the tag and the local image's `RepoDigests` to the same
+immutable manifest digest:
+
+```text
+sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1
+```
+
+The committed Linux dogfood lock now selects that immutable digest. The tag is
+discovery metadata only and is not the committed formation input. The updated
+lock passed manifest-digest and lock-parser validation; the Docker-free Nox
+tests, source command smokes, and type checks also passed without rebuilding
+the already-validated PEX or images.
 
 For historical context, the published v021 dogfood base used source revision:
 
@@ -156,10 +170,10 @@ value while the container runs.
 
 The key and `auth.json` must remain absent from committed metadata, checkout
 TOML, generated resolution, runtime plans, Docker arguments, images, and logs.
-External acceptance must confirm the CLI is ready on `PATH`, terminal or
-JetBrains authentication persists, ACP uses the mounted component state, and
-a second launch retains it. Real artifact acquisition, API-key login, and the
-GUI/ACP restart check remain external validation work.
+The remaining external acceptance for CLI readiness on `PATH`, terminal or
+JetBrains authentication persistence, ACP use of mounted component state, and
+second-launch continuity is carried into later work below. It does not keep
+this landed dogfood stage open.
 
 The refined implementation passed the full dirty-tree gate with 172 fast
 tests at 80% coverage, clean mypy over 73 source files, source and local-PEX
@@ -627,6 +641,8 @@ are true:
 - normal `project run` realizes the locked canonical environment automatically;
 - the materialized image remains checkout-neutral;
 - the external read-only runtime plan drives the generic PEX entrypoint;
+- the committed Linux lock selects the published v023 base by immutable
+  registry digest;
 - the inspected bindings and authorizations have the intended Docker effects;
 - safe defaults remain effective when authorizations are absent;
 - the implementation full gate passed and the closeout fast suite passes all
@@ -638,17 +654,34 @@ are true:
   are explicitly preserved as later V1 tasks rather than misreported as
   passing.
 
-## Outside This Stage
+## Next Task
 
-The following remain outside this closed dogfood checkpoint unless separately
-prioritized:
+Review the current gaps to V1, and decide on a project plan to take us to V1.
+
+## Later Functional Tasks Carried Forward
+
+The following implementation work is deliberately carried forward rather than
+left as an open condition on this landed dogfood stage. The V1 gap review must
+classify, prioritize, combine, or defer it explicitly:
+
+- the disposable multi-project E2E orchestrator specified above;
+- ordinary-value defaults and live memory-limit verification specified above;
+- shared runtime-option parity without weakening bridge networking or
+  no-host-access defaults;
+- final external Codex CLI, ACP, authentication, and persistence validation;
+- the accepted JCEF workaround's external GUI validation;
+- component runtime-path and ecosystem-aware project-bootstrap follow-ups;
+- official semantically versioned V1 artifact publication;
+- GPU/device authorization and specialized CUDA validation;
+- Docker-in-Docker, native-debugging, raw-Docker-argument, and complete Codium
+  runtime parity; and
+- safe image/cache lifecycle management and stronger supply-chain provenance.
+
+The following remain explicitly unsupported or optional rather than implicit
+closure work:
 
 - any Gemini CLI installation, optional component, capability, state migration,
   authentication, or validation;
 - Antigravity or another optional agent component;
 - general secret providers or SSH-agent forwarding;
-- Docker-in-Docker, native-debugging, raw-Docker-argument, or complete Codium
-  runtime parity;
-- GPU/device authorization and specialized CUDA validation;
-- official semantically versioned V1 artifact publication; or
-- broader image/cache lifecycle management.
+- broader alternative-environment work not selected by the V1 plan.

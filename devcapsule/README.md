@@ -198,7 +198,7 @@ Build the JetBrains-free DevCapsule base:
 # From a source/editable installation, identify the PEX to embed.
 devcapsule images build \
   --type base \
-  --tag devcapsule-base:debug-v021 \
+  --tag devcapsule-base:debug-v023 \
   --pex dist/devcapsule.pex \
   --source-revision "$(git rev-parse HEAD)" \
   --network host
@@ -206,14 +206,14 @@ devcapsule images build \
 # When invoked from a PEX, that PEX is embedded by default.
 python3.12 dist/devcapsule.pex images build \
   --type base \
-  --tag devcapsule-base:debug-v021 \
+  --tag devcapsule-base:debug-v023 \
   --source-revision "$(git rev-parse HEAD)"
 
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
 python3.12 dist/devcapsule.pex images build \
   --type base \
   --recipe nvidia-cuda-devel \
-  --tag devcapsule-base:cuda-v021 \
+  --tag devcapsule-base:cuda-v023 \
   --source-revision "$(git rev-parse HEAD)"
 ```
 
@@ -422,12 +422,12 @@ that same environment explicitly without launching a container, use:
 ```bash
 devcapsule project --path /path/to/checkout config resolve
 devcapsule project --path /path/to/checkout config authorize base-image \
-  docker.io/mycodespaceai/devcapsule-base@sha256:cd1a0e713e515234ef438c0502786353ec1678d2efd67b61a0bae6baf9fdc51e
+  docker.io/mycodespaceai/devcapsule-base@sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1
 devcapsule project --path /path/to/checkout config resolve
 devcapsule images build \
   --type environment \
   --project /path/to/checkout \
-  --alias devcapsule-local-pycharm:debug-v021
+  --alias devcapsule-local-pycharm:debug-v023
 ```
 
 The platform lock must select a DevCapsule base plus a
@@ -477,7 +477,7 @@ For developer-built base testing, `base-image` also accepts an already-local
 DevCapsule metadata-v1 base name:
 
 ```bash
-devcapsule project config authorize base-image devcapsule-local-base:v022
+devcapsule project config authorize base-image devcapsule-local-base:v023
 devcapsule project config resolve
 devcapsule project run
 ```
@@ -499,13 +499,13 @@ selected local image must still pass DevCapsule metadata, platform, and
 immutable image-ID inspection.
 
 This repository's current Linux dogfood lock uses published digest
-`docker.io/mycodespaceai/devcapsule-base@sha256:cd1a0e713e515234ef438c0502786353ec1678d2efd67b61a0bae6baf9fdc51e`.
-The associated `ubuntu-24.04-v021` tag is only a dogfood discovery tag;
+`docker.io/mycodespaceai/devcapsule-base@sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1`.
+The associated `ubuntu-24.04-v023` tag is only a dogfood discovery tag;
 official V1 artifacts will use semantic release versions and committed locks
 will continue to use immutable digests.
 
-The immutable v021 image uses agent-neutral base recipe version 2, embeds the
-DevCapsule PEX, and exposes source revision `5401ce3...` at the canonical
+The immutable v023 image uses agent-neutral base recipe version 2, embeds the
+DevCapsule PEX, and exposes source revision `a33988a...` at the canonical
 `ccozianu/devcapsule` repository. It contains no ambient agent CLI.
 
 The command obtains the selected base when it is not local, verifies that it
