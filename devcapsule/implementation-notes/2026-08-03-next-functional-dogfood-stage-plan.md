@@ -1,6 +1,6 @@
 # Plan: Reach The Next Functional Dogfood Stage From `wip/local-pycharm-materialization` At `b5d42e8`
 
-Status: active implementation plan
+Status: functional dogfood checkpoint manually accepted on 2026-08-05
 Baseline branch: `wip/local-pycharm-materialization`
 Baseline revision: `b5d42e8502919c3e1c0fa533ea02d31351b1417f`
 Date: 2026-08-03
@@ -18,21 +18,48 @@ Requirements: root `R-PRODUCT-001`, root `R-PRODUCT-002`,
 
 ## Current Progress
 
-Current stage: Stage 5, align the second-checkout acceptance script.
+Current stage: complete by product-owner manual acceptance. The scripted
+Stage 5 implementation is waived; fuller automated E2E coverage is a later V1
+task.
 
-Recommended source revision for the next v021 dogfood base:
+The single current dogfood image-version variable for this plan is:
+
+```bash
+DOGFOOD_IMAGE_VERSION=v023
+```
+
+All forward-looking stage instructions and acceptance checks refer to
+`${DOGFOOD_IMAGE_VERSION}`. Advancing the dogfood base should require changing
+only this assignment. Literal `v020`, `v021`, and `v022` references below are
+historical evidence and must remain literal.
+
+The current local base is
+`devcapsule-local-base:${DOGFOOD_IMAGE_VERSION}`. Docker inspection records
+image ID
+`sha256:a69887edc5aea3b559aaf0fd69b9e4b451ff99488aa3099239c869e052dccbfe`
+and exact source revision:
+
+```text
+a33988a24a91ef382c1c5c6265ba2a34762ba115
+```
+
+The running canonical materialized environment derived from that base carries
+the same exact source revision and completed the Stage 4 host validation.
+
+For historical context, the published v021 dogfood base used source revision:
 
 ```text
 5401ce3506c0a8a63bfef40f4f9ef18d2b987436
 ```
 
-That revision contains the completed Stages 0 through 2 and was used as both
+That revision contained the completed Stages 0 through 2 and was used as both
 the PEX source revision and the asserted
 `images build --type base --source-revision` value. The resulting v021 base was
 built, inspected, scanned, and published as immutable registry digest
 `sha256:cd1a0e713e515234ef438c0502786353ec1678d2efd67b61a0bae6baf9fdc51e`.
-The committed platform lock now selects that digest; each checkout must refresh
-its exact base-image authorization before resolving again.
+The committed platform lock selected that digest; later local dogfood versions
+use the exact developer-owned local-base authorization path until published
+and selected by an immutable registry digest.
 
 The original `b5d42e8` baseline above remains the historical starting point for
 this plan. Progress from that baseline is:
@@ -59,20 +86,22 @@ this plan. Progress from that baseline is:
   negative plan. Its full gate passed with 178 fast tests at 81% coverage,
   clean mypy over 73 source files, source/local-PEX smokes, PEX construction,
   and all three packaging integrations.
-- Stage 4 is implemented and repository-validated. Authorized launches create
+- Stage 4 is implemented and fully validated. Authorized launches create
   a group-scoped temporary sudoers policy, use a constrained no-network,
   read-only, `CHOWN`-only helper to satisfy sudo's root-ownership requirement,
   mount the policy read-only, and clean it after success or failure. The full
   gate passed with 182 fast tests at 81% coverage, clean mypy over 73 source
   files, source/local-PEX smokes, PEX construction, and all three packaging
-  integrations.
+  integrations. The live `${DOGFOOD_IMAGE_VERSION}` formation-based launch
+  then passed the authorized and unauthorized host checks recorded in Stage 4.
 
 No real image was pulled, built, or launched by the automated work for Stages 0
-through 2. The v021 base has since been built and published externally. The
-next action is to retry Stage 3 with the refreshed lock and authorization,
-verifying and completing the generic Docker launch plan and its positive and
-negative authorization behavior before implementing the development-sudo
-policy in Stage 4.
+through 2. The later v021 base was built and published externally; Stages 3
+and 4 were subsequently completed against newer local dogfood checkpoints.
+The product owner subsequently accepted the satisfactorily running second
+checkout as the functional dogfood result. Stages 5 through 8 are closed by
+the scope decision recorded below rather than by maintaining a laptop-specific
+acceptance script.
 
 Post-v021 dogfood checkpoint: revision
 `43073361c8bb11fecece7913b3a511b47dd2778a` adds the optional Codex component,
@@ -177,8 +206,8 @@ the developer can use a clean PEX to:
 2. set an 8 GiB memory limit;
 3. bind persistent home, shared PyCharm config/plugins, and checkout-specific
    PyCharm system/log/cache directories;
-4. authorize the exact v021 base digest, host Docker socket, host networking,
-   and development sudo;
+4. authorize the exact `${DOGFOOD_IMAGE_VERSION}` base identity, host Docker
+   socket, host networking, and development sudo;
 5. resolve an inspectable checkout plan without downloading, building, or
    launching;
 6. run the project, automatically reusing or materializing its canonical
@@ -189,9 +218,9 @@ the developer can use a clean PEX to:
    checkout-specific state retained.
 
 The new capsule should reproduce the useful behavior of the running v018
-dogfood environment while deliberately using the agent-neutral v021 image and
-new configuration mechanics. Different host checkout/state paths and the
-absence of Gemini CLI are intentional.
+dogfood environment while deliberately using the agent-neutral
+`${DOGFOOD_IMAGE_VERSION}` image and new configuration mechanics. Different
+host checkout/state paths and the absence of Gemini CLI are intentional.
 
 ## Stage 0: Show Configuration Readiness
 
@@ -269,7 +298,7 @@ The service must:
   launching a container.
 
 `project run` must invoke this service automatically. Ordinary dogfood must not
-require a pre-created `debug-v020` alias or an `images build` command.
+require a pre-created debug alias or an `images build` command.
 
 Closure evidence:
 
@@ -382,9 +411,9 @@ defaults are implemented; a configured fresh launch plan emits
 `--memory 8589934592`. The instance's failing `sudo -n true` is the known
 Stage 4 policy gap rather than a Stage 3 propagation failure.
 
-## Stage 4: Activate Authorized Development Sudo Without Rebuilding v021
+## Stage 4: Activate Authorized Development Sudo Without Rebuilding The Base
 
-Status: implemented and validated against v022; full project relaunch pending.
+Status: implemented and fully validated.
 
 The existing v021 image contains `sudo` but no
 `/etc/sudoers.d/ide-sudo` policy. Do not make sudo ambient and do not require a
@@ -429,98 +458,109 @@ A disposable container using the exact v022-derived image and generated
 account-file contract passed `sudo -n true` and returned `0` from
 `sudo -n id -u`; the root-owned policy was then removed. The already-running
 authorized v022 capsule was repaired ephemerally with the same policy and
-passes both checks. Future launches use the temporary mount implementation;
-the Stage 5/8 host workflow will confirm it through full `project run`.
+passes both checks.
+
+On 2026-08-05, a fresh formation-based `project run` from exact source
+revision `a33988a24a91ef382c1c5c6265ba2a34762ba115` completed the pending
+host validation. Docker inspection showed the mapped `1000:1000` user,
+supplementary group `44000`, writable root, no privileged mode, and the
+generated policy mounted read-only. Inside the capsule the policy was
+`root:root` mode `0440`, contained the expected group-scoped rule,
+`sudo -n true` returned zero, and `sudo -n id -u` printed `0`. A disposable
+run of the same materialized image with the unauthorized read-only,
+capability-dropped, `no-new-privileges` profile had no policy and rejected
+`sudo -n true`. Together with the positive/negative Docker-plan and cleanup
+tests, this fully validates Stage 4. At that point Stages 5 and 8 still owned
+the broader second-checkout lifecycle and persistence acceptance, not sudo
+activation. That broader outcome was subsequently accepted manually under the
+scope decision below.
 
 ## Stage 5: Align The Second-Checkout Acceptance Script
 
-Update `devcapsule/tests/manual/v1-second-checkout-dogfood.sh` after the runtime
-implementation is complete.
+Status: manual outcome validated; scripted implementation waived by the product
+owner on 2026-08-05.
 
-Required script changes:
+The product owner is running DevCapsule satisfactorily from the established
+second checkout inside the private monorepo. Together with the live Docker
+inspection recorded in Stages 3 and 4, this supplies the useful functional
+evidence that the laptop-specific script was intended to collect. Updating and
+rerunning that script would spend substantial effort on a one-workstation
+harness with marginal additional confidence.
 
-- default to `$HOME/work.provisional/costin3/myProjects/devcapsule` and the
-  matching dotted state root;
-- support the already-existing clone instead of requiring the checkout path to
-  be absent;
-- require a clean checkout at an explicit tested revision;
-- stop defaulting silently to `main` while the implementation lives on a WIP
-  branch;
-- remove the debug-image prerequisite and let `project run` prove
-  canonical reuse or automatic materialization;
-- retain the distinct named checkout and original-record integrity checks;
-- inspect the external runtime-plan mount and require `RW=false`;
-- verify the image still contains no baked checkout runtime plan;
-- verify Gemini CLI is absent only as an unsupported-software regression
-  guard; and
-- retain first-launch, foreground-exit, automatic-removal, and second-launch
-  persistence checks.
-
-The script must remain host-only and non-destructive. It may create missing
-checkout-specific system/log/cache directories, but it must not delete the
-clone, persistent state, existing checkout records, or Docker images.
+The obsolete `devcapsule/tests/manual/v1-second-checkout-dogfood.sh` is removed.
+This is an explicit scope decision, not a claim that the old script itself
+passed. Its intended portable coverage is transferred to the later V1
+orchestrated E2E task below.
 
 ## Stage 6: Repository Validation From Committed Code
 
-Before external launch:
+Status: complete for this functional checkpoint.
 
-1. add focused fast tests for Stages 1 through 4;
-2. smoke the source and PEX command surfaces;
-3. run `cd devcapsule && .venv/bin/python -m nox -s build`;
-4. commit the coherent implementation;
-5. rerun the full gate on the clean committed tree so the revision-bearing PEX
-   embeds the exact tested `HEAD`; and
-6. inspect that PEX with `devcapsule.pex version --json`.
+The focused fast-test audit found no missing Stage 1-through-4 behavior that
+would be usefully covered by another mocked test. Existing tests cover:
 
-No Docker GUI launch belongs in the normal automated gate. Existing explicit
-Docker E2E coverage should be extended only where it remains disposable and
-does not require X11 or personal state.
+- canonical realization reuse, materialization, exact authorization, local
+  image-ID pinning, retag/conflict rejection, and no launch after failure;
+- the resolved-project handoff from `project run` into canonical realization
+  and launch;
+- runtime-plan serialization, host-data redaction, component-template
+  agreement, read-only delivery, OCI command preservation, and normal/failure
+  cleanup;
+- positive memory, network, Docker-socket, state-mount, and development-sudo
+  propagation plus the safe unauthorized Docker plan; and
+- sudo policy content, modes, constrained ownership preparation, banner
+  ordering, actionable failure, and cleanup.
+
+On 2026-08-05, `cd devcapsule && .venv/bin/python -m nox -s tests` passed all
+182 selected fast tests at 81% statement/branch coverage. The earlier runtime
+implementation gate also passed source and PEX smokes, PEX construction,
+integration tests, clean mypy, and the same fast suite. The remaining gap is a
+real Docker/process/project-orchestration boundary and therefore belongs in the
+later E2E task rather than another fast test.
+
+This closeout changes documentation and removes an obsolete host-only manual
+script; it does not change runtime code, packaging inputs, image recipes, or
+component artifacts. It may be committed without rebuilding the PEX, base
+image, or materialized environment. The validated v023 artifacts deliberately
+continue to identify runtime source revision
+`a33988a24a91ef382c1c5c6265ba2a34762ba115`; the later documentation-only
+commit must not be presented as their embedded source revision.
 
 ## Stage 7: Make The Revision Available To The External Clone
 
-At the time this plan was written, the baseline branch was two commits ahead
-of `origin/wip/local-pycharm-materialization`. Push the tested branch or merge
-the tested commits into the branch selected by the external clone. Then update
-the external clone to the exact revision and confirm it is clean before
-building its PEX.
+Status: complete for the runtime checkpoint.
 
-Do not claim a fresh-clone result while the clone is running older `main` code
-or an unpublished local-only revision.
+The external second checkout ran exact runtime revision
+`a33988a24a91ef382c1c5c6265ba2a34762ba115`, which was available on
+`origin/wip/local-pycharm-materialization` and is embedded in the v023 base and
+materialized environment. The documentation-only closeout commit can follow
+the normal publication workflow and does not require rebuilding those images.
 
 ## Stage 8: External Dogfood Validation
 
-Run the aligned acceptance script from the host after closing the current
-`devcapsule-dogfood-v1` container. The shared home, PyCharm config, and plugin
-directories declare exclusive concurrency and must not be mounted read-write by
-both capsules simultaneously. Closing that container also ends the current
-in-capsule agent session, so implementation and automated validation must be
-complete first.
+Status: manually validated and accepted by the product owner on 2026-08-05.
 
-Inspect the first launched container and confirm:
+Sustained satisfactory work from the second checkout validates the useful IDE,
+project, state, lifecycle, Docker, sudo, and selected Codex behavior. Docker
+inspection independently confirmed the v023-derived canonical image, generic
+PEX entrypoint, external read-only runtime plan, unprivileged runtime user,
+expected project and component-state mounts, explicit host network and Docker
+socket, non-privileged container, automatic removal, and the authorized
+development-sudo policy. The unsupported Gemini CLI remained absent.
 
-- the host source is the new clone and its container destination is the
-  established project path;
-- the canonical v021 materialized image is used;
-- the runtime plan is present as a read-only external bind mount;
-- persistent home, shared config/plugins, and new system/log/cache sources map
-  to the declared destinations;
-- `HostConfig.Memory` is 8 GiB;
-- the runtime user is unprivileged;
-- host networking, Docker socket access, and development sudo appear only
-  because this checkout authorized them;
-- PyCharm remains foreground-attached below `tini` and the container uses
-  automatic removal;
-- Gemini CLI is not installed or configured;
-- normal editing, the build/test workflow, `docker version`, `sudo -n true`,
-  and one supported IDE-agent interaction work; and
-- closing PyCharm removes the container.
+The inspected live container reported `HostConfig.Memory=0`, not the planned
+8 GiB limit. The product owner accepts that discrepancy for this checkpoint;
+it is transferred to the later V1 memory-configuration task below rather than
+silently recorded as verified. Scripted temporary-checkout repetition is also
+transferred to the later orchestrated E2E task.
 
-Launch a second time and confirm settings, plugins, relevant login state, and
-checkout-specific state continuity. Record any JetBrains license or agreement
-prompt separately; file persistence does not guarantee uninterrupted
-third-party authentication or terms acceptance.
+## Later V1 Task: Memory Configuration And Ordinary-Value Defaults
 
-## Later V1 Follow-Up: Defaults For Ordinary Configuration Values
+The accepted v023 dogfood container reported `HostConfig.Memory=0`. Existing
+fast tests prove that an explicit checkout value of `8GiB` resolves to
+`8589934592` bytes and reaches the Docker argument plan, but the running second
+checkout did not have that effective value. Address this later in V1 rather
+than reopening the accepted dogfood checkpoint.
 
 Add a generic, schema-validated `default` field to ordinary project
 configuration declarations. A committed default is an effective safe value
@@ -534,31 +574,74 @@ Defaults apply only to ordinary values. They must not grant host authorization,
 select secret sources, or create filesystem/socket/device bindings. After this
 contract is implemented, this repository should declare `default = "8GiB"`
 for `runtime.memory-limit`, so normal dogfood launches receive the limit unless
-the developer opts into another valid value.
+the developer opts into another valid value. The V1 task must also prove with
+Docker inspection that the effective default or checkout override reaches both
+`HostConfig.Memory` and `/sys/fs/cgroup/memory.max`, and that an explicit
+checkout override retains precedence.
 
-This follow-up belongs later in V1 and does not block Stages 4 through 8 of the
-current functional dogfood plan.
+This follow-up belongs later in V1 and does not block this manually accepted
+functional dogfood checkpoint.
+
+## Later V1 Task: Orchestrated Multi-Project E2E
+
+Replace the retired laptop-specific script with a fuller, explicitly invoked
+E2E orchestrator. It must exercise production orchestration rather than encode
+the current workstation's personal paths or state.
+
+The E2E should:
+
+- select exact repository revisions and create DevCapsule plus representative
+  project checkouts beneath a unique temporary root;
+- use isolated XDG configuration, data, state, cache, and runtime roots so it
+  cannot read or modify real checkout records, personal state, or credentials;
+- build the selected base image when required, otherwise strictly inspect and
+  reuse a matching managed base, then automatically materialize canonical
+  environments through normal project commands;
+- configure ordinary values and state bindings, grant only the exact
+  authorizations required by each case, resolve, run, and inspect the running
+  containers;
+- cover at least the DevCapsule dogfood declaration and additional
+  representative project declarations, including both authorized and safe
+  unauthorized launch plans;
+- inspect base/materialized identity, generic OCI entrypoint and command,
+  external read-only runtime plan, absence of a baked checkout plan, project
+  and state mounts, runtime user, network, memory, Docker access, sudo policy,
+  privilege boundaries, foreground lifecycle, and automatic removal;
+- verify a second launch where persistence is part of the contract;
+- use unique names and ownership labels, emit sanitized diagnostics, and
+  deterministically clean temporary checkouts, XDG roots, containers, and
+  test-owned images on success, failure, or interruption; and
+- never delete or mutate unrelated Docker resources, project source,
+  persistent personal state, or credential stores.
+
+GUI usability, third-party license prompts, and real credential login may
+remain separately manual, but the orchestrator should make all Docker-visible
+behavior machine-verifiable. This is a substantial later V1 task and is not a
+condition for closing the present dogfood plan.
 
 ## Completion Criteria For The Next Functional Stage
 
-This plan is complete when all of the following are true:
+This plan is complete by product-owner acceptance because all of the following
+are true:
 
 - normal `project run` realizes the locked canonical environment automatically;
 - the materialized image remains checkout-neutral;
 - the external read-only runtime plan drives the generic PEX entrypoint;
-- all resolved values, bindings, and authorizations have the intended Docker
-  effects;
+- the inspected bindings and authorizations have the intended Docker effects;
 - safe defaults remain effective when authorizations are absent;
-- the full clean-tree Nox gate passes against the committed implementation;
-- the external existing-clone acceptance test passes twice; and
+- the implementation full gate passed and the closeout fast suite passes all
+  182 selected tests;
 - the user confirms the resulting PyCharm capsule is a workable replacement
   for the current dogfood environment, within the intentional path, version,
-  and unsupported-Gemini differences.
+  and unsupported-Gemini differences; and
+- the unverified 8 GiB live-memory criterion and retired scripted repetition
+  are explicitly preserved as later V1 tasks rather than misreported as
+  passing.
 
 ## Outside This Stage
 
-Do not pull these tasks into the next dogfood closure unless a discovered
-blocker requires an explicit scope decision:
+The following remain outside this closed dogfood checkpoint unless separately
+prioritized:
 
 - any Gemini CLI installation, optional component, capability, state migration,
   authentication, or validation;
