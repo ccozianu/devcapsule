@@ -341,6 +341,9 @@ Implementation and evidence:
 
 Status: pending
 
+Execution checklist:
+[`2026-08-06-recursive-dogfood-stage-2-execution-checklist.md`](2026-08-06-recursive-dogfood-stage-2-execution-checklist.md).
+
 Once Stages 0 and 1 plus the minimum recursive orchestrator skeleton pass their
 repository gates, build a revision-bearing PEX and local managed v024 base from
 the clean committed milestone checkpoint while still running v023.

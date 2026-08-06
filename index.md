@@ -100,6 +100,7 @@ same change.
 - [Next functional dogfood stage from b5d42e8](devcapsule/implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md)
 - [DevCapsule V1 gap review at 0a0ff09](devcapsule/implementation-notes/2026-08-06-v1-gap-review.md)
 - [Recursive dogfood E2E milestone plan](devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
+- [Recursive dogfood Stage 2 execution checklist](devcapsule/implementation-notes/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)
 
 ## Bugs
 
