@@ -1396,6 +1396,8 @@ Current task:
   implicit PyCharm host network is tracked separately as
   `devcapsule/implementation-notes/bugs/2026-07-23-pycharm-ambient-host-network.md`.
 
+Superseded planning checkpoint, preserved for historical context:
+
 1. Fix the reopened PyCharm `run-image` network and Docker-option parity bug,
    beginning with explicit `--network host` support required for dogfood and a
    shared runtime-options model for the accepted expert Docker controls.
@@ -1453,7 +1455,7 @@ Current task:
    checksums/digests, and prove clean pull/download from the documented release
    locations.
 
-Next task:
+Superseded next task:
 
 Review the current gaps to V1, and decide on a project plan to take us to V1.
 
@@ -1481,54 +1483,27 @@ automatically materializes the authorized image without baking project, state,
 credential, authorization, UID/GID, or mount choices into it. The retired
 second-checkout script is not a remaining task.
 
-Later V1 backlog:
+V1 gap-review checkpoint, 2026-08-06:
 
-1. Build an explicitly invoked, disposable multi-project E2E orchestrator. It
-   should create exact-revision DevCapsule and representative project checkouts
-   under a temporary root, isolate all XDG state, build or strictly reuse the
-   selected managed base, configure/authorize/resolve/run through production
-   commands, and inspect running containers. Cover authorized and safe
-   unauthorized cases, canonical materialization, generic OCI/runtime-plan
-   boundaries, mounts, identity, network, memory, Docker, sudo, lifecycle, and
-   persistence. Use unique ownership labels, sanitized evidence, and
-   deterministic cleanup without touching real checkouts, personal state,
-   credentials, or unrelated Docker resources.
-2. Add schema-validated defaults for ordinary configuration values. A project
-   default must apply when the checkout has no override, appear distinctly in
-   `config list`, participate in resolution and curated runtime effects, and
-   become stale when its manifest declaration changes. Checkout `config set`
-   remains the higher-precedence override. Defaults must never imply host
-   authorization, secret delivery, or host-resource binding. Once supported,
-   this repository should declare `default = "8GiB"` for
-   `runtime.memory-limit`. Prove the effective value through
-   `HostConfig.Memory` and `/sys/fs/cgroup/memory.max` in the E2E while retaining
-   checkout-override precedence. This is explicitly later V1 and does not
-   reopen the manually accepted dogfood checkpoint.
-3. Settle the V1 user experience and reusable component, configuration,
-   materialization, state, authorization, and runtime abstractions against the
-   PyCharm path first. Then implement at least one VSCodium-based configuration
-   through those contracts, repairing or replacing the current
-   `codium_with_claude` proof point. Repairing that proof point is a must-have
-   V1 outcome, but its shortcut-bearing v0 launcher is not the framework
-   template. Reproduce its old bugs only after the V1 implementation exists;
-   fix behavior that persists and close launcher-specific obsolete reports
-   with evidence. No supported Codium path may retain ambient sudo, writable
-   root, host access, or another unapproved isolation relaxation.
-4. Ship a small curated starter catalog of IDE configurations and matching
-   demonstration projects. The catalog should let users run quick experiments
-   with configuration, components, persistence, and authorization before
-   authoring advanced configurations, and it must prove that the supported
-   authoring path is self-service rather than a collection of hard-coded
-   launchers. The V1 plan still needs to select the exact entries and count.
-5. Complete external Codex CLI, JetBrains ACP, authentication, and persistence
-   validation using component-owned `CODEX_HOME`. Keep Antigravity optional and
-   do not acquire it without a separate artifact, license, state,
-   authentication, and update-policy decision.
-6. Complete external GUI validation of the accepted JCEF workaround and review
-   the component runtime-path and ecosystem-aware project-bootstrap follow-ups.
+- The consolidated V1 gap review is
+  `devcapsule/implementation-notes/2026-08-06-v1-gap-review.md`. It applies to
+  revision `0a0ff09e767d38ecec4c92cb21cfd7afa6acffc9` and separates adopter-visible
+  functional gaps from engineering build, validation, dogfood, and release
+  gaps.
+- V1 and V2 are releases. Outcome-based milestones organize work on the way to
+  a release; stages subdivide a plan, tasks and slices execute it, and
+  checkpoints preserve resumable state without implying completion. The root
+  `WORKFLOW.md` now defines this terminology.
+- The proposed milestone sequence is PyCharm Functional Closure, Recursive
+  Dogfood Engineering, Self-Service Configuration Catalog, and V1 Publication
+  And Acceptance. This sequence remains draft until product-owner review of the
+  gap snapshot and its open scope decisions.
 
-The V1 gap review may reorder, combine, or explicitly defer these backlog
-items; their presence here does not prejudge the resulting project plan.
+Active next task:
+
+Review and clarify the dated V1 gap snapshot, settle its open functional scope
+decisions, and then write the executable plan for the selected first milestone.
+No new implementation milestone has started yet.
 
 V2 candidate task:
 

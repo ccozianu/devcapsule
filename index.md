@@ -98,6 +98,7 @@ same change.
 - [Local PyCharm materialization and Python entrypoint](devcapsule/implementation-notes/2026-07-29-local-pycharm-materialization-and-python-entrypoint.md)
 - [NVIDIA CUDA base recipe specialized validation](devcapsule/implementation-notes/2026-08-01-nvidia-cuda-base-recipe-validation.md)
 - [Next functional dogfood stage from b5d42e8](devcapsule/implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md)
+- [DevCapsule V1 gap review at 0a0ff09](devcapsule/implementation-notes/2026-08-06-v1-gap-review.md)
 
 ## Bugs
 
