@@ -3,8 +3,15 @@
 This file is the project handoff point. Future agents should update it when
 completing a stage, changing the project state materially, or ending a session.
 
-Current stage: `docker4pycharm` v0/MVP checkpoint complete; `devcapsule`
-Python MVP is the active post-MVP refactoring stage.
+Current release target: DevCapsule V1. The `docker4pycharm` v0/MVP checkpoint
+is complete; `devcapsule` Python is the active implementation.
+
+Active milestone: `Recursive Dogfood E2E — Build And Launch A Successor From
+Inside DevCapsule`.
+
+Current milestone state: execution plan proposed on branch
+`milestone/recursive-dogfood-e2e` from clean `main` revision
+`237d4939f8d1dcfcfbe2061209f16f8692542c08`; implementation has not started.
 
 Current status:
 
@@ -1494,16 +1501,23 @@ V1 gap-review checkpoint, 2026-08-06:
   a release; stages subdivide a plan, tasks and slices execute it, and
   checkpoints preserve resumable state without implying completion. The root
   `WORKFLOW.md` now defines this terminology.
-- The proposed milestone sequence is PyCharm Functional Closure, Recursive
-  Dogfood Engineering, Self-Service Configuration Catalog, and V1 Publication
-  And Acceptance. This sequence remains draft until product-owner review of the
-  gap snapshot and its open scope decisions.
+- The product owner selected Recursive Dogfood E2E as the first milestone so an
+  agent inside the accepted dogfood container can build a clean clone, create
+  the next PEX/base, materialize and start a successor through host Docker, and
+  inspect the result. PyCharm Functional Closure, Self-Service Configuration
+  Catalog, and V1 Publication And Acceptance follow in the current sequence.
+- The active milestone plan is
+  `devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md`.
+  It preserves v023 as the published bootstrap base, uses exact local-base
+  authorization for the successor, makes recursive host-path translation and
+  cleanup fail closed, and permits only a final manual IDE usability/handoff
+  step.
 
 Active next task:
 
-Review and clarify the dated V1 gap snapshot, settle its open functional scope
-decisions, and then write the executable plan for the selected first milestone.
-No new implementation milestone has started yet.
+Review the Recursive Dogfood E2E execution plan. Once accepted, implement its
+Stage 0 recursive preflight and failure-first tests without creating a clone,
+image, or container in that first slice.
 
 V2 candidate task:
 
