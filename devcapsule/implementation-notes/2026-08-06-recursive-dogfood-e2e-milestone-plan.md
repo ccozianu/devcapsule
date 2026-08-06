@@ -273,7 +273,7 @@ Implementation and evidence:
 
 ## Stage 1: Add Verified Host-Daemon Path Translation And Staging
 
-Status: pending
+Status: complete on the milestone working tree as of 2026-08-06
 
 Introduce one reusable internal host-daemon launch context. It must derive a
 validated mapping from current-container destinations to host-daemon sources
@@ -303,6 +303,39 @@ Done means:
 - Docker planning receives host-valid sources while runtime plans retain the
   correct successor-container destinations; and
 - no real container is required for the fast-test closure of this stage.
+
+Implementation and evidence:
+
+- `HostDaemonLaunchContext.for_recursive_dogfood` accepts only a successful
+  Stage 0 report carrying the exact inspected container and then approves the
+  named project, runtime-plan, persistent-home, state, Docker-socket, X11, and
+  Xauthority mounts;
+- translation resolves existing paths canonically, preserves unique
+  longest-prefix mount selection, blocks an approved-parent fallback across a
+  more-specific unapproved mount, distinguishes read and write access, and
+  validates directory, regular-file, and Unix-socket sources;
+- bind plans contain host-daemon-valid sources while retaining exact successor
+  destinations. Ordinary mappings, string representations, and dataclass
+  representations redact raw host sources and sensitive staged paths;
+- `RecursiveStagingArea` creates a collision-safe ownership-marked run root
+  beneath persistent home, writes runtime-plan/account/Xauthority/development-
+  sudo inputs with tested modes, identifies the sudo policy's later root-owner
+  requirement, and deletes only the exactly marked run root;
+- default cleanup is covered after partial preparation, bind planning, and a
+  later launch failure. `keep_on_failure` preserves the owned run only when
+  explicitly selected, and mismatched ownership refuses deletion;
+- focused Docker-free coverage includes nested mounts, same-mount and escaping
+  symlinks, traversal, deleted/unmapped paths, file and socket mounts,
+  read-only access, malformed host sources, state paths, modes, redaction, and
+  pre-existing workspace protection; and
+- a live dry run in the accepted v023 container approved six exact mounts,
+  staged four non-sudo launch inputs, planned project/Docker/X11 binds with all
+  host sources redacted, invoked no Docker mutation, and verified complete
+  ownership-marked cleanup;
+- the full dirty-tree Nox gate passed 215 fast tests, clean mypy over 78 source
+  files, source and local-PEX command smoke, execution of the Stage 1 public
+  interface through the local PEX, and all five packaging integrations. As
+  designed, the dirty-tree gate did not create a revision-bearing public PEX.
 
 ## Stage 2: Build v024 And Perform The Manual Dogfood Handoff
 
@@ -569,8 +602,9 @@ This milestone does not by itself:
 
 ## Next Task
 
-Execute Stage 1 as the next narrow implementation slice: extract the verified
-current-container mount mappings into a reusable host-daemon launch context,
-implement longest-prefix translation and a persistent-home-backed staging
-root, and close its failure-first path/mode/cleanup test matrix before any real
-successor launch.
+Begin Stage 2 with the minimum explicit recursive orchestrator skeleton and
+Nox entry point. It must compose Stage 0 preflight, the Stage 1 launch context,
+unique run ownership, sanitized dry-run inspection, and failure cleanup before
+performing the first real mutation. Once that skeleton and the full repository
+gate pass at a clean committed revision, build and verify the local v024 base
+and canonical environment from v023, then request the manual dogfood handoff.

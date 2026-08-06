@@ -15,9 +15,10 @@ Current milestone state: execution plan accepted on branch
 two-generation plan: v023 will build a local v024 bootstrap checkpoint, the
 user will manually hand dogfood over to v024, and v024 will run the full clean-
 clone E2E to build and launch the next successor. Stage 0's read-only recursive
-preflight and failure-first tests are implemented and validated in the
-milestone working tree. Stage 1 host-daemon path translation and safe staging
-is next; no clone, image build, or successor launch has occurred yet.
+preflight is committed at `895043a`. Stage 1's host-daemon path translation,
+sanitized bind planning, and ownership-marked safe staging are implemented and
+validated in the milestone working tree. The minimum recursive orchestrator
+skeleton is next; no clone, image build, or successor launch has occurred yet.
 
 Current status:
 
@@ -1528,13 +1529,28 @@ V1 gap-review checkpoint, 2026-08-06:
   validation passed 196 tests, mypy passed over 76 source files, PEX command
   smoke passed, and all four packaging integrations passed. The editable-source
   build-info lookup discovered during live preflight was repaired and covered.
+- Stage 1 adds a reusable internal host-daemon launch context that requires a
+  successful Stage 0 report, approves only named inspected mounts, performs
+  canonical longest-prefix translation, validates directories/files/sockets
+  and read/write modes, and produces redacted bind plans with unchanged
+  successor destinations. Its ownership-marked persistent-home staging writes
+  runtime plan, passwd/group, Xauthority, shadow, and sudo-policy inputs with
+  tested restrictive modes and cleans up after preparation, planning, or later
+  launch failure. A live v023 dry run approved six mounts, staged four non-sudo
+  inputs, planned project/Docker/X11 binds, exposed no host source, invoked no
+  Docker mutation, and removed the run root. The full dirty-tree Nox gate
+  passes 215 fast tests, clean mypy over 78 source files, source and local-PEX
+  command smoke, execution of the Stage 1 public interface through the local
+  PEX, and all five packaging integrations. No revision-bearing public PEX was
+  built from the dirty tree.
 
 Active next task:
 
-Implement Stage 1 of the Recursive Dogfood E2E plan: a reusable verified
-host-daemon path-translation context and persistent-home-backed staging with
-failure-first containment, access-mode, sensitive-file-mode, and cleanup tests.
-Do not launch a real successor until that Docker-free stage is closed.
+Add the minimum explicit recursive orchestrator skeleton and Nox entry point
+that compose Stage 0 preflight, Stage 1 context/staging, unique ownership,
+sanitized dry-run output, and failure cleanup. After it passes at a clean
+committed checkpoint, begin Stage 2's real local v024 build and verification;
+do not request the manual IDE handoff before that v024 environment validates.
 
 V2 candidate task:
 

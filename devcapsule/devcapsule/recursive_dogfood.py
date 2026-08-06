@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import grp
 import json
 import os
@@ -32,10 +32,16 @@ class PreflightError(ValueError):
 
 @dataclass(frozen=True)
 class Mount:
-    source: str
+    source: str = field(repr=False)
     destination: str
     kind: str
     writable: bool
+
+    def __repr__(self) -> str:
+        return (
+            "Mount(source='<redacted-host-path>', "
+            f"destination={self.destination!r}, kind={self.kind!r}, writable={self.writable!r})"
+        )
 
 
 @dataclass(frozen=True)
@@ -46,7 +52,7 @@ class ContainerInspection:
     source_revision: str | None
     network_mode: str
     mounts: tuple[Mount, ...]
-    upper_directory: str | None
+    upper_directory: str | None = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -61,6 +67,7 @@ class PreflightReport:
     findings: tuple[Finding, ...]
     facts: Mapping[str, str]
     mounts: tuple[Mount, ...]
+    container: ContainerInspection | None = None
 
     @property
     def ready(self) -> bool:
@@ -95,8 +102,12 @@ class _ReportBuilder:
     def add(self, status: str, check: str, summary: str) -> None:
         self.findings.append(Finding(status, check, summary))
 
-    def finish(self, mounts: tuple[Mount, ...] = ()) -> PreflightReport:
-        return PreflightReport(tuple(self.findings), dict(self.facts), mounts)
+    def finish(
+        self,
+        mounts: tuple[Mount, ...] = (),
+        container: ContainerInspection | None = None,
+    ) -> PreflightReport:
+        return PreflightReport(tuple(self.findings), dict(self.facts), mounts, container)
 
 
 def run_recursive_preflight(
@@ -143,7 +154,7 @@ def run_recursive_preflight(
         )
         _inspect_disk(report, Path(runtime_plan.home))
 
-    return report.finish(mounts)
+    return report.finish(mounts, container)
 
 
 def render_preflight(report: PreflightReport, *, show_host_paths: bool = False) -> str:
