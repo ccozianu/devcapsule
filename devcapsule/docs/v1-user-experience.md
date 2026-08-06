@@ -167,7 +167,7 @@ project identity alone.
 
 If that portable identity already has a default checkout registered at another
 canonical path, the developer assigns the new checkout a workstation-owned
-name once. The second-checkout acceptance test uses the provisional form:
+name once. The manually accepted second-checkout dogfood flow used:
 
 ```bash
 devcapsule project --path /path/to/second/checkout \
@@ -683,6 +683,11 @@ to explicit optional components rather than the ambient runtime. The build
 report and component inventory remain the authority for exact installed
 versions in a particular image.
 
+Gemini CLI is not a supported DevCapsule component. It is not installed,
+selected, configured, or supplied with state by active V1 workflows. A check
+that it is absent guards the agent-neutral inventory; it is not a supported
+feature test.
+
 The PEX contains both the host CLI and the generic in-container runtime. The
 base starts that runtime through:
 
@@ -909,15 +914,14 @@ resolution are V2 direction, not V1 implementation scope.
 Until those items are implemented and validated, current executable commands
 and workarounds remain documented in `devcapsule/README.md`.
 
-The workstation-specific executable acceptance procedure for this planned
-flow is `tests/manual/v1-second-checkout-dogfood.sh`. It clones DevCapsule at
-`~/work/provisional/costin3/myProjects/devcapsule`, gives that observed checkout
-its own local identity and configuration pair, exercises `set`, `bind`,
-`authorize`, `resolve`, and `run`, and verifies that the existing checkout's
-developer-owned record is not reused or modified. The test deliberately uses a
-new `debug-v019` checkpoint so configuration-driven runtime changes are tested
-through the generic in-image Python entrypoint; v018 remains only the known-good
-legacy comparison.
+The workstation-specific executable acceptance script was retired after the
+product owner manually accepted sustained work from the configured second
+checkout. Its portable intent is deferred to a later V1 multi-project E2E
+orchestrator that creates exact-revision checkouts and isolated XDG roots under
+a temporary directory, exercises `set`, `bind`, `authorize`, `resolve`, and
+`run`, inspects the live containers, and cleans only test-owned resources. The
+closure evidence and future task are maintained in
+`implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md`.
 
 ## Questions This Narrative Must Settle
 

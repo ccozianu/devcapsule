@@ -20,6 +20,48 @@ survive model changes, IDE restarts, and future sessions.
 7. Commit coherent units of work when asked, or at natural save points when the
    user wants the session state preserved.
 
+## Release, Milestone, Stage, Task, And Checkpoint Terminology
+
+Use these terms consistently so a saved checkpoint is not mistaken for a
+product release and a broad release does not become one unbounded task.
+
+- **Release:** an externally meaningful product version with a defined product
+  contract, artifacts, documentation, and acceptance evidence. Names such as
+  V1 and V2 identify releases, not milestones.
+- **Milestone:** a coherent, outcome-based checkpoint on the path to a release.
+  A milestone contains one or more tasks and has explicit closure criteria and
+  evidence. Name it for the outcome, such as `PyCharm Functional Closure`, not
+  merely for a date or arbitrary time interval.
+- **Stage:** a sequential subdivision inside a milestone or execution plan.
+  Stages make dependencies and ordering clear but do not create an external
+  product commitment by themselves.
+- **Task:** a bounded implementation, documentation, investigation, or
+  validation unit within a milestone.
+- **Slice:** the narrow unit selected for the current human/agent work cycle.
+- **Checkpoint:** a durable state snapshot or handoff. It may preserve partial
+  progress and does not imply that a task or milestone is complete.
+- **Release candidate:** an actual candidate set of versioned artifacts and
+  documentation subjected to release acceptance. Do not use it as another name
+  for an ordinary milestone.
+
+Requirements, decisions, and bugs are orthogonal records: requirements define
+what must be true, decisions explain durable choices, and bugs preserve defect
+evidence. A release selects requirements; milestones organize outcomes toward
+that release; tasks and slices execute the work.
+
+When planning a release:
+
+1. Record a dated, revision-scoped gap review when the remaining scope needs a
+   durable baseline.
+2. Group accepted gaps into a small sequence of outcome-based milestones.
+3. Define closure and evidence before activating a milestone.
+4. Keep `CURRENT-STATUS.md` focused on the active release, milestone, and next
+   task rather than copying every historical plan into its active backlog.
+5. When a milestone closes, update the handoff and gap review or successor plan
+   without claiming that the release is complete.
+6. Reserve release completion for the product-owner decision after the selected
+   artifacts, documentation, and release-level acceptance evidence exist.
+
 ## Turn-Level Choreography
 
 Use each meaningful work cycle as a small contract between the human and the

@@ -198,7 +198,7 @@ Build the JetBrains-free DevCapsule base:
 # From a source/editable installation, identify the PEX to embed.
 devcapsule images build \
   --type base \
-  --tag devcapsule-base:debug-v020 \
+  --tag devcapsule-base:debug-v023 \
   --pex dist/devcapsule.pex \
   --source-revision "$(git rev-parse HEAD)" \
   --network host
@@ -206,14 +206,14 @@ devcapsule images build \
 # When invoked from a PEX, that PEX is embedded by default.
 python3.12 dist/devcapsule.pex images build \
   --type base \
-  --tag devcapsule-base:debug-v020 \
+  --tag devcapsule-base:debug-v023 \
   --source-revision "$(git rev-parse HEAD)"
 
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
 python3.12 dist/devcapsule.pex images build \
   --type base \
   --recipe nvidia-cuda-devel \
-  --tag devcapsule-base:cuda-v020 \
+  --tag devcapsule-base:cuda-v023 \
   --source-revision "$(git rev-parse HEAD)"
 ```
 
@@ -295,35 +295,218 @@ mismatch reports that the selected PEX embeds `unknown`, rebuild
 `dist/devcapsule.pex` with the default `scripts/build-pex.sh`, inspect it with
 `dist/devcapsule.pex version --json`, and retry.
 
-Build the lock-selected local environment after creating a fresh checkout
-resolution:
+### Declared checkout configuration values
+
+Projects declare ordinary configurable values and their validation metadata in
+`.devcapsule/devcapsule.toml`. For example, this repository declares:
+
+```toml
+[configuration.values."runtime.memory-limit"]
+type = "memory-size"
+runtime-effect = "docker.memory-limit"
+description = "Hard memory limit applied to the checkout's project container."
+```
+
+The developer selects a value for one checkout with the generic command:
 
 ```bash
+devcapsule project config list
+devcapsule project config set runtime.memory-limit 8GiB
+devcapsule project config resolve
+```
+
+`project config list` initializes the selected checkout's workstation-owned
+directory, minimal checkout input, and unresolved generated-plan placeholder
+when they do not exist, then prints every declared value, component binding,
+recommended authorization, and the generated resolution's readiness. It shows
+the materialized checkout name and exact files. Repeated calls do not rewrite
+existing choices or a resolved plan. If the same portable project identity is
+already registered for another checkout, assign a distinct name first with
+`project checkout register NAME`; the list command never invents or inherits a
+checkout name.
+
+Value statuses distinguish configured, invalid, required-but-missing, and
+optional-but-unset values. Bindings show an explicit host directory, legacy
+adoption, conflict, or managed-default storage. Authorizations show authorized,
+stale, required-but-missing, or recommended-but-missing decisions. Resolution
+is unresolved, fresh, or stale. Missing choices are reported without making a
+valid readiness listing fail.
+
+To review and accept every current authorization recommendation interactively,
+use:
+
+```bash
+devcapsule project config authorize --all-recommended
+```
+
+The command prints each exact value, justification, and recommendation digest
+before reading one terminal key. Only a lowercase `y` authorizes the complete
+set and writes the checkout once; every other key cancels without writing.
+Non-interactive workflows must continue to authorize each exact name and value
+separately.
+
+`config set` accepts only keys declared by the project, validates the supplied
+value from its metadata, and writes the resulting ordinary value to the
+developer-owned checkout input reported by the command. It does not edit the
+project declaration or generated resolution. The supported V1 scalar metadata
+types are `string`, `integer`, `boolean`, and `memory-size`; runtime effects
+are a separate curated catalog rather than arbitrary Docker arguments.
+
+For `docker.memory-limit`, resolution converts the declared memory size to an
+exact byte count. `project run` supplies that value to Docker as the
+container's hard memory limit. Host access, credentials, networking, devices,
+and privilege remain outside ordinary values and require their dedicated
+binding or authorization contracts.
+
+Component persistence metadata declares the logical resources that may be
+bound to developer-owned storage. The initial provider accepts only an
+existing host directory:
+
+```bash
+devcapsule project config bind home --host-directory /path/to/home
+devcapsule project config bind pycharm/config --host-directory /path/to/config
+devcapsule project config bind pycharm/plugins --host-directory /path/to/plugins
+devcapsule project config bind pycharm/system --host-directory /path/to/system
+devcapsule project config bind pycharm/log --host-directory /path/to/log
+devcapsule project config bind pycharm/cache --host-directory /path/to/cache
+devcapsule project config bind codex/home --host-directory /path/to/codex-home
+devcapsule project config bind codex/openai-api-key \
+  --host-environment-variable OPENAI_API_KEY
+devcapsule project config resolve
+```
+
+The command is generic: it looks up the selected component's persistence
+metadata instead of hard-coding these names in its parser. It rejects an
+undeclared resource or missing directory, identifies the checkout file it
+wrote, and warns that the source becomes a read-write container mount. It also
+reports the resource's sensitivity and whether its component contract permits
+concurrent use. Resolution revalidates every directory before `project run`
+uses the bindings. The initial secret provider records only the declared host
+environment-variable name, never its value. Host-file, socket, and
+alternative-storage providers are not part of this initial contract.
+
+This repository's dogfood declaration explicitly requests the optional
+`codex-agent` capability. Its lock pins the Codex CLI artifact and JetBrains
+ACP integration metadata. Local environment materialization verifies and
+installs the CLI as `/usr/local/bin/codex`; no agent is added to the shared
+base. The component declares a namespaced `codex/home` state slot mounted at
+`/home/devcapsule/.codex`, and its Python component interface derives
+`CODEX_HOME` from that slot for the IDE process. Projects that do not select
+Codex receive none of these contributions.
+
+Authenticate naturally from a terminal inside the running capsule:
+
+```bash
+codex login
+codex login status
+```
+
+Codex falls back to file-backed authentication beneath `$CODEX_HOME` when no
+container keyring is available, so its login and configuration survive later
+launches. The component interface also declares `OPENAI_API_KEY` as an
+optional secret input. `project config list` shows that input and warns that
+environment delivery exposes it to every process in the capsule and through
+Docker inspection while the container runs. DevCapsule never imports it
+ambiently: the developer must explicitly bind the declared same-named host
+variable as shown above, and launch fails if it is unavailable. Interactive
+`codex login` remains the lower-exposure default because its file-backed result
+persists in `codex/home`. A resulting `auth.json` is a plaintext credential
+and must be protected like a password. OpenAI API-key use is billed under the
+developer's OpenAI Platform account and does not grant ChatGPT workspace or
+cloud-task entitlements.
+
+Normal `project run` now realizes the lock-selected local environment
+automatically after loading a fresh checkout resolution. To prebuild or inspect
+that same environment explicitly without launching a container, use:
+
+```bash
+devcapsule project --path /path/to/checkout config resolve
+devcapsule project --path /path/to/checkout config authorize base-image \
+  docker.io/mycodespaceai/devcapsule-base@sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1
 devcapsule project --path /path/to/checkout config resolve
 devcapsule images build \
   --type environment \
   --project /path/to/checkout \
-  --alias devcapsule-local-pycharm:debug-v019
+  --alias devcapsule-local-pycharm:debug-v023
 ```
 
 The platform lock must select a DevCapsule base plus a
 `local-materialization` PyCharm component with an exact version, variant,
 download URL, SHA-256, and supported materialization recipe. A locked base
-must use a digest-pinned reference or record its expected immutable local image
-ID. `--base IMAGE` is an explicit development override; it never rewrites the
-lock or resolution.
+must use an explicit global registry and digest-pinned reference. Local image
+IDs, daemon-local aliases, and mutable tags are rejected in committed locks.
+
+The committed recommendation is not authorization. V1 supports four exact,
+developer-owned decisions:
+
+```bash
+devcapsule project config authorize base-image \
+  docker.io/ORGANIZATION/devcapsule-base@sha256:DIGEST
+devcapsule project config authorize docker-daemon host-socket
+devcapsule project config authorize network host
+devcapsule project config authorize development-sudo true
+```
+
+`config authorize NAME VALUE` accepts only the lock-selected base and curated
+host recommendations declared by the project. It writes the exact value and a
+digest of the relevant recommendation to this checkout's input file. A changed
+base lock or host recommendation is stale and requires deliberate review and
+reauthorization; a committed project change never grants access by itself.
+
+`base-image` authorizes one immutable published digest after the developer
+reviews its available checksum and scan evidence. It never trusts a mutable
+tag, repository, organization, publisher, or future digest. `docker-daemon
+host-socket` exposes the host Docker control socket, effectively granting the
+container control over the host daemon. `network host` shares the host network
+namespace instead of the default Docker bridge. `development-sudo true`
+authorizes the launcher to let the capsule's development user elevate inside
+the container; it is not host-root authorization. The following `config
+resolve` incorporates the recorded decisions into the inspectable generated
+resolution, and `project run` applies the Docker and network effects.
+Development-sudo authorization generates a temporary group-scoped `NOPASSWD`
+policy, makes that one file root-owned through a network-disabled,
+read-only, `CHOWN`-only helper invocation of the selected local image, and
+mounts it read-only under `/etc/sudoers.d/`. The policy and its launcher-owned
+temporary directory are removed after exit or launch failure. The enabled
+banner is printed only after policy preparation and the complete Docker plan
+succeed. Without authorization, normal project launch retains no Docker
+socket, bridge networking, no policy or sudo group, a read-only root, dropped
+capabilities, and `no-new-privileges`.
+
+For developer-built base testing, `base-image` also accepts an already-local
+DevCapsule metadata-v1 base name:
+
+```bash
+devcapsule project config authorize base-image devcapsule-local-base:v023
+devcapsule project config resolve
+devcapsule project run
+```
+
+This is a developer-owned override, not a new project recommendation. At
+authorization time DevCapsule inspects the local image, validates its managed
+base metadata and platform, and records both the supplied name and immutable
+Docker image ID against the current lock. Resolve and run inspect it again;
+removing or retagging the name fails instead of pulling or silently running a
+different image. Reauthorize after deliberately rebuilding the tag.
+`config list` reports this state as `authorized-local`, while
+`authorize --all-recommended` deliberately switches back to the lock's
+published recommendation. A different published registry digest remains
+rejected unless the project lock recommends it.
+
+`--base IMAGE` is an explicit run-once development override and needs no
+persisted authorization. It never rewrites the lock or resolution, and the
+selected local image must still pass DevCapsule metadata, platform, and
+immutable image-ID inspection.
 
 This repository's current Linux dogfood lock uses published digest
-`docker.io/mycodespaceai/devcapsule-base@sha256:637f646a9de962cb399025c2bf3817b08e242d2a4416b49a202cf06763852feb`.
-The associated `ubuntu-24.04-v019` tag is only a dogfood discovery tag;
+`docker.io/mycodespaceai/devcapsule-base@sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1`.
+The associated `ubuntu-24.04-v023` tag is only a dogfood discovery tag;
 official V1 artifacts will use semantic release versions and committed locks
 will continue to use immutable digests.
 
-That immutable v019 image predates agent-neutral base recipe version 2 and
-still contains Gemini CLI. It remains usable only as the already-validated
-dogfood bridge. A newly built and published recipe-v2 base must replace the
-committed digest before the dogfood lock and V1 release candidate satisfy the
-current no-ambient-agent contract.
+The immutable v023 image uses agent-neutral base recipe version 2, embeds the
+DevCapsule PEX, and exposes source revision `a33988a...` at the canonical
+`ccozianu/devcapsule` repository. It contains no ambient agent CLI.
 
 The command obtains the selected base when it is not local, verifies that it
 is a managed metadata-v1 base for the locked platform, and downloads the
@@ -347,9 +530,32 @@ XDG roots, and owns its exceptional config, plugins, system, log, and cache
 slots with their lifecycle and storage semantics. Components that keep state
 entirely under standard `HOME`/XDG locations declare no custom slots; shared
 runtime planning contains no agent- or IDE-named state field.
-Automatic materialization and external runtime-plan delivery from `project
-run` remain the next integration slice; use `project run-image` only for
-deliberate interim inspection of a locally built checkpoint.
+`images build --type environment` and `project run` share the same realization
+service and strict reuse checks. Normal run obtains the locked base only when it
+is missing locally, then reuses or materializes the canonical environment
+without requiring a debug alias or a separate image-build command.
+
+For V1 container compatibility, the PyCharm component intentionally sets
+`ide.browser.jcef.sandbox.enable=false` before IDE startup. This keeps Markdown
+and other JCEF previews working without `SYS_ADMIN`, unconfined seccomp or
+AppArmor profiles, privileged mode, or host policy installation. The tradeoff
+is explicit: embedded content runs with the IDE user's access to project
+source, persistent state, networking, and any separately authorized Docker
+socket. Treat the embedded browser as a project preview surface, not as a
+general-purpose browser for untrusted sites. Docker's outer isolation policy
+is unchanged.
+
+For a formation-based run, DevCapsule generates a version-1 runtime plan from
+the same component template used in the image's formation identity. The JSON
+contains only in-container project/home/state destinations, the runtime
+UID/GID/username, and component adapter configuration—never host source/state
+paths, checkout files, credentials, or authorization evidence. The launcher
+writes it to a temporary mode-`0644` file, mounts it read-only at
+`/etc/devcapsule/runtime-plan.json`, and removes it with the generated identity
+files after exit or launch preparation failure. No command follows the image
+name in `docker run`, so Docker retains the canonical image's generic PEX
+entrypoint and runtime-plan CMD. Host-level launch validation and the remaining
+explicit runtime effects continue in Stage 3 of the active dogfood plan.
 
 ### Capability-first dogfood path
 

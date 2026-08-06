@@ -20,6 +20,7 @@ def run(plan: rtcontract.RuntimePlan) -> None:
     filesystem = plan_filesystem(plan)
     prepare_filesystem(filesystem, plan.identity)
     os.environ.update(filesystem.environment)
+    os.environ.update(plan.component_environment())
     os.environ.update(graphics_environment(os.environ))
     if plan.component.adapter != "jetbrains":
         raise RuntimePlanError(f"unsupported component adapter: {plan.component.adapter}")

@@ -86,26 +86,22 @@ remain manual dogfood checks. Automated E2E tests must not use host networking,
 privileged mode, Docker socket mounts, credentials, or unrelated host paths.
 Every Docker resource must have a unique name/label and deterministic cleanup.
 
-### Manual user-journey tests
+### Manual user-journey evidence
 
-`tests/manual/v1-second-checkout-dogfood.sh` is the executable acceptance test
-for the planned D-0004 clean-clone configuration journey on the current
-dogfood laptop. It intentionally targets V1 commands that are not implemented
-yet. It clones the repository at a second host path, registers a distinct
-checkout identity, records ordinary values, state bindings, and host
-authorizations, resolves the complete plan, and launches PyCharm twice. It
-requires the local `devcapsule-local-pycharm:debug-v019` checkpoint alias and
-verifies that the image uses the embedded DevCapsule PEX, generic component
-template, externally supplied runtime-plan boundary, and generic Python
-entrypoint rather than v018's PyCharm-specific Bash entrypoint. It also verifies the V1 managed-image marker, metadata version,
-materialized kind, formation/base/component identities, and canonical-name
-label used by `devcapsule images list`.
+The former laptop-specific
+`tests/manual/v1-second-checkout-dogfood.sh` acceptance script was retired on
+2026-08-05 after the product owner manually accepted sustained use from the
+second checkout. Its fixed personal paths, credential-bearing shared state,
+GUI interaction, and broad host authorizations made further maintenance poor
+value relative to the confidence gained.
 
-The test is deliberately excluded from Nox and CI. It shares explicitly chosen
-credential-bearing state, opens a GUI, enables host Docker, host networking,
-and development sudo, and therefore requires an informed human running it from
-the intended workstation. It is both the acceptance procedure and a concrete
-debugging target for the next implementation slice.
+The accepted evidence and the later V1 replacement task are recorded in
+`implementation-notes/2026-08-03-next-functional-dogfood-stage-plan.md`. The
+replacement will be an explicitly invoked, disposable multi-project E2E that
+uses isolated temporary checkouts and XDG roots, exercises normal
+configuration and materialization paths, inspects running containers, and
+cleans only test-owned resources. GUI usability, third-party license prompts,
+and real credential login remain manual checks.
 
 ## Adding tests
 

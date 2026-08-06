@@ -22,16 +22,12 @@ from devcapsule.base_image import (
 )
 from devcapsule.commands.base import BaseCommand
 from devcapsule.compat import CliError
-from devcapsule.image_build import BuildxImageBuilder
+from devcapsule.environment_realization import optional_local_image, realize_environment
 from devcapsule.image_metadata import LocalImageRecord, inspect_local_image, list_local_images
-from devcapsule.materialization import (
-    ImageDetails,
-    cache_root,
-    ensure_materialized_pycharm,
-    parse_locked_environment,
-    validate_base_image,
+from devcapsule.materialization import ImageDetails
+from devcapsule.project_configuration import (
+    fresh_resolved_project,
 )
-from devcapsule.project_configuration import fresh_resolved_project
 
 
 class ImagesCommand(BaseCommand):
@@ -211,54 +207,25 @@ COMMAND = ImagesCommand
 
 def _build_environment(*, project: Path | None, base_override: str | None, alias: str | None) -> int:
     selected = fresh_resolved_project(project or Path("."))
-    locked = parse_locked_environment(selected.lock)
-    runtime = selected.resolution.get("runtime", {})
-    if runtime.get("component") != locked.component_id:
-        raise CliError(
-            f"Fresh resolution selects component {runtime.get('component')!r}, "
-            f"but the lock formation selects {locked.component_id!r}."
-        )
-
-    base_reference = base_override or locked.base_reference
-    expected_base_identity = None if base_override is not None else locked.base_identity
-    if base_override is None and expected_base_identity is None and "@sha256:" not in base_reference:
-        raise CliError(
-            "The lock base is not immutable: add base.identity or a digest-pinned base.reference, "
-            "or use --base explicitly for a local development override."
-        )
-    base = _ensure_local_image(base_reference)
-    validate_base_image(base, platform=locked.platform, expected_identity=expected_base_identity)
-
-    root = cache_root()
-    builder = BuildxImageBuilder(temporary_root=root / "build-contexts")
-    canonical, created = ensure_materialized_pycharm(
-        # BuildKit resolves the selected local/registry spelling in FROM; the
-        # inspected immutable ID remains the descriptor and reuse authority.
-        base_reference=base_reference,
-        base_identity=base.identity,
-        platform=locked.platform,
-        artifact=locked.artifact,
-        cache_root=root,
-        inspect_image=_optional_local_image,
-        build=lambda spec: builder.build(spec, network="none"),
-        recipe_id=locked.recipe_id,
-        recipe_version=locked.recipe_version,
-    )
-    canonical_details = _required_local_image(canonical)
+    realized = realize_environment(selected, base_override=base_override)
+    locked = realized.locked
+    canonical_details = realized.image
     if alias is not None:
         _add_alias(canonical_details, alias)
 
     labels = canonical_details.labels
-    action = "Built" if created else "Reused"
-    click.echo(f"{action} DevCapsule environment image: {canonical}")
+    action = "Built" if realized.created else "Reused"
+    click.echo(f"{action} DevCapsule environment image: {canonical_details.reference}")
     click.echo(f"Image ID: {canonical_details.identity}")
-    click.echo(f"Base reference: {base_reference}")
-    click.echo(f"Base identity: {base.identity}")
+    click.echo(f"Base reference: {realized.base_reference}")
+    click.echo(f"Base identity: {realized.base.identity}")
     click.echo(f"Component: {locked.component_id}@{locked.artifact.version} ({locked.artifact.variant})")
     click.echo(f"Component SHA-256: {locked.artifact.sha256.lower()}")
     click.echo(f"Formation identity: {labels['devcapsule.materialization.identity']}")
-    click.echo(f"Artifact cache: {root / 'artifacts' / 'sha256' / locked.artifact.sha256.lower()}")
-    if base_override is not None:
+    click.echo(
+        f"Artifact cache: {realized.cache / 'artifacts' / 'sha256' / locked.artifact.sha256.lower()}"
+    )
+    if realized.explicit_base_override:
         click.echo("Base selection: explicit developer override", err=True)
     if alias is not None:
         click.echo(f"Alias: {alias}")
@@ -266,41 +233,8 @@ def _build_environment(*, project: Path | None, base_override: str | None, alias
     return 0
 
 
-def _ensure_local_image(reference: str) -> ImageDetails:
-    try:
-        if not docker.image.exists(reference):
-            docker.image.pull(reference)
-    except DockerException as exc:
-        raise CliError(f"Cannot obtain Docker image {reference!r}: {exc}") from exc
-    return _required_local_image(reference)
-
-
-def _required_local_image(reference: str) -> ImageDetails:
-    image = inspect_local_image(reference)
-    return _image_details(reference, image)
-
-
-def _optional_local_image(reference: str) -> ImageDetails | None:
-    try:
-        if not docker.image.exists(reference):
-            return None
-    except DockerException as exc:
-        raise CliError(f"Cannot query local Docker image {reference!r}: {exc}") from exc
-    return _required_local_image(reference)
-
-
-def _image_details(reference: str, image: Any) -> ImageDetails:
-    return ImageDetails(
-        reference=reference,
-        identity=str(image.id),
-        labels=dict(image.config.labels or {}),
-        operating_system=str(image.os),
-        architecture=str(image.architecture),
-    )
-
-
 def _add_alias(canonical: ImageDetails, alias: str) -> None:
-    existing = _optional_local_image(alias)
+    existing = optional_local_image(alias)
     if existing is not None:
         if existing.identity != canonical.identity:
             raise CliError(

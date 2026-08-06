@@ -9,6 +9,7 @@ import tarfile
 import pytest
 
 from devcapsule.compat import CliError
+from devcapsule.components import LockedArtifactDeclaration
 from devcapsule.materialization import (
     ArtifactSpec,
     ImageDetails,
@@ -30,6 +31,16 @@ def fixture_archive(path: Path) -> bytes:
     content = b"#!/bin/sh\n"
     with tarfile.open(path, "w:gz") as archive:
         info = tarfile.TarInfo("pycharm-test/bin/pycharm.sh")
+        info.mode = 0o755
+        info.size = len(content)
+        archive.addfile(info, io.BytesIO(content))
+    return path.read_bytes()
+
+
+def codex_archive(path: Path, member: str) -> bytes:
+    content = b"codex-binary-fixture"
+    with tarfile.open(path, "w:gz") as archive:
+        info = tarfile.TarInfo(member)
         info.mode = 0o755
         info.size = len(content)
         archive.addfile(info, io.BytesIO(content))
@@ -179,6 +190,48 @@ def test_materialization_builds_from_verified_archive_and_rechecks_result(tmp_pa
     assert created is True
     assert image in built
     assert (tmp_path / "cache" / "locks" / "materializations").is_dir()
+
+
+def test_materialization_installs_locked_codex_executable(tmp_path: Path) -> None:
+    pycharm_source = tmp_path / "pycharm.tar.gz"
+    pycharm_payload = fixture_archive(pycharm_source)
+    pycharm_spec = artifact(pycharm_source, hashlib.sha256(pycharm_payload).hexdigest())
+    member = "package/vendor/x86_64-unknown-linux-musl/bin/codex"
+    codex_source = tmp_path / "codex.tgz"
+    codex_payload = codex_archive(codex_source, member)
+    codex = LockedArtifactDeclaration(
+        component_id="codex",
+        version="0.145.0",
+        url=codex_source.as_uri(),
+        sha256=hashlib.sha256(codex_payload).hexdigest(),
+        archive_member=member,
+        destination="/usr/local/bin/codex",
+    )
+    built: dict[str, ImageDetails] = {}
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        codex_copy = next(copy for copy in plan.files if copy.destination == "/usr/local/bin/codex")
+        assert codex_copy.source.read_bytes() == b"codex-binary-fixture"
+        assert codex_copy.permissions == 0o755
+        labels = dict(plan.labels)
+        built[plan.image] = image_details(plan.image, labels)
+
+    image, created = ensure_materialized_pycharm(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=pycharm_spec,
+        ancillary_artifacts=(codex,),
+        cache_root=tmp_path / "cache",
+        inspect_image=lambda reference: built.get(reference),
+        build=build,
+    )
+
+    assert created is True
+    descriptor = json.loads(built[image].labels["devcapsule.materialization.descriptor"])
+    assert descriptor["components"][1]["id"] == "codex"
+    assert descriptor["components"][1]["artifact"]["sha256"] == codex.sha256
 
 
 def test_materialized_image_has_complete_formation_labels(tmp_path: Path) -> None:

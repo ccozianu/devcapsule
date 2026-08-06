@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
   "click>=8.1,<9",
   "python-on-whales>=0.81.0,<0.82",
+  "readchar>=4.2,<5",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +39,7 @@ dev = [
 
 [project.scripts]
 devcapsule = "devcapsule.cli:main"
-devcapsule-runtime = "devcapsule_runtime.entrypoint:main"
+devcapsule-runtime = "devcapsule.container_runtime.entrypoint:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -77,7 +78,7 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["devcapsule", "devcapsule_runtime"]
+source = ["devcapsule"]
 
 [tool.coverage.report]
 show_missing = true
@@ -85,7 +86,7 @@ skip_covered = true
 
 [tool.mypy]
 python_version = "3.12"
-files = ["devcapsule", "devcapsule_runtime", "tests", "noxfile.py"]
+files = ["devcapsule", "tests", "noxfile.py"]
 warn_unused_configs = true
 show_error_codes = true
 pretty = true
