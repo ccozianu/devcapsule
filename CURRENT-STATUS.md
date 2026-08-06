@@ -9,9 +9,15 @@ is complete; `devcapsule` Python is the active implementation.
 Active milestone: `Recursive Dogfood E2E — Build And Launch A Successor From
 Inside DevCapsule`.
 
-Current milestone state: execution plan proposed on branch
+Current milestone state: execution plan accepted on branch
 `milestone/recursive-dogfood-e2e` from clean `main` revision
-`237d4939f8d1dcfcfbe2061209f16f8692542c08`; implementation has not started.
+`237d4939f8d1dcfcfbe2061209f16f8692542c08`. The product owner accepted a
+two-generation plan: v023 will build a local v024 bootstrap checkpoint, the
+user will manually hand dogfood over to v024, and v024 will run the full clean-
+clone E2E to build and launch the next successor. Stage 0's read-only recursive
+preflight and failure-first tests are implemented and validated in the
+milestone working tree. Stage 1 host-daemon path translation and safe staging
+is next; no clone, image build, or successor launch has occurred yet.
 
 Current status:
 
@@ -1509,15 +1515,26 @@ V1 gap-review checkpoint, 2026-08-06:
 - The active milestone plan is
   `devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md`.
   It preserves v023 as the published bootstrap base, uses exact local-base
-  authorization for the successor, makes recursive host-path translation and
-  cleanup fail closed, and permits only a final manual IDE usability/handoff
-  step.
+  authorization for both the local v024 checkpoint and final successor, makes
+  recursive host-path translation and cleanup fail closed, and records the
+  manual v023-to-v024 handoff plus the final manual IDE usability check.
+- Stage 0 introduces `devcapsule recursive-e2e preflight` with redacted human
+  and JSON output, exact daemon-side container inspection, mount/access-mode
+  checks, persistent-home workspace containment, Docker client/server and
+  display readiness checks, and an explicit warned host-path debug view. The
+  launcher now supplies its generated container name to v024 for deterministic
+  self-inspection; accepted v023 uses a read-only overlay identity fallback.
+  Source and local-PEX live runs both returned `READY` without mutation. Fast
+  validation passed 196 tests, mypy passed over 76 source files, PEX command
+  smoke passed, and all four packaging integrations passed. The editable-source
+  build-info lookup discovered during live preflight was repaired and covered.
 
 Active next task:
 
-Review the Recursive Dogfood E2E execution plan. Once accepted, implement its
-Stage 0 recursive preflight and failure-first tests without creating a clone,
-image, or container in that first slice.
+Implement Stage 1 of the Recursive Dogfood E2E plan: a reusable verified
+host-daemon path-translation context and persistent-home-backed staging with
+failure-first containment, access-mode, sensitive-file-mode, and cleanup tests.
+Do not launch a real successor until that Docker-free stage is closed.
 
 V2 candidate task:
 

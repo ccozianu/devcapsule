@@ -30,6 +30,7 @@ def test_top_level_help_returns_success(capsys) -> None:
     assert "version" in output
     assert "images" in output
     assert "project" in output
+    assert "recursive-e2e" in output
 
 
 def test_runtime_command_forwards_arguments_to_container_entrypoint() -> None:

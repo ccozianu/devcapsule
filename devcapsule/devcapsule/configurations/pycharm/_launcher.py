@@ -450,6 +450,8 @@ def build_docker_args(
         "--env",
         f"PROJECT_PATH={config.project_mount}",
         "--env",
+        f"DEVCAPSULE_CONTAINER_NAME={config.name}",
+        "--env",
         "HOME=/home/devcapsule",
         "--env",
         "XDG_CONFIG_HOME=/home/devcapsule/.config",

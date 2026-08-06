@@ -220,6 +220,7 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
     assert not sudoers_file.exists()
     assert not sudoers_directory.exists()
     assert "DOCKER_HOST=unix:///run/host-docker.sock" in args
+    assert f"DEVCAPSULE_CONTAINER_NAME={config.name}" in args
     assert f"type=bind,src={docker_socket.resolve()},dst=/run/host-docker.sock" in args
     for source, destination in (
         (project.resolve(), "/workspace/project"),

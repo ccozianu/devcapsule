@@ -1,6 +1,6 @@
 # Milestone Plan: Recursive Dogfood E2E — Build And Launch A Successor From Inside DevCapsule
 
-Status: active milestone; execution plan proposed for product-owner review
+Status: active milestone; execution plan accepted and Stage 0 implemented
 
 Release target: V1
 
@@ -24,8 +24,9 @@ Gap-review sources: engineering gaps E1 through E6 in
 
 ## Milestone Outcome
 
-An agent working inside a running, authorized DevCapsule dogfood container can
-execute one explicitly invoked end-to-end scenario that:
+After one bootstrap handoff from v023 to an intermediate v024 dogfood
+checkpoint, an agent working inside the updated, authorized DevCapsule
+container can execute one explicitly invoked end-to-end scenario that:
 
 1. creates a clean local clone at an exact committed revision without relying
    on the current checkout's virtual environment;
@@ -44,10 +45,11 @@ execute one explicitly invoked end-to-end scenario that:
    lifecycle acceptance criteria; and
 10. cleans only resources owned by that E2E run.
 
-The user may perform one final manual GUI action: confirm that the successor
-IDE is usable and, when ready, close the previous IDE to complete the handoff.
-The agent must be able to perform every other step from the running dogfood
-container.
+The user may perform two narrow manual actions: close/reopen the IDE to hand
+dogfood from v023 to the local v024 checkpoint, then confirm the final successor
+IDE and close the previous IDE when ready. The agent must perform every build,
+configuration, launch, inspection, and cleanup operation from a running
+dogfood container.
 
 ## Why This Milestone Is Next
 
@@ -87,12 +89,29 @@ The accepted dogfood runtime already provides:
 - X11 plus a working PyCharm/Codex process; and
 - an external read-only container runtime plan.
 
-This v023 environment is the trusted bootstrap executor. The successor built
-by the milestone must use the later exact committed milestone revision and its
-new PEX/base; merely starting another v023 container does not satisfy closure.
-The committed platform lock remains on the published v023 digest until a later
-publication decision. The E2E selects its new local base through the existing
-developer-owned exact-local-image authorization path.
+This v023 environment is the trusted bootstrap executor for the initial
+implementation slices only. It may run a new source-built PEX from the mounted
+checkout, but that alone is not recursive-dogfood acceptance because the
+running image still embeds the older v023 PEX.
+
+After recursive preflight, host-daemon translation/staging, and an initial
+orchestrator skeleton exist, v023 builds a local v024 base carrying their exact
+committed revision. The user then manually relaunches dogfood through the
+v024-based canonical environment. Full acceptance runs from inside v024 and
+builds the next uniquely identified successor base—expected to be v025 or an
+equivalent revision-derived E2E identity—from a clean clone. This establishes
+a two-generation proof:
+
+```text
+v023 + mounted milestone source -> bootstrap v024
+v024 with embedded recursive capability -> clean clone -> next base -> successor
+```
+
+The v024 checkpoint is local, developer-authorized, and internal to the
+milestone. It is not a release candidate, need not be published, and must not
+replace the committed v023 lock. Both v024 and the final E2E successor use the
+existing developer-owned exact-local-image authorization path until a later
+publication decision.
 
 ## Clarification: Clean Clone Versus Existing Checkout
 
@@ -199,7 +218,7 @@ sanitized inspection/cleanup command; it never changes the ownership boundary.
 
 ## Stage 0: Prove Recursive Preflight And Threat Boundaries
 
-Status: pending
+Status: complete on the milestone working tree as of 2026-08-06
 
 Implement a read-only preflight that establishes whether recursive execution
 is safe and possible before cloning, building, or launching anything.
@@ -232,6 +251,25 @@ Done means:
   redaction; and
 - the source/local-PEX command surfaces expose the same behavior if a public
   inspection command is introduced.
+
+Implementation and evidence:
+
+- `devcapsule recursive-e2e preflight` provides human-readable and stable JSON
+  reports, returning nonzero when any prerequisite is unsafe or missing;
+- ordinary output redacts all host mount sources and the Xauthority container
+  path, while `--show-host-paths` requires an explicit disclosure warning;
+- v024 launch plans carry the generated non-secret container name for exact
+  daemon inspection, with a read-only overlay identity fallback allowing the
+  accepted v023 bootstrap container to be inspected before that metadata
+  exists;
+- Git discovery disables optional locks, and preflight performs no clone,
+  build, launch, workspace creation, or Docker mutation;
+- failure-first tests cover malformed identity/name, daemon mismatch, missing
+  socket selection/socket, ambiguous/read-only mounts, symlink and traversal
+  escape, missing display, redaction, and CLI result status; and
+- the accepted v023 environment returned `READY` from both source and local
+  PEX surfaces with host paths redacted. The only warnings were the expected
+  dirty working tree and source-vs-embedded-v023 bootstrap distinction.
 
 ## Stage 1: Add Verified Host-Daemon Path Translation And Staging
 
@@ -266,7 +304,42 @@ Done means:
   correct successor-container destinations; and
 - no real container is required for the fast-test closure of this stage.
 
-## Stage 2: Automate Clean Local Clone And Contributor Bootstrap
+## Stage 2: Build v024 And Perform The Manual Dogfood Handoff
+
+Status: pending
+
+Once Stages 0 and 1 plus the minimum recursive orchestrator skeleton pass their
+repository gates, build a revision-bearing PEX and local managed v024 base from
+the clean committed milestone checkpoint while still running v023.
+
+The v024 checkpoint must:
+
+- embed the exact committed checkpoint revision and matching PEX;
+- contain the recursive preflight, verified host-daemon path translation,
+  host-backed staging, and enough orchestration entry-point behavior to resume
+  the milestone from inside v024;
+- pass managed-image metadata, inventory, source/PEX agreement, generic OCI
+  process, and negative ambient-agent checks;
+- receive a developer-owned exact-local-base authorization without changing
+  the committed v023 lock; and
+- materialize under its canonical environment identity rather than depend on a
+  mutable debug alias.
+
+The user then closes the v023 IDE and launches or confirms the v024 canonical
+environment. The resumed agent verifies that the running container and embedded
+PEX carry the v024 checkpoint revision before proceeding. The handoff and exact
+local image identities are recorded in `CURRENT-STATUS.md` without publishing
+v024.
+
+Done means:
+
+- repository gates pass at the clean v024 checkpoint revision;
+- the v024 base and materialized environment strictly validate;
+- the user confirms the v024 IDE/Codex dogfood environment is usable;
+- the resumed agent proves it is executing inside that exact environment; and
+- no full recursive acceptance result is claimed yet.
+
+## Stage 3: Automate Clean Local Clone And Contributor Bootstrap
 
 Status: pending
 
@@ -300,7 +373,7 @@ Done means:
 - corrupt/incomplete bootstrap state produces repair guidance; and
 - the built PEX reports the exact clean clone revision.
 
-## Stage 3: Build And Verify The Successor Base From Inside Dogfood
+## Stage 4: Build And Verify The Successor Base From Inside Dogfood
 
 Status: pending
 
@@ -327,7 +400,7 @@ Done means the verified image ID is recorded in the run manifest and can be
 authorized as an exact managed local base. Merely creating a mutable tag is not
 sufficient evidence.
 
-## Stage 4: Configure, Resolve, And Materialize The Clean Clone
+## Stage 5: Configure, Resolve, And Materialize The Clean Clone
 
 Status: pending
 
@@ -360,7 +433,7 @@ Done means:
 - a second realization strictly reuses the matching image; and
 - no personal checkout record, state, credential, or unrelated image changes.
 
-## Stage 5: Launch And Inspect A Detached Successor
+## Stage 6: Launch And Inspect A Detached Successor
 
 Status: pending
 
@@ -396,7 +469,7 @@ Automated inspection must confirm:
 Done means the agent can launch and inspect the successor without a host-terminal
 command and without stopping or blocking the current dogfood container.
 
-## Stage 6: Prove Persistence, Failure Paths, And Deterministic Cleanup
+## Stage 7: Prove Persistence, Failure Paths, And Deterministic Cleanup
 
 Status: pending
 
@@ -418,17 +491,19 @@ Done means repeated successful runs leave no unrequested test container,
 checkout, XDG tree, transient secret, or image alias, and failure injection
 cannot select unrelated resources for cleanup.
 
-## Stage 7: Full Recursive Dogfood Acceptance
+## Stage 8: Full Recursive Dogfood Acceptance
 
 Status: pending
 
-From the accepted running dogfood container, the agent executes the documented
-single entry point against a clean committed milestone revision.
+From the accepted running v024 dogfood container, the agent executes the
+documented single entry point against a later clean committed milestone
+revision.
 
 Repository and automated evidence:
 
 - fast tests and the ordinary full Nox build gate pass;
-- the explicit recursive E2E completes all Stages 0 through 6;
+- the explicit recursive E2E completes all post-handoff Stages 3 through 7,
+  while retained evidence confirms the Stage 0 through 2 bootstrap lineage;
 - the new PEX and base agree on exact source revision and digest;
 - the successor uses the new base and canonical materialized image;
 - positive and safe negative authorization behavior passes;
@@ -453,6 +528,11 @@ The milestone is complete only when all of the following are true:
 
 - one explicit command initiated by the agent inside dogfood orchestrates the
   clean-clone-to-successor scenario;
+- v023 first builds a validated local v024 checkpoint and the user manually
+  hands dogfood over to it without changing the committed v023 lock;
+- the full recursive run is initiated from a container and embedded PEX carrying
+  the exact v024 checkpoint revision rather than borrowing newer code only from
+  the mounted checkout;
 - the clean clone bootstraps independently of the existing checkout's `.venv`;
 - the full gate creates a revision-bearing PEX;
 - that PEX builds a strictly verified managed base through host Docker;
@@ -481,6 +561,7 @@ This milestone does not by itself:
 - update the committed v023 dogfood lock to a mutable local image;
 - introduce arbitrary host filesystem orchestration;
 - automate pixel-level GUI interaction;
+- eliminate the one-time v023-to-v024 manual dogfood handoff;
 - share personal Git, registry, PyCharm, or Codex credentials by default;
 - stop the current dogfood container automatically;
 - support Gemini CLI; or
@@ -488,7 +569,8 @@ This milestone does not by itself:
 
 ## Next Task
 
-Review this plan, then execute Stage 0 as the first narrow implementation slice:
-define the recursive preflight result model, capture the accepted dogfood
-environment's read-only evidence, and add failure-first tests before introducing
-any clone, image, or container mutation.
+Execute Stage 1 as the next narrow implementation slice: extract the verified
+current-container mount mappings into a reusable host-daemon launch context,
+implement longest-prefix translation and a persistent-home-backed staging
+root, and close its failure-first path/mode/cleanup test matrix before any real
+successor launch.

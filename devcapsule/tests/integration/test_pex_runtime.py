@@ -24,6 +24,20 @@ def test_built_pex_dispatches_runtime_help(built_pex: Path) -> None:
 
 
 @pytest.mark.integration
+def test_built_pex_exposes_recursive_preflight_help(built_pex: Path) -> None:
+    completed = subprocess.run(
+        [str(built_pex), "recursive-e2e", "preflight", "--help"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "read-only" not in completed.stderr.lower()
+    assert "--show-host-paths" in completed.stdout
+
+
+@pytest.mark.integration
 def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> None:
     completed = subprocess.run(
         [str(built_pex), "version", "--json"],
