@@ -658,6 +658,38 @@ are true:
 
 Review the current gaps to V1, and decide on a project plan to take us to V1.
 
+## V1 IDE Configuration Sequencing And Starter Catalog
+
+The product owner has clarified that repairing the VSCodium proof point
+represented by `codium_with_claude` is a must-have V1 outcome. It is not,
+however, the next abstraction slice. The v0 proof point deliberately took
+shortcuts to reach a working second IDE, and its configuration-specific
+launcher and currently filed bugs must not become the template for the V1
+framework merely because they already exist.
+
+V1 work should first settle the end-user configuration experience and the
+reusable component, configuration, materialization, state, authorization, and
+runtime abstractions using the better-understood PyCharm path. Once those
+contracts are coherent, the project must circle back and implement at least
+one VSCodium-based configuration through them, including repairing or
+replacing the current `codium_with_claude` proof point. Only then should the
+old Codium bugs be reproduced against the resulting V1 path: behavior that
+still fails is a real V1 defect to fix, while bugs tied only to the retired v0
+launcher can be closed as obsolete with evidence. In particular, this
+sequencing does not waive V1's safe-default requirement; no supported Codium
+configuration may retain ambient sudo, writable root, host access, or another
+unapproved isolation relaxation.
+
+V1 should also ship a small curated starter catalog of IDE configurations and
+matching demonstration projects. Its purpose is not to claim exhaustive IDE
+support. It gives new users quick, low-commitment experiments that demonstrate
+the configuration model, component selection, persistence, and explicit host
+authorization before they create more advanced configurations of their own.
+The catalog is also the product proof that configuration authoring is
+genuinely reusable and sufficiently self-service rather than another set of
+hard-coded launchers. The exact catalog entries and count remain for the V1
+plan to select.
+
 ## Later Functional Tasks Carried Forward
 
 The following implementation work is deliberately carried forward rather than
@@ -666,15 +698,18 @@ classify, prioritize, combine, or defer it explicitly:
 
 - the disposable multi-project E2E orchestrator specified above;
 - ordinary-value defaults and live memory-limit verification specified above;
-- shared runtime-option parity without weakening bridge networking or
-  no-host-access defaults;
+- PyCharm-led closure of the shared user experience and configuration/component
+  abstractions, followed by a VSCodium implementation through those contracts
+  and fresh triage of the old `codium_with_claude` bugs;
+- a small curated starter catalog of IDE configurations and matching demo
+  projects that proves the supported authoring path is self-service;
 - final external Codex CLI, ACP, authentication, and persistence validation;
 - the accepted JCEF workaround's external GUI validation;
 - component runtime-path and ecosystem-aware project-bootstrap follow-ups;
 - official semantically versioned V1 artifact publication;
 - GPU/device authorization and specialized CUDA validation;
-- Docker-in-Docker, native-debugging, raw-Docker-argument, and complete Codium
-  runtime parity; and
+- Docker-in-Docker, native-debugging, raw-Docker-argument, and the Codium
+  runtime behavior that remains applicable after the V1 reimplementation; and
 - safe image/cache lifecycle management and stronger supply-chain provenance.
 
 The following remain explicitly unsupported or optional rather than implicit
@@ -684,4 +719,4 @@ closure work:
   authentication, or validation;
 - Antigravity or another optional agent component;
 - general secret providers or SSH-agent forwarding;
-- broader alternative-environment work not selected by the V1 plan.
+- broader alternative-environment work beyond the V1 starter catalog.

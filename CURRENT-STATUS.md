@@ -1504,13 +1504,27 @@ Later V1 backlog:
    `HostConfig.Memory` and `/sys/fs/cgroup/memory.max` in the E2E while retaining
    checkout-override precedence. This is explicitly later V1 and does not
    reopen the manually accepted dogfood checkpoint.
-3. Finish shared runtime-option parity without weakening bridge networking or
-   no-host-access defaults.
-4. Complete external Codex CLI, JetBrains ACP, authentication, and persistence
+3. Settle the V1 user experience and reusable component, configuration,
+   materialization, state, authorization, and runtime abstractions against the
+   PyCharm path first. Then implement at least one VSCodium-based configuration
+   through those contracts, repairing or replacing the current
+   `codium_with_claude` proof point. Repairing that proof point is a must-have
+   V1 outcome, but its shortcut-bearing v0 launcher is not the framework
+   template. Reproduce its old bugs only after the V1 implementation exists;
+   fix behavior that persists and close launcher-specific obsolete reports
+   with evidence. No supported Codium path may retain ambient sudo, writable
+   root, host access, or another unapproved isolation relaxation.
+4. Ship a small curated starter catalog of IDE configurations and matching
+   demonstration projects. The catalog should let users run quick experiments
+   with configuration, components, persistence, and authorization before
+   authoring advanced configurations, and it must prove that the supported
+   authoring path is self-service rather than a collection of hard-coded
+   launchers. The V1 plan still needs to select the exact entries and count.
+5. Complete external Codex CLI, JetBrains ACP, authentication, and persistence
    validation using component-owned `CODEX_HOME`. Keep Antigravity optional and
    do not acquire it without a separate artifact, license, state,
    authentication, and update-policy decision.
-5. Complete external GUI validation of the accepted JCEF workaround and review
+6. Complete external GUI validation of the accepted JCEF workaround and review
    the component runtime-path and ecosystem-aware project-bootstrap follow-ups.
 
 The V1 gap review may reorder, combine, or explicitly defer these backlog
