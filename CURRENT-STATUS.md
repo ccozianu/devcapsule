@@ -21,8 +21,9 @@ sanitized bind planning, and ownership-marked safe staging are committed at
 surface, normal-run readiness integration, and Nox entry point are committed
 at `e2dae20`. Stage 2's local v024 base build, canonical environment
 materialization, manual v023-to-v024 handoff, and resumed-environment
-verification are complete. No clean clone or final recursive successor build
-has occurred yet.
+verification are complete. Stage 3's local-clone protocol now has a passing
+recursive E2E, but the durable Stage 3 workspace/manifest integration and final
+recursive successor build have not occurred yet.
 
 Current status:
 
@@ -1624,6 +1625,31 @@ Stage 2 bootstrap handoff checkpoint, 2026-08-07:
   milestone acceptance checks now explicitly preserve separate bootstrap,
   selected-source, and clean-clone identities. Rebuilding v024 for
   documentation-only commits is not required.
+
+Stage 3 local-clone checkpoint, 2026-08-07:
+
+- Commit `58acbd7` adds a recursive-only pytest scenario and Nox wiring for the
+  Stage 3 local-clone protocol. Environment inspection proves an unprivileged
+  authorized container, host-daemon access, and the exact running managed
+  image before any workspace mutation.
+- Commit `3b3b743` removes remote-URL coupling from this filesystem-local
+  protocol. Source selection depends on clean exact `HEAD`, not `origin`; the
+  clone removes Git's path-bearing local `origin` and verifies that no source
+  path remains in its configuration.
+- The protocol creates an ownership-marked private run root, performs a local
+  no-checkout/no-hardlink clone under an allowlisted Git environment, installs
+  empty hooks before detached checkout, verifies exact revision, cleanliness,
+  independent objects and `git fsck`, excludes generated/credential state and
+  source-pointing symlinks, then ownership-checks exact cleanup.
+- The full build gate passed before the final origin-policy refinement: 221
+  fast tests, clean mypy over 80 files, source/PEX command smokes, and five
+  packaging integrations. After refinement, the focused ordinary gate again
+  passed 221 tests and clean mypy. A clean live
+  `nox -s recursive_dogfood_e2e` run passed embedded recursive dry-run plus the
+  new local-clone test (`1 passed`, `1 deselected`) from v024.
+- This is an executable local-clone slice, not completion of Stage 3. The next
+  implementation boundary remains the durable public orchestrator workspace
+  and manifest state machine described below.
 
 Active next task:
 
