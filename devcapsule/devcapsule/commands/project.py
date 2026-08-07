@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import os
 import sys
@@ -17,6 +18,20 @@ from devcapsule.environment_realization import realize_environment, required_loc
 from devcapsule.materialization import validate_base_image
 from devcapsule.project import project_namespace, sanitize_name
 from devcapsule.project_runtime_plan import project_runtime_plan
+from devcapsule.recursive_dogfood import (
+    RECURSIVE_E2E_ENABLED_ENV,
+    PreflightError,
+    preflight_json,
+    recursive_e2e_launch_environment,
+    render_preflight,
+    require_recursive_e2e_project,
+    run_recursive_preflight,
+)
+from devcapsule.recursive_orchestrator import (
+    RecursiveE2EError,
+    RecursivePreflightFailed,
+    run_recursive_e2e_dry_run,
+)
 from devcapsule.project_configuration import (
     AuthorizationDeclaration,
     ProjectConfigurationError,
@@ -86,12 +101,128 @@ class ProjectCommand(BaseCommand):
         group.add_command(_lock_command())
         group.add_command(_config_command())
         group.add_command(_state_command())
+        group.add_command(_recursive_e2e_command())
         group.add_command(_run_command())
         group.add_command(_run_image_command())
         return group
 
     def run(self) -> Any:
         raise NotImplementedError("Project is a Click command group.")
+
+
+def _recursive_e2e_command() -> click.Command:
+    @click.group(
+        "recursive-e2e",
+        help="Run DevCapsule's project-specific recursive dogfood validation.",
+        no_args_is_help=True,
+    )
+    def group() -> None:
+        pass
+
+    @click.command("preflight")
+    @click.option(
+        "--runtime-plan",
+        type=click.Path(path_type=Path),
+        default=Path("/etc/devcapsule/runtime-plan.json"),
+        show_default=True,
+        help="External runtime plan mounted into the current capsule.",
+    )
+    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
+    @click.option(
+        "--show-host-paths",
+        is_flag=True,
+        help="Include sensitive host mount sources after an explicit warning.",
+    )
+    @click.pass_obj
+    def preflight(
+        context: ProjectCommandContext,
+        runtime_plan: Path,
+        as_json: bool,
+        show_host_paths: bool,
+    ) -> int:
+        root = _recursive_project_root(context)
+        _warn_for_host_path_disclosure(show_host_paths)
+        report = run_recursive_preflight(root, runtime_plan_path=runtime_plan)
+        click.echo(
+            preflight_json(report, show_host_paths=show_host_paths)
+            if as_json
+            else render_preflight(report, show_host_paths=show_host_paths)
+        )
+        return 0 if report.ready else 1
+
+    @click.command("run")
+    @click.option(
+        "--runtime-plan",
+        type=click.Path(path_type=Path),
+        default=Path("/etc/devcapsule/runtime-plan.json"),
+        show_default=True,
+        help="External runtime plan mounted into the current capsule.",
+    )
+    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
+    @click.option(
+        "--show-host-paths",
+        is_flag=True,
+        help="Include sensitive host mount sources after an explicit warning.",
+    )
+    @click.option(
+        "--keep-on-failure",
+        is_flag=True,
+        help="Preserve only this run's ownership-marked workspace after failure.",
+    )
+    @click.pass_obj
+    def run_recursive(
+        context: ProjectCommandContext,
+        runtime_plan: Path,
+        as_json: bool,
+        show_host_paths: bool,
+        keep_on_failure: bool,
+    ) -> int:
+        root = _recursive_project_root(context)
+        _warn_for_host_path_disclosure(show_host_paths)
+        try:
+            result = run_recursive_e2e_dry_run(
+                root,
+                runtime_plan_path=runtime_plan,
+                keep_on_failure=keep_on_failure,
+            )
+        except RecursivePreflightFailed as exc:
+            click.echo(
+                preflight_json(exc.report, show_host_paths=show_host_paths)
+                if as_json
+                else render_preflight(exc.report, show_host_paths=show_host_paths)
+            )
+            return 1
+        except RecursiveE2EError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        mapping = result.to_mapping(show_host_paths=show_host_paths)
+        click.echo(
+            result.to_json(show_host_paths=show_host_paths)
+            if as_json
+            else json.dumps(mapping, ensure_ascii=False, indent=2, sort_keys=True)
+        )
+        return 0
+
+    group.add_command(preflight)
+    group.add_command(run_recursive)
+    return group
+
+
+def _recursive_project_root(context: ProjectCommandContext) -> Path:
+    root = discover_project(context.start_path())
+    try:
+        return require_recursive_e2e_project(root)
+    except PreflightError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
+
+
+def _warn_for_host_path_disclosure(show_host_paths: bool) -> None:
+    if show_host_paths:
+        click.secho(
+            "WARNING: debug output includes raw host filesystem mappings; "
+            "do not share it unsanitized.",
+            fg="yellow",
+            err=True,
+        )
 
 
 def _list_command() -> click.Command:
@@ -1056,6 +1187,11 @@ def _run_command() -> click.Command:
     @click.option("--force", is_flag=True, help="Use stale generated resolution once, with a warning.")
     @click.option("--docker-daemon", type=click.Choice(["none", "host-socket"]))
     @click.option("--development-sudo", is_flag=True, default=None)
+    @click.option(
+        "--no-recursive-e2e",
+        is_flag=True,
+        help="Disable DevCapsule recursive-E2E readiness for this launch.",
+    )
     @click.option("--name", "container_name")
     @click.pass_obj
     def run_project(
@@ -1063,6 +1199,7 @@ def _run_command() -> click.Command:
         force: bool,
         docker_daemon: str | None,
         development_sudo: bool | None,
+        no_recursive_e2e: bool,
         container_name: str | None,
     ) -> int:
         root, manifest = manifest_for(context.start_path())
@@ -1151,6 +1288,28 @@ def _run_command() -> click.Command:
                 authorization.get("development-sudo", host.get("development-sudo", False))
             )
         selected_network = str(authorization.get("network", host.get("network", "bridge")))
+        if no_recursive_e2e:
+            selected_docker_daemon = "none"
+            selected_sudo = False
+            selected_network = "bridge"
+        recursive_environment = recursive_e2e_launch_environment(
+            root,
+            docker_daemon=str(selected_docker_daemon),
+            disabled=no_recursive_e2e,
+        )
+        readiness = recursive_environment.get(RECURSIVE_E2E_ENABLED_ENV)
+        if readiness is not None:
+            if readiness == "1":
+                click.echo("Recursive E2E readiness: enabled for this DevCapsule launch.")
+            elif no_recursive_e2e:
+                click.echo(
+                    "Recursive E2E readiness: disabled for this launch; host Docker, "
+                    "host networking, and development sudo were downgraded."
+                )
+            else:
+                click.echo(
+                    "Recursive E2E readiness: unavailable because host Docker access is not authorized."
+                )
         return run_pycharm(
             PycharmRunOptions(
                 project=root,
@@ -1175,6 +1334,7 @@ def _run_command() -> click.Command:
                     state,
                     checkout_runtime_plan,
                 ),
+                additional_environment=recursive_environment,
                 secret_environment=tuple(sorted(secret_environment.values())),
                 extra_docker_args=["--pull=never"],
                 project_state=None,

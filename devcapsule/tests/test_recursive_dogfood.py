@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -212,33 +211,65 @@ def test_missing_display_is_an_explicit_preflight_error(tmp_path: Path, monkeypa
     assert display == [Finding("error", "display", "DISPLAY is not configured for successor IDE validation.")]
 
 
-def test_recursive_preflight_cli_returns_report_status(capsys) -> None:
-    report = PreflightReport(
-        findings=(Finding("error", "docker-socket", "Socket is missing."),),
-        facts={},
-        mounts=(),
+def recursive_project(root: Path) -> None:
+    (root / ".devcapsule").mkdir(parents=True)
+    (root / ".devcapsule" / "devcapsule.toml").write_text("", encoding="utf-8")
+    (root / "devcapsule").mkdir()
+    (root / "devcapsule" / "pyproject.toml").write_text(
+        '[project]\nname = "devcapsule"\nversion = "0.0.0"\n',
+        encoding="utf-8",
     )
-    with patch(
-        "devcapsule.commands.recursive_e2e.run_recursive_preflight", return_value=report
-    ):
-        result = cli.main(["recursive-e2e", "preflight", "--json"])
+
+
+def test_project_recursive_preflight_cli_returns_public_report_status(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    recursive_project(tmp_path)
+
+    result = cli.main(
+        ["project", "--path", str(tmp_path), "recursive-e2e", "preflight", "--json"]
+    )
 
     assert result == 1
     assert '"ready":false' in capsys.readouterr().out
 
 
-def test_recursive_preflight_debug_mode_warns_before_revealing_paths(capsys) -> None:
-    report = PreflightReport(
-        findings=(Finding("pass", "mount", "Mount is valid."),),
-        facts={},
-        mounts=(Mount("/host/private/project", "/workspace/project", "bind", True),),
+def test_project_recursive_preflight_debug_mode_warns_before_inspection(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    recursive_project(tmp_path)
+
+    result = cli.main(
+        [
+            "project",
+            "--path",
+            str(tmp_path),
+            "recursive-e2e",
+            "preflight",
+            "--show-host-paths",
+        ]
     )
-    with patch(
-        "devcapsule.commands.recursive_e2e.run_recursive_preflight", return_value=report
-    ):
-        result = cli.main(["recursive-e2e", "preflight", "--show-host-paths"])
 
     captured = capsys.readouterr()
-    assert result == 0
-    assert "/host/private/project" in captured.out
+    assert result == 1
     assert "do not share it unsanitized" in captured.err
+
+
+def test_project_recursive_e2e_rejects_a_different_selected_project(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    recursive_project(tmp_path)
+    (tmp_path / "devcapsule" / "pyproject.toml").write_text(
+        '[project]\nname = "different-project"\nversion = "0.0.0"\n',
+        encoding="utf-8",
+    )
+
+    result = cli.main(
+        ["project", "--path", str(tmp_path), "recursive-e2e", "preflight"]
+    )
+
+    assert result == 2
+    assert "repository self-test" in capsys.readouterr().err

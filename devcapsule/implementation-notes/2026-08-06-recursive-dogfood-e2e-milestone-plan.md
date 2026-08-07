@@ -140,6 +140,15 @@ cd devcapsule
 python -m nox -s recursive_dogfood_e2e
 ```
 
+This invokes the costly test from inside an already-running development
+environment. It is not an alternative launcher. Contributors continue to enter
+this project with ordinary `devcapsule project run`; when the selected project
+contains `devcapsule/pyproject.toml` with `[project].name = "devcapsule"`, that
+normal launch derives recursive readiness from developer-approved host access.
+`devcapsule project run --no-recursive-e2e` is a one-launch safe downgrade.
+It forces host Docker off, bridge networking, and development sudo off without
+rewriting the developer's accepted configuration.
+
 A small standard-library bootstrap entry point may prepare the clean clone's
 isolated contributor environment before Nox is available. The Nox session may
 delegate orchestration to a repository-owned Python module or script, but the
@@ -254,8 +263,9 @@ Done means:
 
 Implementation and evidence:
 
-- `devcapsule recursive-e2e preflight` provides human-readable and stable JSON
-  reports, returning nonzero when any prerequisite is unsafe or missing;
+- `devcapsule project --path PATH recursive-e2e preflight` provides
+  human-readable and stable JSON reports, returning nonzero when any
+  prerequisite is unsafe or missing;
 - ordinary output redacts all host mount sources and the Xauthority container
   path, while `--show-host-paths` requires an explicit disclosure warning;
 - v024 launch plans carry the generated non-secret container name for exact
@@ -341,12 +351,22 @@ Implementation and evidence:
 
 Status: pending
 
+Bootstrap prerequisite status: minimum orchestrator and normal-run readiness
+integration implemented and validated in the milestone working tree on
+2026-08-07; v024 itself has not been built.
+
 Execution checklist:
 [`2026-08-06-recursive-dogfood-stage-2-execution-checklist.md`](2026-08-06-recursive-dogfood-stage-2-execution-checklist.md).
 
 Once Stages 0 and 1 plus the minimum recursive orchestrator skeleton pass their
 repository gates, build a revision-bearing PEX and local managed v024 base from
 the clean committed milestone checkpoint while still running v023.
+
+The initial skeleton uses `devcapsule project --path PATH recursive-e2e run` as
+the public orchestration surface and a thin `recursive_dogfood_e2e` Nox wrapper.
+Normal `devcapsule project run` supplies readiness to this repository when the
+developer has authorized host Docker access; the E2E command never becomes a
+second project-launch path.
 
 The v024 checkpoint must:
 
@@ -605,9 +625,7 @@ This milestone does not by itself:
 
 ## Next Task
 
-Begin Stage 2 with the minimum explicit recursive orchestrator skeleton and
-Nox entry point. It must compose Stage 0 preflight, the Stage 1 launch context,
-unique run ownership, sanitized dry-run inspection, and failure cleanup before
-performing the first real mutation. Once that skeleton and the full repository
-gate pass at a clean committed revision, build and verify the local v024 base
-and canonical environment from v023, then request the manual dogfood handoff.
+Review and commit the minimum recursive orchestrator skeleton and Nox entry
+point, then rerun the full repository gate from that clean exact revision. Use
+its revision-bearing PEX to build and verify the local v024 base and canonical
+environment from v023, then request the manual dogfood handoff.

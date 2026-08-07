@@ -26,7 +26,7 @@ def test_built_pex_dispatches_runtime_help(built_pex: Path) -> None:
 @pytest.mark.integration
 def test_built_pex_exposes_recursive_preflight_help(built_pex: Path) -> None:
     completed = subprocess.run(
-        [str(built_pex), "recursive-e2e", "preflight", "--help"],
+        [str(built_pex), "project", "recursive-e2e", "preflight", "--help"],
         check=False,
         text=True,
         capture_output=True,
@@ -35,6 +35,15 @@ def test_built_pex_exposes_recursive_preflight_help(built_pex: Path) -> None:
     assert completed.returncode == 0, completed.stderr
     assert "read-only" not in completed.stderr.lower()
     assert "--show-host-paths" in completed.stdout
+
+    run_help = subprocess.run(
+        [str(built_pex), "project", "recursive-e2e", "run", "--help"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    assert run_help.returncode == 0, run_help.stderr
+    assert "--keep-on-failure" in run_help.stdout
 
 
 @pytest.mark.integration

@@ -1,6 +1,7 @@
 # Recursive Dogfood E2E Stage 2 Execution Checklist
 
-Date: 2026-08-06
+Date: 2026-08-06; command model clarified and initial implementation added on
+2026-08-07
 
 Milestone: `Recursive Dogfood E2E — Build And Launch A Successor From Inside
 DevCapsule`
@@ -13,7 +14,35 @@ yet the full recursive E2E.
 
 Follow this order.
 
+## Launch And Test Command Model
+
+A contributor does not use a special command to launch this project. The
+ordinary workflow remains:
+
+```bash
+devcapsule project config resolve
+devcapsule project run
+```
+
+For the DevCapsule project, normal `project run` derives recursive readiness
+from the developer's resolved host-Docker authorization. A contributor may
+reject those host options during configuration or disable recursive readiness
+for one otherwise ordinary launch:
+
+```bash
+devcapsule project run --no-recursive-e2e
+```
+
+That flag downgrades host Docker to none, host networking to bridge, and
+development sudo to disabled for the one launch. It cannot grant a rejected or
+unresolved host authorization and does not rewrite developer configuration.
+The expensive recursive test remains separately and explicitly invoked after
+the development environment is running.
+
 ## 1. Implement The Minimum Orchestrator
+
+Implementation status: complete in the milestone working tree on 2026-08-07;
+awaiting the clean committed checkpoint used to identify v024.
 
 Add the explicit Nox entry point:
 
@@ -31,6 +60,16 @@ Initially it must only:
 - print a sanitized dry-run plan;
 - clean staging after success or failure; and
 - perform no clone, image build, or container launch yet.
+
+The Nox session is a thin developer-validation wrapper around:
+
+```bash
+devcapsule project --path PROJECT recursive-e2e run
+```
+
+It is not an alternative project launcher. Both the preflight and run commands
+must fail before mutation unless the selected project contains
+`devcapsule/pyproject.toml` with `[project].name = "devcapsule"`.
 
 ## 2. Test Through Public Interfaces
 
@@ -137,8 +176,18 @@ PyCharm/Codex components, and source lineage.
 
 ## 10. Launch v024 And Perform The One Manual Handoff
 
-Launch the canonical v024 environment from inside v023 using the verified path
-translation and staging machinery. Do not stop v023 automatically.
+Launch the canonical v024 environment from inside v023 through the ordinary
+production command:
+
+```bash
+devcapsule/dist/devcapsule.pex project \
+  --path /workspace/301e4208ef81-ChatGPT_Codex \
+  run
+```
+
+The accepted developer configuration makes this normal launch recursive-ready;
+verified path translation and staging remain internal execution mechanics. Do
+not use a separate recursive launch command, and do not stop v023 automatically.
 
 The user then:
 
@@ -154,7 +203,13 @@ From the new session, prove:
 - its base is the recorded immutable v024 image;
 - `/opt/devcapsule/bin/devcapsule.pex version --json` reports the exact
   checkpoint revision; and
-- recursive preflight succeeds from the embedded PEX.
+- recursive preflight succeeds from the embedded PEX:
+
+  ```bash
+  /opt/devcapsule/bin/devcapsule.pex project \
+    --path /workspace/301e4208ef81-ChatGPT_Codex \
+    recursive-e2e preflight
+  ```
 
 ## 12. Record The Evidence
 

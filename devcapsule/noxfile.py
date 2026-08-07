@@ -90,8 +90,10 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "project", "config", "set", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "bind", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "authorize", "--help")
+    session.run("python", "-m", "devcapsule", "project", "run", "--help")
     session.run("python", "-m", "devcapsule", "project", "run-image", "--help")
-    session.run("python", "-m", "devcapsule", "recursive-e2e", "preflight", "--help")
+    session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "preflight", "--help")
+    session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "run", "--help")
     session.run("python", "-m", "devcapsule", "images", "list", "--help")
     session.run("python", "-m", "devcapsule", "images", "build", "--help")
     session.run("python", "-m", "devcapsule", "pycharm", "build", "--help")
@@ -153,8 +155,10 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run("python", str(path), "project", "config", "set", "--help")
     session.run("python", str(path), "project", "config", "bind", "--help")
     session.run("python", str(path), "project", "config", "authorize", "--help")
+    session.run("python", str(path), "project", "run", "--help")
     session.run("python", str(path), "project", "run-image", "--help")
-    session.run("python", str(path), "recursive-e2e", "preflight", "--help")
+    session.run("python", str(path), "project", "recursive-e2e", "preflight", "--help")
+    session.run("python", str(path), "project", "recursive-e2e", "run", "--help")
     session.run("python", str(path), "images", "list", "--help")
     session.run("python", str(path), "images", "build", "--help")
     session.run("python", str(path), "pycharm", "build", "--help")
@@ -209,6 +213,24 @@ def e2e(session: nox.Session) -> None:
     install_locked(session)
     build_test_pex(session)
     run_e2e_tests(session)
+
+
+@nox.session(python="3.12")
+def recursive_dogfood_e2e(session: nox.Session) -> None:
+    """Run the explicit host-sensitive recursive dogfood dry-run entry point."""
+
+    install_locked(session)
+    session.run(
+        "python",
+        "-m",
+        "devcapsule",
+        "project",
+        "--path",
+        str(REPO_ROOT),
+        "recursive-e2e",
+        "run",
+        "--json",
+    )
 
 
 @nox.session(python="3.12")

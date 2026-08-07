@@ -12,6 +12,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tomllib
 from typing import Mapping, Sequence
 import zipfile
 
@@ -24,10 +25,56 @@ X11_SOCKET_DIRECTORY = Path("/tmp/.X11-unix")
 WORKSPACE_RELATIVE_PATH = Path(".local/share/devcapsule/e2e-workspaces")
 MINIMUM_RECOMMENDED_FREE_BYTES = 20 * 1024**3
 CONTAINER_NAME_ENV = "DEVCAPSULE_CONTAINER_NAME"
+RECURSIVE_E2E_ENABLED_ENV = "DEVCAPSULE_RECURSIVE_E2E"
+RECURSIVE_PROJECT_METADATA = Path("devcapsule/pyproject.toml")
+RECURSIVE_PROJECT_NAME = "devcapsule"
 
 
 class PreflightError(ValueError):
     """A recursive-dogfood input is unsafe, ambiguous, or unsupported."""
+
+
+def is_recursive_e2e_project(project_root: Path) -> bool:
+    """Return whether a project carries the current DevCapsule self-test identity."""
+
+    metadata_path = project_root.expanduser().resolve() / RECURSIVE_PROJECT_METADATA
+    try:
+        with metadata_path.open("rb") as stream:
+            metadata = tomllib.load(stream)
+    except (OSError, tomllib.TOMLDecodeError):
+        return False
+    project = metadata.get("project")
+    return isinstance(project, dict) and project.get("name") == RECURSIVE_PROJECT_NAME
+
+
+def require_recursive_e2e_project(project_root: Path) -> Path:
+    """Validate and return the one project currently eligible for recursive E2E."""
+
+    selected = project_root.expanduser().resolve()
+    if selected.is_file():
+        selected = selected.parent
+    for candidate in (selected, *selected.parents):
+        if is_recursive_e2e_project(candidate):
+            return candidate
+    raise PreflightError(
+        "recursive dogfood E2E is a DevCapsule repository self-test; "
+        f"the selected project must contain {RECURSIVE_PROJECT_METADATA} with "
+        f"[project].name = {RECURSIVE_PROJECT_NAME!r}"
+    )
+
+
+def recursive_e2e_launch_environment(
+    project_root: Path,
+    *,
+    docker_daemon: str,
+    disabled: bool,
+) -> dict[str, str]:
+    """Return the normal-launch readiness marker for an eligible project."""
+
+    if not is_recursive_e2e_project(project_root):
+        return {}
+    enabled = not disabled and docker_daemon == "host-socket"
+    return {RECURSIVE_E2E_ENABLED_ENV: "1" if enabled else "0"}
 
 
 @dataclass(frozen=True)
@@ -123,6 +170,9 @@ def run_recursive_preflight(
     report = _ReportBuilder()
     _inspect_distribution(report)
     checkout_root = _inspect_checkout(report, checkout)
+    if checkout_root is not None:
+        _inspect_project_eligibility(report, checkout_root)
+    _inspect_recursive_enablement(report, env)
     runtime_plan = _inspect_runtime_plan(report, runtime_plan_path)
     _inspect_process_authorization(report)
     docker_host = _inspect_docker_socket(report, env)
@@ -359,6 +409,52 @@ def _inspect_checkout(report: _ReportBuilder, checkout: Path) -> Path | None:
         report.facts["checkout_clean"] = "yes"
         report.add("pass", "checkout", "Checkout revision is exact and the worktree is clean.")
     return root
+
+
+def _inspect_project_eligibility(report: _ReportBuilder, checkout_root: Path) -> None:
+    try:
+        require_recursive_e2e_project(checkout_root)
+    except PreflightError as exc:
+        report.add("error", "project-eligibility", str(exc))
+    else:
+        report.add(
+            "pass",
+            "project-eligibility",
+            "The selected checkout carries the DevCapsule recursive self-test identity.",
+        )
+
+
+def _inspect_recursive_enablement(
+    report: _ReportBuilder,
+    env: Mapping[str, str],
+) -> None:
+    selected = env.get(RECURSIVE_E2E_ENABLED_ENV)
+    if selected == "1":
+        report.add(
+            "pass",
+            "recursive-enablement",
+            "This project launch explicitly enabled recursive E2E readiness.",
+        )
+    elif selected == "0":
+        report.add(
+            "error",
+            "recursive-enablement",
+            "Recursive E2E was disabled for this project launch; relaunch without "
+            "--no-recursive-e2e after authorizing host Docker access.",
+        )
+    elif selected is None:
+        report.add(
+            "warning",
+            "recursive-enablement",
+            "This pre-v024 bootstrap container has no recursive-readiness marker; "
+            "all concrete authorizations will still be validated.",
+        )
+    else:
+        report.add(
+            "error",
+            "recursive-enablement",
+            f"{RECURSIVE_E2E_ENABLED_ENV} must be 1 or 0.",
+        )
 
 
 def _inspect_runtime_plan(report: _ReportBuilder, path: Path) -> RuntimePlan | None:

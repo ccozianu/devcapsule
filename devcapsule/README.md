@@ -589,6 +589,21 @@ checkout-local resolution:
 devcapsule project run --docker-daemon host-socket --development-sudo
 ```
 
+For the DevCapsule repository's own recursive dogfood validation, this same
+ordinary `project run` path marks the launched environment as recursive-ready
+when host Docker has been accepted. It recognizes the repository by
+`devcapsule/pyproject.toml` declaring `[project].name = "devcapsule"`. Use
+`--no-recursive-e2e` for a one-launch opt-out; it forces host Docker off,
+bridge networking, and development sudo off without rewriting configuration.
+The flag cannot grant host access. Launch readiness does not execute the
+expensive E2E. That test remains an explicit developer action inside the
+running environment:
+
+```bash
+cd devcapsule
+python -m nox -s recursive_dogfood_e2e
+```
+
 Those two host relaxations are run-once choices and are not granted by the
 committed Docker recommendation. They can be recorded manually in the
 developer-owned checkout file's `[host]` table for this initial slice. The

@@ -16,9 +16,11 @@ two-generation plan: v023 will build a local v024 bootstrap checkpoint, the
 user will manually hand dogfood over to v024, and v024 will run the full clean-
 clone E2E to build and launch the next successor. Stage 0's read-only recursive
 preflight is committed at `895043a`. Stage 1's host-daemon path translation,
-sanitized bind planning, and ownership-marked safe staging are implemented and
-validated in the milestone working tree. The minimum recursive orchestrator
-skeleton is next; no clone, image build, or successor launch has occurred yet.
+sanitized bind planning, and ownership-marked safe staging are committed at
+`f026bb6`. The minimum recursive orchestrator skeleton, project-scoped command
+surface, normal-run readiness integration, and Nox entry point are implemented
+and validated in the milestone working tree. No clone, image build, or
+successor launch has occurred yet.
 
 Current status:
 
@@ -1519,10 +1521,11 @@ V1 gap-review checkpoint, 2026-08-06:
   authorization for both the local v024 checkpoint and final successor, makes
   recursive host-path translation and cleanup fail closed, and records the
   manual v023-to-v024 handoff plus the final manual IDE usability check.
-- Stage 0 introduces `devcapsule recursive-e2e preflight` with redacted human
-  and JSON output, exact daemon-side container inspection, mount/access-mode
-  checks, persistent-home workspace containment, Docker client/server and
-  display readiness checks, and an explicit warned host-path debug view. The
+- Stage 0 introduces `devcapsule project --path PATH recursive-e2e preflight`
+  with redacted human and JSON output, exact daemon-side container inspection,
+  mount/access-mode checks, persistent-home workspace containment, Docker
+  client/server and display readiness checks, and an explicit warned host-path
+  debug view. The
   launcher now supplies its generated container name to v024 for deterministic
   self-inspection; accepted v023 uses a read-only overlay identity fallback.
   Source and local-PEX live runs both returned `READY` without mutation. Fast
@@ -1543,14 +1546,38 @@ V1 gap-review checkpoint, 2026-08-06:
   command smoke, execution of the Stage 1 public interface through the local
   PEX, and all five packaging integrations. No revision-bearing public PEX was
   built from the dirty tree.
+- The Stage 2 bootstrap prerequisite is implemented in the working tree on
+  2026-08-07. The former top-level recursive command moved beneath `project`.
+  A checkout is eligible only when `devcapsule/pyproject.toml` declares
+  `[project].name = "devcapsule"`. Ordinary `devcapsule project run` now marks
+  an eligible launch recursive-ready only when host Docker is selected;
+  `--no-recursive-e2e` forces host Docker off, bridge networking, and
+  development sudo off for one launch and cannot grant or rewrite
+  authorization. The explicit `recursive_dogfood_e2e` Nox session is a
+  thin wrapper around the project-scoped dry-run test rather than a second
+  launcher.
+- The public dry-run orchestrator composes Stage 0, Stage 1 translation,
+  collision-safe run ownership, restrictive staged runtime inputs, complete
+  successor bind planning, redacted JSON, failure preservation, and exact
+  cleanup without invoking a Docker mutation. Tests exercise public module and
+  CLI contracts, including project rejection, readiness downgrade, unique run
+  IDs, redaction, cleanup, and `--keep-on-failure`.
+- Live execution from the accepted v023 container passed through the new Nox
+  entry point. It approved the current project/home/state/runtime-plan,
+  Docker/X11/Xauthority mounts, staged six launch inputs, planned 15 redacted
+  successor binds, performed no Docker mutation, and reported cleanup
+  complete. The full dirty-tree gate passed 221 fast tests, clean mypy over 79
+  source files, source and local-PEX command smoke, and all five packaging
+  integrations. The marker-less v023 container received the intended bootstrap
+  warning; future normal launches carry an explicit enabled or disabled marker.
 
 Active next task:
 
-Add the minimum explicit recursive orchestrator skeleton and Nox entry point
-that compose Stage 0 preflight, Stage 1 context/staging, unique ownership,
-sanitized dry-run output, and failure cleanup. After it passes at a clean
-committed checkpoint, begin Stage 2's real local v024 build and verification;
-do not request the manual IDE handoff before that v024 environment validates.
+Review and commit the minimum recursive orchestrator checkpoint, then run the
+full gate from that clean revision so `dist/devcapsule.pex` embeds its exact
+identity. Use that PEX to begin Stage 2's real local v024 base build and strict
+verification. Do not request the manual IDE handoff before the canonical v024
+environment validates.
 
 V2 candidate task:
 

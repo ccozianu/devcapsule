@@ -103,6 +103,7 @@ class PycharmRunOptions:
     runtime_plan: RuntimePlan | None = None
     use_image_process: bool = False
     additional_state_mounts: dict[str, tuple[Path, str]] = field(default_factory=dict)
+    additional_environment: dict[str, str] = field(default_factory=dict)
     secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
 
@@ -142,6 +143,7 @@ class PycharmRunConfig:
     runtime_plan: RuntimePlan | None
     use_image_process: bool
     additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
+    additional_environment: tuple[tuple[str, str], ...] = ()
     secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
     libgl_always_software: str = "1"
@@ -373,6 +375,25 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         resolved_source = resolve_existing_or_create(source)
         additional_state_mounts.append((logical_name, str(resolved_source), destination))
     fixed_environment = options.runtime_plan.component_environment() if options.runtime_plan else {}
+    additional_environment: list[tuple[str, str]] = []
+    for name, value in sorted(options.additional_environment.items()):
+        if not name.isascii() or not name.isidentifier() or name.upper() != name:
+            raise PycharmRunError(
+                f"Additional environment name {name!r} must be an uppercase identifier."
+            )
+        if not value or "\x00" in value:
+            raise PycharmRunError(
+                f"Additional environment variable {name!r} must have a non-empty value."
+            )
+        if name in fixed_environment:
+            raise PycharmRunError(
+                f"Additional environment variable {name!r} conflicts with component runtime metadata."
+            )
+        if name in options.secret_environment:
+            raise PycharmRunError(
+                f"Additional environment variable {name!r} conflicts with a secret binding."
+            )
+        additional_environment.append((name, value))
     for name in options.secret_environment:
         if name in fixed_environment:
             raise PycharmRunError(
@@ -419,6 +440,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         runtime_plan=options.runtime_plan,
         use_image_process=options.use_image_process,
         additional_state_mounts=tuple(additional_state_mounts),
+        additional_environment=tuple(additional_environment),
         secret_environment=tuple(sorted(set(options.secret_environment))),
         extra_docker_args=list(options.extra_docker_args),
         libgl_always_software=env.get("PYCHARM_LIBGL_ALWAYS_SOFTWARE", env.get("LIBGL_ALWAYS_SOFTWARE", "1")),
@@ -520,6 +542,8 @@ def build_docker_args(
     if config.runtime_plan is not None:
         for name, value in sorted(config.runtime_plan.component_environment().items()):
             args.extend(["--env", f"{name}={value}"])
+    for name, value in config.additional_environment:
+        args.extend(["--env", f"{name}={value}"])
     for name in config.secret_environment:
         args.extend(["--env", name])
 
