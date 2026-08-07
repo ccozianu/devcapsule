@@ -36,6 +36,12 @@ same change.
 
 - [DevCapsule V1 state and persistence](docs/specifications/state-and-persistence.md)
 
+## Engineering Documentation
+
+- [Engineering documentation structure and migration state](engineering-docs/README.md)
+- [Multiple-workstream workflow change proposal](engineering-docs/design-notes/workflow-change-proposal-for-multiple-workstreams.md)
+- [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
+
 ## Active DevCapsule Development
 
 - [DevCapsule Python CLI](devcapsule/README.md)
