@@ -17,6 +17,7 @@ import re
 import shutil
 import stat
 import subprocess
+import time
 import tomllib
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
@@ -210,9 +211,11 @@ class ContributorDockerContext:
                 redactions={str(bind_source): "<owned-workspace-host-path>"},
             )
         finally:
-            self._remove_owned_container(container_name, workspace.run_id, environment)
-            if network_created:
-                self._remove_owned_network(network_name, workspace.run_id, environment)
+            try:
+                self._remove_owned_container(container_name, workspace.run_id, environment)
+            finally:
+                if network_created:
+                    self._remove_owned_network(network_name, workspace.run_id, environment)
         return self._read_evidence(workspace.run_root / "contributor-bootstrap.json")
 
     def verify_bootstrap(
@@ -392,10 +395,33 @@ class ContributorDockerContext:
         labels = self._mapping(config.get("Labels"), "contributor container labels")
         assert labels.get(OWNER_LABEL) == "contributor-bootstrap"
         assert labels.get(RUN_LABEL) == run_id
-        self._run_docker(
+        removed = self._run_docker(
             [self.docker, "container", "rm", "--force", name],
             environment,
+            check=False,
         )
+        if removed.returncode != 0:
+            remaining = self._run_docker(
+                [self.docker, "container", "inspect", name],
+                environment,
+                check=False,
+            )
+            if remaining.returncode != 0:
+                return
+            if "removal of container" not in removed.stderr:
+                pytest.fail(
+                    f"cannot remove owned contributor container: {removed.stderr.strip()}"
+                )
+        for _ in range(50):
+            remaining = self._run_docker(
+                [self.docker, "container", "inspect", name],
+                environment,
+                check=False,
+            )
+            if remaining.returncode != 0:
+                return
+            time.sleep(0.1)
+        pytest.fail("owned contributor container removal did not complete within five seconds")
 
     def _remove_owned_network(
         self,
