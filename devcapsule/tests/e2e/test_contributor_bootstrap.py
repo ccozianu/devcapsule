@@ -89,6 +89,13 @@ class ContributorDockerContext:
         assert report.ready and report.container is not None, (
             "recursive preflight must pass before host-path translation"
         )
+        # ContainerInspection comes from the host daemon's exact Docker
+        # inspection. Recursive contributor bootstrap deliberately inherits
+        # only an already-authorized host-network posture; it never guesses or
+        # silently widens a bridge-mode launch.
+        assert report.container.network_mode == "host", (
+            "inside-container contributor E2E requires Docker-inspected host networking"
+        )
         runtime_plan = RuntimePlan.from_file(RUNTIME_PLAN_PATH)
         host_context = HostDaemonLaunchContext.from_requirements(
             report.container,
@@ -156,6 +163,7 @@ class ContributorDockerContext:
     def run_bootstrap(self, workspace: OwnedWorkspace) -> Mapping[str, Any]:
         container_name = f"devcapsule-contributor-e2e-{workspace.run_id}"
         network_name = f"devcapsule-contributor-e2e-{workspace.run_id}"
+        selected_network = "host" if self.recursive_host is not None else network_name
         bind_source = self.bind_source(workspace.run_root)
         environment = dict(self.docker_environment)
         forwarded_network_names = self._safe_network_environment(environment)
@@ -170,7 +178,7 @@ class ContributorDockerContext:
             "--label",
             f"{RUN_LABEL}={workspace.run_id}",
             "--network",
-            network_name,
+            selected_network,
             "--read-only",
             "--cap-drop",
             "ALL",
@@ -203,8 +211,9 @@ class ContributorDockerContext:
         )
         network_created = False
         try:
-            self._create_owned_network(network_name, workspace.run_id, environment)
-            network_created = True
+            if self.recursive_host is None:
+                self._create_owned_network(network_name, workspace.run_id, environment)
+                network_created = True
             self._run_docker(
                 command,
                 environment,
