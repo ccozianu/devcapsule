@@ -579,11 +579,12 @@ with its in-container driver beside it. The test detects whether pytest is
 running on a contributor host or inside recursive dogfood. A host run binds its
 owned workspace directly; a recursive run translates that workspace through
 the current container's inspected, approved persistent-home mount before the
-host daemon starts the same disposable contributor container. Host mode uses
-an owned bridge; recursive mode requires Docker inspection to prove the current
-container already has explicitly authorized host networking and uses that mode
-for its public dependency download. The detailed isolation rationale and
-command sequence live beside the executable methods.
+host daemon starts the same disposable contributor container. The on-demand E2E
+uses host networking in both contexts because the supported dogfood host blocks
+public downloads from ordinary Docker bridge containers. Recursive mode also
+requires Docker inspection to prove the current container already has explicitly
+authorized host networking. The detailed isolation rationale and command
+sequence live beside the executable methods.
 They require the managed base's `/usr/bin/python3.12`, a copied private venv,
 an allowlisted HOME/XDG/pip environment, the committed development lock, an
 editable `--no-deps` install, exact locked tool versions, and independent

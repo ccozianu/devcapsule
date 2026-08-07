@@ -1666,12 +1666,13 @@ Stage 3 contributor-bootstrap E2E checkpoint, 2026-08-07:
   with `--no-deps`, verifies exact locked tool versions and import isolation,
   and writes mode-`0600` evidence. It receives no Docker socket, sudo,
   credentials, capabilities, writable root, or original source checkout.
-- Host mode uses an ownership-labeled bridge. Commit `d754a9a` makes recursive
-  mode fail unless host-daemon inspection proves the current v024 container's
-  `HostConfig.NetworkMode` is exactly `host`, then uses host networking for the
-  disposable contributor's public package download. This is inherited only
-  from the explicitly authorized recursive launch, never inferred from package
-  download failure.
+- Commit `d754a9a` makes recursive mode fail unless host-daemon inspection
+  proves the current v024 container's `HostConfig.NetworkMode` is exactly
+  `host`. The on-demand E2E now uses host networking for the disposable
+  contributor in both host and recursive contexts because the supported
+  dogfood host blocks public package downloads from Docker bridge containers.
+  Recursive mode still inherits this only from an explicitly authorized
+  launch; it is never inferred from package-download failure.
 - An initial interrupted bridge-network diagnostic exposed a Docker cleanup
   race. Commit `1a71e2d` makes exact labeled container removal idempotent and
   guarantees the owned network cleanup attempt even during interruption. The

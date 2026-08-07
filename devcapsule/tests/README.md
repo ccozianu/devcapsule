@@ -77,10 +77,11 @@ path is translated through inspected current-container mounts before use with
 the host daemon. The test never mounts the Docker socket into the disposable
 contributor container. Override the host-mode locked base with
 `DEVCAPSULE_CONTRIBUTOR_E2E_IMAGE`; the selected managed base must already be
-present locally. Host mode creates an ownership-labeled user-defined bridge and
-cleans it deterministically. Recursive mode instead requires Docker inspection
-to prove that the current DevCapsule already uses explicitly authorized host
-networking, then uses host networking for the disposable contributor too.
+present locally. The spawned contributor uses host networking in both contexts
+because the supported dogfood host cordons ordinary Docker bridge containers
+off from the public package index. Recursive mode additionally requires Docker
+inspection to prove that the current DevCapsule already uses explicitly
+authorized host networking.
 
 ## Selection and gate policy
 
@@ -96,9 +97,11 @@ networking, then uses host networking for the disposable contributor too.
   it does not silently pass through a skip.
 
 GUI operation, licensing, credential reuse, and host capability validation
-remain manual dogfood checks. Automated E2E tests must not use host networking,
-privileged mode, Docker socket mounts, credentials, or unrelated host paths.
-Every Docker resource must have a unique name/label and deterministic cleanup.
+remain manual dogfood checks. Automated E2E tests must not use privileged mode,
+Docker socket mounts, credentials, or unrelated host paths. Host networking is
+limited to the explicitly invoked contributor-bootstrap E2E's public dependency
+download. Every Docker resource must have a unique name/label and deterministic
+cleanup.
 
 ### Manual user-journey evidence
 
