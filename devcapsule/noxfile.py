@@ -61,9 +61,21 @@ def run_e2e_tests(session: nox.Session) -> None:
         "pytest",
         "--no-cov",
         "-m",
-        "e2e",
+        "e2e and not recursive_e2e",
         str(PROJECT_ROOT / "tests" / "e2e"),
         env=environment,
+    )
+
+
+def run_recursive_e2e_tests(session: nox.Session) -> None:
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "--no-cov",
+        "-m",
+        "recursive_e2e",
+        str(PROJECT_ROOT / "tests" / "e2e"),
     )
 
 
@@ -217,7 +229,7 @@ def e2e(session: nox.Session) -> None:
 
 @nox.session(python="3.12")
 def recursive_dogfood_e2e(session: nox.Session) -> None:
-    """Run the explicit host-sensitive recursive dogfood dry-run entry point."""
+    """Run explicit host-sensitive recursive dogfood checks."""
 
     install_locked(session)
     session.run(
@@ -231,6 +243,7 @@ def recursive_dogfood_e2e(session: nox.Session) -> None:
         "run",
         "--json",
     )
+    run_recursive_e2e_tests(session)
 
 
 @nox.session(python="3.12")

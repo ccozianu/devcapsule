@@ -557,41 +557,19 @@ line containing those values.
 
 ### Local Clone Protocol
 
-Create `checkout/` from the current repository with Git local transport and no
-hard links. The effective operation is equivalent to:
+The executable specification is
+[`tests/e2e/test_recursive_local_clone.py`](../tests/e2e/test_recursive_local_clone.py).
+Its `LocalCloneProtocol` keeps environment inspection, source selection,
+ownership setup, clone, checkout hardening, exact-revision checkout, canonical
+origin replacement, independence checks, and cleanup as separate operations.
+The security rationale and exact Git/environment behavior live beside those
+operations as Python comments rather than being duplicated here.
 
-```text
-git -c protocol.file.allow=always clone --local --no-hardlinks --no-checkout \
-  --no-recurse-submodules SOURCE_CHECKOUT RUN_ROOT/checkout
-git -C RUN_ROOT/checkout checkout --detach REVISION
-git -C RUN_ROOT/checkout remote set-url origin \
-  https://github.com/ccozianu/devcapsule
-```
-
-Run Git with an explicit sanitized environment: isolated `HOME` and XDG roots,
-`GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null`,
-`GIT_TERMINAL_PROMPT=0`, `GIT_LFS_SKIP_SMUDGE=1`, no `SSH_AUTH_SOCK`, and no
-Git/token/askpass variables. Use an empty run-owned template/hooks directory
-and configure `core.hooksPath` there before checkout. Do not copy the source
-checkout's `.git/config`, hooks, worktree-local config, credential helpers,
-alternates, ignored files, `.venv`, build outputs, or untracked files.
-
-After checkout, prove all of the following before bootstrap:
-
-- `HEAD` equals the selected full revision and the worktree is detached and
-  clean;
-- `origin` is only the canonical public HTTPS URL;
-- `.git/objects/info/alternates` is absent and no object hard link is shared
-  with the source repository;
-- `git fsck --full` succeeds using only the clone's object database;
-- the clone contains no `.venv`, `.nox`, `dist`, source checkout symlink, or
-  copied Git/agent credential file; and
-- the clone and all later generated paths remain beneath the exact owned run
-  root.
-
-The clone log records sanitized command shapes, commit IDs, timings, and exit
-codes. It must not record the source checkout path in ordinary output or
-manifest data; a stable label such as `<current-checkout>` is sufficient.
+This recursive-only E2E must prove it is running unprivileged inside the
+authorized DevCapsule container, reach the selected host daemon, inspect its
+own running managed image, clone clean exact `HEAD` locally without network or
+shared objects, exclude generated and credential state, and remove only its
+exact ownership-marked run root after success or failure.
 
 ### Isolated Contributor Bootstrap
 
