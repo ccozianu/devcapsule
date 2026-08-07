@@ -13,13 +13,14 @@ PyCharm settings, per-project IDE state, and plugins persistent on the host.
   to implementation and validation evidence.
 - `../WORKFLOW.md` for the human/agent iteration process used by this project
   and reusable target projects.
-- `debugging.md` for the handoff from the debugging session that made the
-  current image work.
-- `implementation-notes/using-v0-for-real-python-projects.md` for applying the
-  current image to an ordinary Python project.
-- `user.md` for the human-facing PyCharm AI plugin setup guide.
-- `historical-root-README.md` for the original root project brief and
-  historical handoff context.
+- `../engineering-docs/implementation-notes/docker4pycharm/debugging.md` for
+  the handoff from the debugging session that made the current image work.
+- `../engineering-docs/implementation-notes/docker4pycharm/using-v0-for-real-python-projects.md`
+  for applying the current image to an ordinary Python project.
+- `../docs/guides/docker4pycharm-ai-plugin-and-chatgpt-setup.md` for the
+  human-facing PyCharm AI plugin setup guide.
+- `../engineering-docs/implementation-notes/docker4pycharm/historical-root-readme.md`
+  for the original root project brief and historical handoff context.
 
 ## Build
 
@@ -52,8 +53,8 @@ docker4ide-bootstrap-project
 ```
 
 Run it inside an ordinary mounted project that does not yet have local
-`AGENTS.md`, `REQUIREMENTS.md`, README handoff, `implementation-notes/`,
-`implementation-notes/bugs/`, or basic Python `.gitignore` process defaults.
+`AGENTS.md`, `REQUIREMENTS.md`, README handoff, `docs/`, the categorized
+`engineering-docs/` structure, or basic Python `.gitignore` process defaults.
 Existing files are preserved; missing ignore entries and a missing README
 handoff section are appended.
 
@@ -325,13 +326,14 @@ renderer under the default isolation model is Mesa `llvmpipe`.
 
 ## Debugging handoff
 
-The detailed handoff lives in `debugging.md`. It records the problems seen while
-bringing the MVP to a working state:
+The detailed handoff lives in
+`../engineering-docs/implementation-notes/docker4pycharm/debugging.md`. It
+records the problems seen while bringing the MVP to a working state:
 
 - Historical note: Markdown preview previously rendered blank and could make
   the PyCharm GUI unresponsive, but this is no longer reproduced in the current
   iterations. The old symptoms and log signatures are preserved in
-  `implementation-notes/completed-tasks/2026-06-20-markdown-preview-skiko-opengl-hang-retired.md`.
+  `../engineering-docs/completed-tasks/docker4pycharm/2026-06-20-markdown-preview-skiko-opengl-hang-retired.md`.
 - Docker build networking required opt-in host networking on the user's laptop.
 - The default launcher mode now connects the IDE container to the host Docker
   daemon. Explicit `--docker-in-docker` mode is available if isolated Docker

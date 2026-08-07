@@ -1,37 +1,63 @@
 # Current Status
 
 This is the handoff for the next developer or agent. Git history and the linked
-implementation notes hold completed-session detail; this file records only the
-current state, evidence, and next step.
+engineering records hold completed-session detail; this file records only the
+current state, evidence, open workstreams, and their resumption points.
 
 ## Project
 
 DevCapsule is a Python CLI for building and running reproducible, isolated
 developer environments. The V1 target is described in [README.md](README.md),
 [REQUIREMENTS.md](REQUIREMENTS.md), and
-[devcapsule/REQUIREMENTS.md](devcapsule/REQUIREMENTS.md).
+[devcapsule-src/REQUIREMENTS.md](devcapsule-src/REQUIREMENTS.md).
 
 The canonical public repository is
 `https://github.com/ccozianu/devcapsule`. The active branch is
 `milestone/recursive-dogfood-e2e`, created from clean `main` revision
 `237d4939f8d1dcfcfbe2061209f16f8692542c08`.
 
-## Active Milestone
+## Open Workstreams
 
-The current milestone is **Recursive Dogfood E2E — Build And Launch A
-Successor From Inside DevCapsule**. Its execution plan is
-[2026-08-06-recursive-dogfood-e2e-milestone-plan.md](devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md).
+The repository currently has two open workstreams with an explicit execution
+order.
+
+### Foreground: Workflow And Documentation Structure
+
+This short workstream establishes the repository metadata and protocol needed
+to represent multiple independently resumable human/agent workstreams. It is
+limited to workflow structure, documentation structure, and related metadata;
+it must not change product code.
+
+The current design inputs are:
+
+- [Engineering documentation structure](engineering-docs/README.md); and
+- [Multiple-workstream workflow change proposal](engineering-docs/design-notes/workflow-change-proposal-for-multiple-workstreams.md).
+
+This workstream is complete when the adopted human/agent workflow can discover,
+select, pause, resume, and coordinate multiple workstreams through explicit
+committed repository structure. Until those protocol changes are completed,
+the proposal remains non-authoritative and the existing root workflow files
+retain their current authority.
+
+### Paused: Recursive Dogfood E2E
+
+The **Recursive Dogfood E2E — Build And Launch A Successor From Inside
+DevCapsule** milestone is paused at the completed Stage 3 boundary while the
+foreground metadata workstream is finished. Its execution plan and
+authoritative resumption instructions are in
+[2026-08-06-recursive-dogfood-e2e-milestone-plan.md](engineering-docs/implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md).
 
 - Stages 0 through 3 are complete.
 - Stage 3 closed with passing local-clone and contributor-bootstrap E2Es in
   both recursive and contributor-laptop contexts.
-- Stage 4 is in progress. Its first checkpoint publishes the accepted v024
-  base and selects its immutable registry digest in the project lock.
+- Stage 4 has not started. Resume this workstream by starting Stage 4 from the
+  milestone plan; its first checkpoint publishes the accepted v024 base and
+  selects its immutable registry digest in the project lock.
 - Stages 5 and 6 have not started.
 - No successor image has been built or launched yet.
 
 The milestone is one part of the broader
-[V1 gap plan](devcapsule/implementation-notes/2026-08-06-v1-gap-review.md).
+[V1 gap plan](engineering-docs/design-notes/devcapsule/2026-08-06-v1-gap-review.md).
 PyCharm functional closure, the self-service configuration catalog, and V1
 publication and acceptance follow it.
 
@@ -64,16 +90,16 @@ must keep the v024 bootstrap identity separate from the selected source commit
 and the artifacts generated from that commit.
 
 The full Stage 2 handoff is in
-[2026-08-06-recursive-dogfood-stage-2-execution-checklist.md](devcapsule/implementation-notes/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md).
+[2026-08-06-recursive-dogfood-stage-2-execution-checklist.md](engineering-docs/implementation-notes/devcapsule/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md).
 
 ## Stage 3 Evidence
 
 The executable acceptance specifications are:
 
-- [test_recursive_local_clone.py](devcapsule/tests/e2e/test_recursive_local_clone.py):
+- [test_recursive_local_clone.py](devcapsule-src/tests/e2e/test_recursive_local_clone.py):
   validates the recursive environment and makes an exact, independent,
   credential-free local clone;
-- [test_contributor_bootstrap.py](devcapsule/tests/e2e/test_contributor_bootstrap.py):
+- [test_contributor_bootstrap.py](devcapsule-src/tests/e2e/test_contributor_bootstrap.py):
   bootstraps a clean contributor environment from both supported launch
   contexts.
 
@@ -96,17 +122,27 @@ the current container is itself host-networked.
 The filesystem-local clone does not depend on the developer's configured
 `origin` URL. Stage 4 verifies canonical public artifact metadata separately.
 
-## Next Step
+## Foreground Next Step
 
-Begin Stage 4. Compose the accepted Stage 3 clone and bootstrap protocols into
-one retained, ownership-marked milestone run. From the clean clone, run the
-full clean Nox gate, build and verify the revision-bearing PEX, then use that
-PEX to build and inspect the successor base through the authorized host Docker
-daemon.
+Complete the workflow and documentation structure workstream without changing
+product code. Adopt and encode the multiple-workstream protocol, including its
+repository structure and deterministic human/agent routing, then leave an
+explicit resumable handoff for each open workstream.
+
+When that workstream closes, the human/agent workflow will support multiple
+workstreams. Resume Recursive Dogfood E2E by starting Stage 4 from
+[the milestone plan](engineering-docs/implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md):
+
+- compose the accepted Stage 3 clone and bootstrap protocols into one retained,
+  ownership-marked milestone run;
+- from the clean clone, run the full clean Nox gate;
+- build and verify the revision-bearing PEX; and
+- use that PEX to build and inspect the successor base through the authorized
+  host Docker daemon.
 
 Additional workspace, retry, corruption, redaction, and isolation hardening is
 tracked in the
-[V1 test backlog](devcapsule/implementation-notes/2026-08-07-v1-test-backlog.md).
+[V1 test backlog](engineering-docs/implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md).
 It does not block the completed Stage 3 boundary.
 
 ## Known Follow-ups
@@ -126,7 +162,7 @@ host access, credentials, networking, devices, or mounts must preserve
 
 ## Validation
 
-From `devcapsule/`:
+From `devcapsule-src/`:
 
 ```text
 python -m nox -s tests

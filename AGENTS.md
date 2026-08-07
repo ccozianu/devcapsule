@@ -20,8 +20,8 @@ understand what the project is about, including the requirements and
 specification described in the brief.
 
 Treat `REQUIREMENTS.md` as the overview/index for root requirements. Read the
-specific detailed files under `docs/requirements/` only as needed for the task
-you are working on.
+specific detailed files under `engineering-docs/requirements/product/` only as
+needed for the task you are working on.
 
 If the handoff defines a planned next step, state that next step to the user
 before proceeding.
@@ -45,9 +45,10 @@ Whenever you add a new `.md` file, delete an existing `.md` file, or rename or
 move a `.md` file, update `index.md` in the same change so it continues to list
 all markdown documentation using relative links grouped by category.
 
-Persist a consequential chat or working session beneath the relevant
-`implementation-notes/session-records/` directory only when the user explicitly
-requests it. Default to a detailed, sanitized agent-authored record; use a
-summary when requested, and call a record verbatim only when the user or IDE
-supplies an export. Follow `WORKFLOW.md` and the directory README, keep canonical
-decisions/requirements/status in their normal files, and update `index.md`.
+Persist a consequential chat or working session beneath the relevant scope in
+`engineering-docs/session-records/` only when the user explicitly requests it.
+Default to a detailed, sanitized agent-authored record; use a summary when
+requested, and call a record verbatim only when the user or IDE supplies an
+export. Follow `WORKFLOW.md` and the directory README, keep canonical
+decisions, requirements, and status in their normal files, and update
+`index.md`.

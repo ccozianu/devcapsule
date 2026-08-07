@@ -17,8 +17,10 @@ and agent must discover them immediately:
 
 ## Structure
 
-- `requirements/` — canonical engineering requirement records when they are
-  migrated from the current structure.
+- `requirements/product/` — canonical repository-wide product requirement
+  records.
+- `requirements/devcapsule/` — canonical requirements for the active Python
+  CLI/framework implementation.
 - `specifications/` — normative technical contracts, schemas, protocols, and
   invariants.
 - `decisions/` — durable accepted, rejected, deferred, or superseded design
@@ -35,20 +37,16 @@ and agent must discover them immediately:
 - `session-records/` — explicitly requested, sanitized historical session
   captures that supplement rather than replace canonical artifacts.
 
-## Current Migration State
+Scope-specific subdirectories such as `devcapsule/` and `docker4pycharm/`
+separate active implementation records from historical prototype evidence.
+These are documentation scopes, not source-tree paths; the active Python
+distribution project lives at `devcapsule-src/`. Repository-wide records use
+the `product/` scope where a category needs to distinguish them from
+implementation-specific material.
 
-This structure is scaffolded for the FastAPI demo and multiple-workstream
-design effort. Existing requirements, specifications, decisions,
-implementation notes, bugs, completed tasks, and session records remain in
-their current locations until a deliberate migration can be performed without
-disrupting the active recursive dogfood E2E work.
+## Placement Rules
 
-Creating this tree does not adopt the multiple-workstream proposal and does not
-change the authority or meaning of `CURRENT-STATUS.md`, `WORKFLOW.md`,
-`AGENTS.md`, or any existing requirement.
-
-New documents should be placed according to their primary audience and
-authority:
+Place documents according to their primary audience and authority:
 
 1. Stable product guidance for a DevCapsule user or adopter belongs in
    `docs/`.
@@ -58,3 +56,12 @@ authority:
    behavior is a specification, adopted choices are decisions, unsettled
    proposals are design notes, and execution or validation evidence is an
    implementation note.
+
+Historical records retain their original claims and dates, but links and path
+references should point to the current repository location. Moving a record
+does not change its status, authority, or validation result.
+
+The `workstreams/` directory remains scaffolded while the multiple-workstream
+workflow proposal is evaluated. Its existence does not by itself adopt that
+proposal or change the authority of `CURRENT-STATUS.md`, `WORKFLOW.md`, or
+`AGENTS.md`.
