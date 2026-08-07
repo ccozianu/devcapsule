@@ -8,7 +8,7 @@ detail for each item.
 The canonical detailed record for each root requirement lives under:
 
 ```text
-docs/requirements/
+engineering-docs/requirements/product/
 ```
 
 Each requirement file uses frontmatter plus markdown so the repository remains
@@ -17,9 +17,9 @@ integration with external systems if desired.
 
 Implementation-specific requirements still live in:
 
-- `devcapsule/REQUIREMENTS.md` for the active Python CLI/framework.
-- `docker4pycharm/implementation-notes/` for historical PyCharm prototype
-  context.
+- `devcapsule-src/REQUIREMENTS.md` for the active Python CLI/framework.
+- `engineering-docs/` for canonical requirements, decisions, design notes,
+  implementation evidence, and historical Docker4PyCharm context.
 
 ## Requirement Types
 
@@ -55,12 +55,12 @@ Current root requirement emphasis:
 - documentation and process requirements keep the repo resumable and explicit
   for both humans and agents;
 - active implementation work remains tracked in `README.md` and
-  `devcapsule/REQUIREMENTS.md`.
+  `devcapsule-src/REQUIREMENTS.md`.
 
 Current release/stabilization reality:
 
 - the root requirement set is now normalized into one-file-per-item records
-  under `docs/requirements/`;
+  under `engineering-docs/requirements/product/`;
 - future work should maintain the overview here and update the detailed item
   files when a requirement changes materially;
 - future automation may consume frontmatter from these files, but the repo
@@ -70,26 +70,26 @@ Current release/stabilization reality:
 
 ### Product Goals
 
-- `R-PRODUCT-001` — [Batteries-Included IDE Environments](docs/requirements/r-product-001-batteries-included-ide-environments.md)
-- `R-PRODUCT-002` — [Explicit Host Boundaries](docs/requirements/r-product-002-explicit-host-boundaries.md)
-- `R-PRODUCT-003` — [Durable Human/Agent Project Memory](docs/requirements/r-product-003-durable-human-agent-project-memory.md)
-- `R-PRODUCT-004` — [Reusable Human/Agent Workflow](docs/requirements/r-product-004-reusable-human-agent-workflow.md)
+- `R-PRODUCT-001` — [Batteries-Included IDE Environments](engineering-docs/requirements/product/r-product-001-batteries-included-ide-environments.md)
+- `R-PRODUCT-002` — [Explicit Host Boundaries](engineering-docs/requirements/product/r-product-002-explicit-host-boundaries.md)
+- `R-PRODUCT-003` — [Durable Human/Agent Project Memory](engineering-docs/requirements/product/r-product-003-durable-human-agent-project-memory.md)
+- `R-PRODUCT-004` — [Reusable Human/Agent Workflow](engineering-docs/requirements/product/r-product-004-reusable-human-agent-workflow.md)
 
 ### Workflow And Documentation Requirements
 
-- `R-PRODUCT-005` — [Incremental Human/Agent Execution Loop](docs/requirements/r-product-005-incremental-human-agent-execution-loop.md)
-- `R-DOCS-001` — [Root Documentation Stays Implementation-Agnostic](docs/requirements/r-docs-001-root-documentation-stays-implementation-agnostic.md)
-- `R-DOCS-002` — [Current User Docs Show Current Interfaces](docs/requirements/r-docs-002-current-user-docs-show-current-interfaces.md)
+- `R-PRODUCT-005` — [Incremental Human/Agent Execution Loop](engineering-docs/requirements/product/r-product-005-incremental-human-agent-execution-loop.md)
+- `R-DOCS-001` — [Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
+- `R-DOCS-002` — [Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
 
 ### Product Adoption And Positioning
 
-- `R-GTM-001` — [Compelling V1 Announcement For Adopters](docs/requirements/r-gtm-001-compelling-v1-announcement-for-adopters.md)
+- `R-GTM-001` — [Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
 
 ## Maintenance Rules
 
 - Read `REQUIREMENTS.md` first for orientation.
 - Read only the detailed files relevant to the current task.
 - Keep `REQUIREMENTS.md` concise: overview, grouping, status framing, and links.
-- Keep canonical detail in the per-item files under `docs/requirements/`.
+- Keep canonical detail in the per-item files under `engineering-docs/requirements/product/`.
 - When adding, deleting, renaming, or moving any requirement file, update this
   index and `index.md` in the same change.

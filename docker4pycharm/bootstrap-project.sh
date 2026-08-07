@@ -12,9 +12,16 @@ Creates a small, idempotent process/documentation seed in a mounted project:
   AGENTS.md
   REQUIREMENTS.md
   README.md current-state handoff section
-  implementation-notes/
-  implementation-notes/bugs/
-  implementation-notes/completed-tasks/
+  docs/
+  engineering-docs/requirements/
+  engineering-docs/specifications/
+  engineering-docs/decisions/
+  engineering-docs/design-notes/
+  engineering-docs/implementation-notes/
+  engineering-docs/workstreams/
+  engineering-docs/bugs/
+  engineering-docs/completed-tasks/
+  engineering-docs/session-records/
   basic Python .gitignore entries
 
 Existing files are preserved. Missing .gitignore entries and a missing README
@@ -38,7 +45,17 @@ fi
 TARGET="$(cd "$TARGET" && pwd)"
 cd "$TARGET"
 
-mkdir -p implementation-notes/bugs implementation-notes/completed-tasks
+mkdir -p \
+  docs \
+  engineering-docs/requirements \
+  engineering-docs/specifications \
+  engineering-docs/decisions \
+  engineering-docs/design-notes \
+  engineering-docs/implementation-notes \
+  engineering-docs/workstreams \
+  engineering-docs/bugs \
+  engineering-docs/completed-tasks \
+  engineering-docs/session-records
 
 append_missing_gitignore_entry() {
   local entry="$1"
@@ -102,6 +119,9 @@ After reading the required documents, acknowledge that you understand the
 project purpose, requirements register, current state, and planned next step
 before proceeding.
 
+Treat `REQUIREMENTS.md` as the requirement overview and index. Read detailed
+records under `engineering-docs/requirements/` only as needed for the task.
+
 If the brief defines a planned next step, state that next step to the user
 before proceeding.
 
@@ -118,9 +138,10 @@ if [ ! -f REQUIREMENTS.md ]; then
   cat > REQUIREMENTS.md <<'EOF_REQUIREMENTS'
 # Requirements Register
 
-This file is the project-level source of truth for accepted requirements. It
-does not replace the active task list in `README.md`; it gives tasks, bugs, and
-implementation notes stable requirement IDs to reference.
+This file is the project-level overview and index for accepted requirements.
+Canonical detailed records belong under `engineering-docs/requirements/`.
+This overview does not replace the active task list in `README.md`; it gives
+tasks, bugs, and engineering notes stable requirement IDs to reference.
 
 ## Status Values
 
@@ -185,8 +206,8 @@ Related:
 EOF_REQUIREMENTS
 fi
 
-if [ ! -f implementation-notes/bugs/_template.md ]; then
-  cat > implementation-notes/bugs/_template.md <<'EOF_BUG_TEMPLATE'
+if [ ! -f engineering-docs/bugs/_template.md ]; then
+  cat > engineering-docs/bugs/_template.md <<'EOF_BUG_TEMPLATE'
 # Bug: Short Title
 
 Date opened:
@@ -270,8 +291,8 @@ When resuming the project, read these files in order:
 
 1. \`README.md\`
 2. \`REQUIREMENTS.md\`
-3. \`implementation-notes/bugs/\` for active bug records, if relevant
-4. \`implementation-notes/\`
+3. \`engineering-docs/bugs/\` for active bug records, if relevant
+4. \`engineering-docs/implementation-notes/\`
 
 Planned next items:
 
@@ -300,8 +321,8 @@ When resuming the project, read these files in order:
 
 1. `README.md`
 2. `REQUIREMENTS.md`
-3. `implementation-notes/bugs/` for active bug records, if relevant
-4. `implementation-notes/`
+3. `engineering-docs/bugs/` for active bug records, if relevant
+4. `engineering-docs/implementation-notes/`
 
 Planned next items:
 
@@ -323,8 +344,15 @@ Created or updated:
   README.md
   REQUIREMENTS.md
   .gitignore
-  implementation-notes/
-  implementation-notes/bugs/
-  implementation-notes/bugs/_template.md
-  implementation-notes/completed-tasks/
+  docs/
+  engineering-docs/requirements/
+  engineering-docs/specifications/
+  engineering-docs/decisions/
+  engineering-docs/design-notes/
+  engineering-docs/implementation-notes/
+  engineering-docs/workstreams/
+  engineering-docs/bugs/
+  engineering-docs/bugs/_template.md
+  engineering-docs/completed-tasks/
+  engineering-docs/session-records/
 EOF_DONE

@@ -3,9 +3,9 @@
   <component name="PySourceRootDetectionService">
     <option name="sourcePathsSet">
       <set>
-        <option value="$PROJECT_DIR$/devcapsule/tests" />
-        <option value="$PROJECT_DIR$/devcapsule/devcapsule" />
-        <option value="$PROJECT_DIR$/devcapsule/build/lib" />
+        <option value="$PROJECT_DIR$/devcapsule-src/tests" />
+        <option value="$PROJECT_DIR$/devcapsule-src/devcapsule" />
+        <option value="$PROJECT_DIR$/devcapsule-src/build/lib" />
       </set>
     </option>
   </component>

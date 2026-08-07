@@ -10,7 +10,7 @@ survive model changes, IDE restarts, and future sessions.
    section.
 2. Read `REQUIREMENTS.md` for the requirement overview when changing behavior,
    validation scope, or priorities, then open the relevant detailed files under
-   `docs/requirements/` as needed.
+   `engineering-docs/requirements/product/` as needed.
 3. Work from the active task list, not from stale conversation memory.
 4. Keep each cycle narrow enough that the user can validate the result.
 5. When the user validates something manually, update the handoff so the same
@@ -166,23 +166,32 @@ Use markdown files with distinct responsibilities:
   next task list. Refresh it whenever durable project state changes.
 - `REQUIREMENTS.md`: implementation-agnostic requirement overview and index for
   project-level goals and concrete requirements.
-- `docs/requirements/`: one markdown file per root requirement, with
-  frontmatter metadata and canonical detailed requirement text.
-- Subproject requirement overviews, such as `devcapsule/REQUIREMENTS.md`:
+- `docs/`: stable product guidance and reference material intended for users
+  and adopters.
+- `engineering-docs/`: contributor- and agent-facing engineering records,
+  classified by authority and purpose.
+- `engineering-docs/requirements/product/`: one markdown file per root
+  requirement, with frontmatter metadata and canonical detailed requirement
+  text.
+- Subproject requirement overviews, such as `devcapsule-src/REQUIREMENTS.md`:
   implementation-specific requirement scope, status framing, and links to the
   canonical detailed requirement records for that subproject.
 - `AGENTS.md`: instructions every future agent should read before touching the
   repository.
-- `implementation-notes/`: decisions, retired issues, validation details,
-  debugging history, tradeoffs, and other context that should not clutter the
-  active task list.
-- `implementation-notes/bugs/`: one file per active or recently investigated
+- `engineering-docs/design-notes/`: proposals, alternatives, research, and
+  unsettled implementation-scoped architecture.
+- `engineering-docs/implementation-notes/`: execution plans, validation
+  details, debugging history, checklists, and other evidence that should not
+  clutter the active task list.
+- `engineering-docs/workstreams/`: independently resumable workstream handoffs
+  when the repository adopts that workflow.
+- `engineering-docs/bugs/`: one file per active or recently investigated
   bug, with symptoms, reproduction, evidence, hypotheses, verification target,
   and close criteria.
-- `implementation-notes/completed-tasks/`: one file per completed, retired,
+- `engineering-docs/completed-tasks/`: one file per completed, retired,
   manually validated, or no-longer-reproduced task. This is the retrospective
   archive.
-- `implementation-notes/session-records/`: user-requested preservation of a
+- `engineering-docs/session-records/`: user-requested preservation of a
   consequential human/agent session. These records are historical context,
   not canonical decisions, requirements, handoff state, or active backlog.
 - Target-specific docs such as `docker4pycharm/README.md`: operational usage
@@ -197,10 +206,11 @@ Create a repository session record only when the user explicitly asks for the
 conversation or session to be preserved. Do not infer this request merely from
 session length, importance, a checkpoint, or session closure.
 
-Store the record beneath the relevant subproject's
-`implementation-notes/session-records/` directory. If the session is truly
-repository-wide and no subproject is the natural owner, use a root
-`implementation-notes/session-records/` directory.
+Store the record beneath the relevant scope in
+`engineering-docs/session-records/`. For example, DevCapsule implementation
+sessions use `engineering-docs/session-records/devcapsule/`. Repository-wide
+sessions may live directly beneath `engineering-docs/session-records/` or in a
+documented `product/` scope.
 
 The default capture mode is `detailed`: an agent-authored chronological record
 of important user instructions, decisions, rationale, examples, changes,
@@ -227,7 +237,7 @@ template guidance live in the `README.md` of each session-record directory.
 
 Top-level documentation must keep the repository split clear:
 
-- `devcapsule/` is the active Python CLI/framework subproject. New framework
+- `devcapsule-src/` is the active Python distribution project. New framework
   behavior, configuration protocol work, packaging, and tests should normally
   be implemented there.
 - `docker4pycharm/` is the historical/reference PyCharm shell subproject. It
@@ -237,14 +247,14 @@ Top-level documentation must keep the repository split clear:
 
 When editing user-facing docs, avoid mixing these roles. Historical notes may
 describe old commands, but current instructions should point users to
-`devcapsule/` and the configuration-first CLI when describing active
+`devcapsule-src/` and the configuration-first CLI when describing active
 development.
 
 ## Requirements Register
 
 Use root `REQUIREMENTS.md` as the project-level overview and index for
 requirements that should remain true across implementations. Use
-`docs/requirements/` for the canonical detailed record of each root
+`engineering-docs/requirements/product/` for the canonical detailed record of each root
 requirement. Use subproject requirements files for implementation-specific
 behavior, validation scope, and traceability.
 
@@ -252,7 +262,7 @@ The active task list says what to do next; the relevant requirements register
 says why the task exists, how important it is, and how implementation and
 validation map back to project intent.
 
-Each root requirement record under `docs/requirements/` should have:
+Each root requirement record under `engineering-docs/requirements/product/` should have:
 
 - A stable ID such as `R-CONC-001`.
 - A short title.
@@ -289,7 +299,7 @@ Use this documentation split:
 
 - `REQUIREMENTS.md` records the requirement overview and links to the
   canonical detailed requirement files.
-- Target user docs such as `devcapsule/README.md` describe how the user does
+- Target user docs such as `devcapsule-src/README.md` describe how the user does
   it: installation path, command path, common examples, validation expectations,
   and current limitations.
 - Root `CURRENT-STATUS.md` records current state, recent changes, and
@@ -334,11 +344,12 @@ actually consider doing.
 
 ## Bug Intake
 
-Use `implementation-notes/bugs/` when a bug needs durable evidence before it is
-fixed, retired, or converted into a completed task. Name files like:
+Use the relevant scope beneath `engineering-docs/bugs/` when a bug needs
+durable evidence before it is fixed, retired, or converted into a completed
+task. Name files like:
 
 ```text
-implementation-notes/bugs/YYYY-MM-DD-short-title.md
+engineering-docs/bugs/SCOPE/YYYY-MM-DD-short-title.md
 ```
 
 Each bug file should capture:
@@ -364,7 +375,8 @@ retired:
 1. Remove it from the active list.
 2. Add a dated status note near the current-state section if future agents need
    to know why it disappeared.
-3. Move detailed evidence into `implementation-notes/completed-tasks/`.
+3. Move detailed evidence into the corresponding scope beneath
+   `engineering-docs/completed-tasks/`.
 4. State when the task should be reopened, for example "only if a later image or
    launcher change regresses this path."
 
@@ -375,7 +387,7 @@ This keeps the next-session question "what should we do next?" unambiguous.
 Use one markdown file per closed task:
 
 ```text
-implementation-notes/completed-tasks/YYYY-MM-DD-short-task-name.md
+engineering-docs/completed-tasks/SCOPE/YYYY-MM-DD-short-task-name.md
 ```
 
 Recommended structure:
@@ -480,20 +492,21 @@ subprojects, and model changes. Those get a ceremony.
 Design decision records live at:
 
 ```text
-docs/decisions/
+engineering-docs/decisions/product/
 ```
 
 They are root-level because they are implementation-agnostic and outlast any
-subproject. Use `docs/decisions/_template.md` as the starting point.
+subproject. Use `engineering-docs/decisions/product/_template.md` as the starting point.
 
 ### Two Tiers
 
-- `docs/decisions/`: product and architecture decisions. Ceremonial,
+- `engineering-docs/decisions/product/`: product and architecture decisions. Ceremonial,
   human-adopted, immutable once accepted. Use when a choice crosses
   subprojects, changes an accepted requirement, or moves a security boundary.
-- `<subproject>/implementation-notes/`: lightweight decision notes, described
-  in the next section. Local, reversible, implementation-scoped, and writable
-  by an agent without ceremony.
+- `engineering-docs/design-notes/SCOPE/`: lightweight proposals and decision
+  notes described in the next section. They are local, reversible,
+  implementation-scoped, and writable by an agent without decision-record
+  ceremony.
 
 Promotion rule: a lightweight note that turns out to change a requirement,
 cross subprojects, or set a boundary graduates into a root decision record.
@@ -549,8 +562,8 @@ warrant asking a human also warrant recording the answer.
 ## Decision Notes
 
 These are the lightweight tier described above. For decisions that may be
-revisited but stay local to one implementation, use a small note under
-`implementation-notes/`:
+revisited but stay local to one implementation, use a small note under the
+relevant scope in `engineering-docs/design-notes/`:
 
 ```markdown
 # Decision: ...
@@ -611,8 +624,8 @@ In the mounted project, ask the agent:
 Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
 Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
-docs/requirements/, and implementation-notes/ as appropriate. Preserve
-existing project docs and adapt the process to this repository.
+docs/, and engineering-docs/ as appropriate. Preserve existing project docs
+and adapt the process to this repository.
 ```
 
 At minimum, add or update these files in the target project:
@@ -622,21 +635,28 @@ AGENTS.md
 README.md
 CURRENT-STATUS.md
 REQUIREMENTS.md
-docs/requirements/
-implementation-notes/
-implementation-notes/bugs/
-implementation-notes/completed-tasks/
+docs/
+engineering-docs/requirements/
+engineering-docs/specifications/
+engineering-docs/decisions/
+engineering-docs/design-notes/
+engineering-docs/implementation-notes/
+engineering-docs/workstreams/
+engineering-docs/bugs/
+engineering-docs/completed-tasks/
+engineering-docs/session-records/
 ```
 
 The target project's `README.md` should end with a current-state and next-step
 section. The target project's `REQUIREMENTS.md` should give an overview and
 index of accepted requirements with stable IDs, while the canonical detailed
-records live under `docs/requirements/`. The target project's `AGENTS.md`
-should instruct agents to read the brief first, then any target-specific
-handoff notes. Retired debugging details or important decisions should go under
-that project's `implementation-notes/` folder. Active bug evidence should go
-under `implementation-notes/bugs/`. Closed task records should go under
-`implementation-notes/completed-tasks/`.
+records live under `engineering-docs/requirements/`. The target project's
+`AGENTS.md` should instruct agents to read the brief first, then any
+target-specific handoff notes. Design proposals and lightweight decisions
+belong in `engineering-docs/design-notes/`; execution and validation evidence
+belongs in `engineering-docs/implementation-notes/`; active bug evidence
+belongs in `engineering-docs/bugs/`; and closed task records belong in
+`engineering-docs/completed-tasks/`.
 
 The Docker image and launcher provide the working environment. The mounted
 project provides the source of truth for the work.

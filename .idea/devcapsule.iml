@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module external.system.id="pyproject.toml" type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$/devcapsule">
-      <sourceFolder url="file://$MODULE_DIR$/devcapsule" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/devcapsule/build/lib" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/devcapsule/devcapsule" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/devcapsule/tests" isTestSource="false" />
-      <excludeFolder url="file://$MODULE_DIR$/devcapsule/.venv" />
-      <excludeFolder url="file://$MODULE_DIR$/devcapsule/devcapsule/assets" />
+    <content url="file://$MODULE_DIR$/devcapsule-src">
+      <sourceFolder url="file://$MODULE_DIR$/devcapsule-src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/devcapsule-src/build/lib" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/devcapsule-src/devcapsule" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/devcapsule-src/tests" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/devcapsule-src/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/devcapsule-src/devcapsule/assets" />
     </content>
-    <orderEntry type="jdk" jdkName="$MODULE_DIR$/devcapsule/.venv" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="$MODULE_DIR$/devcapsule-src/.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

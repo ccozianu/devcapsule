@@ -10,5 +10,5 @@ Seed new workspaces with basic Python ignores The repo had tracked .pyc and .ide
 5.
 Keep dependency/runtime policy explicit The Psycopg issue was a good example. For simple educational FastAPI/Postgres work, psycopg[binary] in project requirements is fine. If the environment is intended to support non-binary Psycopg by default, then it should include libpq runtime packages. I would not bake in full Postgres/Redis services unless a project asks for them.
 6.
-Maybe provide a tiny project bootstrap helper Not a framework, just something that can create AGENTS.md, README.md handoff, implementation-notes/, and sane ignores. The existing bootstrap markdown worked; a command wrapper would reduce manual steps.
+Maybe provide a tiny project bootstrap helper Not a framework, just something that can create AGENTS.md, README.md handoff, engineering-docs/implementation-notes/, and sane ignores. The existing bootstrap markdown worked; a command wrapper would reduce manual steps.
 What I would avoid adding by default: Conda, Poetry, pre-commit stacks, multiple linters, database servers, and heavy orchestration. For this workflow, a clean Python, venv, Git, and small Unix-tool baseline is enough.
