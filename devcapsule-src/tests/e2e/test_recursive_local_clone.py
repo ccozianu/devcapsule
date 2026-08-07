@@ -8,6 +8,7 @@ methods make the exact Git, Docker, ownership, and cleanup behavior executable.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -16,6 +17,7 @@ import secrets
 import shutil
 import stat
 import subprocess
+import sys
 from typing import Any, Mapping, Sequence
 
 import pytest
@@ -197,12 +199,13 @@ class LocalCloneProtocol:
         ).stdout.strip()
         assert server_version, "the explicitly authorized host daemon did not report a version"
 
-        preflight = self._embedded_preflight()
-        assert preflight.get("ready") is True, "embedded-PEX recursive preflight is not READY"
-        facts = self._mapping(preflight.get("facts"), "preflight facts")
+        preflight = self._source_preflight()
+        assert preflight.get("ready") is True, "source recursive preflight is not READY"
+        build_info = self._embedded_build_info()
         bootstrap_revision = self._full_revision(
-            facts.get("distribution_revision"), "embedded distribution revision"
+            build_info.get("source_revision"), "embedded distribution revision"
         )
+        facts = self._mapping(preflight.get("facts"), "preflight facts")
         workspace_root = Path(self._string(facts.get("workspace"), "workspace root"))
         assert workspace_root.is_dir() and os.access(workspace_root, os.W_OK | os.X_OK)
         assert workspace_root.is_relative_to(Path.home().resolve(strict=True))
@@ -227,6 +230,7 @@ class LocalCloneProtocol:
         assert labels.get("devcapsule.image.managed") == "true"
         assert labels.get("devcapsule.image.kind") == "materialized"
         assert labels.get("devcapsule.source.revision") == bootstrap_revision
+        assert labels.get("devcapsule.pex.sha256") == self._file_sha256(EMBEDDED_PEX)
 
         return RecursiveEnvironment(
             docker=docker,
@@ -444,10 +448,12 @@ class LocalCloneProtocol:
                 f"clone contains a symlink into the source checkout: {candidate.relative_to(clone)}"
             )
 
-    def _embedded_preflight(self) -> Mapping[str, Any]:
+    def _source_preflight(self) -> Mapping[str, Any]:
         completed = self._run(
             [
-                str(EMBEDDED_PEX),
+                sys.executable,
+                "-m",
+                "devcapsule",
                 "project",
                 "--path",
                 str(self.source_checkout),
@@ -458,7 +464,20 @@ class LocalCloneProtocol:
             environment=os.environ,
         )
         value = json.loads(completed.stdout)
-        return self._mapping(value, "embedded preflight report")
+        return self._mapping(value, "source preflight report")
+
+    def _embedded_build_info(self) -> Mapping[str, Any]:
+        completed = self._run([str(EMBEDDED_PEX), "version", "--json"])
+        value = json.loads(completed.stdout)
+        return self._mapping(value, "embedded build information")
+
+    @staticmethod
+    def _file_sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def _inspect_one(
         self,
