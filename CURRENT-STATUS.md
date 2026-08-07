@@ -1616,6 +1616,14 @@ Stage 2 bootstrap handoff checkpoint, 2026-08-07:
   negative agent/project/state inventory. It also found that the bare base
   image does not add `/opt/node/current/bin` to `PATH`; this is a separate
   runtime-tooling usability gap rather than a Stage 2 lineage/handoff failure.
+- Documentation checkpoint `7069d3e6fcfa0a9093a8d797953e53967a914801`
+  intentionally advanced the clean checkout beyond v024's embedded
+  `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`. Live embedded-PEX preflight
+  remained `READY`: it correctly requires image/embedded-PEX agreement while
+  recording, but not equating, the later checkout revision. The Stage 3 and
+  milestone acceptance checks now explicitly preserve separate bootstrap,
+  selected-source, and clean-clone identities. Rebuilding v024 for
+  documentation-only commits is not required.
 
 Active next task:
 

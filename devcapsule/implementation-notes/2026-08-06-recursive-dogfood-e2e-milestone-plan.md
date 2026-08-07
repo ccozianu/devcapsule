@@ -446,6 +446,41 @@ fixed `e2e-workspaces/RUN_ID` layout. It accepts neither an arbitrary workspace
 nor a host-daemon path. `--repair` is the only mutating recovery option and is
 restricted to exact ownership-marked Stage 3 resources.
 
+### Three Separate Revision Identities
+
+Stage 3 intentionally begins after the source checkout has advanced beyond the
+immutable v024 checkpoint. Checks must preserve three distinct identities:
+
+1. **Bootstrap runtime revision:** the running container image and
+   `/opt/devcapsule/bin/devcapsule.pex` must agree exactly with the recorded
+   v024 checkpoint, `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
+2. **Selected source revision:** the current checkout must be clean, exact,
+   canonical, and public at the later commit selected for this recursive run.
+3. **Clean-clone revision:** the local clone must equal the selected source
+   revision exactly; its built PEX and later successor artifacts inherit this
+   identity.
+
+The selected source and clean clone must agree with each other but are expected
+to differ from the bootstrap runtime. No preflight, manifest validator, resume
+check, or acceptance assertion may require checkout `HEAD` to equal the v024
+image/embedded-PEX revision. Rebuilding v024 merely because documentation or
+later stage implementation advanced `HEAD` is neither required nor desired.
+
+The full run establishes a chain of trust rather than pretending all code has
+one revision:
+
+- first invoke the embedded v024 PEX preflight and record that it matches the
+  running v024 image and authorizations;
+- then execute the clean selected source's orchestration/bootstrap code with
+  its exact revision recorded; and
+- after Stage 3 builds the clean-clone PEX, use that artifact for the Stage 4
+  through 6 production CLI/process boundaries.
+
+Fast and live tests must include the normal positive case where the bootstrap
+revision differs from the selected/clone revision. A mismatch within either
+required pair—image versus embedded PEX, or selected source versus clone/PEX—is
+an error.
+
 ### Revision Eligibility Before Mutation
 
 Before creating the run root, Stage 3 must derive and record an exact full
@@ -1128,6 +1163,9 @@ Repository and automated evidence:
 - fast tests and the ordinary full Nox build gate pass;
 - the explicit recursive E2E completes all post-handoff Stages 3 through 7,
   while retained evidence confirms the Stage 0 through 2 bootstrap lineage;
+- the embedded v024 PEX/image revision and the later selected source/clean-clone
+  revision are separately recorded, with agreement inside each required pair
+  and no false requirement that both generations use one revision;
 - the new PEX and base agree on exact source revision and digest;
 - the successor uses the new base and canonical materialized image;
 - positive and safe negative authorization behavior passes;
@@ -1154,9 +1192,10 @@ The milestone is complete only when all of the following are true:
   clean-clone-to-successor scenario;
 - v023 first builds a validated local v024 checkpoint and the user manually
   hands dogfood over to it without changing the committed v023 lock;
-- the full recursive run is initiated from a container and embedded PEX carrying
-  the exact v024 checkpoint revision rather than borrowing newer code only from
-  the mounted checkout;
+- the full recursive run starts inside the exact v024 container, first executes
+  its matching embedded-PEX preflight, records the later clean selected-source
+  revision, and then uses the clean-clone PEX for successor production
+  boundaries rather than conflating those two generations;
 - the clean clone bootstraps independently of the existing checkout's `.venv`;
 - the full gate creates a revision-bearing PEX;
 - that PEX builds a strictly verified managed base through host Docker;
