@@ -1607,15 +1607,24 @@ Stage 2 bootstrap handoff checkpoint, 2026-08-07:
   notice for the unrelated `.idea/pySourceRootDetection.xml` modification.
 - Stage 2 is complete without publishing v024 or claiming full recursive E2E
   acceptance.
+- A 2026-08-07 completion recheck reconfirmed the v023 committed lock, exact
+  v024 base/materialized/running-container lineage, local and embedded PEX
+  revision/checksum agreement, and `READY` embedded-PEX preflight. The full
+  implementation-equivalent dirty-tree gate passed clean mypy over 79 files,
+  221 fast tests, all command and PEX smokes, and five packaging integrations.
+  A strict base probe confirmed the core tooling, pinned Node archive, and
+  negative agent/project/state inventory. It also found that the bare base
+  image does not add `/opt/node/current/bin` to `PATH`; this is a separate
+  runtime-tooling usability gap rather than a Stage 2 lineage/handoff failure.
 
 Active next task:
 
-Begin Stage 3 from the verified v024 environment: implement the isolated clean
-local-clone and contributor-bootstrap workflow beneath the approved persistent
-home, select an exact clean committed revision, run the complete gate in that
-clone, and record sanitized evidence plus a revision-bearing PEX checksum. Do
-not build or launch the final successor until the Stage 3 clone/bootstrap
-invariants pass.
+Begin Stage 3 slice 1 from the verified v024 environment: implement the durable
+ownership-marked E2E run workspace and atomic manifest state machine, with
+public-interface tests for restrictive modes, collision and path-escape
+rejection, exact ownership, redaction, and interrupted-state recovery. Do not
+clone or bootstrap until that boundary passes its focused tests and the
+ordinary repository gate.
 
 V2 candidate task:
 
