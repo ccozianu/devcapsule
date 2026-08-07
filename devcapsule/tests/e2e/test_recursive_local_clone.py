@@ -21,7 +21,6 @@ from typing import Any, Mapping, Sequence
 import pytest
 
 
-CANONICAL_REPOSITORY = "https://github.com/ccozianu/devcapsule"
 EMBEDDED_PEX = Path("/opt/devcapsule/bin/devcapsule.pex")
 OWNER_MARKER = ".devcapsule-e2e-owner.json"
 FULL_REVISION = re.compile(r"[0-9a-f]{40}")
@@ -243,8 +242,6 @@ class LocalCloneProtocol:
             "recursive local-clone E2E requires a clean source checkout; "
             "commit or remove every tracked and untracked change"
         )
-        origin = self._git(git, "remote", "get-url", "origin").stdout.strip().removesuffix(".git")
-        assert origin == CANONICAL_REPOSITORY
         git_directory = Path(
             self._git(git, "rev-parse", "--absolute-git-dir").stdout.strip()
         ).resolve(strict=True)
@@ -316,8 +313,8 @@ class LocalCloneProtocol:
             environment=workspace.git_environment,
         )
 
-    def set_canonical_origin(self, clone: Path, workspace: OwnedWorkspace) -> None:
-        """Remove the local source path from persistent clone configuration."""
+    def remove_local_origin(self, clone: Path, workspace: OwnedWorkspace) -> None:
+        """Remove the path-bearing remote created by the filesystem clone."""
 
         self._run(
             [
@@ -325,9 +322,8 @@ class LocalCloneProtocol:
                 "-C",
                 str(clone),
                 "remote",
-                "set-url",
+                "remove",
                 "origin",
-                CANONICAL_REPOSITORY,
             ],
             environment=workspace.git_environment,
         )
@@ -340,12 +336,12 @@ class LocalCloneProtocol:
     ) -> None:
         """Prove exactness, independence, cleanliness, and credential exclusion."""
 
-        self._verify_revision_and_origin(clone, selection, workspace)
+        self._verify_revision_and_configuration(clone, selection, workspace)
         self._verify_independent_object_database(clone, selection, workspace)
         self._verify_no_generated_or_credential_state(clone)
         self._verify_no_source_symlink(clone, selection.checkout)
 
-    def _verify_revision_and_origin(
+    def _verify_revision_and_configuration(
         self,
         clone: Path,
         selection: SourceSelection,
@@ -372,17 +368,7 @@ class LocalCloneProtocol:
         remotes = self._run(
             [git, "-C", str(clone), "remote"], environment=workspace.git_environment
         ).stdout.splitlines()
-        assert remotes == ["origin"]
-        fetch_urls = self._run(
-            [git, "-C", str(clone), "remote", "get-url", "--all", "origin"],
-            environment=workspace.git_environment,
-        ).stdout.splitlines()
-        push_urls = self._run(
-            [git, "-C", str(clone), "remote", "get-url", "--push", "--all", "origin"],
-            environment=workspace.git_environment,
-        ).stdout.splitlines()
-        assert fetch_urls == [CANONICAL_REPOSITORY]
-        assert push_urls == [CANONICAL_REPOSITORY]
+        assert not remotes
         local_config = self._run(
             [git, "-C", str(clone), "config", "--local", "--list"],
             environment=workspace.git_environment,
@@ -555,7 +541,7 @@ def test_local_clone_protocol_from_recursive_dogfood() -> None:
         clone = protocol.clone_without_checkout(selection, workspace)
         protocol.configure_checkout_safety(clone, workspace)
         protocol.checkout_exact_revision(clone, selection.revision, workspace)
-        protocol.set_canonical_origin(clone, workspace)
+        protocol.remove_local_origin(clone, workspace)
         protocol.verify_clone(clone, selection, workspace)
     finally:
         workspace.cleanup()

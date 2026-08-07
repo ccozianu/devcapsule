@@ -560,8 +560,8 @@ line containing those values.
 The executable specification is
 [`tests/e2e/test_recursive_local_clone.py`](../tests/e2e/test_recursive_local_clone.py).
 Its `LocalCloneProtocol` keeps environment inspection, source selection,
-ownership setup, clone, checkout hardening, exact-revision checkout, canonical
-origin replacement, independence checks, and cleanup as separate operations.
+ownership setup, clone, checkout hardening, exact-revision checkout, local-origin
+removal, independence checks, and cleanup as separate operations.
 The security rationale and exact Git/environment behavior live beside those
 operations as Python comments rather than being duplicated here.
 
@@ -726,9 +726,9 @@ Implement and close Stage 3 in these independently testable slices:
    rejection, ownership checks, redaction, and interruption recovery.
 2. **Revision eligibility and clone.** Real temporary Git repositories prove
    dirty/untracked rejection before mutation, exact detached checkout,
-   canonical-origin replacement, absent alternates, different loose-object
-   inodes, clean `git fsck`, no hooks/submodules/credentials, and no network
-   clone command.
+   removal of the path-bearing local origin, absent alternates, different
+   loose-object inodes, clean `git fsck`, no hooks/submodules/credentials, and
+   no network clone command.
 3. **Standard-library bootstrap.** A subprocess test runs the script with a
    local wheelhouse/fixture so it can prove interpreter and XDG isolation,
    environment allowlisting, input digests, original-venv exclusion, and
