@@ -25,7 +25,9 @@ Successor From Inside DevCapsule**. Its execution plan is
 - Stages 0 through 3 are complete.
 - Stage 3 closed with passing local-clone and contributor-bootstrap E2Es in
   both recursive and contributor-laptop contexts.
-- Stages 4 through 6 have not started.
+- Stage 4 is in progress. Its first checkpoint publishes the accepted v024
+  base and selects its immutable registry digest in the project lock.
+- Stages 5 and 6 have not started.
 - No successor image has been built or launched yet.
 
 The milestone is one part of the broader
@@ -42,6 +44,9 @@ Development is running inside the accepted v024 PyCharm environment:
   `fb278f145a583faba12df9c4a663b41cb60b0b508a769b050cfa4e088f13febc`;
 - base: `devcapsule-local-base:v024`, image
   `sha256:56bbd10c54eb2b35044eb49f4f81c49602c73c9edd8b738a969d9340492f75df`;
+- published recommendation:
+  `docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81`
+  (discovery tag `ubuntu-24.04-v024`);
 - environment: `devcapsule-local-pycharm:9cdac50e4c802fff5077`, image
   `sha256:85a560c3f1fc55ded2991e555ed63fc3687d9905213622f0fa33f50e5db8c31b`;
 - running container: `pycharm-isolated-costin-1786072465`.
@@ -49,6 +54,10 @@ Development is running inside the accepted v024 PyCharm environment:
 Embedded-PEX preflight reports `READY`. It confirms the container and image
 lineage, host Docker access, host networking, development sudo, display,
 required mounts, and writable workspace.
+
+The lock change deliberately leaves this checkout's prior base authorization
+and generated resolution stale. Reauthorizing the new digest is a separate
+developer-owned decision; no committed recommendation grants it automatically.
 
 The checkout is expected to advance beyond the immutable v024 revision. Tests
 must keep the v024 bootstrap identity separate from the selected source commit

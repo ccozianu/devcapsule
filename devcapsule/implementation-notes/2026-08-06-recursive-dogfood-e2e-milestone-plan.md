@@ -1,6 +1,6 @@
 # Milestone Plan: Recursive Dogfood E2E — Build And Launch A Successor From Inside DevCapsule
 
-Status: active milestone; Stages 0 through 3 complete
+Status: active milestone; Stages 0 through 3 complete, Stage 4 in progress
 
 Release target: V1
 
@@ -107,11 +107,12 @@ v023 + mounted milestone source -> bootstrap v024
 v024 with embedded recursive capability -> clean clone -> next base -> successor
 ```
 
-The v024 checkpoint is local, developer-authorized, and internal to the
-milestone. It is not a release candidate, need not be published, and must not
-replace the committed v023 lock. Both v024 and the final E2E successor use the
-existing developer-owned exact-local-image authorization path until a later
-publication decision.
+The v024 checkpoint began as a local, developer-authorized milestone image.
+After Stage 3 passed, the product owner published that exact image as the v024
+dogfood recommendation and advanced the lock by immutable registry digest. It
+remains an internal dogfood checkpoint rather than a release candidate. The
+final E2E successor still uses the developer-owned exact-local-image
+authorization path unless separately published.
 
 ## Clarification: Clean Clone Versus Existing Checkout
 
@@ -490,7 +491,8 @@ successor base.
 
 ## Stage 4: Build And Verify The Successor Base From Inside Dogfood
 
-Status: pending
+Status: in progress. The accepted v024 base is published and selected by its
+immutable registry digest; the retained clean run and successor build remain.
 
 Start by composing the accepted Stage 3 clone and bootstrap protocols into the
 retained, ownership-marked milestone run. From its clean clone:
@@ -507,7 +509,8 @@ global ownership, redaction, and cleanup rules above.
 
 The base gets a unique E2E discovery tag, while its immutable image ID and
 managed metadata remain authoritative. The build must not overwrite the
-published v023 tag or any unrelated canonical image.
+published v024 recommendation, the earlier v023 tag, or any unrelated
+canonical image.
 
 Verification includes:
 
@@ -553,7 +556,7 @@ Done means:
 
 - checkout, resolution, cache, and state paths are confined to the run root;
 - the resolution selects the newly built exact local base without changing the
-  committed v023 lock;
+  committed v024 lock;
 - canonical materialization identity and complete metadata validate;
 - a second realization strictly reuses the matching image; and
 - no personal checkout record, state, credential, or unrelated image changes.
@@ -927,7 +930,7 @@ This milestone does not by itself:
 - reimplement VSCodium or settle its historical bugs;
 - create the starter IDE/demo catalog;
 - publish or select an official V1/next-version registry base;
-- update the committed v023 dogfood lock to a mutable local image;
+- update the committed published-base lock to a mutable local image;
 - introduce arbitrary host filesystem orchestration;
 - automate pixel-level GUI interaction;
 - eliminate the one-time v023-to-v024 manual dogfood handoff;
