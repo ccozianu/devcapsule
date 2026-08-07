@@ -65,10 +65,22 @@ class OwnedWorkspace:
         cls,
         environment: RecursiveEnvironment,
     ) -> OwnedWorkspace:
+        return cls.create_at(
+            environment.workspace_root,
+            owner_identity=environment.container_id,
+        )
+
+    @classmethod
+    def create_at(
+        cls,
+        workspace_root: Path,
+        *,
+        owner_identity: str,
+    ) -> OwnedWorkspace:
         # The host daemon can see only paths translated from approved mounts.
         # Keeping this temporary checkout below preflight's persistent-home
         # workspace makes it suitable for later Stage 4 host-daemon use too.
-        workspace_root = environment.workspace_root.resolve(strict=True)
+        workspace_root = workspace_root.resolve(strict=True)
         run_id = secrets.token_hex(16)
         run_root = workspace_root / run_id
         run_root.mkdir(mode=0o700)
@@ -78,7 +90,7 @@ class OwnedWorkspace:
         payload = {
             "schema_version": 1,
             "run_id": run_id,
-            "container_id": environment.container_id,
+            "container_id": owner_identity,
         }
         descriptor = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
@@ -128,7 +140,7 @@ class OwnedWorkspace:
             workspace_root=workspace_root,
             run_root=run_root,
             run_id=run_id,
-            container_id=environment.container_id,
+            container_id=owner_identity,
             git_environment=git_environment,
             empty_hooks=private_directories["hooks"],
         )

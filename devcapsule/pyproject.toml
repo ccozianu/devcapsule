@@ -75,6 +75,7 @@ markers = [
   "integration: crosses packaging or process boundaries without Docker",
   "e2e: builds or runs real Docker images and containers",
   "recursive_e2e: requires an authorized DevCapsule container with host-Docker access",
+  "contributor_e2e: launches a clean contributor container from a host or recursive capsule",
 ]
 
 [tool.coverage.run]

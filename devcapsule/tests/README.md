@@ -68,6 +68,17 @@ download and rebuild after strict descriptor verification. The real vendor archi
 from this default E2E because the current Linux download is approximately
 1.28 GB; a separately explicit vendor test will cover that path.
 
+The contributor-bootstrap E2E launches a disposable managed base and performs
+a clean local clone, isolated Python 3.12 venv creation, locked dependency
+installation, editable package installation, and import-path verification. It
+runs in two contexts: directly on a contributor host, where the owned workspace
+is a direct bind source, or inside a recursive-ready DevCapsule, where the same
+path is translated through inspected current-container mounts before use with
+the host daemon. The test never mounts the Docker socket into the disposable
+contributor container. Override the host-mode locked base with
+`DEVCAPSULE_CONTRIBUTOR_E2E_IMAGE`; the selected managed base must already be
+present locally.
+
 ## Selection and gate policy
 
 - `nox -s tests` runs only fast tests.

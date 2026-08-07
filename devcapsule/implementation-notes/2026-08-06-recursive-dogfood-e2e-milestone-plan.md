@@ -573,48 +573,20 @@ exact ownership-marked run root after success or failure.
 
 ### Isolated Contributor Bootstrap
 
-Use the base image's system `python3.12` to create
-`contributor/venv` with `python3.12 -m venv --copies`. Do not inherit or
-activate the current checkout's `.venv`, current `VIRTUAL_ENV`, user site, or
-`PYTHONPATH`. The helper invokes the new interpreter by absolute path; shell
-activation is neither required nor used.
-
-The bootstrap environment is an allowlist rather than a copy of
-`os.environ`. At minimum it sets:
-
-```text
-HOME=RUN_ROOT/contributor/home
-XDG_CONFIG_HOME=RUN_ROOT/xdg/config
-XDG_CACHE_HOME=RUN_ROOT/xdg/cache
-XDG_DATA_HOME=RUN_ROOT/xdg/data
-XDG_STATE_HOME=RUN_ROOT/xdg/state
-XDG_RUNTIME_DIR=RUN_ROOT/xdg/runtime
-PIP_CONFIG_FILE=/dev/null
-PIP_CACHE_DIR=RUN_ROOT/xdg/cache/pip
-PIP_DISABLE_PIP_VERSION_CHECK=1
-PIP_NO_INPUT=1
-PYTHONNOUSERSITE=1
-```
-
-It adds a controlled system path plus `contributor/venv/bin`, locale values,
-and only non-secret TLS certificate settings needed for public package
-downloads. It omits proxy values containing user information and all ambient
-Git, registry, package-index, cloud, SSH-agent, API-key, and agent credential
-variables. No host Docker or sudo authorization is required for this phase.
-
-Bootstrap exactly from committed metadata:
-
-1. create the isolated venv and record the system and venv Python executable,
-   implementation, full version, prefix, and base prefix;
-2. record bundled `pip` and initial packaging-tool versions without upgrading
-   them to an unbounded latest release;
-3. install `devcapsule/dev-requirements.txt` through the isolated public
-   package path and cache;
-4. install the clean clone's `devcapsule` package editable with `--no-deps`;
-5. record final `pip`, `setuptools`, `wheel`, `nox`, and `pex` versions; and
-6. prove `import devcapsule` resolves beneath the clean clone and every
-   `sys.path`, `sys.prefix`, executable, and editable-install location excludes
-   the original checkout and its `.venv`.
+The executable success-path specification is
+[`tests/e2e/test_contributor_bootstrap.py`](../tests/e2e/test_contributor_bootstrap.py),
+with its in-container driver beside it. The test detects whether pytest is
+running on a contributor host or inside recursive dogfood. A host run binds its
+owned workspace directly; a recursive run translates that workspace through
+the current container's inspected, approved persistent-home mount before the
+host daemon starts the same disposable contributor container. The detailed
+isolation rationale and command sequence live beside the executable methods.
+They require the managed base's `/usr/bin/python3.12`, a copied private venv,
+an allowlisted HOME/XDG/pip environment, the committed development lock, an
+editable `--no-deps` install, exact locked tool versions, and independent
+Python/import-path evidence. The disposable contributor receives neither the
+outer source checkout nor Docker, sudo, agent, package-index, Git, or cloud
+credentials.
 
 The manifest stores SHA-256 digests for `pyproject.toml`, `requirements.txt`,
 `dev-requirements.txt`, `noxfile.py`, and the bootstrap script. Their canonical
