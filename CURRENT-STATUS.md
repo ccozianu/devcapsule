@@ -18,9 +18,11 @@ clone E2E to build and launch the next successor. Stage 0's read-only recursive
 preflight is committed at `895043a`. Stage 1's host-daemon path translation,
 sanitized bind planning, and ownership-marked safe staging are committed at
 `f026bb6`. The minimum recursive orchestrator skeleton, project-scoped command
-surface, normal-run readiness integration, and Nox entry point are implemented
-and validated in the milestone working tree. No clone, image build, or
-successor launch has occurred yet.
+surface, normal-run readiness integration, and Nox entry point are committed
+at `e2dae20`. Stage 2's local v024 base build, canonical environment
+materialization, manual v023-to-v024 handoff, and resumed-environment
+verification are complete. No clean clone or final recursive successor build
+has occurred yet.
 
 Current status:
 
@@ -1571,13 +1573,49 @@ V1 gap-review checkpoint, 2026-08-06:
   integrations. The marker-less v023 container received the intended bootstrap
   warning; future normal launches carry an explicit enabled or disabled marker.
 
+Stage 2 bootstrap handoff checkpoint, 2026-08-07:
+
+- The clean recursive-orchestrator checkpoint is
+  `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`. Its revision-bearing PEX has
+  SHA-256
+  `fb278f145a583faba12df9c4a663b41cb60b0b508a769b050cfa4e088f13febc`.
+- The local managed v024 base is `devcapsule-local-base:v024`, immutable image
+  ID
+  `sha256:56bbd10c54eb2b35044eb49f4f81c49602c73c9edd8b738a969d9340492f75df`.
+  Its managed metadata identifies base kind, Ubuntu 24.04 recipe version 2,
+  the exact checkpoint revision and PEX checksum, and the generic
+  `tini -- /opt/devcapsule/bin/devcapsule.pex runtime` entrypoint with the
+  external runtime-plan command.
+- Normal production realization materialized canonical environment
+  `devcapsule-local-pycharm:9cdac50e4c802fff5077`, identity
+  `9cdac50e4c802fff5077cdee002db6dfcddbe9781e76c259cf1602e4065aee5f`,
+  immutable image ID
+  `sha256:85a560c3f1fc55ded2991e555ed63fc3687d9905213622f0fa33f50e5db8c31b`.
+  Its descriptor selects the exact v024 base and includes PyCharm Professional
+  2026.2.0.1 plus Codex 0.145.0.
+- The user performed the manual handoff and resumed work through Codex in the
+  v024 PyCharm environment. Host-daemon inspection proved running container
+  `pycharm-isolated-costin-1786072465` uses the exact canonical materialized
+  image above.
+- `/opt/devcapsule/bin/devcapsule.pex version --json` reported the exact
+  checkpoint revision, and its computed checksum matched both base and
+  materialized-image metadata. Embedded-PEX recursive preflight returned
+  `READY`: it identified the exact running container, explicit recursive
+  enablement, host networking, Docker/development-sudo authorization, runtime
+  plan and required mounts, display forwarding, image revision, and sufficient
+  persistent-home space. The only warning was the expected dirty-checkout
+  notice for the unrelated `.idea/pySourceRootDetection.xml` modification.
+- Stage 2 is complete without publishing v024 or claiming full recursive E2E
+  acceptance.
+
 Active next task:
 
-Review and commit the minimum recursive orchestrator checkpoint, then run the
-full gate from that clean revision so `dist/devcapsule.pex` embeds its exact
-identity. Use that PEX to begin Stage 2's real local v024 base build and strict
-verification. Do not request the manual IDE handoff before the canonical v024
-environment validates.
+Begin Stage 3 from the verified v024 environment: implement the isolated clean
+local-clone and contributor-bootstrap workflow beneath the approved persistent
+home, select an exact clean committed revision, run the complete gate in that
+clone, and record sanitized evidence plus a revision-bearing PEX checksum. Do
+not build or launch the final successor until the Stage 3 clone/bootstrap
+invariants pass.
 
 V2 candidate task:
 
