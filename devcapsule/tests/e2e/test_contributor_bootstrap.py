@@ -154,6 +154,7 @@ class ContributorDockerContext:
 
     def run_bootstrap(self, workspace: OwnedWorkspace) -> Mapping[str, Any]:
         container_name = f"devcapsule-contributor-e2e-{workspace.run_id}"
+        network_name = f"devcapsule-contributor-e2e-{workspace.run_id}"
         bind_source = self.bind_source(workspace.run_root)
         environment = dict(self.docker_environment)
         forwarded_network_names = self._safe_network_environment(environment)
@@ -168,7 +169,7 @@ class ContributorDockerContext:
             "--label",
             f"{RUN_LABEL}={workspace.run_id}",
             "--network",
-            "bridge",
+            network_name,
             "--read-only",
             "--cap-drop",
             "ALL",
@@ -199,7 +200,10 @@ class ContributorDockerContext:
                 str(SUCCESSOR_ROOT),
             )
         )
+        network_created = False
         try:
+            self._create_owned_network(network_name, workspace.run_id, environment)
+            network_created = True
             self._run_docker(
                 command,
                 environment,
@@ -207,6 +211,8 @@ class ContributorDockerContext:
             )
         finally:
             self._remove_owned_container(container_name, workspace.run_id, environment)
+            if network_created:
+                self._remove_owned_network(network_name, workspace.run_id, environment)
         return self._read_evidence(workspace.run_root / "contributor-bootstrap.json")
 
     def verify_bootstrap(
@@ -341,15 +347,39 @@ class ContributorDockerContext:
         assert isinstance(reference, str) and "@sha256:" in reference
         return reference
 
-    @classmethod
-    def _remove_owned_container(
-        cls,
+    def _create_owned_network(
+        self,
         name: str,
         run_id: str,
         environment: Mapping[str, str],
     ) -> None:
-        inspected = cls._run_docker(
-            [shutil.which("docker") or "docker", "container", "inspect", name],
+        # A user-defined bridge keeps the contributor isolated while using
+        # Docker's embedded DNS. Some Linux hosts expose resolvers to the
+        # default bridge that are reachable only from the host namespace.
+        self._run_docker(
+            [
+                self.docker,
+                "network",
+                "create",
+                "--driver",
+                "bridge",
+                "--label",
+                f"{OWNER_LABEL}=contributor-bootstrap",
+                "--label",
+                f"{RUN_LABEL}={run_id}",
+                name,
+            ],
+            environment,
+        )
+
+    def _remove_owned_container(
+        self,
+        name: str,
+        run_id: str,
+        environment: Mapping[str, str],
+    ) -> None:
+        inspected = self._run_docker(
+            [self.docker, "container", "inspect", name],
             environment,
             check=False,
         )
@@ -357,13 +387,37 @@ class ContributorDockerContext:
             return
         value = json.loads(inspected.stdout)
         assert isinstance(value, list) and len(value) == 1
-        container = cls._mapping(value[0], "contributor container inspection")
-        config = cls._mapping(container.get("Config"), "contributor container configuration")
-        labels = cls._mapping(config.get("Labels"), "contributor container labels")
+        container = self._mapping(value[0], "contributor container inspection")
+        config = self._mapping(container.get("Config"), "contributor container configuration")
+        labels = self._mapping(config.get("Labels"), "contributor container labels")
         assert labels.get(OWNER_LABEL) == "contributor-bootstrap"
         assert labels.get(RUN_LABEL) == run_id
-        cls._run_docker(
-            [shutil.which("docker") or "docker", "container", "rm", "--force", name],
+        self._run_docker(
+            [self.docker, "container", "rm", "--force", name],
+            environment,
+        )
+
+    def _remove_owned_network(
+        self,
+        name: str,
+        run_id: str,
+        environment: Mapping[str, str],
+    ) -> None:
+        inspected = self._run_docker(
+            [self.docker, "network", "inspect", name],
+            environment,
+            check=False,
+        )
+        if inspected.returncode != 0:
+            return
+        value = json.loads(inspected.stdout)
+        assert isinstance(value, list) and len(value) == 1
+        network = self._mapping(value[0], "contributor network inspection")
+        labels = self._mapping(network.get("Labels"), "contributor network labels")
+        assert labels.get(OWNER_LABEL) == "contributor-bootstrap"
+        assert labels.get(RUN_LABEL) == run_id
+        self._run_docker(
+            [self.docker, "network", "rm", name],
             environment,
         )
 

@@ -77,7 +77,9 @@ path is translated through inspected current-container mounts before use with
 the host daemon. The test never mounts the Docker socket into the disposable
 contributor container. Override the host-mode locked base with
 `DEVCAPSULE_CONTRIBUTOR_E2E_IMAGE`; the selected managed base must already be
-present locally.
+present locally. Each run creates an ownership-labeled user-defined bridge so
+Docker's embedded DNS can reach the public package index without granting host
+networking; both the container and network receive deterministic cleanup.
 
 ## Selection and gate policy
 
