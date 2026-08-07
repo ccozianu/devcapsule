@@ -22,7 +22,8 @@ surface, normal-run readiness integration, and Nox entry point are committed
 at `e2dae20`. Stage 2's local v024 base build, canonical environment
 materialization, manual v023-to-v024 handoff, and resumed-environment
 verification are complete. Stage 3's local-clone protocol now has a passing
-recursive E2E, but the durable Stage 3 workspace/manifest integration and final
+recursive E2E, and its isolated contributor-bootstrap success path passes from
+inside v024. The durable Stage 3 workspace/manifest integration and final
 recursive successor build have not occurred yet.
 
 Current status:
@@ -1651,14 +1652,50 @@ Stage 3 local-clone checkpoint, 2026-08-07:
   implementation boundary remains the durable public orchestrator workspace
   and manifest state machine described below.
 
+Stage 3 contributor-bootstrap E2E checkpoint, 2026-08-07:
+
+- Commit `7bfe915` adds a dual-context contributor-bootstrap E2E and isolated
+  in-container driver. Host execution selects the lock's managed base and binds
+  its owned workspace directly. Recursive execution reruns preflight, selects
+  the exact managed base beneath the current materialized image, and translates
+  the workspace through the Docker-inspected persistent-home mount before
+  passing it to the host daemon.
+- The disposable contributor uses the base's `/usr/bin/python3.12`, creates a
+  copied private venv, installs the committed development lock through an
+  allowlisted public-download environment, installs the clean clone editable
+  with `--no-deps`, verifies exact locked tool versions and import isolation,
+  and writes mode-`0600` evidence. It receives no Docker socket, sudo,
+  credentials, capabilities, writable root, or original source checkout.
+- Host mode uses an ownership-labeled bridge. Commit `d754a9a` makes recursive
+  mode fail unless host-daemon inspection proves the current v024 container's
+  `HostConfig.NetworkMode` is exactly `host`, then uses host networking for the
+  disposable contributor's public package download. This is inherited only
+  from the explicitly authorized recursive launch, never inferred from package
+  download failure.
+- An initial interrupted bridge-network diagnostic exposed a Docker cleanup
+  race. Commit `1a71e2d` makes exact labeled container removal idempotent and
+  guarantees the owned network cleanup attempt even during interruption. The
+  diagnostic resources and temporary validation clones were cleaned or moved
+  to the user's recoverable trash area.
+- Live execution from a clean `d754a9a` clone passed the contributor scenario
+  in 25 seconds. The complete `nox -s recursive_dogfood_e2e` entry point then
+  passed dry-run preflight plus both contributor-bootstrap and local-clone E2Es
+  (`2 passed`, `1 deselected`) in 42 seconds. Independent inspection found no
+  surviving labeled container, network, or run workspace. The final ordinary
+  gate passed 223 fast tests and clean mypy over 85 files.
+- This remains executable acceptance scaffolding. Durable manifest state,
+  retry/repair identity, bootstrap input digests, full Nox gate, and the
+  revision-bearing public PEX still belong to the production Stage 3
+  orchestrator boundary.
+
 Active next task:
 
 Begin Stage 3 slice 1 from the verified v024 environment: implement the durable
 ownership-marked E2E run workspace and atomic manifest state machine, with
 public-interface tests for restrictive modes, collision and path-escape
 rejection, exact ownership, redaction, and interrupted-state recovery. Do not
-clone or bootstrap until that boundary passes its focused tests and the
-ordinary repository gate.
+integrate clone or bootstrap into the public orchestrator until that boundary
+passes its focused tests and the ordinary repository gate.
 
 V2 candidate task:
 
