@@ -68,6 +68,21 @@ download and rebuild after strict descriptor verification. The real vendor archi
 from this default E2E because the current Linux download is approximately
 1.28 GB; a separately explicit vendor test will cover that path.
 
+The contributor-bootstrap E2E launches a disposable managed base and performs
+a clean local clone, isolated Python 3.12 venv creation, locked dependency
+installation, editable package installation, and import-path verification. It
+runs in two contexts: directly on a contributor host, where the owned workspace
+is a direct bind source, or inside a recursive-ready DevCapsule, where the same
+path is translated through inspected current-container mounts before use with
+the host daemon. The test never mounts the Docker socket into the disposable
+contributor container. Override the host-mode locked base with
+`DEVCAPSULE_CONTRIBUTOR_E2E_IMAGE`; the selected managed base must already be
+present locally. The spawned contributor uses host networking in both contexts
+because the supported dogfood host cordons ordinary Docker bridge containers
+off from the public package index. Recursive mode additionally requires Docker
+inspection to prove that the current DevCapsule already uses explicitly
+authorized host networking.
+
 ## Selection and gate policy
 
 - `nox -s tests` runs only fast tests.
@@ -82,9 +97,11 @@ from this default E2E because the current Linux download is approximately
   it does not silently pass through a skip.
 
 GUI operation, licensing, credential reuse, and host capability validation
-remain manual dogfood checks. Automated E2E tests must not use host networking,
-privileged mode, Docker socket mounts, credentials, or unrelated host paths.
-Every Docker resource must have a unique name/label and deterministic cleanup.
+remain manual dogfood checks. Automated E2E tests must not use privileged mode,
+Docker socket mounts, credentials, or unrelated host paths. Host networking is
+limited to the explicitly invoked contributor-bootstrap E2E's public dependency
+download. Every Docker resource must have a unique name/label and deterministic
+cleanup.
 
 ### Manual user-journey evidence
 

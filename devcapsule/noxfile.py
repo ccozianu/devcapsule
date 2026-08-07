@@ -52,9 +52,10 @@ def run_packaging_tests(session: nox.Session) -> None:
 
 def run_e2e_tests(session: nox.Session) -> None:
     environment: dict[str, str] = {}
-    base_image = session.env.get("DEVCAPSULE_E2E_BASE_IMAGE")
-    if base_image is not None:
-        environment["DEVCAPSULE_E2E_BASE_IMAGE"] = base_image
+    for name in ("DEVCAPSULE_E2E_BASE_IMAGE", "DEVCAPSULE_CONTRIBUTOR_E2E_IMAGE"):
+        value = session.env.get(name)
+        if value is not None:
+            environment[name] = value
     session.run(
         "python",
         "-m",
@@ -74,7 +75,7 @@ def run_recursive_e2e_tests(session: nox.Session) -> None:
         "pytest",
         "--no-cov",
         "-m",
-        "recursive_e2e",
+        "recursive_e2e or contributor_e2e",
         str(PROJECT_ROOT / "tests" / "e2e"),
     )
 

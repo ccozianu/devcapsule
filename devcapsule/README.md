@@ -422,12 +422,12 @@ that same environment explicitly without launching a container, use:
 ```bash
 devcapsule project --path /path/to/checkout config resolve
 devcapsule project --path /path/to/checkout config authorize base-image \
-  docker.io/mycodespaceai/devcapsule-base@sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1
+  docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81
 devcapsule project --path /path/to/checkout config resolve
 devcapsule images build \
   --type environment \
   --project /path/to/checkout \
-  --alias devcapsule-local-pycharm:debug-v023
+  --alias devcapsule-local-pycharm:debug-v024
 ```
 
 The platform lock must select a DevCapsule base plus a
@@ -477,7 +477,7 @@ For developer-built base testing, `base-image` also accepts an already-local
 DevCapsule metadata-v1 base name:
 
 ```bash
-devcapsule project config authorize base-image devcapsule-local-base:v023
+devcapsule project config authorize base-image devcapsule-local-base:v024
 devcapsule project config resolve
 devcapsule project run
 ```
@@ -499,13 +499,13 @@ selected local image must still pass DevCapsule metadata, platform, and
 immutable image-ID inspection.
 
 This repository's current Linux dogfood lock uses published digest
-`docker.io/mycodespaceai/devcapsule-base@sha256:e8ec48fa1f45f566e997735ac5e8ce8086a2512681db0e8a22696ee0801a8aa1`.
-The associated `ubuntu-24.04-v023` tag is only a dogfood discovery tag;
+`docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81`.
+The associated `ubuntu-24.04-v024` tag is only a dogfood discovery tag;
 official V1 artifacts will use semantic release versions and committed locks
 will continue to use immutable digests.
 
-The immutable v023 image uses agent-neutral base recipe version 2, embeds the
-DevCapsule PEX, and exposes source revision `a33988a...` at the canonical
+The immutable v024 image uses agent-neutral base recipe version 2, embeds the
+DevCapsule PEX, and exposes source revision `e2dae20...` at the canonical
 `ccozianu/devcapsule` repository. It contains no ambient agent CLI.
 
 The command obtains the selected base when it is not local, verifies that it
