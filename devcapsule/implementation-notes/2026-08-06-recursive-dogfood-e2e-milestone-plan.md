@@ -410,341 +410,161 @@ lineage/handoff stage.
 
 ## Stage 3: Automate Clean Local Clone And Contributor Bootstrap
 
-Status: pending
+Status: in progress. The clone and contributor-bootstrap E2Es pass; durable
+orchestration, the full clean gate, and the revision-bearing PEX remain.
 
-### Outcome And Boundary
+### Goal
 
-Starting from the verified v024 environment, create one ownership-marked E2E
-workspace beneath the approved persistent home, clone the repository locally
-at one exact eligible commit, bootstrap an isolated Python contributor
-environment, run the complete Nox gate, and produce a revision-bearing PEX.
-Stage 3 performs no Docker image build, project configuration, materialization,
-or successor launch.
+From the verified v024 container:
 
-This is a narrow DevCapsule-repository bootstrap, not the generic V1 ecosystem
-bootstrap promised by gap F1. A repository-owned Python standard-library
-script is allowed because a fresh clone does not yet have Nox or DevCapsule's
-runtime dependencies. It must encode this repository's documented contributor
-setup directly and must not execute an arbitrary project-declared hook.
+1. select one clean, public source commit;
+2. make an independent local clone;
+3. bootstrap a clean contributor environment;
+4. run the full Nox gate; and
+5. produce a PEX tied to the selected commit.
 
-The user-facing entry point remains:
+Stage 3 does not build an image, configure a project, materialize an
+environment, or launch the successor.
+
+The user-facing command remains:
 
 ```text
 cd devcapsule
 python -m nox -s recursive_dogfood_e2e
 ```
 
-The orchestrator invokes the checked-out standard-library boundary as:
+The production orchestrator will invoke a standard-library helper from the
+clean clone:
 
 ```text
 python3.12 CLEAN_CLONE/devcapsule/scripts/recursive-e2e-bootstrap.py \
   --run-id RUN_ID --revision REVISION --json
 ```
 
-The helper derives the run root from the current validated runtime plan and
-fixed `e2e-workspaces/RUN_ID` layout. It accepts neither an arbitrary workspace
-nor a host-daemon path. `--repair` is the only mutating recovery option and is
-restricted to exact ownership-marked Stage 3 resources.
+That helper is repository-specific bootstrap code, not a generic project hook.
 
-### Three Separate Revision Identities
+### What Already Works
 
-Stage 3 intentionally begins after the source checkout has advanced beyond the
-immutable v024 checkpoint. Checks must preserve three distinct identities:
+- [`test_recursive_local_clone.py`](../tests/e2e/test_recursive_local_clone.py)
+  proves the current container and image, makes an exact local clone without
+  shared Git objects or credentials, and performs ownership-checked cleanup.
+- [`test_contributor_bootstrap.py`](../tests/e2e/test_contributor_bootstrap.py)
+  and its adjacent driver create a copied Python 3.12 venv, install the
+  committed development dependencies, install DevCapsule editable, and prove
+  import and environment isolation.
+- The contributor test passes both inside v024 and directly on the laptop.
+  The spawned contributor uses host networking because this dogfood host blocks
+  public downloads from Docker bridge containers. Recursive mode first confirms
+  through Docker inspection that the current container is also host-networked.
+- The complete recursive Nox entry point currently passes both E2Es.
 
-1. **Bootstrap runtime revision:** the running container image and
-   `/opt/devcapsule/bin/devcapsule.pex` must agree exactly with the recorded
-   v024 checkpoint, `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
-2. **Selected source revision:** the current checkout must be clean, exact,
-   canonical, and public at the later commit selected for this recursive run.
-3. **Clean-clone revision:** the local clone must equal the selected source
-   revision exactly; its built PEX and later successor artifacts inherit this
-   identity.
+These tests are executable acceptance specifications. They do not replace the
+durable production workflow described below.
 
-The selected source and clean clone must agree with each other but are expected
-to differ from the bootstrap runtime. No preflight, manifest validator, resume
-check, or acceptance assertion may require checkout `HEAD` to equal the v024
-image/embedded-PEX revision. Rebuilding v024 merely because documentation or
-later stage implementation advanced `HEAD` is neither required nor desired.
+### Revision Rule
 
-The full run establishes a chain of trust rather than pretending all code has
-one revision:
+Keep these identities separate:
 
-- first invoke the embedded v024 PEX preflight and record that it matches the
-  running v024 image and authorizations;
-- then execute the clean selected source's orchestration/bootstrap code with
-  its exact revision recorded; and
-- after Stage 3 builds the clean-clone PEX, use that artifact for the Stage 4
-  through 6 production CLI/process boundaries.
+- **v024 bootstrap:** the running image and embedded PEX must agree with
+  `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
+- **Selected source:** the current checkout must be clean and resolve to one
+  full commit advertised by the public DevCapsule repository.
+- **Generated artifacts:** the clean clone and its new PEX must match the
+  selected source commit exactly.
 
-Fast and live tests must include the normal positive case where the bootstrap
-revision differs from the selected/clone revision. A mismatch within either
-required pair—image versus embedded PEX, or selected source versus clone/PEX—is
-an error.
+The selected source will normally be newer than v024. Never require current
+`HEAD` to equal the embedded v024 revision.
 
-### Revision Eligibility Before Mutation
+Before creating a run directory, reject dirty or untracked source, an
+unpublished or abbreviated commit, the wrong project, or checkout features the
+local protocol does not support, such as required submodules or LFS smudging.
+The developer's configured `origin` URL is not part of the local-clone
+contract.
 
-Before creating the run root, Stage 3 must derive and record an exact full
-commit from the current checkout and reject the run unless all of these hold:
+### Owned Run
 
-- `git rev-parse --verify HEAD^{commit}` returns one 40-character lowercase
-  commit ID and the current branch/HEAD relationship is recorded;
-- `git status --porcelain=v1 --untracked-files=all` is empty, including no
-  untracked source or documentation selected only from the working tree;
-- the checkout root and `devcapsule/pyproject.toml` pass the existing recursive
-  project-identity check;
-- `origin` normalizes exactly to
-  `https://github.com/ccozianu/devcapsule`, with no credential-bearing URL;
-- the selected revision is advertised by that public origin without using a
-  credential helper, prompt, SSH agent, token, or private Git configuration;
-- the revision contains the bootstrap script, `pyproject.toml`, both locked
-  requirement files, `noxfile.py`, and the PEX build script; and
-- the repository contains no required submodule, Git LFS smudge, or other
-  external checkout filter that the local-clone contract does not support.
-
-Dirty source, an abbreviated or mismatched revision, a local-only origin, an
-unpublished revision, or unsupported checkout metadata fails before workspace
-mutation with one actionable finding per cause. Public reachability is a
-source-eligibility check; the clone operation itself remains local and
-network-free.
-
-### Owned Workspace And Manifest
-
-After eligibility succeeds, create this fixed layout beneath the already
-approved writable persistent-home mount:
+Each run lives below the approved persistent home:
 
 ```text
 e2e-workspaces/RUN_ID/
   .devcapsule-e2e-owner.json
   manifest.json
   checkout/
-  contributor/
-    home/
-    venv/
-    nox/
-  xdg/
-    config/
-    cache/
-    data/
-    state/
-    runtime/
+  contributor/{home,venv,nox}/
+  xdg/{config,cache,data,state,runtime}/
   logs/stage-3/
   evidence/stage-3.json
 ```
 
-The run root and private subdirectories use mode `0700`; manifest, evidence,
-and logs use mode `0600`. The ownership marker contains the schema version, run
-ID, and current v024 container ID. It is written exclusively before any child
-resource is created and is verified before every resume, repair, or cleanup.
-Symlinked run roots, pre-existing unowned paths, marker mismatches, and paths
-that escape the fixed workspace fail closed.
+Create the ownership marker before any child. Directories are mode `0700`;
+manifest, logs, and evidence are mode `0600`. Reject collisions, symlinks,
+marker mismatches, mount-boundary changes, and paths outside this run root.
 
-`manifest.json` is the authoritative resumability record. Writes use an
-`fsync`-then-atomic-replace pattern and monotonic states:
+The manifest is the resumability authority. Write it atomically and advance
+only through:
 
 ```text
 planned -> cloning -> cloned -> bootstrapping -> bootstrapped
         -> gate-running -> gate-passed -> stage-3-complete
 ```
 
-A failure records the last completed state plus a structured failure record;
-it does not erase the prior state. The manifest records only non-secret values:
-run and schema IDs, selected/source revisions, canonical repository URL,
-container-relative workspace paths, input digests, tool identities, command
-exit codes, relative evidence/log paths, checksums, timestamps, and cleanup
-state. It never stores the source checkout's host mapping, environment dump,
-credential-helper configuration, proxy URL, token, Xauthority value, or log
-line containing those values.
+Record revisions, input digests, tool identities, command results, checksums,
+relative paths, timestamps, and the last safe state. Never record host paths,
+environment dumps, credentials, proxy URLs, Xauthority contents, or raw logs.
 
-### Local Clone Protocol
+### Required Workflow
 
-The executable specification is
-[`tests/e2e/test_recursive_local_clone.py`](../tests/e2e/test_recursive_local_clone.py).
-Its `LocalCloneProtocol` keeps environment inspection, source selection,
-ownership setup, clone, checkout hardening, exact-revision checkout, local-origin
-removal, independence checks, and cleanup as separate operations.
-The security rationale and exact Git/environment behavior live beside those
-operations as Python comments rather than being duplicated here.
+1. Run embedded-v024 preflight and record the v024 image/PEX identity.
+2. Validate the selected source commit before creating the run.
+3. Create the ownership marker and atomic manifest.
+4. Run the local-clone protocol. Clone and checkout use no network.
+5. Run contributor bootstrap in the managed base with an allowlisted
+   HOME/XDG/pip environment. It receives no Docker socket, sudo, credentials,
+   agent state, or original checkout.
+6. Run the clean gate with run-owned Nox environments:
 
-This recursive-only E2E must prove it is running unprivileged inside the
-authorized DevCapsule container, reach the selected host daemon, inspect its
-own running managed image, clone clean exact `HEAD` locally without network or
-shared objects, exclude generated and credential state, and remove only its
-exact ownership-marked run root after success or failure.
+   ```text
+   RUN_ROOT/contributor/venv/bin/python -m nox \
+     --envdir RUN_ROOT/contributor/nox \
+     --no-reuse-existing-virtualenvs -s build
+   ```
 
-### Isolated Contributor Bootstrap
+7. Accept only `checkout/devcapsule/dist/devcapsule.pex`. Its `version
+   --json` output must name the selected full revision and public source.
+   Record its SHA-256, size, and executable mode.
+8. Write sanitized Stage 3 evidence, then rerun the same run ID to prove exact
+   reuse.
 
-The executable success-path specification is
-[`tests/e2e/test_contributor_bootstrap.py`](../tests/e2e/test_contributor_bootstrap.py),
-with its in-container driver beside it. The test detects whether pytest is
-running on a contributor host or inside recursive dogfood. A host run binds its
-owned workspace directly; a recursive run translates that workspace through
-the current container's inspected, approved persistent-home mount before the
-host daemon starts the same disposable contributor container. The on-demand E2E
-uses host networking in both contexts because the supported dogfood host blocks
-public downloads from ordinary Docker bridge containers. Recursive mode also
-requires Docker inspection to prove the current container already has explicitly
-authorized host networking. The detailed isolation rationale and command
-sequence live beside the executable methods.
-They require the managed base's `/usr/bin/python3.12`, a copied private venv,
-an allowlisted HOME/XDG/pip environment, the committed development lock, an
-editable `--no-deps` install, exact locked tool versions, and independent
-Python/import-path evidence. The disposable contributor receives neither the
-outer source checkout nor Docker, sudo, agent, package-index, Git, or cloud
-credentials.
+### Failure And Recovery
 
-The manifest stores SHA-256 digests for `pyproject.toml`, `requirements.txt`,
-`dev-requirements.txt`, `noxfile.py`, and the bootstrap script. Their canonical
-combined digest is the bootstrap identity. Reuse is allowed only when the
-marker, selected revision, interpreter identity, all input digests, and the
-completed bootstrap identity still match.
+- Preserve the last verified manifest state and sanitized diagnostics.
+- Never fall back to the developer's venv, Nox directory, pip configuration,
+  private package index, or credentials.
+- Resume only after rechecking ownership, revision, input digests, and existing
+  outputs.
+- `--repair` may replace only manifest-listed resources inside this owned run.
+- Cleanup must never touch source, personal state, another run, Docker images,
+  containers, or shared caches.
 
-### Network Contract
+### Remaining Work
 
-The Git clone and checkout phase performs no network access. Dependency
-installation may use ordinary network access only for the public package
-requirements declared by the committed lock files. The public-revision check
-may contact only the canonical GitHub repository without credentials. Record
-each phase's network policy (`none` or `public-download`) and the package names
-and versions installed, but do not log URL user information, headers, cookies,
-tokens, complete environment values, or package-cache contents.
+1. Implement the owned workspace and atomic manifest behind the public
+   orchestrator.
+2. Integrate revision eligibility, clone, and contributor bootstrap with that
+   manifest.
+3. Add focused retry, repair, corruption, and interruption tests.
+4. Run the complete clean Nox gate and verify the public PEX.
+5. Run Stage 3 twice to prove safe reuse and retain sanitized evidence for
+   Stage 4.
 
-An offline, DNS, TLS, index, or download failure leaves the clone intact,
-records `bootstrapping` plus sanitized diagnostics, and prints the exact retry
-command. It must not fall back to the current checkout's environment, ambient
-site packages, personal pip configuration, private indexes, or a different
-dependency version.
+### Done When
 
-### Full Gate And Revision-Bearing PEX
-
-Invoke the complete gate from `RUN_ROOT/checkout/devcapsule` with the isolated
-contributor interpreter and an explicitly isolated Nox environment directory:
-
-```text
-RUN_ROOT/contributor/venv/bin/python -m nox \
-  --envdir RUN_ROOT/contributor/nox \
-  --no-reuse-existing-virtualenvs -s build
-```
-
-The first run must force new Nox environments. A validated resume may use only
-the same run-owned `contributor/nox` directory and the same bootstrap identity;
-it may never discover or reuse `.nox` or `.venv` from the source checkout.
-
-Before and after the gate, require a clean tracked worktree. The gate must pass
-compile and shell syntax checks, mypy, fast tests, CLI smokes, local PEX build
-and smokes, packaging integrations, and clean-checkout public PEX build and
-smokes. Its final artifact is exactly:
-
-```text
-RUN_ROOT/checkout/devcapsule/dist/devcapsule.pex
-```
-
-Verify the artifact through the executable process boundary:
-
-```text
-RUN_ROOT/checkout/devcapsule/dist/devcapsule.pex version --json
-```
-
-The JSON must report schema version 1, the exact selected full revision,
-canonical source repository, exact commit URL, and expected package version.
-Compute and record its SHA-256, size, executable mode, and relative path. Also
-prove the PEX does not resolve imports from either contributor venv or source
-checkout and that its recursive command help is available. Do not accept
-`devcapsule-local.pex`, an `unknown` revision, an abbreviated commit, a stale
-pre-existing artifact, or a source URL derived from the local clone path.
-
-### Sanitized Evidence
-
-Write `evidence/stage-3.json` only after independent verification of the clone,
-bootstrap, gate, and PEX. Its stable schema includes:
-
-- run ID, exact source and clone revisions, canonical repository/commit URLs;
-- clone independence findings and committed-input digests;
-- system, contributor, Nox, pip, setuptools, wheel, and PEX tool identities;
-- isolated venv/Nox/XDG paths relative to the run root;
-- gate session names, exit status, test counts, typecheck result, packaging-test
-  count, and sanitized log SHA-256 values;
-- PEX relative path, SHA-256, size, mode, version, source revision, and source
-  URL; and
-- final manifest state and timestamps.
-
-Ordinary human output is a concise summary of those values with workspace and
-host-sensitive paths redacted. `--show-host-paths` does not reveal credential
-values or raw logs.
-
-### Retry, Repair, And Failure Semantics
-
-- A repeated invocation in `stage-3-complete` state reruns verification and
-  reports exact reuse; it does not reclone or reinstall.
-- A matching `cloned` or `bootstrapping` run may resume only after checking the
-  clone revision/cleanliness and bootstrap input digest.
-- A partial venv, wrong interpreter, missing completion marker, corrupt Git
-  object database, mismatched digest, or stale PEX fails with a precise
-  `--repair` instruction rather than being silently reused.
-- `--repair` may remove and recreate only manifest-recorded Stage 3 clone,
-  contributor, Nox, and generated artifact paths after verifying the exact run
-  ownership marker and that none is a symlink or mount boundary. It preserves
-  prior sanitized logs by moving them beneath a run-owned attempt directory.
-- Without `--keep-on-failure`, a brand-new failure before a usable clone exists
-  may clean its exact incomplete resources. Once a clone or diagnostic log is
-  useful, retain the ownership-marked run for explicit retry or cleanup.
-- Interrupt handling writes the last safe state atomically. A resumed run never
-  guesses whether a command completed; it revalidates the expected output
-  before advancing.
-- No Stage 3 path removes source checkout data, persistent IDE/agent state,
-  personal cache, unrelated E2E runs, Docker objects, or shared build cache.
-
-### Validation Slices
-
-Implement and close Stage 3 in these independently testable slices:
-
-1. **Run workspace and manifest.** Public orchestrator tests cover restrictive
-   modes, atomic state transitions, collision rejection, symlink/path-escape
-   rejection, ownership checks, redaction, and interruption recovery.
-2. **Revision eligibility and clone.** Real temporary Git repositories prove
-   dirty/untracked rejection before mutation, exact detached checkout,
-   removal of the path-bearing local origin, absent alternates, different
-   loose-object inodes, clean `git fsck`, no hooks/submodules/credentials, and
-   no network clone command.
-3. **Standard-library bootstrap.** A subprocess test runs the script with a
-   local wheelhouse/fixture so it can prove interpreter and XDG isolation,
-   environment allowlisting, input digests, original-venv exclusion, and
-   machine-readable output without public network dependence.
-4. **Retry and repair.** Tests cover exact reuse, interrupted venv creation,
-   corrupt completion metadata, changed input digest, wrong Python, stale PEX,
-   repair refusal for unowned/symlinked paths, and successful owned repair.
-5. **Gate and PEX verification.** A recording process boundary verifies exact
-   Nox arguments and envdir; packaging integration builds a clean temporary
-   fixture PEX and rejects `unknown`, mismatched revision/repository, stale
-   artifact, bad mode, and checksum mismatch.
-6. **Live v024 Stage 3 proof.** From an exact clean published milestone commit,
-   delete any earlier test-owned run through ownership-checked cleanup, execute
-   the real local clone/bootstrap/full gate, verify the PEX, invoke the same run
-   again to prove safe reuse, and retain sanitized evidence for Stage 4.
-
-Tests must use the public CLI, standard-library bootstrap process, or complete
-orchestrator boundary rather than reaching into private helpers. The ordinary
-`nox -s build` gate covers deterministic fast and packaging tests; the actual
-networked clean-clone/bootstrap run remains part of the explicit recursive E2E.
-
-### Completion Evidence
-
-Done means:
-
-- the selected source is a clean full public commit and the clone is local,
-  detached, credential-free, network-free, object-independent, and exact;
-- the contributor interpreter, Nox environments, XDG roots, package cache,
-  imports, and editable install are confined to the owned run and exclude the
-  original checkout's `.venv`;
-- the complete clean-slate Nox gate passes and its sanitized counts/log hashes
-  are recorded;
-- the built PEX reports the exact clone revision and canonical public source
-  URL, and its SHA-256 is recorded in the manifest and Stage 3 evidence;
-- a second invocation proves exact reuse without cross-run or personal-state
-  access;
-- corruption and interruption tests produce actionable repair guidance and
-  ownership-safe recovery; and
-- no Docker image, container, project authorization, materialization, or
-  successor launch has occurred yet.
+- source, clone, and PEX revisions agree;
+- clone, venv, Nox, XDG, cache, logs, and evidence stay inside the owned run;
+- the clean gate passes without using the original checkout's environment;
+- the PEX reports the selected public revision and has a recorded checksum;
+- retry, repair, interruption, and cleanup remain ownership-safe; and
+- no image build, materialization, or successor launch has occurred.
 
 ## Stage 4: Build And Verify The Successor Base From Inside Dogfood
 
