@@ -1689,6 +1689,12 @@ Stage 3 contributor-bootstrap E2E checkpoint, 2026-08-07:
   full recursive Nox entry point passed again directly from the clean current
   checkout (`2 passed`, `1 deselected` in 41 seconds), with no surviving
   labeled container or run workspace.
+- The product owner then ran the contributor marker directly on the laptop:
+  `pytest --no-cov tests/e2e/ -m contributor_e2e`. The host-context branch
+  passed (`1 passed`, `2 deselected` in 28.39 seconds), confirming direct owned-
+  workspace binding, the lock-selected managed base, host-network public
+  dependency installation, and the shared isolated bootstrap driver outside a
+  DevCapsule container.
 - This remains executable acceptance scaffolding. Durable manifest state,
   retry/repair identity, bootstrap input digests, full Nox gate, and the
   revision-bearing public PEX still belong to the production Stage 3
