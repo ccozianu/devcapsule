@@ -1675,15 +1675,20 @@ Stage 3 contributor-bootstrap E2E checkpoint, 2026-08-07:
   launch; it is never inferred from package-download failure.
 - An initial interrupted bridge-network diagnostic exposed a Docker cleanup
   race. Commit `1a71e2d` makes exact labeled container removal idempotent and
-  guarantees the owned network cleanup attempt even during interruption. The
-  diagnostic resources and temporary validation clones were cleaned or moved
-  to the user's recoverable trash area.
+  ensured the then-owned network cleanup attempt ran during interruption.
+  Commit `f040dfe` subsequently removed that custom network when host
+  networking became the accepted policy in both contexts. The diagnostic
+  resources and temporary validation clones were cleaned or moved to the
+  user's recoverable trash area.
 - Live execution from a clean `d754a9a` clone passed the contributor scenario
   in 25 seconds. The complete `nox -s recursive_dogfood_e2e` entry point then
   passed dry-run preflight plus both contributor-bootstrap and local-clone E2Es
   (`2 passed`, `1 deselected`) in 42 seconds. Independent inspection found no
   surviving labeled container, network, or run workspace. The final ordinary
-  gate passed 223 fast tests and clean mypy over 85 files.
+  gate passed 223 fast tests and clean mypy over 85 files. After `f040dfe`, the
+  full recursive Nox entry point passed again directly from the clean current
+  checkout (`2 passed`, `1 deselected` in 41 seconds), with no surviving
+  labeled container or run workspace.
 - This remains executable acceptance scaffolding. Durable manifest state,
   retry/repair identity, bootstrap input digests, full Nox gate, and the
   revision-bearing public PEX still belong to the production Stage 3
