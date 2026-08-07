@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 from zipfile import ZipFile
 
 import pytest
@@ -50,3 +51,14 @@ def test_source_checkout_version_command_is_machine_readable(capsys) -> None:
     assert cli.main(["version", "--json"]) == 0
     value = json.loads(capsys.readouterr().out)
     assert value == current_build_info().to_mapping()
+
+
+def test_editable_install_falls_back_to_build_info_beside_module(tmp_path: Path) -> None:
+    missing_resource = tmp_path / "editable-resource-root" / "_build_info.json"
+
+    with patch("devcapsule.build_info.files") as resources:
+        resources.return_value.joinpath.return_value = missing_resource
+        info = current_build_info()
+
+    assert info.version == "0.1.0"
+    assert info.source_revision == "unknown"

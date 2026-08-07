@@ -24,6 +24,48 @@ def test_built_pex_dispatches_runtime_help(built_pex: Path) -> None:
 
 
 @pytest.mark.integration
+def test_built_pex_exposes_recursive_preflight_help(built_pex: Path) -> None:
+    completed = subprocess.run(
+        [str(built_pex), "project", "recursive-e2e", "preflight", "--help"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "read-only" not in completed.stderr.lower()
+    assert "--show-host-paths" in completed.stdout
+
+    run_help = subprocess.run(
+        [str(built_pex), "project", "recursive-e2e", "run", "--help"],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    assert run_help.returncode == 0, run_help.stderr
+    assert "--keep-on-failure" in run_help.stdout
+
+
+@pytest.mark.integration
+def test_built_pex_exposes_recursive_host_public_interface(built_pex: Path) -> None:
+    completed = subprocess.run(
+        [
+            str(built_pex),
+            "-c",
+            "from devcapsule.recursive_host import HostDaemonLaunchContext; "
+            "print(HostDaemonLaunchContext.__name__)",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "PEX_INTERPRETER": "1"},
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "HostDaemonLaunchContext"
+
+
+@pytest.mark.integration
 def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> None:
     completed = subprocess.run(
         [str(built_pex), "version", "--json"],

@@ -3,8 +3,27 @@
 This file is the project handoff point. Future agents should update it when
 completing a stage, changing the project state materially, or ending a session.
 
-Current stage: `docker4pycharm` v0/MVP checkpoint complete; `devcapsule`
-Python MVP is the active post-MVP refactoring stage.
+Current release target: DevCapsule V1. The `docker4pycharm` v0/MVP checkpoint
+is complete; `devcapsule` Python is the active implementation.
+
+Active milestone: `Recursive Dogfood E2E — Build And Launch A Successor From
+Inside DevCapsule`.
+
+Current milestone state: execution plan accepted on branch
+`milestone/recursive-dogfood-e2e` from clean `main` revision
+`237d4939f8d1dcfcfbe2061209f16f8692542c08`. The product owner accepted a
+two-generation plan: v023 will build a local v024 bootstrap checkpoint, the
+user will manually hand dogfood over to v024, and v024 will run the full clean-
+clone E2E to build and launch the next successor. Stage 0's read-only recursive
+preflight is committed at `895043a`. Stage 1's host-daemon path translation,
+sanitized bind planning, and ownership-marked safe staging are committed at
+`f026bb6`. The minimum recursive orchestrator skeleton, project-scoped command
+surface, normal-run readiness integration, and Nox entry point are committed
+at `e2dae20`. Stage 2's local v024 base build, canonical environment
+materialization, manual v023-to-v024 handoff, and resumed-environment
+verification are complete. Stage 3's local-clone protocol now has a passing
+recursive E2E, but the durable Stage 3 workspace/manifest integration and final
+recursive successor build have not occurred yet.
 
 Current status:
 
@@ -1494,16 +1513,152 @@ V1 gap-review checkpoint, 2026-08-06:
   a release; stages subdivide a plan, tasks and slices execute it, and
   checkpoints preserve resumable state without implying completion. The root
   `WORKFLOW.md` now defines this terminology.
-- The proposed milestone sequence is PyCharm Functional Closure, Recursive
-  Dogfood Engineering, Self-Service Configuration Catalog, and V1 Publication
-  And Acceptance. This sequence remains draft until product-owner review of the
-  gap snapshot and its open scope decisions.
+- The product owner selected Recursive Dogfood E2E as the first milestone so an
+  agent inside the accepted dogfood container can build a clean clone, create
+  the next PEX/base, materialize and start a successor through host Docker, and
+  inspect the result. PyCharm Functional Closure, Self-Service Configuration
+  Catalog, and V1 Publication And Acceptance follow in the current sequence.
+- The active milestone plan is
+  `devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md`.
+  It preserves v023 as the published bootstrap base, uses exact local-base
+  authorization for both the local v024 checkpoint and final successor, makes
+  recursive host-path translation and cleanup fail closed, and records the
+  manual v023-to-v024 handoff plus the final manual IDE usability check.
+- Stage 0 introduces `devcapsule project --path PATH recursive-e2e preflight`
+  with redacted human and JSON output, exact daemon-side container inspection,
+  mount/access-mode checks, persistent-home workspace containment, Docker
+  client/server and display readiness checks, and an explicit warned host-path
+  debug view. The
+  launcher now supplies its generated container name to v024 for deterministic
+  self-inspection; accepted v023 uses a read-only overlay identity fallback.
+  Source and local-PEX live runs both returned `READY` without mutation. Fast
+  validation passed 196 tests, mypy passed over 76 source files, PEX command
+  smoke passed, and all four packaging integrations passed. The editable-source
+  build-info lookup discovered during live preflight was repaired and covered.
+- Stage 1 adds a reusable internal host-daemon launch context that requires a
+  successful Stage 0 report, approves only named inspected mounts, performs
+  canonical longest-prefix translation, validates directories/files/sockets
+  and read/write modes, and produces redacted bind plans with unchanged
+  successor destinations. Its ownership-marked persistent-home staging writes
+  runtime plan, passwd/group, Xauthority, shadow, and sudo-policy inputs with
+  tested restrictive modes and cleans up after preparation, planning, or later
+  launch failure. A live v023 dry run approved six mounts, staged four non-sudo
+  inputs, planned project/Docker/X11 binds, exposed no host source, invoked no
+  Docker mutation, and removed the run root. The full dirty-tree Nox gate
+  passes 215 fast tests, clean mypy over 78 source files, source and local-PEX
+  command smoke, execution of the Stage 1 public interface through the local
+  PEX, and all five packaging integrations. No revision-bearing public PEX was
+  built from the dirty tree.
+- The Stage 2 bootstrap prerequisite is implemented in the working tree on
+  2026-08-07. The former top-level recursive command moved beneath `project`.
+  A checkout is eligible only when `devcapsule/pyproject.toml` declares
+  `[project].name = "devcapsule"`. Ordinary `devcapsule project run` now marks
+  an eligible launch recursive-ready only when host Docker is selected;
+  `--no-recursive-e2e` forces host Docker off, bridge networking, and
+  development sudo off for one launch and cannot grant or rewrite
+  authorization. The explicit `recursive_dogfood_e2e` Nox session is a
+  thin wrapper around the project-scoped dry-run test rather than a second
+  launcher.
+- The public dry-run orchestrator composes Stage 0, Stage 1 translation,
+  collision-safe run ownership, restrictive staged runtime inputs, complete
+  successor bind planning, redacted JSON, failure preservation, and exact
+  cleanup without invoking a Docker mutation. Tests exercise public module and
+  CLI contracts, including project rejection, readiness downgrade, unique run
+  IDs, redaction, cleanup, and `--keep-on-failure`.
+- Live execution from the accepted v023 container passed through the new Nox
+  entry point. It approved the current project/home/state/runtime-plan,
+  Docker/X11/Xauthority mounts, staged six launch inputs, planned 15 redacted
+  successor binds, performed no Docker mutation, and reported cleanup
+  complete. The full dirty-tree gate passed 221 fast tests, clean mypy over 79
+  source files, source and local-PEX command smoke, and all five packaging
+  integrations. The marker-less v023 container received the intended bootstrap
+  warning; future normal launches carry an explicit enabled or disabled marker.
+
+Stage 2 bootstrap handoff checkpoint, 2026-08-07:
+
+- The clean recursive-orchestrator checkpoint is
+  `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`. Its revision-bearing PEX has
+  SHA-256
+  `fb278f145a583faba12df9c4a663b41cb60b0b508a769b050cfa4e088f13febc`.
+- The local managed v024 base is `devcapsule-local-base:v024`, immutable image
+  ID
+  `sha256:56bbd10c54eb2b35044eb49f4f81c49602c73c9edd8b738a969d9340492f75df`.
+  Its managed metadata identifies base kind, Ubuntu 24.04 recipe version 2,
+  the exact checkpoint revision and PEX checksum, and the generic
+  `tini -- /opt/devcapsule/bin/devcapsule.pex runtime` entrypoint with the
+  external runtime-plan command.
+- Normal production realization materialized canonical environment
+  `devcapsule-local-pycharm:9cdac50e4c802fff5077`, identity
+  `9cdac50e4c802fff5077cdee002db6dfcddbe9781e76c259cf1602e4065aee5f`,
+  immutable image ID
+  `sha256:85a560c3f1fc55ded2991e555ed63fc3687d9905213622f0fa33f50e5db8c31b`.
+  Its descriptor selects the exact v024 base and includes PyCharm Professional
+  2026.2.0.1 plus Codex 0.145.0.
+- The user performed the manual handoff and resumed work through Codex in the
+  v024 PyCharm environment. Host-daemon inspection proved running container
+  `pycharm-isolated-costin-1786072465` uses the exact canonical materialized
+  image above.
+- `/opt/devcapsule/bin/devcapsule.pex version --json` reported the exact
+  checkpoint revision, and its computed checksum matched both base and
+  materialized-image metadata. Embedded-PEX recursive preflight returned
+  `READY`: it identified the exact running container, explicit recursive
+  enablement, host networking, Docker/development-sudo authorization, runtime
+  plan and required mounts, display forwarding, image revision, and sufficient
+  persistent-home space. The only warning was the expected dirty-checkout
+  notice for the unrelated `.idea/pySourceRootDetection.xml` modification.
+- Stage 2 is complete without publishing v024 or claiming full recursive E2E
+  acceptance.
+- A 2026-08-07 completion recheck reconfirmed the v023 committed lock, exact
+  v024 base/materialized/running-container lineage, local and embedded PEX
+  revision/checksum agreement, and `READY` embedded-PEX preflight. The full
+  implementation-equivalent dirty-tree gate passed clean mypy over 79 files,
+  221 fast tests, all command and PEX smokes, and five packaging integrations.
+  A strict base probe confirmed the core tooling, pinned Node archive, and
+  negative agent/project/state inventory. It also found that the bare base
+  image does not add `/opt/node/current/bin` to `PATH`; this is a separate
+  runtime-tooling usability gap rather than a Stage 2 lineage/handoff failure.
+- Documentation checkpoint `7069d3e6fcfa0a9093a8d797953e53967a914801`
+  intentionally advanced the clean checkout beyond v024's embedded
+  `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`. Live embedded-PEX preflight
+  remained `READY`: it correctly requires image/embedded-PEX agreement while
+  recording, but not equating, the later checkout revision. The Stage 3 and
+  milestone acceptance checks now explicitly preserve separate bootstrap,
+  selected-source, and clean-clone identities. Rebuilding v024 for
+  documentation-only commits is not required.
+
+Stage 3 local-clone checkpoint, 2026-08-07:
+
+- Commit `58acbd7` adds a recursive-only pytest scenario and Nox wiring for the
+  Stage 3 local-clone protocol. Environment inspection proves an unprivileged
+  authorized container, host-daemon access, and the exact running managed
+  image before any workspace mutation.
+- Commit `3b3b743` removes remote-URL coupling from this filesystem-local
+  protocol. Source selection depends on clean exact `HEAD`, not `origin`; the
+  clone removes Git's path-bearing local `origin` and verifies that no source
+  path remains in its configuration.
+- The protocol creates an ownership-marked private run root, performs a local
+  no-checkout/no-hardlink clone under an allowlisted Git environment, installs
+  empty hooks before detached checkout, verifies exact revision, cleanliness,
+  independent objects and `git fsck`, excludes generated/credential state and
+  source-pointing symlinks, then ownership-checks exact cleanup.
+- The full build gate passed before the final origin-policy refinement: 221
+  fast tests, clean mypy over 80 files, source/PEX command smokes, and five
+  packaging integrations. After refinement, the focused ordinary gate again
+  passed 221 tests and clean mypy. A clean live
+  `nox -s recursive_dogfood_e2e` run passed embedded recursive dry-run plus the
+  new local-clone test (`1 passed`, `1 deselected`) from v024.
+- This is an executable local-clone slice, not completion of Stage 3. The next
+  implementation boundary remains the durable public orchestrator workspace
+  and manifest state machine described below.
 
 Active next task:
 
-Review and clarify the dated V1 gap snapshot, settle its open functional scope
-decisions, and then write the executable plan for the selected first milestone.
-No new implementation milestone has started yet.
+Begin Stage 3 slice 1 from the verified v024 environment: implement the durable
+ownership-marked E2E run workspace and atomic manifest state machine, with
+public-interface tests for restrictive modes, collision and path-escape
+rejection, exact ownership, redaction, and interrupted-state recovery. Do not
+clone or bootstrap until that boundary passes its focused tests and the
+ordinary repository gate.
 
 V2 candidate task:
 

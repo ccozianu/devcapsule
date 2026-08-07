@@ -74,6 +74,7 @@ addopts = [
 markers = [
   "integration: crosses packaging or process boundaries without Docker",
   "e2e: builds or runs real Docker images and containers",
+  "recursive_e2e: requires an authorized DevCapsule container with host-Docker access",
 ]
 
 [tool.coverage.run]

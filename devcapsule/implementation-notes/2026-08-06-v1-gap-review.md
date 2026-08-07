@@ -1,6 +1,6 @@
 # DevCapsule V1 Gap Review
 
-Status: draft for product-owner review and clarification
+Status: review in progress; first engineering milestone selected on 2026-08-06
 
 Applies as of: 2026-08-06
 
@@ -414,25 +414,32 @@ Required validation is limited to advertised V1 platforms and features:
 - CUDA compiler/runtime, positive device authorization, negative no-device
   behavior, and a real workload only if CUDA remains a supported V1 feature.
 
-## Proposed Milestone Sequence Toward The V1 Release
+## Selected Milestone Sequence Toward The V1 Release
 
-### Milestone 1: PyCharm Functional Closure
+The product owner selected recursive dogfood engineering as the first milestone
+so agents can build, launch, inspect, and validate later V1 work from inside the
+real dogfood environment. This deliberately changes the initially proposed
+functional-first order without changing the gap classification.
 
-Primary gaps: F1, F2, F3, and the user-facing inspection portion of F6.
+### Milestone 1: Recursive Dogfood E2E
 
-Closure means a fresh supported project reaches a ready, inspectable,
-persistent PyCharm workspace through the V1 abstractions without undocumented
-manual environment setup.
-
-### Milestone 2: Recursive Dogfood Engineering
-
-Primary gaps: E1 through E4, initially using the PyCharm reference path.
+Primary gaps: E1 through E4, initially using the accepted PyCharm reference
+path. The executable plan is
+`devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md`.
 
 Closure means an agent in the accepted dogfood capsule can create a clean
 clone, build and validate the next PEX/base, materialize and start a successor
 on the authorized host daemon, inspect all machine-visible acceptance criteria,
 and clean only test-owned resources. One final IDE usability/handoff action may
 remain manual.
+
+### Milestone 2: PyCharm Functional Closure
+
+Primary gaps: F1, F2, F3, and the user-facing inspection portion of F6.
+
+Closure means a fresh supported project reaches a ready, inspectable,
+persistent PyCharm workspace through the V1 abstractions without undocumented
+manual environment setup.
 
 ### Milestone 3: Self-Service Configuration Catalog
 
@@ -464,7 +471,8 @@ acceptance checks and are ready for the V1 release decision.
 
 ## Next Planning Step
 
-Review and clarify this snapshot, resolve the functional scope decisions above,
-then select and write the executable plan for the first milestone. No item in
-this gap review becomes active implementation work merely by appearing here;
-`CURRENT-STATUS.md` remains the active handoff.
+The first milestone is now selected and its executable plan is linked above.
+Review that plan, then begin its Stage 0 recursive preflight after product-owner
+acceptance. The unresolved functional scope decisions remain open for their
+later milestones; selecting recursive dogfood first does not decide or silently
+defer them. `CURRENT-STATUS.md` remains the active handoff.

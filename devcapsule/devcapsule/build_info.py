@@ -61,8 +61,19 @@ def current_build_info() -> BuildInfo:
     resource = files("devcapsule").joinpath("_build_info.json")
     try:
         return BuildInfo.from_json(resource.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise BuildInfoError(f"cannot read embedded build information: {exc}") from exc
+    except OSError as resource_error:
+        # Some editable installers expose the project root as the package's
+        # resource location even though imports resolve to this source tree.
+        # The sibling path preserves source/PEX command parity without
+        # weakening the packaged-resource validation.
+        sibling = Path(__file__).with_name("_build_info.json")
+        try:
+            return BuildInfo.from_json(sibling.read_text(encoding="utf-8"))
+        except OSError as sibling_error:
+            raise BuildInfoError(
+                f"cannot read embedded build information: {resource_error}; "
+                f"source fallback failed: {sibling_error}"
+            ) from sibling_error
 
 
 def read_pex_build_info(path: str | Path) -> BuildInfo:

@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from devcapsule import cli
+from devcapsule.configurations.pycharm import DockerMode
 from devcapsule.materialization import ImageDetails, parse_locked_environment
 from devcapsule.project_configuration import (
     ProjectConfigurationError,
@@ -460,6 +461,11 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
 
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
+        (project / "devcapsule").mkdir()
+        (project / "devcapsule" / "pyproject.toml").write_text(
+            '[project]\nname = "devcapsule"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
         lock_path = write_formation_lock(project)
         select_codex_component(project)
         assert (
@@ -503,7 +509,19 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
             patch("devcapsule.commands.project.realize_environment", return_value=realized) as realize,
             patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch,
         ):
-            assert cli.main(["project", "--path", str(project), "run"]) == 0
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "run",
+                        "--docker-daemon",
+                        "host-socket",
+                    ]
+                )
+                == 0
+            )
 
         selected = realize.call_args.args[0]
         assert selected.root == project.resolve()
@@ -539,7 +557,35 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
             "JAVA_TOOL_OPTIONS": "-Dide.browser.jcef.sandbox.enable=false",
         }
         assert options.secret_environment == ("OPENAI_API_KEY",)
+        assert options.additional_environment == {"DEVCAPSULE_RECURSIVE_E2E": "1"}
         assert "Reused canonical environment" in capsys.readouterr().out
+
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0) as downgraded_launch,
+        ):
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "run",
+                        "--docker-daemon",
+                        "host-socket",
+                        "--development-sudo",
+                        "--no-recursive-e2e",
+                    ]
+                )
+                == 0
+            )
+
+        downgraded = downgraded_launch.call_args.args[0]
+        assert downgraded.docker_mode is DockerMode.none
+        assert downgraded.enable_sudo is False
+        assert downgraded.network_mode == "bridge"
+        assert downgraded.additional_environment == {"DEVCAPSULE_RECURSIVE_E2E": "0"}
+        assert "were downgraded" in capsys.readouterr().out
 
 
 def test_project_run_does_not_launch_when_environment_realization_fails(
