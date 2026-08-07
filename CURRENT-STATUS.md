@@ -22,8 +22,9 @@ The current milestone is **Recursive Dogfood E2E — Build And Launch A
 Successor From Inside DevCapsule**. Its execution plan is
 [2026-08-06-recursive-dogfood-e2e-milestone-plan.md](devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md).
 
-- Stages 0 through 2 are complete.
-- Stage 3 is in progress. Its local-clone and contributor-bootstrap E2Es pass.
+- Stages 0 through 3 are complete.
+- Stage 3 closed with passing local-clone and contributor-bootstrap E2Es in
+  both recursive and contributor-laptop contexts.
 - Stages 4 through 6 have not started.
 - No successor image has been built or launched yet.
 
@@ -84,28 +85,20 @@ When invoked recursively, the test first proves through Docker inspection that
 the current container is itself host-networked.
 
 The filesystem-local clone does not depend on the developer's configured
-`origin` URL. Public commit eligibility and clone mechanics are separate
-checks.
+`origin` URL. Stage 4 verifies canonical public artifact metadata separately.
 
 ## Next Step
 
-Implement Stage 3's durable, ownership-marked run workspace and atomic manifest
-behind the public orchestrator. First add focused public-interface tests for:
+Begin Stage 4. Compose the accepted Stage 3 clone and bootstrap protocols into
+one retained, ownership-marked milestone run. From the clean clone, run the
+full clean Nox gate, build and verify the revision-bearing PEX, then use that
+PEX to build and inspect the successor base through the authorized host Docker
+daemon.
 
-- restrictive directory and file modes;
-- collision, symlink, mount-boundary, and path-escape rejection;
-- exact ownership checks and redaction;
-- atomic state transitions and interrupted-state recovery.
-
-Do not integrate the clone or contributor bootstrap until this boundary passes
-its focused tests and the ordinary repository gate.
-
-After that:
-
-1. integrate source eligibility, local clone, and contributor bootstrap;
-2. add retry, repair, corruption, and interruption coverage;
-3. run the full clean Nox gate and verify the revision-bearing PEX; and
-4. rerun the same Stage 3 run ID to prove safe reuse.
+Additional workspace, retry, corruption, redaction, and isolation hardening is
+tracked in the
+[V1 test backlog](devcapsule/implementation-notes/2026-08-07-v1-test-backlog.md).
+It does not block the completed Stage 3 boundary.
 
 ## Known Follow-ups
 

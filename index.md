@@ -101,6 +101,7 @@ same change.
 - [DevCapsule V1 gap review at 0a0ff09](devcapsule/implementation-notes/2026-08-06-v1-gap-review.md)
 - [Recursive dogfood E2E milestone plan](devcapsule/implementation-notes/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
 - [Recursive dogfood Stage 2 execution checklist](devcapsule/implementation-notes/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)
+- [DevCapsule V1 test backlog](devcapsule/implementation-notes/2026-08-07-v1-test-backlog.md)
 
 ## Bugs
 
