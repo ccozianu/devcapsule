@@ -4,17 +4,321 @@ This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
 
+## Workflow Type Selection
+
+Before interpreting project status, read the top-level `workflow-type` field in
+`.devcapsule/devcapsule.toml`:
+
+```toml
+workflow-type = "single-stream"
+```
+
+The supported values are `single-stream` and `multiple-streams`. A missing
+field means `single-stream`. Any other value is invalid; report it instead of
+guessing which status protocol applies. The field selects repository workflow,
+not runtime behavior or live contributor presence.
+
+## Single-Stream Workflow
+
+`single-stream` preserves the existing linear process:
+
+- root `CURRENT-STATUS.md` is the detailed active handoff;
+- it records current state, evidence, and one next resumable slice;
+- routine checkpoints update that file; and
+- branches and worktrees remain optional implementation tools.
+
+The remaining general sections of this document apply as they did before
+multiple-stream support was introduced.
+
+## Multiple-Stream Workflow
+
+### Definition And Restrictions
+
+A workstream is a bounded set of changes developed toward one goal. It begins,
+develops, and ends successfully or unsuccessfully.
+
+The following restrictions keep concurrent work understandable:
+
+1. Workstreams are flat. Do not create parent, child, or nested workstreams.
+2. Every workstream has one unique lowercase mnemonic made from letters,
+   numbers, and hyphens. Never reuse an archived mnemonic.
+3. Every branch other than `main` belongs to exactly one workstream.
+4. Each workstream branch name begins with `<mnemonic>/`.
+5. A workstream may have more than one branch, but every branch starts from
+   `main` and is intended to return to `main` if the workstream succeeds.
+6. `main` belongs to no workstream. It is the shared registration, visibility,
+   finalization, and integration branch.
+7. Ordinary workstream implementation does not happen directly on `main`.
+8. Each open workstream has exactly one detailed handoff at
+   `engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md`.
+9. Root `CURRENT-STATUS.md` on `main` lists open workstreams only. An open
+   workstream remains listed while active, paused, blocked, or integrating.
+10. One workstream does not edit another workstream's WIP directory or commit
+    another worktree's recovery state.
+
+### Beginning A Workstream
+
+Begin from a clean, current `main` checkout:
+
+1. Choose the goal and unused mnemonic.
+2. Create `engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md` on `main`.
+3. Record the goal, state, branch prefix, integration target, delivery method
+   or applicable repository default, current task, and next resumable task.
+4. Add the workstream to root `CURRENT-STATUS.md`.
+5. Commit that source-level registration on `main`.
+6. Fork the first `<mnemonic>/...` branch from that commit.
+7. Perform workstream changes only on its associated branch or branches.
+
+A branch created before the registration commit is not a valid new workstream
+branch. Existing branches that predate adoption require an explicit migration
+exception in their workstream status. An inactive legacy branch does not become
+an open workstream merely because the ref still exists; register and associate
+its continuation on `main` before committing new work to it.
+
+### Selecting Work At Session Start
+
+1. Read root `CURRENT-STATUS.md` to discover open workstreams.
+2. If the user names a workstream, select it.
+3. Otherwise, match the current branch prefix—or an explicitly registered
+   adoption exception—to exactly one mnemonic.
+4. Read that workstream's `CURRENT-STATUS.md` before editing.
+5. Ask the user only when selection remains ambiguous and would change the
+   work.
+
+Explicit user intent takes precedence over branch inference, but it does not
+make an incompatible checkout safe. If the selected workstream differs from
+the current branch, switch to its clean worktree before editing. Do not combine
+dirty state from two workstreams, and do not use a stash as their durable
+handoff boundary.
+
+### Development And Checkpoints
+
+The workstream handoff—not root `CURRENT-STATUS.md`—records detailed progress,
+evidence, the current or last task, and the next resumable task. Routine
+workstream commits update only that handoff and workstream-owned files.
+
+Keep all unfinished workstream documentation beneath:
+
+```text
+engineering-docs/wip/<mnemonic>/
+```
+
+The root documentation index lists the workstream `CURRENT-STATUS.md`, not
+every internal WIP document. The workstream status must contain a small local
+index of its WIP documents. This avoids making `index.md` a routine conflict
+point. Permanent documents are added to the root index when finalized.
+
+Workstream documentation may be integrated into `main` before source changes
+when visibility is useful. Publish documentation-only checkpoints, then
+synchronize the workstream branch with the resulting `main` state before
+editing the same files again. The branch handoff remains authoritative for the
+latest track-local state; the copy on `main` is the latest published snapshot.
+
+### Draft User Documentation
+
+Root `docs/` contains only current user-facing documentation. Workstream drafts
+live at:
+
+```text
+engineering-docs/wip/<mnemonic>/docs/
+```
+
+`docs/` is otherwise a reserved directory name beneath `engineering-docs/`.
+It is allowed only inside `wip/<mnemonic>/` and
+`archive/<mnemonic>/` workstream directories.
+
+For an entirely new user document, store the actual draft under the workstream
+`docs/` directory at its intended relative destination. For example:
+
+```text
+engineering-docs/wip/api/docs/guides/new-guide.md
+```
+
+is intended to become:
+
+```text
+docs/guides/new-guide.md
+```
+
+For a change to an existing root `docs/` file, do not create a divergent copy.
+Write a change proposal in the workstream `docs/` directory that identifies:
+
+- the target file;
+- why it must change;
+- the intended semantic and material wording changes;
+- implementation dependencies; and
+- final verification.
+
+Apply that proposal to the existing user document only when finalizing a
+successful workstream.
+
+### Successful Completion And Integration
+
+Successful integration is normally mechanical agent work, but delivery to
+`main` follows repository policy. A pull request is the default delivery method
+unless the repository or selected handoff explicitly permits direct
+integration. Do not infer permission to update `main` merely from the ability
+to do so.
+
+Before integration begins, the selected handoff records:
+
+- the integration target, normally `main`;
+- the designated integration branch;
+- the delivery method: `pull-request` or `direct-main`;
+- the repository's branch-synchronization and merge policy; and
+- any known human-only publication, approval, or merge step.
+
+The agent owns routine preparation, synchronization, file movement, conflict
+resolution where intent is clear, and validation. Ask the human for help when
+a conflict requires a product or documentation decision, repository policy is
+unclear, credentials or approval are unavailable, or another condition makes
+the intended result ambiguous.
+
+#### 1. Prepare The Integration Candidate
+
+1. Verify the designated integration branch and every involved worktree are
+   clean and all accepted workstream changes are committed. Freeze that branch
+   against unrelated work while integration proceeds.
+2. Inspect current local and remote `main`, fetching remote refs when network
+   access is available. Do not discard local commits or choose a side when
+   local and remote `main` have diverged.
+3. Synchronize the integration branch with current `main` according to
+   repository policy. A project may require rebasing, merging `main`, a hosting
+   platform's update-branch operation, or a merge queue. Pull-request delivery
+   does not imply rebasing. Direct-main delivery uses the rebase and
+   fast-forward procedure below.
+4. Resolve mechanical conflicts. When reconciliation requires intent, preserve
+   the evidence and ask the human before choosing a result.
+5. Run the workstream-specific and shared validation required by the handoff.
+
+#### 2. Finalize At The Delivery Boundary
+
+The following file changes close the workstream and belong in one finalization
+commit. For pull-request delivery, keep the workstream registry entry and WIP
+handoff during ordinary review and add this commit only when the pull request
+is otherwise merge-ready. For direct-main delivery, add it after rebasing and
+validating the branch and before fast-forwarding local `main`.
+
+1. Apply proposals for existing user documentation and move new user documents
+   into root `docs/`.
+2. Move enduring engineering records from WIP into their normal requirements,
+   specifications, decisions, design notes, implementation notes, bugs, or
+   other permanent categories.
+3. Update links and the root documentation index.
+4. Remove the workstream from root `CURRENT-STATUS.md`.
+5. Create `engineering-docs/archive/<mnemonic>/CURRENT-STATUS.md` containing a
+   brief successful outcome, evidence, delivery method and durable integration
+   reference, residual risks, and links to permanent records. For a pull
+   request, record its number or URL; the eventual merge revision need not be
+   predicted before the hosting platform creates it.
+6. Preserve only brief additional archive notes that have lasting value and
+   remove the WIP directory.
+7. Run the required checks on the complete final tree.
+
+The finalization tree is provisional while it exists only on the workstream
+branch or in an open pull request. Root `CURRENT-STATUS.md` on remote `main`
+remains the authoritative open-workstream registry until delivery completes.
+Never append or merge the workstream status text into that root registry.
+
+#### 3A. Deliver Through A Pull Request
+
+1. Publish the integration branch and open or update its pull request using the
+   repository's normal tools and required base branch.
+2. Address review and continuous-integration results. Resynchronize the branch
+   only by methods allowed by repository policy; rerun required checks after
+   any synchronization or finalization change.
+3. Add the finalization commit only when the pull request is otherwise ready to
+   merge, then allow any checks or approvals invalidated by that commit to run
+   again.
+4. Merge through the hosting platform using the repository's configured merge,
+   squash, rebase, or merge-queue policy. The agent may perform this action
+   when authorized; otherwise ask the human or designated reviewer.
+5. Verify from the updated remote ref that `main` contains the merged final
+   tree and that the workstream registry entry and WIP directory are absent.
+
+The pull request and resulting remote history are the durable integration
+record. A follow-up commit solely to predict or insert the platform-generated
+merge revision is not required.
+
+#### 3B. Deliver Directly To Main
+
+Use this path only when repository policy or the selected handoff explicitly
+permits direct integration:
+
+1. Bring clean local `main` to the accepted remote `main` by ordinary
+   fast-forward. If they have diverged, stop and ask the human rather than
+   choosing or discarding history.
+2. Rebase the frozen integration branch onto local `main` and rerun required
+   validation. Resolve mechanical conflicts and ask the human when intent is
+   required.
+3. Fast-forward local `main` with
+   `git merge --ff-only <integration-branch>`. If this fails because `main`
+   moved, do not create a non-fast-forward merge; repeat synchronization and
+   rebase.
+4. Push `main` normally to its integration remote, normally with
+   `git push origin main`. Never force-push `main`. If credentials, approval,
+   or repository policy prevent publication, ask the human to perform it. If
+   remote `main` moved, fetch it and repeat the direct-integration procedure
+   without force.
+5. Verify that remote `main` contains the finalized integration commit.
+
+The workstream is completely done only when remote `main` contains the final
+tree produced by either delivery path. Until then, an open integration pull
+request or a local `main` ahead of its remote is pending integration, not a
+completed workstream. Associated worktrees and branches may be removed after
+completion once their changes are reachable from remote `main`.
+
+### Unsuccessful Completion
+
+Do not promote unfinished source or user documentation. On `main`:
+
+1. Publish the workstream branch's final complete WIP documentation checkpoint
+   to `main` without integrating unfinished source changes.
+2. Remove the workstream from root `CURRENT-STATUS.md`.
+3. Move the complete `engineering-docs/wip/<mnemonic>/` tree to
+   `engineering-docs/archive/<mnemonic>/`.
+4. Update its `CURRENT-STATUS.md` to record the unsuccessful conclusion, the
+   last task, and that task's final status.
+5. Record the reason for ending, associated branches and revisions, and any
+   reconsideration condition when useful.
+6. Update links and the root documentation index.
+
+Draft user documentation stays inside the engineering archive and never
+appears in root `docs/`.
+
+### Integration And Recovery
+
+Before entering the successful-completion sequence, inspect changes since the
+branch point, reconcile overlaps with other open workstreams, and record the
+chosen integration branch, delivery method, and applicable repository policy
+in the handoff. Workstream state in Git and the hosting platform is durable but
+not a live lock or presence system.
+
+After interruption, enumerate worktrees and branches, inspect each dirty state
+separately, compare local `main` with remote `main`, match branch prefixes to
+workstreams, and resume from the selected workstream's last committed status.
+An open integration pull request or a local finalization already
+fast-forwarded to `main` but not its remote is pending integration, not a new
+workstream. Treat newer uncommitted files as recovery material, not canonical
+status.
+
+Throughout the rest of this document, **selected handoff** means root
+`CURRENT-STATUS.md` in `single-stream` mode and
+`engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md` in `multiple-streams`
+mode. General execution-loop rules apply to both modes.
+
 ## Core Loop
 
-1. Start each session by reading the repository brief and its final handoff
-   section.
+1. Start each session by reading the repository brief, workflow type, root
+   status, and selected handoff.
 2. Read `REQUIREMENTS.md` for the requirement overview when changing behavior,
    validation scope, or priorities, then open the relevant detailed files under
-   `docs/requirements/` as needed.
-3. Work from the active task list, not from stale conversation memory.
+   `engineering-docs/requirements/product/` as needed.
+3. Work from the selected handoff's active task or next slice, not from stale
+   conversation memory.
 4. Keep each cycle narrow enough that the user can validate the result.
-5. When the user validates something manually, update the handoff so the same
-   task is not picked up again.
+5. When the user validates something manually, update the selected handoff so
+   the same task is not picked up again.
 6. When an issue disappears or is deferred, remove it from the active task list
    and preserve the symptoms, logs, and reasoning in the completed-task archive.
 7. Commit coherent units of work when asked, or at natural save points when the
@@ -55,10 +359,12 @@ When planning a release:
    durable baseline.
 2. Group accepted gaps into a small sequence of outcome-based milestones.
 3. Define closure and evidence before activating a milestone.
-4. Keep `CURRENT-STATUS.md` focused on the active release, milestone, and next
-   task rather than copying every historical plan into its active backlog.
-5. When a milestone closes, update the handoff and gap review or successor plan
-   without claiming that the release is complete.
+4. In `single-stream` mode, keep `CURRENT-STATUS.md` focused on the active
+   release, milestone, and next task. In `multiple-streams` mode, keep that
+   detail in the selected handoff and only open-workstream discovery in the
+   root registry.
+5. When a milestone closes, update the selected handoff and gap review or
+   successor plan without claiming that the release is complete.
 6. Reserve release completion for the product-owner decision after the selected
    artifacts, documentation, and release-level acceptance evidence exist.
 
@@ -86,7 +392,8 @@ agent.
 5. Decide the next branch explicitly.
    - Continue to the next slice.
    - Ask the human to validate or choose.
-   - Stop and update the handoff because the session reached a useful checkpoint.
+   - Stop and update the selected handoff because the session reached a useful
+     checkpoint.
 
 The goal is steady throughput, not long uninterrupted agent runs with vague
 status.
@@ -153,8 +460,8 @@ Create or refresh durable state when any of these happen:
 - the session ends with unfinished but resumable work;
 - the active next step changes.
 
-If the user and agent are moving quickly, prefer more frequent small handoff
-updates over one large retrospective rewrite.
+If the user and agent are moving quickly, prefer more frequent small selected-
+handoff updates over one large retrospective rewrite.
 
 ## Markdown Roles
 
@@ -162,27 +469,39 @@ Use markdown files with distinct responsibilities:
 
 - `README.md`: stable, developer-facing welcome page, project overview, setup,
   and documentation entry points.
-- `CURRENT-STATUS.md`: active handoff, current state, validation evidence, and
-  next task list. Refresh it whenever durable project state changes.
+- `CURRENT-STATUS.md`: the active handoff in `single-stream` mode and the
+  open-workstream registry on `main` in `multiple-streams` mode. Refresh it
+  according to the selected mode's checkpoint rules.
 - `REQUIREMENTS.md`: implementation-agnostic requirement overview and index for
   project-level goals and concrete requirements.
-- `docs/requirements/`: one markdown file per root requirement, with
-  frontmatter metadata and canonical detailed requirement text.
-- Subproject requirement overviews, such as `devcapsule/REQUIREMENTS.md`:
+- `docs/`: stable product guidance and reference material intended for users
+  and adopters.
+- `engineering-docs/`: contributor- and agent-facing engineering records,
+  classified by authority and purpose.
+- `engineering-docs/requirements/product/`: one markdown file per root
+  requirement, with frontmatter metadata and canonical detailed requirement
+  text.
+- Subproject requirement overviews, such as `devcapsule-src/REQUIREMENTS.md`:
   implementation-specific requirement scope, status framing, and links to the
   canonical detailed requirement records for that subproject.
 - `AGENTS.md`: instructions every future agent should read before touching the
   repository.
-- `implementation-notes/`: decisions, retired issues, validation details,
-  debugging history, tradeoffs, and other context that should not clutter the
-  active task list.
-- `implementation-notes/bugs/`: one file per active or recently investigated
+- `engineering-docs/design-notes/`: proposals, alternatives, research, and
+  unsettled implementation-scoped architecture.
+- `engineering-docs/implementation-notes/`: execution plans, validation
+  details, debugging history, checklists, and other evidence that should not
+  clutter the active task list.
+- `engineering-docs/wip/MNEMONIC/`: temporary documentation and the detailed
+  handoff for an open workstream in `multiple-streams` mode.
+- `engineering-docs/archive/MNEMONIC/`: final status and retained historical
+  material for an ended workstream.
+- `engineering-docs/bugs/`: one file per active or recently investigated
   bug, with symptoms, reproduction, evidence, hypotheses, verification target,
   and close criteria.
-- `implementation-notes/completed-tasks/`: one file per completed, retired,
+- `engineering-docs/completed-tasks/`: one file per completed, retired,
   manually validated, or no-longer-reproduced task. This is the retrospective
   archive.
-- `implementation-notes/session-records/`: user-requested preservation of a
+- `engineering-docs/session-records/`: user-requested preservation of a
   consequential human/agent session. These records are historical context,
   not canonical decisions, requirements, handoff state, or active backlog.
 - Target-specific docs such as `docker4pycharm/README.md`: operational usage
@@ -197,10 +516,11 @@ Create a repository session record only when the user explicitly asks for the
 conversation or session to be preserved. Do not infer this request merely from
 session length, importance, a checkpoint, or session closure.
 
-Store the record beneath the relevant subproject's
-`implementation-notes/session-records/` directory. If the session is truly
-repository-wide and no subproject is the natural owner, use a root
-`implementation-notes/session-records/` directory.
+Store the record beneath the relevant scope in
+`engineering-docs/session-records/`. For example, DevCapsule implementation
+sessions use `engineering-docs/session-records/devcapsule/`. Repository-wide
+sessions may live directly beneath `engineering-docs/session-records/` or in a
+documented `product/` scope.
 
 The default capture mode is `detailed`: an agent-authored chronological record
 of important user instructions, decisions, rationale, examples, changes,
@@ -227,7 +547,7 @@ template guidance live in the `README.md` of each session-record directory.
 
 Top-level documentation must keep the repository split clear:
 
-- `devcapsule/` is the active Python CLI/framework subproject. New framework
+- `devcapsule-src/` is the active Python distribution project. New framework
   behavior, configuration protocol work, packaging, and tests should normally
   be implemented there.
 - `docker4pycharm/` is the historical/reference PyCharm shell subproject. It
@@ -237,22 +557,22 @@ Top-level documentation must keep the repository split clear:
 
 When editing user-facing docs, avoid mixing these roles. Historical notes may
 describe old commands, but current instructions should point users to
-`devcapsule/` and the configuration-first CLI when describing active
+`devcapsule-src/` and the configuration-first CLI when describing active
 development.
 
 ## Requirements Register
 
 Use root `REQUIREMENTS.md` as the project-level overview and index for
 requirements that should remain true across implementations. Use
-`docs/requirements/` for the canonical detailed record of each root
+`engineering-docs/requirements/product/` for the canonical detailed record of each root
 requirement. Use subproject requirements files for implementation-specific
 behavior, validation scope, and traceability.
 
-The active task list says what to do next; the relevant requirements register
+The selected handoff says what to do next; the relevant requirements register
 says why the task exists, how important it is, and how implementation and
 validation map back to project intent.
 
-Each root requirement record under `docs/requirements/` should have:
+Each root requirement record under `engineering-docs/requirements/product/` should have:
 
 - A stable ID such as `R-CONC-001`.
 - A short title.
@@ -289,11 +609,12 @@ Use this documentation split:
 
 - `REQUIREMENTS.md` records the requirement overview and links to the
   canonical detailed requirement files.
-- Target user docs such as `devcapsule/README.md` describe how the user does
+- Target user docs such as `devcapsule-src/README.md` describe how the user does
   it: installation path, command path, common examples, validation expectations,
   and current limitations.
-- Root `CURRENT-STATUS.md` records current state, recent changes, and
-  next work for future agents.
+- Root `CURRENT-STATUS.md` records the linear handoff or open-workstream
+  registry selected by `workflow-type`; a WIP status records track-local state
+  in `multiple-streams` mode.
 - Implementation notes record design rationale, rejected alternatives, and
   evidence that would distract from user instructions.
 
@@ -305,7 +626,7 @@ For every user-visible change, check:
 3. Are unsupported or intentionally removed paths absent from current user docs?
 4. If host exposure, credentials, devices, Docker access, or persistent state
    changed, is the isolation impact documented beside the option/default?
-5. Does the handoff mention any manual validation still required?
+5. Does the selected handoff mention any manual validation still required?
 
 Do not rely on historical notes as user documentation. Historical sections may
 keep old command names when they describe what happened at that time, but
@@ -329,16 +650,17 @@ done condition and verification path should be explicit before work starts.
 
 ## Active Tasks Versus Historical Context
 
-The active task list should contain only work that the next session should
-actually consider doing.
+The selected handoff's active task list should contain only work that the next
+session on that track should actually consider doing.
 
 ## Bug Intake
 
-Use `implementation-notes/bugs/` when a bug needs durable evidence before it is
-fixed, retired, or converted into a completed task. Name files like:
+Use the relevant scope beneath `engineering-docs/bugs/` when a bug needs
+durable evidence before it is fixed, retired, or converted into a completed
+task. Name files like:
 
 ```text
-implementation-notes/bugs/YYYY-MM-DD-short-title.md
+engineering-docs/bugs/SCOPE/YYYY-MM-DD-short-title.md
 ```
 
 Each bug file should capture:
@@ -354,9 +676,9 @@ Each bug file should capture:
 - Verification target: automated test, script/check, or manual validation.
 - Fix notes and close criteria.
 
-Do not include secrets. Keep detailed bug evidence in the bug file. The root
-README active task list should only contain the next action, such as
-investigating the bug, validating a fix, or adding a regression check.
+Do not include secrets. Keep detailed bug evidence in the bug file. The
+selected handoff should only contain the next action, such as investigating the
+bug, validating a fix, or adding a regression check.
 
 When a task is completed, validated, no longer reproduced, or intentionally
 retired:
@@ -364,7 +686,8 @@ retired:
 1. Remove it from the active list.
 2. Add a dated status note near the current-state section if future agents need
    to know why it disappeared.
-3. Move detailed evidence into `implementation-notes/completed-tasks/`.
+3. Move detailed evidence into the corresponding scope beneath
+   `engineering-docs/completed-tasks/`.
 4. State when the task should be reopened, for example "only if a later image or
    launcher change regresses this path."
 
@@ -375,7 +698,7 @@ This keeps the next-session question "what should we do next?" unambiguous.
 Use one markdown file per closed task:
 
 ```text
-implementation-notes/completed-tasks/YYYY-MM-DD-short-task-name.md
+engineering-docs/completed-tasks/SCOPE/YYYY-MM-DD-short-task-name.md
 ```
 
 Recommended structure:
@@ -444,7 +767,7 @@ In practical terms:
 
 ## Session Close Checklist
 
-At the end of a meaningful session, update the handoff with:
+At the end of a meaningful session, update the selected handoff with:
 
 ```text
 Changed:
@@ -480,20 +803,21 @@ subprojects, and model changes. Those get a ceremony.
 Design decision records live at:
 
 ```text
-docs/decisions/
+engineering-docs/decisions/product/
 ```
 
 They are root-level because they are implementation-agnostic and outlast any
-subproject. Use `docs/decisions/_template.md` as the starting point.
+subproject. Use `engineering-docs/decisions/product/_template.md` as the starting point.
 
 ### Two Tiers
 
-- `docs/decisions/`: product and architecture decisions. Ceremonial,
+- `engineering-docs/decisions/product/`: product and architecture decisions. Ceremonial,
   human-adopted, immutable once accepted. Use when a choice crosses
   subprojects, changes an accepted requirement, or moves a security boundary.
-- `<subproject>/implementation-notes/`: lightweight decision notes, described
-  in the next section. Local, reversible, implementation-scoped, and writable
-  by an agent without ceremony.
+- `engineering-docs/design-notes/SCOPE/`: lightweight proposals and decision
+  notes described in the next section. They are local, reversible,
+  implementation-scoped, and writable by an agent without decision-record
+  ceremony.
 
 Promotion rule: a lightweight note that turns out to change a requirement,
 cross subprojects, or set a boundary graduates into a root decision record.
@@ -549,8 +873,8 @@ warrant asking a human also warrant recording the answer.
 ## Decision Notes
 
 These are the lightweight tier described above. For decisions that may be
-revisited but stay local to one implementation, use a small note under
-`implementation-notes/`:
+revisited but stay local to one implementation, use a small note under the
+relevant scope in `engineering-docs/design-notes/`:
 
 ```markdown
 # Decision: ...
@@ -611,32 +935,42 @@ In the mounted project, ask the agent:
 Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
 Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
-docs/requirements/, and implementation-notes/ as appropriate. Preserve
-existing project docs and adapt the process to this repository.
+docs/, and engineering-docs/ as appropriate. Preserve existing project docs
+and adapt the process to this repository. Set workflow-type in
+.devcapsule/devcapsule.toml to single-stream or multiple-streams.
 ```
 
 At minimum, add or update these files in the target project:
 
 ```text
+.devcapsule/devcapsule.toml
 AGENTS.md
 README.md
 CURRENT-STATUS.md
 REQUIREMENTS.md
-docs/requirements/
-implementation-notes/
-implementation-notes/bugs/
-implementation-notes/completed-tasks/
+docs/
+engineering-docs/requirements/
+engineering-docs/specifications/
+engineering-docs/decisions/
+engineering-docs/design-notes/
+engineering-docs/implementation-notes/
+engineering-docs/wip/
+engineering-docs/archive/
+engineering-docs/bugs/
+engineering-docs/completed-tasks/
+engineering-docs/session-records/
 ```
 
-The target project's `README.md` should end with a current-state and next-step
-section. The target project's `REQUIREMENTS.md` should give an overview and
-index of accepted requirements with stable IDs, while the canonical detailed
-records live under `docs/requirements/`. The target project's `AGENTS.md`
-should instruct agents to read the brief first, then any target-specific
-handoff notes. Retired debugging details or important decisions should go under
-that project's `implementation-notes/` folder. Active bug evidence should go
-under `implementation-notes/bugs/`. Closed task records should go under
-`implementation-notes/completed-tasks/`.
+The target project's `README.md` should point to its current status and workflow
+entry points. The target project's `REQUIREMENTS.md` should give an overview
+and index of accepted requirements with stable IDs, while the canonical
+detailed records live under `engineering-docs/requirements/`. The target
+project's `AGENTS.md` should instruct agents to read the brief, workflow type,
+root status, and selected handoff. Design proposals and lightweight decisions
+belong in `engineering-docs/design-notes/`; execution and validation evidence
+belongs in `engineering-docs/implementation-notes/`; active bug evidence
+belongs in `engineering-docs/bugs/`; and closed task records belong in
+`engineering-docs/completed-tasks/`.
 
 The Docker image and launcher provide the working environment. The mounted
 project provides the source of truth for the work.
