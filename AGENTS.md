@@ -67,6 +67,17 @@ rather than as live presence or locking. Follow `WORKFLOW.md` for routing,
 main-first registration, branch ownership, WIP documentation, completion,
 integration, and recovery rules.
 
+When a selected workstream is ready to integrate, treat preparation,
+policy-permitted branch synchronization, mechanical conflict resolution, final
+document moves, and validation as normal agent work. Pull-request delivery is
+the default unless repository policy or the selected handoff explicitly allows
+direct-main integration. Follow the repository's configured merge strategy or
+merge queue; do not impose a rebase or fast-forward policy on a pull-request
+workflow. Ask the human when intent is required or credentials, approval,
+branch protection, or repository policy prevent the next operation. Never
+force-push `main`. A workstream is not completely done until remote `main`
+contains its finalized tree.
+
 The repository-level documentation index lives at:
 
 ```text

@@ -38,7 +38,8 @@ Each workstream has:
 - one or more branches whose names use that mnemonic as their prefix;
 - exactly one detailed handoff at
   `engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md`; and
-- a declared intention to integrate into `main` if successful.
+- a declared intention to integrate into `main` if successful, using a recorded
+  delivery method or the repository's documented default.
 
 Workstreams are flat. This first revision has no parent, child, or nested
 workstreams. A branch other than `main` belongs to exactly one workstream.
@@ -77,13 +78,26 @@ the latest development state.
 
 For a successful workstream:
 
-- integrate the accepted source changes into `main`;
+- freeze one clean integration branch and synchronize it with current `main`
+  according to repository policy;
 - move new user documents into root `docs/`;
 - apply proposals to existing user documents;
 - move enduring engineering records into their normal permanent categories;
 - remove the workstream from root `CURRENT-STATUS.md`; and
 - archive a brief final status at
   `engineering-docs/archive/<mnemonic>/CURRENT-STATUS.md`.
+
+Pull-request delivery is the default. The agent prepares and validates the
+candidate, keeps the WIP handoff during review, adds the final archival and
+registry-removal commit when the pull request is otherwise merge-ready, and
+uses the repository's configured merge strategy or merge queue. Rebase and
+fast-forward are not universal requirements for pull requests. A repository
+may explicitly permit a direct-main path in which the agent rebases the frozen
+branch on current `main`, fast-forwards local `main`, and pushes without force.
+A conflict that needs intent or a publication or merge action that needs
+unavailable credentials or approval is a human escalation point; routine Git,
+file movement, and validation are not. Successful completion is durable only
+when remote `main` contains the finalized tree.
 
 The workstream status is never appended to root `CURRENT-STATUS.md`.
 

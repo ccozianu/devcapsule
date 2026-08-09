@@ -87,6 +87,14 @@ When completing a stage, retiring a task, changing project state materially, or
 ending a session, update the selected handoff. In multiple-stream mode, update
 root `CURRENT-STATUS.md` only when the set or lifecycle of open workstreams
 changes.
+
+In multiple-stream mode, treat integration preparation and finalization as
+routine agent work while following repository policy. Use pull-request
+delivery by default and its configured merge strategy or merge queue; use
+direct-main integration only when explicitly permitted. Never force-push
+`main`. Ask the human when a conflict requires intent or credentials, approval,
+branch protection, or policy prevent the next operation. The workstream is
+done only when its finalized tree is present on remote `main`.
 ````
 
 If the target project already has an `AGENTS.md`, merge these instructions

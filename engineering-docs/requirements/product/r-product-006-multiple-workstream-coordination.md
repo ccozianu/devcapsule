@@ -21,7 +21,11 @@ workstream explicitly, preserve one independently resumable handoff for each,
 associate every non-main branch with exactly one workstream, isolate unfinished
 documentation, and define deterministic beginning, development, successful or
 unsuccessful completion, integration, and recovery rules without relying on
-conversation history.
+conversation history. Successful integration must be executable as a routine
+agent operation while respecting repository policy: prepare and validate a
+frozen integration branch, finalize the workstream records, and deliver through
+a pull request by default or through explicitly permitted direct-main
+integration, without force-pushing `main`.
 
 ## Why This Exists
 
@@ -46,6 +50,10 @@ This requirement is satisfied when repository inspection shows that:
 - every open workstream has
   `engineering-docs/wip/MNEMONIC/CURRENT-STATUS.md`;
 - ended workstreams use `engineering-docs/archive/MNEMONIC/`; and
+- successful completion requires the finalized tree to be present on remote
+  `main`, with pull-request and permitted direct-main delivery rules plus
+  conflict, divergence, approval, and unavailable-authority escalation rules
+  documented; and
 - WIP user documentation cannot be mistaken for current root `docs/` content.
 
 ## Related

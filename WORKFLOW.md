@@ -62,7 +62,8 @@ Begin from a clean, current `main` checkout:
 
 1. Choose the goal and unused mnemonic.
 2. Create `engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md` on `main`.
-3. Record the goal, state, branch prefix, current task, and next resumable task.
+3. Record the goal, state, branch prefix, integration target, delivery method
+   or applicable repository default, current task, and next resumable task.
 4. Add the workstream to root `CURRENT-STATUS.md`.
 5. Commit that source-level registration on `main`.
 6. Fork the first `<mnemonic>/...` branch from that commit.
@@ -151,26 +152,121 @@ Write a change proposal in the workstream `docs/` directory that identifies:
 Apply that proposal to the existing user document only when finalizing a
 successful workstream.
 
-### Successful Completion
+### Successful Completion And Integration
 
-Finalize successful work on its branch, then integrate it into `main`:
+Successful integration is normally mechanical agent work, but delivery to
+`main` follows repository policy. A pull request is the default delivery method
+unless the repository or selected handoff explicitly permits direct
+integration. Do not infer permission to update `main` merely from the ability
+to do so.
 
-1. Apply proposals for existing user documentation.
-2. Move new user documents into root `docs/`.
-3. Move enduring engineering records from WIP into their normal requirements,
+Before integration begins, the selected handoff records:
+
+- the integration target, normally `main`;
+- the designated integration branch;
+- the delivery method: `pull-request` or `direct-main`;
+- the repository's branch-synchronization and merge policy; and
+- any known human-only publication, approval, or merge step.
+
+The agent owns routine preparation, synchronization, file movement, conflict
+resolution where intent is clear, and validation. Ask the human for help when
+a conflict requires a product or documentation decision, repository policy is
+unclear, credentials or approval are unavailable, or another condition makes
+the intended result ambiguous.
+
+#### 1. Prepare The Integration Candidate
+
+1. Verify the designated integration branch and every involved worktree are
+   clean and all accepted workstream changes are committed. Freeze that branch
+   against unrelated work while integration proceeds.
+2. Inspect current local and remote `main`, fetching remote refs when network
+   access is available. Do not discard local commits or choose a side when
+   local and remote `main` have diverged.
+3. Synchronize the integration branch with current `main` according to
+   repository policy. A project may require rebasing, merging `main`, a hosting
+   platform's update-branch operation, or a merge queue. Pull-request delivery
+   does not imply rebasing. Direct-main delivery uses the rebase and
+   fast-forward procedure below.
+4. Resolve mechanical conflicts. When reconciliation requires intent, preserve
+   the evidence and ask the human before choosing a result.
+5. Run the workstream-specific and shared validation required by the handoff.
+
+#### 2. Finalize At The Delivery Boundary
+
+The following file changes close the workstream and belong in one finalization
+commit. For pull-request delivery, keep the workstream registry entry and WIP
+handoff during ordinary review and add this commit only when the pull request
+is otherwise merge-ready. For direct-main delivery, add it after rebasing and
+validating the branch and before fast-forwarding local `main`.
+
+1. Apply proposals for existing user documentation and move new user documents
+   into root `docs/`.
+2. Move enduring engineering records from WIP into their normal requirements,
    specifications, decisions, design notes, implementation notes, bugs, or
    other permanent categories.
-4. Update all links and the root documentation index.
-5. Integrate the accepted source and documentation changes into `main`.
-6. Remove the workstream from root `CURRENT-STATUS.md`.
-7. Create `engineering-docs/archive/<mnemonic>/CURRENT-STATUS.md` containing a
-   brief successful outcome, evidence, integration result, residual risks, and
-   links to permanent records.
-8. Preserve only brief additional archive notes that have lasting value.
-9. Remove the WIP directory.
+3. Update links and the root documentation index.
+4. Remove the workstream from root `CURRENT-STATUS.md`.
+5. Create `engineering-docs/archive/<mnemonic>/CURRENT-STATUS.md` containing a
+   brief successful outcome, evidence, delivery method and durable integration
+   reference, residual risks, and links to permanent records. For a pull
+   request, record its number or URL; the eventual merge revision need not be
+   predicted before the hosting platform creates it.
+6. Preserve only brief additional archive notes that have lasting value and
+   remove the WIP directory.
+7. Run the required checks on the complete final tree.
 
-Never append or merge the workstream status text into root
-`CURRENT-STATUS.md`. The root file remains a compact open-workstream registry.
+The finalization tree is provisional while it exists only on the workstream
+branch or in an open pull request. Root `CURRENT-STATUS.md` on remote `main`
+remains the authoritative open-workstream registry until delivery completes.
+Never append or merge the workstream status text into that root registry.
+
+#### 3A. Deliver Through A Pull Request
+
+1. Publish the integration branch and open or update its pull request using the
+   repository's normal tools and required base branch.
+2. Address review and continuous-integration results. Resynchronize the branch
+   only by methods allowed by repository policy; rerun required checks after
+   any synchronization or finalization change.
+3. Add the finalization commit only when the pull request is otherwise ready to
+   merge, then allow any checks or approvals invalidated by that commit to run
+   again.
+4. Merge through the hosting platform using the repository's configured merge,
+   squash, rebase, or merge-queue policy. The agent may perform this action
+   when authorized; otherwise ask the human or designated reviewer.
+5. Verify from the updated remote ref that `main` contains the merged final
+   tree and that the workstream registry entry and WIP directory are absent.
+
+The pull request and resulting remote history are the durable integration
+record. A follow-up commit solely to predict or insert the platform-generated
+merge revision is not required.
+
+#### 3B. Deliver Directly To Main
+
+Use this path only when repository policy or the selected handoff explicitly
+permits direct integration:
+
+1. Bring clean local `main` to the accepted remote `main` by ordinary
+   fast-forward. If they have diverged, stop and ask the human rather than
+   choosing or discarding history.
+2. Rebase the frozen integration branch onto local `main` and rerun required
+   validation. Resolve mechanical conflicts and ask the human when intent is
+   required.
+3. Fast-forward local `main` with
+   `git merge --ff-only <integration-branch>`. If this fails because `main`
+   moved, do not create a non-fast-forward merge; repeat synchronization and
+   rebase.
+4. Push `main` normally to its integration remote, normally with
+   `git push origin main`. Never force-push `main`. If credentials, approval,
+   or repository policy prevent publication, ask the human to perform it. If
+   remote `main` moved, fetch it and repeat the direct-integration procedure
+   without force.
+5. Verify that remote `main` contains the finalized integration commit.
+
+The workstream is completely done only when remote `main` contains the final
+tree produced by either delivery path. Until then, an open integration pull
+request or a local `main` ahead of its remote is pending integration, not a
+completed workstream. Associated worktrees and branches may be removed after
+completion once their changes are reachable from remote `main`.
 
 ### Unsuccessful Completion
 
@@ -192,15 +288,19 @@ appears in root `docs/`.
 
 ### Integration And Recovery
 
-Before integrating, synchronize with current `main`, inspect changes since the
-branch point, reconcile overlaps with other open workstreams, and run both
-track-local and shared validation. Workstream state in Git is durable but not a
-live lock or presence system.
+Before entering the successful-completion sequence, inspect changes since the
+branch point, reconcile overlaps with other open workstreams, and record the
+chosen integration branch, delivery method, and applicable repository policy
+in the handoff. Workstream state in Git and the hosting platform is durable but
+not a live lock or presence system.
 
 After interruption, enumerate worktrees and branches, inspect each dirty state
-separately, match branch prefixes to workstreams, and resume from the selected
-workstream's last committed status. Treat newer uncommitted files as recovery
-material, not canonical status.
+separately, compare local `main` with remote `main`, match branch prefixes to
+workstreams, and resume from the selected workstream's last committed status.
+An open integration pull request or a local finalization already
+fast-forwarded to `main` but not its remote is pending integration, not a new
+workstream. Treat newer uncommitted files as recovery material, not canonical
+status.
 
 Throughout the rest of this document, **selected handoff** means root
 `CURRENT-STATUS.md` in `single-stream` mode and
