@@ -35,10 +35,12 @@ Verification evidence may include:
 - workflow docs that define the project-memory protocol;
 - explicitly requested consequential-session records that link back to the
   canonical decisions, requirements, validation, and handoff they influenced;
-- handoff state in `README.md`;
+- a detailed root handoff in single-stream mode or a root registry plus
+  per-workstream handoffs in multiple-stream mode;
 - bug, decision, and completed-task records under durable paths.
 
 ## Related
 
 - `R-PRODUCT-004`
 - `R-PRODUCT-005`
+- `R-PRODUCT-006`

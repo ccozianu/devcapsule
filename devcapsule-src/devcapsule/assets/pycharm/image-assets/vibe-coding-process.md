@@ -20,5 +20,7 @@ Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
 Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
 docs/, and engineering-docs/ as appropriate. Preserve existing project docs
-and adapt the process to this repository.
+and adapt the process to this repository. Set workflow-type in
+.devcapsule/devcapsule.toml to single-stream or multiple-streams; use
+single-stream when the project does not need independently resumable efforts.
 ```

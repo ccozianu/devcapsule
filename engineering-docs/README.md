@@ -9,8 +9,8 @@ The root control files remain at the repository root because every contributor
 and agent must discover them immediately:
 
 - `AGENTS.md` — mandatory repository instructions;
-- `CURRENT-STATUS.md` — authoritative current handoff under the presently
-  adopted workflow;
+- `CURRENT-STATUS.md` — authoritative linear handoff or open-workstream
+  registry, as selected by `.devcapsule/devcapsule.toml`;
 - `REQUIREMENTS.md` — root requirement overview and index;
 - `WORKFLOW.md` — authoritative human/agent workflow; and
 - `index.md` — repository-wide Markdown documentation index.
@@ -29,8 +29,10 @@ and agent must discover them immediately:
   architecture.
 - `implementation-notes/` — execution plans, milestone plans, checklists,
   implementation investigations, and validation exercises.
-- `workstreams/` — independently resumable workstream handoffs if the proposed
-  multiple-workstream workflow is adopted.
+- `wip/MNEMONIC/` — temporary documentation and the detailed
+  `CURRENT-STATUS.md` for an open workstream in `multiple-streams` mode.
+- `archive/MNEMONIC/` — final status and retained evidence for a successfully
+  or unsuccessfully ended workstream.
 - `bugs/` — active or recently investigated defect evidence and closure
   criteria.
 - `completed-tasks/` — retrospective evidence for completed or retired work.
@@ -48,8 +50,8 @@ implementation-specific material.
 
 Place documents according to their primary audience and authority:
 
-1. Stable product guidance for a DevCapsule user or adopter belongs in
-   `docs/`.
+1. Stable, current product guidance for a DevCapsule user or adopter belongs in
+   root `docs/`. Workstream drafts never do.
 2. Repository-wide startup and control documents remain at the root.
 3. Contributor or agent engineering artifacts belong in this tree.
 4. Within this tree, normative outcomes are requirements, normative technical
@@ -61,7 +63,25 @@ Historical records retain their original claims and dates, but links and path
 references should point to the current repository location. Moving a record
 does not change its status, authority, or validation result.
 
-The `workstreams/` directory remains scaffolded while the multiple-workstream
-workflow proposal is evaluated. Its existence does not by itself adopt that
-proposal or change the authority of `CURRENT-STATUS.md`, `WORKFLOW.md`, or
-`AGENTS.md`.
+## Multiple-Stream Placement
+
+This repository selects `multiple-streams`. Root `CURRENT-STATUS.md` is the
+compact open-workstream registry. Each open workstream owns
+`wip/MNEMONIC/CURRENT-STATUS.md` and keeps every unfinished engineering record
+beneath the same directory.
+
+The directory name `docs/` is reserved beneath `engineering-docs/` and is
+normally forbidden. The only exceptions are
+`wip/MNEMONIC/docs/` and `archive/MNEMONIC/docs/`, where draft user
+documentation remains clearly non-authoritative.
+
+On successful completion, new user documents move into root `docs/`, proposals
+are applied to existing user documents, and enduring engineering records move
+into their normal permanent categories. The archive retains a brief final
+status and only useful short notes. On unsuccessful completion, the complete
+WIP directory moves into the workstream archive without promoting unfinished
+user documentation.
+
+The full beginning, development, documentation, successful completion,
+unsuccessful completion, integration, and recovery rules are authoritative in
+[WORKFLOW.md](../WORKFLOW.md).

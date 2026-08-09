@@ -85,9 +85,8 @@ post-MVP framework work.
 - On 2026-07-15, the lightweight quality-gate gap around static Python
   typechecking was closed with a `mypy` gate wired into contributor
   dependencies, `nox -s typecheck`, and `nox -s build`
-- The root `CURRENT-STATUS.md` handoff should identify the next implementation
-  task from
-  this scope
+- The selected root or workstream handoff should identify the next
+  implementation task from this scope
 
 ## Related
 

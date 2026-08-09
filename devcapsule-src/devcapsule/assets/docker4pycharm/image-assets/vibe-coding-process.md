@@ -20,7 +20,9 @@ Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
 Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
 docs/, and engineering-docs/ as appropriate. Preserve existing project docs
-and adapt the process to this repository.
+and adapt the process to this repository. Set workflow-type in
+.devcapsule/devcapsule.toml to single-stream or multiple-streams; use
+single-stream when the project does not need independently resumable efforts.
 ```
 
 ## Agent Instructions
@@ -29,20 +31,25 @@ If you are the agent receiving that prompt:
 
 1. Inspect the current repository before editing.
 2. Preserve existing project documentation and conventions.
-3. Create or update `AGENTS.md` so future agents read the project brief first.
-4. Ensure `README.md` is a stable developer welcome page and
-   `CURRENT-STATUS.md` records current state and the active next task list.
-5. Create or update `REQUIREMENTS.md` as the overview and index for the
+3. Record `workflow-type` in `.devcapsule/devcapsule.toml`; default to
+   `single-stream` unless the project needs independently resumable efforts.
+4. Create or update `AGENTS.md` so future agents read the project brief,
+   workflow type, root status, and selected handoff.
+5. Ensure `README.md` is a stable developer welcome page. Use
+   `CURRENT-STATUS.md` as the detailed handoff for `single-stream` and the open
+   workstream registry for `multiple-streams`.
+6. Create or update `REQUIREMENTS.md` as the overview and index for the
    project's root requirements, and create or update canonical detailed
    requirement files under `engineering-docs/requirements/`.
-6. Keep stable user and adopter guidance under `docs/`.
-7. Create the relevant categories under `engineering-docs/`: requirements,
-   specifications, decisions, design notes, implementation notes, workstreams,
-   bugs, completed tasks, and explicitly requested session records.
-8. Add a short design or implementation note if useful, but do not duplicate
+7. Keep stable user and adopter guidance under `docs/`.
+8. Create the relevant categories under `engineering-docs/`: requirements,
+   specifications, decisions, design notes, implementation notes, WIP and
+   archive workstream state when selected, bugs, completed tasks, and
+   explicitly requested session records.
+9. Add a short design or implementation note if useful, but do not duplicate
    large boilerplate into multiple places.
-9. Keep active tasks separate from historical context.
-10. Add explicit requirement IDs, done criteria, and verification notes for
+10. Keep active tasks separate from historical context.
+11. Add explicit requirement IDs, done criteria, and verification notes for
     active tasks.
 12. Run a cheap validation check if available.
 13. Report exactly what changed and what remains uncommitted.
@@ -60,8 +67,11 @@ Before starting work in this repository, read the project brief at:
 README.md
 ```
 
-Pay special attention to the final current-state and next-step section. Then
-read any target-specific or handoff documents referenced there.
+Read `.devcapsule/devcapsule.toml` and select the declared workflow type. A
+missing field means `single-stream`. Then read `CURRENT-STATUS.md`. Treat it as
+the detailed handoff for `single-stream` and the open-workstream registry for
+`multiple-streams`; in multiple-stream mode, select one workstream and read
+`engineering-docs/wip/MNEMONIC/CURRENT-STATUS.md`.
 
 After reading the required documents, acknowledge that you understand the
 project purpose, requirement overview, current state, and planned next step
@@ -74,8 +84,9 @@ If the brief does not define a planned next step, ask the user to choose the
 next step to work on.
 
 When completing a stage, retiring a task, changing project state materially, or
-ending a session, update `CURRENT-STATUS.md` so the next
-agent/model pair can resume from the current state.
+ending a session, update the selected handoff. In multiple-stream mode, update
+root `CURRENT-STATUS.md` only when the set or lifecycle of open workstreams
+changes.
 ````
 
 If the target project already has an `AGENTS.md`, merge these instructions
@@ -223,9 +234,9 @@ out of bug records.
 
 Use `engineering-docs/decisions/` for adopted durable choices and
 `engineering-docs/specifications/` for normative technical contracts. Use
-`engineering-docs/workstreams/` only when the project adopts independently
-resumable workstream handoffs. Create session records only when explicitly
-requested.
+`engineering-docs/wip/MNEMONIC/` and
+`engineering-docs/archive/MNEMONIC/` only when the project selects
+`multiple-streams`. Create session records only when explicitly requested.
 
 Use `engineering-docs/completed-tasks/` for one file per task that was
 completed, manually validated, retired, or no longer reproduced.

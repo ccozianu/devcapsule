@@ -2,8 +2,9 @@
 
 Status: maintained index of repository markdown documentation.
 
-When adding, deleting, or renaming any `.md` file, update this index in the
-same change.
+When adding, deleting, or renaming permanent `.md` files, update this index in
+the same change. In multiple-stream mode, this index lists each workstream
+status file; internal WIP/archive documents use the local index in that status.
 
 ## Start Here
 
@@ -24,6 +25,7 @@ same change.
 - [R-PRODUCT-003 Durable Human/Agent Project Memory](engineering-docs/requirements/product/r-product-003-durable-human-agent-project-memory.md)
 - [R-PRODUCT-004 Reusable Human/Agent Workflow](engineering-docs/requirements/product/r-product-004-reusable-human-agent-workflow.md)
 - [R-PRODUCT-005 Incremental Human/Agent Execution Loop](engineering-docs/requirements/product/r-product-005-incremental-human-agent-execution-loop.md)
+- [R-PRODUCT-006 Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - [R-DOCS-001 Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - [R-DOCS-002 Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
@@ -39,9 +41,14 @@ same change.
 
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 
+## Workstream Status
+
+- [Multiple-stream workflow current status](engineering-docs/wip/multi-workflow/CURRENT-STATUS.md)
+- [Recursive dogfood E2E current status](engineering-docs/wip/recursive-e2e/CURRENT-STATUS.md)
+
 ## Engineering Design Notes
 
-- [Multiple-workstream workflow change proposal](engineering-docs/design-notes/workflow-change-proposal-for-multiple-workstreams.md)
+- [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
 - [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
 - [DevCapsule V1 user experience design draft](engineering-docs/design-notes/devcapsule/v1-user-experience.md)
 - [DevCapsule V1 gap review at 0a0ff09](engineering-docs/design-notes/devcapsule/2026-08-06-v1-gap-review.md)

@@ -78,6 +78,7 @@ Current release/stabilization reality:
 ### Workflow And Documentation Requirements
 
 - `R-PRODUCT-005` — [Incremental Human/Agent Execution Loop](engineering-docs/requirements/product/r-product-005-incremental-human-agent-execution-loop.md)
+- `R-PRODUCT-006` — [Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - `R-DOCS-001` — [Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - `R-DOCS-002` — [Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
 

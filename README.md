@@ -99,8 +99,9 @@ their respective owners' licenses and terms; see [NOTICE](NOTICE).
 
 ## Current Status
 
-Detailed progress, validation evidence, open work, and the planned next step
-are maintained in [`CURRENT-STATUS.md`](CURRENT-STATUS.md). Contributors and
-agents should update that handoff file as project state changes; this README is
-the stable developer welcome page and should change only when developer-facing
-project information changes.
+The `workflow-type` field in [`.devcapsule/devcapsule.toml`](.devcapsule/devcapsule.toml)
+selects the project-memory model. This repository uses `multiple-streams`, so
+[`CURRENT-STATUS.md`](CURRENT-STATUS.md) is the open-workstream registry and each
+selected track owns its detailed continuation state. Contributors and agents
+should follow [`WORKFLOW.md`](WORKFLOW.md) for routing and checkpoint rules;
+this README remains the stable developer welcome page.

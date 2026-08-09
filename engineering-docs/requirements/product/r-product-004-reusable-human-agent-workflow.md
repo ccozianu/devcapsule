@@ -36,6 +36,8 @@ useful in practice.
 
 - environment implementations provide or document a bootstrap path;
 - root workflow docs are generic enough to transfer;
+- target repositories can choose the linear or multiple-workstream protocol in
+  committed project metadata;
 - template/bootstrap material teaches the same structure future adopters are
   expected to use.
 
@@ -43,3 +45,4 @@ useful in practice.
 
 - `R-PRODUCT-003`
 - `R-PRODUCT-005`
+- `R-PRODUCT-006`

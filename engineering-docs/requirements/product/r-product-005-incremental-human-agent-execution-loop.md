@@ -36,9 +36,11 @@ Verification evidence may include:
 
 - `WORKFLOW.md` defines request framing, slice closure, evidence, reporting,
   escalation, and checkpoint rules;
-- the root handoff stays explicit about current next work.
+- the selected root or workstream handoff stays explicit about current next
+  work.
 
 ## Related
 
 - `R-PRODUCT-003`
 - `R-PRODUCT-004`
+- `R-PRODUCT-006`
