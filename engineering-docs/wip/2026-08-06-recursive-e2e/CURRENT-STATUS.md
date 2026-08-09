@@ -2,6 +2,8 @@
 
 Mnemonic: `recursive-e2e`
 
+Start date: 2026-08-06
+
 State: paused
 
 Integration target: `main`

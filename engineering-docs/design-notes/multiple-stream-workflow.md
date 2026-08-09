@@ -35,9 +35,10 @@ and an explicit successful or unsuccessful end.
 Each workstream has:
 
 - one unique, short mnemonic;
+- one immutable ISO start date, normally its registration date on `main`;
 - one or more branches whose names use that mnemonic as their prefix;
 - exactly one detailed handoff at
-  `engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md`; and
+  `engineering-docs/wip/<start-date>-<mnemonic>/CURRENT-STATUS.md`; and
 - a declared intention to integrate into `main` if successful, using a recorded
   delivery method or the repository's documented default.
 
@@ -45,6 +46,27 @@ Workstreams are flat. This first revision has no parent, child, or nested
 workstreams. A branch other than `main` belongs to exactly one workstream.
 `main` belongs to none: it is the shared registration, visibility,
 finalization, and integration branch.
+
+## Checkout Selection Model
+
+The checked-out branch and worktree are the durable local workstream
+selection. Different contributors, clones, and worktrees may therefore select
+different workstreams without writing a shared or untracked preference file.
+
+The open-workstream registry is read from the locally accepted mainline ref,
+normally current local `main` or a newer authoritative fetched remote-tracking
+`main`; the copy on a long-lived workstream branch may be stale. Divergent
+mainline refs are not resolved by guessing. Explicit user intent selects a
+target workstream, while a mnemonic-prefixed branch or documented migration
+exception supplies the default unique association. Intent never reassigns a
+branch or permits dirty state from different workstreams to mix.
+
+`main` deliberately has no default editing workstream. Detached HEAD,
+unregistered branches, closed-workstream prefixes, and conflicting registry
+associations are likewise unselected or invalid rather than opportunities to
+guess. After selection, the registry link identifies the dated WIP directory,
+and the selected branch's committed handoff supplies the latest track-local
+state.
 
 ## Documentation Model
 
@@ -55,14 +77,14 @@ in the registry.
 All unfinished workstream documentation lives under:
 
 ```text
-engineering-docs/wip/<mnemonic>/
+engineering-docs/wip/<start-date>-<mnemonic>/
 ```
 
 Draft user documentation is the sole permitted `docs/` subdirectory beneath
 an engineering workstream directory:
 
 ```text
-engineering-docs/wip/<mnemonic>/docs/
+engineering-docs/wip/<start-date>-<mnemonic>/docs/
 ```
 
 An entirely new user document may be drafted there at its intended relative
@@ -85,7 +107,7 @@ For a successful workstream:
 - move enduring engineering records into their normal permanent categories;
 - remove the workstream from root `CURRENT-STATUS.md`; and
 - archive a brief final status at
-  `engineering-docs/archive/<mnemonic>/CURRENT-STATUS.md`.
+  `engineering-docs/archive/<start-date>-<mnemonic>/CURRENT-STATUS.md`.
 
 Pull-request delivery is the default. The agent prepares and validates the
 candidate, keeps the WIP handoff during review, adds the final archival and
@@ -102,10 +124,10 @@ when remote `main` contains the finalized tree.
 The workstream status is never appended to root `CURRENT-STATUS.md`.
 
 For an unsuccessful workstream, move the entire
-`engineering-docs/wip/<mnemonic>/` tree to
-`engineering-docs/archive/<mnemonic>/`. Its final `CURRENT-STATUS.md` records
-the unsuccessful outcome, last task, and last task status. No unfinished user
-documentation is promoted into root `docs/`.
+`engineering-docs/wip/<start-date>-<mnemonic>/` tree to
+`engineering-docs/archive/<start-date>-<mnemonic>/` without renaming it. Its
+final `CURRENT-STATUS.md` records the unsuccessful outcome, last task, and last
+task status. No unfinished user documentation is promoted into root `docs/`.
 
 ## Why This Shape
 
@@ -115,8 +137,10 @@ namespaces prevent unfinished documents from appearing authoritative and
 prevent workstream-specific state from accumulating in one central handoff.
 
 Flat workstreams deliberately avoid hierarchy, ownership graphs, and task
-databases. Git remains the changeset and integration mechanism. Repository
-Markdown remains the durable human/agent memory.
+databases. Avoiding a second checkout-local preference also prevents hidden
+routing state from disagreeing with Git. Git remains the changeset and
+integration mechanism. Repository Markdown remains the durable human/agent
+memory.
 
 ## Current Repository Migration
 
@@ -125,9 +149,9 @@ DevCapsule adopted this workflow while work was already occurring on
 registration rules existed. That branch is a grandfathered migration
 exception associated with mnemonic `recursive-e2e`.
 
-The transition checkpoint must reach `main` before another workstream is
-opened under the new protocol. All later workstreams follow the normal
-main-first registration and mnemonic-prefix rules.
+The transition checkpoint reached `main` through PR #8 at merge revision
+`b648623`. All later workstreams follow the normal main-first registration,
+immutable start-date directory, and mnemonic-prefix branch rules.
 
 Other branch refs that existed before adoption are inactive legacy refs. They
 do not become open workstreams automatically and must not receive new work

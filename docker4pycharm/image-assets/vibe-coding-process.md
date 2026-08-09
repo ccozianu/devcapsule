@@ -71,7 +71,17 @@ Read `.devcapsule/devcapsule.toml` and select the declared workflow type. A
 missing field means `single-stream`. Then read `CURRENT-STATUS.md`. Treat it as
 the detailed handoff for `single-stream` and the open-workstream registry for
 `multiple-streams`; in multiple-stream mode, select one workstream and read
-`engineering-docs/wip/MNEMONIC/CURRENT-STATUS.md`.
+the registry-linked
+`engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`.
+
+In multiple-stream mode, read the open-workstream registry from an unambiguous
+locally accepted mainline ref, normally current local `main` or newer fetched
+remote-tracking `main`. Use explicit user intent or the current
+mnemonic-prefixed branch or documented exception to select exactly one editing
+workstream. The branch and worktree are the persistent local selection; do not
+create a second untracked preference. `main`, detached HEAD, unregistered
+branches, and branch-to-registry mismatches have no safe default. Switch to the
+selected workstream's clean branch or worktree before editing.
 
 After reading the required documents, acknowledge that you understand the
 project purpose, requirement overview, current state, and planned next step
@@ -242,9 +252,10 @@ out of bug records.
 
 Use `engineering-docs/decisions/` for adopted durable choices and
 `engineering-docs/specifications/` for normative technical contracts. Use
-`engineering-docs/wip/MNEMONIC/` and
-`engineering-docs/archive/MNEMONIC/` only when the project selects
-`multiple-streams`. Create session records only when explicitly requested.
+`engineering-docs/wip/YYYY-MM-DD-MNEMONIC/` and
+`engineering-docs/archive/YYYY-MM-DD-MNEMONIC/` only when the project selects
+`multiple-streams`. The ISO date is the workstream's immutable start date.
+Create session records only when explicitly requested.
 
 Use `engineering-docs/completed-tasks/` for one file per task that was
 completed, manually validated, retired, or no longer reproduced.

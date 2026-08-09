@@ -25,7 +25,9 @@ conversation history. Successful integration must be executable as a routine
 agent operation while respecting repository policy: prepare and validate a
 frozen integration branch, finalize the workstream records, and deliver through
 a pull request by default or through explicitly permitted direct-main
-integration, without force-pushing `main`.
+integration, without force-pushing `main`. Session startup must select at most
+one editing workstream from explicit user intent and registered Git
+branch/worktree association, without hidden checkout-local routing state.
 
 ## Why This Exists
 
@@ -48,8 +50,14 @@ This requirement is satisfied when repository inspection shows that:
 - root `CURRENT-STATUS.md` is a compact open-workstream registry in
   multiple-stream mode;
 - every open workstream has
-  `engineering-docs/wip/MNEMONIC/CURRENT-STATUS.md`;
-- ended workstreams use `engineering-docs/archive/MNEMONIC/`; and
+  `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`, using its
+  immutable ISO start date;
+- ended workstreams preserve that directory name under
+  `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`; and
+- selection reads the registry from an unambiguous locally accepted mainline
+  ref, uses the current branch or a documented exception as the persistent
+  local default, leaves `main` and detached or unregistered checkouts
+  unselected, and rejects mismatched routing before editing; and
 - successful completion requires the finalized tree to be present on remote
   `main`, with pull-request and permitted direct-main delivery rules plus
   conflict, divergence, approval, and unavailable-authority escalation rules
