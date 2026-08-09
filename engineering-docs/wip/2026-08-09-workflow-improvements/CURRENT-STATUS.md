@@ -72,6 +72,27 @@ Done means:
   separate temporary worktree while the primary checkout remained on
   `recursive-e2e/stage-4`.
 
+## Backlog
+
+1. Make `project-management` a mandatory permanent workstream for every
+   multiple-stream project.
+
+   Done means:
+
+   - multiple-stream initialization and adoption create exactly one reserved
+     `project-management` workstream and its handoff;
+   - the workflow defines its project-planning scope without turning it into a
+     duplicate registry, implementation catch-all, or owner of other
+     workstreams' WIP state;
+   - its permanent lifecycle is reconciled explicitly with the current rule
+     that ordinary workstreams are bounded and eventually end;
+   - branch ownership, checkout selection, start-date layout, migration,
+     integration, and exceptional retirement rules are deterministic;
+   - `WORKFLOW.md`, agent instructions, reusable bootstrap assets, and
+     `R-PRODUCT-006` agree; and
+   - this repository's one-off `project-management` registration is reconciled
+     with the adopted general rule and validation passes.
+
 ## External State And Risks
 
 - The environment has no Git publication credentials; the human may need to
