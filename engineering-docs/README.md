@@ -29,10 +29,12 @@ and agent must discover them immediately:
   architecture.
 - `implementation-notes/` — execution plans, milestone plans, checklists,
   implementation investigations, and validation exercises.
-- `wip/MNEMONIC/` — temporary documentation and the detailed
-  `CURRENT-STATUS.md` for an open workstream in `multiple-streams` mode.
-- `archive/MNEMONIC/` — final status and retained evidence for a successfully
-  or unsuccessfully ended workstream.
+- `wip/YYYY-MM-DD-MNEMONIC/` — temporary documentation and the detailed
+  `CURRENT-STATUS.md` for an open workstream in `multiple-streams` mode. The
+  date is the workstream's immutable ISO start date.
+- `archive/YYYY-MM-DD-MNEMONIC/` — final status and retained evidence for a
+  successfully or unsuccessfully ended workstream; it preserves the WIP
+  directory name.
 - `bugs/` — active or recently investigated defect evidence and closure
   criteria.
 - `completed-tasks/` — retrospective evidence for completed or retired work.
@@ -67,13 +69,14 @@ does not change its status, authority, or validation result.
 
 This repository selects `multiple-streams`. Root `CURRENT-STATUS.md` is the
 compact open-workstream registry. Each open workstream owns
-`wip/MNEMONIC/CURRENT-STATUS.md` and keeps every unfinished engineering record
-beneath the same directory.
+`wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md` and keeps every unfinished
+engineering record beneath the same directory.
 
 The directory name `docs/` is reserved beneath `engineering-docs/` and is
 normally forbidden. The only exceptions are
-`wip/MNEMONIC/docs/` and `archive/MNEMONIC/docs/`, where draft user
-documentation remains clearly non-authoritative.
+`wip/YYYY-MM-DD-MNEMONIC/docs/` and
+`archive/YYYY-MM-DD-MNEMONIC/docs/`, where draft user documentation remains
+clearly non-authoritative.
 
 On successful completion, new user documents move into root `docs/`, proposals
 are applied to existing user documents, and enduring engineering records move

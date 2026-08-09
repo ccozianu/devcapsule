@@ -26,10 +26,12 @@ In `single-stream` mode, treat it as the active project handoff. In
 `multiple-streams` mode, treat it as the open-workstream registry, select the
 workstream explicitly named by the user or unambiguously associated with the
 current branch prefix or documented adoption exception, and read
-`engineering-docs/wip/MNEMONIC/CURRENT-STATUS.md`. Explicit user intent takes
-precedence over branch inference but does not authorize mixing two
-workstreams' dirty state. Ask the user to select a workstream only when several
-remain plausible and the choice materially changes the work.
+the handoff linked from its registry row at
+`engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`. The date is the
+workstream's immutable start date. Explicit user intent takes precedence over
+branch inference but does not authorize mixing two workstreams' dirty state.
+Ask the user to select a workstream only when several remain plausible and the
+choice materially changes the work.
 
 Pay special attention to the selected handoff's current stage, current state,
 and planned next step. Then read any target-specific documents referenced

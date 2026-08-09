@@ -48,8 +48,10 @@ This requirement is satisfied when repository inspection shows that:
 - root `CURRENT-STATUS.md` is a compact open-workstream registry in
   multiple-stream mode;
 - every open workstream has
-  `engineering-docs/wip/MNEMONIC/CURRENT-STATUS.md`;
-- ended workstreams use `engineering-docs/archive/MNEMONIC/`; and
+  `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`, using its
+  immutable ISO start date;
+- ended workstreams preserve that directory name under
+  `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`; and
 - successful completion requires the finalized tree to be present on remote
   `main`, with pull-request and permitted direct-main delivery rules plus
   conflict, divergence, approval, and unavailable-authority escalation rules

@@ -42,28 +42,33 @@ The following restrictions keep concurrent work understandable:
 1. Workstreams are flat. Do not create parent, child, or nested workstreams.
 2. Every workstream has one unique lowercase mnemonic made from letters,
    numbers, and hyphens. Never reuse an archived mnemonic.
-3. Every branch other than `main` belongs to exactly one workstream.
-4. Each workstream branch name begins with `<mnemonic>/`.
-5. A workstream may have more than one branch, but every branch starts from
+3. Every workstream has one immutable ISO start date: the calendar date on
+   which its registration is first committed to `main`. Migration exceptions
+   record their historically established start date.
+4. Every branch other than `main` belongs to exactly one workstream.
+5. Each workstream branch name begins with `<mnemonic>/`.
+6. A workstream may have more than one branch, but every branch starts from
    `main` and is intended to return to `main` if the workstream succeeds.
-6. `main` belongs to no workstream. It is the shared registration, visibility,
+7. `main` belongs to no workstream. It is the shared registration, visibility,
    finalization, and integration branch.
-7. Ordinary workstream implementation does not happen directly on `main`.
-8. Each open workstream has exactly one detailed handoff at
-   `engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md`.
-9. Root `CURRENT-STATUS.md` on `main` lists open workstreams only. An open
+8. Ordinary workstream implementation does not happen directly on `main`.
+9. Each open workstream has exactly one detailed handoff at
+   `engineering-docs/wip/<start-date>-<mnemonic>/CURRENT-STATUS.md`.
+10. Root `CURRENT-STATUS.md` on `main` lists open workstreams only. An open
    workstream remains listed while active, paused, blocked, or integrating.
-10. One workstream does not edit another workstream's WIP directory or commit
+11. One workstream does not edit another workstream's WIP directory or commit
     another worktree's recovery state.
 
 ### Beginning A Workstream
 
 Begin from a clean, current `main` checkout:
 
-1. Choose the goal and unused mnemonic.
-2. Create `engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md` on `main`.
-3. Record the goal, state, branch prefix, integration target, delivery method
-   or applicable repository default, current task, and next resumable task.
+1. Choose the goal, unused mnemonic, and ISO start date.
+2. Create
+   `engineering-docs/wip/<start-date>-<mnemonic>/CURRENT-STATUS.md` on `main`.
+3. Record the start date, goal, state, branch prefix, integration target,
+   delivery method or applicable repository default, current task, and next
+   resumable task.
 4. Add the workstream to root `CURRENT-STATUS.md`.
 5. Commit that source-level registration on `main`.
 6. Fork the first `<mnemonic>/...` branch from that commit.
@@ -81,7 +86,9 @@ its continuation on `main` before committing new work to it.
 2. If the user names a workstream, select it.
 3. Otherwise, match the current branch prefix—or an explicitly registered
    adoption exception—to exactly one mnemonic.
-4. Read that workstream's `CURRENT-STATUS.md` before editing.
+4. Follow the registry's handoff link and read that workstream's
+   `CURRENT-STATUS.md` before editing. Do not guess its start date from branch
+   or commit timestamps.
 5. Ask the user only when selection remains ambiguous and would change the
    work.
 
@@ -100,7 +107,7 @@ workstream commits update only that handoff and workstream-owned files.
 Keep all unfinished workstream documentation beneath:
 
 ```text
-engineering-docs/wip/<mnemonic>/
+engineering-docs/wip/<start-date>-<mnemonic>/
 ```
 
 The root documentation index lists the workstream `CURRENT-STATUS.md`, not
@@ -120,18 +127,18 @@ Root `docs/` contains only current user-facing documentation. Workstream drafts
 live at:
 
 ```text
-engineering-docs/wip/<mnemonic>/docs/
+engineering-docs/wip/<start-date>-<mnemonic>/docs/
 ```
 
 `docs/` is otherwise a reserved directory name beneath `engineering-docs/`.
-It is allowed only inside `wip/<mnemonic>/` and
-`archive/<mnemonic>/` workstream directories.
+It is allowed only inside `wip/<start-date>-<mnemonic>/` and
+`archive/<start-date>-<mnemonic>/` workstream directories.
 
 For an entirely new user document, store the actual draft under the workstream
 `docs/` directory at its intended relative destination. For example:
 
 ```text
-engineering-docs/wip/api/docs/guides/new-guide.md
+engineering-docs/wip/2026-04-12-api/docs/guides/new-guide.md
 ```
 
 is intended to become:
@@ -206,11 +213,13 @@ validating the branch and before fast-forwarding local `main`.
    other permanent categories.
 3. Update links and the root documentation index.
 4. Remove the workstream from root `CURRENT-STATUS.md`.
-5. Create `engineering-docs/archive/<mnemonic>/CURRENT-STATUS.md` containing a
-   brief successful outcome, evidence, delivery method and durable integration
-   reference, residual risks, and links to permanent records. For a pull
-   request, record its number or URL; the eventual merge revision need not be
-   predicted before the hosting platform creates it.
+5. Create
+   `engineering-docs/archive/<start-date>-<mnemonic>/CURRENT-STATUS.md`
+   containing a brief successful outcome, evidence, delivery method and
+   durable integration reference, residual risks, and links to permanent
+   records. Preserve the same start-date-and-mnemonic directory name used in
+   WIP. For a pull request, record its number or URL; the eventual merge
+   revision need not be predicted before the hosting platform creates it.
 6. Preserve only brief additional archive notes that have lasting value and
    remove the WIP directory.
 7. Run the required checks on the complete final tree.
@@ -275,8 +284,10 @@ Do not promote unfinished source or user documentation. On `main`:
 1. Publish the workstream branch's final complete WIP documentation checkpoint
    to `main` without integrating unfinished source changes.
 2. Remove the workstream from root `CURRENT-STATUS.md`.
-3. Move the complete `engineering-docs/wip/<mnemonic>/` tree to
-   `engineering-docs/archive/<mnemonic>/`.
+3. Move the complete
+   `engineering-docs/wip/<start-date>-<mnemonic>/` tree to
+   `engineering-docs/archive/<start-date>-<mnemonic>/` without changing its
+   directory name.
 4. Update its `CURRENT-STATUS.md` to record the unsuccessful conclusion, the
    last task, and that task's final status.
 5. Record the reason for ending, associated branches and revisions, and any
@@ -304,8 +315,8 @@ status.
 
 Throughout the rest of this document, **selected handoff** means root
 `CURRENT-STATUS.md` in `single-stream` mode and
-`engineering-docs/wip/<mnemonic>/CURRENT-STATUS.md` in `multiple-streams`
-mode. General execution-loop rules apply to both modes.
+`engineering-docs/wip/<start-date>-<mnemonic>/CURRENT-STATUS.md` in
+`multiple-streams` mode. General execution-loop rules apply to both modes.
 
 ## Core Loop
 
@@ -491,10 +502,10 @@ Use markdown files with distinct responsibilities:
 - `engineering-docs/implementation-notes/`: execution plans, validation
   details, debugging history, checklists, and other evidence that should not
   clutter the active task list.
-- `engineering-docs/wip/MNEMONIC/`: temporary documentation and the detailed
-  handoff for an open workstream in `multiple-streams` mode.
-- `engineering-docs/archive/MNEMONIC/`: final status and retained historical
-  material for an ended workstream.
+- `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/`: temporary documentation and the
+  detailed handoff for an open workstream in `multiple-streams` mode.
+- `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`: final status and retained
+  historical material for an ended workstream.
 - `engineering-docs/bugs/`: one file per active or recently investigated
   bug, with symptoms, reproduction, evidence, hypotheses, verification target,
   and close criteria.
