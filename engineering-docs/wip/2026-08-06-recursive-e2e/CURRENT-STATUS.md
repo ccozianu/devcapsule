@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused
+State: active
 
 Integration target: `main`
 
@@ -18,15 +18,17 @@ source identity, host-boundary authorization, persistence, and safe cleanup.
 
 ## Branch Association
 
-The active branch is `milestone/recursive-dogfood-e2e`. It predates adoption of
-the multiple-stream workflow and is the explicit exception to the normal
-`recursive-e2e/` prefix and main-first registration rules. Any later branch
-created for this workstream must use the `recursive-e2e/` prefix and start from
-then-current `main`.
+The active branch is `recursive-e2e/stage-4`, created from remote `main`
+revision `432d2b4` after the multiple-stream workflow bootstrap was archived
+successfully. The original `milestone/recursive-dogfood-e2e` branch predates
+adoption and remains the documented historical exception; it is no longer the
+active continuation branch.
 
 ## Current State
 
 - Stages 0 through 3 are complete.
+- Work resumed on the conforming `recursive-e2e/stage-4` branch from current
+  remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
   contributor bootstrap in recursive and laptop contexts.
 - Stage 4 has not started. No successor base or environment has been built.
@@ -38,17 +40,22 @@ then-current `main`.
 
 ## Last Task And Status
 
-Last task: restore the recursive E2E after the Python distribution directory
-rename without weakening v024 bootstrap-lineage verification.
+Last task: resume the recursive E2E after the multiple-workflow bootstrap and
+route its continuation to a conforming Stage 4 branch.
 
-Status: complete. Commit `44fbe34` changed readiness preflight to
-`python -m devcapsule`, retained embedded-PEX build identity and SHA-256 checks,
-and passed the complete recursive E2E.
+Status: complete. The workstream is active on `recursive-e2e/stage-4`, based on
+current remote `main`. Stage 4 execution has not begun.
 
 ## Evidence
 
 - Recursive dogfood E2E: `2 passed`, `1 deselected` in 30.74 seconds on
   2026-08-07.
+- Commit `44fbe34` restored the recursive E2E after the Python distribution
+  directory rename while retaining embedded-PEX build identity and SHA-256
+  checks.
+- The multiple-workflow finalization procedure completed successfully on
+  remote `main` at revision `432d2b4`; the active branch starts at that exact
+  revision.
 - Focused recursive-preflight tests: `14 passed`.
 - Mypy: no issues over 57 source files.
 - The accepted v024 bootstrap source revision remains

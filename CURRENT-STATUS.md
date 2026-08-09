@@ -8,7 +8,7 @@ state belongs in each linked workstream handoff.
 
 | Mnemonic | Started | Goal | State | Branch association | Handoff |
 |---|---|---|---|---|---|
-| `recursive-e2e` | 2026-08-06 | Build and launch a successor DevCapsule from inside the accepted dogfood environment | paused after Stage 3 | `milestone/recursive-dogfood-e2e` (adoption exception); future branches use `recursive-e2e/` | [workstream status](engineering-docs/wip/2026-08-06-recursive-e2e/CURRENT-STATUS.md) |
+| `recursive-e2e` | 2026-08-06 | Build and launch a successor DevCapsule from inside the accepted dogfood environment | active; Stage 4 ready to begin | `recursive-e2e/stage-4`; the initial milestone branch is a historical adoption exception | [workstream status](engineering-docs/wip/2026-08-06-recursive-e2e/CURRENT-STATUS.md) |
 
 Paused and blocked workstreams remain open until they conclude successfully or
 unsuccessfully.
