@@ -74,6 +74,15 @@ the detailed handoff for `single-stream` and the open-workstream registry for
 the registry-linked
 `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`.
 
+In multiple-stream mode, read the open-workstream registry from an unambiguous
+locally accepted mainline ref, normally current local `main` or newer fetched
+remote-tracking `main`. Use explicit user intent or the current
+mnemonic-prefixed branch or documented exception to select exactly one editing
+workstream. The branch and worktree are the persistent local selection; do not
+create a second untracked preference. `main`, detached HEAD, unregistered
+branches, and branch-to-registry mismatches have no safe default. Switch to the
+selected workstream's clean branch or worktree before editing.
+
 After reading the required documents, acknowledge that you understand the
 project purpose, requirement overview, current state, and planned next step
 before proceeding.

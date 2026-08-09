@@ -82,21 +82,49 @@ its continuation on `main` before committing new work to it.
 
 ### Selecting Work At Session Start
 
-1. Read root `CURRENT-STATUS.md` to discover open workstreams.
-2. If the user names a workstream, select it.
-3. Otherwise, match the current branch prefix—or an explicitly registered
-   adoption exception—to exactly one mnemonic.
-4. Follow the registry's handoff link and read that workstream's
-   `CURRENT-STATUS.md` before editing. Do not guess its start date from branch
-   or commit timestamps.
-5. Ask the user only when selection remains ambiguous and would change the
-   work.
+Workstream discovery and checkout selection are related but distinct:
 
-Explicit user intent takes precedence over branch inference, but it does not
-make an incompatible checkout safe. If the selected workstream differs from
-the current branch, switch to its clean worktree before editing. Do not combine
-dirty state from two workstreams, and do not use a stash as their durable
-handoff boundary.
+- The open-workstream registry is read from the locally accepted mainline ref,
+  not from a potentially stale copy of root `CURRENT-STATUS.md` on a long-lived
+  workstream branch. The mainline ref is normally current local `main`, or a
+  fetched remote-tracking `main` when it is newer and authoritative. If the
+  candidates have diverged, do not choose silently. Refresh them according to
+  repository policy when an operation requires current shared state; routine
+  offline resumption may use the latest unambiguous locally available snapshot.
+- The current worktree and its checked-out branch provide the persistent local
+  selection. This first protocol deliberately defines no second untracked
+  "current workstream" preference file.
+
+Select exactly one editing workstream for the current worktree:
+
+1. Identify the current Git worktree, branch, and dirty state, then read the
+   open-workstream registry from the locally accepted mainline ref.
+2. If the user explicitly names an open workstream, select it. Explicit intent
+   chooses the target but does not reassign the current branch or authorize
+   mixing dirty state.
+3. Otherwise, when the current branch starts with `<mnemonic>/`, select the one
+   open registry entry with that mnemonic. A documented adoption exception may
+   provide the same unique association for a historical branch.
+4. Treat a mnemonic-prefixed or excepted branch whose workstream is absent from
+   the open registry, or whose registry association disagrees, as invalid
+   routing. Stop before editing and report the inconsistency.
+5. `main` belongs to no workstream and therefore has no default editing
+   workstream. Registry coordination and repository-wide inspection may occur
+   there. Workstream changes require an explicit selection followed by a switch
+   to that workstream's clean branch or worktree.
+6. Detached HEAD, an unregistered branch, or more than one plausible mapping
+   has no default. Ask the user only when the desired workstream cannot be
+   established from explicit intent and a unique registered association.
+7. Follow the selected registry row's handoff link. Do not guess its start date
+   from branch or commit timestamps. On the selected workstream branch, its
+   committed handoff is authoritative for the latest track-local state; the
+   copy reachable from `main` is the latest published snapshot.
+
+If the selected workstream differs from the current branch, switch to its clean
+worktree before editing. Do not combine dirty state from two workstreams, and
+do not use a stash as their durable handoff boundary. Different users and
+clones may select different workstreams independently because their checked-out
+branches and worktrees are local state.
 
 ### Development And Checkpoints
 

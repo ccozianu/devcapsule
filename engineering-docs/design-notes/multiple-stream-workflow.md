@@ -47,6 +47,27 @@ workstreams. A branch other than `main` belongs to exactly one workstream.
 `main` belongs to none: it is the shared registration, visibility,
 finalization, and integration branch.
 
+## Checkout Selection Model
+
+The checked-out branch and worktree are the durable local workstream
+selection. Different contributors, clones, and worktrees may therefore select
+different workstreams without writing a shared or untracked preference file.
+
+The open-workstream registry is read from the locally accepted mainline ref,
+normally current local `main` or a newer authoritative fetched remote-tracking
+`main`; the copy on a long-lived workstream branch may be stale. Divergent
+mainline refs are not resolved by guessing. Explicit user intent selects a
+target workstream, while a mnemonic-prefixed branch or documented migration
+exception supplies the default unique association. Intent never reassigns a
+branch or permits dirty state from different workstreams to mix.
+
+`main` deliberately has no default editing workstream. Detached HEAD,
+unregistered branches, closed-workstream prefixes, and conflicting registry
+associations are likewise unselected or invalid rather than opportunities to
+guess. After selection, the registry link identifies the dated WIP directory,
+and the selected branch's committed handoff supplies the latest track-local
+state.
+
 ## Documentation Model
 
 Root `CURRENT-STATUS.md` on `main` is only the registry of workstreams that
@@ -116,8 +137,10 @@ namespaces prevent unfinished documents from appearing authoritative and
 prevent workstream-specific state from accumulating in one central handoff.
 
 Flat workstreams deliberately avoid hierarchy, ownership graphs, and task
-databases. Git remains the changeset and integration mechanism. Repository
-Markdown remains the durable human/agent memory.
+databases. Avoiding a second checkout-local preference also prevents hidden
+routing state from disagreeing with Git. Git remains the changeset and
+integration mechanism. Repository Markdown remains the durable human/agent
+memory.
 
 ## Current Repository Migration
 

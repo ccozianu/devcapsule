@@ -4,12 +4,11 @@ Mnemonic: `multi-workflow`
 
 Start date: 2026-08-08
 
-State: active
+State: integrating
 
 Integration target: `main`
 
-Integration delivery: pull request by default; direct-main integration is
-explicitly permitted for this owner-operated dogfood repository
+Integration delivery: pull request
 
 Publication authority: the dogfood agent has no Git credentials; the project
 owner performs required remote publication or merge actions
@@ -48,28 +47,36 @@ existed and remains the documented migration exception.
   PR #8 at merge revision `b648623`.
 - WIP and archive directory names now combine the immutable ISO workstream
   start date with the mnemonic so human readers can see chronology directly.
-- Checkout-specific default workstream selection remains to be specified.
+- Checkout selection now uses the checked-out branch and worktree as its
+  persistent local state, reads open-workstream discovery from an unambiguous
+  locally accepted mainline ref, and defines no second untracked preference.
+- `main`, detached HEAD, unregistered branches, closed-workstream prefixes, and
+  branch-to-registry mismatches have no editable default.
 
 ## Last Task And Status
 
-Last task: adopt date-prefixed WIP and archive directory names and migrate the
-two existing open workstream handoffs.
+Last task: specify deterministic checkout-local workstream selection for
+different contributors, clones, branches, and worktrees.
 
-Status: complete. The convention is `<start-date>-<mnemonic>`, both dates are
-recorded in the root registry and handoffs, and all repository instructions,
-indexes, and reusable bootstrap assets use the new paths.
+Status: complete. Explicit user intent and registered branch association select
+at most one editing workstream; unsafe or ambiguous checkouts stop before
+editing, and Git remains the only persistent local selection state.
 
 ## Next Resumable Task
 
-Specify deterministic checkout-specific workstream selection:
+Complete successful pull-request integration:
 
-1. define which registry snapshot an agent reads from a workstream branch;
-2. define selection for mnemonic-prefixed branches, `main`, and detached HEAD;
-3. decide whether an untracked worktree-local preference is useful;
-4. define invalid and ambiguous selection outcomes without weakening dirty
-   state isolation; and
-5. update the workflow, agent instructions, design, requirement, templates, and
-   handoff before final archival.
+1. commit and publish the checkout-selection checkpoint on
+   `multi-workflow/date-prefixed-layout`;
+2. review it and run all required checks;
+3. when merge-ready, add the finalization commit that removes `multi-workflow`
+   from root `CURRENT-STATUS.md`, moves this handoff without renaming its
+   directory to
+   `engineering-docs/archive/2026-08-08-multi-workflow/CURRENT-STATUS.md`,
+   changes its state to `successful`, records the pull request, and updates
+   `index.md`;
+4. merge using repository policy; and
+5. verify the finalized tree on remote `main`.
 
 ## Evidence
 

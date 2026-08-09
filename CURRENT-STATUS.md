@@ -8,7 +8,7 @@ state belongs in each linked workstream handoff.
 
 | Mnemonic | Started | Goal | State | Branch association | Handoff |
 |---|---|---|---|---|---|
-| `multi-workflow` | 2026-08-08 | Establish and adopt the optional multiple-stream workflow | active; integration protocol merged, checkout selection next | `multi-workflow/date-prefixed-layout`; initial bootstrap occurred on the recursive branch before adoption | [workstream status](engineering-docs/wip/2026-08-08-multi-workflow/CURRENT-STATUS.md) |
+| `multi-workflow` | 2026-08-08 | Establish and adopt the optional multiple-stream workflow | integrating; checkout selection specified, final PR and archival pending | `multi-workflow/date-prefixed-layout`; initial bootstrap occurred on the recursive branch before adoption | [workstream status](engineering-docs/wip/2026-08-08-multi-workflow/CURRENT-STATUS.md) |
 | `recursive-e2e` | 2026-08-06 | Build and launch a successor DevCapsule from inside the accepted dogfood environment | paused after Stage 3 | `milestone/recursive-dogfood-e2e` (adoption exception); future branches use `recursive-e2e/` | [workstream status](engineering-docs/wip/2026-08-06-recursive-e2e/CURRENT-STATUS.md) |
 
 Paused and blocked workstreams remain open until they conclude successfully or
@@ -35,8 +35,7 @@ protocol.
 
 The [`multi-workflow`
 handoff](engineering-docs/wip/2026-08-08-multi-workflow/CURRENT-STATUS.md)
-remains open to specify checkout-specific workstream selection before final
-archival.
+remains open only for final pull-request validation and archival.
 
 ## Shared Constraints
 
