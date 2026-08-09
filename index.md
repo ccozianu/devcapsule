@@ -43,7 +43,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Workstream Status
 
-- [Multiple-stream workflow current status](engineering-docs/wip/2026-08-08-multi-workflow/CURRENT-STATUS.md)
+- [Multiple-stream workflow successful archive](engineering-docs/archive/2026-08-08-multi-workflow/CURRENT-STATUS.md)
 - [Recursive dogfood E2E current status](engineering-docs/wip/2026-08-06-recursive-e2e/CURRENT-STATUS.md)
 
 ## Engineering Design Notes
