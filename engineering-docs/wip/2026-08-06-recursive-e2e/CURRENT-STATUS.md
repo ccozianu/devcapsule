@@ -26,13 +26,14 @@ active continuation branch.
 
 ## Current State
 
-- Stages 0 through 3 are complete.
+- Stages 0 through 4 are complete.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
   contributor bootstrap in recursive and laptop contexts.
-- Stage 4 is in progress. Successor-content preparation is implemented locally,
-  but no successor base or environment has been built yet.
+- Stage 4 produced and strictly verified the successor base from a retained,
+  origin-free clean clone. The successor environment has not been materialized
+  or launched yet.
 - Base recipe version 3 exposes the pinned Node.js installation through
   `/opt/node/current/bin` on the image `PATH`.
 - The v025 exercise will explicitly include checksum-verified Claude Code
@@ -46,14 +47,14 @@ active continuation branch.
 
 ## Last Task And Status
 
-Last task: prepare meaningful v025 successor contents before executing the
-retained Stage 4 run.
+Last task: execute the retained Stage 4 run and build, inspect, and publish its
+v025 successor base.
 
-Status: implementation complete and locally validated. The base now exposes
-Node.js on `PATH`, and an explicit base-build option installs the pinned native
-Claude Code release beneath `/opt/claude`, records component metadata, and
-disables background updates. The clean-clone run, public PEX, and successor
-base build remain.
+Status: complete. Revision `20b2ee1e7d2aa3b07f94270da624b882df1e3215`
+passed the clean, origin-free contributor gate and produced the public PEX used
+to build v025. The resulting image exposes Node.js and Claude Code through
+image-level `PATH`, passed the strict base probe, and was published without
+overwriting an existing tag.
 
 ## Evidence
 
@@ -71,6 +72,31 @@ base build remain.
   source files.
 - Full dirty-tree Nox gate: `226 passed`, `8 deselected`; PEX integration:
   `5 passed`. The expected local-only PEX was built and smoke-tested.
+- The current v024 container still passes the two Stage 3 recursive E2Es when
+  the missing launcher marker is scoped explicitly to the test process:
+  `2 passed`, `1 deselected` in 82.95 seconds.
+- Successor source commits `da38cd7`, `0761940`, and `20b2ee1` are published on
+  `origin/recursive-e2e/stage-4`. The last commit fixes public PEX provenance
+  forwarding without exposing that override to nested integration tests.
+- Retained Stage 4 run ID:
+  `25f664fb3629f51be8e3894a0df8ffa7`. Its clone is detached at full revision
+  `20b2ee1e7d2aa3b07f94270da624b882df1e3215`, has no remote, and imported no
+  credentials.
+- The clean retained-run gate passed mypy over 85 source files, `227 passed`
+  with `8 deselected`, five packaging integrations, and public-PEX smoke tests.
+- Public successor PEX SHA-256:
+  `d52c6b9d6296c6b683e64e8ac130d7a4eb21bd33c7742f888e8d6244e1759a8b`.
+- v025 tag: `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v025`.
+  Immutable local image ID:
+  `sha256:c8f6dddbfaab7e412079cd89f9a5bdf631dd9c3b7ab963375a8f3302c1e7b066`.
+  Published registry digest:
+  `sha256:7093cea8f1e06c10a437f3946dc7e3dd643271f071d17b6a140e4df763598fd3`.
+- Strict v025 inspection confirmed Ubuntu 24.04 root-layer identity, managed
+  base metadata, recipe `ubuntu-24.04@3`, generic entrypoint and command,
+  embedded PEX digest and source lineage, Node.js `v22.23.1`, npm `10.9.8`,
+  Claude Code `2.1.227` under `/opt/claude`, and no Gemini CLI, project source,
+  checkout configuration, developer state, credentials, runtime authorization,
+  or baked runtime plan. Failure and interrupt cleanup probes also passed.
 - The accepted v024 bootstrap source revision remains
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
@@ -80,26 +106,35 @@ base build remain.
 
 ## Next Resumable Task
 
-Continue Stage 4 from the milestone plan:
+Continue with Stage 5 from the milestone plan:
 
-1. commit and publish the validated successor-content source revision;
-2. compose the accepted clone and contributor-bootstrap protocols into one
-   retained, ownership-marked milestone run;
-3. run the full clean Nox gate from the clone;
-4. build and verify a revision-bearing PEX; and
-5. use that PEX with `--include-claude-code` to build and inspect the successor
-   base through the authorized host Docker daemon.
+1. initialize and list checkout readiness from the retained clean clone using
+   run-owned configuration roots;
+2. bind only test-owned persistent state and authorize the exact local v025
+   image ID without changing the committed published-base lock;
+3. resolve and inspect the generated plan without acquisition or launch side
+   effects; and
+4. materialize or strictly reuse the canonical PyCharm/Codex successor through
+   the production realization path.
 
 ## External State And Risks
 
-- Development is running in the accepted v024 PyCharm container
-  `pycharm-isolated-costin-1786072465`.
+- Development is running in the accepted v024-derived PyCharm container
+  `pycharm-isolated-costin-1786394284`.
+- That launch lacks `DEVCAPSULE_RECURSIVE_E2E=1`. Current-source preflight
+  classifies the missing marker as a warning because Docker socket, container
+  identity, mounts, network mode, and runtime-plan authorization are inspected
+  independently. Tests requiring the marker used a process-scoped value; the
+  launcher metadata mismatch remains to be corrected in a later launch.
 - The project base authorization and generated local resolution are stale by
   deliberate developer-owned choices. Do not reauthorize a base implicitly.
 - The bare v024 base does not add `/opt/node/current/bin` to `PATH`; recipe
   version 3 corrects this only in the successor.
 - Host Docker, host networking, development sudo, X11, and persistent-home
   access remain explicit security boundaries.
+- The retained successful run and its mode-0600 Stage 4 evidence remain under
+  the ownership-marked recursive-E2E workspace. Earlier failed diagnostic runs
+  remain retained as failure evidence and must not be removed broadly.
 
 ## Workstream Document Index
 
