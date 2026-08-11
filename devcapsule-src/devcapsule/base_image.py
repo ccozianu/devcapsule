@@ -19,11 +19,19 @@ from devcapsule.image_build import (
     BuildxImageBuilder,
     CommandComponent,
     EntrypointComponent,
+    EnvComponent,
     FileComponent,
     ImageBuildSpec,
     LabelComponent,
 )
-from devcapsule.image_tooling import node_tooling_component
+from devcapsule.image_tooling import (
+    CLAUDE_CODE_BIN,
+    CLAUDE_CODE_PREFIX,
+    CLAUDE_CODE_VERSION,
+    NODE_CURRENT_BIN,
+    claude_code_component,
+    node_tooling_component,
+)
 from devcapsule.image_metadata import BASE_KIND, managed_labels
 
 
@@ -32,7 +40,7 @@ NVIDIA_CUDA_ROOT_IMAGE = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
 DEFAULT_OUTPUT_IMAGE = "devcapsule-base:latest"
 PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
-BASE_RECIPE_VERSION = "2"
+BASE_RECIPE_VERSION = "3"
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
@@ -73,6 +81,7 @@ class BaseImageBuildOptions:
     source_revision: str | None = None
     allow_local_source: bool = False
     install_baseline: bool = True
+    include_claude_code: bool = False
     recipe: str = DEFAULT_BASE_RECIPE
 
 
@@ -165,6 +174,19 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                 node_tooling_component(),
             ]
         )
+        if options.include_claude_code:
+            components.append(claude_code_component())
+        tooling_environment = (
+            (
+                ("PATH", f"{CLAUDE_CODE_BIN}:{NODE_CURRENT_BIN}:${{PATH}}"),
+                ("DISABLE_AUTOUPDATER", "1"),
+            )
+            if options.include_claude_code
+            else (("PATH", f"{NODE_CURRENT_BIN}:${{PATH}}"),)
+        )
+        components.append(EnvComponent(tooling_environment))
+    elif options.include_claude_code:
+        raise CliError("--include-claude-code requires the curated developer baseline.")
     components.extend(
         [
             FileComponent(pex, PEX_DESTINATION, permissions=0o755),
@@ -182,6 +204,19 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("org.opencontainers.image.revision", build_info.source_revision),
                 )
                 + recipe.labels
+                + (
+                    (
+                        ("devcapsule.component.claude-code.version", CLAUDE_CODE_VERSION),
+                        ("devcapsule.component.claude-code.installation", "verified-native-binary"),
+                        ("devcapsule.component.claude-code.prefix", CLAUDE_CODE_PREFIX),
+                        (
+                            "devcapsule.component.claude-code.license",
+                            "Anthropic Commercial Terms of Service",
+                        ),
+                    )
+                    if options.include_claude_code
+                    else ()
+                )
             ),
             EntrypointComponent(("/usr/bin/tini", "--", PEX_DESTINATION, "runtime")),
             CommandComponent((RUNTIME_PLAN_PATH,)),

@@ -20,6 +20,7 @@ from devcapsule.base_image import (
 from devcapsule.build_info import BuildInfo
 from devcapsule.compat import CliError
 from devcapsule.image_build import render_build_context
+from devcapsule.image_tooling import CLAUDE_CODE_VERSION
 
 
 def pex_fixture(path: Path, *, revision: str = "a" * 40, public: bool = True) -> Path:
@@ -57,6 +58,8 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert "/opt/pycharm" not in dockerfile
     assert "JetBrains" not in dockerfile
     assert "nodejs.org/dist/${node_version}" in dockerfile
+    assert ("PATH", "/opt/node/current/bin:${PATH}") in plan.env
+    assert "downloads.claude.ai/claude-code-releases" not in dockerfile
     assert "@google/gemini-cli" not in dockerfile
     assert "gemini --version" not in dockerfile
     assert 'ENTRYPOINT ["/usr/bin/tini", "--", "/opt/devcapsule/bin/devcapsule.pex", "runtime"]' in dockerfile
@@ -66,7 +69,7 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "2") in plan.labels
+    assert ("devcapsule.base.recipe-version", "3") in plan.labels
     assert ("devcapsule.base.recipe-status", "ready") in plan.labels
     assert ("devcapsule.pex.sha256", hashlib.sha256(pex.read_bytes()).hexdigest()) in plan.labels
     assert ("devcapsule.source.repository", "https://github.com/example/devcapsule") in plan.labels
@@ -77,6 +80,52 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     ) in plan.labels
     assert ("org.opencontainers.image.source", "https://github.com/example/devcapsule") in plan.labels
     assert ("org.opencontainers.image.revision", "a" * 40) in plan.labels
+
+
+def test_base_image_can_include_pinned_claude_code_under_opt(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
+    options = BaseImageBuildOptions(
+        pex,
+        "test-base:claude",
+        source_revision="a" * 40,
+        include_claude_code=True,
+    )
+
+    plan = build_base_image_spec(options).build_plan()
+    install_script = "\n".join(" ".join(step.args) for step in plan.exec_steps)
+
+    assert "downloads.claude.ai/claude-code-releases" in install_script
+    assert 'claude_platform="linux-x64"' in install_script
+    assert 'claude_platform="linux-arm64"' in install_script
+    assert "sha256sum -c -" in install_script
+    assert f'"/opt/claude/versions/${{claude_version}}/claude"' in install_script
+    assert 'DISABLE_AUTOUPDATER=1 "/opt/claude/bin/claude" --version' in install_script
+    assert ("PATH", "/opt/claude/bin:/opt/node/current/bin:${PATH}") in plan.env
+    assert ("DISABLE_AUTOUPDATER", "1") in plan.env
+    assert ("devcapsule.component.claude-code.version", CLAUDE_CODE_VERSION) in plan.labels
+    assert (
+        "devcapsule.component.claude-code.installation",
+        "verified-native-binary",
+    ) in plan.labels
+    assert ("devcapsule.component.claude-code.prefix", "/opt/claude") in plan.labels
+    assert (
+        "devcapsule.component.claude-code.license",
+        "Anthropic Commercial Terms of Service",
+    ) in plan.labels
+
+
+def test_base_image_rejects_claude_code_without_developer_baseline(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
+
+    with pytest.raises(CliError, match="requires the curated developer baseline"):
+        build_base_image_spec(
+            BaseImageBuildOptions(
+                pex,
+                source_revision="a" * 40,
+                install_baseline=False,
+                include_claude_code=True,
+            )
+        )
 
 
 def test_nvidia_cuda_recipe_keeps_developer_baseline_and_is_marked_wip(tmp_path: Path) -> None:
