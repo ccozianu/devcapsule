@@ -3,6 +3,16 @@ Copyright 2026 Costin Cozianu and DevCapsule contributors
 
 This product includes software developed by the DevCapsule contributors.
 
+DevCapsule base images include Eclipse Temurin, distributed under GPL-2.0 with
+the Classpath Exception. The complete upstream archive, including its legal
+notices, is retained in the installation. Eclipse Temurin is a trademark of
+the Eclipse Foundation. https://adoptium.net/
+
+DevCapsule base images include Apache Maven, distributed under the Apache
+License 2.0. The complete upstream archive, including LICENSE and NOTICE, is
+retained in the installation. Apache Maven is a trademark of The Apache
+Software Foundation. https://maven.apache.org/
+
 DevCapsule's license does not grant rights to third-party products acquired,
 installed, or used with DevCapsule. Those products remain subject to their
 respective owners' licenses and terms.

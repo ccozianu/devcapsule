@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import tempfile
 import tarfile
 from typing import Any, Callable, Iterator, Mapping
@@ -24,6 +25,7 @@ from devcapsule.components import LockedArtifactDeclaration
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.image_build import (
     DirectoryComponent,
+    EnvComponent,
     FileComponent,
     ImageBuildSpec,
     LabelComponent,
@@ -182,8 +184,13 @@ def formation_descriptor(
                         )
                     },
                     "installation": {
-                        "archive-member": item.archive_member,
+                        "format": item.artifact_format,
                         "destination": item.destination,
+                        **(
+                            {"archive-member": item.archive_member}
+                            if item.archive_member is not None
+                            else {}
+                        ),
                     },
                 }
                 for item in ancillary_artifacts
@@ -254,6 +261,23 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
                 locked_artifact.sha256,
                 f"Locked {locked_artifact.component_id} artifact SHA-256",
             )
+            if locked_artifact.artifact_format not in {"file", "tar-gz-member"}:
+                raise CliError(
+                    f"Locked {locked_artifact.component_id} artifact format must be "
+                    "'file' or 'tar-gz-member'."
+                )
+            if (
+                locked_artifact.artifact_format == "tar-gz-member"
+                and not locked_artifact.archive_member
+            ):
+                raise CliError(
+                    f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
+                    "an archive member."
+                )
+            if not Path(locked_artifact.destination).is_absolute():
+                raise CliError(
+                    f"Locked {locked_artifact.component_id} destination must be absolute."
+                )
             ancillary_artifacts.append(locked_artifact)
     recipe_id = _required_string(materialization, "recipe", "materialization")
     recipe_version = _required_string(materialization, "recipe-version", "materialization")
@@ -326,6 +350,9 @@ def pycharm_materialization_spec(
         recipe_version=recipe_version,
     )
     identity = formation_identity(descriptor)
+    environment = _ancillary_environment(
+        tuple(declaration for _path, declaration in ancillary_files)
+    )
     return ImageBuildSpec(
         image=image,
         base_image=base_reference,
@@ -336,6 +363,7 @@ def pycharm_materialization_spec(
                 FileComponent(path, declaration.destination, permissions=declaration.permissions)
                 for path, declaration in ancillary_files
             ),
+            *( (EnvComponent(environment),) if environment else () ),
             LabelComponent(
                 managed_labels(MATERIALIZED_KIND, image)
                 + (
@@ -412,9 +440,9 @@ def ensure_materialized_pycharm(
             template_path.write_text(canonical_json(component_runtime_template()) + "\n", encoding="utf-8")
             ancillary_files = tuple(
                 (
-                    _extract_archive_member(
+                    _prepare_locked_artifact(
                         acquired.path,
-                        declaration.archive_member,
+                        declaration,
                         temporary / f"{declaration.component_id}-{index}",
                     ),
                     declaration,
@@ -465,6 +493,38 @@ def _extract_archive_member(archive: Path, member_name: str, destination: Path) 
         raise CliError(f"Cannot read verified component archive {archive}: {exc}") from exc
     destination.chmod(0o700)
     return destination
+
+
+def _prepare_locked_artifact(
+    acquired: Path,
+    declaration: LockedArtifactDeclaration,
+    destination: Path,
+) -> Path:
+    if declaration.artifact_format == "file":
+        shutil.copyfile(acquired, destination)
+        destination.chmod(0o700)
+        return destination
+    if declaration.artifact_format == "tar-gz-member" and declaration.archive_member is not None:
+        return _extract_archive_member(acquired, declaration.archive_member, destination)
+    raise CliError(
+        f"Unsupported locked artifact format {declaration.artifact_format!r} for "
+        f"{declaration.component_id}."
+    )
+
+
+def _ancillary_environment(
+    declarations: tuple[LockedArtifactDeclaration, ...],
+) -> tuple[tuple[str, str], ...]:
+    environment: dict[str, str] = {}
+    for declaration in declarations:
+        for name, value in declaration.environment:
+            previous = environment.get(name)
+            if previous is not None and previous != value:
+                raise CliError(
+                    f"Materialized components declare conflicting values for environment {name}."
+                )
+            environment[name] = value
+    return tuple(sorted(environment.items()))
 
 
 def verify_materialized_image(

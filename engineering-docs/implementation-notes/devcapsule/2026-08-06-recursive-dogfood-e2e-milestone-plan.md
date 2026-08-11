@@ -491,11 +491,11 @@ successor base.
 
 ## Stage 4: Build And Verify The Successor Base From Inside Dogfood
 
-Status: complete. Retained run `25f664fb3629f51be8e3894a0df8ffa7`
-used an origin-free clone at revision
-`20b2ee1e7d2aa3b07f94270da624b882df1e3215`, passed the full clean gate,
-built the revision-bearing public PEX, and used that PEX to build and strictly
-inspect the successor through the authorized host daemon.
+Status: reopened on 2026-08-11. Retained run
+`25f664fb3629f51be8e3894a0df8ffa7` proved the build protocol, but its first
+v025 embedded Claude Code. Current Anthropic terms do not clearly authorize
+public binary redistribution, so Stage 4 remains open until that manifest is
+removed and the tag is replaced with an agent-neutral successor.
 
 Start by composing the accepted Stage 3 clone and bootstrap protocols into the
 retained, ownership-marked milestone run. From its clean clone:
@@ -515,11 +515,14 @@ managed metadata remain authoritative. The build must not overwrite the
 published v024 recommendation, the earlier v023 tag, or any unrelated
 canonical image.
 
-For the v025 exercise, the owner explicitly selected the optional
-`--include-claude-code` base-build component. The default recipe remains
-agent-neutral, while this successor must expose Node.js through
-`/opt/node/current/bin`, install checksum-verified Claude Code 2.1.227 beneath
-`/opt/claude`, expose both on `PATH`, and record the Claude component metadata.
+The replacement v025 must expose Node.js through `/opt/node/current/bin`, add
+Eclipse Temurin JDK 25 LTS and Apache Maven under `/opt`, set `JAVA_HOME` and
+`MAVEN_HOME`, and expose all three tool `bin` directories on executable
+`PATH`. Claude Code remains ready-to-use through a separately locked local
+component: the developer explicitly authorizes acquisition under Anthropic's
+terms, then materialization downloads and verifies the upstream binary directly
+into the private local environment image. Neither public base nor public PEX
+may redistribute that binary.
 
 Verification includes:
 
@@ -528,8 +531,8 @@ Verification includes:
 - exact source revision and canonical public source URL;
 - embedded PEX SHA-256 matching the clone artifact;
 - generic OCI entrypoint and command;
-- expected baseline tools, Node.js and Claude Code paths and versions, and
-  continued absence of Gemini CLI;
+- expected baseline tools, Node.js, Java and Maven paths and versions, and
+  continued absence of Claude Code and Gemini CLI from the base;
 - absence of project source, checkout configuration, state, credentials,
   runtime authorization, and a baked checkout runtime plan; and
 - build failure/interrupt behavior and ownership-safe cleanup.
@@ -538,7 +541,7 @@ Done means the verified image ID is recorded in the run manifest and can be
 authorized as an exact managed local base. Merely creating a mutable tag is not
 sufficient evidence.
 
-Completion evidence records PEX SHA-256
+Superseded completion evidence recorded PEX SHA-256
 `d52c6b9d6296c6b683e64e8ac130d7a4eb21bd33c7742f888e8d6244e1759a8b`,
 local image ID
 `sha256:c8f6dddbfaab7e412079cd89f9a5bdf631dd9c3b7ab963375a8f3302c1e7b066`,
@@ -546,7 +549,8 @@ and published registry digest
 `sha256:7093cea8f1e06c10a437f3946dc7e3dd643271f071d17b6a140e4df763598fd3`
 for `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v025`. The strict
 probe confirmed the required metadata, lineage, generic runtime contract,
-tooling, isolation, and cleanup properties.
+tooling, isolation, and cleanup properties. This evidence is retained as the
+reason for remediation and is not acceptable replacement-v025 evidence.
 
 ## Stage 5: Configure, Resolve, And Materialize The Clean Clone
 

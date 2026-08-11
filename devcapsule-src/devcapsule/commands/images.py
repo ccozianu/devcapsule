@@ -83,11 +83,6 @@ class ImagesCommand(BaseCommand):
             help="Allow a PEX built from dirty or unpublished local source.",
         )
         @click.option(
-            "--include-claude-code",
-            is_flag=True,
-            help="Install the pinned, checksum-verified Claude Code component under /opt/claude.",
-        )
-        @click.option(
             "--project",
             type=click.Path(path_type=Path),
             help="Project root or descendant for an environment build; defaults to current-directory discovery.",
@@ -113,15 +108,12 @@ class ImagesCommand(BaseCommand):
             pex: Path | None,
             source_revision: str | None,
             allow_local_source: bool,
-            include_claude_code: bool,
             project: Path | None,
             base_override: str | None,
             alias: str | None,
             network: str,
         ) -> int:
             if image_type == "environment":
-                if include_claude_code:
-                    raise CliError("--include-claude-code applies only to base-image builds.")
                 return _build_environment(
                     project=project,
                     base_override=base_override,
@@ -144,7 +136,6 @@ class ImagesCommand(BaseCommand):
                 root_image=root_image,
                 source_revision=source_revision,
                 allow_local_source=allow_local_source,
-                include_claude_code=include_claude_code,
                 recipe=recipe,
             )
             if selected_recipe.status == "wip":
@@ -175,8 +166,6 @@ class ImagesCommand(BaseCommand):
             )
             click.echo(f"Source verification: {verification}")
             click.echo(f"Build network: {network}")
-            if include_claude_code:
-                click.echo("Optional component: Claude Code under /opt/claude")
             return 0
 
         return build_image

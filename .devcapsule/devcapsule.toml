@@ -2,7 +2,7 @@ devcapsule-schema-version = 1
 workflow-type = "multiple-streams"
 
 [capabilities]
-need = ["codex-agent", "docker-cli", "python", "python-ide"]
+need = ["claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"]
 
 [project]
 name = "DevCapsule"

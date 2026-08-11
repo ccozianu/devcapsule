@@ -222,13 +222,6 @@ python3.12 dist/devcapsule.pex images build \
   --tag devcapsule-base:debug-v023 \
   --source-revision "$(git rev-parse HEAD)"
 
-# Explicit exercise/development variant with the pinned Claude Code component.
-python3.12 dist/devcapsule.pex images build \
-  --type base \
-  --tag devcapsule-base:claude-v025 \
-  --include-claude-code \
-  --source-revision "$(git rev-parse HEAD)"
-
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
 python3.12 dist/devcapsule.pex images build \
   --type base \
@@ -252,10 +245,12 @@ native-development workstation baseline. It contains Python 3.12 and headers,
 Git and OpenSSH, GCC/G++ plus Make/CMake/pkg-config, GDB/LLDB/strace, common
 shell/process/filesystem/network diagnostics, Docker CLI/buildx/Compose and
 daemon binaries, X11/GTK/audio/font/Mesa runtime libraries, `tini`, `gosu`, and
-the `sudo` binary. It also installs the pinned language-tooling baseline—Node.js
-`v22.23.1` and its bundled npm—exposes `/opt/node/current/bin` on `PATH`, and
-embeds the selected
-DevCapsule PEX at `/opt/devcapsule/bin/devcapsule.pex`.
+the `sudo` binary. It also installs the pinned language-tooling baseline:
+Node.js `v22.23.1` with bundled npm, Eclipse Temurin JDK `25.0.4+7`, and Apache
+Maven `3.9.16`. `JAVA_HOME` is `/opt/java/current`, `MAVEN_HOME` is
+`/opt/maven/current`, and the Maven, Java, and Node `bin` directories are on
+executable `PATH`. The selected DevCapsule PEX is embedded at
+`/opt/devcapsule/bin/devcapsule.pex`.
 
 The repository-owned Python build plan is the inspectable source of truth:
 
@@ -267,7 +262,7 @@ The repository-owned Python build plan is the inspectable source of truth:
   the Python-owned base planner. Despite that transitional module location,
   the base remains JetBrains-free.
 - [`devcapsule/image_tooling.py`](devcapsule/image_tooling.py) pins and verifies
-  the Node.js/npm runtime.
+  Node.js/npm, Eclipse Temurin, and Apache Maven for each supported architecture.
 - [`devcapsule/image_build.py`](devcapsule/image_build.py) shows how those
   components become the generated Dockerfile/build context and are executed
   through Docker buildx.
@@ -283,16 +278,24 @@ checksum-verified IDE/component; the
 developer-owned runtime resolution separately controls project/state mounts,
 networking, devices, Docker access, privilege, and secrets.
 
-`--include-claude-code` is an explicit development/exercise exception to the
-agent-neutral default. It downloads Anthropic's pinned native Claude Code
-binary, verifies its architecture-specific SHA-256, installs it under
-`/opt/claude`, exposes `/opt/claude/bin` on `PATH`, and records its exact
-version, installation method, prefix, and publisher license terms in managed
-image labels. The component does not add credentials, authentication state,
-mounts, or host authorization. The version and checksums in
-`devcapsule/image_tooling.py` control deliberate upgrades, and the image
-disables Claude's background auto-updater so the inspected version remains the
-one in `/opt`. Use remains subject to Anthropic's Commercial Terms of Service.
+Claude Code is deliberately not redistributed in the base. A project may lock
+an exact upstream Claude Code artifact as a `claude-code` component. After the
+developer reviews Anthropic's terms, this checkout-owned command records the
+otherwise absent acquisition authorization:
+
+```bash
+devcapsule project config authorize claude-code-download true
+devcapsule project config resolve
+devcapsule images build --type environment --project .
+```
+
+Materialization then downloads the locked binary directly from Anthropic,
+verifies its SHA-256, installs it at `/opt/claude/bin/claude` only in the local
+environment image, adds `/opt/claude/bin` to executable `PATH`, disables
+self-updates, and persists sensitive `~/.claude` state separately. The public
+base and public DevCapsule PEX contain no Claude Code binary, authentication,
+or terms acceptance. Use remains subject to
+[Anthropic's Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms).
 
 `--from IMAGE` overrides the selected recipe's root image. The builder reuses
 that root image when it is already local and otherwise allows Docker to obtain
