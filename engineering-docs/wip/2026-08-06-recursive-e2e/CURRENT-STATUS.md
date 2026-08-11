@@ -26,15 +26,16 @@ active continuation branch.
 
 ## Current State
 
-- Stages 0 through 3 are complete. Stage 4 is reopened to replace v025 after a
-  redistribution-license review.
+- Stages 0 through 4 are complete. Stage 4 was reopened and completed again
+  after the v025 redistribution-license remediation.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
   contributor bootstrap in recursive and laptop contexts.
-- The first Stage 4 image embedded Claude Code. Anthropic's current license and
-  terms do not clearly grant public binary redistribution, so that image is
-  unsafe and must be removed and replaced before Stage 4 can close again.
+- The first Stage 4 image embedded Claude Code. Its tag and exact manifest were
+  removed after Anthropic's current license and terms were found not to clearly
+  grant public binary redistribution. A verified agent-neutral replacement now
+  owns the v025 tag.
 - Base recipe version 4 keeps Node.js on `PATH` and adds Eclipse Temurin JDK 25
   LTS and Apache Maven with `JAVA_HOME`, `MAVEN_HOME`, and both `bin`
   directories on executable `PATH`.
@@ -50,12 +51,16 @@ active continuation branch.
 
 ## Last Task And Status
 
-Last task: redesign v025 after the Claude Code redistribution review, add the
-latest redistributable LTS JDK and Maven, and prepare a replacement build.
+Last task: redesign and replace v025 after the Claude Code redistribution
+review, while adding the latest redistributable LTS JDK and Maven.
 
-Status: in progress. The source implementation and focused validation are
-complete; the exact clean-revision PEX build, unsafe-tag removal, replacement
-v025 publication, and strict base/local-component probes remain.
+Status: complete. Source revision
+`c933ec38202719fbe1879846e5de48200136f9e3` passed the clean full gate and
+produced the exact public PEX. The unsafe tag and manifest were deleted; the
+replacement was built, published, pulled by digest, and strictly probed. An
+authorized test-owned formation then acquired Claude directly from Anthropic,
+verified it, and proved the local-only executable ready alongside the base
+tooling.
 
 ## Evidence
 
@@ -87,18 +92,36 @@ v025 publication, and strict base/local-component probes remain.
   with `8 deselected`, five packaging integrations, and public-PEX smoke tests.
 - Public successor PEX SHA-256:
   `d52c6b9d6296c6b683e64e8ac130d7a4eb21bd33c7742f888e8d6244e1759a8b`.
-- Unsafe superseded v025 tag pending removal:
+- The unsafe superseded v025 had local image ID
+  `sha256:c8f6dddbfaab7e412079cd89f9a5bdf631dd9c3b7ab963375a8f3302c1e7b066`
+  and registry digest
+  `sha256:7093cea8f1e06c10a437f3946dc7e3dd643271f071d17b6a140e4df763598fd3`.
+  Both its tag and exact registry manifest were deleted on 2026-08-11; neither
+  the tag nor old digest resolved before replacement publication.
+- Replacement source revision:
+  `c933ec38202719fbe1879846e5de48200136f9e3`. Clean Nox gate: mypy over 87
+  source/test files, `229 passed` with `8 deselected`, five packaging
+  integrations, and local/public PEX smoke tests.
+- Replacement public PEX SHA-256:
+  `976aa0708f0a247550cc8b594c461272af1b20dbc6146bfda54baba918a82f61`.
+- Replacement v025 tag:
   `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v025`.
   Immutable local image ID:
-  `sha256:c8f6dddbfaab7e412079cd89f9a5bdf631dd9c3b7ab963375a8f3302c1e7b066`.
+  `sha256:9c806703213bc280b6378e52e037bc55df85b585b662e20ef06ad3bb1ae48173`.
   Published registry digest:
-  `sha256:7093cea8f1e06c10a437f3946dc7e3dd643271f071d17b6a140e4df763598fd3`.
-- The superseded v025 inspection confirmed Ubuntu 24.04 root-layer identity, managed
-  base metadata, recipe `ubuntu-24.04@3`, generic entrypoint and command,
-  embedded PEX digest and source lineage, Node.js `v22.23.1`, npm `10.9.8`,
-  Claude Code `2.1.227` under `/opt/claude`, and no Gemini CLI, project source,
-  checkout configuration, developer state, credentials, runtime authorization,
-  or baked runtime plan. Failure and interrupt cleanup probes also passed.
+  `sha256:b8d355b497a9aa2fc5b2420db0c07227721e3cf7d3388b2ca81f3ed40fb86a7f`.
+- Strict pull-by-digest inspection confirmed recipe `ubuntu-24.04@4`, Node.js
+  `v22.23.1`, npm `10.9.8`, Eclipse Temurin/JDK `25.0.4+7`, Apache Maven
+  `3.9.16`, `JAVA_HOME=/opt/java/current`, `MAVEN_HOME=/opt/maven/current`,
+  correct executable `PATH`, retained JDK/Maven legal files, exact PEX/source
+  lineage, generic runtime contract, and no Claude or Gemini CLI in the base.
+- The authorization CLI recorded `claude-code-download = true` in a mode-0600
+  test-owned checkout record. Production realization against the published
+  v025 downloaded Claude Code `2.1.227` directly from Anthropic, verified
+  SHA-256 `6832dc3f1797b890b71116e5f2dbbf9a83fd3d0498c235b4b0f9cd0e6e499ad6`,
+  installed `/opt/claude/bin/claude` only in the local formation, set
+  `DISABLE_UPDATES=1`, and preserved the Node/Java/Maven toolchain. The
+  disposable probe image and caches were removed afterward.
 - The accepted v024 bootstrap source revision remains
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
@@ -108,14 +131,16 @@ v025 publication, and strict base/local-component probes remain.
 
 ## Next Resumable Task
 
-Complete the reopened Stage 4 remediation:
+Continue with Stage 5 from the milestone plan:
 
-1. publish and validate the clean exact-revision PEX;
-2. remove the unsafe public v025 manifest and replace the same 0.x tag with the
-   Node/Temurin/Maven agent-neutral recipe;
-3. prove the replacement base contains no Claude Code binary; and
-4. explicitly authorize and test direct-to-local Claude Code materialization
-   before continuing to Stage 5.
+1. initialize and list checkout readiness from the retained clean clone using
+   run-owned configuration roots;
+2. bind only test-owned persistent state and authorize the exact local v025
+   image ID plus the locked Claude Code acquisition without changing the
+   committed published-base recommendation;
+3. resolve and inspect the generated plan without launch side effects; and
+4. materialize or strictly reuse the full PyCharm/Codex/Claude successor
+   through the production realization path.
 
 ## External State And Risks
 
@@ -129,7 +154,8 @@ Complete the reopened Stage 4 remediation:
 - The project base authorization and generated local resolution are stale by
   deliberate developer-owned choices. Do not reauthorize a base implicitly.
 - The bare v024 base does not add `/opt/node/current/bin` to `PATH`; recipe
-  version 3 corrects this only in the successor.
+  version 4 corrects this and adds the Java/Maven toolchain only in the
+  successor.
 - Host Docker, host networking, development sudo, X11, and persistent-home
   access remain explicit security boundaries.
 - The retained successful run and its mode-0600 Stage 4 evidence remain under

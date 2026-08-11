@@ -491,11 +491,11 @@ successor base.
 
 ## Stage 4: Build And Verify The Successor Base From Inside Dogfood
 
-Status: reopened on 2026-08-11. Retained run
+Status: complete after remediation on 2026-08-11. Retained run
 `25f664fb3629f51be8e3894a0df8ffa7` proved the build protocol, but its first
 v025 embedded Claude Code. Current Anthropic terms do not clearly authorize
-public binary redistribution, so Stage 4 remains open until that manifest is
-removed and the tag is replaced with an agent-neutral successor.
+public binary redistribution, so that tag and exact manifest were removed and
+replaced with the verified agent-neutral successor described below.
 
 Start by composing the accepted Stage 3 clone and bootstrap protocols into the
 retained, ownership-marked milestone run. From its clean clone:
@@ -551,6 +551,20 @@ for `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v025`. The strict
 probe confirmed the required metadata, lineage, generic runtime contract,
 tooling, isolation, and cleanup properties. This evidence is retained as the
 reason for remediation and is not acceptable replacement-v025 evidence.
+
+Replacement completion evidence records source revision
+`c933ec38202719fbe1879846e5de48200136f9e3`, PEX SHA-256
+`976aa0708f0a247550cc8b594c461272af1b20dbc6146bfda54baba918a82f61`,
+local image ID
+`sha256:9c806703213bc280b6378e52e037bc55df85b585b662e20ef06ad3bb1ae48173`,
+and published registry digest
+`sha256:b8d355b497a9aa2fc5b2420db0c07227721e3cf7d3388b2ca81f3ed40fb86a7f`
+for the same v025 tag. Pull-by-digest inspection confirmed recipe version 4,
+Node `v22.23.1`, Temurin/JDK `25.0.4+7`, Maven `3.9.16`, exact homes and
+executable `PATH`, and absence of Claude Code from the public base. A separate
+authorized local formation acquired and verified Claude Code `2.1.227`
+directly from Anthropic and ran it from `/opt/claude/bin/claude` with updates
+disabled; its disposable image and cache were removed after the probe.
 
 ## Stage 5: Configure, Resolve, And Materialize The Clean Clone
 
