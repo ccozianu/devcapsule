@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import nox
@@ -147,7 +148,7 @@ def build_public_pex_if_clean(session: nox.Session) -> bool:
         return False
 
     build_environment = {"PYTHON": "python"}
-    explicit_repository = session.env.get(PUBLIC_PEX_REPOSITORY_ENV)
+    explicit_repository = os.environ.get(PUBLIC_PEX_REPOSITORY_ENV)
     if explicit_repository:
         build_environment["DEVCAPSULE_SOURCE_REPOSITORY"] = explicit_repository
     session.run(

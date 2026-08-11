@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from unittest.mock import Mock, call
+from unittest.mock import patch
 
 import noxfile
 
@@ -29,10 +31,10 @@ def test_public_pex_is_skipped_and_advertised_for_dirty_repository() -> None:
 
 def test_public_pex_is_built_for_clean_repository() -> None:
     session = Mock()
-    session.env = {}
     session.run.side_effect = ["", None]
 
-    built = noxfile.build_public_pex_if_clean(session)
+    with patch.dict(os.environ, {}, clear=True):
+        built = noxfile.build_public_pex_if_clean(session)
 
     assert built
     assert session.run.call_args_list == [
@@ -58,12 +60,14 @@ def test_public_pex_is_built_for_clean_repository() -> None:
 
 def test_public_pex_forwards_explicit_repository_only_to_packaging_step() -> None:
     session = Mock()
-    session.env = {
-        noxfile.PUBLIC_PEX_REPOSITORY_ENV: "https://github.com/example/devcapsule"
-    }
     session.run.side_effect = ["", None]
 
-    assert noxfile.build_public_pex_if_clean(session)
+    with patch.dict(
+        os.environ,
+        {noxfile.PUBLIC_PEX_REPOSITORY_ENV: "https://github.com/example/devcapsule"},
+        clear=True,
+    ):
+        assert noxfile.build_public_pex_if_clean(session)
 
     assert session.run.call_args_list[1] == call(
         str(noxfile.PROJECT_ROOT / "scripts" / "build-pex.sh"),
