@@ -512,6 +512,12 @@ managed metadata remain authoritative. The build must not overwrite the
 published v024 recommendation, the earlier v023 tag, or any unrelated
 canonical image.
 
+For the v025 exercise, the owner explicitly selected the optional
+`--include-claude-code` base-build component. The default recipe remains
+agent-neutral, while this successor must expose Node.js through
+`/opt/node/current/bin`, install checksum-verified Claude Code 2.1.227 beneath
+`/opt/claude`, expose both on `PATH`, and record the Claude component metadata.
+
 Verification includes:
 
 - managed metadata version and kind;
@@ -519,7 +525,8 @@ Verification includes:
 - exact source revision and canonical public source URL;
 - embedded PEX SHA-256 matching the clone artifact;
 - generic OCI entrypoint and command;
-- expected baseline tools and explicit absence of ambient agent CLIs;
+- expected baseline tools, Node.js and Claude Code paths and versions, and
+  continued absence of Gemini CLI;
 - absence of project source, checkout configuration, state, credentials,
   runtime authorization, and a baked checkout runtime plan; and
 - build failure/interrupt behavior and ownership-safe cleanup.
