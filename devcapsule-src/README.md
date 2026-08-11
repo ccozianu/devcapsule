@@ -153,6 +153,17 @@ builds and smoke-tests `dist/devcapsule.pex` with the exact local `HEAD`, even
 when that commit is not on GitHub yet. If the repository is dirty, it clearly
 reports that the revision-bearing artifact was not built. The standalone
 default `scripts/build-pex.sh` command retains the remote publication check.
+An intentionally origin-free clean clone can provide canonical public metadata
+only to the final Nox packaging step:
+
+```bash
+DEVCAPSULE_PUBLIC_PEX_SOURCE_REPOSITORY=https://github.com/OWNER/REPOSITORY \
+  python -m nox -s build
+```
+
+Nox does not translate that value into the packaging script's general
+`DEVCAPSULE_SOURCE_REPOSITORY` variable until after tests complete, so nested
+packaging tests retain their own isolated repository metadata.
 
 If the contributor environment is not activated, point the script at it:
 

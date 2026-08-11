@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).parent
 REPO_ROOT = PROJECT_ROOT.parent
 TEST_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule-local.pex"
 PUBLIC_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
+PUBLIC_PEX_REPOSITORY_ENV = "DEVCAPSULE_PUBLIC_PEX_SOURCE_REPOSITORY"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -145,12 +146,16 @@ def build_public_pex_if_clean(session: nox.Session) -> bool:
         )
         return False
 
+    build_environment = {"PYTHON": "python"}
+    explicit_repository = session.env.get(PUBLIC_PEX_REPOSITORY_ENV)
+    if explicit_repository:
+        build_environment["DEVCAPSULE_SOURCE_REPOSITORY"] = explicit_repository
     session.run(
         str(PROJECT_ROOT / "scripts" / "build-pex.sh"),
         "--output",
         str(PUBLIC_PEX_PATH),
         "--allow-unpublished-revision",
-        env={"PYTHON": "python"},
+        env=build_environment,
         external=True,
     )
     return True
