@@ -211,6 +211,13 @@ python3.12 dist/devcapsule.pex images build \
   --tag devcapsule-base:debug-v023 \
   --source-revision "$(git rev-parse HEAD)"
 
+# Explicit exercise/development variant with the pinned Claude Code component.
+python3.12 dist/devcapsule.pex images build \
+  --type base \
+  --tag devcapsule-base:claude-v025 \
+  --include-claude-code \
+  --source-revision "$(git rev-parse HEAD)"
+
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
 python3.12 dist/devcapsule.pex images build \
   --type base \
@@ -235,7 +242,8 @@ Git and OpenSSH, GCC/G++ plus Make/CMake/pkg-config, GDB/LLDB/strace, common
 shell/process/filesystem/network diagnostics, Docker CLI/buildx/Compose and
 daemon binaries, X11/GTK/audio/font/Mesa runtime libraries, `tini`, `gosu`, and
 the `sudo` binary. It also installs the pinned language-tooling baseline—Node.js
-`v22.23.1` and its bundled npm—and embeds the selected
+`v22.23.1` and its bundled npm—exposes `/opt/node/current/bin` on `PATH`, and
+embeds the selected
 DevCapsule PEX at `/opt/devcapsule/bin/devcapsule.pex`.
 
 The repository-owned Python build plan is the inspectable source of truth:
@@ -263,6 +271,17 @@ grants no Docker-daemon or sudo access. Materialization adds the
 checksum-verified IDE/component; the
 developer-owned runtime resolution separately controls project/state mounts,
 networking, devices, Docker access, privilege, and secrets.
+
+`--include-claude-code` is an explicit development/exercise exception to the
+agent-neutral default. It downloads Anthropic's pinned native Claude Code
+binary, verifies its architecture-specific SHA-256, installs it under
+`/opt/claude`, exposes `/opt/claude/bin` on `PATH`, and records its exact
+version, installation method, prefix, and publisher license terms in managed
+image labels. The component does not add credentials, authentication state,
+mounts, or host authorization. The version and checksums in
+`devcapsule/image_tooling.py` control deliberate upgrades, and the image
+disables Claude's background auto-updater so the inspected version remains the
+one in `/opt`. Use remains subject to Anthropic's Commercial Terms of Service.
 
 `--from IMAGE` overrides the selected recipe's root image. The builder reuses
 that root image when it is already local and otherwise allows Docker to obtain

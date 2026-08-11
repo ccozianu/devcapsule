@@ -31,7 +31,13 @@ active continuation branch.
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
   contributor bootstrap in recursive and laptop contexts.
-- Stage 4 has not started. No successor base or environment has been built.
+- Stage 4 is in progress. Successor-content preparation is implemented locally,
+  but no successor base or environment has been built yet.
+- Base recipe version 3 exposes the pinned Node.js installation through
+  `/opt/node/current/bin` on the image `PATH`.
+- The v025 exercise will explicitly include checksum-verified Claude Code
+  2.1.227 under `/opt/claude`; the default base remains agent-neutral unless
+  `--include-claude-code` is selected.
 - The repository documentation was reorganized under `engineering-docs/`, and
   the Python distribution project moved from `devcapsule/` to
   `devcapsule-src/`.
@@ -40,11 +46,14 @@ active continuation branch.
 
 ## Last Task And Status
 
-Last task: resume the recursive E2E after the multiple-workflow bootstrap and
-route its continuation to a conforming Stage 4 branch.
+Last task: prepare meaningful v025 successor contents before executing the
+retained Stage 4 run.
 
-Status: complete. The workstream is active on `recursive-e2e/stage-4`, based on
-current remote `main`. Stage 4 execution has not begun.
+Status: implementation complete and locally validated. The base now exposes
+Node.js on `PATH`, and an explicit base-build option installs the pinned native
+Claude Code release beneath `/opt/claude`, records component metadata, and
+disables background updates. The clean-clone run, public PEX, and successor
+base build remain.
 
 ## Evidence
 
@@ -58,6 +67,10 @@ current remote `main`. Stage 4 execution has not begun.
   revision.
 - Focused recursive-preflight tests: `14 passed`.
 - Mypy: no issues over 57 source files.
+- Successor-content focused tests: `45 passed`; mypy reports no issues over 85
+  source files.
+- Full dirty-tree Nox gate: `226 passed`, `8 deselected`; PEX integration:
+  `5 passed`. The expected local-only PEX was built and smoke-tested.
 - The accepted v024 bootstrap source revision remains
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
@@ -67,14 +80,15 @@ current remote `main`. Stage 4 execution has not begun.
 
 ## Next Resumable Task
 
-Begin Stage 4 from the milestone plan:
+Continue Stage 4 from the milestone plan:
 
-1. compose the accepted clone and contributor-bootstrap protocols into one
+1. commit and publish the validated successor-content source revision;
+2. compose the accepted clone and contributor-bootstrap protocols into one
    retained, ownership-marked milestone run;
-2. run the full clean Nox gate from the clone;
-3. build and verify a revision-bearing PEX; and
-4. use that PEX to build and inspect the successor base through the authorized
-   host Docker daemon.
+3. run the full clean Nox gate from the clone;
+4. build and verify a revision-bearing PEX; and
+5. use that PEX with `--include-claude-code` to build and inspect the successor
+   base through the authorized host Docker daemon.
 
 ## External State And Risks
 
@@ -82,8 +96,8 @@ Begin Stage 4 from the milestone plan:
   `pycharm-isolated-costin-1786072465`.
 - The project base authorization and generated local resolution are stale by
   deliberate developer-owned choices. Do not reauthorize a base implicitly.
-- The bare v024 base does not add `/opt/node/current/bin` to `PATH`; this is a
-  usability follow-up, not a recursive-E2E blocker.
+- The bare v024 base does not add `/opt/node/current/bin` to `PATH`; recipe
+  version 3 corrects this only in the successor.
 - Host Docker, host networking, development sudo, X11, and persistent-home
   access remain explicit security boundaries.
 

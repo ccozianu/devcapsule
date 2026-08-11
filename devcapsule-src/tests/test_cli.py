@@ -421,6 +421,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
                 "revision-1",
                 "--network",
                 "host",
+                "--include-claude-code",
             ]
         )
 
@@ -431,11 +432,13 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
     assert options.root_image == "local-root:test"
     assert options.source_revision == "revision-1"
     assert options.allow_local_source is False
+    assert options.include_claude_code is True
     assert options.recipe == "ubuntu-24.04"
     assert build.call_args.kwargs == {"network": "host"}
     output = capsys.readouterr().out
     assert "Image ID: sha256:abc123" in output
     assert "Source verification: public GitHub commit reachable" in output
+    assert "Optional component: Claude Code under /opt/claude" in output
 
 
 def test_images_build_base_selects_wip_nvidia_cuda_recipe(tmp_path: Path, capsys) -> None:
@@ -481,6 +484,23 @@ def test_images_build_base_selects_wip_nvidia_cuda_recipe(tmp_path: Path, capsys
     assert "nvidia/cuda:12.8.1-devel-ubuntu24.04" in captured.out
     assert "nvidia-cuda-devel@1 (WIP)" in captured.out
     assert "requires specialized NVIDIA GPU E2E validation" in captured.err
+
+
+def test_images_build_rejects_claude_option_for_environment(tmp_path: Path, capsys) -> None:
+    result = cli.main(
+        [
+            "images",
+            "build",
+            "--type",
+            "environment",
+            "--project",
+            str(tmp_path),
+            "--include-claude-code",
+        ]
+    )
+
+    assert result == 2
+    assert "applies only to base-image builds" in capsys.readouterr().err
 
 
 def test_images_build_base_requires_pex_from_source(tmp_path: Path, capsys) -> None:
