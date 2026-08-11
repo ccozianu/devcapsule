@@ -36,9 +36,11 @@ class LockedArtifactDeclaration:
     version: str
     url: str
     sha256: str
-    archive_member: str
     destination: str
+    artifact_format: str = "tar-gz-member"
+    archive_member: str | None = None
     permissions: int = 0o755
+    environment: tuple[tuple[str, str], ...] = ()
 
 
 class ComponentDefinition(ABC):

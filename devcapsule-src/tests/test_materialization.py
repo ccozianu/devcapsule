@@ -234,6 +234,58 @@ def test_materialization_installs_locked_codex_executable(tmp_path: Path) -> Non
     assert descriptor["components"][1]["artifact"]["sha256"] == codex.sha256
 
 
+def test_materialization_installs_locked_raw_executable_and_image_environment(
+    tmp_path: Path,
+) -> None:
+    pycharm_source = tmp_path / "pycharm.tar.gz"
+    pycharm_payload = fixture_archive(pycharm_source)
+    pycharm_spec = artifact(pycharm_source, hashlib.sha256(pycharm_payload).hexdigest())
+    claude_source = tmp_path / "claude"
+    claude_source.write_bytes(b"claude-code-binary-fixture")
+    claude = LockedArtifactDeclaration(
+        component_id="claude-code",
+        version="2.1.227",
+        url=claude_source.as_uri(),
+        sha256=hashlib.sha256(claude_source.read_bytes()).hexdigest(),
+        destination="/opt/claude/bin/claude",
+        artifact_format="file",
+        environment=(
+            ("PATH", "/opt/claude/bin:${PATH}"),
+            ("DISABLE_UPDATES", "1"),
+        ),
+    )
+    built: dict[str, ImageDetails] = {}
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        copied = next(
+            item for item in plan.files if item.destination == "/opt/claude/bin/claude"
+        )
+        assert copied.source.read_bytes() == b"claude-code-binary-fixture"
+        assert copied.permissions == 0o755
+        assert ("PATH", "/opt/claude/bin:${PATH}") in plan.env
+        assert ("DISABLE_UPDATES", "1") in plan.env
+        built[plan.image] = image_details(plan.image, dict(plan.labels))
+
+    image, created = ensure_materialized_pycharm(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=pycharm_spec,
+        ancillary_artifacts=(claude,),
+        cache_root=tmp_path / "cache",
+        inspect_image=lambda reference: built.get(reference),
+        build=build,
+    )
+
+    assert created is True
+    descriptor = json.loads(built[image].labels["devcapsule.materialization.descriptor"])
+    assert descriptor["components"][1]["installation"] == {
+        "destination": "/opt/claude/bin/claude",
+        "format": "file",
+    }
+
+
 def test_materialized_image_has_complete_formation_labels(tmp_path: Path) -> None:
     pycharm = tmp_path / "pycharm"
     pycharm.mkdir()

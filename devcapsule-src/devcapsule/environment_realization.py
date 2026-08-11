@@ -10,6 +10,7 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
+from devcapsule.components.claude_code import CLAUDE_CODE_AUTHORIZATION
 from devcapsule.image_build import BuildxImageBuilder, ImageBuildSpec
 from devcapsule.image_metadata import inspect_local_image
 from devcapsule.materialization import (
@@ -23,6 +24,7 @@ from devcapsule.materialization import (
 from devcapsule.project_configuration import (
     ResolvedProject,
     authorized_base_selection,
+    resolved_checkout_authorizations,
 )
 
 
@@ -59,6 +61,17 @@ def realize_environment(
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
     locked = parse_locked_environment(selected.lock)
+    if any(item.component_id == "claude-code" for item in locked.ancillary_artifacts):
+        authorizations = resolved_checkout_authorizations(
+            selected.manifest, selected.lock, selected.checkout
+        )
+        if authorizations.get(CLAUDE_CODE_AUTHORIZATION) is not True:
+            raise CliError(
+                "Claude Code is selected for direct, local acquisition but this checkout has not "
+                "authorized the download. Review Anthropic's terms and run "
+                f"'devcapsule project config authorize {CLAUDE_CODE_AUTHORIZATION} true', then "
+                "resolve the checkout again."
+            )
     runtime = selected.resolution.get("runtime", {})
     if not isinstance(runtime, dict) or runtime.get("component") != locked.component_id:
         component = runtime.get("component") if isinstance(runtime, dict) else None

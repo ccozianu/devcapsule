@@ -6,9 +6,17 @@ from unittest.mock import Mock, patch
 import pytest
 
 from devcapsule.compat import CliError
+from devcapsule.components.claude_code import (
+    CLAUDE_CODE_AUTHORIZATION,
+    CLAUDE_CODE_TERMS_URL,
+)
 from devcapsule.environment_realization import ensure_local_image, realize_environment
 from devcapsule.materialization import ImageDetails
-from devcapsule.project_configuration import ResolvedProject, canonical_digest
+from devcapsule.project_configuration import (
+    ResolvedProject,
+    authorization_declarations,
+    canonical_digest,
+)
 
 
 BASE_REFERENCE = f"docker.io/example/devcapsule-base@sha256:{'b' * 64}"
@@ -89,6 +97,36 @@ def completed_image() -> ImageDetails:
     )
 
 
+def select_claude_code(selected: ResolvedProject, *, authorized: bool) -> None:
+    components = selected.lock["components"]
+    assert isinstance(components, dict)
+    components["claude-code"] = {
+        "version": "2.1.227",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": CLAUDE_CODE_AUTHORIZATION,
+        "terms-url": CLAUDE_CODE_TERMS_URL,
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://downloads.claude.ai/example/claude",
+                "sha256": "c" * 64,
+            }
+        },
+    }
+    authorization = selected.checkout["authorization"]
+    assert isinstance(authorization, dict)
+    base = authorization["base-image"]
+    assert isinstance(base, dict)
+    base["lock-digest"] = canonical_digest(selected.lock)
+    if authorized:
+        declaration = authorization_declarations(selected.manifest, selected.lock)[
+            CLAUDE_CODE_AUTHORIZATION
+        ]
+        authorization[CLAUDE_CODE_AUTHORIZATION] = {
+            "value": True,
+            "recommendation-digest": declaration.recommendation_digest,
+        }
+
+
 @pytest.mark.parametrize("created", [False, True])
 def test_realize_environment_reuses_or_builds_canonical_image(
     tmp_path: Path, created: bool
@@ -140,6 +178,44 @@ def test_realize_environment_requires_exact_locked_base_authorization(tmp_path: 
 
     obtain.assert_not_called()
     materialize.assert_not_called()
+
+
+def test_realize_environment_requires_explicit_claude_download_authorization(
+    tmp_path: Path,
+) -> None:
+    selected = resolved_project(tmp_path)
+    select_claude_code(selected, authorized=False)
+    obtain = Mock()
+    materialize = Mock()
+
+    with pytest.raises(CliError, match="claude-code-download"):
+        realize_environment(selected, obtain_image=obtain, materialize=materialize)
+
+    obtain.assert_not_called()
+    materialize.assert_not_called()
+
+
+def test_realize_environment_allows_terms_bound_claude_download_authorization(
+    tmp_path: Path,
+) -> None:
+    selected = resolved_project(tmp_path)
+    select_claude_code(selected, authorized=True)
+    materialize = Mock(return_value=(CANONICAL_IMAGE, True))
+
+    realized = realize_environment(
+        selected,
+        obtain_image=Mock(return_value=base_image()),
+        inspect_image=Mock(),
+        require_image=Mock(return_value=completed_image()),
+        build=Mock(),
+        materialize=materialize,
+    )
+
+    assert realized.created is True
+    artifacts = materialize.call_args.kwargs["ancillary_artifacts"]
+    claude = next(item for item in artifacts if item.component_id == "claude-code")
+    assert claude.artifact_format == "file"
+    assert claude.destination == "/opt/claude/bin/claude"
 
 
 @pytest.mark.parametrize("already_local", [True, False])

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from devcapsule.components import ComponentDefinition
+from devcapsule.components.claude_code import DEFINITION as CLAUDE_CODE
 from devcapsule.components.codex import DEFINITION as CODEX
 from devcapsule.components.pycharm import DEFINITION as PYCHARM
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
@@ -17,6 +18,7 @@ class ComponentCatalogError(ValueError):
 COMPONENTS: dict[str, ComponentDefinition] = {
     PYCHARM.id: PYCHARM,
     CODEX.id: CODEX,
+    CLAUDE_CODE.id: CLAUDE_CODE,
 }
 
 

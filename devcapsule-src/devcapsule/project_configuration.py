@@ -20,6 +20,10 @@ from devcapsule.components.catalog import (
     selected_component_definitions,
     selected_runtime_templates,
 )
+from devcapsule.components.claude_code import (
+    CLAUDE_CODE_AUTHORIZATION,
+    CLAUDE_CODE_TERMS_URL,
+)
 
 
 class ProjectConfigurationError(CliError):
@@ -415,6 +419,39 @@ def authorization_declarations(
             recommended_value=reference,
             recommendation_digest=canonical_digest(lock),
             description="Execute the exact registry digest selected by the platform lock.",
+        )
+
+    components = lock.get("components", {})
+    if not isinstance(components, dict):
+        raise ProjectConfigurationError("Platform lock components must be a table.")
+    claude_code = components.get("claude-code")
+    if claude_code is not None:
+        if not isinstance(claude_code, dict):
+            raise ProjectConfigurationError("components.claude-code must be a table.")
+        if claude_code.get("acquisition-authorization") != CLAUDE_CODE_AUTHORIZATION:
+            raise ProjectConfigurationError(
+                "components.claude-code must declare acquisition-authorization = "
+                f"{CLAUDE_CODE_AUTHORIZATION!r}."
+            )
+        if claude_code.get("terms-url") != CLAUDE_CODE_TERMS_URL:
+            raise ProjectConfigurationError(
+                f"components.claude-code terms-url must be {CLAUDE_CODE_TERMS_URL!r}."
+            )
+        version = claude_code.get("version")
+        if not isinstance(version, str) or not version:
+            raise ProjectConfigurationError(
+                "components.claude-code.version must be a non-empty string."
+            )
+        declarations[CLAUDE_CODE_AUTHORIZATION] = AuthorizationDeclaration(
+            name=CLAUDE_CODE_AUTHORIZATION,
+            recommended_value=True,
+            recommendation_digest=canonical_digest(
+                {"name": CLAUDE_CODE_AUTHORIZATION, "component": claude_code}
+            ),
+            description=(
+                f"Download checksum-pinned Claude Code {version} directly from Anthropic "
+                f"during local materialization, subject to {CLAUDE_CODE_TERMS_URL}."
+            ),
         )
 
     host = manifest.get("host", {})
