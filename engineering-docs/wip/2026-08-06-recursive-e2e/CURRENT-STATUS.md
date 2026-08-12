@@ -28,6 +28,9 @@ active continuation branch.
 
 - Stages 0 through 5 are complete. Stage 4 was reopened and completed again
   after the v025 redistribution-license remediation.
+- On 2026-08-12 the product owner explicitly closed Stage 5. The unexecuted
+  authorization-negative Docker/network/sudo plan proof was transferred to the
+  V1 backlog and does not reopen Stage 5.
 - The Stage 6 live launch slice is successful: the production planner launched
   a detached v025 successor, the independent inspector passed, and both the
   successor and the untouched v024 control remain running. Stage 6 hardening
@@ -131,6 +134,9 @@ visible and usable. The detailed Stage 6 hardening slices remain open.
   `b2093d85912fa34ac1324e1da26a9dcd`. Its isolated checkout resolution
   authorizes the exact local v025 identity, direct Claude acquisition, host
   Docker, host networking, and development sudo. No credentials were imported.
+- Stage 5 closure exception: the separate absence-of-authorization plan and
+  non-GUI probe were not run. The product owner accepted closure and transferred
+  that precise obligation to the V1 test backlog.
 - Canonical successor environment:
   `devcapsule-local-pycharm:2145e28bc7b8aca0eee0`, formation identity
   `2145e28bc7b8aca0eee0a839050d626b5186aa57463045fb85abe8003581fb77`,

@@ -76,8 +76,30 @@ orchestration is introduced or changed.
 - Add a documentation conformance check so CLI help, examples, and the
   implemented option inventory cannot silently drift apart.
 
+## Authorization-Negative Launch Plan
+
+This obligation was explicitly transferred from recursive-dogfood Stage 5 when
+the product owner accepted that stage as complete on 2026-08-12. Its absence
+does not reopen Stage 5.
+
+- Create a separate run-owned checkout configuration and fresh resolution that
+  retain only the base-image and Claude Code acquisition authorizations needed
+  for materialization while omitting Docker-daemon, host-network, and
+  development-sudo grants.
+- Through the public project-run planning boundary, prove that absence of those
+  grants yields bridge networking, no host Docker socket or `DOCKER_HOST`, no
+  development-sudo group or policy, and no equivalent privilege escalation.
+- Exercise a small non-GUI container probe against the resulting plan; a second
+  PyCharm GUI launch is not required.
+- Contrast this absence-of-authorization result with the explicit
+  `--no-recursive-e2e` least-privilege downgrade. The latter is useful coverage
+  but is not sufficient evidence for the former.
+- Preserve sanitized plan/probe evidence and cover the behavior with focused
+  public-CLI tests in the ordinary repository gate.
+
 ## Closure Rule
 
 An item leaves this backlog when a focused automated test covers the public
 CLI or process boundary and passes the ordinary repository gate. These items
-do not reopen completed Stage 3 unless a regression breaks its accepted E2Es.
+do not reopen an explicitly completed milestone stage unless a regression
+breaks that stage's accepted evidence.
