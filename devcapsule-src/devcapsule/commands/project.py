@@ -32,6 +32,11 @@ from devcapsule.recursive_orchestrator import (
     RecursivePreflightFailed,
     run_recursive_e2e_dry_run,
 )
+from devcapsule.recursive_successor import (
+    RecursiveSuccessorError,
+    inspect_successor,
+    launch_successor,
+)
 from devcapsule.project_configuration import (
     AuthorizationDeclaration,
     ProjectConfigurationError,
@@ -202,8 +207,45 @@ def _recursive_e2e_command() -> click.Command:
         )
         return 0
 
+    @click.command("launch-successor")
+    @click.option("--run-id", required=True, help="Existing retained materialization run ID.")
+    @click.option(
+        "--runtime-plan",
+        type=click.Path(path_type=Path),
+        default=Path("/etc/devcapsule/runtime-plan.json"),
+        show_default=True,
+    )
+    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
+    @click.pass_obj
+    def launch_successor_command(
+        context: ProjectCommandContext,
+        run_id: str,
+        runtime_plan: Path,
+        as_json: bool,
+    ) -> int:
+        root = _recursive_project_root(context)
+        try:
+            result = launch_successor(root, run_id, runtime_plan_path=runtime_plan)
+        except RecursiveSuccessorError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        click.echo(result.to_json() if as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True))
+        return 0
+
+    @click.command("inspect-successor")
+    @click.option("--run-id", required=True, help="Existing retained successor run ID.")
+    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
+    def inspect_successor_command(run_id: str, as_json: bool) -> int:
+        try:
+            result = inspect_successor(run_id)
+        except RecursiveSuccessorError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        click.echo(result.to_json() if as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True))
+        return 0
+
     group.add_command(preflight)
     group.add_command(run_recursive)
+    group.add_command(launch_successor_command)
+    group.add_command(inspect_successor_command)
     return group
 
 

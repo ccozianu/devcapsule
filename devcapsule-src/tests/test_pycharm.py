@@ -9,7 +9,13 @@ import pytest
 
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.components.codex import runtime_template as codex_runtime_template
-from devcapsule.configurations.pycharm import DockerMode, IdeConfigMode, PycharmRunOptions, build_run_config
+from devcapsule.configurations.pycharm import (
+    ContainerLifecycle,
+    DockerMode,
+    IdeConfigMode,
+    PycharmRunOptions,
+    build_run_config,
+)
 from devcapsule.configurations.pycharm._launcher import (
     HostUser,
     PycharmRunError,
@@ -86,6 +92,41 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         cleanup_temp_runtime_files(files)
     assert files.runtime_plan_file is not None
     assert not files.runtime_plan_file.exists()
+
+
+def test_detached_lifecycle_changes_only_the_docker_process_flags(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=external_runtime_plan(),
+            use_image_process=True,
+        ),
+        env,
+    )
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth",
+        passwd_file=tmp_path / "passwd",
+        group_file=tmp_path / "group",
+        runtime_plan_file=tmp_path / "runtime-plan",
+    )
+
+    foreground = build_docker_args(config, files, env)
+    detached = build_docker_args(
+        config,
+        files,
+        env,
+        lifecycle=ContainerLifecycle.detached,
+    )
+
+    assert foreground[:2] == ["--rm", "-i"]
+    assert detached[0] == "--detach"
+    assert foreground[2:] == detached[1:]
 
 
 def test_jcef_disclosure_is_printed_for_component_policy(

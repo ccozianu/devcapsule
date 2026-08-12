@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ._launcher import (
+    ContainerLifecycle,
     DockerMode,
     IdeConfigMode,
     PycharmRunConfig,
@@ -16,6 +17,7 @@ from .configuration import PycharmConfiguration
 
 __all__ = [
     "DockerMode",
+    "ContainerLifecycle",
     "IdeConfigMode",
     "PycharmConfiguration",
     "PycharmRunConfig",
@@ -24,4 +26,3 @@ __all__ = [
     "build_run_config",
     "run_pycharm",
 ]
-
