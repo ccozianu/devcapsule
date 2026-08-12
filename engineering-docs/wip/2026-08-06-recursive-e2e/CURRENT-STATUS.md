@@ -26,8 +26,13 @@ active continuation branch.
 
 ## Current State
 
-- Stages 0 through 4 are complete. Stage 4 was reopened and completed again
+- Stages 0 through 5 are complete. Stage 4 was reopened and completed again
   after the v025 redistribution-license remediation.
+- The Stage 6 live launch slice is successful: the production planner launched
+  a detached v025 successor, the independent inspector passed, and both the
+  successor and the untouched v024 control remain running. Stage 6 hardening
+  and exhaustive expected-plan/failure-path coverage remain open before the
+  stage is declared complete.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -51,16 +56,16 @@ active continuation branch.
 
 ## Last Task And Status
 
-Last task: redesign and replace v025 after the Claude Code redistribution
-review, while adding the latest redistributable LTS JDK and Maven.
+Last task: materialize and launch the v025 dogfood successor with checkout-local
+Claude Code acquisition while retaining the v024 control.
 
-Status: complete. Source revision
-`c933ec38202719fbe1879846e5de48200136f9e3` passed the clean full gate and
-produced the exact public PEX. The unsafe tag and manifest were deleted; the
-replacement was built, published, pulled by digest, and strictly probed. An
-authorized test-owned formation then acquired Claude directly from Anthropic,
-verified it, and proved the local-only executable ready alongside the base
-tooling.
+Status: live slice complete. Run `b2093d85912fa34ac1324e1da26a9dcd`
+authorized the exact v025 local image plus Claude acquisition, materialized and
+strictly reused the canonical environment, and launched exact container
+`7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`.
+The independent inspector passed and the successor remains stable with no
+restart. The user still needs to confirm the new GUI window is usable; the
+detailed Stage 6 hardening slices remain open.
 
 ## Evidence
 
@@ -122,6 +127,34 @@ tooling.
   installed `/opt/claude/bin/claude` only in the local formation, set
   `DISABLE_UPDATES=1`, and preserved the Node/Java/Maven toolchain. The
   disposable probe image and caches were removed afterward.
+- Stage 5 retained run ID:
+  `b2093d85912fa34ac1324e1da26a9dcd`. Its isolated checkout resolution
+  authorizes the exact local v025 identity, direct Claude acquisition, host
+  Docker, host networking, and development sudo. No credentials were imported.
+- Canonical successor environment:
+  `devcapsule-local-pycharm:2145e28bc7b8aca0eee0`, formation identity
+  `2145e28bc7b8aca0eee0a839050d626b5186aa57463045fb85abe8003581fb77`,
+  immutable image ID
+  `sha256:f3fa500c3811d2f838a56af224e61f15524de014fa4270174b14ec36e894dbee`.
+  A second production realization strictly reused that exact image.
+- Detached successor source revision:
+  `600c085228884112e8860c3e6cdc4fb7b6674c0b`; public-provenance PEX SHA-256:
+  `aee9346f1766aa10260da2d879a4049ff838f92642240a9d54f5b183ec0e59a0`.
+  The clean build gate passed mypy over 88 source/test files, `230 passed` with
+  `8 deselected`, five packaging integrations, and source/public-PEX smoke
+  tests.
+- Detached successor container:
+  `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`,
+  deterministic name
+  `devcapsule-e2e-b2093d85912fa34ac1324e1da26a9dcd-successor`. Exact name,
+  E2E labels, image ID, running state, zero-restart stability, PyCharm process,
+  runtime plan, Docker access, and noninteractive sudo all passed.
+- Successor tool probes passed: Claude Code `2.1.227`, Codex `0.145.0`, Node.js
+  `v22.23.1`, `javac 25.0.4`, Maven `3.9.16`,
+  `JAVA_HOME=/opt/java/current`, and `MAVEN_HOME=/opt/maven/current`.
+- The original v024-derived control container
+  `pycharm-isolated-costin-1786394284` remained running and unchanged during
+  launch and inspection.
 - The accepted v024 bootstrap source revision remains
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
@@ -131,21 +164,26 @@ tooling.
 
 ## Next Resumable Task
 
-Continue with Stage 5 from the milestone plan:
+Finish Stage 6 before beginning Stage 7:
 
-1. initialize and list checkout readiness from the retained clean clone using
-   run-owned configuration roots;
-2. bind only test-owned persistent state and authorize the exact local v025
-   image ID plus the locked Claude Code acquisition without changing the
-   committed published-base recommendation;
-3. resolve and inspect the generated plan without launch side effects; and
-4. materialize or strictly reuse the full PyCharm/Codex/Claude successor
-   through the production realization path.
+1. obtain the user's manual confirmation that the new v025 PyCharm window is
+   visible and usable;
+2. harden the inspector to compare the complete expected Docker plan, mounts,
+   identity, security settings, and runtime-plan digest;
+3. add public-interface tests for malformed Docker output, early exit,
+   ownership/label mismatch, redaction, staging lifetime, and cleanup refusal;
+4. record a bounded second-inspection stability result in retained evidence;
+   and
+5. keep both exact containers and the run-owned staging until Stage 7 proves
+   persistence and deterministic cleanup.
 
 ## External State And Risks
 
 - Development is running in the accepted v024-derived PyCharm container
   `pycharm-isolated-costin-1786394284`.
+- The v025 successor is also running under exact ID
+  `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`.
+  Do not remove it or run-owned staging before Stage 7 persistence checks.
 - That launch lacks `DEVCAPSULE_RECURSIVE_E2E=1`. Current-source preflight
   classifies the missing marker as a warning because Docker socket, container
   identity, mounts, network mode, and runtime-plan authorization are inspected
