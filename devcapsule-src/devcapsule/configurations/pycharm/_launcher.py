@@ -42,6 +42,11 @@ class IdeConfigMode(str, Enum):
     custom = "custom"
 
 
+class ContainerLifecycle(str, Enum):
+    foreground = "foreground"
+    detached = "detached"
+
+
 @dataclass(frozen=True)
 class HostUser:
     uid: int
@@ -456,11 +461,16 @@ def build_docker_args(
     config: PycharmRunConfig,
     files: TempRuntimeFiles,
     env: Mapping[str, str],
+    *,
+    lifecycle: ContainerLifecycle = ContainerLifecycle.foreground,
 ) -> list[str]:
     host_user = current_host_user()
     args = [
-        "--rm",
-        "-i",
+        *(
+            ["--rm", "-i"]
+            if lifecycle is ContainerLifecycle.foreground
+            else ["--detach"]
+        ),
         "--name",
         config.name,
         "--workdir",
