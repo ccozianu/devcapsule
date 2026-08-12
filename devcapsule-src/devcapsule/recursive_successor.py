@@ -21,6 +21,7 @@ from devcapsule.configurations.pycharm._launcher import (
     cleanup_temp_runtime_files,
     prepare_temp_runtime_files,
 )
+from devcapsule.container_runtime.contract import RuntimePlan, RuntimePlanError
 from devcapsule.environment_realization import realize_environment
 from devcapsule.project import project_namespace
 from devcapsule.project_configuration import (
@@ -96,10 +97,19 @@ def launch_successor(
 
     env = dict(os.environ if environ is None else environ)
     run_root, manifest = _load_owned_run(workspace_root, run_id)
+    try:
+        current_runtime_plan = RuntimePlan.from_file(runtime_plan_path)
+    except RuntimePlanError as exc:
+        raise RecursiveSuccessorError("current capsule runtime plan is malformed") from exc
+    preflight_env = dict(env)
+    # Stage 5 deliberately isolates HOME for checkout-local configuration. The
+    # preflight still has to validate the actual home declared by the current
+    # capsule's external runtime contract.
+    preflight_env["HOME"] = current_runtime_plan.home
     report = run_recursive_preflight(
         checkout,
         runtime_plan_path=runtime_plan_path,
-        environ=env,
+        environ=preflight_env,
     )
     if not report.ready or report.container is None:
         raise RecursiveSuccessorError("recursive preflight is not ready for successor launch")
