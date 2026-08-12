@@ -40,6 +40,42 @@ orchestration is introduced or changed.
 - Verify negative PEX cases: unknown or mismatched revision, stale artifact,
   incorrect executable mode, and checksum mismatch.
 
+## `devcapsule project run` Interface And Documentation
+
+- Inventory every current and intended `devcapsule project run` command-line
+  parameter, including its type, default, safe default, source of truth,
+  precedence, persistence, validation, conflicts, and effect on the generated
+  runtime and Docker plans.
+- Reconcile the implementation with D-0001 and the state-and-persistence
+  specification. In particular, distinguish ordinary run-once values,
+  checkout-owned bindings, explicit host-access authorization, restrictive
+  workstation policy, recovery-only `run-image` options, and internal
+  recursive-E2E controls.
+- Correct any option that can grant Docker, network, sudo, filesystem, secret,
+  or other host access beyond the resolved checkout authorization or a
+  restrictive workstation policy. `--force` must never become an authorization
+  bypass.
+- Review option symmetry and composability: enabling and disabling forms,
+  conflict detection, safe downgrade behavior, the absence of ambient grants,
+  and whether missing generic run-once value or binding syntax should be added
+  or deliberately rejected.
+- Define and test the exact overlay order among workstation configuration,
+  committed project declaration, checkout configuration, generated resolution,
+  and run-once arguments. Tests must cover both escalation attempts and
+  deliberate least-privilege downgrades through the public CLI and final Docker
+  plan.
+- Review human and JSON output so every effective deviation is conspicuous,
+  security-sensitive choices are summarized without exposing secrets or host
+  paths, and users can inspect the final plan before launch where appropriate.
+- After corrections are accepted, publish high-quality user documentation for
+  `devcapsule project run`. It must document every supported parameter, defaults
+  and precedence, persistent versus run-once behavior, authorization and policy
+  boundaries, incompatible combinations, security implications, common
+  examples, safe least-privilege recipes, troubleshooting, and the distinct
+  roles of `project run`, `run-image`, and recursive-E2E engineering commands.
+- Add a documentation conformance check so CLI help, examples, and the
+  implemented option inventory cannot silently drift apart.
+
 ## Closure Rule
 
 An item leaves this backlog when a focused automated test covers the public
