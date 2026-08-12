@@ -1,6 +1,6 @@
 # Milestone Plan: Recursive Dogfood E2E — Build And Launch A Successor From Inside DevCapsule
 
-Status: active milestone; Stages 0 through 4 complete, Stage 5 pending
+Status: active milestone; Stages 0 through 5 complete, Stage 6 active
 
 Release target: V1
 
@@ -568,7 +568,8 @@ disabled; its disposable image and cache were removed after the probe.
 
 ## Stage 5: Configure, Resolve, And Materialize The Clean Clone
 
-Status: pending
+Status: complete; accepted 2026-08-12 with the authorization-negative plan
+proof transferred to the V1 backlog
 
 Run the built PEX against the clean clone with all developer-owned configuration
 roots isolated beneath the E2E workspace.
@@ -589,6 +590,14 @@ The scenario must also produce a safe unauthorized plan proving that absence of
 authorization yields bridge/no-host-Docker/no-sudo behavior. It need not start a
 second GUI for every negative case when the complete Docker plan and a small
 non-GUI container probe provide equivalent evidence.
+
+Closure decision: the product owner accepted Stage 5 after the isolated
+positive resolution, canonical materialization, strict reuse, and subsequent
+successful successor launch were proven. The safe unauthorized-plan scenario
+above was not executed. Its public-CLI plan and non-GUI probe coverage is an
+explicit obligation in the
+[V1 test backlog](2026-08-07-v1-test-backlog.md#authorization-negative-launch-plan),
+and does not reopen Stage 5.
 
 Done means:
 
@@ -952,7 +961,9 @@ The milestone is complete only when all of the following are true:
   the successor;
 - every bind source is valid in the host daemon's namespace and confined to
   approved mappings;
-- authorized and safe unauthorized Docker/network/sudo behavior is verified;
+- authorized Docker/network/sudo behavior is verified; safe unauthorized-plan
+  coverage remains an explicit V1 backlog obligation accepted outside this
+  milestone's closure criteria;
 - persistence, interruption, evidence, and ownership-safe cleanup are tested;
 - the successor remains alive and inspectable after detached launch;
 - the final GUI usability/handoff check is manually accepted; and
@@ -979,13 +990,10 @@ This milestone does not by itself:
 
 ## Next Task
 
-Begin Stage 5 from retained run `25f664fb3629f51be8e3894a0df8ffa7` by using
-run-owned configuration and state roots to initialize the clean clone,
-authorize exact local v025 image ID
-`sha256:c8f6dddbfaab7e412079cd89f9a5bdf631dd9c3b7ab963375a8f3302c1e7b066`,
-resolve and inspect its plan, and materialize or strictly reuse the canonical
-successor through the production realization path. Do not change the committed
-published-base lock.
+Finish Stage 6 hardening around retained run
+`b2093d85912fa34ac1324e1da26a9dcd`: complete expected-versus-actual Docker
+plan inspection, public failure-path and redaction tests, and retained
+stability evidence without stopping either the v025 successor or v024 control.
 
 Additional workspace, retry, corruption, redaction, and isolation hardening is
 tracked in [the V1 test backlog](2026-08-07-v1-test-backlog.md). It is not a
