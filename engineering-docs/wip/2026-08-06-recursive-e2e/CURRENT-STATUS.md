@@ -64,8 +64,8 @@ authorized the exact v025 local image plus Claude acquisition, materialized and
 strictly reused the canonical environment, and launched exact container
 `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`.
 The independent inspector passed and the successor remains stable with no
-restart. The user still needs to confirm the new GUI window is usable; the
-detailed Stage 6 hardening slices remain open.
+restart. On 2026-08-12 the user confirmed that the new PyCharm window is
+visible and usable. The detailed Stage 6 hardening slices remain open.
 
 ## Evidence
 
@@ -155,6 +155,10 @@ detailed Stage 6 hardening slices remain open.
 - The original v024-derived control container
   `pycharm-isolated-costin-1786394284` remained running and unchanged during
   launch and inspection.
+- Manual GUI handoff evidence: on 2026-08-12 the user confirmed that the v025
+  successor's new PyCharm window is visible and usable. A subsequent daemon
+  inspection still showed the successor running with zero restarts and the
+  v024 control running independently.
 - The accepted v024 bootstrap source revision remains
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
@@ -166,15 +170,13 @@ detailed Stage 6 hardening slices remain open.
 
 Finish Stage 6 before beginning Stage 7:
 
-1. obtain the user's manual confirmation that the new v025 PyCharm window is
-   visible and usable;
-2. harden the inspector to compare the complete expected Docker plan, mounts,
+1. harden the inspector to compare the complete expected Docker plan, mounts,
    identity, security settings, and runtime-plan digest;
-3. add public-interface tests for malformed Docker output, early exit,
+2. add public-interface tests for malformed Docker output, early exit,
    ownership/label mismatch, redaction, staging lifetime, and cleanup refusal;
-4. record a bounded second-inspection stability result in retained evidence;
+3. record a bounded second-inspection stability result in retained evidence;
    and
-5. keep both exact containers and the run-owned staging until Stage 7 proves
+4. keep both exact containers and the run-owned staging until Stage 7 proves
    persistence and deterministic cleanup.
 
 ## External State And Risks
