@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,7 @@ from devcapsule.configurations.pycharm._launcher import (
 )
 from devcapsule.container_runtime.contract import RuntimePlan, RuntimePlanError
 from devcapsule.environment_realization import realize_environment
+from devcapsule.materialization import RUNTIME_PLAN_PATH as SUCCESSOR_RUNTIME_PLAN_PATH
 from devcapsule.project import project_namespace
 from devcapsule.project_configuration import (
     atomic_write,
@@ -43,11 +45,17 @@ from devcapsule.recursive_host import (
     PathAccess,
     PathKind,
 )
+from devcapsule.recursive_successor_plan import (
+    ExpectedSuccessorPlan,
+    SuccessorPlanError,
+    compare_inspection,
+)
 
 
 WORKSPACE_ROOT = Path("/home/devcapsule/.local/share/devcapsule/e2e-workspaces")
 OWNER_MARKER = ".devcapsule-e2e-owner.json"
 MILESTONE_MANIFEST = "milestone-manifest.json"
+EXPECTED_PLAN = "expected-plan.json"
 SUCCESSOR_ROLE = "successor"
 RUN_ID_PATTERN = re.compile(r"[0-9a-f]{16,64}")
 
@@ -152,6 +160,8 @@ def launch_successor(
         host_args = _translate_bind_sources(args, context)
         if files.sudoers_file is not None:
             _make_root_owned(files.sudoers_file, launch_env)
+        plan = _expected_plan(host_args, files, realized)
+        _write_expected_plan(run_root, plan)
         _write_manifest(
             run_root,
             {
@@ -161,6 +171,7 @@ def launch_successor(
                     "source_revision": source_revision,
                     "container_name": name,
                     "expected_image_id": realized.image.identity,
+                    "expected_plan_digest": plan.digest(),
                     "role": SUCCESSOR_ROLE,
                 },
             },
@@ -184,10 +195,9 @@ def launch_successor(
         inspection = _inspect_container(container_id, launch_env)
         checks = _validate_inspection(
             inspection,
+            plan,
             run_id=run_id,
-            name=name,
             source_revision=source_revision,
-            image_id=realized.image.identity,
         )
         launched = True
         _write_manifest(
@@ -203,6 +213,7 @@ def launch_successor(
                     "formation_identity": realized.image.labels.get(
                         "devcapsule.materialization.identity", ""
                     ),
+                    "expected_plan_digest": plan.digest(),
                     "role": SUCCESSOR_ROLE,
                     "staging_retained": True,
                 },
@@ -249,21 +260,29 @@ def inspect_successor(
     launch = manifest.get("launch")
     if not isinstance(launch, dict):
         raise RecursiveSuccessorError("run manifest has no successor launch evidence")
-    required = ("container_id", "container_name", "image_id", "source_revision")
+    required = (
+        "container_id",
+        "container_name",
+        "image_id",
+        "source_revision",
+        "expected_plan_digest",
+    )
     if not all(isinstance(launch.get(key), str) and launch[key] for key in required):
         raise RecursiveSuccessorError("run manifest has incomplete successor launch evidence")
     container_id = str(launch["container_id"])
+    plan = _load_expected_plan(run_root, str(launch["expected_plan_digest"]))
+    if str(launch["container_name"]) != plan.name or str(launch["image_id"]) != plan.image_identity:
+        raise RecursiveSuccessorError("run manifest and retained successor plan disagree on identity")
     inspection = _inspect_container(container_id, env)
     checks = _validate_inspection(
         inspection,
+        plan,
         run_id=run_id,
-        name=str(launch["container_name"]),
         source_revision=str(launch["source_revision"]),
-        image_id=str(launch["image_id"]),
     )
     deadline = time.monotonic() + readiness_timeout
     while True:
-        probe = _probe_successor(container_id, env)
+        probe = _probe_successor(container_id, plan, env)
         if probe.returncode == 0:
             break
         if time.monotonic() >= deadline:
@@ -280,7 +299,13 @@ def inspect_successor(
         isinstance(value, str) and value for value in versions.values()
     ):
         raise RecursiveSuccessorError("successor readiness probe returned incomplete evidence")
-    checks = {**checks, **versions}
+    if versions.pop("runtime_plan_sha256", None) != plan.runtime_plan_digest:
+        raise RecursiveSuccessorError(
+            "successor runtime plan does not match the digest recorded at launch"
+        )
+    if versions.pop("runtime_plan_writable", None) != "no":
+        raise RecursiveSuccessorError("successor runtime plan is not mounted read-only")
+    checks = {**checks, "runtime_plan": "pass", **versions}
     _write_manifest(
         run_root,
         {
@@ -519,38 +544,78 @@ def _inspect_container(container_id: str, env: Mapping[str, str]) -> Mapping[str
     return value[0]
 
 
+def _expected_plan(
+    host_args: Sequence[str],
+    files: Any,
+    realized: Any,
+) -> ExpectedSuccessorPlan:
+    if files.runtime_plan_file is None:
+        raise RecursiveSuccessorError("successor launch plan carries no checkout runtime plan")
+    try:
+        digest = hashlib.sha256(Path(files.runtime_plan_file).read_bytes()).hexdigest()
+    except OSError as exc:
+        raise RecursiveSuccessorError("cannot digest the staged successor runtime plan") from exc
+    try:
+        return ExpectedSuccessorPlan.from_docker_args(
+            host_args,
+            image_reference=realized.image.reference,
+            image_identity=realized.image.identity,
+            image_labels=realized.image.labels,
+            runtime_plan_destination=SUCCESSOR_RUNTIME_PLAN_PATH,
+            runtime_plan_digest=digest,
+        )
+    except SuccessorPlanError as exc:
+        raise RecursiveSuccessorError(str(exc)) from exc
+
+
+def _write_expected_plan(run_root: Path, plan: ExpectedSuccessorPlan) -> None:
+    """Retain the exact translated plan; only this owner-private copy holds host sources."""
+
+    atomic_write(
+        run_root / EXPECTED_PLAN,
+        plan.to_json(show_host_paths=True) + "\n",
+        mode=0o600,
+    )
+
+
+def _load_expected_plan(run_root: Path, expected_digest: str) -> ExpectedSuccessorPlan:
+    try:
+        plan = ExpectedSuccessorPlan.from_mapping(_load_json(run_root / EXPECTED_PLAN))
+    except SuccessorPlanError as exc:
+        raise RecursiveSuccessorError(str(exc)) from exc
+    if plan.digest() != expected_digest:
+        raise RecursiveSuccessorError(
+            "retained successor plan does not match the digest recorded at launch"
+        )
+    return plan
+
+
 def _validate_inspection(
     inspection: Mapping[str, Any],
+    plan: ExpectedSuccessorPlan,
     *,
     run_id: str,
-    name: str,
     source_revision: str,
-    image_id: str,
 ) -> dict[str, str]:
-    labels = inspection.get("Config", {}).get("Labels", {})
-    expected_labels = {
+    ownership = {
         "devcapsule.e2e.managed": "true",
         "devcapsule.e2e.run-id": run_id,
         "devcapsule.e2e.source-revision": source_revision,
         "devcapsule.e2e.role": SUCCESSOR_ROLE,
     }
-    if inspection.get("Name") != f"/{name}":
-        raise RecursiveSuccessorError("successor name does not match the deterministic run name")
-    if inspection.get("Image") != image_id:
-        raise RecursiveSuccessorError("successor image ID does not match materialization evidence")
-    if not isinstance(labels, dict) or any(labels.get(key) != value for key, value in expected_labels.items()):
-        raise RecursiveSuccessorError("successor labels do not match exact launch ownership")
-    if inspection.get("State", {}).get("Running") is not True:
-        raise RecursiveSuccessorError("successor is not running")
-    return {
-        "container_identity": "pass",
-        "image_identity": "pass",
-        "labels": "pass",
-        "running": "pass",
-    }
+    if any(plan.labels.get(key) != value for key, value in ownership.items()):
+        raise RecursiveSuccessorError("retained successor plan does not claim exact run ownership")
+    try:
+        return compare_inspection(plan, inspection)
+    except SuccessorPlanError as exc:
+        raise RecursiveSuccessorError(str(exc)) from exc
 
 
-def _probe_successor(container_id: str, env: Mapping[str, str]) -> subprocess.CompletedProcess[str]:
+def _probe_successor(
+    container_id: str,
+    plan: ExpectedSuccessorPlan,
+    env: Mapping[str, str],
+) -> subprocess.CompletedProcess[str]:
     script = r'''set -eu
 test "${DEVCAPSULE_RECURSIVE_E2E:-}" = 1
 test "${DOCKER_HOST:-}" = unix:///run/host-docker.sock
@@ -559,7 +624,7 @@ test -d /opt/claude
 test "${DISABLE_UPDATES:-}" = 1
 pgrep -fa pycharm >/dev/null
 python3 - <<'PY'
-import json, os, subprocess
+import hashlib, json, os, subprocess
 commands = {
     "claude": ["claude", "--version"],
     "codex": ["codex", "--version"],
@@ -573,9 +638,21 @@ for name, command in commands.items():
     result[name] = output[0]
 result["java_home"] = os.environ["JAVA_HOME"]
 result["maven_home"] = os.environ["MAVEN_HOME"]
-result["runtime_plan"] = "pass" if os.path.isfile("/etc/devcapsule/runtime-plan.json") else "fail"
+plan_path = "__RUNTIME_PLAN_PATH__"
+with open(plan_path, "rb") as handle:
+    result["runtime_plan_sha256"] = hashlib.sha256(handle.read()).hexdigest()
+options = ""
+selected = ""
+with open("/proc/self/mountinfo", encoding="utf-8") as handle:
+    for line in handle:
+        fields = line.split(" ")
+        point = fields[4]
+        if (plan_path == point or plan_path.startswith(point.rstrip("/") + "/")) and len(point) >= len(selected):
+            selected = point
+            options = fields[5]
+result["runtime_plan_writable"] = "no" if "ro" in options.split(",") else "yes"
 print(json.dumps(result, sort_keys=True, separators=(",", ":")))
-PY'''
+PY'''.replace("__RUNTIME_PLAN_PATH__", plan.runtime_plan_destination)
     return subprocess.run(
         ["docker", "exec", container_id, "/bin/bash", "-lc", script],
         check=False,

@@ -32,10 +32,13 @@ active continuation branch.
   authorization-negative Docker/network/sudo plan proof was transferred to the
   V1 backlog and does not reopen Stage 5.
 - The Stage 6 live launch slice is successful: the production planner launched
-  a detached v025 successor, the independent inspector passed, and both the
-  successor and the untouched v024 control remain running. Stage 6 hardening
-  and exhaustive expected-plan/failure-path coverage remain open before the
-  stage is declared complete.
+  a detached v025 successor and the independent inspector passed. Stage 6
+  hardening and exhaustive expected-plan/failure-path coverage remain open
+  before the stage is declared complete.
+- The Stage 6 inspector is now hardened. It compares a launched successor
+  against a complete machine-readable expected plan instead of four
+  spot-checked fields, and the retained plan is bound to the run manifest by
+  digest so a later independent inspection cannot be relaxed silently.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -59,19 +62,59 @@ active continuation branch.
 
 ## Last Task And Status
 
-Last task: materialize and launch the v025 dogfood successor with checkout-local
-Claude Code acquisition while retaining the v024 control.
+Last task: harden the Stage 6 inspector so it compares the complete expected
+Docker plan, mounts, identity, security settings, and runtime-plan digest.
 
-Status: live slice complete. Run `b2093d85912fa34ac1324e1da26a9dcd`
+Status: complete, and verified only against synthetic and current-container
+Docker evidence. A new `devcapsule/recursive_successor_plan.py` derives an
+`ExpectedSuccessorPlan` from exactly the translated `docker run` arguments that
+a launch issues. `launch_successor` retains that plan as mode-0600
+`expected-plan.json` beside the run manifest and records its SHA-256 in the
+manifest; `inspect_successor` reloads it, refuses a digest or identity
+mismatch, and compares it against `docker inspect`. The comparison covers
+container and image identity, the container's inherited `devcapsule.*` image
+labels, runtime user and working directory, every planned environment value,
+exact mount-set equality including read-only mode and daemon-side source,
+tmpfs, network and IPC mode, `Privileged`, `ReadonlyRootfs`, `CapAdd`,
+`CapDrop`, `SecurityOpt`, `GroupAdd`, memory and PID limits, restart policy,
+and restart count. The in-container probe now returns the SHA-256 of
+`/etc/devcapsule/runtime-plan.json` and its mount options, so a substituted or
+writable runtime plan fails the inspection.
+
+The earlier live-launch result stands: run `b2093d85912fa34ac1324e1da26a9dcd`
 authorized the exact v025 local image plus Claude acquisition, materialized and
 strictly reused the canonical environment, and launched exact container
-`7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`.
-The independent inspector passed and the successor remains stable with no
-restart. On 2026-08-12 the user confirmed that the new PyCharm window is
-visible and usable. The detailed Stage 6 hardening slices remain open.
+`7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`. On
+2026-08-12 the user confirmed that the new PyCharm window is visible and
+usable. That inspection predates the hardening and used the weaker four-field
+check.
 
 ## Evidence
 
+- Inspector hardening gate on 2026-08-13: full fast suite `290 passed` with
+  `8 deselected`; mypy reports no issues over 90 source/test files; the
+  `nox -s build` gate succeeded, including five packaging integrations. The
+  public PEX was deliberately not rebuilt because the tree is dirty.
+- The hardening adds 60 focused public-interface tests in
+  `tests/test_recursive_successor_plan.py` and
+  `tests/test_recursive_successor.py`. They cover plan derivation from the real
+  launcher's arguments under both sudo and no-sudo shapes, retained-plan round
+  trip and digest tampering, host-source redaction, and rejection of a missing
+  mount, an unplanned bind/volume/tmpfs mount, a relaxed read-only mount, a
+  substituted mount source, a substituted or writable runtime plan, label and
+  formation-identity mismatch, environment drift, every modelled security and
+  limit deviation, a nonzero restart count, malformed and ambiguous Docker
+  output, and manifest/plan identity disagreement.
+- The plan parser fails closed on any Docker flag it does not model, and a
+  launcher-coupled test pins that model to `build_docker_args`, so a new launch
+  flag cannot silently escape comparison.
+- The comparator's field readers were validated against real daemon output
+  from the running development container: `.Mounts` carries only `bind`
+  entries with `Type`/`Source`/`Destination`/`RW`, tmpfs appears only under
+  `HostConfig.Tmpfs`, absent capability and security lists are `null`, and the
+  materialized image's 27 `devcapsule.*` labels are inherited into
+  `Config.Labels`. All eleven daemon-side checks passed against that real
+  inspection with no host source in the redacted evidence.
 - Recursive dogfood E2E: `2 passed`, `1 deselected` in 30.74 seconds on
   2026-08-07.
 - Commit `44fbe34` restored the recursive E2E after the Python distribution
@@ -86,9 +129,10 @@ visible and usable. The detailed Stage 6 hardening slices remain open.
   source files.
 - Full dirty-tree Nox gate: `226 passed`, `8 deselected`; PEX integration:
   `5 passed`. The expected local-only PEX was built and smoke-tested.
-- The current v024 container still passes the two Stage 3 recursive E2Es when
-  the missing launcher marker is scoped explicitly to the test process:
-  `2 passed`, `1 deselected` in 82.95 seconds.
+- The then-current v024 container still passed the two Stage 3 recursive E2Es
+  when the missing launcher marker was scoped explicitly to the test process:
+  `2 passed`, `1 deselected` in 82.95 seconds. That workaround was specific to
+  the retired v024-derived control; later environments carry the marker.
 - Successor source commits `da38cd7`, `0761940`, and `20b2ee1` are published on
   `origin/recursive-e2e/stage-4`. The last commit fixes public PEX provenance
   forwarding without exposing that override to nested integration tests.
@@ -176,27 +220,48 @@ visible and usable. The detailed Stage 6 hardening slices remain open.
 
 Finish Stage 6 before beginning Stage 7:
 
-1. harden the inspector to compare the complete expected Docker plan, mounts,
+1. done: the inspector compares the complete expected Docker plan, mounts,
    identity, security settings, and runtime-plan digest;
-2. add public-interface tests for malformed Docker output, early exit,
-   ownership/label mismatch, redaction, staging lifetime, and cleanup refusal;
+2. partially done: malformed and ambiguous Docker output, ownership/label
+   mismatch, and host-source redaction now have public-interface tests. Early
+   successor exit, staging lifetime, and cleanup refusal remain uncovered and
+   belong to the Stage 6 failure-handling slice;
 3. record a bounded second-inspection stability result in retained evidence;
    and
 4. keep both exact containers and the run-owned staging until Stage 7 proves
    persistence and deterministic cleanup.
 
+A live re-inspection under the hardened inspector is also now required. The
+retained run predates `expected-plan.json`, so `inspect-successor` will refuse
+that run until it is relaunched. Decide deliberately whether Stage 6 closes by
+relaunching a successor under the hardened planner or by accepting the earlier
+weak-check launch as historical evidence.
+
 ## External State And Risks
 
-- Development is running in the accepted v024-derived PyCharm container
-  `pycharm-isolated-costin-1786394284`.
-- The v025 successor is also running under exact ID
-  `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`.
-  Do not remove it or run-owned staging before Stage 7 persistence checks.
-- That launch lacks `DEVCAPSULE_RECURSIVE_E2E=1`. Current-source preflight
-  classifies the missing marker as a warning because Docker socket, container
-  identity, mounts, network mode, and runtime-plan authorization are inspected
-  independently. Tests requiring the marker used a process-scoped value; the
-  launcher metadata mismatch remains to be corrected in a later launch.
+- Observed on 2026-08-13, correcting the previous entry: the v025 successor
+  `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93` is
+  `Exited (0)` and has been stopped for about 39 hours. It still exists and
+  must not be removed before Stage 7. The earlier "continued health after
+  return" claim therefore covers only the observation window recorded on
+  2026-08-12; the bounded second-inspection stability result in the next-step
+  list is still outstanding and now needs a fresh running successor.
+- The v024-derived control container `pycharm-isolated-costin-1786394284` is no
+  longer present on this host. Development now runs in
+  `pycharm-isolated-costin-1786657961`, itself built from the canonical
+  environment `devcapsule-local-pycharm:2145e28bc7b8aca0eee0`. The recursive
+  claim that a v024-derived control was left untouched during the v025 launch
+  remains valid as historical Stage 6 evidence but can no longer be
+  re-observed live.
+- Corrected on 2026-08-14: the earlier claim that the successor launch lacks
+  `DEVCAPSULE_RECURSIVE_E2E=1` is wrong, and no launcher metadata mismatch
+  remains to be fixed. Direct inspection shows the retained successor
+  `7e92dcba3868` carries `DEVCAPSULE_RECURSIVE_E2E=1` and all four
+  `devcapsule.e2e.*` ownership labels, and the current development container
+  carries the marker as well. The missing-marker workaround applied to the
+  retired v024-derived control `pycharm-isolated-costin-1786394284`, which
+  predates the marker and no longer exists on this host. The historical Stage 3
+  evidence recorded against that container stands as written.
 - The project base authorization and generated local resolution are stale by
   deliberate developer-owned choices. Do not reauthorize a base implicitly.
 - The bare v024 base does not add `/opt/node/current/bin` to `PATH`; recipe
