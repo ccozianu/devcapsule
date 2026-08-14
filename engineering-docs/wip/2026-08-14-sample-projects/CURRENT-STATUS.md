@@ -66,32 +66,67 @@ Status: complete. The sample repository is
 - DevCapsule gate on this branch after adding the submodule: `230 passed`,
   `8 deselected`; mypy clean over 88 source files; five packaging
   integrations; `nox -s build` successful.
+- After the `postgresql-client` component: `239 passed`, `8 deselected`; mypy
+  clean over 90 source files; `nox -s build` successful. Nine focused tests
+  cover catalog registration, the empty artifact contribution, and rejection of
+  local-materialization delivery, a wrong license, a missing version, and
+  declared artifacts.
+- Base recipe 5 built locally as
+  `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v026`, image ID
+  `sha256:da328dd539d4f65edda2facbabeff3440c9a8ab4211e1fc0dc3cf9e6c94ab4eb`,
+  from public PEX
+  `dbdff25a6e09283c61318fd1f16803186f05cb454abef807f7338f19081827e1` at
+  revision `49ad45362830746eecf180c7439859c50dcf0d4b`, with source
+  verification reporting the public GitHub commit reachable. Direct inspection
+  confirmed `psql (PostgreSQL) 16.14` at `/usr/bin/psql`, recipe version 5, the
+  `PostgreSQL` license label, and an intact Node/Java toolchain. The image is
+  **not published**.
 
-## Discovered DevCapsule Gaps
+## Discovered DevCapsule Gaps And Their Resolution
 
-These did not block the sample, so the workstream continued rather than
-pausing. They are candidates for `project-management` to sequence.
+Three gaps surfaced while building the first sample. On 2026-08-14 the product
+owner ruled on all three, so this workstream did not pause.
 
-1. **No service dependency model.** A project cannot declare that it needs a
-   database. The sample starts PostgreSQL itself with the Docker CLI, which is
-   the only reason it recommends host-socket Docker and host networking at all.
-   A first-class service declaration would let a sample like this need neither
-   grant, which is a meaningful reduction in requested host privilege.
-2. **No port declaration or allocation.** The sample publishes a fixed host
-   port and collided immediately with an unrelated PostgreSQL already running
-   on the development host. It now takes `TODO_DB_PORT`, but every sample
-   solving this privately is a sign the product should model it.
-3. **No `psql` client in the base image.** Reasonable for a general base, but
-   database work then requires going through the database container. Worth a
-   decision on whether database clients belong in a base, a component, or
-   neither.
+1. **No service dependency model.** *Deliberately out of scope for V1*: it
+   would expand implementation, verification, and testing considerably. A
+   sample may instead assume a developer-provided database or document how to
+   start one in a container. Recorded in the V1 backlog as
+   [modest sample-project experience improvements](../../implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md).
+2. **No port declaration or allocation.** Same ruling. Host networking is an
+   accepted V1 simplifying assumption, and the sample's declaration now says so
+   explicitly rather than presenting it as a workaround. The sample documents
+   how to run with tighter host access instead.
+3. **No `psql` client in the base image.** *Resolved.* A `postgresql-client`
+   component now exists and the base provides it, because the PostgreSQL
+   License permits redistribution.
+
+## The postgresql-client Component
+
+Product work performed under this workstream on the product owner's direction,
+because the sample exposed the need.
+
+`postgresql-client` is declared like any other component but is delivered by
+the pinned base rather than materialized: its `delivery-policy` is
+`base-image`, it contributes no artifact, and declaring artifacts on it is an
+error. Base recipe 5 installs the client and labels its license. This is the
+deliberate contrast with Claude Code, which cannot be redistributed and is
+therefore acquired per developer after explicit terms authorization.
 
 ## Pending For The Product Owner
 
-- The submodule pointer commit on this branch is not yet on `main`.
-- Whether the three gaps above justify pausing this workstream in favour of
-  `project-management` is a product-owner call; the escalation rule below was
-  deliberately not triggered unilaterally because the sample works today.
+- **Publishing a base with recipe 5.** The rebuilt local base carries `psql`,
+  but no base with recipe 5 is published yet. Until one is, a sample cannot
+  honestly declare `postgresql-client`, because samples pin the published base
+  by digest. The first sample therefore still pins the recipe-4 v025 digest and
+  does not declare the component.
+- **Advancing the sample's base pin** to the published recipe-5 digest and
+  adding the `postgresql-client` component to its lock, once that base exists.
+- **Routing.** The component is DevCapsule product work committed on a
+  sample-projects branch. It was directed here because a sample exposed the
+  need, but this workstream's registered goal is samples. Either widen the
+  registered goal to include the modest capabilities samples require, or move
+  such work to its own workstream in future.
+- The submodule pointer and these commits are on this branch, not on `main`.
 
 ## Planned Samples
 
