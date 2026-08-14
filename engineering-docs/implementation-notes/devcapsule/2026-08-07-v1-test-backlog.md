@@ -97,6 +97,32 @@ does not reopen Stage 5.
 - Preserve sanitized plan/probe evidence and cover the behavior with focused
   public-CLI tests in the ordinary repository gate.
 
+## Modest Sample-Project Experience Improvements
+
+Requested by the product owner on 2026-08-14 after the first sample project.
+A full service-dependency model is explicitly **out of scope for V1**: it would
+expand implementation, verification, and automated testing considerably. V1
+instead assumes a sample may rely on a database the developer already runs, or
+on documented instructions for starting one in a container, and may reasonably
+assume host networking. This item collects the smaller changes that would
+measurably improve that experience without building a service model.
+
+- Decide what a project may state about services it expects without DevCapsule
+  managing them, so a developer reads one declaration instead of prose. Even a
+  documented, non-enforced declaration is useful.
+- Give samples a supported way to express required host ports, or a convention
+  that avoids collisions. The first sample collided immediately with an
+  unrelated PostgreSQL already listening on the host's port 5432.
+- Provide a documented least-privilege alternative to host networking for
+  samples that only need a database and a browser-reachable dev server, so the
+  host-network recommendation is a convenience rather than the only route.
+- Assess which further redistributable clients or tools belong in the base by
+  the same reasoning applied to `postgresql-client`, and which should stay out.
+- Add a check that a sample's `.devcapsule` declaration and lock resolve
+  through the public CLI, so a sample cannot silently rot as the schema evolves.
+
+Each accepted item leaves this backlog under the closure rule below.
+
 ## Mainline Change Propagation To The Remote Repository
 
 Requested by the product owner on 2026-08-14 while registering the
