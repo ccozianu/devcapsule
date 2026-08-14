@@ -8,6 +8,7 @@
       <sourceFolder url="file://$MODULE_DIR$/devcapsule-src/tests" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/devcapsule-src/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/devcapsule-src/devcapsule/assets" />
+      <excludeFolder url="file://$MODULE_DIR$/devcapsule-src/tests/resources/sample_projects/fastapi-webapp/.venv" />
     </content>
     <orderEntry type="jdk" jdkName="$MODULE_DIR$/devcapsule-src/.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
