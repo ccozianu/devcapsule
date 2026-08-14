@@ -76,7 +76,11 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "4") in plan.labels
+    assert ("devcapsule.base.recipe-version", "5") in plan.labels
+    # Recipe 5 adds the redistributable PostgreSQL client so projects can
+    # declare the postgresql-client component instead of acquiring a client.
+    assert "postgresql-client" in plan.apt_packages
+    assert ("devcapsule.component.postgresql-client.license", "PostgreSQL") in plan.labels
     assert ("devcapsule.base.recipe-status", "ready") in plan.labels
     assert ("devcapsule.pex.sha256", hashlib.sha256(pex.read_bytes()).hexdigest()) in plan.labels
     assert ("devcapsule.source.repository", "https://github.com/example/devcapsule") in plan.labels

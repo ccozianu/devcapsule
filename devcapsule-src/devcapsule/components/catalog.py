@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from devcapsule.components import ComponentDefinition
 from devcapsule.components.claude_code import DEFINITION as CLAUDE_CODE
 from devcapsule.components.codex import DEFINITION as CODEX
+from devcapsule.components.postgresql_client import DEFINITION as POSTGRESQL_CLIENT
 from devcapsule.components.pycharm import DEFINITION as PYCHARM
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
 
@@ -19,6 +20,7 @@ COMPONENTS: dict[str, ComponentDefinition] = {
     PYCHARM.id: PYCHARM,
     CODEX.id: CODEX,
     CLAUDE_CODE.id: CLAUDE_CODE,
+    POSTGRESQL_CLIENT.id: POSTGRESQL_CLIENT,
 }
 
 
