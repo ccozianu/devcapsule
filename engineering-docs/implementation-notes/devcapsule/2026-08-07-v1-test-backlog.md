@@ -97,6 +97,30 @@ does not reopen Stage 5.
 - Preserve sanitized plan/probe evidence and cover the behavior with focused
   public-CLI tests in the ordinary repository gate.
 
+## Mainline Change Propagation To The Remote Repository
+
+Requested by the product owner on 2026-08-14 while registering the
+`sample-projects` workstream. Today the mechanism by which project changes on
+`main` reach the canonical remote is conventional rather than specified, and it
+has repeatedly become a coordination cost: agent environments have lacked
+publication credentials, local `main` has diverged from `origin/main` while
+already-merged commits survived locally under different SHAs, and workstream
+registration depends on a `main` commit that the agent may be unable to publish.
+
+- Specify how a change committed on `main` is expected to reach the canonical
+  remote, including whether direct push or a pull request is authoritative, and
+  who performs it when the working environment holds no publication credential.
+- Specify how a stale or diverged local `main` is detected and reconciled
+  without discarding unpublished work, distinguishing commits already merged
+  upstream by content from genuinely unpublished ones.
+- Specify how a workstream's immutable start date is determined when its
+  registration commit reaches `main` later than it was authored.
+- Extend the rule to submodule pointers: define when a parent-repository
+  pointer update may be committed relative to publishing the corresponding
+  sample-repository commit, so `main` never advertises an unreachable pointer.
+- Implement whatever check or tooling the specification requires, and verify it
+  with a focused automated check in the ordinary repository gate.
+
 ## Closure Rule
 
 An item leaves this backlog when a focused automated test covers the public
