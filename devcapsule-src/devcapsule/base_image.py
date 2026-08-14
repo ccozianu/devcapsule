@@ -44,7 +44,7 @@ NVIDIA_CUDA_ROOT_IMAGE = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
 DEFAULT_OUTPUT_IMAGE = "devcapsule-base:latest"
 PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
-BASE_RECIPE_VERSION = "4"
+BASE_RECIPE_VERSION = "5"
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
@@ -215,6 +215,7 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.component.maven.version", MAVEN_VERSION),
                     ("devcapsule.component.maven.home", MAVEN_CURRENT),
                     ("devcapsule.component.maven.license", "Apache-2.0"),
+                    ("devcapsule.component.postgresql-client.license", "PostgreSQL"),
                 )
             ),
             EntrypointComponent(("/usr/bin/tini", "--", PEX_DESTINATION, "runtime")),

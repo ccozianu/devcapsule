@@ -75,6 +75,10 @@ BASE_APT_PACKAGES = (
     "sudo",
     "libpq5",
     "libpq-dev",
+    # Redistributable under the PostgreSQL License, so the published base can
+    # carry it and projects declare the postgresql-client component instead of
+    # acquiring a client per developer.
+    "postgresql-client",
     "tini",
     "docker.io",
     "docker-buildx",
