@@ -35,10 +35,11 @@ active continuation branch.
   a detached v025 successor and the independent inspector passed. Stage 6
   hardening and exhaustive expected-plan/failure-path coverage remain open
   before the stage is declared complete.
-- The Stage 6 inspector is now hardened. It compares a launched successor
-  against a complete machine-readable expected plan instead of four
+- The Stage 6 inspector is now hardened and proven live. It compares a launched
+  successor against a complete machine-readable expected plan instead of four
   spot-checked fields, and the retained plan is bound to the run manifest by
-  digest so a later independent inspection cannot be relaxed silently.
+  digest so a later independent inspection cannot be relaxed silently. Only the
+  Stage 6 failure-path coverage remains open.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -65,8 +66,10 @@ active continuation branch.
 Last task: harden the Stage 6 inspector so it compares the complete expected
 Docker plan, mounts, identity, security settings, and runtime-plan digest.
 
-Status: complete, and verified only against synthetic and current-container
-Docker evidence. A new `devcapsule/recursive_successor_plan.py` derives an
+Status: complete and proven live. On 2026-08-14 run
+`482c34f24fc5c438da7b24ff172a619b` launched a successor through the
+clean-clone PEX and passed the hardened inspection twice. A new
+`devcapsule/recursive_successor_plan.py` derives an
 `ExpectedSuccessorPlan` from exactly the translated `docker run` arguments that
 a launch issues. `launch_successor` retains that plan as mode-0600
 `expected-plan.json` beside the run manifest and records its SHA-256 in the
@@ -91,6 +94,48 @@ check.
 
 ## Evidence
 
+- Live hardened-inspector proof on 2026-08-14, run
+  `482c34f24fc5c438da7b24ff172a619b`. Its clone is detached at
+  `c26d877acd006d1a05666696c5c672c70f5d2cd6`, has no remote, and imported no
+  credentials. Clean-clone PEX SHA-256:
+  `744f7805389769f78e006afb4ec5d0ebbde629877060aff389602a8dbc56873b`. Its
+  provenance was built with `--allow-unpublished-revision` against
+  `https://github.com/ccozianu/devcapsule` because that revision is committed
+  locally but not yet published.
+- The isolated checkout authorized the exact local base
+  `sha256:9c806703213bc280b6378e52e037bc55df85b585b662e20ef06ad3bb1ae48173`,
+  host Docker, host networking, development sudo, and the Claude Code
+  download, all under the run root's own XDG configuration. No
+  developer-owned checkout record was read or modified.
+- Realization strictly reused the canonical environment
+  `devcapsule-local-pycharm:2145e28bc7b8aca0eee0`, image ID
+  `sha256:f3fa500c3811d2f838a56af224e61f15524de014fa4270174b14ec36e894dbee`.
+  This confirms in practice that a devcapsule source change does not alter the
+  formation identity, so neither a new base image nor a new materialized image
+  was required for the hardened inspector.
+- Successor container
+  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6`, name
+  `devcapsule-e2e-482c34f24fc5c438da7b24ff172a619b-successor`, started
+  `2026-08-14T10:12:46Z`. The launch-time comparison passed all eleven
+  daemon-side checks: container and image identity, ownership labels,
+  formation identity, runtime identity, environment, mounts, resource limits,
+  security settings, restart policy, and running state.
+- The independent `inspect-successor` boundary passed the same eleven checks
+  plus `runtime_plan`, proving the in-container SHA-256 of
+  `/etc/devcapsule/runtime-plan.json` equals the digest recorded at launch and
+  that its mount is read-only in `/proc/self/mountinfo`. Tool probes returned
+  Claude Code `2.1.227`, Codex `0.145.0`, Node.js `v22.23.1`, `javac 25.0.4`,
+  and Apache Maven `3.9.16` with the expected `JAVA_HOME` and `MAVEN_HOME`.
+- Bounded second-inspection stability result: a repeat independent inspection
+  after a 90-second window returned the identical container ID, image ID, and
+  full pass set, with `Running=true` and `RestartCount=0`.
+- Retained `expected-plan.json` is mode 0600 and pins 17 mounts, 27
+  `devcapsule.*` image labels, and 26 compared environment values, with
+  `DISPLAY` classified as the sole pass-through value that is never compared
+  or recorded. The run manifest contains no occurrence of the host workspace
+  path, so redaction holds in production and not only under test.
+- The development container `pycharm-isolated-costin-1786657961` was neither
+  stopped nor modified during the launch or either inspection.
 - Inspector hardening gate on 2026-08-13: full fast suite `290 passed` with
   `8 deselected`; mypy reports no issues over 90 source/test files; the
   `nox -s build` gate succeeded, including five packaging integrations. The
@@ -226,19 +271,32 @@ Finish Stage 6 before beginning Stage 7:
    mismatch, and host-source redaction now have public-interface tests. Early
    successor exit, staging lifetime, and cleanup refusal remain uncovered and
    belong to the Stage 6 failure-handling slice;
-3. record a bounded second-inspection stability result in retained evidence;
-   and
-4. keep both exact containers and the run-owned staging until Stage 7 proves
+3. done: a bounded second-inspection stability result is recorded for run
+   `482c34f24fc5c438da7b24ff172a619b`; and
+4. keep the exact containers and run-owned staging until Stage 7 proves
    persistence and deterministic cleanup.
 
-A live re-inspection under the hardened inspector is also now required. The
-retained run predates `expected-plan.json`, so `inspect-successor` will refuse
-that run until it is relaunched. Decide deliberately whether Stage 6 closes by
-relaunching a successor under the hardened planner or by accepting the earlier
-weak-check launch as historical evidence.
+Only item 2's failure-path coverage now blocks declaring Stage 6 complete:
+early successor exit, staging lifetime, and cleanup refusal still need
+public-interface tests. That is the Stage 6 failure-handling slice and it
+touches the launch path rather than the inspector.
+
+Stage 7 must also choose its persistence subject explicitly. Two successors are
+now retained: the current running `482c34f2…` successor, which carries an
+`expected-plan.json` and is the only one the hardened inspector can re-verify,
+and the older exited `b2093d85…` successor, which predates the retained plan
+and can no longer be inspected. Prefer the newer run as the Stage 7 subject and
+keep the older one as historical evidence only.
 
 ## External State And Risks
 
+- The current Stage 6 successor
+  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6` is running
+  with zero restarts, and its run root
+  `482c34f24fc5c438da7b24ff172a619b` holds the owner marker, manifest,
+  `expected-plan.json`, clone, build environment, and retained staging. Do not
+  remove any of it before Stage 7. Its clone additionally contains a `buildenv`
+  virtualenv created only to build the clean-clone PEX.
 - Observed on 2026-08-13, correcting the previous entry: the v025 successor
   `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93` is
   `Exited (0)` and has been stopped for about 39 hours. It still exists and
