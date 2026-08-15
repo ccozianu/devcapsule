@@ -48,12 +48,14 @@ created it.
 This is a repository-wide coordination fact and is reflected in root
 `CURRENT-STATUS.md`.
 
-Reconciliation needed: `WORKFLOW.md` rule 11 states that one workstream does
-not edit another workstream's WIP directory or commit another worktree's
-recovery state. That is narrower than this decision and may be a genuine
-carve-out for handoffs and recovery state rather than a contradiction.
-`workflow-improvements` should reconcile the two explicitly rather than leaving
-readers to guess which governs.
+Reconciled the same day. `WORKFLOW.md` rule 11 previously stated that one
+workstream does not edit another workstream's WIP directory or commit another
+worktree's recovery state, which read as a narrower ownership claim. The
+product owner kept that as a deliberate carve-out rather than a contradiction:
+both are a workstream's account of its own state, which another workstream
+cannot restate accurately. Rule 11 now says exactly that, and directs an agent
+to report what it observes about another workstream instead of editing that
+workstream's record.
 
 The locking protocol itself is backlogged with an undecided release target; see
 [coordination backlog](coordination-backlog.md).
@@ -96,12 +98,21 @@ bound. Fixing ownership fixes both problems.
 
 Four pieces, all derived from observed failures rather than speculation.
 
-1. **Verification-first Git procedures.** Document the patch-id check
+**Bootstrap exception, decided 2026-08-15.** Items 1 and 2, plus the rule 11
+reconciliation, were written directly into `WORKFLOW.md` from this workstream
+rather than waiting for `workflow-improvements` to start. Starting that
+workstream cleanly requires the very procedures those items document:
+registering on `main`, forking from the registration commit, resolving a stale
+branch, and confirming a merge landed. Publishing the minimal set first removes
+the circularity. Items 3 and 4 remain for `workflow-improvements`, which can
+now begin under documented procedures.
+
+1. **Delivered 2026-08-15.** Verification-first Git procedures: the patch-id check
    (`git cherry origin/main <branch>`) as the sanctioned way to prove commits
    are already upstream; bound when an agent may resolve divergence without
    asking; require reporting when it does. Extend the rule beyond `main` to any
    stale workstream branch.
-2. **A correct merge-landed check.** `git merge-base --is-ancestor` answers
+2. **Delivered 2026-08-15.** A correct merge-landed check. `git merge-base --is-ancestor` answers
    "no" for a squashed or rebased merge whose content is fully upstream. An
    agent trusting it concludes the merge failed and redoes integrated work.
    This is a correctness trap, not a clarity gap, and should be documented with

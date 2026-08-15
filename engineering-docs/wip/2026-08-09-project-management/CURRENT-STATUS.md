@@ -41,6 +41,11 @@ explicit switch to this branch or a separate clean worktree.
 ## Current State
 
 - The first portfolio checkpoint is recorded for 2026-08-15.
+- The minimal workflow improvements it identified are published in
+  `WORKFLOW.md`: verified divergence resolution, the merge-landed check,
+  and non-exclusive file editing with a handoff carve-out. This was a
+  deliberate bootstrap exception, because `workflow-improvements` could not
+  start cleanly without them.
 - The current execution focus is `sample-projects`. `recursive-e2e` is paused
   by product-owner decision with Stage 6 substantially complete.
 - `workflow-improvements` is open and its intake is now ready: four concrete
