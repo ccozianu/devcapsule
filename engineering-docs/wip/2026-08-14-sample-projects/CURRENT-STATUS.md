@@ -143,23 +143,66 @@ therefore acquired per developer after explicit terms authorization.
 Further samples are deliberately unspecified until the first one proves the
 shape.
 
+## Adopter-Path Verification
+
+Run on 2026-08-15. Three of the four criteria passed; the GUI launch is blocked
+for a structural reason recorded below.
+
+- An isolated adopter checkout authorized the published base digest, host
+  Docker, host networking, and the Claude Code download, then resolved. No
+  developer-owned configuration was touched.
+- Materialization produced the sample's own environment
+  `devcapsule-local-pycharm:9952e3bd59d99dbafc9f`, image ID
+  `sha256:1a16023eb3d1e2e4b078a8d57fef8dc487dfdea4e81107fb14341e1c9aea5018`,
+  formation identity
+  `9952e3bd59d99dbafc9f41ae42eb07d1fd097c6dc05d22d3c4cd2d3219f83650`, on base
+  identity `sha256:da328dd539d4f65edda2facbabeff3440c9a8ab4211e1fc0dc3cf9e6c94ab4eb`
+  obtained from the published recipe-5 digest.
+- Probing that image: `psql (PostgreSQL) 16.14` at `/usr/bin/psql`, **Claude
+  Code `2.1.227` at `/opt/claude/bin/claude` on `PATH`**, Node.js `v22.23.1`,
+  npm `10.9.8`, Python `3.12.3`, Git, and the Docker CLI. Codex is correctly
+  absent, because the sample does not declare it. PyCharm is at
+  `/opt/jetbrains/pycharm/bin/pycharm.sh` and is launched by the runtime plan
+  rather than from `PATH`, so its absence there is by design.
+- The developer-readme first-run sequence was executed inside that environment
+  against a clean copy of the sample: dependencies installed, backend tests
+  `4 passed`, `psql` connected to PostgreSQL `17.11`, the API answered health
+  and created and listed a TODO, `psql` then saw the exact row the API had
+  written, and the frontend installed and built a 195 kB bundle.
+- Two developer-readme defects were found and fixed: the
+  individual-authorization fallback omitted the **required** `base-image`
+  authorization, and `--all-recommended` refuses to run without an interactive
+  terminal while being presented as the primary path.
+
+### Blocked: GUI Launch From Inside A Capsule
+
+`devcapsule project run` could not be exercised, and this is a product
+limitation rather than a sample defect. Ordinary launch performs no host-path
+translation: it assumes it is running on the host. Issued from inside a
+DevCapsule container it hands the host daemon a bind source such as
+`/workspace/.../fastapi-webapp`, which does not exist on the host. Docker
+creates missing bind sources as empty directories, so the IDE would open an
+empty project instead of failing loudly.
+
+The recursive workstream solved exactly this with `HostDaemonLaunchContext`
+translation, but that machinery is engineering-mode and gated to DevCapsule's
+own project identity, so a sample cannot use it.
+
+Consequences:
+
+- Verifying the GUI launch of any sample requires either a host-side run or a
+  product change; it cannot be completed from this environment.
+- Anyone developing sample projects inside DevCapsule hits the same wall.
+
 ## Next Resumable Task
 
-Prove the `fastapi-webapp` sample from a real adopter's starting point: launch
-it as its own DevCapsule environment rather than developing it from inside the
-DevCapsule checkout.
+Decide how the sample GUI launch gets verified, then verify it.
 
-Done means:
-
-- an isolated checkout authorizes the sample's base image and recommended host
-  access, resolves, and launches PyCharm on the sample project;
-- the developer-readme first-run sequence is executed verbatim in that
-  environment and corrected wherever it does not match reality;
-- Claude Code is confirmed available on `PATH` inside that environment; and
-- the result is recorded here as evidence.
-
-The sample's own verification is already complete; what remains untested is the
-adopter path through `devcapsule project run` against the sample itself.
+Either run `devcapsule project run` against the sample from the host, which
+needs no product change and closes this criterion immediately, or decide that
+ordinary launch should become recursion-aware and route that to
+`project-management` as a product change. The silent empty-directory failure
+mode is worth addressing regardless of which route is chosen.
 
 ## Feature-Gap Escalation Rule
 
