@@ -56,8 +56,15 @@ The following restrictions keep concurrent work understandable:
    `engineering-docs/wip/<start-date>-<mnemonic>/CURRENT-STATUS.md`.
 10. Root `CURRENT-STATUS.md` on `main` lists open workstreams only. An open
    workstream remains listed while active, paused, blocked, or integrating.
-11. One workstream does not edit another workstream's WIP directory or commit
-    another worktree's recovery state.
+11. No workstream holds exclusive editing rights over a file. A workstream may
+    edit any file its task genuinely requires, and exclusivity may not be
+    inferred from a file's subject, its directory, or which workstream created
+    it. Two carve-outs stand: another workstream's WIP handoff directory, and
+    another worktree's recovery state. Each is a workstream's account of its
+    own state, which another workstream cannot restate accurately; report what
+    you observe about another workstream instead of editing its record. Wider
+    exclusivity applies only where a documented locking protocol exists and is
+    actually used for that file. No such protocol exists today.
 
 ### Beginning A Workstream
 
@@ -88,9 +95,10 @@ Workstream discovery and checkout selection are related but distinct:
   not from a potentially stale copy of root `CURRENT-STATUS.md` on a long-lived
   workstream branch. The mainline ref is normally current local `main`, or a
   fetched remote-tracking `main` when it is newer and authoritative. If the
-  candidates have diverged, do not choose silently. Refresh them according to
-  repository policy when an operation requires current shared state; routine
-  offline resumption may use the latest unambiguous locally available snapshot.
+  candidates have diverged, do not choose silently; resolve the divergence
+  under *Verifying Shared Branch State*. Refresh them according to repository
+  policy when an operation requires current shared state; routine offline
+  resumption may use the latest unambiguous locally available snapshot.
 - The current worktree and its checked-out branch provide the persistent local
   selection. This first protocol deliberately defines no second untracked
   "current workstream" preference file.
@@ -215,8 +223,9 @@ the intended result ambiguous.
    clean and all accepted workstream changes are committed. Freeze that branch
    against unrelated work while integration proceeds.
 2. Inspect current local and remote `main`, fetching remote refs when network
-   access is available. Do not discard local commits or choose a side when
-   local and remote `main` have diverged.
+   access is available. If they have diverged, resolve it under *Verifying
+   Shared Branch State*: reset only when every local commit is proven already
+   upstream, and otherwise do not discard local commits or choose a side.
 3. Synchronize the integration branch with current `main` according to
    repository policy. A project may require rebasing, merging `main`, a hosting
    platform's update-branch operation, or a merge queue. Pull-request delivery
@@ -283,8 +292,10 @@ Use this path only when repository policy or the selected handoff explicitly
 permits direct integration:
 
 1. Bring clean local `main` to the accepted remote `main` by ordinary
-   fast-forward. If they have diverged, stop and ask the human rather than
-   choosing or discarding history.
+   fast-forward. If they have diverged, apply *Verifying Shared Branch State*.
+   Reset local `main` only when every local-only commit is proven already
+   upstream, reporting that evidence; otherwise stop and ask the human rather
+   than choosing or discarding history.
 2. Rebase the frozen integration branch onto local `main` and rerun required
    validation. Resolve mechanical conflicts and ask the human when intent is
    required.
@@ -954,6 +965,52 @@ Before editing or committing:
    conversational step.
 4. If pushing is blocked by missing user credentials, commit locally and let the
    human push externally.
+
+### Verifying Shared Branch State
+
+Two questions about shared refs are easy to answer incorrectly by inspection.
+Run the check rather than inferring the answer.
+
+**Has this branch's work reached `main`?** Ancestry is the wrong test. A squash,
+a rebase, or a merge queue rewrites commits, so
+
+```text
+git merge-base --is-ancestor <branch> origin/main
+```
+
+answers "no" for work that is already fully integrated. An agent that trusts it
+concludes the merge failed and redoes integrated work. Compare by patch
+identity instead:
+
+```text
+git cherry origin/main <branch>
+```
+
+Lines beginning `+` are genuinely absent from `main`. Lines beginning `-` are
+already upstream under different commit identifiers. No `+` lines means the
+work has landed, whatever the commit identifiers say.
+
+**Have two refs diverged, and is the divergence real?** When a local ref and its
+remote have both advanced, first establish whether the local-only commits carry
+anything that is actually missing:
+
+```text
+git rev-list --left-right --count <local>...<remote>
+git cherry <remote> <local>
+```
+
+If every local commit is reported as already upstream, the divergence is an
+artifact of rewritten history and resetting the local ref to the remote one
+discards nothing. An agent may do that without asking, and must then report the
+evidence it relied on: the counts, the `git cherry` output, and the ref it
+reset.
+
+If any commit is genuinely missing, stop and ask the human. Do not choose a
+side, discard history, or force-push to resolve it.
+
+This applies to any ref, not only `main`. A stale workstream branch left by an
+earlier session diverges the same way and is resolved the same way. Never
+force-push `main` under either outcome.
 
 ## Applying This To Other Projects
 
