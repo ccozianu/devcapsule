@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Mapping
 
 from ...container_runtime.contract import RuntimePlan
+from ...host_daemon import current_container, requires_translation, translate_bind_sources
 from ...materialization import RUNTIME_PLAN_PATH
 from ...project import ProjectMountError
 from ...runtime import (
@@ -166,6 +167,7 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
         if config.enable_sudo:
             ensure_sudoers_policy_ownership(config, files, runtime_env)
         docker_args = build_docker_args(config, files, runtime_env)
+        docker_args = translate_for_external_daemon(docker_args, runtime_env)
         print_storage_summary(config)
         if config.enable_sudo:
             print_sudo_warning()
@@ -176,6 +178,30 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
         return completed.returncode
     finally:
         cleanup_temp_runtime_files(files)
+
+
+def translate_for_external_daemon(
+    docker_args: list[str],
+    env: Mapping[str, str],
+) -> list[str]:
+    """Rewrite bind sources when launching from inside a container.
+
+    On the host this is a no-op. Inside a container whose Docker socket comes
+    from an external daemon, the daemon resolves bind sources in the host
+    filesystem, where this process's paths do not exist. Docker would create
+    them as empty directories, so translate them or fail loudly.
+    """
+
+    if not requires_translation(env):
+        return docker_args
+    container = current_container(env)
+    translated = translate_bind_sources(docker_args, container)
+    print(
+        "Launching from inside a container against an external Docker daemon; "
+        "bind sources were translated to their host paths.",
+        file=sys.stderr,
+    )
+    return translated
 
 
 def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> PycharmRunConfig:
