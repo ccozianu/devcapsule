@@ -564,7 +564,7 @@ def _inspect_current_container(
         return identify_current_container(
             inspections,
             expected_name=declared_name,
-            self_upper_directory=_self_overlay_upper_directory(),
+            self_upper_directory=self_overlay_upper_directory(),
         )
     except (json.JSONDecodeError, PreflightError):
         report.add(
@@ -711,7 +711,9 @@ def _normalized_absolute(value: str) -> bool:
     return path.is_absolute() and ".." not in path.parts and str(path) == value
 
 
-def _self_overlay_upper_directory(path: Path = Path("/proc/self/mountinfo")) -> str | None:
+def self_overlay_upper_directory(path: Path = Path("/proc/self/mountinfo")) -> str | None:
+    """Return this container's overlay upper directory, its fallback identity."""
+
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
