@@ -45,3 +45,10 @@ protocol.
   state for, or advertise it; absence checks are permitted.
 - Root `docs/` contains current user-facing documentation only. Workstream
   drafts stay beneath the selected engineering WIP directory.
+- No workstream holds exclusive editing rights over any file. A workstream may
+  edit any file its task genuinely requires. Exclusivity applies only where a
+  documented locking protocol exists and is actually used for that file; no
+  such protocol exists yet, so none may be inferred from a file's subject,
+  directory, or the workstream that created it. Established 2026-08-15; see the
+  [portfolio checkpoint](engineering-docs/wip/2026-08-09-project-management/2026-08-15-portfolio-checkpoint.md)
+  and the [coordination backlog](engineering-docs/wip/2026-08-09-project-management/coordination-backlog.md).
