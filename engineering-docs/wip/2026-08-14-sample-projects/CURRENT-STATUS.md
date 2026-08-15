@@ -79,8 +79,19 @@ Status: complete. The sample repository is
   revision `49ad45362830746eecf180c7439859c50dcf0d4b`, with source
   verification reporting the public GitHub commit reachable. Direct inspection
   confirmed `psql (PostgreSQL) 16.14` at `/usr/bin/psql`, recipe version 5, the
-  `PostgreSQL` license label, and an intact Node/Java toolchain. The image is
-  **not published**.
+  `PostgreSQL` license label, and an intact Node/Java toolchain.
+- Recipe 5 was published on 2026-08-15 as
+  `docker.io/mycodespaceai/devcapsule-base:ubuntu-24.04-v026`, registry digest
+  `sha256:a9f00250515b757d8e9d8ad832d9cab09a9a6e000f630651704e8538a4702998`.
+  Strict pull-by-digest inspection after removing the local tag confirmed
+  `psql (PostgreSQL) 16.14`, Node.js `v22.23.1`, `javac 25.0.4`, Apache Maven
+  `3.9.16`, `JAVA_HOME=/opt/java/current`, recipe version 5, the `PostgreSQL`
+  license label, the exact PEX and source lineage, and that Claude Code is
+  absent from the public base.
+- The sample now pins that published digest, declares the `postgresql-client`
+  component and capability, and still resolves through the public CLI. Gate
+  after the change: `239 passed`, `8 deselected`; mypy clean over 90 source
+  files; `nox -s build` successful.
 
 ## Discovered DevCapsule Gaps And Their Resolution
 
@@ -114,13 +125,6 @@ therefore acquired per developer after explicit terms authorization.
 
 ## Pending For The Product Owner
 
-- **Publishing a base with recipe 5.** The rebuilt local base carries `psql`,
-  but no base with recipe 5 is published yet. Until one is, a sample cannot
-  honestly declare `postgresql-client`, because samples pin the published base
-  by digest. The first sample therefore still pins the recipe-4 v025 digest and
-  does not declare the component.
-- **Advancing the sample's base pin** to the published recipe-5 digest and
-  adding the `postgresql-client` component to its lock, once that base exists.
 - **Routing.** The component is DevCapsule product work committed on a
   sample-projects branch. It was directed here because a sample exposed the
   need, but this workstream's registered goal is samples. Either widen the
