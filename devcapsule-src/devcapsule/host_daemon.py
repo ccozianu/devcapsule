@@ -147,6 +147,16 @@ def translate_bind_sources(
     return translated
 
 
+def is_host_backed(path: Path, container: ContainerInspection) -> bool:
+    """Return whether a container path maps to a host path the daemon can read."""
+
+    try:
+        host_path(path, container)
+    except HostDaemonError:
+        return False
+    return True
+
+
 def host_path(source: Path, container: ContainerInspection) -> PurePosixPath:
     """Map one container path to the host path backing it, or fail loudly."""
 
