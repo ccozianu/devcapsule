@@ -36,6 +36,13 @@ The foreground contrast is in `build_docker_args`: `ContainerLifecycle.foregroun
 emits `--rm`, and `ContainerLifecycle.detached` emits `--detach` with no
 removal policy and no later reaping.
 
+That contrast was confirmed directly on 2026-08-15. A foreground
+`devcapsule project run` against the sample project started container
+`pycharm-isolated-costin-1786756024`; when its client exited, the container was
+removed with no trace, exactly as the product promises. The two detached
+containers above were launched the same way apart from lifecycle, and both
+survive. The promise is kept on one path and silently broken on the other.
+
 ## Why This Is Not Simply The Retention Policy
 
 Recursive-dogfood Stage 6 deliberately retains a successful successor so
