@@ -7,7 +7,11 @@ from typing import Any
 
 import pytest
 
-from devcapsule.configurations.pycharm._launcher import translate_for_external_daemon
+from devcapsule.configurations.pycharm._launcher import (
+    PycharmRunError,
+    host_backed_runtime_environment,
+    translate_for_external_daemon,
+)
 from devcapsule.host_daemon import (
     HostDaemonError,
     current_container,
@@ -198,6 +202,75 @@ def test_named_container_is_translated_end_to_end(monkeypatch: pytest.MonkeyPatc
     )
 
     assert translated == ["--mount", f"type=bind,src={HOST_PROJECT},dst=/workspace/project"]
+
+
+def test_staging_moves_off_a_container_local_tmpfs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    data_home = tmp_path / "data"
+    monkeypatch.setattr(
+        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: True
+    )
+    monkeypatch.setattr(
+        "devcapsule.configurations.pycharm._launcher.current_container",
+        lambda _env: container(
+            Mount(source="/host/data", destination=str(data_home), kind="bind", writable=True)
+        ),
+    )
+
+    staged = host_backed_runtime_environment(
+        {"XDG_RUNTIME_DIR": "/tmp/devcapsule-runtime-1000", "XDG_DATA_HOME": str(data_home)}
+    )
+
+    # /tmp is a container-local tmpfs the daemon cannot see, so staging moves.
+    assert staged["XDG_RUNTIME_DIR"] == str(data_home / "devcapsule" / "launch-staging")
+    assert Path(staged["XDG_RUNTIME_DIR"]).is_dir()
+
+
+def test_already_host_backed_staging_is_kept(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    monkeypatch.setattr(
+        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: True
+    )
+    monkeypatch.setattr(
+        "devcapsule.configurations.pycharm._launcher.current_container",
+        lambda _env: container(
+            Mount(source="/host/runtime", destination=str(runtime), kind="bind", writable=True)
+        ),
+    )
+
+    staged = host_backed_runtime_environment({"XDG_RUNTIME_DIR": str(runtime)})
+
+    assert staged["XDG_RUNTIME_DIR"] == str(runtime)
+
+
+def test_unmountable_staging_fails_loudly(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: True
+    )
+    monkeypatch.setattr(
+        "devcapsule.configurations.pycharm._launcher.current_container",
+        lambda _env: container(),
+    )
+
+    with pytest.raises(PycharmRunError, match="not backed by any mount"):
+        host_backed_runtime_environment({"XDG_DATA_HOME": str(tmp_path / "nowhere")})
+
+
+def test_host_launch_keeps_its_runtime_directory(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: False
+    )
+
+    assert host_backed_runtime_environment({"XDG_RUNTIME_DIR": "/tmp/x"})["XDG_RUNTIME_DIR"] == "/tmp/x"
 
 
 def test_launcher_leaves_host_launches_untouched(monkeypatch: pytest.MonkeyPatch) -> None:

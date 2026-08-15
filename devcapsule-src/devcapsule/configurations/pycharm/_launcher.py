@@ -17,7 +17,13 @@ from pathlib import Path
 from typing import Mapping
 
 from ...container_runtime.contract import RuntimePlan
-from ...host_daemon import current_container, requires_translation, translate_bind_sources
+from ...host_daemon import (
+    current_container,
+    docker_socket,
+    is_host_backed,
+    requires_translation,
+    translate_bind_sources,
+)
 from ...materialization import RUNTIME_PLAN_PATH
 from ...project import ProjectMountError
 from ...runtime import (
@@ -162,6 +168,7 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
 
     runtime_env = dict(os.environ if env is None else env)
     config = build_run_config(options, runtime_env)
+    runtime_env = host_backed_runtime_environment(runtime_env)
     files = prepare_temp_runtime_files(config, runtime_env)
     try:
         if config.enable_sudo:
@@ -178,6 +185,42 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
         return completed.returncode
     finally:
         cleanup_temp_runtime_files(files)
+
+
+def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
+    """Stage transient launch files where an external daemon can read them.
+
+    The launcher writes an Xauthority, passwd/group, and runtime plan and binds
+    them into the container it starts. `XDG_RUNTIME_DIR` normally points at a
+    container-local tmpfs, which an external daemon cannot see, so those binds
+    would arrive empty. Move the staging directory somewhere backed by a mount.
+    """
+
+    runtime_env = dict(env)
+    if not requires_translation(runtime_env):
+        return runtime_env
+    container = current_container(runtime_env)
+    existing = runtime_env.get("XDG_RUNTIME_DIR")
+    if existing and is_host_backed(Path(existing), container):
+        return runtime_env
+    data_home = runtime_env.get("XDG_DATA_HOME") or str(
+        Path(runtime_env.get("HOME", "~")).expanduser() / ".local/share"
+    )
+    staging = Path(data_home) / "devcapsule" / "launch-staging"
+    try:
+        staging.mkdir(parents=True, exist_ok=True)
+        staging.chmod(0o700)
+    except OSError as exc:
+        raise PycharmRunError(f"Cannot prepare a host-backed staging directory: {exc}") from exc
+    if not is_host_backed(staging, container):
+        raise PycharmRunError(
+            f"This launch runs inside a container against an external Docker daemon, but "
+            f"{staging} is not backed by any mount of this container, so the daemon cannot "
+            "read the launcher's transient files. Set XDG_RUNTIME_DIR to a mounted directory, "
+            "or run the launch from the host."
+        )
+    runtime_env["XDG_RUNTIME_DIR"] = str(staging)
+    return runtime_env
 
 
 def translate_for_external_daemon(
@@ -348,7 +391,12 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
     if not ignore_config_lock and ide_config_mode != "project" and (ide_config / ".lock").exists():
         raise PycharmRunError(config_lock_message(ide_config, project, project_state))
 
-    host_docker_socket = Path(options.host_docker_socket or env.get("HOST_DOCKER_SOCKET", "/var/run/docker.sock"))
+    # Inside a container the daemon's socket is wherever it was mounted, which
+    # DOCKER_HOST already names. Preferring it over the host default keeps a
+    # containerized launch working without the developer restating it.
+    host_docker_socket = Path(
+        options.host_docker_socket or env.get("HOST_DOCKER_SOCKET") or docker_socket(env)
+    )
     host_docker_gid: int | None = None
     if docker_mode == "host":
         if not is_socket(host_docker_socket):
