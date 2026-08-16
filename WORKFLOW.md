@@ -228,14 +228,19 @@ Select exactly one editing workstream for the current worktree:
    workstream. Registry coordination and repository-wide inspection may occur
    there. Workstream changes require an explicit selection followed by a switch
    to that workstream's clean branch or worktree.
-6. Detached HEAD, an unregistered branch, or more than one plausible mapping
+6. A checked-out `<mnemonic>/outbox` identifies its workstream but is not an
+   editing checkout. It carries only outbound messages; see *The Outbox
+   Branch*. Do not resume workstream work there. Switch to a working branch
+   first, and treat uncommitted working changes found on an outbox as recovery
+   material that belongs elsewhere.
+7. Detached HEAD, an unregistered branch, or more than one plausible mapping
    has no default. Ask the user only when the desired workstream cannot be
    established from explicit intent and a unique registered association.
-7. Follow the selected registry row's handoff link. Do not guess its start date
+8. Follow the selected registry row's handoff link. Do not guess its start date
    from branch or commit timestamps. On the selected workstream branch, its
    committed handoff is authoritative for the latest track-local state; the
    copy reachable from `main` is the latest published snapshot.
-8. Read the selected workstream's `intake/` directory from the locally accepted
+9. Read the selected workstream's `intake/` directory from the locally accepted
    mainline ref before planning the session. Items there are work other
    workstreams have delivered and this workstream has not yet dispositioned;
    see *Workstream Intake*. A handoff read without its intake is an incomplete
