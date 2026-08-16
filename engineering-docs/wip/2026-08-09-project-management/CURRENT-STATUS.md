@@ -41,6 +41,13 @@ explicit switch to this branch or a separate clean worktree.
 ## Current State
 
 - The first portfolio checkpoint is recorded for 2026-08-15.
+- Workstream intake was introduced on 2026-08-16 at the product owner's
+  direction, as a second deliberate bootstrap exception: `project-management`
+  published the `WORKFLOW.md` and `AGENTS.md` changes because handing the item
+  to `workflow-improvements` required the very mechanism being defined. The
+  four workstreams now have `intake/` directories, and the two checkpoint items
+  that were never delivered on 2026-08-15 have been delivered, along with the
+  product owner's commit-cadence and branch-synchronization proposal.
 - A V1 readiness assessment is recorded for 2026-08-16. Its central finding is
   that V1 itself is untracked: the gap review defines four milestones, three of
   which appear in no other document and have no owning workstream. Defining V1
