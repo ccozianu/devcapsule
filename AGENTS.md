@@ -37,6 +37,16 @@ branch inference but does not authorize mixing two workstreams' dirty state.
 Ask the user to select a workstream only when several remain plausible and the
 choice materially changes the work.
 
+Every `multiple-streams` project has exactly one reserved `project-management`
+workstream, created when the mode is initialized or adopted and open for as
+long as the mode lasts. It owns project-wide priorities, sequencing,
+cross-workstream dependencies, and lifecycle decisions; it is not a second
+registry, not an implementation catch-all, and not the owner of other
+workstreams' state. Select and work in it exactly as you would any other
+workstream. If a project declares `multiple-streams` and has no such
+workstream, report that it is incompletely initialized rather than working
+around it. See *The Reserved `project-management` Workstream* in `WORKFLOW.md`.
+
 The checked-out branch and worktree are the persistent local workstream
 selection; there is no separate untracked selection file. `main`, detached
 HEAD, and unregistered branches have no default editing workstream. If the
@@ -48,6 +58,16 @@ Pay special attention to the selected handoff's current stage, current state,
 and planned next step. Then read any target-specific documents referenced
 there and any declared cross-workstream dependency needed for the selected
 slice.
+
+In `multiple-streams` mode, synchronize the selected workstream's branch with
+`main` before planning the session's work, normally by rebasing. `main` is how
+intake, registrations, and repository-wide coordination facts reach a
+workstream, and a stale branch cannot act on items it can nonetheless see. To
+send work the other way — an intake item for another workstream, or a new
+workstream's registration — use the sender's standing `<mnemonic>/outbox`
+branch, reset from current `main` and carrying only what is being sent, never
+working changes. See *The Outbox Branch* and *Staying Current With `main`* in
+`WORKFLOW.md`.
 
 In `multiple-streams` mode, also read the selected workstream's `intake/`
 directory beside its handoff. It holds work other workstreams have delivered

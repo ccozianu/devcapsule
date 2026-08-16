@@ -1,5 +1,34 @@
 # Docker PyCharm Isolation R0
 
+> **Frozen historical reference. Do not develop here.**
+>
+> This directory is the original shell-based PyCharm MVP that DevCapsule was
+> bootstrapped from. It is preserved as it stood at that point in time and is
+> not the source of the active implementation, which lives in
+> `../devcapsule-src/`. It still carries the project's former `Docker4IDE`
+> naming, which is one visible sign of the freeze rather than something to
+> correct. Do not add features here, and do not record current workflow,
+> product, or documentation decisions here; they belong in the active
+> implementation and in the root documents listed below.
+>
+> Two consequences are worth knowing before touching anything in this
+> directory:
+>
+> - Its maintained descendant is `../devcapsule-src/devcapsule/assets/docker4pycharm/`,
+>   which installed builds extract and run. That copy has already diverged
+>   from this one, so the two are not mirrors and must not be resynchronized
+>   by copying this frozen revision over it.
+> - `devcapsule.compat.script_path()` prefers `<repo-root>/docker4pycharm/<script>`
+>   when it exists, so in a source checkout `devcapsule bootstrap project` and
+>   the PyCharm runtime-dependency check execute the frozen scripts here rather
+>   than the maintained ones. Source checkouts and installed builds therefore
+>   behave differently today. This is a known inconsistency, not an intended
+>   contract; see the note in the root `README.md`.
+>
+> `image-assets/vibe-coding-process.md` here is reference material that no
+> current code path reads. The template actually baked into images is
+> `../devcapsule-src/devcapsule/assets/pycharm/image-assets/vibe-coding-process.md`.
+
 This is a first-revision Docker/X11 wrapper for running a tarball-based PyCharm
 installation in an isolated Linux container while keeping project files,
 PyCharm settings, per-project IDE state, and plugins persistent on the host.

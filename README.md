@@ -29,8 +29,16 @@ developer-owned configuration authorizes host access.
 - `engineering-docs/` — contributor- and agent-facing requirements,
   specifications, decisions, design notes, implementation evidence, and
   workflow records.
-- `docker4pycharm/` — historical shell-based PyCharm MVP and reference
-  material; it is not the source of the active implementation.
+- `docker4pycharm/` — the original shell-based PyCharm MVP that this project
+  was bootstrapped from, frozen at that point in time. It is reference
+  material, not the source of the active implementation, and no current
+  decision should be recorded there. Its maintained descendant is
+  `devcapsule-src/devcapsule/assets/docker4pycharm/`, which installed builds
+  extract and run; the two have already diverged. Note that
+  `devcapsule.compat.script_path()` still prefers the frozen root copy when it
+  is present, so source checkouts and installed builds run different revisions
+  of `bootstrap-project.sh` and `check-runtime-deps.sh`. See
+  [`docker4pycharm/README.md`](docker4pycharm/README.md).
 - `.devcapsule/` — this project's capability declaration and platform lock.
 
 The `-src` suffix is deliberate: in a default clone named `devcapsule`, the

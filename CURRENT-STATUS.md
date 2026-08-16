@@ -14,7 +14,9 @@ state belongs in each linked workstream handoff.
 | `sample-projects` | 2026-08-14 | Provide realistic sample projects as submodules that demonstrate ordinary adopter development inside DevCapsule | active; first sample in progress | `sample-projects/fastapi-webapp` | [workstream status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md) |
 
 Paused and blocked workstreams remain open until they conclude successfully or
-unsuccessfully.
+unsuccessfully. The one exception is `project-management`, which every
+multiple-stream project reserves and keeps open for as long as the mode lasts;
+see *The Reserved `project-management` Workstream* in `WORKFLOW.md`.
 
 ## Coordination Baseline
 
@@ -31,6 +33,15 @@ The workflow transition reached `main` through
 revision `ed30a58`. Later workstreams must be registered on current `main`
 first, use their mnemonic as the branch prefix, and use an immutable
 ISO-start-date and mnemonic directory name for WIP and archive records.
+
+`project-management` was opened on 2026-08-09 as a one-off permanent workstream
+before the workflow defined one. On 2026-08-16 `workflow-improvements` made it
+the general rule: every multiple-stream project reserves exactly one
+`project-management` workstream, created when the mode is initialized or
+adopted. This repository's instance is therefore no longer an exception in
+substance. It keeps one narrow adoption exception: this repository adopted
+`multiple-streams` on 2026-08-08 and created the reserved workstream on
+2026-08-09, so its immutable start date is one day later than initialization.
 
 Other local or remote branch refs that predate this transition are inactive
 legacy refs, not implicitly open workstreams. Do not resume work on one until

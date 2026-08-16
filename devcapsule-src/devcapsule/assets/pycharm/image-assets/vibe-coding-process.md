@@ -23,4 +23,6 @@ docs/, and engineering-docs/ as appropriate. Preserve existing project docs
 and adapt the process to this repository. Set workflow-type in
 .devcapsule/devcapsule.toml to single-stream or multiple-streams; use
 single-stream when the project does not need independently resumable efforts.
+If multiple-streams, also create the reserved project-management workstream
+that every multiple-stream project must have.
 ```
