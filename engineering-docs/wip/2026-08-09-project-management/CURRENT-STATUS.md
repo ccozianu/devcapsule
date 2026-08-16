@@ -41,6 +41,10 @@ explicit switch to this branch or a separate clean worktree.
 ## Current State
 
 - The first portfolio checkpoint is recorded for 2026-08-15.
+- A V1 readiness assessment is recorded for 2026-08-16. Its central finding is
+  that V1 itself is untracked: the gap review defines four milestones, three of
+  which appear in no other document and have no owning workstream. Defining V1
+  precisely is therefore this workstream's next task.
 - The minimal workflow improvements it identified are published in
   `WORKFLOW.md`: verified divergence resolution, the merge-landed check,
   and non-exclusive file editing with a handoff carve-out. This was a
@@ -56,32 +60,54 @@ explicit switch to this branch or a separate clean worktree.
 
 ## Last Task And Status
 
-Last task: record the first portfolio checkpoint.
+Last task: assess V1 readiness at the product owner's request, separating
+shortcomings that no workstream is on a path to solve from documented items at
+risk of being deferred out of the release.
 
-Status: complete. The checkpoint records three decisions, hands four derived
-items to `workflow-improvements`, and reflects one repository-wide coordination
-fact in root `CURRENT-STATUS.md`: file editing is not exclusive to any
-workstream absent a documented locking protocol.
+Status: complete. The
+[V1 readiness assessment](2026-08-16-v1-readiness-assessment.md) records eight
+unowned shortcomings and seven documented items to pin to V1. The preceding
+task, the first portfolio checkpoint, is also complete: it recorded three
+decisions, handed four derived items to `workflow-improvements`, and reflected
+one repository-wide coordination fact in root `CURRENT-STATUS.md`.
 
 ## Next Resumable Task
 
-Decide the release target for the file locking protocol in the
-[coordination backlog](coordination-backlog.md), including whether ordinary Git
-conflict resolution makes it unnecessary. Recording that it is unnecessary is a
-valid outcome.
+Define V1. Until now V1 has been a target held in the product owner's head plus
+a dated gap-review snapshot; the obvious prerequisites were clear, but the
+release boundary is not. Complete the [V1 scope ledger](v1-scope-ledger.md),
+which is open with its first decided row.
+
+Done means:
+
+- every gap in the V1 gap review carries a release verdict — in V1, deferred to
+  a later release, or rejected — with the rejections and deferrals stated rather
+  than left silent;
+- every item retained for V1 names an owning workstream, and any milestone with
+  no owning workstream is either registered as one or explicitly reassigned;
+- the five functional scope decisions the gap review left open are decided, or
+  carry a decision date and a named decider;
+- V1 acceptance is stated as criteria that can be checked: which requirement
+  records must reach `validated`, which open bugs block, and which documents
+  must exist;
+- the seven at-risk items in the readiness assessment each hold a single
+  recorded home rather than several partial ones; and
+- the ledger's cross-workstream consequences actually reach the affected
+  workstream handoffs, given that the previous checkpoint's handoff to
+  `workflow-improvements` never arrived in the document that workstream reads.
 
 Record a further checkpoint only when the next cross-workstream priority,
 sequence, dependency, or lifecycle decision becomes due. Checkpoints are
 written because a decision is needed, not on a schedule.
 
-Done means:
+## Deferred From This Workstream
 
-- the decision identifies the affected workstreams and why coordination is
-  required;
-- detailed implementation state remains in each affected workstream handoff;
-- any repository-wide routing fact is reflected in root `CURRENT-STATUS.md`;
-  and
-- the next editing checkout remains explicit and unmixed.
+Decide the release target for the file locking protocol in the
+[coordination backlog](coordination-backlog.md), including whether ordinary Git
+conflict resolution makes it unnecessary. Recording that it is unnecessary is a
+valid outcome. This was the previously planned next task and is deliberately
+sequenced behind defining V1, since the V1 boundary determines whether the
+protocol is a release commitment at all.
 
 ## External State And Risks
 
@@ -99,4 +125,7 @@ Done means:
 ## Workstream Document Index
 
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
+- [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
+- [V1 scope ledger](v1-scope-ledger.md)
+- [Workflow prior-art comparison 2026-08-16](2026-08-16-workflow-prior-art-comparison.md)
 - [Coordination backlog](coordination-backlog.md)

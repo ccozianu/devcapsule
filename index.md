@@ -125,6 +125,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Bugs
 
+- [X11 passthrough grants the container a full host session credential](engineering-docs/bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)
+- [Detached DevCapsule containers exit and are never cleaned up](engineering-docs/bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md)
 - [Codex ACP fails because explicit CODEX_HOME does not exist](engineering-docs/bugs/devcapsule/2026-08-03-codex-acp-missing-home.md)
 - [Authorized development sudo is reported as enabled but is unusable](engineering-docs/bugs/devcapsule/2026-08-03-authorized-development-sudo-misreported.md)
 - [PyCharm recommends its native launcher](engineering-docs/bugs/devcapsule/2026-08-03-jetbrains-native-launcher.md)
