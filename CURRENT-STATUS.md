@@ -41,8 +41,18 @@ protocol.
 
 - Keep host filesystem, credentials, Docker, devices, and networking exposure
   explicit and preserve `R-SCOPE-001`, `R-DOCKER-001`, and `R-PRODUCT-002`.
-- DevCapsule does not support Gemini CLI. Do not install, configure, mount
-  state for, or advertise it; absence checks are permitted.
+- Bases stay agent-neutral per `D-0005`: no ambient agent CLI is installed and
+  no agent credential or state directory is mounted by default. Agent CLIs are
+  optional components that materialize per developer after explicit
+  authorization. Base agent-absence checks remain correct and apply to every
+  agent, including selected ones.
+- V1 curates three agent components and lets the developer choose: Claude Code,
+  OpenAI Codex, and Google Antigravity CLI. Selected 2026-08-16; see the
+  [V1 scope ledger](engineering-docs/wip/2026-08-09-project-management/v1-scope-ledger.md).
+  This is the deliberate selection `D-0005` anticipated, not a change to it.
+- Gemini CLI is not a selected component. Do not install, configure, mount state
+  for, or advertise it. This is a product-boundary choice; `D-0005` verified on
+  2026-08-02 that Google had not deprecated it.
 - Root `docs/` contains current user-facing documentation only. Workstream
   drafts stay beneath the selected engineering WIP directory.
 - No workstream holds exclusive editing rights over any file. A workstream may
