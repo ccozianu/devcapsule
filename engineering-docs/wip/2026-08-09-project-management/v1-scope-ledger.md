@@ -33,8 +33,8 @@ Verdict: `in-v1`
 Decided: 2026-08-16, by the product owner, from direct experience of the
 current install path.
 
-Owner: unassigned pending the release-engineering workstream registration.
-Sequenced into the release-engineering block.
+Owner: `recursive-e2e`, delegated 2026-08-16 together with the v026 base.
+Release target: **v026**, ahead of the product owner's own project starts.
 
 Expands and corrects gap `F8`.
 
@@ -112,8 +112,23 @@ pending a spike.
 Direction decided: 2026-08-16, by the product owner. The capsule presents its
 own contained windowing environment rather than borrowing the host X session.
 
-Owner: unassigned. Touches the base recipe, the launcher, and the port and
-external-resource items.
+Release target: **v027**, decided 2026-08-16. The change touches the base
+recipe, the launcher, port allocation, and the platform matrix, and its own
+ratification gate requires a full day of ordinary development inside the result
+— none of which is compatible with v026 being the base the product owner starts
+projects on. Deferring the transport defers the fix to the
+[X11 session-credential bug](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md),
+not the obligation: the containment claim cannot be announced as verified while
+the X socket carries a full host session credential.
+
+Owner: unassigned; may warrant a separate workstream rather than joining an
+existing one.
+
+**The URL-open fix is split out of this row and shipped in v026.** The
+`xdg-open` and `BROWSER` shim forwarding to a host-side helper behaves
+identically under X11, VNC, and Xpra, so the most irritating symptom should not
+wait on the transport decision. It is delegated to `recursive-e2e` with the
+entry point.
 
 New scope, not present in the gap review.
 

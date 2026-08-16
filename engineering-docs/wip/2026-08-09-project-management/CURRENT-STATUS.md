@@ -57,26 +57,37 @@ explicit switch to this branch or a separate clean worktree.
   and non-exclusive file editing with a handoff carve-out. This was a
   deliberate bootstrap exception, because `workflow-improvements` could not
   start cleanly without them.
-- The current execution focus is `sample-projects`. `recursive-e2e` is paused
-  by product-owner decision with Stage 6 substantially complete.
-- `workflow-improvements` is open and its intake is now ready: four concrete
-  items were handed to it by the checkpoint.
+- The second portfolio checkpoint is recorded for 2026-08-16. It sets release
+  sequencing: v026 carries the self-contained entry point and the URL-open fix
+  and is delegated to `recursive-e2e`; the contained display moves to v027; and
+  bug vocabulary goes to `workflow-improvements`.
+- `recursive-e2e` resumes for v026. Its registered goal is widened in root
+  `CURRENT-STATUS.md`, because the delegated work is product work rather than
+  recursive-E2E work — the second instance of that pattern after
+  `sample-projects`.
+- `workflow-improvements` intake holds six items and the workstream has still
+  not started. It is now on the critical path, since the product owner's own
+  project starts depend on the workflow improvements it owns.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
 
 ## Last Task And Status
 
-Last task: assess V1 readiness at the product owner's request, separating
-shortcomings that no workstream is on a path to solve from documented items at
-risk of being deferred out of the release.
+Last task: record the second portfolio checkpoint, setting release sequencing
+across v026 and v027 and delegating the work.
 
 Status: complete. The
-[V1 readiness assessment](2026-08-16-v1-readiness-assessment.md) records eight
-unowned shortcomings and seven documented items to pin to V1. The preceding
-task, the first portfolio checkpoint, is also complete: it recorded three
-decisions, handed four derived items to `workflow-improvements`, and reflected
-one repository-wide coordination fact in root `CURRENT-STATUS.md`.
+[2026-08-16 checkpoint](2026-08-16-portfolio-checkpoint.md) records three
+decisions, delivers two handoffs through intake rather than announcing them,
+corrects two stale registry facts about `recursive-e2e`, and widens that
+workstream's registered goal so the registry no longer understates where product
+work lives.
+
+Preceding tasks, both complete: the
+[V1 readiness assessment](2026-08-16-v1-readiness-assessment.md), which records
+eight unowned shortcomings and seven documented items to pin to V1; and the
+[first portfolio checkpoint](2026-08-15-portfolio-checkpoint.md).
 
 ## Next Resumable Task
 
@@ -139,6 +150,7 @@ protocol is a release commitment at all.
 ## Workstream Document Index
 
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
+- [Portfolio checkpoint 2026-08-16](2026-08-16-portfolio-checkpoint.md)
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
 - [V1 scope ledger](v1-scope-ledger.md)
 - [Workflow prior-art comparison 2026-08-16](2026-08-16-workflow-prior-art-comparison.md)
