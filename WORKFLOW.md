@@ -302,12 +302,24 @@ its own integration. A workstream's working branch may run for weeks; anything
 riding along with it is invisible until it merges, which is the failure intake
 was built to fix, one step further along.
 
-**What the outbox carries.** Intake items delivered to other workstreams, and
-registrations of new workstreams the sender is opening. Both must reach `main`
-promptly and neither is part of the sender's own deliverable. The outbox is
-also the answer to the standing question of how main-first registration
-coexists with a pull-request delivery policy: registration travels the same
-route as any other message, so nothing has to commit directly to `main`.
+**What the outbox carries.** Anything the project needs to know now that is not
+part of the sender's own deliverable:
+
+- intake items delivered to other workstreams;
+- registrations of new workstreams the sender is opening; and
+- changes to the sender's own row in root `CURRENT-STATUS.md` — state, branch
+  association, or anything else other agents route by.
+
+The last matters more than it looks. The registry is how every other checkout
+decides where work belongs, and a routing fact that waits for the sender's
+integration leaves `main` describing a branch that may no longer exist. Under
+*Selecting Work At Session Start* that is invalid routing, so a stale row does
+not merely mislead; it stops other agents before they edit.
+
+The outbox is also the answer to the standing question of how main-first
+registration coexists with a pull-request delivery policy: registration travels
+the same route as any other message, so nothing has to commit directly to
+`main`.
 
 **What it must never carry.** The sender's working changes. Merging an outbox
 publishes everything on it, so a working change that leaks into one is
