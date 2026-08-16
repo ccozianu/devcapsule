@@ -26,6 +26,10 @@ fixed, explicitly deferred, or rejected.
 The active branch is `workflow-improvements/intake`, forked from the
 registration commit on `main` and resynchronized with `main` on 2026-08-16.
 
+`workflow-improvements/outbox` was created on 2026-08-16 from `main`, carrying
+three deliveries to `project-management` and nothing else. It is the first use
+of the outbox mechanism. It is not an editing checkout; see selection rule 6.
+
 The branch name predates the `intake/` directory convention introduced on
 2026-08-16 and now collides with it confusingly. See *Open Threads*.
 
@@ -108,7 +112,9 @@ Changed:
 - `WORKFLOW.md`: restriction 13; *The Outbox Branch*; *Staying Current With
   `main`*; a commit-cadence rule in *Development And Checkpoints*; *Beginning A
   Workstream* step 6 now routes registration through the outbox; the intake
-  delivery paragraph points at the outbox.
+  delivery paragraph points at the outbox; new selection rule 6, because the
+  outbox otherwise creates a checkout that identifies a workstream but must not
+  be worked in — found by using the mechanism, not by reading it.
 - `AGENTS.md`: synchronize before planning, send through the outbox.
 - This workstream's `intake/README.md`: points at `WORKFLOW.md` rather than
   restating the delivery rule, so the next protocol change does not make it
