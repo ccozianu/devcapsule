@@ -49,6 +49,12 @@ and planned next step. Then read any target-specific documents referenced
 there and any declared cross-workstream dependency needed for the selected
 slice.
 
+In `multiple-streams` mode, also read the selected workstream's `intake/`
+directory beside its handoff. It holds work other workstreams have delivered
+and this workstream has not yet accepted, deferred, or rejected. A handoff read
+without its intake is an incomplete picture of what the workstream owns. Follow
+`WORKFLOW.md` for how items are written, delivered, and dispositioned.
+
 After reading the required documents, acknowledge to the user that you
 understand what the project is about, including the requirements and
 specification described in the brief.

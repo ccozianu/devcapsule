@@ -59,10 +59,13 @@ The following restrictions keep concurrent work understandable:
 11. No workstream holds exclusive editing rights over a file. A workstream may
     edit any file its task genuinely requires, and exclusivity may not be
     inferred from a file's subject, its directory, or which workstream created
-    it. Two carve-outs stand: another workstream's WIP handoff directory, and
-    another worktree's recovery state. Each is a workstream's account of its
-    own state, which another workstream cannot restate accurately; report what
-    you observe about another workstream instead of editing its record. Wider
+    it. Two carve-outs stand: another workstream's WIP handoff directory
+    excluding its `intake/` subdirectory, and another worktree's recovery state.
+    Each is a workstream's account of its own state, which another workstream
+    cannot restate accurately; report what you observe about another workstream
+    instead of editing its record. Delivering work to another workstream is a
+    different act from restating its state, and belongs in its `intake/`; see
+    *Workstream Intake*. Wider
     exclusivity applies only where a documented locking protocol exists and is
     actually used for that file. No such protocol exists today.
 
@@ -76,10 +79,12 @@ Begin from a clean, current `main` checkout:
 3. Record the start date, goal, state, branch prefix, integration target,
    delivery method or applicable repository default, current task, and next
    resumable task.
-4. Add the workstream to root `CURRENT-STATUS.md`.
-5. Commit that source-level registration on `main`.
-6. Fork the first `<mnemonic>/...` branch from that commit.
-7. Perform workstream changes only on its associated branch or branches.
+4. Create `engineering-docs/wip/<start-date>-<mnemonic>/intake/README.md` so the
+   workstream can receive work from others; see *Workstream Intake*.
+5. Add the workstream to root `CURRENT-STATUS.md`.
+6. Commit that source-level registration on `main`.
+7. Fork the first `<mnemonic>/...` branch from that commit.
+8. Perform workstream changes only on its associated branch or branches.
 
 A branch created before the registration commit is not a valid new workstream
 branch. Existing branches that predate adoption require an explicit migration
@@ -127,12 +132,57 @@ Select exactly one editing workstream for the current worktree:
    from branch or commit timestamps. On the selected workstream branch, its
    committed handoff is authoritative for the latest track-local state; the
    copy reachable from `main` is the latest published snapshot.
+8. Read the selected workstream's `intake/` directory from the locally accepted
+   mainline ref before planning the session. Items there are work other
+   workstreams have delivered and this workstream has not yet dispositioned;
+   see *Workstream Intake*. A handoff read without its intake is an incomplete
+   picture of what the workstream owns.
 
 If the selected workstream differs from the current branch, switch to its clean
 worktree before editing. Do not combine dirty state from two workstreams, and
 do not use a stash as their durable handoff boundary. Different users and
 clones may select different workstreams independently because their checked-out
 branches and worktrees are local state.
+
+### Workstream Intake
+
+Every workstream directory carries an `intake/` subdirectory. It is the only
+place another workstream may write inside a workstream's WIP directory, and it
+exists because a protocol that forbids all such writing has no way to hand work
+over. Announcing a handoff in the sender's own checkpoint does not deliver it:
+the recipient reads its own handoff at session start, so an item recorded
+anywhere else is invisible to the workstream expected to do it.
+
+**Writing an item.** Any workstream, or the user, may add a file. One item per
+file, named `YYYY-MM-DD-<sender-mnemonic>-<slug>.md`, where the date is the
+delivery date. The file states what is being handed over, why it belongs to the
+recipient rather than the sender, the evidence or documents behind it, and what
+accepting it would mean. The sender does not assign priority, sequence, or a
+release target; those are the receiving workstream's judgment.
+
+**Delivery must reach `main` promptly.** An intake file that waits for the
+sender's own integration is invisible for as long as that takes, which
+reproduces the failure this mechanism exists to fix. Deliver it as a small
+change to `main` on its own, separately from the sender's ordinary work, using
+whichever of direct commit or pull request repository policy requires. Intake
+delivery is deliberately decoupled from the sender's delivery schedule.
+
+**Ownership is asymmetric.** A sender may add files and amend files it wrote. It
+may not edit another sender's file, remove any file, or touch anything else in
+the recipient's directory. Only the receiving workstream removes or reclassifies
+items in its own intake. Its account of itself remains exclusively its own.
+
+**Disposition.** The receiving workstream accepts, defers, or rejects each item,
+records that outcome and its reasoning in its own handoff, and then removes the
+file. Intake is a queue, not an archive; Git retains the history. An item left
+in intake means it has not been dispositioned yet, which is exactly what a queue
+should communicate.
+
+**Presence.** The directory carries a `README.md` so that an empty intake is
+unambiguous rather than an untracked absence. Intake items are not listed in
+`index.md` or in the workstream's own document index; the directory listing is
+the queue, and indexing it would create churn for items designed to be
+short-lived.
 
 ### Development And Checkpoints
 
