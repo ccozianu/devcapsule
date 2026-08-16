@@ -288,6 +288,58 @@ course-sized task before the announcement claims parity, and be willing to
 present this option with its tradeoffs stated rather than as a peer of the other
 three.
 
+### IDE Coverage: PyCharm Suffices For V1; Java Is A Separate Question
+
+Verdict: `in-v1` that PyCharm is the only IDE V1 requires. The Java environment
+is `proposed` with its release target undecided.
+
+Decided: 2026-08-16, by the product owner, on the basis that the projects being
+started before the V1 announcement will all be Python.
+
+**What this settles.** IntelliJ IDEA Community was pulled toward V1 by the
+learner use case, because a Java course cannot use PyCharm. With the product
+owner's own dogfooding projects all in Python, no V1 acceptance criterion
+depends on a second IDE. IDEA returns to being optional audience expansion.
+
+Python with JavaScript and TypeScript is already covered by the `fastapi-webapp`
+sample, and better than when that sample was built: this repository's
+[configuration research](../../design-notes/fastapi-webapp-configuration-research.md)
+records that JavaScript, TypeScript, and CSS support moved into the free core
+tier in 2026.1.
+
+**The Java question, opened 2026-08-16.** The product owner wants a
+full-featured Java environment soon after v026 and is favorable to Eclipse. Two
+routes, with materially different costs and different strategic value.
+
+*Eclipse.* Licensing is unambiguous under EPL-2.0. That is a genuine advantage
+over the JetBrains route, because the same configuration research records that
+JetBrains merged Community and Professional in 2025.1, that Community 2025.2 was
+the final standalone Community release, and that from 2025.3 everyone is on the
+unified build. A JetBrains Java IDE therefore means the unified build under a
+free tier, which is a terms-and-acquisition question of the Claude Code shape
+rather than a licensing non-event.
+
+Eclipse is also a genuinely new integration — SWT over GTK rather than Swing
+over the JetBrains Runtime, `eclipse.ini`, a `-data` workspace, `~/.p2`
+provisioning state — and therefore the far stronger test of gap `F3`'s claim
+that a configuration can be authored through supported contracts rather than by
+copying PyCharm's private implementation. Four of the thirteen recorded bugs are
+JetBrains-runtime-specific, so a different toolkit is how the project learns
+which contracts are real abstractions and which encode JBR's quirks.
+
+*IntelliJ IDEA.* Reuses the tarball layout, `bin/*.sh` entrypoint, JetBrains
+Runtime, and settings-directory model almost entirely. Days rather than weeks,
+and correspondingly weak as evidence of genericity.
+
+**Sequencing note.** A contained display is toolkit-agnostic, whereas X11
+forwarding is precisely where SWT and GTK differences surface. Java costs less
+if it follows the display work rather than preceding it.
+
+**Open.** Whether the Java environment falls inside the V1 window, where it
+competes with concurrency and the entry point, or immediately after it, where it
+becomes the first post-V1 milestone and gives the announcement a concrete next
+promise.
+
 ## Rows Still To Be Written
 
 The remainder of this ledger is the next task: one row per gap `F1`–`F8` and
