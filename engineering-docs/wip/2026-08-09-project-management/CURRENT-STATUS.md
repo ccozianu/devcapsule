@@ -123,6 +123,13 @@ protocol is a release commitment at all.
   authenticated to the registry. The earlier statement that a human must
   publish mainline commits was stale for at least two sessions and cost
   avoidable friction. Verify such constraints before relying on them.
+- Refined 2026-08-16, so the correction above is not over-read. The `origin`
+  remote is SSH, and that key authorizes Git transport only. There is no `gh`
+  CLI and no `GH_TOKEN` or `GITHUB_TOKEN`, so this environment cannot create,
+  review, or merge a pull request; those are GitHub API objects. For any
+  workstream whose delivery method is a pull request, an agent prepares and
+  pushes the branch and the human opens and merges it. Installing and
+  authenticating `gh` would remove that limit.
 - The permanent lifecycle is a documented repository-local exception until
   the `workflow-improvements` workstream defines and validates the general
   rule.
