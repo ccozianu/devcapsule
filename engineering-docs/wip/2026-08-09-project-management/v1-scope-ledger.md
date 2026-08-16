@@ -232,6 +232,62 @@ one the product prefers.
 `codex.py`, and `postgresql_client.py` patterns. The licensing, credential, and
 state contracts dominate, not the packaging.
 
+### A Fourth, Open-Source Agent On A Self-Hosted Model
+
+Verdict: `proposed`. Raised by the product owner on 2026-08-16; split into two
+cases here so that neither is decided by silence.
+
+**Case A — bring your own endpoint. Proposed `in-v1`.** An open-source terminal
+coding agent configured against a user-supplied OpenAI-compatible endpoint, base
+URL, key, and model. This covers a self-hosted server on the developer's own
+hardware, a lab machine such as the product owner's DGX-2, or any local runner
+the developer already operates.
+
+**Case B — DevCapsule runs the model. Proposed `deferred`.** DevCapsule detects
+host capacity and runs a model server itself when the machine can support one.
+
+**Why the split matters.** Case A already delivers "the user runs their own
+model". Case B's marginal value over Case A is not capability but convenience:
+DevCapsule installing and managing the server. That convenience costs GPU
+capability profiles, model-weight licensing, capacity detection with honest
+refusal, and a shared model server — which is precisely the service-dependency
+model ruled out of V1 on 2026-08-14 as too expensive for the benefit. Case B
+also depends on CUDA support, whose V1 status is one of the five undecided
+scope questions. Case A is a component plus a configuration surface.
+
+**Why it earns consideration at all.**
+
+- It is the only agent configuration with no per-token cost, which matters
+  directly to the learner use case: "let the agent run flat out" and metered
+  billing are in tension, and a learner may hold no subscription.
+- It removes the implicit asterisk in the containment claim. Today nothing
+  leaves the capsule except the developer's entire codebase, sent to a vendor.
+  A self-hosted endpoint closes that, and opens the audience that cannot send
+  code to a vendor for employer or regulatory reasons.
+- With three vendors plus a vendor-free option, the neutrality claim is
+  complete rather than partial.
+
+**What Case A requires.** Mostly credential transport: a key must reach the
+capsule without being baked into an image, exposed through container
+environment metadata, or written into evidence. The existing mode-0600 files,
+read-only binds, structural redaction, and runtime-plan machinery already cover
+this shape. Beyond that it is agent selection, pinned acquisition, and the same
+per-agent state contract the other three components require.
+
+**Open choice.** Which agent. Criteria: terminal-native so it fits the capsule
+model; a permissive licence so redistribution is not the Claude Code problem
+again; OpenAI-compatible provider configuration so Case A is configuration
+rather than a port; and active maintenance. Aider, Goose, OpenHands, opencode,
+and Continue are candidates to evaluate rather than a pick already made.
+
+**Honest risk.** Open-source agents driving self-hosted models remain
+meaningfully weaker at sustained agentic coding than the frontier CLIs. A launch
+demonstration showing a learner's agent flailing would be a negative proof point
+landing on the use case the story makes central. Validate quality on a
+course-sized task before the announcement claims parity, and be willing to
+present this option with its tradeoffs stated rather than as a peer of the other
+three.
+
 ## Rows Still To Be Written
 
 The remainder of this ledger is the next task: one row per gap `F1`–`F8` and
