@@ -103,6 +103,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Implementation Notes And Decisions
 
 - [User-requested session-record policy](engineering-docs/session-records/devcapsule/README.md)
+- [Inspector hardening, samples, and workflow bootstrap session record](engineering-docs/session-records/devcapsule/2026-08-16-inspector-hardening-samples-and-workflow-bootstrap.md)
 - [v021 external dogfood and V1 backlog session record](engineering-docs/session-records/devcapsule/2026-08-03-v021-external-dogfood-and-v1-backlog.md)
 - [D-0004 configuration and images CLI session record](engineering-docs/session-records/devcapsule/2026-08-01-d-0004-configuration-and-images-cli.md)
 - [Per-project IDE state split](engineering-docs/design-notes/docker4pycharm/2026-06-21-per-project-ide-state-split.md)
