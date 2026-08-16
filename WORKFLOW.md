@@ -35,7 +35,10 @@ multiple-stream support was introduced.
 ### Definition And Restrictions
 
 A workstream is a bounded set of changes developed toward one goal. It begins,
-develops, and ends successfully or unsuccessfully.
+develops, and ends successfully or unsuccessfully. Exactly one exception
+exists: the reserved `project-management` workstream, which every
+multiple-stream project has and which stays open for as long as the project
+uses that mode. See *The Reserved `project-management` Workstream*.
 
 The following restrictions keep concurrent work understandable:
 
@@ -48,7 +51,9 @@ The following restrictions keep concurrent work understandable:
 4. Every branch other than `main` belongs to exactly one workstream.
 5. Each workstream branch name begins with `<mnemonic>/`.
 6. A workstream may have more than one branch, but every branch starts from
-   `main` and is intended to return to `main` if the workstream succeeds.
+   `main` and is intended to return to `main` if the workstream succeeds. Its
+   outbox branch is the exception: it starts from `main` and returns to `main`
+   repeatedly, throughout the workstream's life rather than at its end.
 7. `main` belongs to no workstream. It is the shared registration, visibility,
    finalization, and integration branch.
 8. Ordinary workstream implementation does not happen directly on `main`.
@@ -68,6 +73,97 @@ The following restrictions keep concurrent work understandable:
     *Workstream Intake*. Wider
     exclusivity applies only where a documented locking protocol exists and is
     actually used for that file. No such protocol exists today.
+12. `project-management` is a reserved mnemonic. Exactly one workstream in the
+    project carries it, no ordinary workstream may take it, and it is never
+    archived and recreated while the project stays in `multiple-streams` mode.
+13. `<mnemonic>/outbox` is a reserved branch name in every workstream. It
+    carries only what the workstream sends to `main` ahead of its own
+    integration, never its working changes. See *The Outbox Branch*.
+
+### Initializing Multiple-Stream Mode
+
+Selecting `multiple-streams` is an act with required structure, whether it
+happens when a project is first set up or when an existing single-stream
+project adopts the mode later. Both paths produce the same starting shape.
+
+In one commit on `main`:
+
+1. Set `workflow-type = "multiple-streams"` in `.devcapsule/devcapsule.toml`.
+2. Convert root `CURRENT-STATUS.md` from a detailed handoff into the compact
+   open-workstream registry. Detailed state carried over from single-stream
+   mode moves into a workstream handoff rather than staying at the root.
+3. Create the reserved `project-management` workstream by the procedure in
+   *Beginning A Workstream*, using the initialization date as its immutable
+   ISO start date, and register it in the new registry.
+4. Create `engineering-docs/wip/` and `engineering-docs/archive/`.
+
+A multiple-stream project with no `project-management` workstream is
+incompletely initialized. Report that rather than working around it.
+
+Initialization creates exactly one workstream. Ordinary workstreams begin
+afterwards, separately, and only when there is real work for them.
+
+### The Reserved `project-management` Workstream
+
+Coordinating a portfolio of workstreams is itself continuing work, and it
+belongs to no single bounded effort. Without a reserved home, it either lands
+in whichever workstream happens to be selected — distorting that workstream's
+scope and its record — or it survives only in conversation. The reserved
+workstream gives it a durable owner.
+
+**Scope.** It owns project-wide priorities, sequencing, cross-workstream
+dependencies, portfolio-level checkpoints, lifecycle decisions about opening,
+pausing, resuming, blocking, and concluding other workstreams, and routing work
+that has no owning workstream yet.
+
+Three exclusions keep it from absorbing the project:
+
+- It is not a second registry. Root `CURRENT-STATUS.md` on `main` remains the
+  single authoritative list of open workstreams. `project-management` records
+  reasoning, sequencing, and dependencies, not a parallel copy of the roster.
+- It is not an implementation catch-all. Work that fits an open workstream's
+  goal belongs to that workstream. Work that fits none is a reason to begin a
+  workstream, which is a `project-management` decision to make and hand over,
+  not work for it to perform.
+- It does not own other workstreams' state. Restriction 11's carve-out binds it
+  like anyone else: it reports what it observes about another workstream and
+  delivers to that workstream's `intake/`; it does not edit that workstream's
+  handoff.
+
+Its coordination authority is advisory and recorded, not procedural. It does
+not gate other workstreams' commits, integrations, or checkpoints.
+
+**Lifecycle.** It is permanent for the lifetime of `multiple-streams` mode
+rather than open-ended by neglect. Restriction 12 reserves its mnemonic;
+initialization creates it; it has no completion criteria and is never listed as
+active-with-a-final-goal. Its registry state reads `active; permanent
+coordination`, and paused or blocked are as legitimate for it as for any other
+workstream — a project can go a long time with nothing to coordinate.
+
+**Branches, selection, and integration are ordinary.** Its branches are
+`project-management/<topic>`, forked from `main`, returning to `main` by the
+repository's default delivery method. `project-management/coordination` is the
+conventional first branch. Checkout selection, intake, checkpoints, commit
+cadence, and integration follow the same rules as any other workstream. Only
+its lifecycle is special.
+
+**Retirement.** It ends only when the project leaves `multiple-streams` mode,
+never as an ordinary conclusion. Migrating to `single-stream`, in one commit on
+`main`:
+
+1. Confirm no ordinary workstream is still open. Migrating with open
+   workstreams silently orphans their handoffs; conclude or archive them first.
+2. Fold the coordination state that remains useful into root
+   `CURRENT-STATUS.md`, which becomes the detailed single-stream handoff again.
+3. Move `engineering-docs/wip/<start-date>-project-management/` to
+   `engineering-docs/archive/<start-date>-project-management/` unchanged, and
+   record the migration, its date, and the resulting mode in its final status.
+4. Set `workflow-type = "single-stream"`.
+
+**Adoption exception.** A project adopting `multiple-streams` that already has
+a branch, directory, or bounded workstream named `project-management` records a
+migration exception in the reserved workstream's handoff, in the same form as
+any other adoption exception, rather than renaming history.
 
 ### Beginning A Workstream
 
@@ -82,9 +178,16 @@ Begin from a clean, current `main` checkout:
 4. Create `engineering-docs/wip/<start-date>-<mnemonic>/intake/README.md` so the
    workstream can receive work from others; see *Workstream Intake*.
 5. Add the workstream to root `CURRENT-STATUS.md`.
-6. Commit that source-level registration on `main`.
-7. Fork the first `<mnemonic>/...` branch from that commit.
-8. Perform workstream changes only on its associated branch or branches.
+6. Deliver that source-level registration to `main` through the outbox of the
+   workstream opening it; see *The Outbox Branch*. Registration is a message to
+   the project, not part of anyone's deliverable, so it travels the same route
+   as intake and does not require committing directly to `main`. At
+   initialization, when no workstream exists yet to send it, the initializing
+   commit on `main` carries it.
+7. Fork the first `<mnemonic>/...` branch from the registration commit once it
+   is on `main`.
+8. Perform workstream changes only on its associated branch or branches. Its
+   own `<mnemonic>/outbox` is created on first use, not at registration.
 
 A branch created before the registration commit is not a valid new workstream
 branch. Existing branches that predate adoption require an explicit migration
@@ -162,10 +265,10 @@ release target; those are the receiving workstream's judgment.
 
 **Delivery must reach `main` promptly.** An intake file that waits for the
 sender's own integration is invisible for as long as that takes, which
-reproduces the failure this mechanism exists to fix. Deliver it as a small
-change to `main` on its own, separately from the sender's ordinary work, using
-whichever of direct commit or pull request repository policy requires. Intake
-delivery is deliberately decoupled from the sender's delivery schedule.
+reproduces the failure this mechanism exists to fix. Deliver it through the
+sender's outbox branch, separately from the sender's ordinary work. Intake
+delivery is deliberately decoupled from the sender's delivery schedule. See
+*The Outbox Branch*.
 
 **Ownership is asymmetric.** A sender may add files and amend files it wrote. It
 may not edit another sender's file, remove any file, or touch anything else in
@@ -184,11 +287,108 @@ unambiguous rather than an untracked absence. Intake items are not listed in
 the queue, and indexing it would create churn for items designed to be
 short-lived.
 
+### The Outbox Branch
+
+Intake defines where a message lands. The outbox defines how it travels.
+
+Every workstream has one standing branch named `<mnemonic>/outbox`. It carries
+what the workstream needs to publish to `main` ahead of, and independently of,
+its own integration. A workstream's working branch may run for weeks; anything
+riding along with it is invisible until it merges, which is the failure intake
+was built to fix, one step further along.
+
+**What the outbox carries.** Intake items delivered to other workstreams, and
+registrations of new workstreams the sender is opening. Both must reach `main`
+promptly and neither is part of the sender's own deliverable. The outbox is
+also the answer to the standing question of how main-first registration
+coexists with a pull-request delivery policy: registration travels the same
+route as any other message, so nothing has to commit directly to `main`.
+
+**What it must never carry.** The sender's working changes. Merging an outbox
+publishes everything on it, so a working change that leaks into one is
+unfinished work promoted to `main` without review. Keep the two branches
+strictly separate; when in doubt, rebuild the outbox rather than reuse a dirty
+one.
+
+**Sending.** From a clean checkout, and never from the working branch:
+
+1. Fetch, and create or reset `<mnemonic>/outbox` to current `main`. The outbox
+   holds no history of its own worth preserving; every send starts from `main`.
+2. Add only the files being sent. One commit per coherent delivery.
+3. Push the branch and deliver it to `main` by the repository's default method.
+4. Leave the branch in place. After the merge it is an ancestor of `main` and
+   the next send resets it forward again.
+
+Sending is a small, self-contained operation. It does not touch the sender's
+working branch, does not require that branch to be clean or current, and is not
+a checkpoint of the sender's own work.
+
+**Receiving is not symmetric.** A recipient does nothing to receive. Items
+appear in its `intake/` directory when the outbox merges to `main`, and it sees
+them by staying current with `main`.
+
+**Ending.** The outbox branch is deleted when the workstream ends, like any
+other branch it owns. An outbox with unmerged commits at that point is
+undelivered mail: merge it before concluding, or say in the final status why it
+was abandoned.
+
+### Staying Current With `main`
+
+`main` is the medium every message travels through, so a workstream that does
+not watch it does not receive. Intake arrives there, registrations arrive
+there, and repository-wide coordination facts arrive there.
+
+Synchronize the working branch with `main` often — at least at every stage
+boundary, before beginning a substantial slice, and before integrating.
+
+**Method follows publication state.** Rebasing an unpublished branch onto
+`main` is clean, and it silently drops commits that already landed, which
+matters in a repository whose merge strategy rewrites them. Rebasing a
+published branch rewrites shared history and needs a force-push; do that only
+when the branch is known to be unshared, and prefer merging `main` in
+otherwise. Rebase what only you have; merge what others may have.
+
+This rule is about keeping a workstream branch current with `main`. It says
+nothing about how work is delivered *to* `main`, which follows repository
+policy and its configured merge strategy or merge queue.
+
+**Conflicts split by kind.** Mechanical conflicts — reformatting, moved
+sections, adjacent edits — are ordinary agent work; resolve them and say so.
+Semantic conflicts, where two workstreams assert incompatible things, are the
+user's decision. Do not let an unresolved conflict of either kind become a
+reason to stop synchronizing entirely; that is how a branch drifts far enough
+that the conflict becomes unaffordable.
+
+Two practical consequences:
+
+- A stale branch cannot act on its own intake. Discovery reads `main`, so items
+  are visible from anywhere, but the files an agent must edit and delete when
+  dispositioning them exist only on a synchronized branch. Synchronize before
+  planning a session's work, not after.
+- A long-lived branch that never rebases accumulates conflicts against work it
+  could have absorbed cheaply, and diverges from coordination decisions it is
+  expected to be following.
+
 ### Development And Checkpoints
 
 The workstream handoff—not root `CURRENT-STATUS.md`—records detailed progress,
 evidence, the current or last task, and the next resumable task. Routine
 workstream commits update only that handoff and workstream-owned files.
+
+**Commit often.** Commit each coherent unit of work as it is finished rather
+than accumulating many files across a long session. An uncommitted session is
+one interruption away from losing not just the changes but the order in which
+decisions were made, which is the part no one can reconstruct. Committing is
+cheap and local; it is not publication, and it does not require the work to be
+complete. A checkpoint is a statement about project state and belongs in the
+handoff; a commit is a save point. Every checkpoint is committed, but most
+commits are not checkpoints.
+
+Commits reach `main` through the repository's configured merge strategy, so
+whether frequent commits become individual commits on `main` is a property of
+that strategy rather than of this rule. Write commit messages that would read
+well either way, and do not let uncertainty about the merge boundary become a
+reason to delay committing.
 
 Keep all unfinished workstream documentation beneath:
 
@@ -592,7 +792,10 @@ Use markdown files with distinct responsibilities:
   details, debugging history, checklists, and other evidence that should not
   clutter the active task list.
 - `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/`: temporary documentation and the
-  detailed handoff for an open workstream in `multiple-streams` mode.
+  detailed handoff for an open workstream in `multiple-streams` mode. Exactly
+  one of these is always the reserved `project-management` workstream, which
+  holds project-wide priorities, sequencing, and lifecycle reasoning rather
+  than a second copy of the registry.
 - `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`: final status and retained
   historical material for an ended workstream.
 - `engineering-docs/bugs/`: one file per active or recently investigated
@@ -1083,7 +1286,9 @@ Bootstrap the vibe-coding process documentation from
 Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
 docs/, and engineering-docs/ as appropriate. Preserve existing project docs
 and adapt the process to this repository. Set workflow-type in
-.devcapsule/devcapsule.toml to single-stream or multiple-streams.
+.devcapsule/devcapsule.toml to single-stream or multiple-streams. If
+multiple-streams, follow Initializing Multiple-Stream Mode, including the
+reserved project-management workstream.
 ```
 
 At minimum, add or update these files in the target project:

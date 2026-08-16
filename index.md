@@ -93,12 +93,16 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Docker4PyCharm Historical Reference
 
+The `docker4pycharm/` directory is the original shell-based PyCharm MVP this
+project was bootstrapped from, frozen at that point in time. Read these for
+history; record current decisions in the active documents above.
+
 - [Docker PyCharm isolation README](docker4pycharm/README.md)
 - [Historical root project brief](engineering-docs/implementation-notes/docker4pycharm/historical-root-readme.md)
 - [Post-MVP refactoring strategy](engineering-docs/design-notes/docker4pycharm/future-agent-refactoring-brief.md)
 - [PyCharm AI plugin and ChatGPT subscription setup](docs/guides/docker4pycharm-ai-plugin-and-chatgpt-setup.md)
 - [Debugging notes](engineering-docs/implementation-notes/docker4pycharm/debugging.md)
-- [Vibe-coding process bootstrap template](docker4pycharm/image-assets/vibe-coding-process.md)
+- [Vibe-coding process bootstrap template, frozen copy](docker4pycharm/image-assets/vibe-coding-process.md)
 
 ## Implementation Notes And Decisions
 
