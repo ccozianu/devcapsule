@@ -94,7 +94,11 @@ eight unowned shortcomings and seven documented items to pin to V1; and the
 Define V1. Until now V1 has been a target held in the product owner's head plus
 a dated gap-review snapshot; the obvious prerequisites were clear, but the
 release boundary is not. Complete the [V1 scope ledger](v1-scope-ledger.md),
-which is open with its first decided row.
+which now holds six decided or proposed rows.
+
+Start by settling the release thesis in *Open Threads* below. Roughly half the
+remaining rows cannot be written without it, so beginning anywhere else produces
+verdicts that may not survive the answer.
 
 Done means:
 
@@ -126,6 +130,56 @@ conflict resolution makes it unnecessary. Recording that it is unnecessary is a
 valid outcome. This was the previously planned next task and is deliberately
 sequenced behind defining V1, since the V1 boundary determines whether the
 protocol is a release commitment at all.
+
+## Open Threads
+
+Written at pause on 2026-08-16. This is a trial of the `Open Threads` shape
+proposed to `workflow-improvements`; the format is not ratified, and structuring
+this workstream's own handoff needs no protocol change. Kept deliberately short:
+questions and reasoning hooks, not a transcript.
+
+### Awaiting The Product Owner
+
+1. **The release thesis.** Containment product — one IDE, boundary provable,
+   agent-safety wedge — versus workspace product with multi-IDE breadth. Decides
+   roughly half the unwritten ledger rows. Agent recommendation: containment,
+   because it is where the project is ahead of the field rather than behind it.
+2. **Java: inside the V1 window or immediately after.** Inside, it competes with
+   concurrency and the entry point; after, it becomes the first post-V1
+   milestone and gives the announcement a concrete next promise.
+3. **Fourth agent, Case A.** Bring-your-own-endpoint is proposed `in-v1` and
+   unratified. Case B, DevCapsule running the model, is proposed `deferred`.
+4. **The twelve-week release shape**, carried as `proposed` in the ledger and
+   never ratified — and now stale, because moving the contained display to v027
+   removed a block the shape assumed was inside the window. It needs rebuilding
+   before it can be ratified.
+5. **Is the use-case set complete at two?** The learner/tinkerer and the serious
+   solo developer. The agent offered to write the set up as a ledger section
+   once complete; that remains undone.
+
+### Weighed And Unresolved
+
+- **Concurrency was chosen over VSCodium** for the extra four weeks, on the
+  argument that a broken first ten minutes costs more than a narrower platform
+  list. Not revisited since the v027 deferral changed the surrounding shape.
+- **noVNC provisionally preferred over Xpra seamless mode**, with a spike to
+  decide. Xpra is the option that actually fixes desktop integration; noVNC is
+  the more predictable and more demo-friendly. Neither is committed.
+- **Skeleton delivery mechanism undecided:** submodule, matching the existing
+  sample convention, or in-tree, which avoids another publishable repository and
+  the unreachable-pointer bug. Raised, not answered.
+- **`recursive-e2e`'s widened goal** is a registry patch, not a settled shape.
+  The alternative is registering a separate workstream for product work; that
+  workstream may raise it back.
+- **uid/gid across machines** is unverified. Whether formation identity and
+  state layout survive a second developer with a different UID should be checked
+  before "scales to multi-developer" is claimed anywhere.
+
+### Deliberately Not Preserved
+
+The conversation itself. Decisions are in the ledger and the two checkpoints,
+and everything above is what would otherwise have been lost. Nothing else from
+the 2026-08-16 session needs recovering to resume this workstream.
 
 ## External State And Risks
 
