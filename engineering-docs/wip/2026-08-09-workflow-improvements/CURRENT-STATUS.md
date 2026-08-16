@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active; intake received, not yet dispositioned
+State: active; two intake items dispositioned, four remain
 
 Integration target: `main`
 
@@ -23,15 +23,17 @@ fixed, explicitly deferred, or rejected.
 
 ## Branch Association
 
-The active branch is `workflow-improvements/intake`, forked from the
-registration commit on `main` and resynchronized with `main` on 2026-08-16.
+The active branch is `workflow-improvements/v1`, forked from the registration
+commit on `main` and resynchronized with `main` on 2026-08-16. It was renamed
+from `workflow-improvements/intake` on 2026-08-16: the old name collided with
+the `intake/` directory convention introduced the same day, and the new one
+says what the branch is for — workflow improvements bound for the V1 release.
+The old ref is deleted locally and on `origin`; nothing should reference it.
 
 `workflow-improvements/outbox` was created on 2026-08-16 from `main`, carrying
-three deliveries to `project-management` and nothing else. It is the first use
-of the outbox mechanism. It is not an editing checkout; see selection rule 6.
-
-The branch name predates the `intake/` directory convention introduced on
-2026-08-16 and now collides with it confusingly. See *Open Threads*.
+deliveries to `project-management` and the registry row for this rename, and
+nothing else. It is the first use of the outbox mechanism. It is not an editing
+checkout; see selection rule 6.
 
 ## Current State
 
@@ -264,19 +266,15 @@ continuity intake item. Short by design.
 
 ### Awaiting The Product Owner
 
-1. **Rename this branch?** `workflow-improvements/intake` now collides with the
-   `intake/` directory convention and already confused a human reader once.
-   Still unanswered, and no longer free: the branch now carries unique commits,
-   so a rename means a new branch, a registry row, a push, and retiring the old
-   ref. Something like `workflow-improvements/protocol` would remove the
-   ambiguity. Cheaper before the next integration than after.
-2. **Does "the workflow improvements already identified" mean identified, or
+1. **Does "the workflow improvements already identified" mean identified, or
    identified and implemented?** The product owner named that as a condition for
    starting their own projects on v026. The two readings put very different
    obligations on this workstream, and it is currently described as being on the
-   critical path for those project starts.
+   critical path for those project starts. The 2026-08-16 rename to
+   `workflow-improvements/v1` presumes this workstream delivers *for* V1, which
+   sharpens the question rather than answering it.
 
-3. **Who owns protocol boilerplate that lives inside another workstream's
+2. **Who owns protocol boilerplate that lives inside another workstream's
    directory?** Each `intake/README.md` restated the delivery rule, so changing
    that rule made four workstreams' READMEs stale at once — and restriction
    11's carve-out bars this workstream from editing three of them. Its own
@@ -291,6 +289,9 @@ continuity intake item. Short by design.
 - **How intake deliveries reach `main`.** Resolved 2026-08-16 by the product
   owner: through the sender's `<mnemonic>/outbox` branch. This also closed the
   main-first registration question. See *Dispositions*.
+- **The branch name.** Resolved 2026-08-16: renamed to
+  `workflow-improvements/v1`, which names the delivery target rather than a
+  mechanism and no longer collides with the `intake/` directory.
 - **Tooling scope for the reserved workstream.** Resolved 2026-08-16: land the
   protocol here, deliver the code need as intake. Recorded because the
   alternatives were live options, not strawmen — modernizing the frozen
