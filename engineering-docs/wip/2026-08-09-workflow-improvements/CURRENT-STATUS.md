@@ -180,6 +180,52 @@ deletion makes absence meaningful. A sender still learns nothing when its item
 is accepted, and nothing surfaces an item that has sat untouched for a long
 time.
 
+### Fourth Task: Latitude Where The Workflow Is Silent
+
+Raised by the product owner on 2026-08-17, immediately after the previous task
+observed that some scenarios will land in states the protocol does not define.
+Rather than chase completeness, V1 admits the incompleteness and says how to
+behave inside it. `WORKFLOW.md` opens with *Latitude Where This Document Is
+Silent*; `AGENTS.md` and `R-PRODUCT-004` follow.
+
+The constitutional principle as given: what is not expressly denied is allowed.
+A human/agent pair meeting an uncovered situation resolves it with judgment and
+keeps working, because being stopped by silence is itself a failure.
+
+Four qualifications were added. The first two protect the rule from being
+read as a general override; the third and fourth are what make it useful rather
+than merely permissive.
+
+- **Express denials are not silence.** Stated flatly, the principle would have
+  repealed six existing rules by implication: never force-push `main`; stop
+  before editing when branch and registry disagree; do not infer permission to
+  update `main` from the ability to do so; and three explicit instructions to
+  ask the human. Those are decisions already made, generally because the
+  failure they prevent is expensive or irreversible. The clause names them and
+  excludes them.
+- **Silence is not a rule you dislike.** A pair must establish that the
+  protocol is actually silent, not merely inconvenient. Otherwise "the workflow
+  is underspecified" becomes the universal solvent for any rule with a cost.
+- **Ambiguity and contradiction are defects, not silence.** Where two rules
+  conflict, choose the reading that serves evident intent, say which reading
+  you chose, and report the defect — rather than treating the conflict as
+  licence to pick the convenient side.
+- **Exercised latitude must be recorded.** This is the obligation that makes
+  the permission safe. Record what was missing, what was done, and why; deliver
+  it to the workflow-owning workstream when the gap would recur in any project.
+  Unrecorded latitude leaves the gap invisible, the next pair re-derives it
+  differently, and two projects believing they share a protocol quietly
+  diverge. Recorded latitude is how the next version of the document gets
+  written, which makes this clause a discovery mechanism rather than only an
+  escape hatch.
+
+Scoped explicitly to V1 and dated, with a reopen condition: revisit when
+discovering a gap becomes a surprise rather than a routine event.
+
+Not done: no `D-####` decision record was created. The clause has a V1 sunset
+and `WORKFLOW.md` is its authority, so a durable decision record seemed
+premature. Worth adding if the principle outlives V1.
+
 ## Next Resumable Task
 
 Disposition the four remaining intake items under the protocol adopted on
