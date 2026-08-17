@@ -56,11 +56,11 @@ workstream. If a project declares `multiple-streams` and has no such
 workstream, report that it is incompletely initialized rather than working
 around it. See *The Reserved `project-management` Workstream* in `WORKFLOW.md`.
 
-The checked-out branch and worktree are the persistent local workstream
-selection; there is no separate untracked selection file. `main`, detached
+The checked-out branch is the persistent local workstream selection; there is
+no separate untracked selection file. `main`, detached
 HEAD, and unregistered branches have no default editing workstream. If the
-selected workstream differs from the current branch, move to its clean branch
-or worktree before editing. Treat a branch-to-registry mismatch as invalid
+selected workstream differs from the current branch, move to that branch in a
+clean checkout before editing. Treat a branch-to-registry mismatch as invalid
 routing and stop rather than guessing.
 
 Pay special attention to the selected handoff's current stage, current state,
@@ -119,9 +119,10 @@ coordination fact. Update `README.md` only when stable, developer-facing project
 information changes.
 
 In `multiple-streams` mode, do not edit from a checkout carrying another
-workstream's dirty or independent source state. Use the appropriate Git branch
-and worktree, and treat the committed root registry as eventually consistent
-rather than as live presence or locking. Follow `WORKFLOW.md` for routing,
+workstream's dirty or independent source state. Use the appropriate Git branch, and treat the
+committed root registry as eventually consistent rather than as live presence
+or locking. How many checkouts exist locally is your own implementation detail
+and is not workflow state. Follow `WORKFLOW.md` for routing,
 main-first registration, branch ownership, WIP documentation, completion,
 integration, and recovery rules.
 

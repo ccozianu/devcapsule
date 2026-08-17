@@ -275,24 +275,61 @@ start, and states that where a rule and the preamble disagree the rule governs
 and the disagreement is a defect to report — so the preamble cannot be used to
 argue around a rule.
 
+### Sixth Task: Remove Worktrees From The Protocol
+
+The product owner corrected a premise on 2026-08-17. Worktrees were never
+intended as a workflow concept. Extra checkout directories had appeared in
+practice for two reasons — e2e dogfood testing, which is outside the workflow,
+and manoeuvring edits onto other branches such as the outbox — and both are
+implementation details.
+
+The assumption ran deeper than the wording suggested: eleven references in
+`WORKFLOW.md` and three in `AGENTS.md`, including the session-start selection
+rules, which were written in terms of worktrees rather than branches.
+
+All fourteen are gone. The protocol is now stated in terms of branches and
+checkouts, with one paragraph saying explicitly that local checkout arrangement
+is an implementation detail — one checkout has one branch and therefore at most
+one selected workstream, and whether an extra one is a clone, a Git worktree,
+or a container is the developer's business and is not workflow state. A second
+sentence puts checkouts made for other purposes, such as running the product
+against itself, outside this document entirely.
+
+Restriction 11's second carve-out was the subtlest case. It protected "another
+worktree's recovery state", which named a mechanism in order to describe
+something simpler: uncommitted work belonging to someone else's session. It now
+says that.
+
+Two things worth recording.
+
+**The resolution was subtraction, and that was the better outcome.** The
+document got smaller while covering the same ground, which is what the
+low-ceremony principle in the preamble asks for. A workflow gap does not always
+mean something is missing; sometimes it means something is present that should
+not be.
+
+**The evidence was already in this session.** Every branch switch performed
+across three days of this work — between `workflow-improvements/v1` and
+`workflow-improvements/outbox`, repeatedly — used a plain `git switch` in one
+checkout. The mechanism the protocol kept pointing at was never once needed by
+the protocol itself.
+
 ## Next Resumable Task
 
-Write the worktree procedure — item 1 of *Acknowledged Work*, and the only
+Define the pause action — item 2 of *Acknowledged Work*, and now the only
 acknowledged item that is both ready and unblocked.
 
-Done means: when a worktree is warranted rather than a branch switch; where
-worktrees live relative to the primary checkout; how one associates with
-exactly one workstream; how the session-start selection rules apply inside one;
-how it is disposed of, including what happens to uncommitted recovery state;
-and how an abandoned worktree is detected. Reconcile it with restriction 11's
-second carve-out, which already presumes a worktree lifecycle.
+Done means: a defined pause action in `WORKFLOW.md`; a place in the handoff for
+open threads, options weighed but unresolved, and questions awaiting the human;
+and an explicit statement of what is deliberately not preserved. The shape is
+already proven — this handoff's *Open Threads* section has been written in it
+since 2026-08-16 and has produced two answered questions and several still
+open. The work is promotion from local practice to protocol, not design.
 
-Item 2, the pause action, is equally ready and could go first; the shape is
-already proven in this handoff's *Open Threads*. Item 3 is blocked on the
-product owner. Item 4 is the largest and its main consumer, `recursive-e2e`
-Stage 7, has not been reached.
+Item 3 is blocked on the product owner. Item 4 is the largest and its main
+consumer, `recursive-e2e` Stage 7, has not been reached.
 
-The nearer obligation is integration, not writing. Five workflow changes are
+The nearer obligation is integration, not writing. Six workflow changes are
 written and unmerged, and this workstream cannot conclude while
 `workflow-improvements/outbox` carries undelivered mail.
 
@@ -350,11 +387,16 @@ the workflow protocol itself, which is this workstream's registered goal, and
 none has a better owner. The ordered work they became is in *Acknowledged
 Work*.
 
-**A worktree procedure.** Acknowledged. `WORKFLOW.md` references worktrees
-throughout — switching workstreams, avoiding mixed dirty state, preparing a
-registration while another workstream is checked out — and defines them
-nowhere. Restriction 11's second carve-out presumes a worktree lifecycle the
-document never describes. Nothing else can own a gap in this document.
+**A worktree procedure.** Acknowledged, then resolved by subtraction on
+2026-08-17. Closed; see *Sixth Task*.
+
+The item correctly identified that `WORKFLOW.md` referenced worktrees
+throughout and defined them nowhere. The assumed fix was to write the missing
+procedure. The product owner corrected the premise: worktrees were never
+intended as a workflow concept at all. Extra checkouts had been used by agents
+for dogfood testing, which is outside the workflow, and for manoeuvring edits
+onto other branches, which is an implementation detail. The right resolution
+was therefore to remove the dependency rather than document it.
 
 **Pausing and conversational continuity.** Acknowledged. The sender's cheap
 version has in fact already been trialled here: this handoff's *Open Threads*
@@ -406,12 +448,8 @@ the product owner should see that rather than discover it. See *Open Threads*.
 Ordered by readiness, not by size. Positions are this workstream's judgment and
 can be reordered.
 
-1. **A worktree procedure.** Ready now; purely additive; blocks nothing but is
-   referenced throughout the document. Done means: when a worktree is warranted
-   rather than a branch switch; where worktrees live; how one associates with
-   exactly one workstream; how session-start selection applies inside one; how
-   it is disposed of, including uncommitted recovery state; and how an
-   abandoned worktree is detected.
+1. ~~A worktree procedure.~~ Done 2026-08-17, by deletion rather than by
+   writing one. See *Sixth Task*.
 2. **A pause action and reasoning continuity.** Ready now, and the shape is
    already proven in this handoff. Done means: a defined pause action in
    `WORKFLOW.md`; a place in the handoff for open threads, options weighed but
