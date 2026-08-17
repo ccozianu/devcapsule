@@ -2,7 +2,7 @@
 
 Date: 2026-08-17
 
-Status: proposed for human review; no implementation has started
+Status: approved; implementation and validation in progress
 
 ## Problem
 
@@ -155,8 +155,9 @@ expected to contain clickable-host-browser support.
 
 ## Review Decision
 
-Before implementation, confirm whether this narrow URL-only capability and
-its lifetime are acceptable, and whether it should be enabled by default for
-desktop-launched IDE capsules or require an explicit per-developer
-authorization. That product-policy choice changes configuration and UX work,
-but not the recommended socket architecture.
+The product owner approved implementation on 2026-08-17. The existing explicit
+host-boundary policy resolves the remaining enablement choice conservatively:
+native-X11 CLI launches require the run-once `--host-browser` option. A desktop
+launcher may present that authorization and pass the option, but an ordinary
+capsule does not receive the bridge silently. This can later become a durable
+per-developer choice without changing the socket architecture.

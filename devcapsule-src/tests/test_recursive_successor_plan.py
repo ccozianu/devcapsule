@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import socket
 from typing import Any
 
 import pytest
@@ -17,6 +18,11 @@ from devcapsule.configurations.pycharm._launcher import (
 )
 from devcapsule.container_runtime.contract import Identity, RuntimePlan
 from devcapsule.materialization import RUNTIME_PLAN_PATH
+from devcapsule.host_open import (
+    HOST_OPEN_BROWSER,
+    HOST_OPEN_SOCKET_DESTINATION,
+    HOST_OPEN_SOCKET_ENV,
+)
 from devcapsule.recursive_successor_plan import (
     REDACTED_HOST_PATH,
     ExpectedSuccessorPlan,
@@ -167,33 +173,38 @@ def test_plan_models_every_flag_the_real_launcher_emits(tmp_path: Path, enable_s
         "XDG_DATA_HOME": str(tmp_path / "data"),
         "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
     }
-    config = build_run_config(
-        PycharmRunOptions(
-            project=project,
-            project_mount="/workspace/project",
-            docker_mode=DockerMode.none,
-            network_mode="host",
-            memory_limit_bytes=8589934592,
-            enable_sudo=enable_sudo,
-            debug_native=True,
-            runtime_plan=RuntimePlan.for_component(
-                pycharm_runtime_template(),
-                project_path="/workspace/project",
-                home="/home/devcapsule",
-                identity=Identity(1000, 1000, "developer"),
+    browser_socket = tmp_path / "host-open.sock"
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as broker:
+        broker.bind(str(browser_socket))
+        env[HOST_OPEN_SOCKET_ENV] = str(browser_socket)
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="host",
+                memory_limit_bytes=8589934592,
+                enable_sudo=enable_sudo,
+                debug_native=True,
+                runtime_plan=RuntimePlan.for_component(
+                    pycharm_runtime_template(),
+                    project_path="/workspace/project",
+                    home="/home/devcapsule",
+                    identity=Identity(1000, 1000, "developer"),
+                ),
+                use_image_process=True,
+                additional_environment={"DEVCAPSULE_RECURSIVE_E2E": "1"},
+                enable_host_browser=True,
+                extra_docker_args=[
+                    "--pull=never",
+                    "--label",
+                    "devcapsule.e2e.managed=true",
+                    "--label",
+                    "devcapsule.e2e.role=successor",
+                ],
             ),
-            use_image_process=True,
-            additional_environment={"DEVCAPSULE_RECURSIVE_E2E": "1"},
-            extra_docker_args=[
-                "--pull=never",
-                "--label",
-                "devcapsule.e2e.managed=true",
-                "--label",
-                "devcapsule.e2e.role=successor",
-            ],
-        ),
-        env,
-    )
+            env,
+        )
     files = TempRuntimeFiles(
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
@@ -216,6 +227,13 @@ def test_plan_models_every_flag_the_real_launcher_emits(tmp_path: Path, enable_s
     assert plan.network_mode == "host"
     assert plan.memory_limit_bytes == 8589934592
     assert plan.environment["DEVCAPSULE_RECURSIVE_E2E"] == "1"
+    assert plan.environment["BROWSER"] == HOST_OPEN_BROWSER
+    assert plan.environment[HOST_OPEN_SOCKET_ENV] == str(HOST_OPEN_SOCKET_DESTINATION)
+    browser_mount = next(
+        mount for mount in plan.mounts if mount.destination == str(HOST_OPEN_SOCKET_DESTINATION)
+    )
+    assert browser_mount.source == str(browser_socket)
+    assert browser_mount.read_only is True
     assert plan.labels["devcapsule.e2e.role"] == "successor"
     assert "SYS_PTRACE" in plan.cap_add
     assert RUNTIME_PLAN_PATH in {mount.destination for mount in plan.mounts}

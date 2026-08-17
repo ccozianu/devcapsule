@@ -631,11 +631,29 @@ socket. Treat the embedded browser as a project preview surface, not as a
 general-purpose browser for untrusted sites. Docker's outer isolation policy
 is unchanged.
 
+External hyperlinks use a separate, opt-in host integration. Add
+`--host-browser` to `project run`, `run-image`, or `pycharm run` to let
+`xdg-open` inside the capsule ask a launcher-owned Unix-socket broker to open
+an absolute HTTP(S) URL in the physical host's default browser. The protocol
+does not expose the host desktop session bus, accept commands or filesystem
+paths, or invoke a shell. The socket is mounted read-only and its physical
+host source is omitted from ordinary evidence. Any process running as the
+capsule user can exercise the enabled bridge, so it is disabled unless the
+developer makes this run-once choice. Use `--no-host-browser` to override a
+higher-level launcher choice explicitly.
+
+A recursive launch can propagate an existing authorized broker to its
+successor; it cannot create host-browser access from inside a capsule. The
+physical-host foreground launcher owns the broker lifetime and removes its
+private runtime directory on exit. A nested detached successor therefore
+retains working links only while that owning outer launch remains alive.
+
 For a formation-based run, DevCapsule generates a version-1 runtime plan from
 the same component template used in the image's formation identity. The JSON
 contains only in-container project/home/state destinations, the runtime
-UID/GID/username, and component adapter configuration—never host source/state
-paths, checkout files, credentials, or authorization evidence. The launcher
+UID/GID/username, component adapter configuration, and names of enabled host
+integrations—never host source/state paths, checkout files, credentials, or
+authorization secrets. The launcher
 writes it to a temporary mode-`0644` file, mounts it read-only at
 `/etc/devcapsule/runtime-plan.json`, and removes it with the generated identity
 files after exit or launch preparation failure. No command follows the image
@@ -672,7 +690,10 @@ Normal launch then uses the committed manifest and platform lock plus that
 checkout-local resolution:
 
 ```bash
-devcapsule project run --docker-daemon host-socket --development-sudo
+devcapsule project run \
+  --docker-daemon host-socket \
+  --development-sudo \
+  --host-browser
 ```
 
 For the DevCapsule repository's own recursive dogfood validation, this same
@@ -828,8 +849,10 @@ for construction and diagnosis. It passes `--pull=never` to Docker, so a
 missing local image fails instead of pulling or resolving another image. It
 defaults to no Docker-daemon access. Use
 `--docker-daemon host-socket` and `--development-sudo` only as explicit
-run-once relaxations. The broader capability-first state-management CLI remains
-under development.
+run-once relaxations. `--host-browser` is a separate run-once capability for
+opening HTTP(S) hyperlinks in the physical host browser; it does not imply
+Docker, network, sudo, or credential access. The broader capability-first
+state-management CLI remains under development.
 
 The first dogfood validation intentionally supplies the existing directories
 once, before the planned `state adopt` command persists those mappings:

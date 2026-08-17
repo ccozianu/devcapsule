@@ -382,6 +382,7 @@ def _resolved_run_options(
             runtime_plan,
         ),
         additional_environment={"DEVCAPSULE_RECURSIVE_E2E": "1"},
+        enable_host_browser=True,
         secret_environment=tuple(sorted(str(value) for value in secret_environment.values())),
         extra_docker_args=[
             "--pull=never",
@@ -620,6 +621,10 @@ def _probe_successor(
 test "${DEVCAPSULE_RECURSIVE_E2E:-}" = 1
 test "${DOCKER_HOST:-}" = unix:///run/host-docker.sock
 test -S /run/host-docker.sock
+if [ -n "${DEVCAPSULE_HOST_OPEN_SOCKET:-}" ]; then
+  test "${BROWSER:-}" = "/opt/devcapsule/bin/devcapsule.pex host-open"
+  test -S "$DEVCAPSULE_HOST_OPEN_SOCKET"
+fi
 test -d /opt/claude
 test "${DISABLE_UPDATES:-}" = 1
 pgrep -fa pycharm >/dev/null

@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenBroker
+
 
 @pytest.mark.integration
 def test_built_pex_dispatches_runtime_help(built_pex: Path) -> None:
@@ -65,6 +67,44 @@ def test_built_pex_exposes_recursive_host_public_interface(built_pex: Path) -> N
 
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == "HostDaemonLaunchContext"
+
+
+@pytest.mark.integration
+def test_xdg_open_dispatches_through_built_pex_to_exact_host_argument(
+    built_pex: Path,
+    tmp_path: Path,
+) -> None:
+    xdg_open = shutil.which("xdg-open")
+    if xdg_open is None:
+        pytest.skip("xdg-open is unavailable on this packaging-test host")
+    socket_path = tmp_path / "host-open.sock"
+    captured = tmp_path / "captured-url"
+    url = "https://example.test/path?a=one&b=%24%28touch%20nope%29#fragment"
+    opener = (
+        sys.executable,
+        "-c",
+        "from pathlib import Path; import sys; Path(sys.argv[1]).write_text(sys.argv[2])",
+        str(captured),
+    )
+
+    with HostOpenBroker(socket_path, opener=opener):
+        completed = subprocess.run(
+            [xdg_open, url],
+            check=False,
+            text=True,
+            capture_output=True,
+            env={
+                **os.environ,
+                "BROWSER": f"{built_pex} host-open",
+                HOST_OPEN_SOCKET_ENV: str(socket_path),
+                "DISPLAY": "",
+                "XDG_CURRENT_DESKTOP": "",
+                "DE": "",
+            },
+        )
+
+    assert completed.returncode == 0, completed.stderr
+    assert captured.read_text(encoding="utf-8") == url
 
 
 @pytest.mark.integration
