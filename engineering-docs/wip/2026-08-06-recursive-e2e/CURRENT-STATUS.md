@@ -66,14 +66,15 @@ active continuation branch.
   run DevCapsule. This instruction was supplied directly because the earlier
   `project-management` delivery containing two v026 items never reached this
   workstream's intake on `main`.
-- The self-contained implementation and local pair proof are complete. The PEX
-  builder now emits a 39 MiB eager PEX scie containing stripped CPython 3.12.14
-  from Python Build Standalone release 20260814. A network-disabled
-  `ubuntu:24.04` container with no Python installed ran it successfully. Local
-  candidate image `mycodespaceai/devcapsule-base:ubuntu-24.04-v026-candidate`,
-  image ID `sha256:3115bf80dcbceb758c95e8878f0567b7528561abbec596ee3f2efb7d526a45a3`,
-  embeds the exact scie digest recorded in its image label and runs it with
-  networking disabled. Exact-revision publication remains.
+- The self-contained implementation and exact-revision pair proof are
+  complete. The PEX builder now emits a 39 MiB eager PEX scie containing
+  stripped CPython 3.12.14 from Python Build Standalone release 20260814. A
+  network-disabled `ubuntu:24.04` container with no Python installed ran both
+  the local candidate and exact-revision artifacts successfully. Docker tag
+  `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` is published at registry
+  digest `sha256:f67baa907c622e68825475d2587ad3b39c85aa444d8bc81f0ae739fc52dd3d48`.
+  The standalone PEX is built and verified but has no selected public download
+  channel yet, so download-based publication evidence remains open.
 - An audit request was pushed on `recursive-e2e/outbox` at `ebad342`, asking
   `project-management` to inventory promised work for this workstream and
   determine from its conversation/session evidence whether delivery failed
@@ -85,8 +86,8 @@ active continuation branch.
 Current task: publish the v026 Docker/CLI pair, with the eager self-contained
 PEX as the first acceptance boundary.
 
-Status: implementation and local candidate proof complete; exact-revision
-publication pending. Changed:
+Status: implementation, exact-revision artifact, and Docker publication
+complete. Standalone PEX download publication remains pending. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
@@ -107,6 +108,16 @@ integrations passed; the separate clean-machine Nox proof passed. Candidate
 PEX SHA-256 `b7e2fd81818f141bd8dad99c9e41eeb6db58a6f31cf1b287f75a901f0e352fdb`
 matches both the candidate image label and the bytes at
 `/opt/devcapsule/bin/devcapsule.pex`.
+
+Exact-revision evidence: source commit
+`95212fc11c1b9d8724e7176ff2d236393f18319a` is published on
+`origin/recursive-e2e/stage-4`; `dist/devcapsule.pex` SHA-256 is
+`05e49697917edf62afc119d8ca39a824a41f46af9621dba3aa5501826c36b0f2`.
+Final v026 image ID
+`sha256:044e017572172edcb1cffaa9b378c3fc8dd03038712d7f53e8e97aaf589ef261`
+records that same PEX digest and source revision in its labels, contains the
+same bytes at `/opt/devcapsule/bin/devcapsule.pex`, and passed offline
+`version --json` after a pull by immutable registry digest.
 
 ## Last Task And Status
 
@@ -310,14 +321,16 @@ check.
 
 ## Next Resumable Task
 
-Finish the exact-revision v026 pair before returning to Stage 6:
+Finish the standalone-CLI publication boundary before returning to Stage 6:
 
-1. commit and push the self-contained PEX implementation;
-2. build `dist/devcapsule.pex` from that exact published revision and rerun the
-   networkless/no-Python proof;
-3. build the final v026 base from that exact artifact, verify that its label and
-   embedded bytes match the PEX SHA-256, and publish the pair; and
-4. record the immutable artifact and image identities here.
+1. choose an authorized public download channel for `devcapsule.pex`;
+2. publish the exact artifact and its SHA-256 without rebuilding it; and
+3. on a clean image with no Python, download that published artifact, disable
+   networking, and rerun help and version output.
+
+The v026 Docker half is complete and published. The CLI is fully self-contained
+and clean-machine proven from local bytes; only public download and the proof
+against those downloaded bytes remain.
 
 Then finish Stage 6 before beginning Stage 7:
 
@@ -343,6 +356,19 @@ now retained: the current running `482c34f2…` successor, which carries an
 and the older exited `b2093d85…` successor, which predates the retained plan
 and can no longer be inspected. Prefer the newer run as the Stage 7 subject and
 keep the older one as historical evidence only.
+
+## Acknowledged Work
+
+1. **Implement external-resource ownership and reaping in Stage 7.**
+   Acknowledged 2026-08-17 from `workflow-improvements`. It fits this
+   workstream's existing persistence and deterministic-cleanup stage and is
+   ordered after the current v026 publication boundary and Stage 6 completion.
+   Stage 7 will implement against the convention owned by
+   `workflow-improvements`, covering ownership/run identity for containers,
+   images, volumes, host ports, and state roots; collision-resistant naming;
+   enumeration by owner; and safe removal boundaries. Closing the detached
+   successor cleanup bug is a consequence of this task, not a separate
+   implementation.
 
 ## External State And Risks
 
@@ -398,9 +424,12 @@ keep the older one as historical evidence only.
 
 ## Workstream Document Index
 
-This workstream currently owns only this WIP status file. Its established
-execution and evidence records predate the WIP convention and remain permanent
-engineering records:
+This workstream owns:
+
+- [Intake disposition log](intake-dispositions.md)
+
+Its established execution and evidence records predate the WIP convention and
+remain permanent engineering records:
 
 - [Milestone plan](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
 - [Stage 2 execution checklist](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)
