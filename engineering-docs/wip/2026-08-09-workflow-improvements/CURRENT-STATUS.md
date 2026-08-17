@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active; intake queue empty, four acknowledged items in progress
+State: active; integrated to `main`, two acknowledged items remain
 
 Integration target: `main`
 
@@ -30,10 +30,12 @@ the `intake/` directory convention introduced the same day, and the new one
 says what the branch is for — workflow improvements bound for the V1 release.
 The old ref is deleted locally and on `origin`; nothing should reference it.
 
-`workflow-improvements/outbox` was created on 2026-08-16 from `main`, carrying
-deliveries to `project-management` and the registry row for this rename, and
-nothing else. It is the first use of the outbox mechanism. It is not an editing
-checkout; see selection rule 6.
+`workflow-improvements/outbox` was created on 2026-08-16 from `main` and is the
+first use of the outbox mechanism. It carried three deliveries to
+`project-management`, one to `recursive-e2e`, this branch's registry row, and
+six intake deletions. All merged on 2026-08-17, after which it was hard reset
+to `main`; it holds nothing now. It is not an editing checkout; see selection
+rule 6.
 
 ## Current State
 
@@ -47,17 +49,18 @@ checkout; see selection rule 6.
   dispositioned: two acknowledged and implemented on 2026-08-16, four
   acknowledged on 2026-08-17 and now carried as *Acknowledged Work*. None was
   forwarded. See *Dispositions*.
-- The four files are deleted from `main` through the outbox. They remain on
-  this branch until its next synchronization, which is what the protocol
-  prescribes; do not delete them here.
+- All six files are gone from `main` and from this branch, which was
+  synchronized after the merge on 2026-08-17.
 - A seventh item, on shared bug vocabulary, is committed on
   `project-management/coordination` and arrives when that branch merges — itself
   an illustration of why the outbox now exists. Expect the queue to be
   non-empty again.
-- Five workflow changes have been written across 2026-08-16 and 2026-08-17 and
-  await integration: the reserved `project-management` workstream, the outbox
-  branch, the two-outcome intake disposition protocol with its completion gate,
-  the latitude clause, and the purpose-and-principles preamble.
+- Eight workflow changes are on `main` as of 2026-08-17: the reserved
+  `project-management` workstream, the outbox branch, the two-outcome intake
+  disposition protocol with its completion gate, the latitude clause, the
+  purpose-and-principles preamble, the removal of worktrees from the protocol,
+  the working model of checkouts and branches, and workstream states with
+  pausing and resuming.
 - The branch was 37 commits behind `main` and carried three commits that were
   patch-identical duplicates of the registration commits. Rebasing dropped all
   three; the branch is now identical to `main`.
@@ -398,6 +401,51 @@ workstream sleeps — the stale-branch finding. And re-verify what the handoff
 claims about external state rather than trusting it: this handoff itself
 asserted for days that the environment had no Git publication credentials,
 which was false and had caused work to be withheld twice.
+
+### Ninth Task: Integration, And Two Defects It Exposed
+
+Both pull requests were merged by the product owner on 2026-08-17. Verified
+against `origin/main` by content rather than by commit identity, since the
+repository's rebase merge rewrites SHAs:
+
+- all eight workflow changes are present, including the eight new or rewritten
+  sections;
+- this workstream's `intake/` on `main` contains only its `README.md`;
+- the registry row reads `workflow-improvements/v1`;
+- all four deliveries arrived — three in `project-management`'s intake, one in
+  `recursive-e2e`'s; and
+- one `worktree` mention survives in `WORKFLOW.md`, which is the intended one
+  naming it as an implementation detail, and none in `AGENTS.md`.
+
+Both branches were then synchronized. Doing so exposed two defects in rules
+written one and two days earlier, both invisible until the first post-merge
+synchronization and both now fixed.
+
+**A merged outbox is not an ancestor of `main`.** *The Outbox Branch* said it
+was, and that the next send "resets it forward" from there. True under
+fast-forward or merge-commit delivery; false under squash or rebase merge,
+which is what this repository uses. `git merge-base --is-ancestor` confirms the
+outbox is unreachable from `main` despite every one of its changes being
+present. An agent trusting that sentence would build the next send on stale
+history. The step is now an explicit hard reset, with a note that this is a
+force-push the prohibition on force-pushing `main` does not reach, since an
+outbox has no independent content to lose.
+
+**Rebasing is the wrong way to synchronize a branch whose own delivery just
+landed.** *Staying Current With `main`* said rebasing "silently drops commits
+that already landed". That holds when patch identities match; it failed here.
+Rebasing `workflow-improvements/v1` onto the merged `main` conflicted on
+`CURRENT-STATUS.md` and `intake/README.md`, because rebase replays commits one
+at a time onto a `main` that already contains their final effect, and the
+intermediate states disagree even where the end states do not. The branch had
+nothing `main` lacked, so the correct operation was a hard reset. Recorded as
+such: rebase carries unlanded work forward and is the wrong tool for a branch
+with nothing left to carry.
+
+Both defects share a shape worth noting. Each was a claim about Git behaviour
+that is true under some merge strategies and false under this repository's, and
+neither could be caught by review — only by the first branch to complete a full
+round trip through `main`.
 
 ## Next Resumable Task
 

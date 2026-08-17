@@ -592,12 +592,23 @@ one.
 
 **Sending.** From a clean checkout, and never from the working branch:
 
-1. Fetch, and create or reset `<mnemonic>/outbox` to current `main`. The outbox
-   holds no history of its own worth preserving; every send starts from `main`.
+1. Fetch, and create or hard-reset `<mnemonic>/outbox` to current `main`. The
+   outbox holds no history of its own worth preserving; every send starts from
+   `main`.
 2. Add only the files being sent. One commit per coherent delivery.
 3. Push the branch and deliver it to `main` by the repository's default method.
-4. Leave the branch in place. After the merge it is an ancestor of `main` and
-   the next send resets it forward again.
+4. Leave the branch in place until the next send, then reset it again from
+   step 1.
+
+**Do not assume a merged outbox is an ancestor of `main`.** Whether it is
+depends on the repository's merge strategy: fast-forward and merge-commit
+delivery leave it reachable, while squash and rebase merges rewrite the commits
+and leave the branch pointing at history `main` no longer contains. Resetting
+from step 1 is correct under every strategy, which is why it is stated as a
+reset rather than as continuing from where the branch stands. Expect that reset
+to require a force-push, and note that this is a case the prohibition on
+force-pushing `main` does not reach: an outbox has no independent content to
+lose, since everything on it is either already merged or being replaced.
 
 Sending is a small, self-contained operation. It does not touch the sender's
 working branch, does not require that branch to be clean or current, and is not
@@ -627,6 +638,16 @@ matters in a repository whose merge strategy rewrites them. Rebasing a
 published branch rewrites shared history and needs a force-push; do that only
 when the branch is known to be unshared, and prefer merging `main` in
 otherwise. Rebase what only you have; merge what others may have.
+
+**After your own delivery lands, reset rather than rebase.** Under a squash or
+rebase merge, a branch whose pull request has merged holds no content `main`
+lacks, but its commits have different identities from the ones `main` now
+carries. Rebasing then replays commits one at a time onto a `main` that already
+contains their final effect, which conflicts on intermediate states even though
+the end states agree. Confirm the branch has nothing unique — comparing trees,
+not commit identities, since the identities are guaranteed to differ — and hard
+reset it to `main`. Rebase is for carrying unlanded work forward; it is the
+wrong tool for a branch with nothing left to carry.
 
 This rule is about keeping a workstream branch current with `main`. It says
 nothing about how work is delivered *to* `main`, which follows repository
