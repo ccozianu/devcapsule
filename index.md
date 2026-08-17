@@ -156,6 +156,7 @@ history; record current decisions in the active documents above.
 - [Host browser URL bridge TLDR](engineering-docs/implementation-notes/devcapsule/2026-08-17-host-browser-url-bridge-tldr.md)
 - [V2 launcher-loss resource reconciliation](engineering-docs/implementation-notes/devcapsule/2026-08-18-v2-launch-resource-reconciliation.md)
 - [Releasing a new DevCapsule version — operator checklist and validation](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+- [Merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md)
 
 ## Bugs
 
