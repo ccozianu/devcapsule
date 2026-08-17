@@ -120,7 +120,11 @@ issues in 96 files; 319 tests passed with 9 deselected; five packaging
 integrations passed; the separate clean-machine Nox proof passed against the
 exact revision-bearing artifact selected through `DEVCAPSULE_PEX_UNDER_TEST`.
 The release workflow YAML and each embedded shell block passed local syntax
-validation. Candidate
+validation. Two independent strict builds from pushed workflow commit
+`c27b45ad65e95ccc62c609ed8f153846a4b060ec` were byte-identical at SHA-256
+`8e05e7f721e72cea5f8fcdc77f37a048c323201b3107ac18323347fcb741879e`,
+validating the workflow's fail-closed rerun rule; that exact artifact also
+passed the network-disabled clean-machine proof. Candidate
 PEX SHA-256 `b7e2fd81818f141bd8dad99c9e41eeb6db58a6f31cf1b287f75a901f0e352fdb`
 matches both the candidate image label and the bytes at
 `/opt/devcapsule/bin/devcapsule.pex`.
