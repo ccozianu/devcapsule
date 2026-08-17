@@ -366,7 +366,9 @@ Begin from a clean, current `main` checkout:
    delivery method or applicable repository default, current task, and next
    resumable task.
 4. Create `engineering-docs/wip/<start-date>-<mnemonic>/intake/README.md` so the
-   workstream can receive work from others; see *Workstream Intake*.
+   workstream can receive work from others, and an empty
+   `intake-dispositions.md` beside it so the two halves of the record exist
+   from the start; see *Workstream Intake* and *The Disposition Log*.
 5. Add the workstream to root `CURRENT-STATUS.md`.
 6. Deliver that source-level registration to `main` through the outbox of the
    workstream opening it; see *The Outbox Branch*. Registration is a message to
@@ -498,7 +500,8 @@ or next step is.
 1. On the working branch, record it in the handoff as a requirement or task,
    with the reasoning that led to accepting it, and place it in the
    workstream's order of work.
-2. Through the outbox, delete the intake file from `main`.
+2. Through the outbox, in one commit, add an entry to the disposition log and
+   delete the intake file from `main`.
 
 **Forward** means the workstream is not the right owner. Legitimate reasons
 include: the item is not a well-formed requirement; it will not be fixed; it
@@ -511,19 +514,60 @@ does not choose a new owner — routing is `project-management`'s decision.
    *Writing an item*. Include the original item's full text, or its path and
    the revision it can be recovered from, together with the reason for
    refusing it.
-2. In the same outbox commit, delete the original item from `main`.
+2. In the same outbox commit, add an entry to the disposition log naming where
+   the item went, and delete the original item from `main`.
 3. Record in the handoff what was forwarded and why, so the decision is not
    silently reopened later.
 
 **Deleting from `main` is the recipient's job, and it is prompt.** The queue is
-read from `main`, so an item still present there has not been dispositioned,
-and an item removed from there has been. That absence is the only signal a
-sender gets. Deleting through the outbox keeps the signal honest; deleting only
-on a working branch leaves `main` advertising work that is already handled for
-as long as that branch takes to merge. The working branch picks the deletion up
-at its next synchronization, so do not also delete it there.
+read from `main`, so an item still present there has not been dispositioned.
+Deleting through the outbox keeps that true; deleting only on a working branch
+leaves `main` advertising work that is already handled for as long as that
+branch takes to merge. The working branch picks the deletion up at its next
+synchronization, so do not also delete it there.
 
 Intake is a queue, not an archive. Git retains every item and every reason.
+
+### The Disposition Log
+
+Each workstream keeps one append-only log at
+`engineering-docs/wip/<start-date>-<mnemonic>/intake-dispositions.md`, recording
+what became of every item it received. It is written by the receiving
+workstream only, and it is pushed to `main` through the outbox in the same
+commit that removes the item from the queue.
+
+**The invariant that makes it useful.** On `main`, every item ever delivered to
+a workstream is in exactly one of two places: still in its `intake/`, meaning
+undispositioned, or in that workstream's disposition log, meaning resolved.
+Never both, never neither. Writing the entry and deleting the item in one
+commit is what keeps that true, which is why they are one step and not two.
+
+This is the acknowledgement path. A sender does not need to be told what
+happened to what it delivered; it looks, in one of two predictable places, and
+`main` is current for both because intake delivery and disposition both travel
+the outbox promptly. It is also why no reply is written back into the sender's
+intake: a reply is not work, and a queue whose whole meaning is "own this or
+forward it" should not carry messages that are neither.
+
+**One entry per item**, appended, newest last, never edited or removed:
+
+| Item | Dispositioned | Outcome | Note |
+|---|---|---|---|
+| `2026-08-16-sender-some-slug.md` | 2026-08-16 | acknowledged | One line. Full reasoning in the handoff. |
+| `2026-08-16-sender-other-slug.md` | 2026-08-17 | forwarded | Where it went, so the trail can be followed. |
+
+The note is one line. The reasoning belongs in the handoff, which is where a
+disposition is argued; the log records that it happened and points at it.
+
+**The log is an archive, not a queue.** Unlike `intake/`, it is never pruned,
+and it travels with the workstream into `engineering-docs/archive/` at the end.
+A concluded workstream's log is the record of what it was asked to do and what
+it decided, which is exactly what a later reader reopening one of those
+decisions needs.
+
+Because the log is a workstream's account of its own decisions, restriction 11
+applies: only the receiving workstream writes it. Anyone may read it, and
+reading it is the intended use.
 
 **Items from `project-management` are not forwardable.** That workstream is
 authoritative for structuring work — what is worked on, by whom, in what order
@@ -553,7 +597,9 @@ handed over in good faith.
 unambiguous rather than an untracked absence. Intake items are not listed in
 `index.md` or in the workstream's own document index; the directory listing is
 the queue, and indexing it would create churn for items designed to be
-short-lived.
+short-lived. The disposition log is the opposite case: it is durable, so it
+belongs in the workstream's own document index, though not in `index.md`, which
+lists workstream status files rather than their internal documents.
 
 ### The Outbox Branch
 

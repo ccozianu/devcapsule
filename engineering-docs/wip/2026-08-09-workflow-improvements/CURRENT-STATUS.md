@@ -447,6 +447,43 @@ that is true under some merge strategies and false under this repository's, and
 neither could be caught by review — only by the first branch to complete a full
 round trip through `main`.
 
+### Tenth Task: The Disposition Log
+
+The product owner's answer to the acknowledgement half of item 3, given
+2026-08-17: a per-workstream disposition log, pushed to `main` through the
+outbox, so an interested party finds an item either in `intake/` or in the log,
+both kept current.
+
+`WORKFLOW.md` gains *The Disposition Log*, the acknowledge and forward steps
+now write an entry in the same outbox commit that removes the item,
+registration creates an empty log, and `AGENTS.md` carries the short form. This
+workstream's own log is written and backfilled with all six real dispositions.
+
+**The invariant is the point.** On `main`, every item ever delivered to a
+workstream is in exactly one of two places — still in `intake/`, meaning
+undispositioned, or in the log, meaning resolved. Never both, never neither.
+Entry and deletion are one commit specifically to keep that true; as two steps
+it would be false whenever one landed without the other. That invariant turns
+"did they get it, and what did they decide" from a question requiring a reply
+into a lookup, and it is mechanically checkable, which matters for the staleness
+work that remains.
+
+**Why not the reply the sender proposed.** The original item suggested writing a
+short reply into the sender's own intake. Declined: a reply is not work, and a
+queue whose entire meaning is "own this or forward it" should not carry messages
+that are neither. It would also have doubled traffic and required a second
+category inside the queue. Recorded because it was the sender's own suggestion
+and deserves a reason rather than silence.
+
+**The log is an archive, intake is a queue.** Never pruned, travels into
+`engineering-docs/archive/` with the workstream. A concluded workstream's log is
+the record of what it was asked to do and what it decided, which is what a later
+reader reopening one of those decisions needs. Being durable, it belongs in the
+workstream's own document index, unlike intake items.
+
+Item 3 is not finished. The acknowledgement half is done; see *Open Threads*
+for the staleness residual.
+
 ## Next Resumable Task
 
 Integrate. Nothing acknowledged is both ready and unblocked: item 3 waits on
@@ -588,10 +625,10 @@ can be reordered.
    writing one. See *Sixth Task*.
 2. ~~A pause action and reasoning continuity.~~ Done 2026-08-17. See *Eighth
    Task*.
-3. **Intake acknowledgement and staleness.** Blocked on the product owner.
-   Done means: an acceptance signal a sender can observe, and a staleness
-   signal that surfaces where a human actually reads — or a recorded decision
-   that the remaining gap is acceptable and why.
+3. **Intake acknowledgement and staleness.** Acknowledgement half done
+   2026-08-17 as the disposition log; see *Tenth Task*. Remaining: a staleness
+   signal, or a recorded decision that the residual gap is acceptable and why.
+   See *Open Threads*.
 4. **An external-resource ownership convention.** Largest, needs product
    knowledge, and its main consumer is not ready. Done means: how a resource
    derives its owning workstream and run identity; how names avoid collision by
@@ -665,13 +702,29 @@ continuity intake item. Short by design.
 
 ### Awaiting The Product Owner
 
-1. **Were the outbox and disposition rules the ideas you reserved for intake?**
-   The acknowledgement item says the product owner held further ideas about how
-   intake should be processed and told this workstream to ask before designing.
-   Since then they specified the outbox and the two-outcome protocol, which may
-   simply *be* those ideas. If so, item 3 shrinks to an acceptance signal and a
-   staleness signal. If more was reserved, item 3 should not be designed
-   without it.
+1. **Who detects an item rotting in a workstream nobody is working on?** The
+   disposition log closed acknowledgement, and it gives senders a pull-based
+   staleness check: an item still in `intake/` on `main` has not been decided,
+   and a sender who cares can see that. The completion gate catches the rest at
+   workstream end. What neither reaches is the case that motivated the original
+   item — a queue nobody is looking at, in a workstream nobody is working on,
+   with no session ever occurring in which the check would run.
+
+   Two candidates, both rejected for now rather than adopted. A registry column
+   showing queue depth and oldest age is the obvious move and is argued against
+   on evidence: the V1 readiness assessment documents the registry being stale
+   in three separate ways as it was written, with "no mechanism that would ever
+   surface the disagreement", so another hand-maintained field on a document
+   already proven to drift buys nothing. A `project-management` sweep at each
+   portfolio checkpoint works because the checker is not the delinquent party,
+   but it places an obligation on another workstream that has not agreed to it.
+
+   The durable answer is an automated check, and the invariant above makes one
+   easy to write — every delivered item in exactly one of two places is a
+   property a script can verify. But nothing guards durable project memory
+   today; the V1 readiness assessment records 258 tests protecting the Python
+   distribution and none protecting the documentation invariants. That gap is
+   larger than this workstream and is unowned.
 
 2. **Is four acknowledged items the right size for this workstream?** Its goal
    commits it to conclude once findings are dispositioned. All four are
@@ -756,6 +809,13 @@ The 2026-08-16 conversation. What mattered is above or in the intake files.
 
 ## Workstream Document Index
 
-This workstream owns this status file and its `intake/` directory. Intake items
-are a queue rather than permanent documents and are deliberately not listed
-here or in `index.md`; the directory listing is the queue.
+This workstream owns:
+
+- this status file;
+- [`intake-dispositions.md`](intake-dispositions.md), the durable record of
+  what became of every item delivered here; and
+- its `intake/` directory.
+
+Intake items are a queue rather than permanent documents and are deliberately
+not listed here or in `index.md`; the directory listing is the queue. The
+disposition log is the opposite and is listed, though not in `index.md`.
