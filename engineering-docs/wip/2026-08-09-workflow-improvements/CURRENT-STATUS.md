@@ -932,41 +932,29 @@ by design.
 
 ### Awaiting The Product Owner
 
-1. **Does "the workflow improvements already identified" mean identified, or
-   identified and implemented?** The product owner named that as a condition for
-   starting their own projects on v026. The two readings put very different
-   obligations on this workstream, and it is currently described as being on the
-   critical path for those project starts. The 2026-08-16 rename to
-   `workflow-improvements/v1` presumes this workstream delivers *for* V1, which
-   sharpens the question rather than answering it.
-
-2. **Should the repository standardize on merge commits?** Raised 2026-08-17
-   after `PR #19` and `PR #20` merged that way. The evidence favours it: both
-   defects recorded in *Ninth Task* were caused by rebase merge rewriting
-   identities, and both stop existing under merge commits — ancestry answers
-   correctly again, the outbox reset stops needing a force-push, and
-   synchronizing a delivered branch becomes a fast-forward instead of a
-   conflicting rebase, all three observed on this branch within the hour. The
-   cost is a non-linear `main`, read with `--first-parent`. What matters more
-   than the choice is that it stop varying per pull request: several rules in
-   `WORKFLOW.md` are true under one strategy and false under another, and a
-   mixed history has neither property reliably. If adopted, it is a repository
-   coordination fact for root `CURRENT-STATUS.md` rather than a workflow rule,
-   since `WORKFLOW.md` must stay strategy-neutral for adopters, and one
-   sentence in *The Outbox Branch* — "expect that reset to require a
-   force-push" — should be conditioned rather than deleted.
-
-3. **Who owns protocol boilerplate that lives inside another workstream's
-   directory?** Each `intake/README.md` restated the delivery rule, so changing
-   that rule made four workstreams' READMEs stale at once — and restriction
-   11's carve-out bars this workstream from editing three of them. Its own
-   README now points at `WORKFLOW.md` instead of restating it, which removes
-   the recurrence. The other three still carry the superseded sentence and are
-   noted in the outbox delivery, but "duplicated protocol text inside a
-   carve-out" is a shape that will recur, and the rule does not say who
-   resolves it.
+None.
 
 ### Settled Since The Last Pause
+
+- **What the V026 workflow-improvement condition requires.** Resolved
+  2026-08-17 by the product owner: most findings have been identified and the
+  workflow improvements completed so far are merged to `main`. The workstream
+  may remain open and paused until the pair returns to its remaining work; its
+  continued existence does not hold the already-merged improvements open.
+
+- **Repository merge strategy.** Routing resolved 2026-08-17, substance
+  deliberately deferred. This is a later `project-management` decision, not a
+  decision for this workstream or for an agent acting alone. Agents push the
+  required branches and the human delivers them to `main` through GitHub pull
+  requests; until coordination adopts a repository-wide policy, the human
+  chooses the merge method there.
+
+- **Obsolete intake README boilerplate.** Resolved for this workstream on
+  2026-08-17 by the product owner: the three stale `intake/README.md` copies are
+  obsolete and are not cleanup owned by `workflow-improvements`. Their
+  replacement, removal, or reassignment is delivered to `project-management`
+  for routing rather than performed across other workstreams' directories
+  here.
 
 - **The right size for this workstream.** Question 1 of the 2026-08-16 pause is
   answered, not by a number but by a routing rule: new protocol findings go to
