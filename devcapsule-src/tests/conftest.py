@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,13 @@ def host_launch_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def built_pex() -> Path:
-    path = Path(__file__).resolve().parents[1] / "dist" / "devcapsule-local.pex"
-    assert path.is_file(), f"Built PEX does not exist: {path}; run the corresponding Nox session"
+    selected = os.environ.get("DEVCAPSULE_PEX_UNDER_TEST")
+    path = (
+        Path(selected).expanduser().resolve()
+        if selected
+        else Path(__file__).resolve().parents[1] / "dist" / "devcapsule-local.pex"
+    )
+    assert path.is_file(), (
+        f"Built PEX does not exist: {path}; run the corresponding Nox session"
+    )
     return path

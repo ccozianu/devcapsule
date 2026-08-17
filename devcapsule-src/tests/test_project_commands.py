@@ -518,6 +518,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                         "run",
                         "--docker-daemon",
                         "host-socket",
+                        "--host-browser",
                     ]
                 )
                 == 0
@@ -558,6 +559,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         }
         assert options.secret_environment == ("OPENAI_API_KEY",)
         assert options.additional_environment == {"DEVCAPSULE_RECURSIVE_E2E": "1"}
+        assert options.enable_host_browser is True
         assert "Reused canonical environment" in capsys.readouterr().out
 
         with (
@@ -585,6 +587,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         assert downgraded.enable_sudo is False
         assert downgraded.network_mode == "bridge"
         assert downgraded.additional_environment == {"DEVCAPSULE_RECURSIVE_E2E": "0"}
+        assert downgraded.enable_host_browser is False
         assert "were downgraded" in capsys.readouterr().out
 
 

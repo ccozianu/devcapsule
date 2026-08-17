@@ -135,6 +135,25 @@ def test_runtime_plan_and_formation_use_the_same_component_template(tmp_path: Pa
     }
 
 
+def test_runtime_plan_round_trips_named_host_integration_without_host_source(
+    tmp_path: Path,
+) -> None:
+    selected, locked = selected_project(tmp_path)
+    plan = project_runtime_plan(
+        selected,
+        locked,
+        uid=1000,
+        gid=1000,
+        user="developer",
+    ).with_host_integration("browser-open")
+
+    encoded = plan.to_json()
+
+    assert RuntimePlan.from_json(encoded) == plan
+    assert json.loads(encoded)["host_integrations"] == ["browser-open"]
+    assert "host-open.sock" not in encoded
+
+
 def test_project_runtime_plan_includes_locked_codex_component(tmp_path: Path) -> None:
     selected, locked = selected_project(tmp_path)
     selected.lock["components"]["codex"] = {

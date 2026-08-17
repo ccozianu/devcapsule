@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 import re
@@ -264,6 +264,7 @@ class RuntimePlan:
     state_slots: tuple[StateSlot, ...]
     component: Component
     ancillary_components: tuple[Component, ...] = ()
+    host_integrations: tuple[str, ...] = ()
 
     @classmethod
     def for_component(
@@ -344,6 +345,15 @@ class RuntimePlan:
             for index, value in enumerate(ancillary_value)
         )
         cls._validate_components((component, *ancillary))
+        integrations_value = document.get("host_integrations", [])
+        if not isinstance(integrations_value, list):
+            raise RuntimePlanError("host_integrations must be an array")
+        integrations = tuple(
+            _identifier(value, f"host_integrations[{index}]")
+            for index, value in enumerate(integrations_value)
+        )
+        if len(set(integrations)) != len(integrations):
+            raise RuntimePlanError("host_integrations must not contain duplicates")
         prefixes = {item.id for item in (component, *ancillary)}
         for slot in slots:
             namespace, separator, local_name = slot.name.partition("/")
@@ -360,6 +370,7 @@ class RuntimePlan:
             state_slots=tuple(slots),
             component=component,
             ancillary_components=ancillary,
+            host_integrations=integrations,
         )
 
     @staticmethod
@@ -401,6 +412,13 @@ class RuntimePlan:
     def slots_by_name(self) -> dict[str, str]:
         return {slot.name: slot.path for slot in self.state_slots}
 
+    def with_host_integration(self, name: str) -> RuntimePlan:
+        selected = _identifier(name, "host integration")
+        return replace(
+            self,
+            host_integrations=tuple(sorted({*self.host_integrations, selected})),
+        )
+
     def to_mapping(self) -> dict[str, object]:
         component: dict[str, object] = {
             "id": self.component.id,
@@ -427,6 +445,8 @@ class RuntimePlan:
             result["ancillary_components"] = [
                 _runtime_component_mapping(item) for item in self.ancillary_components
             ]
+        if self.host_integrations:
+            result["host_integrations"] = list(self.host_integrations)
         return result
 
     def to_json(self) -> str:

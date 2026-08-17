@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import socket
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
@@ -33,6 +34,12 @@ from devcapsule.configurations.pycharm._launcher import (
 )
 from devcapsule.container_runtime.contract import Identity, RuntimePlan
 from devcapsule.materialization import RUNTIME_PLAN_PATH
+from devcapsule.host_open import (
+    HOST_OPEN_BROWSER,
+    HOST_OPEN_INTEGRATION,
+    HOST_OPEN_SOCKET_DESTINATION,
+    HOST_OPEN_SOCKET_ENV,
+)
 from devcapsule.project import plan_project
 
 
@@ -151,6 +158,114 @@ def test_jcef_disclosure_is_printed_for_component_policy(
     disclosure = capsys.readouterr().err
     assert "JCEF's inner Chromium sandbox is disabled" in disclosure
     assert "Docker's outer isolation is unchanged" in disclosure
+
+
+def test_host_browser_bridge_is_explicit_in_plan_mount_environment_and_summary(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    socket_path = tmp_path / "host-open.sock"
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as broker:
+        broker.bind(str(socket_path))
+        env[HOST_OPEN_SOCKET_ENV] = str(socket_path)
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="bridge",
+                runtime_plan=external_runtime_plan(),
+                use_image_process=True,
+                enable_host_browser=True,
+            ),
+            env,
+        )
+        files = TempRuntimeFiles(
+            xauth_file=tmp_path / "xauth",
+            passwd_file=tmp_path / "passwd",
+            group_file=tmp_path / "group",
+            runtime_plan_file=tmp_path / "runtime-plan",
+        )
+        args = build_docker_args(config, files, env)
+        print_storage_summary(config)
+
+    assert config.runtime_plan is not None
+    assert config.runtime_plan.host_integrations == (HOST_OPEN_INTEGRATION,)
+    assert f"BROWSER={HOST_OPEN_BROWSER}" in args
+    assert f"{HOST_OPEN_SOCKET_ENV}={HOST_OPEN_SOCKET_DESTINATION}" in args
+    assert (
+        f"type=bind,src={socket_path},dst={HOST_OPEN_SOCKET_DESTINATION},ro" in args
+    )
+    disclosure = capsys.readouterr().err
+    assert "Any process running as the" in disclosure
+    assert "capsule user can ask the physical host" in disclosure
+
+
+def test_host_browser_bridge_can_be_disabled_despite_inherited_environment(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    socket_path = tmp_path / "host-open.sock"
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as broker:
+        broker.bind(str(socket_path))
+        env[HOST_OPEN_SOCKET_ENV] = str(socket_path)
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                docker_mode=DockerMode.none,
+                enable_host_browser=False,
+            ),
+            env,
+        )
+
+    assert config.host_browser_socket is None
+
+
+def test_physical_host_launcher_owns_browser_broker_for_docker_lifetime(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+
+    with (
+        patch("devcapsule.host_open.in_container", return_value=False),
+        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+    ):
+        run.return_value.returncode = 0
+        assert run_pycharm(
+            PycharmRunOptions(
+                project=project,
+                docker_mode=DockerMode.none,
+                enable_host_browser=True,
+            ),
+            env,
+        ) == 0
+
+    command = run.call_args.args[0]
+    socket_mount = next(
+        argument
+        for argument in command
+        if argument.startswith("type=bind,src=")
+        and f"dst={HOST_OPEN_SOCKET_DESTINATION}" in argument
+    )
+    source = Path(
+        next(
+            field.removeprefix("src=")
+            for field in socket_mount.split(",")
+            if field.startswith("src=")
+        )
+    )
+    assert not source.exists()
 
 
 def test_selected_codex_state_and_explicit_secret_are_delivered(tmp_path: Path) -> None:

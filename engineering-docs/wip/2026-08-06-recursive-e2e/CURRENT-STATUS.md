@@ -32,10 +32,14 @@ active continuation branch.
   authorization-negative Docker/network/sudo plan proof was transferred to the
   V1 backlog and does not reopen Stage 5.
 - The Stage 6 live launch slice is successful: the production planner launched
-  a detached v025 successor, the independent inspector passed, and both the
-  successor and the untouched v024 control remain running. Stage 6 hardening
-  and exhaustive expected-plan/failure-path coverage remain open before the
-  stage is declared complete.
+  a detached v025 successor and the independent inspector passed. Stage 6
+  hardening and exhaustive expected-plan/failure-path coverage remain open
+  before the stage is declared complete.
+- The Stage 6 inspector is now hardened and proven live. It compares a launched
+  successor against a complete machine-readable expected plan instead of four
+  spot-checked fields, and the retained plan is bound to the run manifest by
+  digest so a later independent inspection cannot be relaxed silently. Only the
+  Stage 6 failure-path coverage remains open.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -56,22 +60,252 @@ active continuation branch.
   `devcapsule-src/`.
 - The recursive E2E now runs current-source readiness checks separately from
   immutable v024 PEX revision and checksum verification.
+- On 2026-08-17 the product owner made a matched v026 base/CLI pair the current
+  priority, with a directly executable, fully self-contained `devcapsule.pex`
+  first. End users must not need Conda, Python, pip, or a virtualenv merely to
+  run DevCapsule. This instruction was supplied directly because the earlier
+  `project-management` delivery containing two v026 items never reached this
+  workstream's intake on `main`.
+- The self-contained implementation and exact-revision pair proof are
+  complete. The PEX builder now emits a 39 MiB eager PEX scie containing
+  stripped CPython 3.12.14 from Python Build Standalone release 20260814. A
+  network-disabled `ubuntu:24.04` container with no Python installed ran both
+  the local candidate and exact-revision artifacts successfully. Docker tag
+  `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` is published at registry
+  digest `sha256:f67baa907c622e68825475d2587ad3b39c85aa444d8bc81f0ae739fc52dd3d48`.
+  On 2026-08-17 the product owner selected GitHub Releases as the initial PEX
+  download channel and required the official artifact to be built by the
+  GitHub backend rather than uploaded from a contributor machine. The release
+  automation is implemented on the workstream branch. The first `v026` run
+  (`32051615110`) built the PEX successfully but failed before publication
+  because a job-scoped source-repository override contaminated a nested
+  packaging test. The fix is complete on this branch; integration, a
+  replacement `v026` tag, and download-based publication evidence remain open.
+- The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
+  `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
+  physical host; the capsule's `xdg-open` dispatches through the matching PEX,
+  and recursive launchers propagate only the inherited fixed socket. The
+  bridge accepts absolute HTTP(S) URLs, never invokes a shell, does not expose
+  the desktop session bus, is disabled by default, and is represented in the
+  runtime and expected plans. Automated, packaging, read-only Docker-mount,
+  and local recursive-dogfood validation pass. The final rebuilt-image GUI
+  click and cleanup observation remain pending.
+- The current checkout's ignored `devcapsule-src/.venv` was found to predate
+  the Python distribution rename: its activation scripts still prepended the
+  removed `devcapsule/.venv/bin`, so `python` fell through to
+  `/usr/bin/python`. The environment was rebuilt at its final path from
+  `dev-requirements.txt` and the editable package. Developer instructions now
+  use `.venv/bin/python -m nox` as the activation-independent primary path,
+  retain ordinary activation as a supported option, and explain that a moved
+  virtualenv must be recreated rather than reused.
+- An audit request was pushed on `recursive-e2e/outbox` at `ebad342`, asking
+  `project-management` to inventory promised work for this workstream and
+  determine from its conversation/session evidence whether delivery failed
+  because the communication protocol was incomplete, because the later outbox
+  rule was not followed, or for another reason.
+
+## Current Priority And Status
+
+Current task: publish the v026 Docker/CLI pair, with the eager self-contained
+PEX as the first acceptance boundary.
+
+Status: implementation, exact-revision artifact, Docker publication, and the
+GitHub release pipeline are complete on the workstream branch. Integration and
+the first backend-built standalone PEX release remain pending. Changed:
+
+- `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
+  x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
+  embedded interpreter is stripped and makes no first-run download.
+- Nox smoke checks execute the artifact directly instead of passing it to a
+  host interpreter.
+- `pex_clean_machine` builds the artifact and proves it in a network-disabled
+  Ubuntu container after checking that no `python`, `python3`, or `python3.12`
+  exists there.
+- Packaging integration checks assert the native ELF boundary, retained ZIP
+  metadata/provenance, eagerly embedded interpreter, and direct execution.
+- User documentation now presents `devcapsule.pex` as the end-user path and
+  makes Python-tool installation an optional developer alternative.
+- `.github/workflows/release-pex.yml` builds from an exact numeric `v*` tag,
+  runs source and packaging checks, proves the resulting PEX with networking
+  disabled in Ubuntu with no Python, and only then creates a GitHub Release
+  containing `devcapsule.pex` plus its SHA-256. It downloads the published
+  assets and repeats the checksum, byte-identity, and clean-machine proof.
+  Manual reruns fail if an existing Release does not byte-match instead of
+  replacing published assets silently.
+- The release workflow scopes `DEVCAPSULE_SOURCE_REPOSITORY` only to the PEX
+  construction step. Packaging tests no longer inherit canonical release
+  provenance, and the nested-repository integration test explicitly removes
+  ambient source-repository and source-revision overrides before proving Git
+  remote discovery. A source-level regression test pins the workflow scope.
+- `DEVCAPSULE_PEX_UNDER_TEST` lets packaging and clean-machine tests select the
+  exact backend-built or downloaded artifact without rebuilding it locally.
+- `host-open` is a hidden PEX client for a launcher-owned physical-host broker.
+  `project run`, `run-image`, and `pycharm run` expose the explicit
+  `--host-browser` capability; `--no-host-browser` can override it. The broker
+  uses same-UID peer credentials, a private mode-0600 Unix socket, an
+  HTTP(S)-only JSON protocol, bounded frames and timeouts, rate limiting, and
+  argument-vector host `xdg-open` execution. Recursive launches can translate
+  and propagate the inherited read-only socket but cannot manufacture one.
+
+Validation on 2026-08-17: full `nox -s build` succeeded; mypy reported no
+issues in 96 files; 319 tests passed with 9 deselected; five packaging
+integrations passed; the separate clean-machine Nox proof passed against the
+exact revision-bearing artifact selected through `DEVCAPSULE_PEX_UNDER_TEST`.
+The release workflow YAML and each embedded shell block passed local syntax
+validation. Two independent strict builds from pushed workflow commit
+`c27b45ad65e95ccc62c609ed8f153846a4b060ec` were byte-identical at SHA-256
+`8e05e7f721e72cea5f8fcdc77f37a048c323201b3107ac18323347fcb741879e`,
+validating the workflow's fail-closed rerun rule; that exact artifact also
+passed the network-disabled clean-machine proof. Candidate
+PEX SHA-256 `b7e2fd81818f141bd8dad99c9e41eeb6db58a6f31cf1b287f75a901f0e352fdb`
+matches both the candidate image label and the bytes at
+`/opt/devcapsule/bin/devcapsule.pex`.
+
+Host-browser validation on 2026-08-17: the full `nox -s build` gate passed with
+340 tests and 10 deselected; mypy reported no issues over 99 files; six
+packaging integrations passed. The built eager PEX crossed the real
+`xdg-open` path and delivered a metacharacter-heavy URL unchanged as one host
+opener argument. A separate `ubuntu:24.04` Docker proof used networking
+disabled, the mapped unprivileged UID/GID, the PEX mounted read-only, and the
+broker socket mounted read-only; the exact URL arrived successfully. Local
+recursive dogfood run `24b3fd2dfb2d58f010b7d1652967c007` reported ready and
+passed both selected E2Es in 28.81 seconds, with cleanup complete and no Docker
+mutation. The outer v025-derived development capsule has no inherited broker,
+so a real PyCharm click awaits the rebuilt matching pair.
+
+Developer-environment repair validation on 2026-08-17: after rebuilding the
+ignored environment, activation sets both `VIRTUAL_ENV` and the first `PATH`
+entry to the exact `devcapsule-src/.venv` directory; `command -v python`,
+`sys.executable`, and `sys.prefix` all resolve inside it while
+`sys.base_prefix` remains `/usr`. The locked Nox installation reports version
+`2026.4.10`. The user's exact activated `python -m nox -s build` command then
+passed the full dirty-tree gate: mypy found no issues over 99 files, 340 tests
+passed with 10 deselected, six packaging integrations passed, and the local
+self-contained PEX plus CLI smoke checks passed. Direct
+`.venv/bin/python -m nox` invocation was separately resolved and enumerated
+the expected sessions without consulting system Python.
+
+Release-run repair validation on 2026-08-17: failed GitHub run `32051615110`,
+job `95452067400`, passed source tests and type checks, built the standalone PEX
+for `cdf1b5b`, then failed one of six packaging integrations because the nested
+fake repository received `https://github.com/ccozianu/devcapsule` from the
+job environment instead of discovering its own origin. The focused test now
+passes with that exact contaminating variable deliberately present. The full
+dirty-tree `nox -s build` gate also passed under the same ambient condition:
+mypy found no issues over 99 files, 341 tests passed with 10 deselected, all six
+packaging integrations passed, and the local PEX and CLI smoke checks passed.
+The product owner will replace the failed, unpublished `v026` tag after the
+corrected commit is integrated.
+
+Exact-revision evidence: source commit
+`95212fc11c1b9d8724e7176ff2d236393f18319a` is published on
+`origin/recursive-e2e/stage-4`; `dist/devcapsule.pex` SHA-256 is
+`05e49697917edf62afc119d8ca39a824a41f46af9621dba3aa5501826c36b0f2`.
+Final v026 image ID
+`sha256:044e017572172edcb1cffaa9b378c3fc8dd03038712d7f53e8e97aaf589ef261`
+records that same PEX digest and source revision in its labels, contains the
+same bytes at `/opt/devcapsule/bin/devcapsule.pex`, and passed offline
+`version --json` after a pull by immutable registry digest.
 
 ## Last Task And Status
 
-Last task: materialize and launch the v025 dogfood successor with checkout-local
-Claude Code acquisition while retaining the v024 control.
+Last task: harden the Stage 6 inspector so it compares the complete expected
+Docker plan, mounts, identity, security settings, and runtime-plan digest.
 
-Status: live slice complete. Run `b2093d85912fa34ac1324e1da26a9dcd`
+Status: complete and proven live. On 2026-08-14 run
+`482c34f24fc5c438da7b24ff172a619b` launched a successor through the
+clean-clone PEX and passed the hardened inspection twice. A new
+`devcapsule/recursive_successor_plan.py` derives an
+`ExpectedSuccessorPlan` from exactly the translated `docker run` arguments that
+a launch issues. `launch_successor` retains that plan as mode-0600
+`expected-plan.json` beside the run manifest and records its SHA-256 in the
+manifest; `inspect_successor` reloads it, refuses a digest or identity
+mismatch, and compares it against `docker inspect`. The comparison covers
+container and image identity, the container's inherited `devcapsule.*` image
+labels, runtime user and working directory, every planned environment value,
+exact mount-set equality including read-only mode and daemon-side source,
+tmpfs, network and IPC mode, `Privileged`, `ReadonlyRootfs`, `CapAdd`,
+`CapDrop`, `SecurityOpt`, `GroupAdd`, memory and PID limits, restart policy,
+and restart count. The in-container probe now returns the SHA-256 of
+`/etc/devcapsule/runtime-plan.json` and its mount options, so a substituted or
+writable runtime plan fails the inspection.
+
+The earlier live-launch result stands: run `b2093d85912fa34ac1324e1da26a9dcd`
 authorized the exact v025 local image plus Claude acquisition, materialized and
 strictly reused the canonical environment, and launched exact container
-`7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`.
-The independent inspector passed and the successor remains stable with no
-restart. On 2026-08-12 the user confirmed that the new PyCharm window is
-visible and usable. The detailed Stage 6 hardening slices remain open.
+`7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`. On
+2026-08-12 the user confirmed that the new PyCharm window is visible and
+usable. That inspection predates the hardening and used the weaker four-field
+check.
 
 ## Evidence
 
+- Live hardened-inspector proof on 2026-08-14, run
+  `482c34f24fc5c438da7b24ff172a619b`. Its clone is detached at
+  `c26d877acd006d1a05666696c5c672c70f5d2cd6`, has no remote, and imported no
+  credentials. Clean-clone PEX SHA-256:
+  `744f7805389769f78e006afb4ec5d0ebbde629877060aff389602a8dbc56873b`. Its
+  provenance was built with `--allow-unpublished-revision` against
+  `https://github.com/ccozianu/devcapsule` because that revision is committed
+  locally but not yet published.
+- The isolated checkout authorized the exact local base
+  `sha256:9c806703213bc280b6378e52e037bc55df85b585b662e20ef06ad3bb1ae48173`,
+  host Docker, host networking, development sudo, and the Claude Code
+  download, all under the run root's own XDG configuration. No
+  developer-owned checkout record was read or modified.
+- Realization strictly reused the canonical environment
+  `devcapsule-local-pycharm:2145e28bc7b8aca0eee0`, image ID
+  `sha256:f3fa500c3811d2f838a56af224e61f15524de014fa4270174b14ec36e894dbee`.
+  This confirms in practice that a devcapsule source change does not alter the
+  formation identity, so neither a new base image nor a new materialized image
+  was required for the hardened inspector.
+- Successor container
+  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6`, name
+  `devcapsule-e2e-482c34f24fc5c438da7b24ff172a619b-successor`, started
+  `2026-08-14T10:12:46Z`. The launch-time comparison passed all eleven
+  daemon-side checks: container and image identity, ownership labels,
+  formation identity, runtime identity, environment, mounts, resource limits,
+  security settings, restart policy, and running state.
+- The independent `inspect-successor` boundary passed the same eleven checks
+  plus `runtime_plan`, proving the in-container SHA-256 of
+  `/etc/devcapsule/runtime-plan.json` equals the digest recorded at launch and
+  that its mount is read-only in `/proc/self/mountinfo`. Tool probes returned
+  Claude Code `2.1.227`, Codex `0.145.0`, Node.js `v22.23.1`, `javac 25.0.4`,
+  and Apache Maven `3.9.16` with the expected `JAVA_HOME` and `MAVEN_HOME`.
+- Bounded second-inspection stability result: a repeat independent inspection
+  after a 90-second window returned the identical container ID, image ID, and
+  full pass set, with `Running=true` and `RestartCount=0`.
+- Retained `expected-plan.json` is mode 0600 and pins 17 mounts, 27
+  `devcapsule.*` image labels, and 26 compared environment values, with
+  `DISPLAY` classified as the sole pass-through value that is never compared
+  or recorded. The run manifest contains no occurrence of the host workspace
+  path, so redaction holds in production and not only under test.
+- The development container `pycharm-isolated-costin-1786657961` was neither
+  stopped nor modified during the launch or either inspection.
+- Inspector hardening gate on 2026-08-13: full fast suite `290 passed` with
+  `8 deselected`; mypy reports no issues over 90 source/test files; the
+  `nox -s build` gate succeeded, including five packaging integrations. The
+  public PEX was deliberately not rebuilt because the tree is dirty.
+- The hardening adds 60 focused public-interface tests in
+  `tests/test_recursive_successor_plan.py` and
+  `tests/test_recursive_successor.py`. They cover plan derivation from the real
+  launcher's arguments under both sudo and no-sudo shapes, retained-plan round
+  trip and digest tampering, host-source redaction, and rejection of a missing
+  mount, an unplanned bind/volume/tmpfs mount, a relaxed read-only mount, a
+  substituted mount source, a substituted or writable runtime plan, label and
+  formation-identity mismatch, environment drift, every modelled security and
+  limit deviation, a nonzero restart count, malformed and ambiguous Docker
+  output, and manifest/plan identity disagreement.
+- The plan parser fails closed on any Docker flag it does not model, and a
+  launcher-coupled test pins that model to `build_docker_args`, so a new launch
+  flag cannot silently escape comparison.
+- The comparator's field readers were validated against real daemon output
+  from the running development container: `.Mounts` carries only `bind`
+  entries with `Type`/`Source`/`Destination`/`RW`, tmpfs appears only under
+  `HostConfig.Tmpfs`, absent capability and security lists are `null`, and the
+  materialized image's 27 `devcapsule.*` labels are inherited into
+  `Config.Labels`. All eleven daemon-side checks passed against that real
+  inspection with no host source in the redacted evidence.
 - Recursive dogfood E2E: `2 passed`, `1 deselected` in 30.74 seconds on
   2026-08-07.
 - Commit `44fbe34` restored the recursive E2E after the Python distribution
@@ -86,9 +320,10 @@ visible and usable. The detailed Stage 6 hardening slices remain open.
   source files.
 - Full dirty-tree Nox gate: `226 passed`, `8 deselected`; PEX integration:
   `5 passed`. The expected local-only PEX was built and smoke-tested.
-- The current v024 container still passes the two Stage 3 recursive E2Es when
-  the missing launcher marker is scoped explicitly to the test process:
-  `2 passed`, `1 deselected` in 82.95 seconds.
+- The then-current v024 container still passed the two Stage 3 recursive E2Es
+  when the missing launcher marker was scoped explicitly to the test process:
+  `2 passed`, `1 deselected` in 82.95 seconds. That workaround was specific to
+  the retired v024-derived control; later environments carry the marker.
 - Successor source commits `da38cd7`, `0761940`, and `20b2ee1` are published on
   `origin/recursive-e2e/stage-4`. The last commit fixes public PEX provenance
   forwarding without exposing that override to nested integration tests.
@@ -174,29 +409,110 @@ visible and usable. The detailed Stage 6 hardening slices remain open.
 
 ## Next Resumable Task
 
-Finish Stage 6 before beginning Stage 7:
+Finish the standalone-CLI publication boundary before returning to Stage 6:
 
-1. harden the inspector to compare the complete expected Docker plan, mounts,
+1. merge the release-pipeline change so the workflow exists on the commit that
+   will be tagged;
+2. push the chosen numeric v026 release tag from the integrated release commit;
+3. let `.github/workflows/release-pex.yml` build, prove, publish, download, and
+   re-prove `devcapsule.pex` plus its checksum; and
+4. record the public Release URL, tag revision, PEX SHA-256, and successful
+   backend run here.
+
+The integrated/tagged revision must include host-browser commit `6d8f53c` (or
+its merge result). Rebuild and republish the v026 Docker image from that
+backend-built Release PEX, then launch the matched pair from the physical host
+with `--host-browser`. Click a PyCharm hyperlink and verify that the default
+host browser receives it; after IDE exit, verify that the broker socket and its
+private runtime directory are gone. This is the remaining manual acceptance
+for the URL fix.
+
+The currently published Docker v026 digest is an exact pair with the PEX built
+from `95212fc`. If the integrated release tag names a different commit, rebuild
+and republish the mutable v026 Docker tag from the downloaded Release PEX, then
+replace the Docker digest evidence here. Do not declare the final v026 pair
+until the image labels, embedded bytes, Release checksum, and tag revision all
+agree.
+
+Then finish Stage 6 before beginning Stage 7:
+
+1. done: the inspector compares the complete expected Docker plan, mounts,
    identity, security settings, and runtime-plan digest;
-2. add public-interface tests for malformed Docker output, early exit,
-   ownership/label mismatch, redaction, staging lifetime, and cleanup refusal;
-3. record a bounded second-inspection stability result in retained evidence;
-   and
-4. keep both exact containers and the run-owned staging until Stage 7 proves
+2. partially done: malformed and ambiguous Docker output, ownership/label
+   mismatch, and host-source redaction now have public-interface tests. Early
+   successor exit, staging lifetime, and cleanup refusal remain uncovered and
+   belong to the Stage 6 failure-handling slice;
+3. done: a bounded second-inspection stability result is recorded for run
+   `482c34f24fc5c438da7b24ff172a619b`; and
+4. keep the exact containers and run-owned staging until Stage 7 proves
    persistence and deterministic cleanup.
+
+Only item 2's failure-path coverage now blocks declaring Stage 6 complete:
+early successor exit, staging lifetime, and cleanup refusal still need
+public-interface tests. That is the Stage 6 failure-handling slice and it
+touches the launch path rather than the inspector.
+
+Stage 7 must also choose its persistence subject explicitly. Two successors are
+now retained: the current running `482c34f2…` successor, which carries an
+`expected-plan.json` and is the only one the hardened inspector can re-verify,
+and the older exited `b2093d85…` successor, which predates the retained plan
+and can no longer be inspected. Prefer the newer run as the Stage 7 subject and
+keep the older one as historical evidence only.
+
+## Acknowledged Work
+
+1. **Implement external-resource ownership and reaping in Stage 7.**
+   Acknowledged 2026-08-17 from `workflow-improvements`. It fits this
+   workstream's existing persistence and deterministic-cleanup stage and is
+   ordered after the current v026 publication boundary and Stage 6 completion.
+   Stage 7 will implement against the convention owned by
+   `workflow-improvements`, covering ownership/run identity for containers,
+   images, volumes, host ports, and state roots; collision-resistant naming;
+   enumeration by owner; and safe removal boundaries. Closing the detached
+   successor cleanup bug is a consequence of this task, not a separate
+   implementation.
 
 ## External State And Risks
 
-- Development is running in the accepted v024-derived PyCharm container
-  `pycharm-isolated-costin-1786394284`.
-- The v025 successor is also running under exact ID
-  `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93`.
-  Do not remove it or run-owned staging before Stage 7 persistence checks.
-- That launch lacks `DEVCAPSULE_RECURSIVE_E2E=1`. Current-source preflight
-  classifies the missing marker as a warning because Docker socket, container
-  identity, mounts, network mode, and runtime-plan authorization are inspected
-  independently. Tests requiring the marker used a process-scoped value; the
-  launcher metadata mismatch remains to be corrected in a later launch.
+- Re-verified 2026-08-17 at session start, correcting the entry below it: the
+  Stage 6 successor
+  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6` is
+  `Exited (0)` as of 2026-08-14T10:15Z. It is the second retained successor to
+  stop while its handoff described it as running, which makes the pattern
+  structural rather than incidental: no recorded successor has stayed up across
+  a pause, and both `docker ps` observations were correct only on the day they
+  were written. The bounded second-inspection stability result therefore cannot
+  be produced from either retained container and needs a fresh launch.
+- The Stage 6 successor
+  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6` was
+  running with zero restarts when last observed, and its run root
+  `482c34f24fc5c438da7b24ff172a619b` holds the owner marker, manifest,
+  `expected-plan.json`, clone, build environment, and retained staging. Do not
+  remove any of it before Stage 7. Its clone additionally contains a `buildenv`
+  virtualenv created only to build the clean-clone PEX.
+- Observed on 2026-08-13, correcting the previous entry: the v025 successor
+  `7e92dcba38685c1b1cf508c6b26e8312454746ec51f186ed4043a510d9d51c93` is
+  `Exited (0)` and has been stopped for about 39 hours. It still exists and
+  must not be removed before Stage 7. The earlier "continued health after
+  return" claim therefore covers only the observation window recorded on
+  2026-08-12; the bounded second-inspection stability result in the next-step
+  list is still outstanding and now needs a fresh running successor.
+- The v024-derived control container `pycharm-isolated-costin-1786394284` is no
+  longer present on this host. Development now runs in
+  `pycharm-isolated-costin-1786657961`, itself built from the canonical
+  environment `devcapsule-local-pycharm:2145e28bc7b8aca0eee0`. The recursive
+  claim that a v024-derived control was left untouched during the v025 launch
+  remains valid as historical Stage 6 evidence but can no longer be
+  re-observed live.
+- Corrected on 2026-08-14: the earlier claim that the successor launch lacks
+  `DEVCAPSULE_RECURSIVE_E2E=1` is wrong, and no launcher metadata mismatch
+  remains to be fixed. Direct inspection shows the retained successor
+  `7e92dcba3868` carries `DEVCAPSULE_RECURSIVE_E2E=1` and all four
+  `devcapsule.e2e.*` ownership labels, and the current development container
+  carries the marker as well. The missing-marker workaround applied to the
+  retired v024-derived control `pycharm-isolated-costin-1786394284`, which
+  predates the marker and no longer exists on this host. The historical Stage 3
+  evidence recorded against that container stands as written.
 - The project base authorization and generated local resolution are stale by
   deliberate developer-owned choices. Do not reauthorize a base implicitly.
 - The bare v024 base does not add `/opt/node/current/bin` to `PATH`; recipe
@@ -210,9 +526,12 @@ Finish Stage 6 before beginning Stage 7:
 
 ## Workstream Document Index
 
-This workstream currently owns only this WIP status file. Its established
-execution and evidence records predate the WIP convention and remain permanent
-engineering records:
+This workstream owns:
+
+- [Intake disposition log](intake-dispositions.md)
+
+Its established execution and evidence records predate the WIP convention and
+remain permanent engineering records:
 
 - [Milestone plan](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
 - [Stage 2 execution checklist](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)

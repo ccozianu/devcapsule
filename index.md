@@ -126,6 +126,7 @@ history; record current decisions in the active documents above.
 - [Recursive dogfood E2E milestone plan](engineering-docs/implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
 - [Recursive dogfood Stage 2 execution checklist](engineering-docs/implementation-notes/devcapsule/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)
 - [DevCapsule V1 test backlog](engineering-docs/implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md)
+- [Host browser URL bridge TLDR](engineering-docs/implementation-notes/devcapsule/2026-08-17-host-browser-url-bridge-tldr.md)
 
 ## Bugs
 
