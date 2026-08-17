@@ -4,9 +4,11 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active. Blocked and paused on 2026-08-17, then resumed the same day by
-the product owner to specify publishing before integration. One acknowledged
-item remains and still cannot be written until `recursive-e2e` Stage 7 exists to
+State: paused. Paused on 2026-08-17, resumed twice the same day — to specify
+publishing before integration, then to record merge strategy and commit
+identity. Paused rather than blocked because the backlog now holds one item that
+is actionable today. The acknowledged external-resource item is separately
+blocked and still cannot be written until `recursive-e2e` Stage 7 exists to
 exercise it.
 
 Integration target: `main`
@@ -634,11 +636,44 @@ The completion sequence concludes a workstream rather than being its only
 delivery. Slices travel the working branch, never the outbox — merging an outbox
 publishes everything on it, without the review a deliverable is owed.
 
+### Fourteenth Task: Record What The Merge Strategy Changes
+
+The product owner merged both pull requests as merge commits rather than by the
+rebase merge every earlier delivery used, then asked what that changes for this
+workflow. The answer is now an engineering note,
+[merge strategy and commit identity](../../implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md),
+listed in `index.md` and filed under a new `implementation-notes/workflow/`
+scope, since the existing scopes are `devcapsule` and `docker4pycharm` and this
+is neither.
+
+It records the mechanism — a commit's SHA covers its parent and committer
+timestamp, so replaying a diff onto a new base produces a different commit with
+identical content — and the four consequences this repository actually suffered:
+ancestry answering "no" for integrated work, duplicate commits accumulating on
+branches, a rebase conflicting against its own merged content, and any recorded
+SHA pointing at history `main` does not contain.
+
+The evidence is from this repository rather than from documentation. Both halves
+of one rewritten pair still exist here, `3369539` and `285962b`, identical in
+tree, author, message, and patch-id, differing in parent and committer date.
+`recursive-e2e/stage-4` currently reports 17 commits ahead of `main` of which
+`git cherry` shows 15 already upstream — worth knowing before that workstream is
+resumed.
+
+The recommendation is merge commits, with the stronger point being uniformity:
+rules that hold under one strategy and fail under another cannot be relied on in
+a repository that varies it per pull request. The decision is the product
+owner's and is open; the note says where it should be recorded if adopted, which
+is the *Coordination Baseline* rather than `WORKFLOW.md`.
+
+The adopter-facing version is deliberately not this document, and is now the
+backlog's only item.
+
 ## Next Resumable Task
 
-Nothing, deliberately, once the fourth outbox send and this branch's pull
-request have landed. This workstream returns to blocked, and the next event
-belongs to someone else.
+Write the adopter-facing treatment of merge strategy, backlog item 1. It is
+actionable today, needs no external event, and has its engineering source
+already written.
 
 One acknowledged item remains — the external-resource ownership convention — and
 it is blocked: its main consumer, `recursive-e2e` Stage 7, has not been reached,
@@ -646,7 +681,7 @@ and the convention should be written against a consumer that can exercise it
 rather than in the abstract. `recursive-e2e` was told, through its intake on
 2026-08-17.
 
-Three things could make this workstream resumable, and all three are outside it:
+Three further events would add work, and all three are outside this workstream:
 
 1. `recursive-e2e` reaches Stage 7, which unblocks the convention.
 2. `project-management` routes one of the three questions above back here, or
@@ -656,18 +691,23 @@ Three things could make this workstream resumable, and all three are outside it:
    which point the intake queue is non-empty again and the completion gate
    applies.
 
-Before any of that, two things must land, in this order. The fourth outbox send,
-carrying this workstream's disposition log and handoff to `main` plus the
-registry row returning to `active` — the target before the reference, per the
-rule written today. Then `workflow-improvements/v1`, rebased onto
-current `main`, pushed, and unmerged; they are the only place *The Disposition
-Log*, *Publishing Before Integration*, and the two Git corrections exist. Both
-need GitHub credentials this environment does not have.
+Everything this workstream wrote is now integrated. The product owner merged
+`workflow-improvements/v1` as [`PR #19`](https://github.com/ccozianu/devcapsule/pull/19)
+and `workflow-improvements/outbox` as
+[`PR #20`](https://github.com/ccozianu/devcapsule/pull/20) on 2026-08-17, both as
+merge commits rather than by the rebase merge every earlier delivery used.
+`git cherry` reports nothing unique on either branch.
 
-Then one last outbox send sets the registry row back to `blocked`. It is a step
-rather than an afterthought because nothing else will do it, and a row reading
-`active` for a workstream nobody is working on is the failure mode the states
-were defined to prevent. Noted while doing it: a resumption this short costs two
+Two things remain unmerged, both written 2026-08-17 after those pull requests:
+this branch's engineering note and its `index.md` entry, and an outbox send
+setting the registry row to `paused`. The row is `paused` and not `blocked`
+because the backlog item added the same day is actionable today; the state was
+briefly recorded as blocked, before that item existed, and the outbox commit was
+rewritten rather than sent twice.
+
+A row reading `active` for a workstream nobody is working on is the failure the
+states were defined to prevent, which is why the send is a step rather than an
+afterthought. Noted while doing it: a resumption this short costs two
 registry sends for a state that was true for one session. Whether that is worth
 a rule is not obvious enough to write one now, and it is recorded here so the
 second occurrence is recognized rather than re-derived.
@@ -837,9 +877,30 @@ container cleanup bug as a side effect.
 
 ## Backlog
 
-Empty. The one item — making `project-management` a mandatory permanent
-workstream — was completed on 2026-08-16. Its done-criteria were met as
-follows:
+**1. Bring merge strategy and commit identity into end-user documentation.**
+Added 2026-08-17 by the product owner. The engineering source is written —
+[merge strategy and commit identity](../../implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md)
+— and this item is the adopter-facing treatment, which is a different document
+rather than a relocation of that one.
+
+Done means an adopter can choose a merge strategy deliberately and knows what
+the choice costs them: that rebase and squash rewrite commit identity, that this
+makes ancestry the wrong test for whether work has landed, and that
+`git cherry` is the test that survives every strategy. It should teach the
+consequence, not the forensics — no `patch-id` internals, no citations of this
+repository's refs.
+
+Two constraints. It belongs in `docs/`, which holds current user-facing material
+only, and it must not tell adopters which strategy to use: `WORKFLOW.md` stays
+strategy-neutral under `R-PRODUCT-004`, and a project's merge policy is usually
+set by its host or its organization rather than by this product. Follow *User-Level
+Documentation Protocol* and *Draft User Documentation* in `WORKFLOW.md`.
+
+This is actionable now and depends on nothing external, which is why this
+workstream is paused rather than blocked.
+
+The earlier item — making `project-management` a mandatory permanent workstream
+— was completed on 2026-08-16. Its done-criteria were met as follows:
 
 - initialization and adoption create exactly one reserved workstream and its
   handoff — *Initializing Multiple-Stream Mode*;
@@ -879,7 +940,23 @@ by design.
    `workflow-improvements/v1` presumes this workstream delivers *for* V1, which
    sharpens the question rather than answering it.
 
-2. **Who owns protocol boilerplate that lives inside another workstream's
+2. **Should the repository standardize on merge commits?** Raised 2026-08-17
+   after `PR #19` and `PR #20` merged that way. The evidence favours it: both
+   defects recorded in *Ninth Task* were caused by rebase merge rewriting
+   identities, and both stop existing under merge commits — ancestry answers
+   correctly again, the outbox reset stops needing a force-push, and
+   synchronizing a delivered branch becomes a fast-forward instead of a
+   conflicting rebase, all three observed on this branch within the hour. The
+   cost is a non-linear `main`, read with `--first-parent`. What matters more
+   than the choice is that it stop varying per pull request: several rules in
+   `WORKFLOW.md` are true under one strategy and false under another, and a
+   mixed history has neither property reliably. If adopted, it is a repository
+   coordination fact for root `CURRENT-STATUS.md` rather than a workflow rule,
+   since `WORKFLOW.md` must stay strategy-neutral for adopters, and one
+   sentence in *The Outbox Branch* — "expect that reset to require a
+   force-push" — should be conditioned rather than deleted.
+
+3. **Who owns protocol boilerplate that lives inside another workstream's
    directory?** Each `intake/README.md` restated the delivery rule, so changing
    that rule made four workstreams' READMEs stale at once — and restriction
    11's carve-out bars this workstream from editing three of them. Its own
@@ -971,9 +1048,16 @@ own reasoning to the recipient, so this handoff does not restate it beyond
   2026-08-16: registration travels the sender's outbox like any other message,
   so nothing commits directly to `main`. Recorded here because this entry
   asserted the opposite for a week.
-- The repository merge strategy rewrites commit identities. Verify this branch
-  against `main` by comparing trees, never by commit identity, and reset rather
-  than rebase once its pull request has landed.
+- Corrected 2026-08-17, second time this claim has moved. This entry said the
+  repository merge strategy rewrites commit identities. It did for every
+  delivery up to and including the third outbox send, and it did not for
+  `PR #19` and `PR #20`, which the product owner merged as merge commits. Both
+  branches are now ancestors of `main`, and synchronizing this one was a
+  fast-forward where the same operation previously required a hard reset.
+  Strategy is therefore a per-pull-request property of this repository today,
+  not a fixed fact — so keep verifying by content with `git cherry`, which is
+  correct under every strategy, rather than by ancestry, which is correct only
+  under some. See *Open Threads* for the standing question.
 - This track overlaps `CURRENT-STATUS.md`, `WORKFLOW.md`, `AGENTS.md`, and the
   workflow requirements. Synchronize with `main` before integrating.
 - Two bootstrap exceptions have now published workflow changes from
