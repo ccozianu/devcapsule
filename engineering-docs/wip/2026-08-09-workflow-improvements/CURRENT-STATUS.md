@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active; two intake items dispositioned, four remain
+State: active; intake queue empty, four acknowledged items in progress
 
 Integration target: `main`
 
@@ -43,13 +43,21 @@ checkout; see selection rule 6.
   workstream had not started: verified divergence resolution, the merge-landed
   check, and rule 11's non-exclusive editing on 2026-08-15; then the whole
   workstream intake mechanism on 2026-08-16.
-- This workstream's `intake/` received six items and holds four. Two were
-  accepted and implemented on 2026-08-16; see *Dispositions*. A seventh, on
-  shared bug vocabulary, is committed on `project-management/coordination` and
-  reaches this directory when that branch merges — itself an illustration of
-  why the outbox now exists.
-- The four remaining items are the communication-protocol and concurrency
-  clusters. Dispositioning them is the next task.
+- The intake queue is empty. Six items were received and all six are
+  dispositioned: two acknowledged and implemented on 2026-08-16, four
+  acknowledged on 2026-08-17 and now carried as *Acknowledged Work*. None was
+  forwarded. See *Dispositions*.
+- The four files are deleted from `main` through the outbox. They remain on
+  this branch until its next synchronization, which is what the protocol
+  prescribes; do not delete them here.
+- A seventh item, on shared bug vocabulary, is committed on
+  `project-management/coordination` and arrives when that branch merges — itself
+  an illustration of why the outbox now exists. Expect the queue to be
+  non-empty again.
+- Five workflow changes have been written across 2026-08-16 and 2026-08-17 and
+  await integration: the reserved `project-management` workstream, the outbox
+  branch, the two-outcome intake disposition protocol with its completion gate,
+  the latitude clause, and the purpose-and-principles preamble.
 - The branch was 37 commits behind `main` and carried three commits that were
   patch-identical duplicates of the registration commits. Rebasing dropped all
   three; the branch is now identical to `main`.
@@ -269,34 +277,24 @@ argue around a rule.
 
 ## Next Resumable Task
 
-Disposition the four remaining intake items under the protocol adopted on
-2026-08-17: acknowledge each as this workstream's own work, or forward it to
-`project-management` with a reason. Two clusters remain — communication-protocol
-completeness (intake acknowledgement, pausing and conversational continuity)
-and concurrency (the worktree procedure, external-resource ownership and
-reaping).
+Write the worktree procedure — item 1 of *Acknowledged Work*, and the only
+acknowledged item that is both ready and unblocked.
 
-The stale facts identified on 2026-08-16 are all corrected.
+Done means: when a worktree is warranted rather than a branch switch; where
+worktrees live relative to the primary checkout; how one associates with
+exactly one workstream; how the session-start selection rules apply inside one;
+how it is disposed of, including what happens to uncommitted recovery state;
+and how an abandoned worktree is detected. Reconcile it with restriction 11's
+second carve-out, which already presumes a worktree lifecycle.
 
-Done means:
+Item 2, the pause action, is equally ready and could go first; the shape is
+already proven in this handoff's *Open Threads*. Item 3 is blocked on the
+product owner. Item 4 is the largest and its main consumer, `recursive-e2e`
+Stage 7, has not been reached.
 
-- every item is acknowledged or forwarded, with reasoning recorded here;
-- acknowledged items are requirements or tasks with a position in this
-  workstream's order, not merely opinions recorded about them;
-- forwarded items reached `project-management`'s intake through the outbox,
-  carrying the original text and the reason;
-- every dispositioned item is deleted from `main` through the outbox; and
-- the workstream's bounded scope is still credible afterwards.
-
-The new protocol sharpens a decision that was already pending. The concurrency
-cluster was described as a candidate for deferral to recursive-dogfood Stage 7,
-where its code would live. Deferral is no longer an outcome: either this
-workstream owns that cluster, or it forwards it to `project-management` and
-lets the routing authority place it. The second is almost certainly right for
-external-resource reaping, which needs code this workstream will not write.
-
-The acknowledgement item still says to ask the product owner first; they
-reserved ideas for it deliberately.
+The nearer obligation is integration, not writing. Five workflow changes are
+written and unmerged, and this workstream cannot conclude while
+`workflow-improvements/outbox` carries undelivered mail.
 
 ## Dispositions
 
@@ -343,6 +341,91 @@ All four of the sender's cautions were honored rather than noted:
 
 The stale-branch finding this workstream raised about itself is fixed by the
 same section, since the fix is the same rule.
+
+### Acknowledged 2026-08-17
+
+The remaining four items, dispositioned under the two-outcome protocol adopted
+the same day. All four are acknowledged; none is forwarded. Each is a gap in
+the workflow protocol itself, which is this workstream's registered goal, and
+none has a better owner. The ordered work they became is in *Acknowledged
+Work*.
+
+**A worktree procedure.** Acknowledged. `WORKFLOW.md` references worktrees
+throughout — switching workstreams, avoiding mixed dirty state, preparing a
+registration while another workstream is checked out — and defines them
+nowhere. Restriction 11's second carve-out presumes a worktree lifecycle the
+document never describes. Nothing else can own a gap in this document.
+
+**Pausing and conversational continuity.** Acknowledged. The sender's cheap
+version has in fact already been trialled here: this handoff's *Open Threads*
+section was written in that shape at the 2026-08-16 pause, and it worked —
+question 1 of that trial produced the branch rename, and the reserved-ideas
+question is still doing its job. What remains is promoting a proven shape from
+one workstream's local practice into protocol, which is the least speculative
+kind of change this workstream can make.
+
+The sender's three-way split is adopted as the design's frame: state resumption
+is already served, reasoning continuity is the real gap, and literal
+conversational replay is a false goal. Its argument that this project's own
+premise forbids depending on a vendor's session resumption is decisive.
+
+**Intake acknowledgement and staleness.** Acknowledged, and partly overtaken.
+The item frames intake as message passing between isolated processes with four
+known failure modes: undelivered messages, unacknowledged messages, unbounded
+queues, and no dead-letter handling. Two are now closed. The outbox fixed
+undelivered. Forwarding to `project-management`, whose dispositions are
+terminal, is dead-letter handling. The completion gate bounds queues at
+workstream end, though not during a long-running one.
+
+What remains is genuinely open: a sender still learns nothing when its item is
+*accepted*, and nothing surfaces an item sitting untouched. Blocked on the
+product owner, who reserved ideas for this specifically; see *Open Threads*.
+
+**External-resource ownership and reaping.** Acknowledged, for the convention
+only. The protocol governs Git state well and external state not at all, while
+every concurrency hazard observed in the recursive E2E cycle was outside Git —
+a hard-coded container name, a colliding host port, hand-rolled `HOME` and
+`XDG_*` roots, a reused image tag, and a shared Docker daemon whose only
+ownership model lives inside one workstream's code.
+
+The implementation is a separate matter and was **delivered onward, not
+forwarded**. `recursive-e2e` Stage 7 is already scoped to "persistence and
+deterministic cleanup", so the reaping implementation and the detached-container
+cleanup bug were delivered to its intake as derived work. That is a new item
+from this workstream, not a refusal of this one: the convention is acknowledged
+here and the code is handed to where it belongs.
+
+**Scope after acknowledging four.** The workstream's goal commits it to conclude
+once findings are dispositioned, and four acknowledged items is not a small
+remainder. It is defensible because all four are protocol and this workstream
+is the protocol owner, but *done* is now visibly further away than it was, and
+the product owner should see that rather than discover it. See *Open Threads*.
+
+## Acknowledged Work
+
+Ordered by readiness, not by size. Positions are this workstream's judgment and
+can be reordered.
+
+1. **A worktree procedure.** Ready now; purely additive; blocks nothing but is
+   referenced throughout the document. Done means: when a worktree is warranted
+   rather than a branch switch; where worktrees live; how one associates with
+   exactly one workstream; how session-start selection applies inside one; how
+   it is disposed of, including uncommitted recovery state; and how an
+   abandoned worktree is detected.
+2. **A pause action and reasoning continuity.** Ready now, and the shape is
+   already proven in this handoff. Done means: a defined pause action in
+   `WORKFLOW.md`; a place in the handoff for open threads, options weighed but
+   unresolved, and questions awaiting the human; and an explicit statement of
+   what is deliberately not preserved.
+3. **Intake acknowledgement and staleness.** Blocked on the product owner.
+   Done means: an acceptance signal a sender can observe, and a staleness
+   signal that surfaces where a human actually reads — or a recorded decision
+   that the remaining gap is acceptable and why.
+4. **An external-resource ownership convention.** Largest, needs product
+   knowledge, and its main consumer is not ready. Done means: how a resource
+   derives its owning workstream and run identity; how names avoid collision by
+   construction rather than by discipline; how an agent enumerates what is held
+   and by whom; and what an agent may and may not remove.
 
 ## Assessment Of The Queue
 
@@ -411,7 +494,22 @@ continuity intake item. Short by design.
 
 ### Awaiting The Product Owner
 
-1. **Does "the workflow improvements already identified" mean identified, or
+1. **Were the outbox and disposition rules the ideas you reserved for intake?**
+   The acknowledgement item says the product owner held further ideas about how
+   intake should be processed and told this workstream to ask before designing.
+   Since then they specified the outbox and the two-outcome protocol, which may
+   simply *be* those ideas. If so, item 3 shrinks to an acceptance signal and a
+   staleness signal. If more was reserved, item 3 should not be designed
+   without it.
+
+2. **Is four acknowledged items the right size for this workstream?** Its goal
+   commits it to conclude once findings are dispositioned. All four are
+   protocol and this workstream owns protocol, so no forward was honest — but
+   the practical effect is that conclusion moved further away. Options if that
+   is unwelcome: hand items 3 and 4 to `project-management` to place elsewhere,
+   or accept that this workstream runs until V1.
+
+3. **Does "the workflow improvements already identified" mean identified, or
    identified and implemented?** The product owner named that as a condition for
    starting their own projects on v026. The two readings put very different
    obligations on this workstream, and it is currently described as being on the
@@ -419,7 +517,7 @@ continuity intake item. Short by design.
    `workflow-improvements/v1` presumes this workstream delivers *for* V1, which
    sharpens the question rather than answering it.
 
-2. **Who owns protocol boilerplate that lives inside another workstream's
+4. **Who owns protocol boilerplate that lives inside another workstream's
    directory?** Each `intake/README.md` restated the delivery rule, so changing
    that rule made four workstreams' READMEs stale at once — and restriction
    11's carve-out bars this workstream from editing three of them. Its own
