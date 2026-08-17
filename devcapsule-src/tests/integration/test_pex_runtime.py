@@ -186,12 +186,18 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
     ).stdout.strip()
 
     output = project / "dist" / "devcapsule.pex"
+    build_environment = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in {"DEVCAPSULE_SOURCE_REPOSITORY", "DEVCAPSULE_SOURCE_REVISION"}
+    }
+    build_environment["PYTHON"] = sys.executable
     completed = subprocess.run(
         [str(scripts / "build-pex.sh"), "--allow-unpublished-revision"],
         check=False,
         text=True,
         capture_output=True,
-        env={**os.environ, "PYTHON": sys.executable},
+        env=build_environment,
     )
 
     assert completed.returncode == 0, completed.stderr

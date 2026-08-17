@@ -76,8 +76,11 @@ active continuation branch.
   On 2026-08-17 the product owner selected GitHub Releases as the initial PEX
   download channel and required the official artifact to be built by the
   GitHub backend rather than uploaded from a contributor machine. The release
-  automation is implemented on the workstream branch; integration, the first
-  release run, and download-based publication evidence remain open.
+  automation is implemented on the workstream branch. The first `v026` run
+  (`32051615110`) built the PEX successfully but failed before publication
+  because a job-scoped source-repository override contaminated a nested
+  packaging test. The fix is complete on this branch; integration, a
+  replacement `v026` tag, and download-based publication evidence remain open.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -129,6 +132,11 @@ the first backend-built standalone PEX release remain pending. Changed:
   assets and repeats the checksum, byte-identity, and clean-machine proof.
   Manual reruns fail if an existing Release does not byte-match instead of
   replacing published assets silently.
+- The release workflow scopes `DEVCAPSULE_SOURCE_REPOSITORY` only to the PEX
+  construction step. Packaging tests no longer inherit canonical release
+  provenance, and the nested-repository integration test explicitly removes
+  ambient source-repository and source-revision overrides before proving Git
+  remote discovery. A source-level regression test pins the workflow scope.
 - `DEVCAPSULE_PEX_UNDER_TEST` lets packaging and clean-machine tests select the
   exact backend-built or downloaded artifact without rebuilding it locally.
 - `host-open` is a hidden PEX client for a launcher-owned physical-host broker.
@@ -176,6 +184,18 @@ passed with 10 deselected, six packaging integrations passed, and the local
 self-contained PEX plus CLI smoke checks passed. Direct
 `.venv/bin/python -m nox` invocation was separately resolved and enumerated
 the expected sessions without consulting system Python.
+
+Release-run repair validation on 2026-08-17: failed GitHub run `32051615110`,
+job `95452067400`, passed source tests and type checks, built the standalone PEX
+for `cdf1b5b`, then failed one of six packaging integrations because the nested
+fake repository received `https://github.com/ccozianu/devcapsule` from the
+job environment instead of discovering its own origin. The focused test now
+passes with that exact contaminating variable deliberately present. The full
+dirty-tree `nox -s build` gate also passed under the same ambient condition:
+mypy found no issues over 99 files, 341 tests passed with 10 deselected, all six
+packaging integrations passed, and the local PEX and CLI smoke checks passed.
+The product owner will replace the failed, unpublished `v026` tag after the
+corrected commit is integrated.
 
 Exact-revision evidence: source commit
 `95212fc11c1b9d8724e7176ff2d236393f18319a` is published on

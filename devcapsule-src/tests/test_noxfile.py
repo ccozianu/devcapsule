@@ -7,6 +7,23 @@ from unittest.mock import patch
 import noxfile
 
 
+RELEASE_WORKFLOW = noxfile.REPO_ROOT / ".github" / "workflows" / "release-pex.yml"
+
+
+def test_release_workflow_scopes_source_repository_to_pex_build_step() -> None:
+    workflow = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+    job_environment = workflow.split("    env:\n", 1)[1].split("    defaults:\n", 1)[0]
+    build_step = workflow.split(
+        "      - name: Build the self-contained release PEX\n", 1
+    )[1].split("      - name:", 1)[0]
+
+    assert "DEVCAPSULE_SOURCE_REPOSITORY" not in job_environment
+    assert (
+        "DEVCAPSULE_SOURCE_REPOSITORY: "
+        "${{ github.server_url }}/${{ github.repository }}"
+    ) in build_step
+
+
 def test_public_pex_is_skipped_and_advertised_for_dirty_repository() -> None:
     session = Mock()
     session.run.return_value = " M devcapsule-src/noxfile.py\n"
