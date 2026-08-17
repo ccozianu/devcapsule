@@ -656,11 +656,21 @@ Three things could make this workstream resumable, and all three are outside it:
    which point the intake queue is non-empty again and the completion gate
    applies.
 
-Before any of that, the human must merge `workflow-improvements/v1`. Three
-commits are written, rebased onto current `main`, pushed, and unmerged; they are
-the only place *The Disposition Log* and the two Git corrections exist. Opening
-and merging that pull request needs GitHub credentials this environment does not
-have.
+Before any of that, two things must land, in this order. The fourth outbox send,
+carrying this workstream's disposition log and handoff to `main` plus the
+registry row returning to `active` — the target before the reference, per the
+rule written today. Then `workflow-improvements/v1`, five commits, rebased onto
+current `main`, pushed, and unmerged; they are the only place *The Disposition
+Log*, *Publishing Before Integration*, and the two Git corrections exist. Both
+need GitHub credentials this environment does not have.
+
+Then one last outbox send sets the registry row back to `blocked`. It is a step
+rather than an afterthought because nothing else will do it, and a row reading
+`active` for a workstream nobody is working on is the failure mode the states
+were defined to prevent. Noted while doing it: a resumption this short costs two
+registry sends for a state that was true for one session. Whether that is worth
+a rule is not obvious enough to write one now, and it is recorded here so the
+second occurrence is recognized rather than re-derived.
 
 On resuming, synchronize first — the pause procedure exists because intake
 arrives on `main` while a workstream sleeps — and re-verify the claims in
