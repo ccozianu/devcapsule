@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -77,11 +78,15 @@ def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> No
 
     assert completed.returncode == 0, completed.stderr
     value = json.loads(completed.stdout)
-    assert built_pex.name == "devcapsule-local.pex"
     assert value["schema_version"] == 1
     assert value["version"] == "0.1.0"
-    assert value["source_revision"] == "unknown"
-    assert value["source_url"] == "unknown"
+    if built_pex.name == "devcapsule-local.pex":
+        assert value["source_revision"] == "unknown"
+        assert value["source_url"] == "unknown"
+    else:
+        assert built_pex.name == "devcapsule.pex"
+        assert re.fullmatch(r"[0-9a-f]{40,64}", value["source_revision"])
+        assert value["source_url"].endswith(f"/commit/{value['source_revision']}")
     assert set(value) == {
         "schema_version",
         "version",

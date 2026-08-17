@@ -15,6 +15,7 @@ REPO_ROOT = PROJECT_ROOT.parent
 TEST_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule-local.pex"
 PUBLIC_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
 PUBLIC_PEX_REPOSITORY_ENV = "DEVCAPSULE_PUBLIC_PEX_SOURCE_REPOSITORY"
+PEX_UNDER_TEST_ENV = "DEVCAPSULE_PEX_UNDER_TEST"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -202,9 +203,10 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
 
 def run_clean_machine_pex_test(session: nox.Session) -> None:
     environment: dict[str, str] = {}
-    image = session.env.get("DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE")
-    if image is not None:
-        environment["DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE"] = image
+    for name in ("DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE", PEX_UNDER_TEST_ENV):
+        value = session.env.get(name) or os.environ.get(name)
+        if value is not None:
+            environment[name] = value
     session.run(
         "python",
         "-m",
@@ -263,7 +265,11 @@ def pex_clean_machine(session: nox.Session) -> None:
     """Prove the eager PEX scie on a networkless image with no host Python."""
 
     install_locked(session)
-    build_test_pex(session)
+    selected_pex = session.env.get(PEX_UNDER_TEST_ENV) or os.environ.get(
+        PEX_UNDER_TEST_ENV
+    )
+    if not selected_pex:
+        build_test_pex(session)
     run_clean_machine_pex_test(session)
 
 

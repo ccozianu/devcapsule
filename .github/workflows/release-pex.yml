@@ -1,0 +1,143 @@
+name: Publish DevCapsule PEX
+
+on:
+  push:
+    tags:
+      - "v[0-9]*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing tag to build and publish (or verify again)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-pex-${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  build-publish-and-prove:
+    name: Build, publish, and prove
+    runs-on: ubuntu-24.04
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
+      DEVCAPSULE_SOURCE_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        working-directory: devcapsule-src
+
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Verify the selected tag and revision
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9][0-9A-Za-z._-]*$ ]]; then
+            echo "Release tags must start with v plus a digit and use only letters, digits, dot, underscore, or hyphen." >&2
+            exit 2
+          fi
+          tag_revision="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          checkout_revision="$(git rev-parse HEAD)"
+          test "$checkout_revision" = "$tag_revision"
+
+      - name: Set up Python 3.12 for the backend build
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: devcapsule-src/dev-requirements.txt
+
+      - name: Install locked build and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r dev-requirements.txt
+          python -m pip install -e . --no-deps
+
+      - name: Run source tests and type checks
+        run: python -m nox -s syntax tests typecheck
+
+      - name: Build the self-contained release PEX
+        run: |
+          scripts/build-pex.sh --source-revision "$(git rev-parse HEAD)"
+          dist/devcapsule.pex --help >/dev/null
+          dist/devcapsule.pex version --json | tee dist/devcapsule-version.json
+          (cd dist && sha256sum devcapsule.pex > devcapsule.pex.sha256)
+
+      - name: Run packaging integration tests against the release PEX
+        env:
+          DEVCAPSULE_PEX_UNDER_TEST: ${{ github.workspace }}/devcapsule-src/dist/devcapsule.pex
+        run: python -m pytest --no-cov -m integration tests/integration
+
+      - name: Pull the clean-machine proof image
+        run: docker pull ubuntu:24.04
+
+      - name: Prove the built PEX without Python or networking
+        env:
+          DEVCAPSULE_PEX_UNDER_TEST: ${{ github.workspace }}/devcapsule-src/dist/devcapsule.pex
+        run: python -m nox -s pex_clean_machine
+
+      - name: Retain the backend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcapsule-pex-${{ env.RELEASE_TAG }}
+          path: |
+            devcapsule-src/dist/devcapsule.pex
+            devcapsule-src/dist/devcapsule.pex.sha256
+            devcapsule-src/dist/devcapsule-version.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create the release or verify its existing assets
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            existing="$RUNNER_TEMP/existing-release"
+            mkdir -p "$existing"
+            gh release download "$RELEASE_TAG" \
+              --pattern devcapsule.pex \
+              --pattern devcapsule.pex.sha256 \
+              --dir "$existing"
+            (cd "$existing" && sha256sum --check devcapsule.pex.sha256)
+            cmp dist/devcapsule.pex "$existing/devcapsule.pex"
+            cmp dist/devcapsule.pex.sha256 "$existing/devcapsule.pex.sha256"
+          else
+            gh release create "$RELEASE_TAG" \
+              "dist/devcapsule.pex#Self-contained Linux x86-64 CLI" \
+              "dist/devcapsule.pex.sha256#SHA-256 checksum" \
+              --verify-tag \
+              --generate-notes
+          fi
+
+      - name: Download and verify the published assets
+        run: |
+          published="$RUNNER_TEMP/published-release"
+          mkdir -p "$published"
+          gh release download "$RELEASE_TAG" \
+            --pattern devcapsule.pex \
+            --pattern devcapsule.pex.sha256 \
+            --dir "$published"
+          (cd "$published" && sha256sum --check devcapsule.pex.sha256)
+          cmp dist/devcapsule.pex "$published/devcapsule.pex"
+          chmod 0755 "$published/devcapsule.pex"
+
+      - name: Prove the downloaded PEX without Python or networking
+        env:
+          DEVCAPSULE_PEX_UNDER_TEST: ${{ runner.temp }}/published-release/devcapsule.pex
+        run: python -m nox -s pex_clean_machine
+
+      - name: Summarize the release
+        run: |
+          {
+            echo "## DevCapsule PEX release"
+            echo
+            echo "- Tag: \`$RELEASE_TAG\`"
+            echo "- Revision: \`$(git rev-parse HEAD)\`"
+            echo "- $(cat dist/devcapsule.pex.sha256)"
+            echo "- Built and retested after downloading from GitHub Releases"
+          } >> "$GITHUB_STEP_SUMMARY"

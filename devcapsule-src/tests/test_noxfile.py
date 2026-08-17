@@ -80,3 +80,27 @@ def test_public_pex_forwards_explicit_repository_only_to_packaging_step() -> Non
         },
         external=True,
     )
+
+
+def test_clean_machine_proof_forwards_selected_pex() -> None:
+    session = Mock()
+    session.env = {
+        noxfile.PEX_UNDER_TEST_ENV: "/tmp/published-devcapsule.pex",
+        "DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE": "ubuntu:24.04",
+    }
+
+    noxfile.run_clean_machine_pex_test(session)
+
+    session.run.assert_called_once_with(
+        "python",
+        "-m",
+        "pytest",
+        "--no-cov",
+        "-m",
+        "e2e",
+        str(noxfile.PROJECT_ROOT / "tests" / "e2e" / "test_self_contained_pex.py"),
+        env={
+            noxfile.PEX_UNDER_TEST_ENV: "/tmp/published-devcapsule.pex",
+            "DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE": "ubuntu:24.04",
+        },
+    )

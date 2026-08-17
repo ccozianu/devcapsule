@@ -183,6 +183,32 @@ devcapsule-src/dist/devcapsule.pex pycharm run --help
 devcapsule-src/dist/devcapsule.pex pycharm build --help
 ```
 
+GitHub Releases is the initial public download channel. Release assets contain
+the PEX and its checksum; downloading the raw asset requires restoring its
+executable bit:
+
+```bash
+release_tag=v026
+curl --fail --location --output devcapsule.pex \
+  "https://github.com/ccozianu/devcapsule/releases/download/${release_tag}/devcapsule.pex"
+curl --fail --location --output devcapsule.pex.sha256 \
+  "https://github.com/ccozianu/devcapsule/releases/download/${release_tag}/devcapsule.pex.sha256"
+sha256sum --check devcapsule.pex.sha256
+chmod 0755 devcapsule.pex
+./devcapsule.pex version --json
+```
+
+The GitHub backend owns release construction. Pushing a numeric `v*` tag (for
+example `v026`) runs `.github/workflows/release-pex.yml`, which checks out that
+exact tag, runs source validation, builds the self-contained PEX, and proves it
+inside a network-disabled Ubuntu container with no Python. Only then does it
+create the GitHub Release with `devcapsule.pex` and
+`devcapsule.pex.sha256`. The workflow downloads the published assets, verifies
+their checksum and byte identity, restores the executable bit, and repeats the
+no-Python/no-network proof. A manual workflow run can retry an existing tag;
+if its Release already exists, the rebuilt bytes must match and are never
+silently replaced.
+
 The executable contains CPython 3.12.14 from the pinned 20260814 Python Build
 Standalone release, the Python CLI, runtime dependencies, and the legacy
 PyCharm build/runtime helper assets still needed by the current delegated
@@ -194,6 +220,14 @@ contains no Python interpreter:
 
 ```bash
 python -m nox -s pex_clean_machine
+```
+
+To prove an already-built or downloaded artifact rather than having Nox build
+the local candidate first, select it explicitly:
+
+```bash
+DEVCAPSULE_PEX_UNDER_TEST="$PWD/dist/devcapsule.pex" \
+  python -m nox -s pex_clean_machine
 ```
 
 Developers who deliberately manage Python tools can instead install the source
@@ -234,13 +268,13 @@ devcapsule images build \
   --network host
 
 # When invoked from a PEX, that PEX is embedded by default.
-python3.12 dist/devcapsule.pex images build \
+dist/devcapsule.pex images build \
   --type base \
   --tag devcapsule-base:debug-v023 \
   --source-revision "$(git rev-parse HEAD)"
 
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
-python3.12 dist/devcapsule.pex images build \
+dist/devcapsule.pex images build \
   --type base \
   --recipe nvidia-cuda-devel \
   --tag devcapsule-base:cuda-v023 \

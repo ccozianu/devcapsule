@@ -73,8 +73,11 @@ active continuation branch.
   the local candidate and exact-revision artifacts successfully. Docker tag
   `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` is published at registry
   digest `sha256:f67baa907c622e68825475d2587ad3b39c85aa444d8bc81f0ae739fc52dd3d48`.
-  The standalone PEX is built and verified but has no selected public download
-  channel yet, so download-based publication evidence remains open.
+  On 2026-08-17 the product owner selected GitHub Releases as the initial PEX
+  download channel and required the official artifact to be built by the
+  GitHub backend rather than uploaded from a contributor machine. The release
+  automation is implemented on the workstream branch; integration, the first
+  release run, and download-based publication evidence remain open.
 - An audit request was pushed on `recursive-e2e/outbox` at `ebad342`, asking
   `project-management` to inventory promised work for this workstream and
   determine from its conversation/session evidence whether delivery failed
@@ -86,8 +89,9 @@ active continuation branch.
 Current task: publish the v026 Docker/CLI pair, with the eager self-contained
 PEX as the first acceptance boundary.
 
-Status: implementation, exact-revision artifact, and Docker publication
-complete. Standalone PEX download publication remains pending. Changed:
+Status: implementation, exact-revision artifact, Docker publication, and the
+GitHub release pipeline are complete on the workstream branch. Integration and
+the first backend-built standalone PEX release remain pending. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
@@ -101,10 +105,22 @@ complete. Standalone PEX download publication remains pending. Changed:
   metadata/provenance, eagerly embedded interpreter, and direct execution.
 - User documentation now presents `devcapsule.pex` as the end-user path and
   makes Python-tool installation an optional developer alternative.
+- `.github/workflows/release-pex.yml` builds from an exact numeric `v*` tag,
+  runs source and packaging checks, proves the resulting PEX with networking
+  disabled in Ubuntu with no Python, and only then creates a GitHub Release
+  containing `devcapsule.pex` plus its SHA-256. It downloads the published
+  assets and repeats the checksum, byte-identity, and clean-machine proof.
+  Manual reruns fail if an existing Release does not byte-match instead of
+  replacing published assets silently.
+- `DEVCAPSULE_PEX_UNDER_TEST` lets packaging and clean-machine tests select the
+  exact backend-built or downloaded artifact without rebuilding it locally.
 
 Validation on 2026-08-17: full `nox -s build` succeeded; mypy reported no
-issues in 96 files; 318 tests passed with 9 deselected; five packaging
-integrations passed; the separate clean-machine Nox proof passed. Candidate
+issues in 96 files; 319 tests passed with 9 deselected; five packaging
+integrations passed; the separate clean-machine Nox proof passed against the
+exact revision-bearing artifact selected through `DEVCAPSULE_PEX_UNDER_TEST`.
+The release workflow YAML and each embedded shell block passed local syntax
+validation. Candidate
 PEX SHA-256 `b7e2fd81818f141bd8dad99c9e41eeb6db58a6f31cf1b287f75a901f0e352fdb`
 matches both the candidate image label and the bytes at
 `/opt/devcapsule/bin/devcapsule.pex`.
@@ -323,14 +339,20 @@ check.
 
 Finish the standalone-CLI publication boundary before returning to Stage 6:
 
-1. choose an authorized public download channel for `devcapsule.pex`;
-2. publish the exact artifact and its SHA-256 without rebuilding it; and
-3. on a clean image with no Python, download that published artifact, disable
-   networking, and rerun help and version output.
+1. merge the release-pipeline change so the workflow exists on the commit that
+   will be tagged;
+2. push the chosen numeric v026 release tag from the integrated release commit;
+3. let `.github/workflows/release-pex.yml` build, prove, publish, download, and
+   re-prove `devcapsule.pex` plus its checksum; and
+4. record the public Release URL, tag revision, PEX SHA-256, and successful
+   backend run here.
 
-The v026 Docker half is complete and published. The CLI is fully self-contained
-and clean-machine proven from local bytes; only public download and the proof
-against those downloaded bytes remain.
+The currently published Docker v026 digest is an exact pair with the PEX built
+from `95212fc`. If the integrated release tag names a different commit, rebuild
+and republish the mutable v026 Docker tag from the downloaded Release PEX, then
+replace the Docker digest evidence here. Do not declare the final v026 pair
+until the image labels, embedded bytes, Release checksum, and tag revision all
+agree.
 
 Then finish Stage 6 before beginning Stage 7:
 
