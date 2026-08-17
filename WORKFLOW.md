@@ -4,6 +4,97 @@ This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
 
+## Purpose And Principles
+
+This document structures how a human and a coding agent build software
+together. Its purpose is to make that pair more productive than either would be
+alone, and it tries to achieve that by removing specific frictions rather than
+by adding process. Every rule below is meant to pay for itself.
+
+The rules follow from a small number of intents. Read a rule against these when
+it seems arbitrary, and reason from these when the document is silent.
+
+**Resumability.** A competent human/agent pair should be able to open this
+repository cold, discover the current state, and continue — without access to
+the conversation that produced it. Sessions end abruptly, models change,
+context windows fill, and people forget. So state lives in committed files
+rather than in chat, exactly one document is authoritative for each effort, and
+the next step is written down rather than remembered. A workflow that only
+works while someone remembers the last conversation is not a workflow.
+
+**Low-ceremony coordination.** Coordination should cost as little as it can
+while still working. Where several efforts run concurrently, the structure
+exists to keep them from colliding — not to schedule them, gate them, or make
+them negotiate. Contention is treated as a design failure rather than something
+to arbitrate. Prefer conventions that make conflicts impossible over procedures
+that resolve them, and prefer a rule an agent can apply alone over one
+requiring a round trip.
+
+**No accidental loss of knowledge.** Anything of importance surfaced during
+development is recorded in the source tree and is predictably discoverable.
+*Predictably* is the operative word: a fact stored somewhere nobody thinks to
+look has been lost as surely as one never written. This is why documents have
+assigned roles and fixed locations, and why an index exists at all. Knowledge
+that only survives in a chat log is one session away from gone.
+
+**Latitude where this document is silent.** The workflow is incomplete and says
+so. What it does not expressly deny is allowed, and a pair meeting an
+unforeseen situation decides for themselves what best suits it rather than
+stalling. The obligations that keep this safe rather than merely permissive are
+in *Latitude Where This Document Is Silent*.
+
+**Retrospective value, subordinate to the work.** Record enough about how the
+project evolved to support later analysis, learning, and rediscovery of
+reasoning that would otherwise have to be reconstructed. But the source tree's
+first purpose is the software. Process records are placed and structured so
+that someone reading the code can ignore them entirely, and so that they never
+compete with source for attention or for space in the paths people actually
+work in.
+
+**Explicit decision rights.** The pair is not two interchangeable actors.
+Mechanical, reversible, and evidently-intended work is the agent's to do
+without asking; product intent, ambiguity that changes the outcome, and
+irreversible or outward-facing acts are the human's. This document says which
+is which at each point rather than leaving each pair to renegotiate it, because
+an agent that asks about everything is useless and one that asks about nothing
+is dangerous.
+
+**Portability across agents and projects.** The workflow must work for any
+capable agent, not one vendor's, and in an adopter's repository, not only this
+one. It therefore lives in plain markdown in the source tree, depends on no
+tool-specific storage or feature, and keeps project-specific facts separate
+from the reusable protocol.
+
+### When These Conflict
+
+They will. Recording everything imaginable serves knowledge and violates low
+ceremony. Full retrospective detail competes with a source tree that stays
+about the software. Latitude sits in tension with predictability.
+
+Three tiebreaks, in order:
+
+1. **Resumability wins.** If dropping a record would leave the next pair unable
+   to continue, or able to continue only by guessing, write it. This is the
+   purpose the others serve.
+2. **Write what changes future behavior; skip what merely proves work
+   happened.** A decision, a constraint, a rejected alternative, or a
+   non-obvious reason changes what someone does next. A narrative of activity
+   does not. When unsure, ask what a reader would do differently having read it.
+3. **Prefer one durable record to several.** Update an existing document rather
+   than adding one; link rather than copy; put a fact where its role says it
+   belongs even when somewhere else is more convenient today. Duplication is
+   how records drift apart and stop being trustworthy.
+
+### How To Read This Document
+
+Humans: the *Multiple-Stream Workflow* and *Markdown Roles* sections carry the
+structure; the rest is detail you can consult when it becomes relevant.
+
+Agents: read the whole applicable path before acting, treat the numbered
+restrictions and procedures as binding, and treat prose as the reasoning that
+explains them. Where a rule and this preamble appear to disagree, the rule
+governs and the disagreement is a defect worth reporting.
+
 ## Latitude Where This Document Is Silent
 
 This workflow is incomplete, and for V1 the project says so rather than

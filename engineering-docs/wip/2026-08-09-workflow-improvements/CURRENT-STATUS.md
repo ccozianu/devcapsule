@@ -226,6 +226,47 @@ Not done: no `D-####` decision record was created. The clause has a V1 sunset
 and `WORKFLOW.md` is its authority, so a durable decision record seemed
 premature. Worth adding if the principle outlives V1.
 
+### Fifth Task: The Purpose And Principles Preamble
+
+Requested by the product owner on 2026-08-17, who supplied four principles and
+asked whether they were enough. `WORKFLOW.md` now opens with *Purpose And
+Principles* before any rule, so both audiences meet the intent first.
+
+The four given: low-ceremony coordination; no accidental loss of knowledge;
+latitude where underspecified; retrospective value that does not interfere with
+the source tree's main purpose. All four are in, close to as stated.
+
+Three additions were made, all open to being struck.
+
+- **Resumability**, placed first. This looked structural rather than optional.
+  It is the document's own opening claim, and it is what handoffs, the single
+  authoritative status per effort, and the recorded next resumable task all
+  exist to produce. It is adjacent to but distinct from knowledge preservation:
+  that one is about a fact being findable, this one is about a cold-start pair
+  being able to *act*. Without it, the most load-bearing machinery in the
+  document has no stated reason.
+- **Explicit decision rights.** The document repeatedly separates what an agent
+  does unasked from what requires the human, and that separation had no
+  principle behind it. Stating it matters most for agents, which otherwise
+  calibrate autonomy by guesswork.
+- **Portability across agents and projects.** Already required by
+  `R-PRODUCT-004` and by this repository's rule against agent-specific storage,
+  but it was an unstated reason for visible choices — plain markdown, no
+  tool-specific state, protocol kept separate from project facts.
+
+A *When These Conflict* subsection was added because the principles genuinely
+oppose each other: recording everything serves knowledge and violates low
+ceremony, full retrospective detail competes with a source tree about software,
+latitude opposes predictability. Principles without a tiebreak produce
+inconsistent behavior and let an actor justify nearly anything by picking a
+favorable one. The order given is resumability first, then write only what
+changes future behavior, then prefer one durable record to several.
+
+A short *How To Read This Document* subsection tells each audience where to
+start, and states that where a rule and the preamble disagree the rule governs
+and the disagreement is a defect to report — so the preamble cannot be used to
+argue around a rule.
+
 ## Next Resumable Task
 
 Disposition the four remaining intake items under the protocol adopted on
