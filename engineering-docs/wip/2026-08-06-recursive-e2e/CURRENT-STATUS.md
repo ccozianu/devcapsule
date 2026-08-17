@@ -76,11 +76,13 @@ active continuation branch.
   On 2026-08-17 the product owner selected GitHub Releases as the initial PEX
   download channel and required the official artifact to be built by the
   GitHub backend rather than uploaded from a contributor machine. The release
-  automation is implemented on the workstream branch. The first `v026` run
+  automation is implemented. The first `v026` run
   (`32051615110`) built the PEX successfully but failed before publication
   because a job-scoped source-repository override contaminated a nested
-  packaging test. The fix is complete on this branch; integration, a
-  replacement `v026` tag, and download-based publication evidence remain open.
+  packaging test. The corrected replacement tag points to integrated commit
+  `91d50b1`; backend run `32054479485` completed successfully and published the
+  verified PEX and checksum. A local base rebuilt from those exact released
+  bytes is complete; registry publication and GUI acceptance remain open.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -109,9 +111,10 @@ active continuation branch.
 Current task: publish the v026 Docker/CLI pair, with the eager self-contained
 PEX as the first acceptance boundary.
 
-Status: implementation, exact-revision artifact, Docker publication, and the
-GitHub release pipeline are complete on the workstream branch. Integration and
-the first backend-built standalone PEX release remain pending. Changed:
+Status: implementation, integration, the first backend-built standalone PEX
+release, and a matching local Docker rebuild are complete. Publishing the
+rebuilt Docker image and performing the host-browser GUI acceptance remain
+pending. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
@@ -194,18 +197,24 @@ passes with that exact contaminating variable deliberately present. The full
 dirty-tree `nox -s build` gate also passed under the same ambient condition:
 mypy found no issues over 99 files, 341 tests passed with 10 deselected, all six
 packaging integrations passed, and the local PEX and CLI smoke checks passed.
-The product owner will replace the failed, unpublished `v026` tag after the
-corrected commit is integrated.
+The product owner replaced the failed tag after integration. Replacement
+backend run `32054479485` succeeded and published
+`https://github.com/ccozianu/devcapsule/releases/tag/v026` on 2026-08-17.
 
-Exact-revision evidence: source commit
-`95212fc11c1b9d8724e7176ff2d236393f18319a` is published on
-`origin/recursive-e2e/stage-4`; `dist/devcapsule.pex` SHA-256 is
-`05e49697917edf62afc119d8ca39a824a41f46af9621dba3aa5501826c36b0f2`.
-Final v026 image ID
-`sha256:044e017572172edcb1cffaa9b378c3fc8dd03038712d7f53e8e97aaf589ef261`
-records that same PEX digest and source revision in its labels, contains the
-same bytes at `/opt/devcapsule/bin/devcapsule.pex`, and passed offline
-`version --json` after a pull by immutable registry digest.
+Exact-revision evidence: release tag `v026` points to integrated source commit
+`91d50b1dd15468a706f5f965ae0dd6197ffd9ab7`. The published
+`devcapsule.pex` is 40,227,530 bytes with SHA-256
+`b7959c52f90b0e6c5043be787045968f94416e0b0faf75465696d47e53bab11c`;
+its downloaded checksum verifies and `version --json` reports that exact
+repository and revision. Local image
+`mycodespaceai/devcapsule-base:ubuntu-24.04-v026`, image ID
+`sha256:cf72aa7b7926ff480f3b4fbec1b2e5c02e43044519d3679104dda1e7430dfdb2`,
+was rebuilt from those released bytes. Its labels and embedded PEX digest match
+the Release, and a network-disabled container passed embedded checksum,
+`version --json`, Python, Node.js `v22.23.1`, `javac 25.0.4`, and Maven
+`3.9.16` probes. The currently published Docker registry digest
+`sha256:f67baa907c622e68825475d2587ad3b39c85aa444d8bc81f0ae739fc52dd3d48`
+still represents the superseded `95212fc` PEX and is not the final pair.
 
 ## Last Task And Status
 
@@ -409,30 +418,21 @@ check.
 
 ## Next Resumable Task
 
-Finish the standalone-CLI publication boundary before returning to Stage 6:
+Finish the matched v026 publication and GUI boundary before returning to Stage
+6:
 
-1. merge the release-pipeline change so the workflow exists on the commit that
-   will be tagged;
-2. push the chosen numeric v026 release tag from the integrated release commit;
-3. let `.github/workflows/release-pex.yml` build, prove, publish, download, and
-   re-prove `devcapsule.pex` plus its checksum; and
-4. record the public Release URL, tag revision, PEX SHA-256, and successful
-   backend run here.
+1. publish the locally rebuilt
+   `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` image;
+2. pull it by its new immutable registry digest and repeat the embedded PEX
+   checksum and offline version proof; and
+3. launch the matched pair from the physical host with `--host-browser`, click
+   a PyCharm hyperlink, verify that the default host browser receives it, and
+   after IDE exit verify that the broker socket and private runtime directory
+   are gone.
 
-The integrated/tagged revision must include host-browser commit `6d8f53c` (or
-its merge result). Rebuild and republish the v026 Docker image from that
-backend-built Release PEX, then launch the matched pair from the physical host
-with `--host-browser`. Click a PyCharm hyperlink and verify that the default
-host browser receives it; after IDE exit, verify that the broker socket and its
-private runtime directory are gone. This is the remaining manual acceptance
-for the URL fix.
-
-The currently published Docker v026 digest is an exact pair with the PEX built
-from `95212fc`. If the integrated release tag names a different commit, rebuild
-and republish the mutable v026 Docker tag from the downloaded Release PEX, then
-replace the Docker digest evidence here. Do not declare the final v026 pair
-until the image labels, embedded bytes, Release checksum, and tag revision all
-agree.
+Do not declare the final v026 pair until the new registry digest, image labels,
+embedded bytes, Release checksum, and tag revision all agree. The local image
+already satisfies that equality; only registry and GUI evidence remain.
 
 Then finish Stage 6 before beginning Stage 7:
 
