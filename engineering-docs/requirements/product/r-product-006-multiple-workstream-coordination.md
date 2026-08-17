@@ -55,6 +55,10 @@ This requirement is satisfied when repository inspection shows that:
 - every open workstream has
   `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`, using its
   immutable ISO start date;
+- work handed between workstreams has a defined queue, a delivery route that
+  does not wait on the sender's own integration, exactly two disposition
+  outcomes, and a completion gate that prevents a workstream from concluding
+  while items remain undispositioned;
 - exactly one open workstream uses the reserved `project-management` mnemonic,
   is registered like any other, and carries a handoff whose scope, permanent
   lifecycle, branch association, and retirement-on-migration match
