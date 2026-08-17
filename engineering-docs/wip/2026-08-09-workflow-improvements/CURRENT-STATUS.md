@@ -4,7 +4,10 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active; intake queue empty, four acknowledged items in progress
+State: active. Blocked and paused on 2026-08-17, then resumed the same day by
+the product owner to specify publishing before integration. One acknowledged
+item remains and still cannot be written until `recursive-e2e` Stage 7 exists to
+exercise it.
 
 Integration target: `main`
 
@@ -30,10 +33,14 @@ the `intake/` directory convention introduced the same day, and the new one
 says what the branch is for — workflow improvements bound for the V1 release.
 The old ref is deleted locally and on `origin`; nothing should reference it.
 
-`workflow-improvements/outbox` was created on 2026-08-16 from `main`, carrying
-deliveries to `project-management` and the registry row for this rename, and
-nothing else. It is the first use of the outbox mechanism. It is not an editing
-checkout; see selection rule 6.
+`workflow-improvements/outbox` was created on 2026-08-16 from `main` and is the
+first use of the outbox mechanism. It has sent three times, all merged: the
+first carried three deliveries to `project-management`, one to `recursive-e2e`,
+this branch's registry row, and six intake deletions; the second the intake
+staleness decision; the third, at the pause, three protocol questions and the
+registry row change to `blocked`; the fourth this workstream's own disposition
+log and handoff, which is the rule written the same day being applied to
+itself. It is not an editing checkout; see selection rule 6.
 
 ## Current State
 
@@ -47,17 +54,26 @@ checkout; see selection rule 6.
   dispositioned: two acknowledged and implemented on 2026-08-16, four
   acknowledged on 2026-08-17 and now carried as *Acknowledged Work*. None was
   forwarded. See *Dispositions*.
-- The four files are deleted from `main` through the outbox. They remain on
-  this branch until its next synchronization, which is what the protocol
-  prescribes; do not delete them here.
+- All six files are gone from `main` and from this branch, which was
+  synchronized after the merge on 2026-08-17.
 - A seventh item, on shared bug vocabulary, is committed on
   `project-management/coordination` and arrives when that branch merges — itself
   an illustration of why the outbox now exists. Expect the queue to be
   non-empty again.
-- Five workflow changes have been written across 2026-08-16 and 2026-08-17 and
-  await integration: the reserved `project-management` workstream, the outbox
-  branch, the two-outcome intake disposition protocol with its completion gate,
-  the latitude clause, and the purpose-and-principles preamble.
+- Eight workflow changes are on `main` as of 2026-08-17: the reserved
+  `project-management` workstream, the outbox branch, the two-outcome intake
+  disposition protocol with its completion gate, the latitude clause, the
+  purpose-and-principles preamble, the removal of worktrees from the protocol,
+  the working model of checkouts and branches, and workstream states with
+  pausing and resuming.
+- Five commits on this branch are not yet on `main`: the two corrected Git
+  claims, the disposition log, the staleness closure's handoff record, the
+  pause, and publishing before integration. They are this workstream's entire
+  unmerged deliverable and need the human to open and merge the pull request.
+  Until that lands, `WORKFLOW.md` on `main` has neither *The Disposition Log*
+  nor *Publishing Before Integration* and still carries both disproved Git
+  claims, so other workstreams reading `main` will reset an outbox from history
+  it no longer contains.
 - The branch was 37 commits behind `main` and carried three commits that were
   patch-identical duplicates of the registration commits. Rebasing dropped all
   three; the branch is now identical to `main`.
@@ -399,27 +415,256 @@ claims about external state rather than trusting it: this handoff itself
 asserted for days that the environment had no Git publication credentials,
 which was false and had caused work to be withheld twice.
 
+### Ninth Task: Integration, And Two Defects It Exposed
+
+Both pull requests were merged by the product owner on 2026-08-17. Verified
+against `origin/main` by content rather than by commit identity, since the
+repository's rebase merge rewrites SHAs:
+
+- all eight workflow changes are present, including the eight new or rewritten
+  sections;
+- this workstream's `intake/` on `main` contains only its `README.md`;
+- the registry row reads `workflow-improvements/v1`;
+- all four deliveries arrived — three in `project-management`'s intake, one in
+  `recursive-e2e`'s; and
+- one `worktree` mention survives in `WORKFLOW.md`, which is the intended one
+  naming it as an implementation detail, and none in `AGENTS.md`.
+
+Both branches were then synchronized. Doing so exposed two defects in rules
+written one and two days earlier, both invisible until the first post-merge
+synchronization and both now fixed.
+
+**A merged outbox is not an ancestor of `main`.** *The Outbox Branch* said it
+was, and that the next send "resets it forward" from there. True under
+fast-forward or merge-commit delivery; false under squash or rebase merge,
+which is what this repository uses. `git merge-base --is-ancestor` confirms the
+outbox is unreachable from `main` despite every one of its changes being
+present. An agent trusting that sentence would build the next send on stale
+history. The step is now an explicit hard reset, with a note that this is a
+force-push the prohibition on force-pushing `main` does not reach, since an
+outbox has no independent content to lose.
+
+**Rebasing is the wrong way to synchronize a branch whose own delivery just
+landed.** *Staying Current With `main`* said rebasing "silently drops commits
+that already landed". That holds when patch identities match; it failed here.
+Rebasing `workflow-improvements/v1` onto the merged `main` conflicted on
+`CURRENT-STATUS.md` and `intake/README.md`, because rebase replays commits one
+at a time onto a `main` that already contains their final effect, and the
+intermediate states disagree even where the end states do not. The branch had
+nothing `main` lacked, so the correct operation was a hard reset. Recorded as
+such: rebase carries unlanded work forward and is the wrong tool for a branch
+with nothing left to carry.
+
+Both defects share a shape worth noting. Each was a claim about Git behaviour
+that is true under some merge strategies and false under this repository's, and
+neither could be caught by review — only by the first branch to complete a full
+round trip through `main`.
+
+### Tenth Task: The Disposition Log
+
+The product owner's answer to the acknowledgement half of item 3, given
+2026-08-17: a per-workstream disposition log, pushed to `main` through the
+outbox, so an interested party finds an item either in `intake/` or in the log,
+both kept current.
+
+`WORKFLOW.md` gains *The Disposition Log*, the acknowledge and forward steps
+now write an entry in the same outbox commit that removes the item,
+registration creates an empty log, and `AGENTS.md` carries the short form. This
+workstream's own log is written and backfilled with all six real dispositions.
+
+**The invariant is the point.** On `main`, every item ever delivered to a
+workstream is in exactly one of two places — still in `intake/`, meaning
+undispositioned, or in the log, meaning resolved. Never both, never neither.
+Entry and deletion are one commit specifically to keep that true; as two steps
+it would be false whenever one landed without the other. That invariant turns
+"did they get it, and what did they decide" from a question requiring a reply
+into a lookup, and it is mechanically checkable, which matters for the staleness
+work that remains.
+
+**Why not the reply the sender proposed.** The original item suggested writing a
+short reply into the sender's own intake. Declined: a reply is not work, and a
+queue whose entire meaning is "own this or forward it" should not carry messages
+that are neither. It would also have doubled traffic and required a second
+category inside the queue. Recorded because it was the sender's own suggestion
+and deserves a reason rather than silence.
+
+**The log is an archive, intake is a queue.** Never pruned, travels into
+`engineering-docs/archive/` with the workstream. A concluded workstream's log is
+the record of what it was asked to do and what it decided, which is what a later
+reader reopening one of those decisions needs. Being durable, it belongs in the
+workstream's own document index, unlike intake items.
+
+Item 3 is not finished. The acknowledgement half is done; see *Open Threads*
+for the staleness residual.
+
+### Eleventh Task: Close Staleness By Not Specifying It
+
+Product-owner decision, 2026-08-17: intake staleness is deliberately left
+unspecified, and `project-management` may act on it as it sees fit. No rule was
+added to `WORKFLOW.md`, which is the point rather than an omission.
+
+The reasoning, which is stronger than it first sounds: V1 cannot be produced
+while anything remains in its backlog. A rotting intake item is therefore
+already caught, by the release gate rather than by a staleness mechanism, and
+the workstream that owns release readiness is the one positioned to notice. A
+dedicated signal would duplicate a check the project performs anyway, on a
+schedule that matters less than it appears — an item nobody needed for months
+did not cost anything by waiting.
+
+This is the latitude clause working as designed rather than a gap left by
+accident. The workflow declines to specify something, says so, and names who
+may decide it.
+
+Item 3 of *Acknowledged Work* is now complete: acknowledgement implemented as
+the disposition log, staleness resolved by an explicit decision not to specify
+it. Delivered to `project-management` through the outbox, including the
+observation that the disposition-log invariant makes an automated check cheap
+should they ever want one.
+
+### Twelfth Task: Three Protocol Questions Routed Rather Than Acknowledged
+
+Raised by the product owner on 2026-08-17 while deciding whether to leave this
+workstream. Three questions about the workflow's shape rather than its rules.
+All three were delivered to `project-management` to be decided as features,
+tasks, or rejections; none was acknowledged here.
+
+**Why route rather than acknowledge.** Each is a scope call — V1 or later, and
+in the third case an amendment to `R-PRODUCT-004` — and scope is not this
+workstream's to decide. The practical argument is stronger: this workstream is
+pausing with its one remaining item blocked, so acknowledging three more would
+put them in a queue nobody is selecting. That is precisely how items went quiet
+before the disposition protocol was written, and doing it here would be this
+workstream demonstrating the failure it just fixed.
+
+This also answers *Open Threads* question 1 by construction. The right size for
+this workstream is not a number of items; it is that new protocol findings route
+through coordination instead of accumulating in a track whose registered goal is
+already dispositioned.
+
+The three, with the analysis delivered alongside each:
+
+**A human-readable workflow document.** `WORKFLOW.md` is 1772 lines across
+roughly 45 sections, ordered for lookup by an agent rather than for reading by a
+person. The recommendation against a second document is the load-bearing part: a
+parallel human-facing doc would be the third instance of a failure this
+workstream has already paid for twice — the `intake/README.md` sentence that
+went stale in four places at once, and the two Git claims that survived review
+because nothing checked them. Two documents describing one protocol diverge, and
+the non-normative one loses, because nobody's work breaks when it is wrong. The
+cheaper shape is to extend the front matter that is already there for humans —
+*Purpose And Principles*, *How To Read This Document*, and *Checkouts, Branches,
+And Workstreams* — into an explicit onramp, and mark the rest reference.
+
+**Packaging the workflow as a "skill".** Recommended against as stated, because
+skills are a vendor mechanism, this repository forbids agent-specific storage,
+and `R-PRODUCT-004` requires transfer across agents. But the instinct is right
+and is not really about skills: what a skill buys is progressive disclosure, and
+`AGENTS.md` currently points at a monolithic document that is loaded in full
+whether or not the session will ever reach the completion sequence or the
+archive format. The portable version of the same fix is a small mandatory core
+with procedure loaded on demand. Per-agent adapters generated from that neutral
+source then fit the shape this project already uses for optional agent
+components under `D-0005`, rather than inverting it.
+
+**Extracting the workflow to its own repository.** Agreed in direction, with the
+observation that it cannot be a task: `R-PRODUCT-004` states the workflow is
+part of the product idea, and the premise that it is orthogonal contradicts that
+requirement, so it needs a `D-####`. Three costs named: this workstream's own
+dogfood loop, with its intake, outbox, and registry, would cross a repository
+boundary; a separate repository implies versions, which implies adopters on old
+ones, which implies migration that does not exist; and submodule versus
+vendoring is a live tradeoff the `sample-projects` workstream is deciding
+separately for something else. The cheap half is separable and is the
+prerequisite for the expensive half — define the seam, naming what the product
+actually depends on, which is the `AGENTS.md` entry point, `workflow-type` in
+`.devcapsule/devcapsule.toml`, and the `engineering-docs/` layout. With the seam
+stated, adopters can substitute their own workflow immediately, and extraction
+later becomes packaging rather than architecture.
+
+None of the three assigns a priority, sequence, or release target, per *Writing
+an item*. Effort and dependency are stated as evidence; placement is the
+recipient's.
+
+### Thirteenth Task: Publishing Before Integration
+
+The product owner raised the gap on 2026-08-17, immediately after the pause, and
+gave the concrete case: `intake-dispositions.md` should already be on `main`, so
+that the `WORKFLOW.md` section introducing the disposition log links to
+something that exists. `WORKFLOW.md` gains *Publishing Before Integration*;
+`AGENTS.md` carries the short form; the outbox's list of what it carries and the
+pause procedure both follow.
+
+**This workstream was its own counterexample.** *The Disposition Log*, written
+2026-08-17, says the log is pushed to `main` through the outbox. This
+workstream's log was created on the working branch instead, as a backfill of six
+dispositions already made, and so exists nowhere `main` can see it. The rule and
+the only implementation of it disagreed within a day of the rule being written,
+which is a reasonable measure of how easy the mistake is.
+
+**The generalization is the useful part.** The rule is not about disposition
+logs. Files on a workstream branch divide into two kinds: the deliverable, which
+is reviewed as a whole and travels a pull request, and records — handoff,
+disposition log, registry row, intake — which are how the project reads a
+workstream while it runs and are useless where `main` cannot see them. Records
+travel the outbox, at any time.
+
+Three triggers for publishing a record early, all from observation rather than
+imagination: a document on `main` names its path; the workstream pauses or
+blocks, so the registry sends readers to a handoff that must not be frozen at
+the last integration; or another workstream cannot act until it reads it.
+
+Two points were decided rather than transcribed.
+
+**The ordering rule matters more than the routing rule.** A reference published
+ahead of its target is a broken rule for as long as the gap lasts, so the target
+lands no later than the reference. Since deliverables travel pull requests and
+records travel the outbox, the outbox goes first. Without this the routing rule
+would still permit exactly the failure that prompted it.
+
+**Verbatim, not a version written for `main`.** Publishing a record is not an
+occasion to write a different one. Copying what the branch holds keeps the two
+identical, which makes the next synchronization a no-op and makes conflict
+impossible; anything else recreates two-versions-of-one-truth at a new level.
+
+Also settled, because it is the other half of "push to `main` before finalizing"
+and was genuinely undefined: **the deliverable may land in slices.** An ordinary
+pull request for a finished slice is permitted and often right, since a
+correction others are waiting on should not sit behind work with months to run.
+The completion sequence concludes a workstream rather than being its only
+delivery. Slices travel the working branch, never the outbox — merging an outbox
+publishes everything on it, without the review a deliverable is owed.
+
 ## Next Resumable Task
 
-Integrate. Nothing acknowledged is both ready and unblocked: item 3 waits on
-the product owner and item 4's main consumer, `recursive-e2e` Stage 7, has not
-been reached.
+Nothing, deliberately, once the fourth outbox send and this branch's pull
+request have landed. This workstream returns to blocked, and the next event
+belongs to someone else.
 
-Eight workflow changes are written and unmerged, which is now the largest risk
-this workstream carries. Everything published since 2026-08-16 exists only on
-`workflow-improvements/v1` and `workflow-improvements/outbox`; `main` still
-describes the workflow as it stood before any of it. Other workstreams reading
-`main` are following superseded rules, and the two deliveries waiting in the
-outbox are the exact failure the outbox was built to prevent.
+One acknowledged item remains — the external-resource ownership convention — and
+it is blocked: its main consumer, `recursive-e2e` Stage 7, has not been reached,
+and the convention should be written against a consumer that can exercise it
+rather than in the abstract. `recursive-e2e` was told, through its intake on
+2026-08-17.
 
-Order: merge `workflow-improvements/outbox` first, so the registry row, the
-three deliveries to `project-management`, the Stage 7 delivery to
-`recursive-e2e`, and the six intake deletions reach `main`. Then merge
-`workflow-improvements/v1`. Both need the human, who holds the only GitHub
-credentials.
+Three things could make this workstream resumable, and all three are outside it:
 
-Then synchronize this branch with the resulting `main` and confirm the intake
-directory is empty there as well as here.
+1. `recursive-e2e` reaches Stage 7, which unblocks the convention.
+2. `project-management` routes one of the three questions above back here, or
+   decides this workstream should conclude and hand the convention onward.
+3. The bug-vocabulary item lands. It is committed on
+   `project-management/coordination` and arrives when that branch merges, at
+   which point the intake queue is non-empty again and the completion gate
+   applies.
+
+Before any of that, the human must merge `workflow-improvements/v1`. Three
+commits are written, rebased onto current `main`, pushed, and unmerged; they are
+the only place *The Disposition Log* and the two Git corrections exist. Opening
+and merging that pull request needs GitHub credentials this environment does not
+have.
+
+On resuming, synchronize first — the pause procedure exists because intake
+arrives on `main` while a workstream sleeps — and re-verify the claims in
+*External State And Risks* rather than trusting them.
 
 ## Dispositions
 
@@ -540,10 +785,9 @@ can be reordered.
    writing one. See *Sixth Task*.
 2. ~~A pause action and reasoning continuity.~~ Done 2026-08-17. See *Eighth
    Task*.
-3. **Intake acknowledgement and staleness.** Blocked on the product owner.
-   Done means: an acceptance signal a sender can observe, and a staleness
-   signal that surfaces where a human actually reads — or a recorded decision
-   that the remaining gap is acceptable and why.
+3. ~~Intake acknowledgement and staleness.~~ Done 2026-08-17. Acknowledgement
+   implemented as the disposition log; staleness deliberately left unspecified
+   and routed to `project-management`. See *Tenth Task* and *Eleventh Task*.
 4. **An external-resource ownership convention.** Largest, needs product
    knowledge, and its main consumer is not ready. Done means: how a resource
    derives its owning workstream and run identity; how names avoid collision by
@@ -612,27 +856,12 @@ Two parts could not be completed by this workstream and were delivered to
 
 ## Open Threads
 
-Written at pause on 2026-08-16. Trial of the shape proposed in the pause and
-continuity intake item. Short by design.
+Rewritten at the pause of 2026-08-17, superseding the 2026-08-16 version. Short
+by design.
 
 ### Awaiting The Product Owner
 
-1. **Were the outbox and disposition rules the ideas you reserved for intake?**
-   The acknowledgement item says the product owner held further ideas about how
-   intake should be processed and told this workstream to ask before designing.
-   Since then they specified the outbox and the two-outcome protocol, which may
-   simply *be* those ideas. If so, item 3 shrinks to an acceptance signal and a
-   staleness signal. If more was reserved, item 3 should not be designed
-   without it.
-
-2. **Is four acknowledged items the right size for this workstream?** Its goal
-   commits it to conclude once findings are dispositioned. All four are
-   protocol and this workstream owns protocol, so no forward was honest — but
-   the practical effect is that conclusion moved further away. Options if that
-   is unwelcome: hand items 3 and 4 to `project-management` to place elsewhere,
-   or accept that this workstream runs until V1.
-
-3. **Does "the workflow improvements already identified" mean identified, or
+1. **Does "the workflow improvements already identified" mean identified, or
    identified and implemented?** The product owner named that as a condition for
    starting their own projects on v026. The two readings put very different
    obligations on this workstream, and it is currently described as being on the
@@ -640,7 +869,7 @@ continuity intake item. Short by design.
    `workflow-improvements/v1` presumes this workstream delivers *for* V1, which
    sharpens the question rather than answering it.
 
-4. **Who owns protocol boilerplate that lives inside another workstream's
+2. **Who owns protocol boilerplate that lives inside another workstream's
    directory?** Each `intake/README.md` restated the delivery rule, so changing
    that rule made four workstreams' READMEs stale at once — and restriction
    11's carve-out bars this workstream from editing three of them. Its own
@@ -651,6 +880,18 @@ continuity intake item. Short by design.
    resolves it.
 
 ### Settled Since The Last Pause
+
+- **The right size for this workstream.** Question 1 of the 2026-08-16 pause is
+  answered, not by a number but by a routing rule: new protocol findings go to
+  `project-management` to be placed, rather than accumulating here. Three
+  arrived on 2026-08-17 and all three were routed; see *Twelfth Task*.
+
+- **Intake staleness.** Resolved 2026-08-17 by the product owner: deliberately
+  not specified, and left to `project-management` to act on as it sees fit. The
+  reasoning is that V1 cannot be produced while anything remains in its
+  backlog, so the release gate already catches a rotting item before it can do
+  lasting damage, and the workstream that owns release readiness is the one
+  positioned to notice. Delivered to that workstream; see *Eleventh Task*.
 
 - **How intake deliveries reach `main`.** Resolved 2026-08-16 by the product
   owner: through the sender's `<mnemonic>/outbox` branch. This also closed the
@@ -665,20 +906,33 @@ continuity intake item. Short by design.
   `devcapsule-src` — and either could be chosen later without reopening the
   protocol.
 
+- **Whether the outbox was worth building.** Its own intake item doubted it
+  outside a protected-`main` future. Answered in use rather than in argument: it
+  has sent three times in two days, and the second and third sends each carried
+  something that would otherwise have waited on this branch's still-unmerged
+  pull request. The doubt is closed.
+
 ### Weighed And Unresolved
 
-- **Bounded scope versus seven items.** This workstream's goal commits it to
-  conclude once findings are fixed, deferred, or rejected. Accepting all seven
-  would make it unbounded by accident. Deliberate deferral of at least the
-  concurrency cluster is worth considering, since that cluster needs code and
-  has a natural home in the recursive-dogfood Stage 7 work.
-- **Whether the outbox is worth building at all.** Its own intake item argues it
-  earns its cost only if `main` becomes protected, or if the project decides an
-  agent should rarely hold `main` write authority. Neither is true today.
+- **Whether this workstream should conclude rather than wait.** Its registered
+  goal is dispositioning the dogfood cycle's findings, and that is done except
+  for one item blocked on another workstream's Stage 7. Concluding and handing
+  the convention onward is a real option; it was not taken because the
+  lifecycle call belongs to `project-management`, which has now been told. The
+  cost of waiting is a registry row that looks abandoned; the cost of
+  concluding is that the next protocol finding has no open owner.
+- **Whether the three routed questions are one question.** All three are about
+  the workflow's packaging rather than its rules — who reads it, how it loads,
+  where it lives. They were sent separately because they can be decided
+  separately, but a decision to extract the workflow would largely determine
+  the other two, and `project-management` may prefer to take them as one.
 
 ### Deliberately Not Preserved
 
-The 2026-08-16 conversation. What mattered is above or in the intake files.
+The 2026-08-16 and 2026-08-17 conversations. What mattered is above, in the
+task sections, or in the intake files. The three routed questions carry their
+own reasoning to the recipient, so this handoff does not restate it beyond
+*Twelfth Task*.
 
 ## Evidence
 
@@ -697,9 +951,19 @@ The 2026-08-16 conversation. What mattered is above or in the intake files.
   pushed. What is absent is any GitHub API access — there is no `gh` CLI and no
   token — so pull requests must be opened and merged by the human. That stale
   claim caused work to be withheld at least twice.
-- Repository policy defaults workstream delivery to pull requests, while the
-  beginning procedure commits registration directly on `main`. This remains
-  unresolved and is now entangled with the outbox proposal.
+- Verified at the 2026-08-17 pause, not carried forward on trust: `origin/main`
+  is at the merge of this workstream's third outbox send;
+  `workflow-improvements/v1` is three commits ahead of it and pushed;
+  `workflow-improvements/outbox` holds the third send and merges independently.
+  This workstream holds no containers, ports, or manual environment state — its
+  entire external footprint is Git refs.
+- Registration versus pull-request delivery is no longer a conflict. Resolved
+  2026-08-16: registration travels the sender's outbox like any other message,
+  so nothing commits directly to `main`. Recorded here because this entry
+  asserted the opposite for a week.
+- The repository merge strategy rewrites commit identities. Verify this branch
+  against `main` by comparing trees, never by commit identity, and reset rather
+  than rebase once its pull request has landed.
 - This track overlaps `CURRENT-STATUS.md`, `WORKFLOW.md`, `AGENTS.md`, and the
   workflow requirements. Synchronize with `main` before integrating.
 - Two bootstrap exceptions have now published workflow changes from
@@ -708,6 +972,13 @@ The 2026-08-16 conversation. What mattered is above or in the intake files.
 
 ## Workstream Document Index
 
-This workstream owns this status file and its `intake/` directory. Intake items
-are a queue rather than permanent documents and are deliberately not listed
-here or in `index.md`; the directory listing is the queue.
+This workstream owns:
+
+- this status file;
+- [`intake-dispositions.md`](intake-dispositions.md), the durable record of
+  what became of every item delivered here; and
+- its `intake/` directory.
+
+Intake items are a queue rather than permanent documents and are deliberately
+not listed here or in `index.md`; the directory listing is the queue. The
+disposition log is the opposite and is listed, though not in `index.md`.
