@@ -16,6 +16,15 @@ The supported values are `single-stream` and `multiple-streams`; a missing
 field means `single-stream`. Treat any other value as invalid and ask the user
 to correct it rather than guessing which handoff protocol applies.
 
+Work means editing files in a **checkout**: one local clone directory. A
+checkout has one current branch, that branch belongs to one workstream, and so
+a checkout has at most one selected workstream at a time. A checkout may work
+on many workstreams over time by switching branches from a clean tree, but
+never on two at once. Concurrency comes from several human/agent pairs in
+several checkouts integrating through the shared remote, not from any local
+arrangement of directories, which is an implementation detail and not workflow
+state. See *Checkouts, Branches, And Workstreams* in `WORKFLOW.md`.
+
 This workflow is incomplete by admission, and `WORKFLOW.md` opens with
 *Latitude Where This Document Is Silent*. Where the protocol does not cover a
 situation, what it does not expressly deny is allowed: resolve it with judgment

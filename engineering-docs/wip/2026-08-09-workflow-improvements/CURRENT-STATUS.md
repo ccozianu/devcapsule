@@ -314,6 +314,42 @@ across three days of this work — between `workflow-improvements/v1` and
 checkout. The mechanism the protocol kept pointing at was never once needed by
 the protocol itself.
 
+### Seventh Task: State The Working Model
+
+Directly caused by the previous task. The worktree confusion happened because
+`WORKFLOW.md` never stated its own model of where work happens, so a reader
+supplied one — and the wrong one. Removing the worktree references fixed the
+symptom; this fixes the cause.
+
+`WORKFLOW.md` now defines *Checkouts, Branches, And Workstreams* before any
+rule, and `AGENTS.md` carries the short form. Six terms are fixed — project,
+remote, checkout, branch, workstream, pair — with the relationships between
+them stated as cardinalities, so what "current branch" and "current workstream"
+refer to is checkable rather than inferred. The load-bearing line: the current
+branch determines the current workstream, not the reverse.
+
+Sequential within a checkout, concurrent across checkouts. One checkout works
+on many workstreams over time by switching branches from a clean tree; genuine
+concurrency comes from several pairs in several checkouts integrating through
+the remote, never from a local arrangement of directories.
+
+Two edges were specified rather than left implicit, both places the model would
+otherwise have produced the same class of confusion it was written to end.
+
+**What is shared versus local.** The remote carries what the project agrees on;
+a checkout carries only local facts, none of them registered or coordinated.
+This is the reason two pairs can hold different current workstreams at once
+without either being wrong, and the reason the registry is a record rather than
+a presence system. "Active" means opened and not concluded, not that anyone is
+working on it now. The document asserted the non-locking property already
+without ever explaining what made it true.
+
+**Two pairs may select the same workstream.** Nothing prevents it and no lock
+exists, so leaving it unsaid would have made it undefined behaviour of exactly
+the kind the latitude clause was written about. Stated: it is permitted, they
+will contend on one handoff, coordinate outside the protocol before doing it
+deliberately, and an accident normally costs a conflict rather than lost work.
+
 ## Next Resumable Task
 
 Define the pause action — item 2 of *Acknowledged Work*, and now the only
