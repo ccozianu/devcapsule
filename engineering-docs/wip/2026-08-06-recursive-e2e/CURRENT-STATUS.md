@@ -82,7 +82,8 @@ active continuation branch.
   packaging test. The corrected replacement tag points to integrated commit
   `91d50b1`; backend run `32054479485` completed successfully and published the
   verified PEX and checksum. A local base rebuilt from those exact released
-  bytes is complete; registry publication and GUI acceptance remain open.
+  bytes is complete; registry publication and host-broker cleanup evidence
+  remain open.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -90,8 +91,10 @@ active continuation branch.
   bridge accepts absolute HTTP(S) URLs, never invokes a shell, does not expose
   the desktop session bus, is disabled by default, and is represented in the
   runtime and expected plans. Automated, packaging, read-only Docker-mount,
-  and local recursive-dogfood validation pass. The final rebuilt-image GUI
-  click and cleanup observation remain pending.
+  and local recursive-dogfood validation pass. On 2026-08-17 the product owner
+  confirmed that a hyperlink opened from the v026-derived PyCharm shell reached
+  the physical host's default browser. Cleanup observation after IDE exit
+  remains pending.
 - The current checkout's ignored `devcapsule-src/.venv` was found to predate
   the Python distribution rename: its activation scripts still prepended the
   removed `devcapsule/.venv/bin`, so `python` fell through to
@@ -112,9 +115,9 @@ Current task: publish the v026 Docker/CLI pair, with the eager self-contained
 PEX as the first acceptance boundary.
 
 Status: implementation, integration, the first backend-built standalone PEX
-release, and a matching local Docker rebuild are complete. Publishing the
-rebuilt Docker image and performing the host-browser GUI acceptance remain
-pending. Changed:
+release, a matching local Docker rebuild, and functional host-browser GUI
+acceptance are complete. Publishing the rebuilt Docker image and observing
+broker cleanup after the accepted GUI run remain pending. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
@@ -173,8 +176,16 @@ disabled, the mapped unprivileged UID/GID, the PEX mounted read-only, and the
 broker socket mounted read-only; the exact URL arrived successfully. Local
 recursive dogfood run `24b3fd2dfb2d58f010b7d1652967c007` reported ready and
 passed both selected E2Es in 28.81 seconds, with cleanup complete and no Docker
-mutation. The outer v025-derived development capsule has no inherited broker,
-so a real PyCharm click awaits the rebuilt matching pair.
+mutation. The final physical-host launch used v026-derived environment image
+`devcapsule-local-pycharm:5dfa686ce5dc74688955`, image ID
+`sha256:df1384478c44e0b2cb06864912878f9674a3495cefbd9e0d47bf9cd18b8ced7b`,
+whose source revision and embedded PEX digest match the v026 Release. Runtime
+plan version 1 named the `browser-open` integration and the same-user broker
+socket was mounted read-only at `/run/devcapsule-host-open.sock` with mode
+0600. The product owner then confirmed that a hyperlink opened from the
+PyCharm shell reached the physical host's default browser. Functional GUI
+acceptance therefore passes; cleanup of this live broker remains to be
+observed after IDE exit.
 
 Developer-environment repair validation on 2026-08-17: after rebuilding the
 ignored environment, activation sets both `VIRTUAL_ENV` and the first `PATH`
@@ -425,14 +436,16 @@ Finish the matched v026 publication and GUI boundary before returning to Stage
    `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` image;
 2. pull it by its new immutable registry digest and repeat the embedded PEX
    checksum and offline version proof; and
-3. launch the matched pair from the physical host with `--host-browser`, click
-   a PyCharm hyperlink, verify that the default host browser receives it, and
-   after IDE exit verify that the broker socket and private runtime directory
+3. done: launch the matched pair from the physical host with `--host-browser`,
+   click a PyCharm hyperlink, and verify that the default host browser receives
+   it; and
+4. after IDE exit, verify that the broker socket and private runtime directory
    are gone.
 
 Do not declare the final v026 pair until the new registry digest, image labels,
 embedded bytes, Release checksum, and tag revision all agree. The local image
-already satisfies that equality; only registry and GUI evidence remain.
+already satisfies that equality; only registry and broker-cleanup evidence
+remain.
 
 Then finish Stage 6 before beginning Stage 7:
 
