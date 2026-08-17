@@ -290,9 +290,18 @@ keep the older one as historical evidence only.
 
 ## External State And Risks
 
-- The current Stage 6 successor
-  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6` is running
-  with zero restarts, and its run root
+- Re-verified 2026-08-17 at session start, correcting the entry below it: the
+  Stage 6 successor
+  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6` is
+  `Exited (0)` as of 2026-08-14T10:15Z. It is the second retained successor to
+  stop while its handoff described it as running, which makes the pattern
+  structural rather than incidental: no recorded successor has stayed up across
+  a pause, and both `docker ps` observations were correct only on the day they
+  were written. The bounded second-inspection stability result therefore cannot
+  be produced from either retained container and needs a fresh launch.
+- The Stage 6 successor
+  `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6` was
+  running with zero restarts when last observed, and its run root
   `482c34f24fc5c438da7b24ff172a619b` holds the owner marker, manifest,
   `expected-plan.json`, clone, build environment, and retained staging. Do not
   remove any of it before Stage 7. Its clone additionally contains a `buildenv`
