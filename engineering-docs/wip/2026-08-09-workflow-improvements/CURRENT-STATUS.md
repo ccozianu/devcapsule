@@ -350,24 +350,76 @@ the kind the latitude clause was written about. Stated: it is permitted, they
 will contend on one handoff, coordinate outside the protocol before doing it
 deliberately, and an accident normally costs a conflict rather than lost work.
 
+### Eighth Task: Pausing And Resuming
+
+Reviewed at the product owner's request, then written. The review found the gap
+worse than the intake item suggested: `paused` existed only as a value in the
+registry's list of states — "active, paused, blocked, or integrating" — and
+nothing in the repository defined any of the four, distinguished paused from
+blocked, or said what to do at either end of a pause. Both procedures were
+absent, not merely thin.
+
+`WORKFLOW.md` gains *Workstream States, Pausing, And Resuming*; `AGENTS.md`
+carries the short form. Item 2 of *Acknowledged Work* is closed.
+
+**The four states are now defined**, which was unplanned and turned out to be
+the load-bearing part. Paused and blocked look identical from outside and are
+not: a paused workstream needs someone to *choose* it, a blocked one needs its
+blocker cleared. So blocked now carries obligations paused does not — name the
+blocker, name what would clear it, and tell whoever can clear it, through their
+intake if it is another workstream. A blocked workstream nobody was told about
+is indistinguishable from an abandoned one, and the registry has been unable to
+tell those apart since it existed.
+
+**Pausing is a six-step act**, placed where the knowledge is. The sender's
+argument was decisive: only the pair stopping work knows whether a thread
+finished or was suspended, and they know it while stopping. Asking on return is
+guesswork after the information is gone. One step is new and comes from this
+session rather than from the item — send anything owed through the outbox,
+because a paused workstream holding undelivered mail blocks its recipients
+without telling them. That failure only became possible when the outbox was
+introduced yesterday.
+
+**Open Threads is specified in the shape this handoff has been using** since
+2026-08-16: awaiting the human, weighed and unresolved, deliberately not
+preserved. Bounded to roughly ten lines, deliberately too small to become a
+dumping ground. The third part is the least obvious and worth keeping — naming
+what was dropped on purpose stops a later reader hunting for a conversation
+that was intentionally let go.
+
+**Conversational replay is recorded as a non-goal**, not an unimplemented
+feature, so nobody builds it later. Two reasons: a replayed transcript is
+expensive to read and mostly noise, and depending on an agent's session
+resumption would break the portability principle.
+
+**Resuming has two steps that exist because of failures observed in this
+session.** Synchronize before planning, since intake arrives on `main` while a
+workstream sleeps — the stale-branch finding. And re-verify what the handoff
+claims about external state rather than trusting it: this handoff itself
+asserted for days that the environment had no Git publication credentials,
+which was false and had caused work to be withheld twice.
+
 ## Next Resumable Task
 
-Define the pause action — item 2 of *Acknowledged Work*, and now the only
-acknowledged item that is both ready and unblocked.
+Integrate. Nothing acknowledged is both ready and unblocked: item 3 waits on
+the product owner and item 4's main consumer, `recursive-e2e` Stage 7, has not
+been reached.
 
-Done means: a defined pause action in `WORKFLOW.md`; a place in the handoff for
-open threads, options weighed but unresolved, and questions awaiting the human;
-and an explicit statement of what is deliberately not preserved. The shape is
-already proven — this handoff's *Open Threads* section has been written in it
-since 2026-08-16 and has produced two answered questions and several still
-open. The work is promotion from local practice to protocol, not design.
+Eight workflow changes are written and unmerged, which is now the largest risk
+this workstream carries. Everything published since 2026-08-16 exists only on
+`workflow-improvements/v1` and `workflow-improvements/outbox`; `main` still
+describes the workflow as it stood before any of it. Other workstreams reading
+`main` are following superseded rules, and the two deliveries waiting in the
+outbox are the exact failure the outbox was built to prevent.
 
-Item 3 is blocked on the product owner. Item 4 is the largest and its main
-consumer, `recursive-e2e` Stage 7, has not been reached.
+Order: merge `workflow-improvements/outbox` first, so the registry row, the
+three deliveries to `project-management`, the Stage 7 delivery to
+`recursive-e2e`, and the six intake deletions reach `main`. Then merge
+`workflow-improvements/v1`. Both need the human, who holds the only GitHub
+credentials.
 
-The nearer obligation is integration, not writing. Six workflow changes are
-written and unmerged, and this workstream cannot conclude while
-`workflow-improvements/outbox` carries undelivered mail.
+Then synchronize this branch with the resulting `main` and confirm the intake
+directory is empty there as well as here.
 
 ## Dispositions
 
@@ -486,11 +538,8 @@ can be reordered.
 
 1. ~~A worktree procedure.~~ Done 2026-08-17, by deletion rather than by
    writing one. See *Sixth Task*.
-2. **A pause action and reasoning continuity.** Ready now, and the shape is
-   already proven in this handoff. Done means: a defined pause action in
-   `WORKFLOW.md`; a place in the handoff for open threads, options weighed but
-   unresolved, and questions awaiting the human; and an explicit statement of
-   what is deliberately not preserved.
+2. ~~A pause action and reasoning continuity.~~ Done 2026-08-17. See *Eighth
+   Task*.
 3. **Intake acknowledgement and staleness.** Blocked on the product owner.
    Done means: an acceptance signal a sender can observe, and a staleness
    signal that surfaces where a human actually reads — or a recorded decision

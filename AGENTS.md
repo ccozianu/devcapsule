@@ -117,6 +117,15 @@ the user before proceeding.
 If the selected handoff does not define a planned next step, remind the user
 through the agent or IDE plugin to help choose the next step to work on.
 
+When leaving a workstream, pause it deliberately rather than simply stopping:
+commit everything, update the handoff, send anything owed through the outbox,
+and write *Open Threads* — questions awaiting the human, options weighed but
+unresolved, and what is deliberately not preserved. Only the pair stopping work
+knows whether a thread finished or was suspended, and only while they are still
+stopping. On resuming, read *Open Threads* before planning, and re-verify what
+the handoff claims about external state rather than trusting it. See *Workstream
+States, Pausing, And Resuming* in `WORKFLOW.md`.
+
 At an appropriate moment, such as when completing a stage, changing the project
 state materially, or ending a session, do your best to update the selected
 handoff so the next agent/model pair can resume from the then-current state. In

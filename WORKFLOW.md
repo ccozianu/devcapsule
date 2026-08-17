@@ -687,6 +687,93 @@ synchronize the workstream branch with the resulting `main` state before
 editing the same files again. The branch handoff remains authoritative for the
 latest track-local state; the copy on `main` is the latest published snapshot.
 
+### Workstream States, Pausing, And Resuming
+
+Every open workstream is in exactly one state, recorded in its registry row and
+in its handoff.
+
+- **active** — being worked on, or expected to be shortly.
+- **paused** — deliberately set down. Nothing external prevents work; the
+  project chose to spend attention elsewhere. Resuming is a decision.
+- **blocked** — cannot proceed. Something external is required: an answer, a
+  dependency, a credential, another workstream's delivery. Resuming is an
+  event, not a decision.
+- **integrating** — in the completion sequence, not taking new work.
+
+Paused and blocked look alike from outside and behave differently. A paused
+workstream needs someone to choose it. A blocked one needs its blocker cleared,
+so it must name the blocker and what would clear it, or nobody can tell when it
+became resumable.
+
+#### Pausing
+
+Pausing is a deliberate act with a small ceremony, placed where the knowledge
+is. Only the pair stopping work knows whether a thread finished or was
+suspended, and they know it at the moment they stop; asking on return is
+guesswork after the information is gone.
+
+Before leaving a workstream:
+
+1. Commit everything. If anything must stay uncommitted, say in the handoff
+   what and why.
+2. Update the handoff: current state, the last task and its status, and the
+   next resumable task.
+3. Write *Open Threads* — see below. This is the part that does not survive
+   any other way.
+4. Send anything owed through the outbox. A paused workstream holding
+   undelivered mail blocks its recipients without telling them.
+5. Record external state that will outlive the session: running containers,
+   held ports, manual environment setup, anything that decays.
+6. Update the registry row to `paused` or `blocked`, with a short reason. If
+   blocked, name the blocker and what would clear it, and tell whoever can
+   clear it — through their intake if it is another workstream. A blocked
+   workstream nobody was told about is indistinguishable from an abandoned one.
+
+#### Open Threads
+
+A bounded section in the handoff, written at pause, holding what state
+resumption alone would lose. Three parts:
+
+- **Awaiting the human** — questions that need a decision before the work can
+  sensibly continue. Each states what turns on the answer.
+- **Weighed and unresolved** — options considered and not settled, with enough
+  reasoning that someone can reopen the question intelligently rather than
+  rediscover it. Include what was rejected and why; a rejected option with no
+  recorded reason gets re-proposed.
+- **Deliberately not preserved** — what was let go on purpose. Naming it stops
+  a later reader hunting for a conversation that was intentionally dropped.
+
+Roughly ten lines, not a transcript. It is deliberately too small to become a
+dumping ground; anything larger belongs in a design note or, on explicit
+request, a session record.
+
+**Conversational replay is not a goal.** This document does not try to restore a
+dialogue. Context is cleared, models change, and a replayed transcript is
+expensive to read and mostly noise. What is worth carrying is the reasoning, not
+the exchange that produced it. Depending on any agent's session-resumption
+feature would also break portability, so capture is repository-level by
+construction.
+
+#### Resuming
+
+1. Read the registry from the mainline ref, then the handoff, then intake.
+2. Synchronize the branch with `main` before planning. Intake and coordination
+   arrive there while a workstream sleeps, and the longer the pause the more
+   arrived.
+3. Read *Open Threads* before planning the session, not after. It is the
+   difference between knowing what is next and knowing why it is next.
+4. Re-verify what the handoff asserts about external state. Handoffs record
+   facts that were true at pause; containers exit, ports are taken, branches
+   move. Treat *External State And Risks* as claims to check, not as current
+   truth.
+5. Put unanswered questions from *Open Threads* to the human early, before
+   doing work whose shape depends on the answers.
+6. Update the registry row to `active`.
+
+A workstream resumed without its *Open Threads* read is resumed at the level of
+tasks and not of reasoning, which is how a settled question gets reopened and a
+rejected option gets proposed again.
+
 ### Draft User Documentation
 
 Root `docs/` contains only current user-facing documentation. Workstream drafts
