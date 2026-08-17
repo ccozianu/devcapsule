@@ -87,6 +87,15 @@ branch, reset from current `main` and carrying only what is being sent, never
 working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 `WORKFLOW.md`.
 
+The outbox also carries the workstream's own records — its handoff and its
+disposition log — when something on `main` refers to them or when the workstream
+pauses, so that a rule naming a per-workstream path does not point at a file
+only a branch can see. Send the branch's current copy verbatim. The
+deliverable never travels the outbox, because merging one publishes everything
+on it without the review a deliverable is owed; a finished slice of the
+deliverable may still reach `main` early through an ordinary pull request. See
+*Publishing Before Integration* in `WORKFLOW.md`.
+
 In `multiple-streams` mode, also read the selected workstream's `intake/`
 directory beside its handoff. It holds work other workstreams have delivered
 and this workstream has not yet dispositioned. A handoff read without its

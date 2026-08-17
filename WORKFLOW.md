@@ -615,9 +615,12 @@ was built to fix, one step further along.
 part of the sender's own deliverable:
 
 - intake items delivered to other workstreams;
-- registrations of new workstreams the sender is opening; and
+- registrations of new workstreams the sender is opening;
 - changes to the sender's own row in root `CURRENT-STATUS.md` — state, branch
-  association, or anything else other agents route by.
+  association, or anything else other agents route by; and
+- the sender's own records — its handoff and its disposition log — when
+  something on `main` refers to them or when it pauses. See *Publishing Before
+  Integration*.
 
 The last matters more than it looks. The registry is how every other checkout
 decides where work belongs, and a routing fact that waits for the sender's
@@ -668,6 +671,66 @@ them by staying current with `main`.
 other branch it owns. An outbox with unmerged commits at that point is
 undelivered mail: merge it before concluding, or say in the final status why it
 was abandoned.
+
+### Publishing Before Integration
+
+A workstream's branch holds its work until integration. Not everything on that
+branch is work: some files are how the rest of the project reads the workstream
+while it runs, and those are useless anywhere `main` cannot see them.
+
+**Two kinds of file, and they travel differently.**
+
+- **The deliverable** — changes to shared documents, code, and requirements: what
+  the workstream exists to produce. It travels the workstream's own branch and
+  reaches `main` by repository policy, because it is reviewed as a whole.
+- **Records** — the files that describe the workstream itself: its handoff, its
+  disposition log, its registry row, and its intake directory. Nobody reviews
+  these as a deliverable; they are the project's view of a workstream in flight.
+  They travel the outbox, and may do so at any time.
+
+**Publish a record early when something outside the branch depends on it.**
+Three cases, each observed rather than imagined:
+
+1. **A document on `main` refers to it.** A rule that names a per-workstream
+   path — as *The Disposition Log* does — sends every reader to that path. If
+   the file exists only on a branch, the rule points at nothing, and a reader
+   cannot tell an unwritten record from an unpublished one.
+2. **The workstream pauses or blocks.** The registry sends whoever considers
+   resuming it to its handoff, and the copy on `main` is what they read before
+   deciding to check anything out. A handoff frozen at the last integration
+   describes a workstream that no longer exists.
+3. **Another workstream needs it to act.** Anything a recipient must read before
+   it can proceed is undelivered until `main` has it, which is the whole reason
+   the outbox exists.
+
+**The target lands no later than the reference.** When a change to a shared
+document creates a reference to a per-workstream file, send the file through the
+outbox before, or in the same round as, the referencing change reaches `main`.
+The deliverable travels a pull request and the record travels the outbox, so in
+practice the outbox goes first. A reference published ahead of its target is a
+broken rule for as long as the gap lasts.
+
+**Send the branch's current copy verbatim.** Publishing a record is not an
+occasion to write a different version for `main`. Copy what the branch holds, so
+the two are identical: the branch then needs no special treatment at its next
+synchronization, and identical content merges without conflict no matter which
+side a later reader compares. Two versions of one record is the failure this
+whole mechanism exists to avoid, reintroduced at a different level.
+
+**This is not a way to put deliverable content on `main` early.** The test is
+whether anyone would review it as part of the workstream's work. If yes, it is
+deliverable and the outbox must not carry it; merging an outbox publishes
+everything on it, without the review the deliverable is owed. A workstream that
+finds itself wanting to publish half its deliverable has a scope problem or a
+second workstream, not a routing problem.
+
+**The deliverable may still land in slices.** Integrating a finished slice
+through an ordinary pull request before the workstream is done is permitted and
+often right: a correction other workstreams are waiting on should not sit behind
+work that has months to run. The completion sequence concludes a workstream; it
+is not the only moment one may deliver. Slices travel the working branch under
+repository policy, never the outbox, and the handoff records what has already
+landed so a later reader is not misled about what remains.
 
 ### Staying Current With `main`
 
@@ -787,8 +850,11 @@ Before leaving a workstream:
    next resumable task.
 3. Write *Open Threads* — see below. This is the part that does not survive
    any other way.
-4. Send anything owed through the outbox. A paused workstream holding
-   undelivered mail blocks its recipients without telling them.
+4. Send anything owed through the outbox, including the handoff itself. A
+   paused workstream holding undelivered mail blocks its recipients without
+   telling them, and one whose handoff on `main` predates the pause tells
+   whoever considers resuming it nothing about why it stopped. See *Publishing
+   Before Integration*.
 5. Record external state that will outlive the session: running containers,
    held ports, manual environment setup, anything that decays.
 6. Update the registry row to `paused` or `blocked`, with a short reason. If

@@ -4,8 +4,10 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: blocked; paused 2026-08-17 with one acknowledged item remaining, which
-cannot be written until `recursive-e2e` Stage 7 exists to exercise it
+State: active. Blocked and paused on 2026-08-17, then resumed the same day by
+the product owner to specify publishing before integration. One acknowledged
+item remains and still cannot be written until `recursive-e2e` Stage 7 exists to
+exercise it.
 
 Integration target: `main`
 
@@ -35,9 +37,10 @@ The old ref is deleted locally and on `origin`; nothing should reference it.
 first use of the outbox mechanism. It has sent three times, all merged: the
 first carried three deliveries to `project-management`, one to `recursive-e2e`,
 this branch's registry row, and six intake deletions; the second the intake
-staleness decision; the third, at this pause, three protocol questions and the
-registry row change to `blocked`. It is not an editing checkout; see selection
-rule 6.
+staleness decision; the third, at the pause, three protocol questions and the
+registry row change to `blocked`; the fourth this workstream's own disposition
+log and handoff, which is the rule written the same day being applied to
+itself. It is not an editing checkout; see selection rule 6.
 
 ## Current State
 
@@ -63,13 +66,14 @@ rule 6.
   purpose-and-principles preamble, the removal of worktrees from the protocol,
   the working model of checkouts and branches, and workstream states with
   pausing and resuming.
-- Three commits on this branch are not yet on `main`: the two corrected Git
-  claims, the disposition log, and the staleness closure's handoff record. They
-  are this workstream's entire unmerged deliverable and need the human to open
-  and merge the pull request. Until that lands, `WORKFLOW.md` on `main` has no
-  *The Disposition Log* section and still carries both disproved Git claims,
-  so other workstreams reading `main` will reset an outbox from history it no
-  longer contains.
+- Five commits on this branch are not yet on `main`: the two corrected Git
+  claims, the disposition log, the staleness closure's handoff record, the
+  pause, and publishing before integration. They are this workstream's entire
+  unmerged deliverable and need the human to open and merge the pull request.
+  Until that lands, `WORKFLOW.md` on `main` has neither *The Disposition Log*
+  nor *Publishing Before Integration* and still carries both disproved Git
+  claims, so other workstreams reading `main` will reset an outbox from history
+  it no longer contains.
 - The branch was 37 commits behind `main` and carried three commits that were
   patch-identical duplicates of the registration commits. Rebasing dropped all
   three; the branch is now identical to `main`.
@@ -581,9 +585,59 @@ None of the three assigns a priority, sequence, or release target, per *Writing
 an item*. Effort and dependency are stated as evidence; placement is the
 recipient's.
 
+### Thirteenth Task: Publishing Before Integration
+
+The product owner raised the gap on 2026-08-17, immediately after the pause, and
+gave the concrete case: `intake-dispositions.md` should already be on `main`, so
+that the `WORKFLOW.md` section introducing the disposition log links to
+something that exists. `WORKFLOW.md` gains *Publishing Before Integration*;
+`AGENTS.md` carries the short form; the outbox's list of what it carries and the
+pause procedure both follow.
+
+**This workstream was its own counterexample.** *The Disposition Log*, written
+2026-08-17, says the log is pushed to `main` through the outbox. This
+workstream's log was created on the working branch instead, as a backfill of six
+dispositions already made, and so exists nowhere `main` can see it. The rule and
+the only implementation of it disagreed within a day of the rule being written,
+which is a reasonable measure of how easy the mistake is.
+
+**The generalization is the useful part.** The rule is not about disposition
+logs. Files on a workstream branch divide into two kinds: the deliverable, which
+is reviewed as a whole and travels a pull request, and records — handoff,
+disposition log, registry row, intake — which are how the project reads a
+workstream while it runs and are useless where `main` cannot see them. Records
+travel the outbox, at any time.
+
+Three triggers for publishing a record early, all from observation rather than
+imagination: a document on `main` names its path; the workstream pauses or
+blocks, so the registry sends readers to a handoff that must not be frozen at
+the last integration; or another workstream cannot act until it reads it.
+
+Two points were decided rather than transcribed.
+
+**The ordering rule matters more than the routing rule.** A reference published
+ahead of its target is a broken rule for as long as the gap lasts, so the target
+lands no later than the reference. Since deliverables travel pull requests and
+records travel the outbox, the outbox goes first. Without this the routing rule
+would still permit exactly the failure that prompted it.
+
+**Verbatim, not a version written for `main`.** Publishing a record is not an
+occasion to write a different one. Copying what the branch holds keeps the two
+identical, which makes the next synchronization a no-op and makes conflict
+impossible; anything else recreates two-versions-of-one-truth at a new level.
+
+Also settled, because it is the other half of "push to `main` before finalizing"
+and was genuinely undefined: **the deliverable may land in slices.** An ordinary
+pull request for a finished slice is permitted and often right, since a
+correction others are waiting on should not sit behind work with months to run.
+The completion sequence concludes a workstream rather than being its only
+delivery. Slices travel the working branch, never the outbox — merging an outbox
+publishes everything on it, without the review a deliverable is owed.
+
 ## Next Resumable Task
 
-Nothing, deliberately. This workstream is paused and blocked, and the next event
+Nothing, deliberately, once the fourth outbox send and this branch's pull
+request have landed. This workstream returns to blocked, and the next event
 belongs to someone else.
 
 One acknowledged item remains — the external-resource ownership convention — and
