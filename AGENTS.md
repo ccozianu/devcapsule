@@ -16,6 +16,15 @@ The supported values are `single-stream` and `multiple-streams`; a missing
 field means `single-stream`. Treat any other value as invalid and ask the user
 to correct it rather than guessing which handoff protocol applies.
 
+This workflow is incomplete by admission, and `WORKFLOW.md` opens with
+*Latitude Where This Document Is Silent*. Where the protocol does not cover a
+situation, what it does not expressly deny is allowed: resolve it with judgment
+and keep working rather than stalling. This never overrides an instruction to
+stop, ask, refrain, or seek authority, and it does not license working around a
+rule you merely find inconvenient. Whenever you do exercise that latitude,
+record in the selected handoff what was missing and what you did, and hand the
+gap to the workflow-owning workstream when it would recur in any project.
+
 Then read the root project status at:
 
 ```text

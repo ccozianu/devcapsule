@@ -4,6 +4,52 @@ This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
 
+## Latitude Where This Document Is Silent
+
+This workflow is incomplete, and for V1 the project says so rather than
+pretending otherwise. It was written from real use, and real use keeps
+producing situations it does not describe. Adopters should expect to meet them.
+
+**The principle: what this document does not expressly deny is allowed.** A
+human/agent pair that reaches a situation the protocol does not cover resolves
+it with judgment and keeps working. Being stopped by silence is itself a
+failure — the protocol exists to make work possible and legible, not to
+authorize each step of it.
+
+**Silence is not the same as a rule you dislike.** Before invoking this,
+establish that the protocol is actually silent. A rule that is inconvenient,
+costly, or arrived at for reasons no longer visible is still a rule; change it
+through the workflow-owning workstream rather than around it.
+
+**Express denials are not silence.** This principle never overrides an
+instruction to stop, ask, refrain, or seek authority. Those are decisions
+already made, usually because the failure they prevent is expensive or
+irreversible. In this document they include, and are not limited to: never
+force-pushing `main`; stopping before editing when branch and registry
+disagree; not inferring permission to update `main` from the mere ability to do
+so; the carve-outs in restriction 11; and every explicit instruction to ask the
+human. Where such a rule applies, follow it and raise the difficulty.
+
+**Ambiguity and contradiction are defects, not silence.** If two rules conflict,
+or one admits several readings that lead to materially different work, that is a
+flaw in this document. Choose the reading that best serves the evident intent,
+say which reading you chose, and report the defect. Do not treat a contradiction
+as permission to pick whichever side is convenient.
+
+**Exercised latitude must be recorded.** This is the obligation that makes the
+permission safe. When a pair resolves something the protocol does not cover,
+record in the selected handoff what was missing, what was done, and why. If the
+gap would recur in any project rather than only this one, deliver it to the
+workstream that owns the workflow, through the sender's outbox. Unrecorded
+latitude means the gap stays invisible, the next pair re-derives it differently,
+and two projects using "the same" workflow quietly diverge. Recorded latitude is
+how the next version of this document gets written.
+
+**Scope.** This clause is a V1 position, adopted 2026-08-17. It reflects a
+workflow young enough that its gaps outnumber the cost of specifying them in
+advance. Revisit it when the gaps become rare enough that discovering one is a
+surprise rather than a routine event.
+
 ## Workflow Type Selection
 
 Before interpreting project status, read the top-level `workflow-type` field in
