@@ -153,6 +153,8 @@ never as an ordinary conclusion. Migrating to `single-stream`, in one commit on
 
 1. Confirm no ordinary workstream is still open. Migrating with open
    workstreams silently orphans their handoffs; conclude or archive them first.
+   Its own intake must be empty as well, and it is the last queue that can be
+   emptied: once it is gone there is nowhere left to forward anything.
 2. Fold the coordination state that remains useful into root
    `CURRENT-STATUS.md`, which becomes the detailed single-stream handoff again.
 3. Move `engineering-docs/wip/<start-date>-project-management/` to
@@ -280,11 +282,72 @@ may not edit another sender's file, remove any file, or touch anything else in
 the recipient's directory. Only the receiving workstream removes or reclassifies
 items in its own intake. Its account of itself remains exclusively its own.
 
-**Disposition.** The receiving workstream accepts, defers, or rejects each item,
-records that outcome and its reasoning in its own handoff, and then removes the
-file. Intake is a queue, not an archive; Git retains the history. An item left
-in intake means it has not been dispositioned yet, which is exactly what a queue
-should communicate.
+**Disposition has exactly two outcomes: acknowledge or forward.** Every item
+ends in one of them, and no item may be left alone indefinitely; see *Intake
+Gates Completion*.
+
+Scheduling is not a third outcome. An item accepted but not scheduled yet is
+acknowledged, with its position recorded. "Later" is a property of work a
+workstream owns, not a way to avoid owning it.
+
+**Acknowledge** means the workstream takes the item as its own responsibility
+and turns it into work it will actually do. Recording an opinion about an item
+is not acknowledging it; converting it into a requirement, backlog entry, task,
+or next step is.
+
+1. On the working branch, record it in the handoff as a requirement or task,
+   with the reasoning that led to accepting it, and place it in the
+   workstream's order of work.
+2. Through the outbox, delete the intake file from `main`.
+
+**Forward** means the workstream is not the right owner. Legitimate reasons
+include: the item is not a well-formed requirement; it will not be fixed; it
+belongs to a different workstream; it belongs to a later release; or it is out
+of this workstream's registered scope. The workstream states the reason but
+does not choose a new owner — routing is `project-management`'s decision.
+
+1. Through the outbox, write a new item into
+   `engineering-docs/wip/<start-date>-project-management/intake/`, following
+   *Writing an item*. Include the original item's full text, or its path and
+   the revision it can be recovered from, together with the reason for
+   refusing it.
+2. In the same outbox commit, delete the original item from `main`.
+3. Record in the handoff what was forwarded and why, so the decision is not
+   silently reopened later.
+
+**Deleting from `main` is the recipient's job, and it is prompt.** The queue is
+read from `main`, so an item still present there has not been dispositioned,
+and an item removed from there has been. That absence is the only signal a
+sender gets. Deleting through the outbox keeps the signal honest; deleting only
+on a working branch leaves `main` advertising work that is already handled for
+as long as that branch takes to merge. The working branch picks the deletion up
+at its next synchronization, so do not also delete it there.
+
+Intake is a queue, not an archive. Git retains every item and every reason.
+
+**Items from `project-management` are not forwardable.** That workstream is
+authoritative for structuring work — what is worked on, by whom, in what order
+— so an item it sends is a routing decision, not a proposal, and forwarding it
+back would be a loop. Acknowledge it.
+
+A recipient that believes such an item is genuinely wrong — impossible,
+misrouted, or in conflict with its registered scope — raises that with the
+human rather than returning it through intake. Until the routing decision
+changes, the item stands.
+
+**`project-management`'s own dispositions are terminal.** It has nowhere to
+forward to, so an item reaching it ends there in one of three ways: assigned to
+a workstream by delivering it onward, made the reason to begin a new
+workstream, or dropped with recorded reasoning. This is what stops a refused
+item from circulating indefinitely.
+
+**Intake gates completion.** A workstream is not complete, successfully or
+unsuccessfully, while any item remains in its intake on `main`. An empty intake
+is a precondition of concluding, checked as part of the completion sequence.
+A workstream ending unsuccessfully still owes its queue a disposition: items it
+will not do are forwarded to `project-management`, not abandoned with the
+workstream. Leaving items behind would silently destroy work other workstreams
+handed over in good faith.
 
 **Presence.** The directory carries a `README.md` so that an empty intake is
 unambiguous rather than an untracked absence. Intake items are not listed in
@@ -470,6 +533,11 @@ unless the repository or selected handoff explicitly permits direct
 integration. Do not infer permission to update `main` merely from the ability
 to do so.
 
+Before integration begins, the workstream's intake on `main` must be empty. See
+*Intake Gates Completion*. Check this first: a forwarded item has to travel the
+outbox and reach `main`, so discovering a full queue late in the sequence stalls
+the integration rather than merely adding a step.
+
 Before integration begins, the selected handoff records:
 
 - the integration target, normally `main`;
@@ -584,6 +652,12 @@ completed workstream. Associated worktrees and branches may be removed after
 completion once their changes are reachable from remote `main`.
 
 ### Unsuccessful Completion
+
+Ending unsuccessfully does not discharge the intake queue. Before the sequence
+below, disposition every remaining item: forward to `project-management`
+anything this workstream will not do, with the reason. Work handed over in good
+faith must not disappear with the workstream that failed to do it. See *Intake
+Gates Completion*.
 
 Do not promote unfinished source or user documentation. On `main`:
 
