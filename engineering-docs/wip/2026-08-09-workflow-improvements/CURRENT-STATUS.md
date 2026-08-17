@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active; integrated to `main`, two acknowledged items remain
+State: active; one acknowledged item remains and it is blocked
 
 Integration target: `main`
 
@@ -484,11 +484,43 @@ workstream's own document index, unlike intake items.
 Item 3 is not finished. The acknowledgement half is done; see *Open Threads*
 for the staleness residual.
 
+### Eleventh Task: Close Staleness By Not Specifying It
+
+Product-owner decision, 2026-08-17: intake staleness is deliberately left
+unspecified, and `project-management` may act on it as it sees fit. No rule was
+added to `WORKFLOW.md`, which is the point rather than an omission.
+
+The reasoning, which is stronger than it first sounds: V1 cannot be produced
+while anything remains in its backlog. A rotting intake item is therefore
+already caught, by the release gate rather than by a staleness mechanism, and
+the workstream that owns release readiness is the one positioned to notice. A
+dedicated signal would duplicate a check the project performs anyway, on a
+schedule that matters less than it appears — an item nobody needed for months
+did not cost anything by waiting.
+
+This is the latitude clause working as designed rather than a gap left by
+accident. The workflow declines to specify something, says so, and names who
+may decide it.
+
+Item 3 of *Acknowledged Work* is now complete: acknowledgement implemented as
+the disposition log, staleness resolved by an explicit decision not to specify
+it. Delivered to `project-management` through the outbox, including the
+observation that the disposition-log invariant makes an automated check cheap
+should they ever want one.
+
 ## Next Resumable Task
 
-Integrate. Nothing acknowledged is both ready and unblocked: item 3 waits on
-the product owner and item 4's main consumer, `recursive-e2e` Stage 7, has not
-been reached.
+Integrate, then wait. One acknowledged item remains — the external-resource
+ownership convention — and it is blocked: its main consumer, `recursive-e2e`
+Stage 7, has not been reached, and the convention should be written against a
+consumer that can exercise it rather than in the abstract.
+
+This workstream is therefore close to having nothing to do. That is worth
+saying plainly rather than discovering later: unless the incoming
+bug-vocabulary item or the two questions in *Open Threads* produce work, its
+remaining scope is one blocked convention. Whether it stays open waiting for
+Stage 7 or concludes and hands the convention onward is a `project-management`
+call the product owner may want to make before it idles.
 
 Eight workflow changes are written and unmerged, which is now the largest risk
 this workstream carries. Everything published since 2026-08-16 exists only on
@@ -625,10 +657,9 @@ can be reordered.
    writing one. See *Sixth Task*.
 2. ~~A pause action and reasoning continuity.~~ Done 2026-08-17. See *Eighth
    Task*.
-3. **Intake acknowledgement and staleness.** Acknowledgement half done
-   2026-08-17 as the disposition log; see *Tenth Task*. Remaining: a staleness
-   signal, or a recorded decision that the residual gap is acceptable and why.
-   See *Open Threads*.
+3. ~~Intake acknowledgement and staleness.~~ Done 2026-08-17. Acknowledgement
+   implemented as the disposition log; staleness deliberately left unspecified
+   and routed to `project-management`. See *Tenth Task* and *Eleventh Task*.
 4. **An external-resource ownership convention.** Largest, needs product
    knowledge, and its main consumer is not ready. Done means: how a resource
    derives its owning workstream and run identity; how names avoid collision by
@@ -702,38 +733,14 @@ continuity intake item. Short by design.
 
 ### Awaiting The Product Owner
 
-1. **Who detects an item rotting in a workstream nobody is working on?** The
-   disposition log closed acknowledgement, and it gives senders a pull-based
-   staleness check: an item still in `intake/` on `main` has not been decided,
-   and a sender who cares can see that. The completion gate catches the rest at
-   workstream end. What neither reaches is the case that motivated the original
-   item — a queue nobody is looking at, in a workstream nobody is working on,
-   with no session ever occurring in which the check would run.
-
-   Two candidates, both rejected for now rather than adopted. A registry column
-   showing queue depth and oldest age is the obvious move and is argued against
-   on evidence: the V1 readiness assessment documents the registry being stale
-   in three separate ways as it was written, with "no mechanism that would ever
-   surface the disagreement", so another hand-maintained field on a document
-   already proven to drift buys nothing. A `project-management` sweep at each
-   portfolio checkpoint works because the checker is not the delinquent party,
-   but it places an obligation on another workstream that has not agreed to it.
-
-   The durable answer is an automated check, and the invariant above makes one
-   easy to write — every delivered item in exactly one of two places is a
-   property a script can verify. But nothing guards durable project memory
-   today; the V1 readiness assessment records 258 tests protecting the Python
-   distribution and none protecting the documentation invariants. That gap is
-   larger than this workstream and is unowned.
-
-2. **Is four acknowledged items the right size for this workstream?** Its goal
+1. **Is four acknowledged items the right size for this workstream?** Its goal
    commits it to conclude once findings are dispositioned. All four are
    protocol and this workstream owns protocol, so no forward was honest — but
    the practical effect is that conclusion moved further away. Options if that
    is unwelcome: hand items 3 and 4 to `project-management` to place elsewhere,
    or accept that this workstream runs until V1.
 
-3. **Does "the workflow improvements already identified" mean identified, or
+2. **Does "the workflow improvements already identified" mean identified, or
    identified and implemented?** The product owner named that as a condition for
    starting their own projects on v026. The two readings put very different
    obligations on this workstream, and it is currently described as being on the
@@ -741,7 +748,7 @@ continuity intake item. Short by design.
    `workflow-improvements/v1` presumes this workstream delivers *for* V1, which
    sharpens the question rather than answering it.
 
-4. **Who owns protocol boilerplate that lives inside another workstream's
+3. **Who owns protocol boilerplate that lives inside another workstream's
    directory?** Each `intake/README.md` restated the delivery rule, so changing
    that rule made four workstreams' READMEs stale at once — and restriction
    11's carve-out bars this workstream from editing three of them. Its own
@@ -752,6 +759,13 @@ continuity intake item. Short by design.
    resolves it.
 
 ### Settled Since The Last Pause
+
+- **Intake staleness.** Resolved 2026-08-17 by the product owner: deliberately
+  not specified, and left to `project-management` to act on as it sees fit. The
+  reasoning is that V1 cannot be produced while anything remains in its
+  backlog, so the release gate already catches a rotting item before it can do
+  lasting damage, and the workstream that owns release readiness is the one
+  positioned to notice. Delivered to that workstream; see *Eleventh Task*.
 
 - **How intake deliveries reach `main`.** Resolved 2026-08-16 by the product
   owner: through the sender's `<mnemonic>/outbox` branch. This also closed the
