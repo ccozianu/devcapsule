@@ -95,6 +95,55 @@ restrictions and procedures as binding, and treat prose as the reasoning that
 explains them. Where a rule and this preamble appear to disagree, the rule
 governs and the disagreement is a defect worth reporting.
 
+## Checkouts, Branches, And Workstreams
+
+Work means editing files in a **checkout**. Everything this document describes
+happens either in a checkout or in the shared remote that checkouts push to.
+These terms are used precisely and never interchangeably.
+
+- **Project** — the repository and its history.
+- **Remote** — the shared hosted copy, such as a GitHub repository. It is the
+  coordination point: where branches meet, where `main` is authoritative, and
+  where pull requests and review happen.
+- **Checkout** — one local clone directory. Where a pair actually edits files.
+- **Branch** — a line of development within the project.
+- **Workstream** — a named, registered effort with its own goal and handoff.
+  A `multiple-streams` concept only; `single-stream` projects have branches and
+  no workstreams.
+- **Pair** — one human and one agent working together in one checkout.
+
+The relationships, which fix what every "current" in this document means:
+
+- A project has one authoritative remote and any number of checkouts.
+- A checkout has exactly one current branch.
+- Every branch other than `main` belongs to exactly one workstream.
+- A workstream may own several branches.
+- A checkout therefore has at most one selected workstream at any moment. The
+  *current branch* determines the *current workstream*, not the reverse.
+
+**Sequential within a checkout, concurrent across checkouts.** One checkout can
+work on many workstreams over time by switching branches, but only one at a
+time, and only from a clean tree — mixing two workstreams' uncommitted changes
+in one directory is what the protocol exists to prevent. Genuine concurrency
+comes from several pairs working in several checkouts, integrating through the
+remote. It does not come from any local arrangement of directories.
+
+**What is shared and what is local.** The remote carries everything the project
+agrees on: branches, `main`, the registry, handoffs, and intake. A checkout
+carries only local facts: which one it is, what branch it is on, and what is
+uncommitted in it. Nothing about a checkout is registered or coordinated.
+
+This is why two pairs can hold different current workstreams at the same moment
+without either being wrong, and why the registry is a record rather than a
+presence or locking system. A workstream listed as active means someone opened
+it and has not concluded it — not that anyone is working on it right now.
+
+**Two pairs may select the same workstream.** Nothing prevents it and no lock
+exists. They will contend on one handoff, which is a single file both are
+expected to keep current, so coordinate outside the protocol before doing it
+deliberately. If it happens by accident, the usual result is a conflict in that
+handoff rather than lost work.
+
 ## Latitude Where This Document Is Silent
 
 This workflow is incomplete, and for V1 the project says so rather than
