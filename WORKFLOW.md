@@ -162,7 +162,8 @@ not runtime behavior or live contributor presence.
 - root `CURRENT-STATUS.md` is the detailed active handoff;
 - it records current state, evidence, and one next resumable slice;
 - routine checkpoints update that file; and
-- branches and worktrees remain optional implementation tools.
+- branches remain the unit of work, and how many checkouts exist locally is
+  an implementation detail.
 
 The remaining general sections of this document apply as they did before
 multiple-stream support was introduced.
@@ -202,7 +203,8 @@ The following restrictions keep concurrent work understandable:
     edit any file its task genuinely requires, and exclusivity may not be
     inferred from a file's subject, its directory, or which workstream created
     it. Two carve-outs stand: another workstream's WIP handoff directory
-    excluding its `intake/` subdirectory, and another worktree's recovery state.
+    excluding its `intake/` subdirectory, and uncommitted recovery state in
+    another checkout.
     Each is a workstream's account of its own state, which another workstream
     cannot restate accurately; report what you observe about another workstream
     instead of editing its record. Delivering work to another workstream is a
@@ -346,14 +348,14 @@ Workstream discovery and checkout selection are related but distinct:
   under *Verifying Shared Branch State*. Refresh them according to repository
   policy when an operation requires current shared state; routine offline
   resumption may use the latest unambiguous locally available snapshot.
-- The current worktree and its checked-out branch provide the persistent local
+- The current checkout and its branch provide the persistent local
   selection. This first protocol deliberately defines no second untracked
   "current workstream" preference file.
 
-Select exactly one editing workstream for the current worktree:
+Select exactly one editing workstream for the current checkout:
 
-1. Identify the current Git worktree, branch, and dirty state, then read the
-   open-workstream registry from the locally accepted mainline ref.
+1. Identify the current checkout, its branch, and its dirty state, then read
+   the open-workstream registry from the locally accepted mainline ref.
 2. If the user explicitly names an open workstream, select it. Explicit intent
    chooses the target but does not reassign the current branch or authorize
    mixing dirty state.
@@ -366,7 +368,7 @@ Select exactly one editing workstream for the current worktree:
 5. `main` belongs to no workstream and therefore has no default editing
    workstream. Registry coordination and repository-wide inspection may occur
    there. Workstream changes require an explicit selection followed by a switch
-   to that workstream's clean branch or worktree.
+   to that workstream's branch in a clean checkout.
 6. A checked-out `<mnemonic>/outbox` identifies its workstream but is not an
    editing checkout. It carries only outbound messages; see *The Outbox
    Branch*. Do not resume workstream work there. Switch to a working branch
@@ -385,11 +387,23 @@ Select exactly one editing workstream for the current worktree:
    see *Workstream Intake*. A handoff read without its intake is an incomplete
    picture of what the workstream owns.
 
-If the selected workstream differs from the current branch, switch to its clean
-worktree before editing. Do not combine dirty state from two workstreams, and
-do not use a stash as their durable handoff boundary. Different users and
-clones may select different workstreams independently because their checked-out
-branches and worktrees are local state.
+If the selected workstream differs from the current branch, switch to that
+branch in a clean checkout before editing. Do not combine dirty state from two
+workstreams, and do not use a stash as their durable handoff boundary.
+Different users and clones may select different workstreams independently
+because their checked-out branches are local state.
+
+**Local checkout arrangement is an implementation detail.** This protocol is
+defined in terms of branches, not directories. One checkout has one branch and
+therefore at most one selected workstream; that is the whole rule. How many
+checkouts exist on a machine, and whether an extra one is a second clone, a Git
+worktree, or a container, is the developer's choice. None of it is workflow
+state: nothing about it is registered, recorded, or coordinated, and where
+several exist each obeys the selection rules on its own.
+
+Checkouts made for other purposes — running the product against itself,
+reproducing a bug, testing a build — are not workstream checkouts and this
+document does not govern them.
 
 ### Workstream Intake
 
@@ -691,7 +705,7 @@ the intended result ambiguous.
 
 #### 1. Prepare The Integration Candidate
 
-1. Verify the designated integration branch and every involved worktree are
+1. Verify the designated integration branch and every checkout holding it are
    clean and all accepted workstream changes are committed. Freeze that branch
    against unrelated work while integration proceeds.
 2. Inspect current local and remote `main`, fetching remote refs when network
@@ -785,8 +799,8 @@ permits direct integration:
 The workstream is completely done only when remote `main` contains the final
 tree produced by either delivery path. Until then, an open integration pull
 request or a local `main` ahead of its remote is pending integration, not a
-completed workstream. Associated worktrees and branches may be removed after
-completion once their changes are reachable from remote `main`.
+completed workstream. Associated branches may be removed after completion
+once their changes are reachable from remote `main`.
 
 ### Unsuccessful Completion
 
@@ -822,7 +836,7 @@ chosen integration branch, delivery method, and applicable repository policy
 in the handoff. Workstream state in Git and the hosting platform is durable but
 not a live lock or presence system.
 
-After interruption, enumerate worktrees and branches, inspect each dirty state
+After interruption, enumerate checkouts and branches, inspect each dirty state
 separately, compare local `main` with remote `main`, match branch prefixes to
 workstreams, and resume from the selected workstream's last committed status.
 An open integration pull request or a local finalization already
