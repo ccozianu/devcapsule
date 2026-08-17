@@ -33,17 +33,41 @@ Nox is the preferred developer cycle. By default this repository reuses Nox's
 managed virtual environments between runs, so repeated commands avoid starting
 from a completely fresh venv unless explicitly requested.
 
-Run these commands from a Python environment where Nox is installed.
+Create the checkout-local developer environment once, then call its interpreter
+explicitly. Shell activation is optional.
 
 ```bash
 cd devcapsule-src
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r dev-requirements.txt
+.venv/bin/python -m pip install -e . --no-deps
 
-python -m nox -s tests   # Python compile checks plus pytest
-python -m nox -s syntax  # Python compile checks plus shell syntax checks
-python -m nox -s typecheck  # mypy for package, tests, and noxfile.py
-python -m nox -s smoke   # source CLI and shell-wrapper help smoke tests
-python -m nox -s pex     # build the PEX artifact and smoke-test it
-python -m nox -s build   # full local gate
+.venv/bin/python -m nox -s tests   # Python compile checks plus pytest
+.venv/bin/python -m nox -s syntax  # Python compile checks plus shell syntax checks
+.venv/bin/python -m nox -s typecheck  # mypy for package, tests, and noxfile.py
+.venv/bin/python -m nox -s smoke   # source CLI and shell-wrapper help smoke tests
+.venv/bin/python -m nox -s pex     # build the PEX artifact and smoke-test it
+.venv/bin/python -m nox -s build   # full local gate
+```
+
+The explicit interpreter path prevents a broken activation from silently
+selecting `/usr/bin/python`. If preferred, activation works too:
+
+```bash
+. .venv/bin/activate
+python -m nox -s build
+```
+
+A Python virtualenv is not relocatable: its activation scripts and installed
+console-script shebangs contain the absolute path where it was created. If the
+checkout or `devcapsule-src/` directory moves, rebuild this disposable
+environment at its final path:
+
+```bash
+deactivate 2>/dev/null || true
+python3.12 -m venv --clear .venv
+.venv/bin/python -m pip install -r dev-requirements.txt
+.venv/bin/python -m pip install -e . --no-deps
 ```
 
 The `tests` session is the Nox way to run pytest for this project. It installs
@@ -58,8 +82,8 @@ The `build` session is the default Nox session, so these are equivalent:
 
 ```bash
 cd devcapsule-src
-python -m nox
-python -m nox -s build
+.venv/bin/python -m nox
+.venv/bin/python -m nox -s build
 ```
 
 Run a clean-slate build when dependency or environment reuse could hide a
@@ -67,7 +91,7 @@ problem:
 
 ```bash
 cd devcapsule-src
-python -m nox --no-reuse-existing-virtualenvs -s build
+.venv/bin/python -m nox --no-reuse-existing-virtualenvs -s build
 ```
 
 If you want to discard all cached Nox environments before a clean build:
@@ -75,7 +99,7 @@ If you want to discard all cached Nox environments before a clean build:
 ```bash
 cd devcapsule-src
 rm -rf .nox
-python -m nox -s build
+.venv/bin/python -m nox -s build
 ```
 
 The manual virtualenv workflow is still supported when directly inspecting a

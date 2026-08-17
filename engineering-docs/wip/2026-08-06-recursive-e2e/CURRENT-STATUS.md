@@ -87,6 +87,14 @@ active continuation branch.
   runtime and expected plans. Automated, packaging, read-only Docker-mount,
   and local recursive-dogfood validation pass. The final rebuilt-image GUI
   click and cleanup observation remain pending.
+- The current checkout's ignored `devcapsule-src/.venv` was found to predate
+  the Python distribution rename: its activation scripts still prepended the
+  removed `devcapsule/.venv/bin`, so `python` fell through to
+  `/usr/bin/python`. The environment was rebuilt at its final path from
+  `dev-requirements.txt` and the editable package. Developer instructions now
+  use `.venv/bin/python -m nox` as the activation-independent primary path,
+  retain ordinary activation as a supported option, and explain that a moved
+  virtualenv must be recreated rather than reused.
 - An audit request was pushed on `recursive-e2e/outbox` at `ebad342`, asking
   `project-management` to inventory promised work for this workstream and
   determine from its conversation/session evidence whether delivery failed
@@ -156,6 +164,18 @@ recursive dogfood run `24b3fd2dfb2d58f010b7d1652967c007` reported ready and
 passed both selected E2Es in 28.81 seconds, with cleanup complete and no Docker
 mutation. The outer v025-derived development capsule has no inherited broker,
 so a real PyCharm click awaits the rebuilt matching pair.
+
+Developer-environment repair validation on 2026-08-17: after rebuilding the
+ignored environment, activation sets both `VIRTUAL_ENV` and the first `PATH`
+entry to the exact `devcapsule-src/.venv` directory; `command -v python`,
+`sys.executable`, and `sys.prefix` all resolve inside it while
+`sys.base_prefix` remains `/usr`. The locked Nox installation reports version
+`2026.4.10`. The user's exact activated `python -m nox -s build` command then
+passed the full dirty-tree gate: mypy found no issues over 99 files, 340 tests
+passed with 10 deselected, six packaging integrations passed, and the local
+self-contained PEX plus CLI smoke checks passed. Direct
+`.venv/bin/python -m nox` invocation was separately resolved and enumerated
+the expected sessions without consulting system Python.
 
 Exact-revision evidence: source commit
 `95212fc11c1b9d8724e7176ff2d236393f18319a` is published on
