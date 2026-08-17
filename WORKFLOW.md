@@ -366,7 +366,9 @@ Begin from a clean, current `main` checkout:
    delivery method or applicable repository default, current task, and next
    resumable task.
 4. Create `engineering-docs/wip/<start-date>-<mnemonic>/intake/README.md` so the
-   workstream can receive work from others; see *Workstream Intake*.
+   workstream can receive work from others, and an empty
+   `intake-dispositions.md` beside it so the two halves of the record exist
+   from the start; see *Workstream Intake* and *The Disposition Log*.
 5. Add the workstream to root `CURRENT-STATUS.md`.
 6. Deliver that source-level registration to `main` through the outbox of the
    workstream opening it; see *The Outbox Branch*. Registration is a message to
@@ -498,7 +500,8 @@ or next step is.
 1. On the working branch, record it in the handoff as a requirement or task,
    with the reasoning that led to accepting it, and place it in the
    workstream's order of work.
-2. Through the outbox, delete the intake file from `main`.
+2. Through the outbox, in one commit, add an entry to the disposition log and
+   delete the intake file from `main`.
 
 **Forward** means the workstream is not the right owner. Legitimate reasons
 include: the item is not a well-formed requirement; it will not be fixed; it
@@ -511,19 +514,60 @@ does not choose a new owner — routing is `project-management`'s decision.
    *Writing an item*. Include the original item's full text, or its path and
    the revision it can be recovered from, together with the reason for
    refusing it.
-2. In the same outbox commit, delete the original item from `main`.
+2. In the same outbox commit, add an entry to the disposition log naming where
+   the item went, and delete the original item from `main`.
 3. Record in the handoff what was forwarded and why, so the decision is not
    silently reopened later.
 
 **Deleting from `main` is the recipient's job, and it is prompt.** The queue is
-read from `main`, so an item still present there has not been dispositioned,
-and an item removed from there has been. That absence is the only signal a
-sender gets. Deleting through the outbox keeps the signal honest; deleting only
-on a working branch leaves `main` advertising work that is already handled for
-as long as that branch takes to merge. The working branch picks the deletion up
-at its next synchronization, so do not also delete it there.
+read from `main`, so an item still present there has not been dispositioned.
+Deleting through the outbox keeps that true; deleting only on a working branch
+leaves `main` advertising work that is already handled for as long as that
+branch takes to merge. The working branch picks the deletion up at its next
+synchronization, so do not also delete it there.
 
 Intake is a queue, not an archive. Git retains every item and every reason.
+
+### The Disposition Log
+
+Each workstream keeps one append-only log at
+`engineering-docs/wip/<start-date>-<mnemonic>/intake-dispositions.md`, recording
+what became of every item it received. It is written by the receiving
+workstream only, and it is pushed to `main` through the outbox in the same
+commit that removes the item from the queue.
+
+**The invariant that makes it useful.** On `main`, every item ever delivered to
+a workstream is in exactly one of two places: still in its `intake/`, meaning
+undispositioned, or in that workstream's disposition log, meaning resolved.
+Never both, never neither. Writing the entry and deleting the item in one
+commit is what keeps that true, which is why they are one step and not two.
+
+This is the acknowledgement path. A sender does not need to be told what
+happened to what it delivered; it looks, in one of two predictable places, and
+`main` is current for both because intake delivery and disposition both travel
+the outbox promptly. It is also why no reply is written back into the sender's
+intake: a reply is not work, and a queue whose whole meaning is "own this or
+forward it" should not carry messages that are neither.
+
+**One entry per item**, appended, newest last, never edited or removed:
+
+| Item | Dispositioned | Outcome | Note |
+|---|---|---|---|
+| `2026-08-16-sender-some-slug.md` | 2026-08-16 | acknowledged | One line. Full reasoning in the handoff. |
+| `2026-08-16-sender-other-slug.md` | 2026-08-17 | forwarded | Where it went, so the trail can be followed. |
+
+The note is one line. The reasoning belongs in the handoff, which is where a
+disposition is argued; the log records that it happened and points at it.
+
+**The log is an archive, not a queue.** Unlike `intake/`, it is never pruned,
+and it travels with the workstream into `engineering-docs/archive/` at the end.
+A concluded workstream's log is the record of what it was asked to do and what
+it decided, which is exactly what a later reader reopening one of those
+decisions needs.
+
+Because the log is a workstream's account of its own decisions, restriction 11
+applies: only the receiving workstream writes it. Anyone may read it, and
+reading it is the intended use.
 
 **Items from `project-management` are not forwardable.** That workstream is
 authoritative for structuring work — what is worked on, by whom, in what order
@@ -553,7 +597,9 @@ handed over in good faith.
 unambiguous rather than an untracked absence. Intake items are not listed in
 `index.md` or in the workstream's own document index; the directory listing is
 the queue, and indexing it would create churn for items designed to be
-short-lived.
+short-lived. The disposition log is the opposite case: it is durable, so it
+belongs in the workstream's own document index, though not in `index.md`, which
+lists workstream status files rather than their internal documents.
 
 ### The Outbox Branch
 
@@ -569,9 +615,12 @@ was built to fix, one step further along.
 part of the sender's own deliverable:
 
 - intake items delivered to other workstreams;
-- registrations of new workstreams the sender is opening; and
+- registrations of new workstreams the sender is opening;
 - changes to the sender's own row in root `CURRENT-STATUS.md` — state, branch
-  association, or anything else other agents route by.
+  association, or anything else other agents route by; and
+- the sender's own records — its handoff and its disposition log — when
+  something on `main` refers to them or when it pauses. See *Publishing Before
+  Integration*.
 
 The last matters more than it looks. The registry is how every other checkout
 decides where work belongs, and a routing fact that waits for the sender's
@@ -592,12 +641,23 @@ one.
 
 **Sending.** From a clean checkout, and never from the working branch:
 
-1. Fetch, and create or reset `<mnemonic>/outbox` to current `main`. The outbox
-   holds no history of its own worth preserving; every send starts from `main`.
+1. Fetch, and create or hard-reset `<mnemonic>/outbox` to current `main`. The
+   outbox holds no history of its own worth preserving; every send starts from
+   `main`.
 2. Add only the files being sent. One commit per coherent delivery.
 3. Push the branch and deliver it to `main` by the repository's default method.
-4. Leave the branch in place. After the merge it is an ancestor of `main` and
-   the next send resets it forward again.
+4. Leave the branch in place until the next send, then reset it again from
+   step 1.
+
+**Do not assume a merged outbox is an ancestor of `main`.** Whether it is
+depends on the repository's merge strategy: fast-forward and merge-commit
+delivery leave it reachable, while squash and rebase merges rewrite the commits
+and leave the branch pointing at history `main` no longer contains. Resetting
+from step 1 is correct under every strategy, which is why it is stated as a
+reset rather than as continuing from where the branch stands. Expect that reset
+to require a force-push, and note that this is a case the prohibition on
+force-pushing `main` does not reach: an outbox has no independent content to
+lose, since everything on it is either already merged or being replaced.
 
 Sending is a small, self-contained operation. It does not touch the sender's
 working branch, does not require that branch to be clean or current, and is not
@@ -611,6 +671,66 @@ them by staying current with `main`.
 other branch it owns. An outbox with unmerged commits at that point is
 undelivered mail: merge it before concluding, or say in the final status why it
 was abandoned.
+
+### Publishing Before Integration
+
+A workstream's branch holds its work until integration. Not everything on that
+branch is work: some files are how the rest of the project reads the workstream
+while it runs, and those are useless anywhere `main` cannot see them.
+
+**Two kinds of file, and they travel differently.**
+
+- **The deliverable** — changes to shared documents, code, and requirements: what
+  the workstream exists to produce. It travels the workstream's own branch and
+  reaches `main` by repository policy, because it is reviewed as a whole.
+- **Records** — the files that describe the workstream itself: its handoff, its
+  disposition log, its registry row, and its intake directory. Nobody reviews
+  these as a deliverable; they are the project's view of a workstream in flight.
+  They travel the outbox, and may do so at any time.
+
+**Publish a record early when something outside the branch depends on it.**
+Three cases, each observed rather than imagined:
+
+1. **A document on `main` refers to it.** A rule that names a per-workstream
+   path — as *The Disposition Log* does — sends every reader to that path. If
+   the file exists only on a branch, the rule points at nothing, and a reader
+   cannot tell an unwritten record from an unpublished one.
+2. **The workstream pauses or blocks.** The registry sends whoever considers
+   resuming it to its handoff, and the copy on `main` is what they read before
+   deciding to check anything out. A handoff frozen at the last integration
+   describes a workstream that no longer exists.
+3. **Another workstream needs it to act.** Anything a recipient must read before
+   it can proceed is undelivered until `main` has it, which is the whole reason
+   the outbox exists.
+
+**The target lands no later than the reference.** When a change to a shared
+document creates a reference to a per-workstream file, send the file through the
+outbox before, or in the same round as, the referencing change reaches `main`.
+The deliverable travels a pull request and the record travels the outbox, so in
+practice the outbox goes first. A reference published ahead of its target is a
+broken rule for as long as the gap lasts.
+
+**Send the branch's current copy verbatim.** Publishing a record is not an
+occasion to write a different version for `main`. Copy what the branch holds, so
+the two are identical: the branch then needs no special treatment at its next
+synchronization, and identical content merges without conflict no matter which
+side a later reader compares. Two versions of one record is the failure this
+whole mechanism exists to avoid, reintroduced at a different level.
+
+**This is not a way to put deliverable content on `main` early.** The test is
+whether anyone would review it as part of the workstream's work. If yes, it is
+deliverable and the outbox must not carry it; merging an outbox publishes
+everything on it, without the review the deliverable is owed. A workstream that
+finds itself wanting to publish half its deliverable has a scope problem or a
+second workstream, not a routing problem.
+
+**The deliverable may still land in slices.** Integrating a finished slice
+through an ordinary pull request before the workstream is done is permitted and
+often right: a correction other workstreams are waiting on should not sit behind
+work that has months to run. The completion sequence concludes a workstream; it
+is not the only moment one may deliver. Slices travel the working branch under
+repository policy, never the outbox, and the handoff records what has already
+landed so a later reader is not misled about what remains.
 
 ### Staying Current With `main`
 
@@ -627,6 +747,16 @@ matters in a repository whose merge strategy rewrites them. Rebasing a
 published branch rewrites shared history and needs a force-push; do that only
 when the branch is known to be unshared, and prefer merging `main` in
 otherwise. Rebase what only you have; merge what others may have.
+
+**After your own delivery lands, reset rather than rebase.** Under a squash or
+rebase merge, a branch whose pull request has merged holds no content `main`
+lacks, but its commits have different identities from the ones `main` now
+carries. Rebasing then replays commits one at a time onto a `main` that already
+contains their final effect, which conflicts on intermediate states even though
+the end states agree. Confirm the branch has nothing unique — comparing trees,
+not commit identities, since the identities are guaranteed to differ — and hard
+reset it to `main`. Rebase is for carrying unlanded work forward; it is the
+wrong tool for a branch with nothing left to carry.
 
 This rule is about keeping a workstream branch current with `main`. It says
 nothing about how work is delivered *to* `main`, which follows repository
@@ -720,8 +850,11 @@ Before leaving a workstream:
    next resumable task.
 3. Write *Open Threads* — see below. This is the part that does not survive
    any other way.
-4. Send anything owed through the outbox. A paused workstream holding
-   undelivered mail blocks its recipients without telling them.
+4. Send anything owed through the outbox, including the handoff itself. A
+   paused workstream holding undelivered mail blocks its recipients without
+   telling them, and one whose handoff on `main` predates the pause tells
+   whoever considers resuming it nothing about why it stopped. See *Publishing
+   Before Integration*.
 5. Record external state that will outlive the session: running containers,
    held ports, manual environment setup, anything that decays.
 6. Update the registry row to `paused` or `blocked`, with a short reason. If

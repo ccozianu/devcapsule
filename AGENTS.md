@@ -87,6 +87,15 @@ branch, reset from current `main` and carrying only what is being sent, never
 working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 `WORKFLOW.md`.
 
+The outbox also carries the workstream's own records — its handoff and its
+disposition log — when something on `main` refers to them or when the workstream
+pauses, so that a rule naming a per-workstream path does not point at a file
+only a branch can see. Send the branch's current copy verbatim. The
+deliverable never travels the outbox, because merging one publishes everything
+on it without the review a deliverable is owed; a finished slice of the
+deliverable may still reach `main` early through an ordinary pull request. See
+*Publishing Before Integration* in `WORKFLOW.md`.
+
 In `multiple-streams` mode, also read the selected workstream's `intake/`
 directory beside its handoff. It holds work other workstreams have delivered
 and this workstream has not yet dispositioned. A handoff read without its
@@ -95,7 +104,11 @@ intake is an incomplete picture of what the workstream owns.
 Every item ends one of two ways. Either the workstream **acknowledges** it,
 making it a requirement or task in its own handoff, or it **forwards** it to
 `project-management` with a reason. Deferral is not a third outcome; an item
-accepted for later is acknowledged with its position recorded. Items sent by
+accepted for later is acknowledged with its position recorded. Either outcome
+is recorded in the workstream's `intake-dispositions.md` in the same outbox
+commit that removes the item, so that on `main` every delivered item is either
+still in `intake/` or in that log — which is how a sender learns what happened
+to what it sent. Items sent by
 `project-management` cannot be forwarded, because that workstream is
 authoritative for what is worked on, by whom, and in what order; raise genuine
 disagreement with the human instead. Either way, the recipient deletes the item
