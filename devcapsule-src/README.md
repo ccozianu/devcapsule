@@ -532,12 +532,12 @@ that same environment explicitly without launching a container, use:
 ```bash
 devcapsule project --path /path/to/checkout config resolve
 devcapsule project --path /path/to/checkout config authorize base-image \
-  docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81
+  docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a
 devcapsule project --path /path/to/checkout config resolve
 devcapsule images build \
   --type environment \
   --project /path/to/checkout \
-  --alias devcapsule-local-pycharm:debug-v024
+  --alias devcapsule-local-pycharm:debug-v026
 ```
 
 The platform lock must select a DevCapsule base plus a
@@ -587,7 +587,7 @@ For developer-built base testing, `base-image` also accepts an already-local
 DevCapsule metadata-v1 base name:
 
 ```bash
-devcapsule project config authorize base-image devcapsule-local-base:v024
+devcapsule project config authorize base-image devcapsule-local-base:v026
 devcapsule project config resolve
 devcapsule project run
 ```
@@ -609,14 +609,16 @@ selected local image must still pass DevCapsule metadata, platform, and
 immutable image-ID inspection.
 
 This repository's current Linux dogfood lock uses published digest
-`docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81`.
-The associated `ubuntu-24.04-v024` tag is only a dogfood discovery tag;
+`docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a`.
+The associated `ubuntu-24.04-v026` tag is only a dogfood discovery tag;
 official V1 artifacts will use semantic release versions and committed locks
 will continue to use immutable digests.
 
-The immutable v024 image uses agent-neutral base recipe version 2, embeds the
-DevCapsule PEX, and exposes source revision `e2dae20...` at the canonical
-`ccozianu/devcapsule` repository. It contains no ambient agent CLI.
+The immutable v026 image uses agent-neutral base recipe version 5, embeds the
+self-contained DevCapsule PEX released from source revision `91d50b1...` at
+the canonical `ccozianu/devcapsule` repository, and contains the supported
+Python, Node.js, Java, Maven, and PostgreSQL client toolchain. It contains no
+ambient agent CLI.
 
 The command obtains the selected base when it is not local, verifies that it
 is a managed metadata-v1 base for the locked platform, and downloads the
