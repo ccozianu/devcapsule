@@ -529,6 +529,7 @@ keep the older one as historical evidence only.
 This workstream owns:
 
 - [Intake disposition log](intake-dispositions.md)
+- [v026 local migration and acceptance](v026-local-migration-acceptance.md)
 
 Its established execution and evidence records predate the WIP convention and
 remain permanent engineering records:
