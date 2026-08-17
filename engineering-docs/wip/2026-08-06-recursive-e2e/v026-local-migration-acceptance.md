@@ -4,12 +4,12 @@ Use this checklist after leaving the existing development capsule and returning
 to the physical host. It validates the matched v026 CLI/base-image pair, the
 native-X11 host-browser bridge, and the repaired development Python selection.
 
-The committed project lock still recommends the published v024 base digest.
-Do not edit that lock merely to test the developer-built v026 image. Select the
-v026 tag through the checkout-local `base-image` authorization instead, then
-regenerate the checkout-local resolution.
+The committed project lock now recommends the published v026 base by immutable
+digest. Review and authorize that exact recommendation, then regenerate the
+checkout-local resolution. The mutable v026 discovery tag is not an
+authorization boundary.
 
-## 1. Verify The Released CLI And Local Image
+## 1. Verify The Released CLI And Published Image
 
 The released PEX is directly executable and must not be run through a system
 Python, Conda, pip, or a virtual environment.
@@ -19,7 +19,7 @@ set -eu
 
 ROOT=/workspace/301e4208ef81-ChatGPT_Codex
 PEX="$HOME/.local/bin/devcapsule.pex"
-IMAGE=mycodespaceai/devcapsule-base:ubuntu-24.04-v026
+IMAGE=docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a
 
 mkdir -p "$HOME/.local/bin"
 curl -fL \
@@ -33,6 +33,7 @@ printf '%s  %s\n' \
 
 "$PEX" version --json
 
+docker pull "$IMAGE"
 test "$(docker image inspect "$IMAGE" --format '{{.Id}}')" = \
   'sha256:cf72aa7b7926ff480f3b4fbec1b2e5c02e43044519d3679104dda1e7430dfdb2'
 ```
@@ -40,13 +41,12 @@ test "$(docker image inspect "$IMAGE" --format '{{.Id}}')" = \
 The version output must identify repository
 `https://github.com/ccozianu/devcapsule` and revision
 `91d50b1dd15468a706f5f965ae0dd6197ffd9ab7`. If the image inspection fails,
-the physical-host Docker context is not the daemon on which the local v026
-image was built; do not silently substitute the older registry image.
+do not substitute a mutable tag or another local image.
 
 ## 2. Select v026 For This Checkout
 
 Review and record the exact developer-owned decisions, resolve configuration,
-and confirm that `config list` reports the base as `authorized-local`:
+and confirm that `config list` reports the base as `authorized`:
 
 ```bash
 cd "$ROOT"

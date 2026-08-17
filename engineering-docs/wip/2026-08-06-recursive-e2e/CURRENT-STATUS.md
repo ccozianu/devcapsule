@@ -72,7 +72,7 @@ active continuation branch.
   network-disabled `ubuntu:24.04` container with no Python installed ran both
   the local candidate and exact-revision artifacts successfully. Docker tag
   `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` is published at registry
-  digest `sha256:f67baa907c622e68825475d2587ad3b39c85aa444d8bc81f0ae739fc52dd3d48`.
+  digest `sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a`.
   On 2026-08-17 the product owner selected GitHub Releases as the initial PEX
   download channel and required the official artifact to be built by the
   GitHub backend rather than uploaded from a contributor machine. The release
@@ -81,9 +81,14 @@ active continuation branch.
   because a job-scoped source-repository override contaminated a nested
   packaging test. The corrected replacement tag points to integrated commit
   `91d50b1`; backend run `32054479485` completed successfully and published the
-  verified PEX and checksum. A local base rebuilt from those exact released
-  bytes is complete; registry publication and host-broker cleanup evidence
-  remain open.
+  verified PEX and checksum. The base rebuilt from those exact released bytes
+  was published and independently pulled by digest; only host-broker cleanup
+  evidence remains open.
+- The proven v026 registry digest is now selected in the branch's committed
+  Linux platform lock as the dogfood and development recommendation. Current
+  guidance uses the immutable digest rather than the mutable discovery tag.
+  Existing checkout authorization becomes stale intentionally so each
+  developer must review and authorize the new exact formation input.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -111,12 +116,14 @@ active continuation branch.
 
 ## Current Priority And Status
 
-Current task: publish the v026 Docker/CLI pair, with the eager self-contained
-PEX as the first acceptance boundary.
+Current task: integrate the v026 dogfood/development recommendation into
+`main`, observe host-broker cleanup after the accepted GUI run, then return to
+the Stage 6 failure-handling slice.
 
 Status: implementation, integration, the first backend-built standalone PEX
-release, a matching local Docker rebuild, and functional host-browser GUI
-acceptance are complete. Publishing the rebuilt Docker image and observing
+release, matching Docker publication, immutable-digest pull and offline proof,
+functional host-browser GUI acceptance, and the mainline recommendation change
+are complete and validated on the branch. Mainline integration and observing
 broker cleanup after the accepted GUI run remain pending. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
@@ -217,15 +224,24 @@ Exact-revision evidence: release tag `v026` points to integrated source commit
 `devcapsule.pex` is 40,227,530 bytes with SHA-256
 `b7959c52f90b0e6c5043be787045968f94416e0b0faf75465696d47e53bab11c`;
 its downloaded checksum verifies and `version --json` reports that exact
-repository and revision. Local image
+repository and revision. Published image
 `mycodespaceai/devcapsule-base:ubuntu-24.04-v026`, image ID
 `sha256:cf72aa7b7926ff480f3b4fbec1b2e5c02e43044519d3679104dda1e7430dfdb2`,
-was rebuilt from those released bytes. Its labels and embedded PEX digest match
-the Release, and a network-disabled container passed embedded checksum,
-`version --json`, Python, Node.js `v22.23.1`, `javac 25.0.4`, and Maven
-`3.9.16` probes. The currently published Docker registry digest
-`sha256:f67baa907c622e68825475d2587ad3b39c85aa444d8bc81f0ae739fc52dd3d48`
-still represents the superseded `95212fc` PEX and is not the final pair.
+was rebuilt from those released bytes and published at immutable registry
+digest `sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a`.
+Pulling that digest resolved to the exact image ID above. Its labels and
+embedded PEX digest match the Release, and a network-disabled container passed
+embedded checksum, `version --json`, Python, Node.js `v22.23.1`, `javac
+25.0.4`, and Maven `3.9.16` probes.
+
+Recommendation-transition validation on 2026-08-17: an isolated developer
+configuration root authorized the new lock-selected digest, generated a fresh
+resolution, and reported `base-image` as `authorized`; no real checkout-owned
+authorization was changed. The full `nox -s build` gate passed with mypy clean
+over 99 files, 341 tests passing with 10 deselected, all six packaging
+integrations passing, and the local self-contained PEX plus CLI smoke checks
+passing. The dirty-tree gate correctly skipped only the revision-bearing public
+PEX.
 
 ## Last Task And Status
 
@@ -424,28 +440,33 @@ check.
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
   `fb278f145a583faba12df9c4a663b41cb60b0b508a769b050cfa4e088f13febc`.
-- Published base recommendation remains
-  `docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81`.
+- The branch now prepares the proven v026 base as the repository's dogfood and
+  development recommendation:
+  `docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a`.
 
 ## Next Resumable Task
 
-Finish the matched v026 publication and GUI boundary before returning to Stage
-6:
+Integrate the prepared v026 dogfood/development recommendation into `main`
+through the repository's normal pull-request path. After integration, each
+checkout must explicitly authorize the new immutable digest and regenerate its
+resolution; the committed lock change grants no host or image authorization by
+itself.
 
-1. publish the locally rebuilt
+Then finish the matched v026 GUI cleanup boundary before returning to Stage 6:
+
+1. done: publish the locally rebuilt
    `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` image;
-2. pull it by its new immutable registry digest and repeat the embedded PEX
-   checksum and offline version proof; and
+2. done: pull it by its new immutable registry digest and repeat the embedded
+   PEX checksum and offline version proof; and
 3. done: launch the matched pair from the physical host with `--host-browser`,
    click a PyCharm hyperlink, and verify that the default host browser receives
    it; and
 4. after IDE exit, verify that the broker socket and private runtime directory
    are gone.
 
-Do not declare the final v026 pair until the new registry digest, image labels,
-embedded bytes, Release checksum, and tag revision all agree. The local image
-already satisfies that equality; only registry and broker-cleanup evidence
-remain.
+The new registry digest, image labels, embedded bytes, Release checksum, and tag
+revision all agree. The v026 functional and publication exercise is complete;
+only the post-exit broker-cleanup observation remains.
 
 Then finish Stage 6 before beginning Stage 7:
 
