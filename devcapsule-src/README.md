@@ -112,7 +112,11 @@ python -m piptools compile --strip-extras --extra dev pyproject.toml --output-fi
 
 ## End-User Artifact
 
-Build a single-file PEX archive from a contributor environment:
+The published `devcapsule.pex` is a native Linux executable with an eagerly
+embedded, stripped CPython runtime. An end user runs it directly: no Conda,
+Python, pip, virtualenv, or first-run runtime download is required.
+
+Build the single-file PEX scie from a contributor environment:
 
 ```bash
 cd devcapsule-src
@@ -171,17 +175,30 @@ If the contributor environment is not activated, point the script at it:
 PYTHON=/path/to/venv/bin/python devcapsule-src/scripts/build-pex.sh
 ```
 
-Run the artifact with Python 3.12+:
+Run the artifact directly:
 
 ```bash
-python3.12 devcapsule-src/dist/devcapsule.pex --help
-python3.12 devcapsule-src/dist/devcapsule.pex pycharm run --help
-python3.12 devcapsule-src/dist/devcapsule.pex pycharm build --help
+devcapsule-src/dist/devcapsule.pex --help
+devcapsule-src/dist/devcapsule.pex pycharm run --help
+devcapsule-src/dist/devcapsule.pex pycharm build --help
 ```
 
-The archive contains the Python CLI, runtime dependencies, and the legacy
+The executable contains CPython 3.12.14 from the pinned 20260814 Python Build
+Standalone release, the Python CLI, runtime dependencies, and the legacy
 PyCharm build/runtime helper assets still needed by the current delegated
 `pycharm build`, `pycharm check-runtime`, and `bootstrap project` commands.
+It targets `linux-x86_64`, matching the supported v026 host and Docker base.
+
+Before publishing, prove the artifact on a network-disabled Ubuntu image that
+contains no Python interpreter:
+
+```bash
+python -m nox -s pex_clean_machine
+```
+
+Developers who deliberately manage Python tools can instead install the source
+checkout in one command with `uv tool install ./devcapsule-src`; this is an
+alternative development workflow, not an end-user prerequisite.
 
 The PEX build embeds `/tmp/devcapsule-pex-root` as its default runtime
 extraction/cache root so it does not depend on IDE project-state cache

@@ -60,6 +60,53 @@ active continuation branch.
   `devcapsule-src/`.
 - The recursive E2E now runs current-source readiness checks separately from
   immutable v024 PEX revision and checksum verification.
+- On 2026-08-17 the product owner made a matched v026 base/CLI pair the current
+  priority, with a directly executable, fully self-contained `devcapsule.pex`
+  first. End users must not need Conda, Python, pip, or a virtualenv merely to
+  run DevCapsule. This instruction was supplied directly because the earlier
+  `project-management` delivery containing two v026 items never reached this
+  workstream's intake on `main`.
+- The self-contained implementation and local pair proof are complete. The PEX
+  builder now emits a 39 MiB eager PEX scie containing stripped CPython 3.12.14
+  from Python Build Standalone release 20260814. A network-disabled
+  `ubuntu:24.04` container with no Python installed ran it successfully. Local
+  candidate image `mycodespaceai/devcapsule-base:ubuntu-24.04-v026-candidate`,
+  image ID `sha256:3115bf80dcbceb758c95e8878f0567b7528561abbec596ee3f2efb7d526a45a3`,
+  embeds the exact scie digest recorded in its image label and runs it with
+  networking disabled. Exact-revision publication remains.
+- An audit request was pushed on `recursive-e2e/outbox` at `ebad342`, asking
+  `project-management` to inventory promised work for this workstream and
+  determine from its conversation/session evidence whether delivery failed
+  because the communication protocol was incomplete, because the later outbox
+  rule was not followed, or for another reason.
+
+## Current Priority And Status
+
+Current task: publish the v026 Docker/CLI pair, with the eager self-contained
+PEX as the first acceptance boundary.
+
+Status: implementation and local candidate proof complete; exact-revision
+publication pending. Changed:
+
+- `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
+  x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
+  embedded interpreter is stripped and makes no first-run download.
+- Nox smoke checks execute the artifact directly instead of passing it to a
+  host interpreter.
+- `pex_clean_machine` builds the artifact and proves it in a network-disabled
+  Ubuntu container after checking that no `python`, `python3`, or `python3.12`
+  exists there.
+- Packaging integration checks assert the native ELF boundary, retained ZIP
+  metadata/provenance, eagerly embedded interpreter, and direct execution.
+- User documentation now presents `devcapsule.pex` as the end-user path and
+  makes Python-tool installation an optional developer alternative.
+
+Validation on 2026-08-17: full `nox -s build` succeeded; mypy reported no
+issues in 96 files; 318 tests passed with 9 deselected; five packaging
+integrations passed; the separate clean-machine Nox proof passed. Candidate
+PEX SHA-256 `b7e2fd81818f141bd8dad99c9e41eeb6db58a6f31cf1b287f75a901f0e352fdb`
+matches both the candidate image label and the bytes at
+`/opt/devcapsule/bin/devcapsule.pex`.
 
 ## Last Task And Status
 
@@ -263,7 +310,16 @@ check.
 
 ## Next Resumable Task
 
-Finish Stage 6 before beginning Stage 7:
+Finish the exact-revision v026 pair before returning to Stage 6:
+
+1. commit and push the self-contained PEX implementation;
+2. build `dist/devcapsule.pex` from that exact published revision and rerun the
+   networkless/no-Python proof;
+3. build the final v026 base from that exact artifact, verify that its label and
+   embedded bytes match the PEX SHA-256, and publish the pair; and
+4. record the immutable artifact and image identities here.
+
+Then finish Stage 6 before beginning Stage 7:
 
 1. done: the inspector compares the complete expected Docker plan, mounts,
    identity, security settings, and runtime-plan digest;

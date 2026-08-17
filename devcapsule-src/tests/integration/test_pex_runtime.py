@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import zipfile
 
 import pytest
 
@@ -149,6 +150,27 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
     )
 
     assert completed.returncode == 0, completed.stderr
+    assert output.read_bytes().startswith(b"\x7fELF")
+    assert zipfile.is_zipfile(output)
+
+    inspected = subprocess.run(
+        [str(output)],
+        check=False,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "SCIE": "inspect"},
+    )
+    assert inspected.returncode == 0, inspected.stderr
+    lift = json.loads(inspected.stdout)["scie"]["lift"]
+    embedded = {item.get("key"): item for item in lift["files"]}
+    assert embedded["python-distribution"]["name"].startswith(
+        "cpython-3.12.14+20260814-"
+    )
+    assert embedded["python-distribution"]["name"].endswith(
+        "-install_only_stripped.tar.gz"
+    )
+    assert embedded["pex"]["executable"] is True
+
     version = subprocess.run(
         [str(output), "version", "--json"],
         check=True,
