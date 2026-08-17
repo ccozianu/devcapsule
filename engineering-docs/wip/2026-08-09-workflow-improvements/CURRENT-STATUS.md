@@ -66,7 +66,7 @@ itself. It is not an editing checkout; see selection rule 6.
   purpose-and-principles preamble, the removal of worktrees from the protocol,
   the working model of checkouts and branches, and workstream states with
   pausing and resuming.
-- Five commits on this branch are not yet on `main`: the two corrected Git
+- Several commits on this branch are not yet on `main`: the two corrected Git
   claims, the disposition log, the staleness closure's handoff record, the
   pause, and publishing before integration. They are this workstream's entire
   unmerged deliverable and need the human to open and merge the pull request.
@@ -659,7 +659,7 @@ Three things could make this workstream resumable, and all three are outside it:
 Before any of that, two things must land, in this order. The fourth outbox send,
 carrying this workstream's disposition log and handoff to `main` plus the
 registry row returning to `active` — the target before the reference, per the
-rule written today. Then `workflow-improvements/v1`, five commits, rebased onto
+rule written today. Then `workflow-improvements/v1`, rebased onto
 current `main`, pushed, and unmerged; they are the only place *The Disposition
 Log*, *Publishing Before Integration*, and the two Git corrections exist. Both
 need GitHub credentials this environment does not have.
