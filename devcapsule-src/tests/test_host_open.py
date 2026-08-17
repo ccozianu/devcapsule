@@ -14,6 +14,7 @@ import pytest
 from devcapsule import cli
 from devcapsule.host_open import (
     HOST_OPEN_SOCKET_ENV,
+    MAX_URL_BYTES,
     HostOpenBroker,
     HostOpenError,
     host_open_bridge,
@@ -62,6 +63,11 @@ def test_url_validation_rejects_everything_outside_absolute_http_https(url: str)
         validate_host_url(url)
 
 
+def test_url_validation_rejects_oversized_input() -> None:
+    with pytest.raises(HostOpenError, match="size limit"):
+        validate_host_url("https://example.test/" + "a" * MAX_URL_BYTES)
+
+
 def test_broker_rejects_malformed_protocol_without_invoking_opener(tmp_path: Path) -> None:
     path = tmp_path / "host-open.sock"
     run = Mock()
@@ -96,6 +102,33 @@ def test_broker_applies_a_bounded_request_rate(tmp_path: Path) -> None:
             open_host_url("https://example.test/second", socket_path=path)
 
     assert run.call_count == 1
+
+
+def test_broker_rejects_a_different_peer_uid(tmp_path: Path) -> None:
+    path = tmp_path / "host-open.sock"
+    run = Mock()
+
+    with (
+        patch("devcapsule.host_open._peer_uid", return_value=os.getuid() + 1),
+        patch("devcapsule.host_open.subprocess.run", run),
+        HostOpenBroker(path),
+        pytest.raises(HostOpenError, match="does not own"),
+    ):
+        open_host_url("https://example.test", socket_path=path)
+
+    run.assert_not_called()
+
+
+def test_broker_reports_host_opener_timeout(tmp_path: Path) -> None:
+    path = tmp_path / "host-open.sock"
+    run = Mock(side_effect=subprocess.TimeoutExpired(["xdg-open"], 0.1))
+
+    with (
+        patch("devcapsule.host_open.subprocess.run", run),
+        HostOpenBroker(path, opener_timeout=0.1),
+        pytest.raises(HostOpenError, match="timed out"),
+    ):
+        open_host_url("https://example.test", socket_path=path)
 
 
 def test_client_reports_missing_and_failed_brokers_without_exposing_url(tmp_path: Path) -> None:

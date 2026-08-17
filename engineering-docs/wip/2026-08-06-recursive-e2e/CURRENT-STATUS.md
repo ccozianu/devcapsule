@@ -78,6 +78,15 @@ active continuation branch.
   GitHub backend rather than uploaded from a contributor machine. The release
   automation is implemented on the workstream branch; integration, the first
   release run, and download-based publication evidence remain open.
+- The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
+  `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
+  physical host; the capsule's `xdg-open` dispatches through the matching PEX,
+  and recursive launchers propagate only the inherited fixed socket. The
+  bridge accepts absolute HTTP(S) URLs, never invokes a shell, does not expose
+  the desktop session bus, is disabled by default, and is represented in the
+  runtime and expected plans. Automated, packaging, read-only Docker-mount,
+  and local recursive-dogfood validation pass. The final rebuilt-image GUI
+  click and cleanup observation remain pending.
 - An audit request was pushed on `recursive-e2e/outbox` at `ebad342`, asking
   `project-management` to inventory promised work for this workstream and
   determine from its conversation/session evidence whether delivery failed
@@ -114,6 +123,13 @@ the first backend-built standalone PEX release remain pending. Changed:
   replacing published assets silently.
 - `DEVCAPSULE_PEX_UNDER_TEST` lets packaging and clean-machine tests select the
   exact backend-built or downloaded artifact without rebuilding it locally.
+- `host-open` is a hidden PEX client for a launcher-owned physical-host broker.
+  `project run`, `run-image`, and `pycharm run` expose the explicit
+  `--host-browser` capability; `--no-host-browser` can override it. The broker
+  uses same-UID peer credentials, a private mode-0600 Unix socket, an
+  HTTP(S)-only JSON protocol, bounded frames and timeouts, rate limiting, and
+  argument-vector host `xdg-open` execution. Recursive launches can translate
+  and propagate the inherited read-only socket but cannot manufacture one.
 
 Validation on 2026-08-17: full `nox -s build` succeeded; mypy reported no
 issues in 96 files; 319 tests passed with 9 deselected; five packaging
@@ -128,6 +144,18 @@ passed the network-disabled clean-machine proof. Candidate
 PEX SHA-256 `b7e2fd81818f141bd8dad99c9e41eeb6db58a6f31cf1b287f75a901f0e352fdb`
 matches both the candidate image label and the bytes at
 `/opt/devcapsule/bin/devcapsule.pex`.
+
+Host-browser validation on 2026-08-17: the full `nox -s build` gate passed with
+340 tests and 10 deselected; mypy reported no issues over 99 files; six
+packaging integrations passed. The built eager PEX crossed the real
+`xdg-open` path and delivered a metacharacter-heavy URL unchanged as one host
+opener argument. A separate `ubuntu:24.04` Docker proof used networking
+disabled, the mapped unprivileged UID/GID, the PEX mounted read-only, and the
+broker socket mounted read-only; the exact URL arrived successfully. Local
+recursive dogfood run `24b3fd2dfb2d58f010b7d1652967c007` reported ready and
+passed both selected E2Es in 28.81 seconds, with cleanup complete and no Docker
+mutation. The outer v025-derived development capsule has no inherited broker,
+so a real PyCharm click awaits the rebuilt matching pair.
 
 Exact-revision evidence: source commit
 `95212fc11c1b9d8724e7176ff2d236393f18319a` is published on
@@ -350,6 +378,14 @@ Finish the standalone-CLI publication boundary before returning to Stage 6:
    re-prove `devcapsule.pex` plus its checksum; and
 4. record the public Release URL, tag revision, PEX SHA-256, and successful
    backend run here.
+
+The integrated/tagged revision must include host-browser commit `6d8f53c` (or
+its merge result). Rebuild and republish the v026 Docker image from that
+backend-built Release PEX, then launch the matched pair from the physical host
+with `--host-browser`. Click a PyCharm hyperlink and verify that the default
+host browser receives it; after IDE exit, verify that the broker socket and its
+private runtime directory are gone. This is the remaining manual acceptance
+for the URL fix.
 
 The currently published Docker v026 digest is an exact pair with the PEX built
 from `95212fc`. If the integrated release tag names a different commit, rebuild

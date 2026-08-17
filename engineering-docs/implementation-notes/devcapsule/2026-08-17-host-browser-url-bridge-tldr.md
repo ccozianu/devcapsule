@@ -2,7 +2,7 @@
 
 Date: 2026-08-17
 
-Status: approved; implementation and validation in progress
+Status: implemented with automated and container-boundary validation; rebuilt-image GUI proof pending
 
 ## Problem
 
@@ -161,3 +161,39 @@ native-X11 CLI launches require the run-once `--host-browser` option. A desktop
 launcher may present that authorization and pass the option, but an ordinary
 capsule does not receive the bridge silently. This can later become a durable
 per-developer choice without changing the socket architecture.
+
+## Implementation Result
+
+Implemented on workstream commit `6d8f53c`:
+
+- the PEX exposes a hidden `host-open URL` client command;
+- native-X11 launchers expose explicit `--host-browser/--no-host-browser`
+  options, disabled by default under the existing host-boundary policy;
+- a physical-host foreground launch owns a mode-0600 broker socket inside a
+  mode-0700 private runtime directory and removes it on exit;
+- the launcher mounts that socket read-only, sets `BROWSER` and
+  `DEVCAPSULE_HOST_OPEN_SOCKET`, names `browser-open` in the additive runtime
+  plan, and discloses the resulting authority;
+- nested launchers accept only the fixed inherited socket path and propagate
+  its translated physical-host source; they never create a container-local
+  substitute; and
+- the complete expected-plan and independent successor probe cover the mount,
+  environment, and live socket.
+
+Automated validation covers exact URL preservation without shell parsing,
+HTTP(S)-only validation, malformed and oversized protocol input, peer UID,
+timeouts and opener failures, rate limiting, private permissions and cleanup,
+opt-in/disable behavior, runtime-plan serialization, and recursive plan
+comparison. The built self-contained PEX passed the real `xdg-open` path. A
+separate network-disabled Ubuntu container ran that PEX as the mapped user and
+successfully crossed a read-only socket bind to the broker, preserving the
+exact URL as one host-opener argument.
+
+The full build gate passed with 340 tests and 10 deselected, mypy reported no
+issues over 99 files, and six packaging integrations passed. Local recursive
+dogfood run `24b3fd2dfb2d58f010b7d1652967c007` reported ready and its two
+selected E2Es passed. The current development capsule predates the bridge and
+therefore cannot supply an inherited broker for a live GUI click. Final manual
+acceptance remains: rebuild the matched PEX/image pair, launch it from the
+physical host with `--host-browser`, click a PyCharm hyperlink, and verify the
+host default browser plus broker cleanup on exit.
