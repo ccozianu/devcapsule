@@ -71,9 +71,19 @@ working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 
 In `multiple-streams` mode, also read the selected workstream's `intake/`
 directory beside its handoff. It holds work other workstreams have delivered
-and this workstream has not yet accepted, deferred, or rejected. A handoff read
-without its intake is an incomplete picture of what the workstream owns. Follow
-`WORKFLOW.md` for how items are written, delivered, and dispositioned.
+and this workstream has not yet dispositioned. A handoff read without its
+intake is an incomplete picture of what the workstream owns.
+
+Every item ends one of two ways. Either the workstream **acknowledges** it,
+making it a requirement or task in its own handoff, or it **forwards** it to
+`project-management` with a reason. Deferral is not a third outcome; an item
+accepted for later is acknowledged with its position recorded. Items sent by
+`project-management` cannot be forwarded, because that workstream is
+authoritative for what is worked on, by whom, and in what order; raise genuine
+disagreement with the human instead. Either way, the recipient deletes the item
+from `main` through its outbox, and no workstream may be concluded while items
+remain in its intake. Follow `WORKFLOW.md` for how items are written,
+delivered, and dispositioned.
 
 After reading the required documents, acknowledge to the user that you
 understand what the project is about, including the requirements and

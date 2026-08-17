@@ -128,30 +128,88 @@ are visible from anywhere, but the files an agent must edit and delete to
 disposition them exist only on a synchronized branch. *Staying Current With
 `main`* states that directly.
 
+### Third Task: The Intake Disposition Protocol
+
+The product owner specified on 2026-08-17 how intake items must be resolved.
+`WORKFLOW.md`'s *Workstream Intake* now defines two outcomes and a completion
+gate; `AGENTS.md` and this workstream's `intake/README.md` follow.
+
+Changed:
+
+- Disposition has exactly two outcomes, **acknowledge** or **forward**.
+  Acknowledging means converting the item into a requirement or task the
+  workstream will actually do — recording an opinion about it does not count.
+  Forwarding sends it to `project-management` with the original text and a
+  reason, and does not name a new owner, because routing is that workstream's
+  decision.
+- Deferral is retired as an outcome. An item accepted for later is
+  acknowledged with its position recorded. This removes the state in which an
+  item is neither owned nor refused, which is where items went quiet before.
+- Deleting the item from `main` through the outbox is the recipient's
+  obligation, and the working branch picks the deletion up on synchronization
+  rather than repeating it.
+- **Intake gates completion.** No workstream concludes, successfully or
+  unsuccessfully, with items left in its intake on `main`. The successful
+  sequence checks it first, before anything expensive; the unsuccessful
+  sequence requires forwarding what will not be done, so a failing workstream
+  cannot take other workstreams' work down with it.
+- Items from `project-management` are not forwardable, since it is
+  authoritative for what is worked on, by whom, and in what order.
+
+Three points were decided rather than transcribed, and are open to reversal.
+
+**The exemption needed a mirror.** If `project-management` cannot be refused
+and also cannot forward — it has nowhere to send — then an item reaching it
+must end there. Its dispositions are therefore terminal: assign onward, make it
+the reason to begin a workstream, or drop it with recorded reasoning. Without
+that, a refused item circulates indefinitely.
+
+**Disagreement needed a path.** A recipient that thinks a `project-management`
+item is impossible or misrouted raises it with the human. It does not return it
+through intake, and the item stands until the routing decision changes. The
+alternative — no path at all — would make a wrong routing decision unfixable.
+
+**Deletion had to be prompt.** The queue is read from `main`, so absence from
+`main` is the only acknowledgement a sender ever gets. Deleting only on a
+working branch would leave `main` advertising handled work for as long as that
+branch takes to merge.
+
+This narrows, but does not close, the still-queued *intake has no
+acknowledgement* item. Refusals now reach `project-management`, and prompt
+deletion makes absence meaningful. A sender still learns nothing when its item
+is accepted, and nothing surfaces an item that has sat untouched for a long
+time.
+
 ## Next Resumable Task
 
-Disposition the four remaining intake items: accept, defer, or reject each,
-record the outcome and reasoning under *Dispositions*, then remove the file.
-Two clusters remain — communication-protocol completeness (intake
-acknowledgement, pausing and conversational continuity) and concurrency (the
-worktree procedure, external-resource ownership and reaping).
+Disposition the four remaining intake items under the protocol adopted on
+2026-08-17: acknowledge each as this workstream's own work, or forward it to
+`project-management` with a reason. Two clusters remain — communication-protocol
+completeness (intake acknowledgement, pausing and conversational continuity)
+and concurrency (the worktree procedure, external-resource ownership and
+reaping).
 
 The stale facts identified on 2026-08-16 are all corrected.
 
 Done means:
 
-- every item present carries a recorded disposition and reasoning;
-- accepted items have an order, since several are one design rather than
-  several;
-- deferred and rejected items say why, so they are not silently reopened; and
-- the workstream's bounded scope is still credible after the accepted set is
-  known.
+- every item is acknowledged or forwarded, with reasoning recorded here;
+- acknowledged items are requirements or tasks with a position in this
+  workstream's order, not merely opinions recorded about them;
+- forwarded items reached `project-management`'s intake through the outbox,
+  carrying the original text and the reason;
+- every dispositioned item is deleted from `main` through the outbox; and
+- the workstream's bounded scope is still credible afterwards.
 
-Two decisions are worth making before, not during. Whether to defer the
-concurrency cluster to recursive-dogfood Stage 7, which is where its code would
-live and which keeps this workstream bounded. And whether the acknowledgement
-item can be designed at all before the product owner supplies the ideas they
-deliberately reserved for it — that item says to ask first.
+The new protocol sharpens a decision that was already pending. The concurrency
+cluster was described as a candidate for deferral to recursive-dogfood Stage 7,
+where its code would live. Deferral is no longer an outcome: either this
+workstream owns that cluster, or it forwards it to `project-management` and
+lets the routing authority place it. The second is almost certainly right for
+external-resource reaping, which needs code this workstream will not write.
+
+The acknowledgement item still says to ask the product owner first; they
+reserved ideas for it deliberately.
 
 ## Dispositions
 
