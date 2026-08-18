@@ -610,8 +610,9 @@ Done means:
 
 ## Stage 6: Launch And Inspect A Detached Successor
 
-Status: normal launch and inspection proven; three automated failure-safety
-checks remain
+Status: normal launch and inspection proven; external-removal E2E complete,
+support-file lifetime deferred for separate discussion, cleanup ownership guard
+pending
 
 ### Outcome And Boundary
 
@@ -620,13 +621,14 @@ second capsule without lying about success or endangering anything else when
 the launch goes wrong?** The successful path is already proven. The remaining
 work is automated coverage for three user-visible promises:
 
-1. If the new capsule starts and immediately dies, report a failed launch with
-   useful, sanitized diagnostics instead of claiming success.
-2. Keep the small set of launcher-created support files for as long as the new
-   capsule needs them; do not pull them out from under a running capsule or
-   leak them indefinitely afterward.
-3. If DevCapsule cannot prove that a container or support directory belongs to
-   this exact run, refuse to delete it and explain why.
+1. **Proven by real-Docker E2E:** if a launched capsule is externally removed,
+   independent inspection reports that the exact successor cannot be inspected
+   instead of claiming stale success.
+2. **Deferred for separate discussion:** the support-file lifetime requirement
+   is not sufficiently concrete for implementation or human acceptance yet.
+3. **Pending:** if DevCapsule cannot prove that a container belongs to this
+   exact run, the PEX's recursive-launch cleanup path must refuse to issue
+   `docker rm` and explain why.
 
 These are agent-implemented regression tests, not another manual GUI exercise
 for the product owner. The detailed plan below defines how the implementation
