@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: active
+State: paused 2026-08-18 by product-owner decision after Stage 6 completion
 
 Integration target: `main`
 
@@ -31,15 +31,24 @@ active continuation branch.
 - On 2026-08-12 the product owner explicitly closed Stage 5. The unexecuted
   authorization-negative Docker/network/sudo plan proof was transferred to the
   V1 backlog and does not reopen Stage 5.
-- The Stage 6 live launch slice is successful: the production planner launched
-  a detached v025 successor and the independent inspector passed. Stage 6
-  hardening and exhaustive expected-plan/failure-path coverage remain open
-  before the stage is declared complete.
+- The Stage 6 live launch slice succeeded: the production planner launched a
+  detached v025 successor and the independent inspector passed. The later
+  hardening and scoped failure-path work described below completed the stage.
 - The Stage 6 inspector is now hardened and proven live. It compares a launched
   successor against a complete machine-readable expected plan instead of four
   spot-checked fields, and the retained plan is bound to the run manifest by
-  digest so a later independent inspection cannot be relaxed silently. Only the
-  Stage 6 failure-path coverage remains open.
+  digest so a later independent inspection cannot be relaxed silently. The
+  external-removal behavior now has a real-Docker E2E: it starts the v026
+  embedded PEX runtime, removes the exact test-owned capsule with `docker rm
+  --force`, and proves independent inspection reports failure rather than
+  stale success. Recovery of support resources after launcher loss is now an
+  explicit V2 task and is not a Stage 6 or V1 closure condition.
+  The product owner replaced the remaining cleanup-proof proposal with a
+  simpler GUID-derived naming rule: cleanup accepts the random run ID and
+  derives the exact Docker name rather than accepting an arbitrary target or
+  re-proving labels. That rule is implemented and tested. The launcher also
+  injects the same value as `DEVCAPSULE_RUN_ID` so the successor can identify
+  its own run. Stage 6 is complete.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -82,8 +91,8 @@ active continuation branch.
   packaging test. The corrected replacement tag points to integrated commit
   `91d50b1`; backend run `32054479485` completed successfully and published the
   verified PEX and checksum. The base rebuilt from those exact released bytes
-  was published and independently pulled by digest; only host-broker cleanup
-  evidence remains open.
+  was published and independently pulled by digest. The product owner also
+  verified post-exit host-broker cleanup, completing the v026 acceptance.
 - The proven v026 registry digest is now selected in the branch's committed
   Linux platform lock as the dogfood and development recommendation. Current
   guidance uses the immutable digest rather than the mutable discovery tag.
@@ -98,8 +107,9 @@ active continuation branch.
   runtime and expected plans. Automated, packaging, read-only Docker-mount,
   and local recursive-dogfood validation pass. On 2026-08-17 the product owner
   confirmed that a hyperlink opened from the v026-derived PyCharm shell reached
-  the physical host's default browser. Cleanup observation after IDE exit
-  remains pending.
+  the physical host's default browser. On 2026-08-18 the product owner also
+  confirmed that the v026 PEX removed its broker socket and associated runtime
+  resources after exit.
 - The current checkout's ignored `devcapsule-src/.venv` was found to predate
   the Python distribution rename: its activation scripts still prepended the
   removed `devcapsule/.venv/bin`, so `python` fell through to
@@ -116,15 +126,16 @@ active continuation branch.
 
 ## Current Priority And Status
 
-Current task: integrate the v026 dogfood/development recommendation into
-`main`, observe host-broker cleanup after the accepted GUI run, then return to
-the Stage 6 failure-handling slice.
+Current task: begin Stage 7 with the random run ID as the common name embedded
+in every exclusive run resource. Recovery after abnormal launcher loss is
+filed for V2 and is no longer an open Stage 6 discussion.
 
 Status: implementation, integration, the first backend-built standalone PEX
 release, matching Docker publication, immutable-digest pull and offline proof,
-functional host-browser GUI acceptance, and the mainline recommendation change
-are complete and validated on the branch. Mainline integration and observing
-broker cleanup after the accepted GUI run remain pending. Changed:
+functional host-browser GUI acceptance including cleanup, and the v026
+mainline recommendation are complete. `origin/main` contains the change at
+merge commit `a72d0a8`. The external-removal E2E and GUID-derived failed-launch
+cleanup are also complete. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
@@ -243,12 +254,42 @@ integrations passing, and the local self-contained PEX plus CLI smoke checks
 passing. The dirty-tree gate correctly skipped only the revision-bearing public
 PEX.
 
+Host-browser cleanup acceptance on 2026-08-18: after the accepted v026 IDE
+exited, the product owner verified that the PEX removed the broker socket and
+the associated private runtime resources. This closes the final v026 GUI
+cleanup boundary; a socket belonging to a later active IDE session is expected
+to exist until that session exits.
+
+External-removal E2E validation on 2026-08-18: a unique test-owned container
+started the lock-recommended v026 image through its real embedded PEX runtime.
+The test removed that exact container by its GUID-derived name with `docker rm
+--force`; independent successor inspection then failed with `cannot inspect the
+exact successor container` and retained the vanished ID as diagnostic evidence.
+The focused real-Docker E2E passed. Failed-launch cleanup now accepts only the
+run ID, derives `devcapsule-e2e-RUN_ID-successor`, and issues removal for that
+name rather than an arbitrary or inspection-selected target. The full `nox -s
+build` gate also passed with mypy clean over 100 files, 343
+fast tests passing with 11 deselected, all six packaging integrations passing,
+and the local self-contained PEX plus CLI smoke checks passing.
+
+Run-ID self-reflection validation on 2026-08-18: the recursive successor plan
+now injects `DEVCAPSULE_RUN_ID` with the exact random run ID used by the
+container name, workspace, and cleanup API. Independent inspection requires
+the in-container probe to return that exact value. The focused plan and
+inspection suite passed with 65 tests, and the real-Docker E2E passed after
+reading the value inside the running v026 container with `printenv`. The full
+`nox -s build` gate passed with mypy clean over 100 files, 346 fast tests
+passing with 11 deselected, all six packaging integrations passing, and the
+local self-contained PEX plus CLI smoke checks passing.
+
 ## Last Task And Status
 
-Last task: harden the Stage 6 inspector so it compares the complete expected
-Docker plan, mounts, identity, security settings, and runtime-plan digest.
+Last task: expose the launcher's random run ID inside the running successor as
+`DEVCAPSULE_RUN_ID` and independently prove exact agreement.
 
-Status: complete and proven live. On 2026-08-14 run
+Status: complete and proven through a real-Docker `printenv` probe, exact-plan
+comparison, and an in-container readiness probe that rejects a different run
+ID. The preceding inspector work remains proven live: on 2026-08-14 run
 `482c34f24fc5c438da7b24ff172a619b` launched a successor through the
 clean-clone PEX and passed the hardened inspection twice. A new
 `devcapsule/recursive_successor_plan.py` derives an
@@ -440,58 +481,41 @@ check.
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
   `fb278f145a583faba12df9c4a663b41cb60b0b508a769b050cfa4e088f13febc`.
-- The branch now prepares the proven v026 base as the repository's dogfood and
+- `main` now selects the proven v026 base as the repository's dogfood and
   development recommendation:
   `docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a`.
 
 ## Next Resumable Task
 
-Integrate the prepared v026 dogfood/development recommendation into `main`
-through the repository's normal pull-request path. After integration, each
-checkout must explicitly authorize the new immutable digest and regenerate its
-resolution; the committed lock change grants no host or image authorization by
-itself.
+Stage 6 is complete:
 
-Then finish the matched v026 GUI cleanup boundary before returning to Stage 6:
+1. **Done — externally removed capsule.** A real-Docker E2E starts the v026 PEX
+   runtime, removes its exact test-owned container externally by its
+   GUID-derived name, and proves independent inspection reports failure rather
+   than stale success.
+2. **Filed for V2 — launcher-loss recovery.** The product owner accepted that
+   V1 allocates few, low-impact transient resources and does not justify a
+   crash-recovery mechanism. A V2 task now specifies idempotent GUID-based
+   reconciliation after the original launcher misses its cleanup path. This is
+   not a Stage 6 or V1 closure condition.
+3. **Done — GUID-derived cleanup.** The recursive launcher generates a random
+   128-bit run ID. Its container is named
+   `devcapsule-e2e-RUN_ID-successor`; its workspace and staging path contain the
+   same ID. Failed-launch cleanup accepts only that run ID, derives the Docker
+   name, and removes by name. The running successor receives the value as
+   `DEVCAPSULE_RUN_ID` for self-reflection. Labels remain useful evidence but
+   are not a second deletion proof.
 
-1. done: publish the locally rebuilt
-   `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` image;
-2. done: pull it by its new immutable registry digest and repeat the embedded
-   PEX checksum and offline version proof; and
-3. done: launch the matched pair from the physical host with `--host-browser`,
-   click a PyCharm hyperlink, and verify that the default host browser receives
-   it; and
-4. after IDE exit, verify that the broker socket and private runtime directory
-   are gone.
-
-The new registry digest, image labels, embedded bytes, Release checksum, and tag
-revision all agree. The v026 functional and publication exercise is complete;
-only the post-exit broker-cleanup observation remains.
-
-Then finish Stage 6 before beginning Stage 7:
-
-1. done: the inspector compares the complete expected Docker plan, mounts,
-   identity, security settings, and runtime-plan digest;
-2. partially done: malformed and ambiguous Docker output, ownership/label
-   mismatch, and host-source redaction now have public-interface tests. Early
-   successor exit, staging lifetime, and cleanup refusal remain uncovered and
-   belong to the Stage 6 failure-handling slice;
-3. done: a bounded second-inspection stability result is recorded for run
-   `482c34f24fc5c438da7b24ff172a619b`; and
-4. keep the exact containers and run-owned staging until Stage 7 proves
-   persistence and deterministic cleanup.
-
-Only item 2's failure-path coverage now blocks declaring Stage 6 complete:
-early successor exit, staging lifetime, and cleanup refusal still need
-public-interface tests. That is the Stage 6 failure-handling slice and it
-touches the launch path rather than the inspector.
+No further product-owner GUI validation is required for Stage 6. The GUID is a
+collision-free ownership key, not a secret from processes already authorized
+to enumerate the host Docker daemon.
 
 Stage 7 must also choose its persistence subject explicitly. Two successors are
-now retained: the current running `482c34f2…` successor, which carries an
-`expected-plan.json` and is the only one the hardened inspector can re-verify,
-and the older exited `b2093d85…` successor, which predates the retained plan
-and can no longer be inspected. Prefer the newer run as the Stage 7 subject and
-keep the older one as historical evidence only.
+retained and both are now exited. The newer `482c34f2…` run carries an
+`expected-plan.json` and is the only one the hardened inspector can re-verify;
+the older `b2093d85…` run predates the retained plan. Prefer the newer run as
+the Stage 7 subject where possible, launch a fresh successor if the persistence
+proof requires one, and keep the older run as historical evidence only.
 
 ## Acknowledged Work
 
@@ -505,6 +529,22 @@ keep the older one as historical evidence only.
    enumeration by owner; and safe removal boundaries. Closing the detached
    successor cleanup bug is a consequence of this task, not a separate
    implementation.
+
+## Open Threads
+
+- Resume with Stage 7 persistence and deterministic cleanup. Use the random run
+  ID as the common name in every exclusive run resource.
+- Prefer the retained `482c34f2…` run when its evidence is sufficient, but use
+  a fresh launch for behavior that requires a running successor or the new
+  `DEVCAPSULE_RUN_ID` environment contract.
+- Do not remove either retained successor or its run workspace before Stage 7
+  has classified the evidence and exercised exact GUID-derived cleanup.
+- Recovery after abnormal loss of the original launcher is deliberately not
+  preserved as V1 work. It is filed for V2 in
+  `2026-08-18-v2-launch-resource-reconciliation.md` and does not reopen Stage
+  6.
+- The branch contains completed, locally validated Stage 6 follow-up commits
+  that are not yet on `main`; integration remains outstanding.
 
 ## External State And Risks
 
@@ -571,4 +611,5 @@ remain permanent engineering records:
 - [Milestone plan](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
 - [Stage 2 execution checklist](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)
 - [V1 test backlog](../../implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md)
+- [V2 launcher-loss resource reconciliation](../../implementation-notes/devcapsule/2026-08-18-v2-launch-resource-reconciliation.md)
 - [V1 gap plan](../../design-notes/devcapsule/2026-08-06-v1-gap-review.md)
