@@ -33,10 +33,10 @@ valid retirement or workflow-mode migration procedure.
 
 ## Branch Association
 
-The initial branch is `project-management/coordination`, forked from the
-registration commit on `main`. The existing recursive E2E checkout remains
-selected on `recursive-e2e/stage-4`; project-management changes require an
-explicit switch to this branch or a separate clean worktree.
+The branch is `project-management/coordination`. On 2026-08-18 the product
+owner explicitly switched this checkout from `recursive-e2e/stage-4` to this
+workstream after pausing recursive E2E. This branch was then rebased onto
+current remote `main` at `a72d0a8` before project-management work resumed.
 
 ## Current State
 
@@ -57,33 +57,66 @@ explicit switch to this branch or a separate clean worktree.
   and non-exclusive file editing with a handoff carve-out. This was a
   deliberate bootstrap exception, because `workflow-improvements` could not
   start cleanly without them.
-- The current execution focus is `sample-projects`. `recursive-e2e` is paused
-  by product-owner decision with Stage 6 substantially complete.
-- `workflow-improvements` is open and its intake is now ready: four concrete
-  items were handed to it by the checkpoint.
+- The second portfolio checkpoint is recorded for 2026-08-16. It sets release
+  sequencing: v026 carries the self-contained entry point and the URL-open fix
+  and is delegated to `recursive-e2e`; the contained display moves to v027; and
+  bug vocabulary goes to `workflow-improvements`.
+- v026 is complete and recommended on `main`. `recursive-e2e` is paused by the
+  product owner as of 2026-08-18 after completing Stage 6; Stage 7 is its next
+  task when resumed. Its widened registered goal remains accurate because it
+  delivered product work as well as recursive-E2E evidence.
+- `workflow-improvements` is paused as of 2026-08-17 with its intake
+  dispositioned. `project-management` itself has seven pending intake items
+  from that workstream; they have been read but not yet dispositioned.
+- This workstream's outbox branch was created and first used on 2026-08-18,
+  carrying one item to `workflow-improvements`: a request to state what kind of
+  thing the outbox is. The product owner, who proposed the outbox, reports that
+  its intent — a Git convention for reaching `intake/` on `main` without the
+  sender's work-in-progress riding along, not an entity in the information
+  model — is not conveyed by the current text. Pushed as
+  `project-management/outbox` at `bd195c0`; awaiting a pull request, which this
+  environment cannot open.
+- Two intake items written on 2026-08-16 sat undelivered until 2026-08-18: the
+  bug vocabulary for `workflow-improvements` and the v026 deliverables for
+  `recursive-e2e`. Both existed only in `944a0a6` on this workstream's branch.
+  The 2026-08-16 checkpoint states they were delivered; that was true of the
+  branch and false of `main`. Both now ride the outbox at `dd1e892`, awaiting
+  the same pull request. That `workflow-improvements` paused reporting its
+  intake dispositioned is not an obstacle to delivering the first: the
+  authoritative invariant is evaluated against `main`, not against a
+  workstream's account of itself, and a recipient that has stopped is exactly
+  the case the durable queue and *Intake Gates Completion* exist to cover.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
 
 ## Last Task And Status
 
-Last task: assess V1 readiness at the product owner's request, separating
-shortcomings that no workstream is on a path to solve from documented items at
-risk of being deferred out of the release.
+Last task: record the second portfolio checkpoint, setting release sequencing
+across v026 and v027 and delegating the work.
 
 Status: complete. The
-[V1 readiness assessment](2026-08-16-v1-readiness-assessment.md) records eight
-unowned shortcomings and seven documented items to pin to V1. The preceding
-task, the first portfolio checkpoint, is also complete: it recorded three
-decisions, handed four derived items to `workflow-improvements`, and reflected
-one repository-wide coordination fact in root `CURRENT-STATUS.md`.
+[2026-08-16 checkpoint](2026-08-16-portfolio-checkpoint.md) records three
+decisions, delivers two handoffs through intake rather than announcing them,
+corrects two stale registry facts about `recursive-e2e`, and widens that
+workstream's registered goal so the registry no longer understates where product
+work lives.
+
+Preceding tasks, both complete: the
+[V1 readiness assessment](2026-08-16-v1-readiness-assessment.md), which records
+eight unowned shortcomings and seven documented items to pin to V1; and the
+[first portfolio checkpoint](2026-08-15-portfolio-checkpoint.md).
 
 ## Next Resumable Task
 
 Define V1. Until now V1 has been a target held in the product owner's head plus
 a dated gap-review snapshot; the obvious prerequisites were clear, but the
 release boundary is not. Complete the [V1 scope ledger](v1-scope-ledger.md),
-which is open with its first decided row.
+which now holds six decided or proposed rows.
+
+Start by settling the release thesis in *Open Threads* below. Roughly half the
+remaining rows cannot be written without it, so beginning anywhere else produces
+verdicts that may not survive the answer.
 
 Done means:
 
@@ -116,6 +149,57 @@ valid outcome. This was the previously planned next task and is deliberately
 sequenced behind defining V1, since the V1 boundary determines whether the
 protocol is a release commitment at all.
 
+## Open Threads
+
+Written at pause on 2026-08-16 and re-read on resume on 2026-08-18. This is a
+trial of the `Open Threads` shape
+proposed to `workflow-improvements`; the format is not ratified, and structuring
+this workstream's own handoff needs no protocol change. Kept deliberately short:
+questions and reasoning hooks, not a transcript.
+
+### Awaiting The Product Owner
+
+1. **The release thesis.** Containment product — one IDE, boundary provable,
+   agent-safety wedge — versus workspace product with multi-IDE breadth. Decides
+   roughly half the unwritten ledger rows. Agent recommendation: containment,
+   because it is where the project is ahead of the field rather than behind it.
+2. **Java: inside the V1 window or immediately after.** Inside, it competes with
+   concurrency and the entry point; after, it becomes the first post-V1
+   milestone and gives the announcement a concrete next promise.
+3. **Fourth agent, Case A.** Bring-your-own-endpoint is proposed `in-v1` and
+   unratified. Case B, DevCapsule running the model, is proposed `deferred`.
+4. **The twelve-week release shape**, carried as `proposed` in the ledger and
+   never ratified — and now stale, because moving the contained display to v027
+   removed a block the shape assumed was inside the window. It needs rebuilding
+   before it can be ratified.
+5. **Is the use-case set complete at two?** The learner/tinkerer and the serious
+   solo developer. The agent offered to write the set up as a ledger section
+   once complete; that remains undone.
+
+### Weighed And Unresolved
+
+- **Concurrency was chosen over VSCodium** for the extra four weeks, on the
+  argument that a broken first ten minutes costs more than a narrower platform
+  list. Not revisited since the v027 deferral changed the surrounding shape.
+- **noVNC provisionally preferred over Xpra seamless mode**, with a spike to
+  decide. Xpra is the option that actually fixes desktop integration; noVNC is
+  the more predictable and more demo-friendly. Neither is committed.
+- **Skeleton delivery mechanism undecided:** submodule, matching the existing
+  sample convention, or in-tree, which avoids another publishable repository and
+  the unreachable-pointer bug. Raised, not answered.
+- **`recursive-e2e`'s widened goal** is a registry patch, not a settled shape.
+  The alternative is registering a separate workstream for product work; that
+  workstream may raise it back.
+- **uid/gid across machines** is unverified. Whether formation identity and
+  state layout survive a second developer with a different UID should be checked
+  before "scales to multi-developer" is claimed anywhere.
+
+### Deliberately Not Preserved
+
+The conversation itself. Decisions are in the ledger and the two checkpoints,
+and everything above is what would otherwise have been lost. Nothing else from
+the 2026-08-16 session needs recovering to resume this workstream.
+
 ## External State And Risks
 
 - Corrected 2026-08-15: this environment does have Git publication credentials
@@ -139,6 +223,7 @@ protocol is a release commitment at all.
 ## Workstream Document Index
 
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
+- [Portfolio checkpoint 2026-08-16](2026-08-16-portfolio-checkpoint.md)
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
 - [V1 scope ledger](v1-scope-ledger.md)
 - [Workflow prior-art comparison 2026-08-16](2026-08-16-workflow-prior-art-comparison.md)

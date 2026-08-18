@@ -33,8 +33,8 @@ Verdict: `in-v1`
 Decided: 2026-08-16, by the product owner, from direct experience of the
 current install path.
 
-Owner: unassigned pending the release-engineering workstream registration.
-Sequenced into the release-engineering block.
+Owner: `recursive-e2e`, delegated 2026-08-16 together with the v026 base.
+Release target: **v026**, ahead of the product owner's own project starts.
 
 Expands and corrects gap `F8`.
 
@@ -112,8 +112,23 @@ pending a spike.
 Direction decided: 2026-08-16, by the product owner. The capsule presents its
 own contained windowing environment rather than borrowing the host X session.
 
-Owner: unassigned. Touches the base recipe, the launcher, and the port and
-external-resource items.
+Release target: **v027**, decided 2026-08-16. The change touches the base
+recipe, the launcher, port allocation, and the platform matrix, and its own
+ratification gate requires a full day of ordinary development inside the result
+— none of which is compatible with v026 being the base the product owner starts
+projects on. Deferring the transport defers the fix to the
+[X11 session-credential bug](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md),
+not the obligation: the containment claim cannot be announced as verified while
+the X socket carries a full host session credential.
+
+Owner: unassigned; may warrant a separate workstream rather than joining an
+existing one.
+
+**The URL-open fix is split out of this row and shipped in v026.** The
+`xdg-open` and `BROWSER` shim forwarding to a host-side helper behaves
+identically under X11, VNC, and Xpra, so the most irritating symptom should not
+wait on the transport decision. It is delegated to `recursive-e2e` with the
+entry point.
 
 New scope, not present in the gap review.
 
@@ -231,6 +246,114 @@ one the product prefers.
 **Estimated cost.** Days per component given the existing `claude_code.py`,
 `codex.py`, and `postgresql_client.py` patterns. The licensing, credential, and
 state contracts dominate, not the packaging.
+
+### A Fourth, Open-Source Agent On A Self-Hosted Model
+
+Verdict: `proposed`. Raised by the product owner on 2026-08-16; split into two
+cases here so that neither is decided by silence.
+
+**Case A — bring your own endpoint. Proposed `in-v1`.** An open-source terminal
+coding agent configured against a user-supplied OpenAI-compatible endpoint, base
+URL, key, and model. This covers a self-hosted server on the developer's own
+hardware, a lab machine such as the product owner's DGX-2, or any local runner
+the developer already operates.
+
+**Case B — DevCapsule runs the model. Proposed `deferred`.** DevCapsule detects
+host capacity and runs a model server itself when the machine can support one.
+
+**Why the split matters.** Case A already delivers "the user runs their own
+model". Case B's marginal value over Case A is not capability but convenience:
+DevCapsule installing and managing the server. That convenience costs GPU
+capability profiles, model-weight licensing, capacity detection with honest
+refusal, and a shared model server — which is precisely the service-dependency
+model ruled out of V1 on 2026-08-14 as too expensive for the benefit. Case B
+also depends on CUDA support, whose V1 status is one of the five undecided
+scope questions. Case A is a component plus a configuration surface.
+
+**Why it earns consideration at all.**
+
+- It is the only agent configuration with no per-token cost, which matters
+  directly to the learner use case: "let the agent run flat out" and metered
+  billing are in tension, and a learner may hold no subscription.
+- It removes the implicit asterisk in the containment claim. Today nothing
+  leaves the capsule except the developer's entire codebase, sent to a vendor.
+  A self-hosted endpoint closes that, and opens the audience that cannot send
+  code to a vendor for employer or regulatory reasons.
+- With three vendors plus a vendor-free option, the neutrality claim is
+  complete rather than partial.
+
+**What Case A requires.** Mostly credential transport: a key must reach the
+capsule without being baked into an image, exposed through container
+environment metadata, or written into evidence. The existing mode-0600 files,
+read-only binds, structural redaction, and runtime-plan machinery already cover
+this shape. Beyond that it is agent selection, pinned acquisition, and the same
+per-agent state contract the other three components require.
+
+**Open choice.** Which agent. Criteria: terminal-native so it fits the capsule
+model; a permissive licence so redistribution is not the Claude Code problem
+again; OpenAI-compatible provider configuration so Case A is configuration
+rather than a port; and active maintenance. Aider, Goose, OpenHands, opencode,
+and Continue are candidates to evaluate rather than a pick already made.
+
+**Honest risk.** Open-source agents driving self-hosted models remain
+meaningfully weaker at sustained agentic coding than the frontier CLIs. A launch
+demonstration showing a learner's agent flailing would be a negative proof point
+landing on the use case the story makes central. Validate quality on a
+course-sized task before the announcement claims parity, and be willing to
+present this option with its tradeoffs stated rather than as a peer of the other
+three.
+
+### IDE Coverage: PyCharm Suffices For V1; Java Is A Separate Question
+
+Verdict: `in-v1` that PyCharm is the only IDE V1 requires. The Java environment
+is `proposed` with its release target undecided.
+
+Decided: 2026-08-16, by the product owner, on the basis that the projects being
+started before the V1 announcement will all be Python.
+
+**What this settles.** IntelliJ IDEA Community was pulled toward V1 by the
+learner use case, because a Java course cannot use PyCharm. With the product
+owner's own dogfooding projects all in Python, no V1 acceptance criterion
+depends on a second IDE. IDEA returns to being optional audience expansion.
+
+Python with JavaScript and TypeScript is already covered by the `fastapi-webapp`
+sample, and better than when that sample was built: this repository's
+[configuration research](../../design-notes/fastapi-webapp-configuration-research.md)
+records that JavaScript, TypeScript, and CSS support moved into the free core
+tier in 2026.1.
+
+**The Java question, opened 2026-08-16.** The product owner wants a
+full-featured Java environment soon after v026 and is favorable to Eclipse. Two
+routes, with materially different costs and different strategic value.
+
+*Eclipse.* Licensing is unambiguous under EPL-2.0. That is a genuine advantage
+over the JetBrains route, because the same configuration research records that
+JetBrains merged Community and Professional in 2025.1, that Community 2025.2 was
+the final standalone Community release, and that from 2025.3 everyone is on the
+unified build. A JetBrains Java IDE therefore means the unified build under a
+free tier, which is a terms-and-acquisition question of the Claude Code shape
+rather than a licensing non-event.
+
+Eclipse is also a genuinely new integration — SWT over GTK rather than Swing
+over the JetBrains Runtime, `eclipse.ini`, a `-data` workspace, `~/.p2`
+provisioning state — and therefore the far stronger test of gap `F3`'s claim
+that a configuration can be authored through supported contracts rather than by
+copying PyCharm's private implementation. Four of the thirteen recorded bugs are
+JetBrains-runtime-specific, so a different toolkit is how the project learns
+which contracts are real abstractions and which encode JBR's quirks.
+
+*IntelliJ IDEA.* Reuses the tarball layout, `bin/*.sh` entrypoint, JetBrains
+Runtime, and settings-directory model almost entirely. Days rather than weeks,
+and correspondingly weak as evidence of genericity.
+
+**Sequencing note.** A contained display is toolkit-agnostic, whereas X11
+forwarding is precisely where SWT and GTK differences surface. Java costs less
+if it follows the display work rather than preceding it.
+
+**Open.** Whether the Java environment falls inside the V1 window, where it
+competes with concurrency and the entry point, or immediately after it, where it
+becomes the first post-V1 milestone and gives the announcement a concrete next
+promise.
 
 ## Rows Still To Be Written
 

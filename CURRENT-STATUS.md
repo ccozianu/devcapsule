@@ -52,6 +52,12 @@ protocol.
 
 - Keep host filesystem, credentials, Docker, devices, and networking exposure
   explicit and preserve `R-SCOPE-001`, `R-DOCKER-001`, and `R-PRODUCT-002`.
+- Current release sequencing, decided 2026-08-16: v026 carries a self-contained
+  tool entry point and the URL-open fix, owned by `recursive-e2e`, and bugs
+  fixed for v026 are the current top priority. The contained-display work moves
+  to v027. See the
+  [portfolio checkpoint](engineering-docs/wip/2026-08-09-project-management/2026-08-16-portfolio-checkpoint.md)
+  and the [V1 scope ledger](engineering-docs/wip/2026-08-09-project-management/v1-scope-ledger.md).
 - Bases stay agent-neutral per `D-0005`: no ambient agent CLI is installed and
   no agent credential or state directory is mounted by default. Agent CLIs are
   optional components that materialize per developer after explicit
