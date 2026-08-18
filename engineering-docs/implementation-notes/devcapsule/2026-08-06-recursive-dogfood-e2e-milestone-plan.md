@@ -610,9 +610,27 @@ Done means:
 
 ## Stage 6: Launch And Inspect A Detached Successor
 
-Status: pending
+Status: normal launch and inspection proven; three automated failure-safety
+checks remain
 
 ### Outcome And Boundary
+
+In plain language, Stage 6 answers one question: **can DevCapsule launch a
+second capsule without lying about success or endangering anything else when
+the launch goes wrong?** The successful path is already proven. The remaining
+work is automated coverage for three user-visible promises:
+
+1. If the new capsule starts and immediately dies, report a failed launch with
+   useful, sanitized diagnostics instead of claiming success.
+2. Keep the small set of launcher-created support files for as long as the new
+   capsule needs them; do not pull them out from under a running capsule or
+   leak them indefinitely afterward.
+3. If DevCapsule cannot prove that a container or support directory belongs to
+   this exact run, refuse to delete it and explain why.
+
+These are agent-implemented regression tests, not another manual GUI exercise
+for the product owner. The detailed plan below defines how the implementation
+proves those promises.
 
 Launch the Stage 5 canonical environment on the host daemon, return control to
 the agent while that successor remains running, then prove the launched

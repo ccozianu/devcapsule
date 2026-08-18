@@ -38,8 +38,11 @@ active continuation branch.
 - The Stage 6 inspector is now hardened and proven live. It compares a launched
   successor against a complete machine-readable expected plan instead of four
   spot-checked fields, and the retained plan is bound to the run manifest by
-  digest so a later independent inspection cannot be relaxed silently. Only the
-  Stage 6 failure-path coverage remains open.
+  digest so a later independent inspection cannot be relaxed silently. The
+  remaining Stage 6 work is three automated safety promises: report an
+  immediately dying successor as a failure, keep launcher support files for
+  exactly as long as they are needed, and refuse cleanup when exact ownership
+  cannot be proven.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -82,8 +85,8 @@ active continuation branch.
   packaging test. The corrected replacement tag points to integrated commit
   `91d50b1`; backend run `32054479485` completed successfully and published the
   verified PEX and checksum. The base rebuilt from those exact released bytes
-  was published and independently pulled by digest; only host-broker cleanup
-  evidence remains open.
+  was published and independently pulled by digest. The product owner also
+  verified post-exit host-broker cleanup, completing the v026 acceptance.
 - The proven v026 registry digest is now selected in the branch's committed
   Linux platform lock as the dogfood and development recommendation. Current
   guidance uses the immutable digest rather than the mutable discovery tag.
@@ -98,8 +101,9 @@ active continuation branch.
   runtime and expected plans. Automated, packaging, read-only Docker-mount,
   and local recursive-dogfood validation pass. On 2026-08-17 the product owner
   confirmed that a hyperlink opened from the v026-derived PyCharm shell reached
-  the physical host's default browser. Cleanup observation after IDE exit
-  remains pending.
+  the physical host's default browser. On 2026-08-18 the product owner also
+  confirmed that the v026 PEX removed its broker socket and associated runtime
+  resources after exit.
 - The current checkout's ignored `devcapsule-src/.venv` was found to predate
   the Python distribution rename: its activation scripts still prepended the
   removed `devcapsule/.venv/bin`, so `python` fell through to
@@ -116,15 +120,15 @@ active continuation branch.
 
 ## Current Priority And Status
 
-Current task: integrate the v026 dogfood/development recommendation into
-`main`, observe host-broker cleanup after the accepted GUI run, then return to
-the Stage 6 failure-handling slice.
+Current task: finish the three plain-language Stage 6 launch-failure safety
+checks, all of which are agent-implemented automated coverage rather than
+another manual dogfood exercise.
 
 Status: implementation, integration, the first backend-built standalone PEX
 release, matching Docker publication, immutable-digest pull and offline proof,
-functional host-browser GUI acceptance, and the mainline recommendation change
-are complete and validated on the branch. Mainline integration and observing
-broker cleanup after the accepted GUI run remain pending. Changed:
+functional host-browser GUI acceptance including cleanup, and the v026
+mainline recommendation are complete. `origin/main` contains the change at
+merge commit `a72d0a8`. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
@@ -242,6 +246,12 @@ over 99 files, 341 tests passing with 10 deselected, all six packaging
 integrations passing, and the local self-contained PEX plus CLI smoke checks
 passing. The dirty-tree gate correctly skipped only the revision-bearing public
 PEX.
+
+Host-browser cleanup acceptance on 2026-08-18: after the accepted v026 IDE
+exited, the product owner verified that the PEX removed the broker socket and
+the associated private runtime resources. This closes the final v026 GUI
+cleanup boundary; a socket belonging to a later active IDE session is expected
+to exist until that session exits.
 
 ## Last Task And Status
 
@@ -440,58 +450,36 @@ check.
   `e2dae20abcd2b60fde8f4f7901e6b88b40f097df`.
 - Embedded v024 PEX SHA-256 remains
   `fb278f145a583faba12df9c4a663b41cb60b0b508a769b050cfa4e088f13febc`.
-- The branch now prepares the proven v026 base as the repository's dogfood and
+- `main` now selects the proven v026 base as the repository's dogfood and
   development recommendation:
   `docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a`.
 
 ## Next Resumable Task
 
-Integrate the prepared v026 dogfood/development recommendation into `main`
-through the repository's normal pull-request path. After integration, each
-checkout must explicitly authorize the new immutable digest and regenerate its
-resolution; the committed lock change grants no host or image authorization by
-itself.
+Finish one small automated Stage 6 safety slice. No further product-owner GUI
+validation is required:
 
-Then finish the matched v026 GUI cleanup boundary before returning to Stage 6:
+1. **Do not report a dead capsule as successfully launched.** Simulate Docker
+   starting the successor and the successor exiting immediately. The command
+   must fail and retain useful diagnostics without exposing secrets.
+2. **Do not remove files from under a running capsule.** Prove that the
+   launcher-created runtime plan and identity files remain available while the
+   successor can use them and become eligible for cleanup only after its exact
+   lifecycle is known.
+3. **Do not guess when deleting.** If the recorded container identity or
+   ownership labels do not match reality, cleanup must stop with a clear error
+   instead of selecting something by name or prefix.
 
-1. done: publish the locally rebuilt
-   `mycodespaceai/devcapsule-base:ubuntu-24.04-v026` image;
-2. done: pull it by its new immutable registry digest and repeat the embedded
-   PEX checksum and offline version proof; and
-3. done: launch the matched pair from the physical host with `--host-browser`,
-   click a PyCharm hyperlink, and verify that the default host browser receives
-   it; and
-4. after IDE exit, verify that the broker socket and private runtime directory
-   are gone.
-
-The new registry digest, image labels, embedded bytes, Release checksum, and tag
-revision all agree. The v026 functional and publication exercise is complete;
-only the post-exit broker-cleanup observation remains.
-
-Then finish Stage 6 before beginning Stage 7:
-
-1. done: the inspector compares the complete expected Docker plan, mounts,
-   identity, security settings, and runtime-plan digest;
-2. partially done: malformed and ambiguous Docker output, ownership/label
-   mismatch, and host-source redaction now have public-interface tests. Early
-   successor exit, staging lifetime, and cleanup refusal remain uncovered and
-   belong to the Stage 6 failure-handling slice;
-3. done: a bounded second-inspection stability result is recorded for run
-   `482c34f24fc5c438da7b24ff172a619b`; and
-4. keep the exact containers and run-owned staging until Stage 7 proves
-   persistence and deterministic cleanup.
-
-Only item 2's failure-path coverage now blocks declaring Stage 6 complete:
-early successor exit, staging lifetime, and cleanup refusal still need
-public-interface tests. That is the Stage 6 failure-handling slice and it
-touches the launch path rather than the inspector.
+The successful launch, exact-plan inspection, redaction, and short stability
+check already pass. Once the three behaviors above have public-interface tests,
+Stage 6 is complete.
 
 Stage 7 must also choose its persistence subject explicitly. Two successors are
-now retained: the current running `482c34f2…` successor, which carries an
-`expected-plan.json` and is the only one the hardened inspector can re-verify,
-and the older exited `b2093d85…` successor, which predates the retained plan
-and can no longer be inspected. Prefer the newer run as the Stage 7 subject and
-keep the older one as historical evidence only.
+retained and both are now exited. The newer `482c34f2…` run carries an
+`expected-plan.json` and is the only one the hardened inspector can re-verify;
+the older `b2093d85…` run predates the retained plan. Prefer the newer run as
+the Stage 7 subject where possible, launch a fresh successor if the persistence
+proof requires one, and keep the older run as historical evidence only.
 
 ## Acknowledged Work
 
