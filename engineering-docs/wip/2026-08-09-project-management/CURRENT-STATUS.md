@@ -68,6 +68,21 @@ current remote `main` at `a72d0a8` before project-management work resumed.
 - `workflow-improvements` is paused as of 2026-08-17 with its intake
   dispositioned. `project-management` itself has seven pending intake items
   from that workstream; they have been read but not yet dispositioned.
+- This workstream's outbox branch was created and first used on 2026-08-18,
+  carrying one item to `workflow-improvements`: a request to state what kind of
+  thing the outbox is. The product owner, who proposed the outbox, reports that
+  its intent — a Git convention for reaching `intake/` on `main` without the
+  sender's work-in-progress riding along, not an entity in the information
+  model — is not conveyed by the current text. Pushed as
+  `project-management/outbox` at `bd195c0`; awaiting a pull request, which this
+  environment cannot open.
+- Two intake items written on 2026-08-16 never reached `main` and so never
+  reached their recipients: the bug vocabulary for `workflow-improvements` and
+  the v026 deliverables for `recursive-e2e`. Both exist only in `944a0a6` on
+  this workstream's branch. The 2026-08-16 checkpoint states they were
+  delivered; that is true of the branch and false of `main`. Sending them is
+  outstanding, and `workflow-improvements` paused reporting its intake
+  dispositioned without ever having seen the first.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
