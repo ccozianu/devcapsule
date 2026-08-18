@@ -94,6 +94,29 @@ Offered as analysis, not as constraints on this workstream's judgment.
   Git-mechanical conventions alongside model concepts without marking which is
   which. Whether to address that broadly or only here is this workstream's call.
 
+## A Second Case Found While Sending This
+
+Discovered while performing this delivery, and it turns on exactly the same
+distinction.
+
+**Sending** step 1 says to create or hard-reset the outbox to current `main`,
+because "the outbox holds no history of its own worth preserving; every send
+starts from `main`." That holds when the previous send has merged. On
+2026-08-18 it had not: this item was pushed, no pull request had been opened
+yet, and two further items then had to go out. Following step 1 literally would
+have hard-reset the branch and destroyed undelivered mail.
+
+The sender appended the two commits to the existing outbox instead, on the
+reasoning that the branch was still based on current `main` and still carried
+only outbound messages, so the guarantee the mechanism exists to provide was
+intact. That is a decision made from the purpose, because the letter gave the
+wrong answer.
+
+The *Ending* rule already recognizes unmerged outbox commits as "undelivered
+mail" that must not be discarded. The sending procedure does not carry that
+recognition, and the two readings conflict when sends outpace merges — which is
+the normal case wherever a human opens the pull requests.
+
 ## What Accepting Would Mean
 
 A statement in `WORKFLOW.md` of what kind of thing the outbox is, reconciled
