@@ -57,6 +57,7 @@ def run_e2e_tests(session: nox.Session) -> None:
     environment: dict[str, str] = {}
     for name in (
         "DEVCAPSULE_E2E_BASE_IMAGE",
+        "DEVCAPSULE_EARLY_EXIT_E2E_IMAGE",
         "DEVCAPSULE_CONTRIBUTOR_E2E_IMAGE",
         "DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE",
     ):

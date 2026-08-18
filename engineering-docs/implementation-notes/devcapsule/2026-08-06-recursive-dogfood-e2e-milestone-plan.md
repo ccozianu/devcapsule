@@ -1,6 +1,6 @@
 # Milestone Plan: Recursive Dogfood E2E — Build And Launch A Successor From Inside DevCapsule
 
-Status: active milestone; Stages 0 through 5 complete, Stage 6 active
+Status: active milestone; Stages 0 through 6 complete, Stage 7 pending
 
 Release target: V1
 
@@ -183,9 +183,11 @@ These invariants apply to every stage:
 6. Mutable PyCharm and Codex credential state is not shared with the successor
    by default. Any later shared profile requires an explicit, separately
    validated choice.
-7. The scenario uses unique names and ownership labels derived from a generated
-   run ID. Cleanup selects by exact run ownership, never by a broad name prefix
-   alone.
+7. The scenario generates a random 128-bit run ID and embeds it in the exact
+   name or containing path of every exclusive run resource. Cleanup accepts
+   that run ID and derives exact targets; it never accepts a broad prefix or an
+   arbitrary resource name. Labels remain inspection evidence, not a second
+   deletion proof.
 8. Temporary runtime plans, account files, sudo policy, Xauthority material,
    and other bind-mounted launch inputs live in a verified host-backed staging
    root, use restrictive modes, are never logged, and are cleaned on success or
@@ -222,9 +224,11 @@ devcapsule.e2e.run-id=RUN_ID
 devcapsule.e2e.source-revision=REVISION
 ```
 
-Cleanup verifies these labels and the recorded immutable identity before
-removal. A `--keep-on-failure` mode preserves test-owned resources and prints a
-sanitized inspection/cleanup command; it never changes the ownership boundary.
+Cleanup accepts the random run ID and derives each exact resource name or path
+from it. The manifest and labels support inspection and diagnostics but are not
+used to discover a different deletion target. A `--keep-on-failure` mode
+preserves test-owned resources and prints a sanitized inspection/cleanup
+command; it never changes the run-ID boundary.
 
 ## Stage 0: Prove Recursive Preflight And Threat Boundaries
 
@@ -610,9 +614,42 @@ Done means:
 
 ## Stage 6: Launch And Inspect A Detached Successor
 
-Status: pending
+Status: complete
 
 ### Outcome And Boundary
+
+In plain language, Stage 6 answers one question: **can DevCapsule launch a
+second capsule without lying about success or endangering anything else when
+the launch goes wrong?** The successful path is already proven. The remaining
+work is automated coverage for three user-visible promises:
+
+1. **Proven by real-Docker E2E:** if a launched capsule is externally removed
+   by its GUID-derived Docker name, independent inspection reports that the
+   exact successor cannot be inspected instead of claiming stale success.
+2. **Moved to V2, not a Stage 6 condition:** recovery of per-run resources
+   after the original launcher crashes or otherwise misses its cleanup path is
+   filed in
+   [the V2 launcher-loss reconciliation task](2026-08-18-v2-launch-resource-reconciliation.md).
+   The product owner explicitly accepted the small V1 leftover-resource risk.
+3. **Replaced by the GUID cleanup key:** the orchestrator creates a random
+   128-bit run ID. The successor container name and every exclusive run-resource
+   path contain that ID. Cleanup accepts the run ID, derives the exact Docker
+   name, and removes by name; it does not accept an arbitrary container target
+   or perform a separate label-inspection proof. The successor receives the
+   same value as `DEVCAPSULE_RUN_ID`, so software inside it can identify its own
+   run without inspecting Docker or a host-side manifest.
+
+These are agent-implemented regression tests, not another manual GUI exercise
+for the product owner. The detailed plan below defines how the implementation
+proves those promises.
+
+The run ID prevents accidental cross-run selection and works against the same
+host daemon whether the launcher runs on the physical host or inside a parent
+DevCapsule. It is not a secret from another process that already has Docker
+daemon access, because Docker clients can enumerate container names. Docker
+authorization remains the security boundary; the random name is the resource
+ownership and collision-avoidance boundary. Shared formation images are not
+run-owned resources and are never selected by this cleanup key.
 
 Launch the Stage 5 canonical environment on the host daemon, return control to
 the agent while that successor remains running, then prove the launched
@@ -642,9 +679,9 @@ Detached mode uses the same resolved project, canonical realization,
 foreground launch. Only the execution/lifecycle policy differs. `tini` and
 PyCharm remain the container's foreground process; no shell wrapper or
 background IDE process is introduced, and IDE exit ends the running container.
-The E2E may retain the resulting stopped container until ownership-checked
-cleanup so startup failures remain inspectable; that retention does not change
-the process lifecycle.
+The E2E may retain the resulting stopped container until run-ID-derived cleanup
+so startup failures remain inspectable; that retention does not change the
+process lifecycle.
 
 ### Required Refactoring Seam
 
@@ -699,8 +736,10 @@ devcapsule.e2e.source-revision=REVISION
 devcapsule.e2e.role=successor
 ```
 
-Container name and labels are discovery aids. The full Docker container ID and
-image ID become authoritative immediately after creation.
+The GUID-derived container name is the cleanup target. Labels remain useful
+inspection evidence. The full Docker container ID and image ID remain the
+authoritative identities for inspection after creation. The launch plan also
+sets `DEVCAPSULE_RUN_ID=RUN_ID` inside the successor.
 
 ### Runtime Inputs And Host Translation
 
@@ -762,11 +801,10 @@ The launch handshake is:
 6. return a sanitized JSON result containing the run ID, container ID, image
    ID, source revision, evidence path, and state, but no host source or secret.
 
-If Docker returns an ID but inspection cannot prove ownership or identity, the
-orchestrator treats the result as an untrusted launch: it records the failure,
-does not select the object by name for later operations, and reports the exact
-manual diagnosis needed. Automatic stop/removal is allowed only after exact ID
-and label ownership are both proven.
+If Docker returns a valid ID but later inspection fails, the orchestrator
+records the failure and may remove only the container name derived from the
+same run ID supplied to launch. It never accepts Docker output, a label query,
+or a broad prefix as the cleanup target.
 
 ### Automated Inspection Contract
 
@@ -821,11 +859,11 @@ this stage.
 
 - Failure before Docker mutation cleans transient staging unless
   `--keep-on-failure` is active.
-- Failure before a container ID is returned must not guess a cleanup target by
-  name or prefix.
-- Failure after exact ownership is proven stops/removes only that ID when
-  cleanup is requested; otherwise it preserves the container and staging with
-  sanitized inspection instructions.
+- Failure before Docker returns a valid container ID performs no container
+  removal.
+- Failure after Docker returns a valid container ID removes only the exact
+  container name derived from that run's random ID; otherwise it preserves the
+  container and staging with sanitized inspection instructions.
 - An early successor exit is a launch failure even when Docker itself returned
   success. Preserve exit code, timestamps, and bounded sanitized diagnostics;
   do not retain Xauthority contents or environment secrets.
@@ -856,9 +894,9 @@ Implement and close Stage 6 in these slices:
    container exists and are ownership-safely cleaned afterward.
 4. **Inspector.** Compare Docker inspection and in-container probes against the
    expected plan with host-path/secret redaction tests.
-5. **Failure handling.** Cover pre-mutation failure, immediate exit, identity or
-   label mismatch, timeout, inspect failure, cleanup refusal, and
-   `--keep-on-failure` through public CLI/orchestrator interfaces.
+5. **Failure handling.** Cover pre-mutation failure, immediate exit, timeout,
+   inspect failure, invalid run IDs, GUID-derived removal, external removal,
+   and `--keep-on-failure` through public CLI/orchestrator interfaces.
 6. **Live recursive proof.** From v024, launch the actual Stage 5 canonical
    successor through the clean-clone PEX, let the launch command return, run the
    independent inspector, and preserve sanitized evidence for Stage 7.
@@ -900,7 +938,8 @@ It must:
   cleanup;
 - preserve sanitized diagnostics under `--keep-on-failure`;
 - resume or clean a previously interrupted run from its manifest; and
-- remove only exact labelled/recorded resources when cleanup is requested.
+- remove only exact GUID-derived resources recorded for the run when cleanup is
+  requested.
 
 Done means repeated successful runs leave no unrequested test container,
 checkout, XDG tree, transient secret, or image alias, and failure injection
@@ -990,10 +1029,9 @@ This milestone does not by itself:
 
 ## Next Task
 
-Finish Stage 6 hardening around retained run
-`b2093d85912fa34ac1324e1da26a9dcd`: complete expected-versus-actual Docker
-plan inspection, public failure-path and redaction tests, and retained
-stability evidence without stopping either the v025 successor or v024 control.
+Begin Stage 7 persistence and deterministic-cleanup coverage. Use the random
+run ID as the common name in every exclusive resource allocated for a run, and
+make cleanup derive exact targets from that ID.
 
 Additional workspace, retry, corruption, redaction, and isolation hardening is
 tracked in [the V1 test backlog](2026-08-07-v1-test-backlog.md). It is not a

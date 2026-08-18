@@ -11,8 +11,12 @@ from devcapsule.recursive_successor import (
     EXPECTED_PLAN,
     MILESTONE_MANIFEST,
     OWNER_MARKER,
+    RUN_ID_ENV,
     RecursiveSuccessorError,
     inspect_successor,
+    remove_successor_container,
+    successor_container_name,
+    successor_runtime_environment,
 )
 from devcapsule.recursive_successor_plan import ExpectedSuccessorPlan
 
@@ -30,6 +34,38 @@ from tests.test_recursive_successor_plan import (
 RUN_ID = "b2093d85912fa34ac1324e1da26a9dcd"
 CONTAINER_ID = "7e" * 32
 SOURCE_REVISION = "600c085228884112e8860c3e6cdc4fb7b6674c0b"
+
+
+def test_successor_container_name_is_derived_only_from_the_random_run_key() -> None:
+    assert successor_container_name(RUN_ID) == f"devcapsule-e2e-{RUN_ID}-successor"
+    with pytest.raises(RecursiveSuccessorError, match="run ID"):
+        successor_container_name("not-a-guid")
+
+
+def test_successor_exposes_its_random_run_key_for_self_reflection() -> None:
+    assert successor_runtime_environment(RUN_ID) == {
+        "DEVCAPSULE_RECURSIVE_E2E": "1",
+        RUN_ID_ENV: RUN_ID,
+    }
+    with pytest.raises(RecursiveSuccessorError, match="run ID"):
+        successor_runtime_environment("not-a-guid")
+
+
+def test_successor_removal_accepts_only_a_run_key_and_targets_its_derived_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, f"{successor_container_name(RUN_ID)}\n", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    completed = remove_successor_container(RUN_ID, environ={})
+
+    assert completed.returncode == 0
+    assert calls == [["docker", "rm", "--force", successor_container_name(RUN_ID)]]
 
 
 def owned_plan() -> ExpectedSuccessorPlan:
@@ -59,6 +95,7 @@ def probe_evidence(**overrides: str) -> dict[str, str]:
         "maven": "Apache Maven 3.9.16",
         "java_home": "/opt/java/current",
         "maven_home": "/opt/maven/current",
+        "run_id": RUN_ID,
         "runtime_plan_sha256": RUNTIME_PLAN_DIGEST,
         "runtime_plan_writable": "no",
     }
@@ -141,6 +178,7 @@ def test_inspection_records_every_hardened_check(
     assert result.checks["security_settings"] == "pass"
     assert result.checks["formation_identity"] == "pass"
     assert result.checks["runtime_plan"] == "pass"
+    assert result.checks["run_identity"] == "pass"
     assert result.checks["codex"] == "codex-cli 0.145.0"
     assert [call[1] for call in calls] == ["inspect", "exec"]
     assert CONTAINER_ID in calls[0]
@@ -214,6 +252,16 @@ def test_writable_runtime_plan_mount_is_rejected(retained_run: Path, fake_docker
     fake_docker(probe=probe_evidence(runtime_plan_writable="yes"))
 
     with pytest.raises(RecursiveSuccessorError, match="not mounted read-only"):
+        inspect_successor(RUN_ID, environ={}, workspace_root=retained_run)
+
+
+def test_successor_reflecting_another_run_id_is_rejected(
+    retained_run: Path,
+    fake_docker: Any,
+) -> None:
+    fake_docker(probe=probe_evidence(run_id="f" * 32))
+
+    with pytest.raises(RecursiveSuccessorError, match="does not expose its exact run ID"):
         inspect_successor(RUN_ID, environ={}, workspace_root=retained_run)
 
 
