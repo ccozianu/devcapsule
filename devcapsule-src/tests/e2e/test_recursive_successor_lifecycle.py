@@ -17,6 +17,7 @@ from devcapsule.recursive_successor import (
     OWNER_MARKER,
     RecursiveSuccessorError,
     inspect_successor,
+    successor_container_name,
 )
 from devcapsule.recursive_successor_plan import ExpectedSuccessorPlan
 
@@ -90,7 +91,7 @@ def test_externally_removed_capsule_is_reported_as_failed(tmp_path: Path) -> Non
     ]
 
     run_id = uuid.uuid4().hex
-    name = f"devcapsule-e2e-{run_id}-successor"
+    name = successor_container_name(run_id)
     ownership = {
         "devcapsule.e2e.managed": "true",
         "devcapsule.e2e.run-id": run_id,
@@ -181,9 +182,9 @@ def test_externally_removed_capsule_is_reported_as_failed(tmp_path: Path) -> Non
             encoding="utf-8",
         )
 
-        removed_result = command(docker, "rm", "--force", container_id)
+        removed_result = command(docker, "rm", "--force", name)
         removed = True
-        assert removed_result.stdout.strip() == container_id
+        assert removed_result.stdout.strip() == name
         assert command(docker, "inspect", container_id, check=False).returncode != 0
 
         with pytest.raises(

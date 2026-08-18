@@ -126,7 +126,7 @@ def launch_successor(
     realized = realize_environment(selected)
     runtime_plan = project_runtime_plan(selected, realized.locked)
     source_revision = current_build_info().source_revision
-    name = f"devcapsule-e2e-{run_id}-successor"
+    name = successor_container_name(run_id)
     options = _resolved_run_options(
         selected,
         realized.image.reference,
@@ -232,18 +232,39 @@ def launch_successor(
     finally:
         if not launched:
             if container_id is not None and re.fullmatch(r"[0-9a-f]{64}", container_id):
-                subprocess.run(
-                    ["docker", "rm", "--force", container_id],
-                    check=False,
-                    env=launch_env,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                remove_successor_container(run_id, environ=launch_env)
             cleanup_temp_runtime_files(files)
             try:
                 staging.rmdir()
             except OSError:
                 pass
+
+
+def successor_container_name(run_id: str) -> str:
+    """Derive the only Docker container name owned by one random E2E run key."""
+
+    if RUN_ID_PATTERN.fullmatch(run_id) is None:
+        raise RecursiveSuccessorError("run ID must contain 16 to 64 lowercase hex digits")
+    return f"devcapsule-e2e-{run_id}-successor"
+
+
+def remove_successor_container(
+    run_id: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Remove only the successor name derived from the caller-held run key."""
+
+    name = successor_container_name(run_id)
+    env = dict(os.environ if environ is None else environ)
+    return subprocess.run(
+        ["docker", "rm", "--force", name],
+        check=False,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
 
 
 def inspect_successor(

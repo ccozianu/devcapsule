@@ -44,8 +44,11 @@ active continuation branch.
   --force`, and proves independent inspection reports failure rather than
   stale success. The product owner set support-file lifetime aside for a
   separate discussion because it is not yet a concrete testable requirement.
-  The remaining actionable Stage 6 question is whether recursive-launch
-  cleanup must refuse `docker rm` unless exact run ownership is proven.
+  The product owner replaced the remaining cleanup-proof proposal with a
+  simpler GUID-derived naming rule: cleanup accepts the random run ID and
+  derives the exact Docker name rather than accepting an arbitrary target or
+  re-proving labels. That rule is implemented and tested. Stage 6 is complete
+  for its current scope.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -123,15 +126,16 @@ active continuation branch.
 
 ## Current Priority And Status
 
-Current task: decide and, if retained, implement the Stage 6 ownership guard in
-the PEX's recursive-launch cleanup path. Support-file lifetime is explicitly
-set aside for a separate product discussion.
+Current task: begin Stage 7 with the random run ID as the common name embedded
+in every exclusive run resource. Support-file lifetime remains explicitly set
+aside for a separate product discussion.
 
 Status: implementation, integration, the first backend-built standalone PEX
 release, matching Docker publication, immutable-digest pull and offline proof,
 functional host-browser GUI acceptance including cleanup, and the v026
 mainline recommendation are complete. `origin/main` contains the change at
-merge commit `a72d0a8`. The external-removal E2E is also complete. Changed:
+merge commit `a72d0a8`. The external-removal E2E and GUID-derived failed-launch
+cleanup are also complete. Changed:
 
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
@@ -258,13 +262,15 @@ to exist until that session exits.
 
 External-removal E2E validation on 2026-08-18: a unique test-owned container
 started the lock-recommended v026 image through its real embedded PEX runtime.
-The test removed that exact container ID with `docker rm --force`; independent
-successor inspection then failed with `cannot inspect the exact successor
-container` and retained the vanished ID as diagnostic evidence. The focused
-real-Docker E2E passed. The full `nox -s build` gate also passed with mypy clean
-over 100 files, 341 fast tests passing with 11 deselected, all six packaging
-integrations passing, and the local self-contained PEX plus CLI smoke checks
-passing.
+The test removed that exact container by its GUID-derived name with `docker rm
+--force`; independent successor inspection then failed with `cannot inspect the
+exact successor container` and retained the vanished ID as diagnostic evidence.
+The focused real-Docker E2E passed. Failed-launch cleanup now accepts only the
+run ID, derives `devcapsule-e2e-RUN_ID-successor`, and issues removal for that
+name rather than an arbitrary or inspection-selected target. The full `nox -s
+build` gate also passed with mypy clean over 100 files, 343 fast tests passing
+with 11 deselected, all six packaging integrations passing, and the local
+self-contained PEX plus CLI smoke checks passing.
 
 ## Last Task And Status
 
@@ -469,22 +475,26 @@ check.
 
 ## Next Resumable Task
 
-Resolve the remaining Stage 6 scope in human terms:
+Stage 6 is complete for its current scope:
 
 1. **Done — externally removed capsule.** A real-Docker E2E starts the v026 PEX
-   runtime, removes its exact test-owned container externally, and proves
-   independent inspection reports failure rather than stale success.
+   runtime, removes its exact test-owned container externally by its
+   GUID-derived name, and proves independent inspection reports failure rather
+   than stale success.
 2. **Set aside — support-file lifetime.** The product owner found this
    requirement too unclear to test or accept. Do not implement it until a
    separate discussion produces a concrete user-visible failure and acceptance
    test.
-3. **Pending — refuse unproven deletion.** This specifically means the cleanup
-   inside the PEX's recursive launcher. Today, if launch returns an exact ID but
-   later inspection fails, the `finally` path attempts `docker rm --force` for
-   that ID. The proposed guard first requires the exact run-ownership labels;
-   missing inspection or mismatched labels means report and leave it alone.
+3. **Done — GUID-derived cleanup.** The recursive launcher generates a random
+   128-bit run ID. Its container is named
+   `devcapsule-e2e-RUN_ID-successor`; its workspace and staging path contain the
+   same ID. Failed-launch cleanup accepts only that run ID, derives the Docker
+   name, and removes by name. Labels remain useful evidence but are not a second
+   deletion proof.
 
-No further product-owner GUI validation is required for item 1 or item 3.
+No further product-owner GUI validation is required for Stage 6. The GUID is a
+collision-free ownership key, not a secret from processes already authorized
+to enumerate the host Docker daemon.
 
 Stage 7 must also choose its persistence subject explicitly. Two successors are
 retained and both are now exited. The newer `482c34f2…` run carries an
