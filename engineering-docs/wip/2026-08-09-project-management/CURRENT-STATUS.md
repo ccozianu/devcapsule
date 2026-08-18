@@ -88,16 +88,24 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   workstream's account of itself, and a recipient that has stopped is exactly
   the case the durable queue and *Intake Gates Completion* exist to cover.
 - The outbox is pushed and undelivered as of 2026-08-18. Local and remote
-  `project-management/outbox` both stand at `cce515d`, carrying three items: the
+  `project-management/outbox` both stand at `6cdea9e`, carrying four items: the
   registry-row ownership gap to `workflow-improvements` and the offer to
-  `recursive-e2e` to widen its own goal cell, both from the `PR #28` conflict,
-  and the product owner's task to `workflow-improvements` to define the
-  workflow's information model minimally and for non-native readers. The third
-  was appended rather than sent from a reset branch, because resetting would
-  have destroyed the first two as undelivered mail; that gap is already reported
-  in the 2026-08-18 outbox-is-a-mechanism item. All three await a pull request
+  `recursive-e2e` to widen its own goal cell, both from the `PR #28` conflict;
+  the product owner's task to `workflow-improvements` to define the workflow's
+  information model minimally and for non-native readers; and the notice that
+  the same workstream owns the in-V1 workflow component. The later items were
+  appended rather than sent from a reset branch, because resetting would have
+  destroyed the earlier ones as undelivered mail; that gap is already reported
+  in the 2026-08-18 outbox-is-a-mechanism item. All four await a pull request
   this environment still cannot open — re-verified 2026-08-18 that there is no
   `gh` CLI and no GitHub token here.
+- The V1 ledger gained its sixth decided row on 2026-08-18: the workflow ships
+  in V1 as an optional component, owned by `workflow-improvements`. The row
+  states the tooling question as open and sequenced behind the information
+  model, which discharges shortcoming 8's requirement that a workflow-tooling
+  deferral not be silent. The product owner also accepted the present
+  terminology ambiguity for the duration of the current dogfood work, which is
+  why the information model was sent as a task rather than fixed in place.
 - `PR #28`, this workstream's own delivery of the 2026-08-16 checkpoint and the
   ledger work, merged at `8b2ac0c` on 2026-08-18 with its registry conflict
   resolved in favour of `recursive-e2e`'s version. The checkpoint, the ledger,
