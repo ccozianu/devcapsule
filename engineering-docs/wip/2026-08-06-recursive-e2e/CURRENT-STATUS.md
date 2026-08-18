@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: active
+State: paused 2026-08-18 by product-owner decision after Stage 6 completion
 
 Integration target: `main`
 
@@ -530,6 +530,22 @@ proof requires one, and keep the older run as historical evidence only.
    successor cleanup bug is a consequence of this task, not a separate
    implementation.
 
+## Open Threads
+
+- Resume with Stage 7 persistence and deterministic cleanup. Use the random run
+  ID as the common name in every exclusive run resource.
+- Prefer the retained `482c34f2…` run when its evidence is sufficient, but use
+  a fresh launch for behavior that requires a running successor or the new
+  `DEVCAPSULE_RUN_ID` environment contract.
+- Do not remove either retained successor or its run workspace before Stage 7
+  has classified the evidence and exercised exact GUID-derived cleanup.
+- Recovery after abnormal loss of the original launcher is deliberately not
+  preserved as V1 work. It is filed for V2 in
+  `2026-08-18-v2-launch-resource-reconciliation.md` and does not reopen Stage
+  6.
+- The branch contains completed, locally validated Stage 6 follow-up commits
+  that are not yet on `main`; integration remains outstanding.
+
 ## External State And Risks
 
 - Re-verified 2026-08-17 at session start, correcting the entry below it: the
@@ -595,4 +611,5 @@ remain permanent engineering records:
 - [Milestone plan](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
 - [Stage 2 execution checklist](../../implementation-notes/devcapsule/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)
 - [V1 test backlog](../../implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md)
+- [V2 launcher-loss resource reconciliation](../../implementation-notes/devcapsule/2026-08-18-v2-launch-resource-reconciliation.md)
 - [V1 gap plan](../../design-notes/devcapsule/2026-08-06-v1-gap-review.md)
