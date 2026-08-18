@@ -87,12 +87,17 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   authoritative invariant is evaluated against `main`, not against a
   workstream's account of itself, and a recipient that has stopped is exactly
   the case the durable queue and *Intake Gates Completion* exist to cover.
-- A second outbox send is pushed and undelivered as of 2026-08-18. Local and
-  remote `project-management/outbox` both stand at `401f5b3`, carrying two items
-  that came out of the `PR #28` conflict: the registry-row ownership gap to
-  `workflow-improvements`, and the offer to `recursive-e2e` to widen its own
-  goal cell. It awaits a pull request this environment still cannot open —
-  re-verified 2026-08-18 that there is no `gh` CLI and no GitHub token here.
+- The outbox is pushed and undelivered as of 2026-08-18. Local and remote
+  `project-management/outbox` both stand at `cce515d`, carrying three items: the
+  registry-row ownership gap to `workflow-improvements` and the offer to
+  `recursive-e2e` to widen its own goal cell, both from the `PR #28` conflict,
+  and the product owner's task to `workflow-improvements` to define the
+  workflow's information model minimally and for non-native readers. The third
+  was appended rather than sent from a reset branch, because resetting would
+  have destroyed the first two as undelivered mail; that gap is already reported
+  in the 2026-08-18 outbox-is-a-mechanism item. All three await a pull request
+  this environment still cannot open — re-verified 2026-08-18 that there is no
+  `gh` CLI and no GitHub token here.
 - `PR #28`, this workstream's own delivery of the 2026-08-16 checkpoint and the
   ledger work, merged at `8b2ac0c` on 2026-08-18 with its registry conflict
   resolved in favour of `recursive-e2e`'s version. The checkpoint, the ledger,
