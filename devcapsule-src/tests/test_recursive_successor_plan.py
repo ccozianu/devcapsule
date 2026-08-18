@@ -64,6 +64,8 @@ def docker_args() -> list[str]:
         "--env",
         "DEVCAPSULE_RECURSIVE_E2E=1",
         "--env",
+        "DEVCAPSULE_RUN_ID=b2093d85912fa34ac1324e1da26a9dcd",
+        "--env",
         "DOCKER_HOST=unix:///run/host-docker.sock",
         "--mount",
         f"type=bind,src={HOST_PROJECT},dst=/workspace/devcapsule",
@@ -118,6 +120,7 @@ def matching_inspection(plan: ExpectedSuccessorPlan) -> dict[str, Any]:
             "Env": [
                 "HOME=/home/devcapsule",
                 "DEVCAPSULE_RECURSIVE_E2E=1",
+                "DEVCAPSULE_RUN_ID=b2093d85912fa34ac1324e1da26a9dcd",
                 "DOCKER_HOST=unix:///run/host-docker.sock",
                 "DISPLAY=:0",
                 "PATH=/usr/bin",
@@ -193,7 +196,10 @@ def test_plan_models_every_flag_the_real_launcher_emits(tmp_path: Path, enable_s
                     identity=Identity(1000, 1000, "developer"),
                 ),
                 use_image_process=True,
-                additional_environment={"DEVCAPSULE_RECURSIVE_E2E": "1"},
+                additional_environment={
+                    "DEVCAPSULE_RECURSIVE_E2E": "1",
+                    "DEVCAPSULE_RUN_ID": "b2093d85912fa34ac1324e1da26a9dcd",
+                },
                 enable_host_browser=True,
                 extra_docker_args=[
                     "--pull=never",
@@ -227,6 +233,7 @@ def test_plan_models_every_flag_the_real_launcher_emits(tmp_path: Path, enable_s
     assert plan.network_mode == "host"
     assert plan.memory_limit_bytes == 8589934592
     assert plan.environment["DEVCAPSULE_RECURSIVE_E2E"] == "1"
+    assert plan.environment["DEVCAPSULE_RUN_ID"] == "b2093d85912fa34ac1324e1da26a9dcd"
     assert plan.environment["BROWSER"] == HOST_OPEN_BROWSER
     assert plan.environment[HOST_OPEN_SOCKET_ENV] == str(HOST_OPEN_SOCKET_DESTINATION)
     browser_mount = next(
@@ -390,10 +397,22 @@ def test_pass_through_environment_values_are_never_compared() -> None:
                 Env=[
                     "HOME=/root",
                     "DEVCAPSULE_RECURSIVE_E2E=1",
+                    "DEVCAPSULE_RUN_ID=b2093d85912fa34ac1324e1da26a9dcd",
                     "DOCKER_HOST=unix:///run/host-docker.sock",
                 ]
             ),
             "environment value for 'HOME'",
+        ),
+        (
+            lambda value: value["Config"].update(
+                Env=[
+                    "HOME=/home/devcapsule",
+                    "DEVCAPSULE_RECURSIVE_E2E=1",
+                    "DEVCAPSULE_RUN_ID=ffffffffffffffffffffffffffffffff",
+                    "DOCKER_HOST=unix:///run/host-docker.sock",
+                ]
+            ),
+            "environment value for 'DEVCAPSULE_RUN_ID'",
         ),
         (
             lambda value: value["Config"].update(Env=["HOME=/home/devcapsule"]),

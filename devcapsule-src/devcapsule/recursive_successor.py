@@ -57,6 +57,7 @@ OWNER_MARKER = ".devcapsule-e2e-owner.json"
 MILESTONE_MANIFEST = "milestone-manifest.json"
 EXPECTED_PLAN = "expected-plan.json"
 SUCCESSOR_ROLE = "successor"
+RUN_ID_ENV = "DEVCAPSULE_RUN_ID"
 RUN_ID_PATTERN = re.compile(r"[0-9a-f]{16,64}")
 
 
@@ -126,12 +127,13 @@ def launch_successor(
     realized = realize_environment(selected)
     runtime_plan = project_runtime_plan(selected, realized.locked)
     source_revision = current_build_info().source_revision
-    name = f"devcapsule-e2e-{run_id}-successor"
+    name = successor_container_name(run_id)
     options = _resolved_run_options(
         selected,
         realized.image.reference,
         runtime_plan,
         name=name,
+        run_id=run_id,
         source_revision=source_revision,
     )
     config = build_run_config(options, env)
@@ -232,18 +234,46 @@ def launch_successor(
     finally:
         if not launched:
             if container_id is not None and re.fullmatch(r"[0-9a-f]{64}", container_id):
-                subprocess.run(
-                    ["docker", "rm", "--force", container_id],
-                    check=False,
-                    env=launch_env,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                remove_successor_container(run_id, environ=launch_env)
             cleanup_temp_runtime_files(files)
             try:
                 staging.rmdir()
             except OSError:
                 pass
+
+
+def successor_container_name(run_id: str) -> str:
+    """Derive the only Docker container name owned by one random E2E run key."""
+
+    if RUN_ID_PATTERN.fullmatch(run_id) is None:
+        raise RecursiveSuccessorError("run ID must contain 16 to 64 lowercase hex digits")
+    return f"devcapsule-e2e-{run_id}-successor"
+
+
+def successor_runtime_environment(run_id: str) -> dict[str, str]:
+    """Expose a run's identity to software running inside its successor."""
+
+    successor_container_name(run_id)
+    return {"DEVCAPSULE_RECURSIVE_E2E": "1", RUN_ID_ENV: run_id}
+
+
+def remove_successor_container(
+    run_id: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Remove only the successor name derived from the caller-held run key."""
+
+    name = successor_container_name(run_id)
+    env = dict(os.environ if environ is None else environ)
+    return subprocess.run(
+        ["docker", "rm", "--force", name],
+        check=False,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
 
 
 def inspect_successor(
@@ -305,7 +335,9 @@ def inspect_successor(
         )
     if versions.pop("runtime_plan_writable", None) != "no":
         raise RecursiveSuccessorError("successor runtime plan is not mounted read-only")
-    checks = {**checks, "runtime_plan": "pass", **versions}
+    if versions.pop("run_id", None) != run_id:
+        raise RecursiveSuccessorError("successor does not expose its exact run ID")
+    checks = {**checks, "runtime_plan": "pass", "run_identity": "pass", **versions}
     _write_manifest(
         run_root,
         {
@@ -330,6 +362,7 @@ def _resolved_run_options(
     runtime_plan: Any,
     *,
     name: str,
+    run_id: str,
     source_revision: str,
 ) -> PycharmRunOptions:
     runtime = selected.resolution.get("runtime", {})
@@ -381,7 +414,7 @@ def _resolved_run_options(
             state,
             runtime_plan,
         ),
-        additional_environment={"DEVCAPSULE_RECURSIVE_E2E": "1"},
+        additional_environment=successor_runtime_environment(run_id),
         enable_host_browser=True,
         secret_environment=tuple(sorted(str(value) for value in secret_environment.values())),
         extra_docker_args=[
@@ -389,7 +422,7 @@ def _resolved_run_options(
             "--label",
             "devcapsule.e2e.managed=true",
             "--label",
-            f"devcapsule.e2e.run-id={name.removeprefix('devcapsule-e2e-').removesuffix('-successor')}",
+            f"devcapsule.e2e.run-id={run_id}",
             "--label",
             f"devcapsule.e2e.source-revision={source_revision}",
             "--label",
@@ -643,6 +676,7 @@ for name, command in commands.items():
     result[name] = output[0]
 result["java_home"] = os.environ["JAVA_HOME"]
 result["maven_home"] = os.environ["MAVEN_HOME"]
+result["run_id"] = os.environ["DEVCAPSULE_RUN_ID"]
 plan_path = "__RUNTIME_PLAN_PATH__"
 with open(plan_path, "rb") as handle:
     result["runtime_plan_sha256"] = hashlib.sha256(handle.read()).hexdigest()
