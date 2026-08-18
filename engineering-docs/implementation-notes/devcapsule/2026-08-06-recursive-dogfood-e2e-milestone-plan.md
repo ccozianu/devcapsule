@@ -614,8 +614,7 @@ Done means:
 
 ## Stage 6: Launch And Inspect A Detached Successor
 
-Status: complete for the current Stage 6 scope; support-file lifetime deferred
-for a separate discussion
+Status: complete
 
 ### Outcome And Boundary
 
@@ -627,8 +626,11 @@ work is automated coverage for three user-visible promises:
 1. **Proven by real-Docker E2E:** if a launched capsule is externally removed
    by its GUID-derived Docker name, independent inspection reports that the
    exact successor cannot be inspected instead of claiming stale success.
-2. **Deferred for separate discussion:** the support-file lifetime requirement
-   is not sufficiently concrete for implementation or human acceptance yet.
+2. **Moved to V2, not a Stage 6 condition:** recovery of per-run resources
+   after the original launcher crashes or otherwise misses its cleanup path is
+   filed in
+   [the V2 launcher-loss reconciliation task](2026-08-18-v2-launch-resource-reconciliation.md).
+   The product owner explicitly accepted the small V1 leftover-resource risk.
 3. **Replaced by the GUID cleanup key:** the orchestrator creates a random
    128-bit run ID. The successor container name and every exclusive run-resource
    path contain that ID. Cleanup accepts the run ID, derives the exact Docker

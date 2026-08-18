@@ -41,14 +41,14 @@ active continuation branch.
   external-removal behavior now has a real-Docker E2E: it starts the v026
   embedded PEX runtime, removes the exact test-owned capsule with `docker rm
   --force`, and proves independent inspection reports failure rather than
-  stale success. The product owner set support-file lifetime aside for a
-  separate discussion because it is not yet a concrete testable requirement.
+  stale success. Recovery of support resources after launcher loss is now an
+  explicit V2 task and is not a Stage 6 or V1 closure condition.
   The product owner replaced the remaining cleanup-proof proposal with a
   simpler GUID-derived naming rule: cleanup accepts the random run ID and
   derives the exact Docker name rather than accepting an arbitrary target or
   re-proving labels. That rule is implemented and tested. The launcher also
   injects the same value as `DEVCAPSULE_RUN_ID` so the successor can identify
-  its own run. Stage 6 is complete for its current scope.
+  its own run. Stage 6 is complete.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -127,8 +127,8 @@ active continuation branch.
 ## Current Priority And Status
 
 Current task: begin Stage 7 with the random run ID as the common name embedded
-in every exclusive run resource. Support-file lifetime remains explicitly set
-aside for a separate product discussion.
+in every exclusive run resource. Recovery after abnormal launcher loss is
+filed for V2 and is no longer an open Stage 6 discussion.
 
 Status: implementation, integration, the first backend-built standalone PEX
 release, matching Docker publication, immutable-digest pull and offline proof,
@@ -487,16 +487,17 @@ check.
 
 ## Next Resumable Task
 
-Stage 6 is complete for its current scope:
+Stage 6 is complete:
 
 1. **Done — externally removed capsule.** A real-Docker E2E starts the v026 PEX
    runtime, removes its exact test-owned container externally by its
    GUID-derived name, and proves independent inspection reports failure rather
    than stale success.
-2. **Set aside — support-file lifetime.** The product owner found this
-   requirement too unclear to test or accept. Do not implement it until a
-   separate discussion produces a concrete user-visible failure and acceptance
-   test.
+2. **Filed for V2 — launcher-loss recovery.** The product owner accepted that
+   V1 allocates few, low-impact transient resources and does not justify a
+   crash-recovery mechanism. A V2 task now specifies idempotent GUID-based
+   reconciliation after the original launcher misses its cleanup path. This is
+   not a Stage 6 or V1 closure condition.
 3. **Done — GUID-derived cleanup.** The recursive launcher generates a random
    128-bit run ID. Its container is named
    `devcapsule-e2e-RUN_ID-successor`; its workspace and staging path contain the
