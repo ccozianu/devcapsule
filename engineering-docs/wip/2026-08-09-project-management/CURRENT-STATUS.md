@@ -33,10 +33,10 @@ valid retirement or workflow-mode migration procedure.
 
 ## Branch Association
 
-The initial branch is `project-management/coordination`, forked from the
-registration commit on `main`. The existing recursive E2E checkout remains
-selected on `recursive-e2e/stage-4`; project-management changes require an
-explicit switch to this branch or a separate clean worktree.
+The branch is `project-management/coordination`. On 2026-08-18 the product
+owner explicitly switched this checkout from `recursive-e2e/stage-4` to this
+workstream after pausing recursive E2E. This branch was then rebased onto
+current remote `main` at `a72d0a8` before project-management work resumed.
 
 ## Current State
 
@@ -61,13 +61,13 @@ explicit switch to this branch or a separate clean worktree.
   sequencing: v026 carries the self-contained entry point and the URL-open fix
   and is delegated to `recursive-e2e`; the contained display moves to v027; and
   bug vocabulary goes to `workflow-improvements`.
-- `recursive-e2e` resumes for v026. Its registered goal is widened in root
-  `CURRENT-STATUS.md`, because the delegated work is product work rather than
-  recursive-E2E work — the second instance of that pattern after
-  `sample-projects`.
-- `workflow-improvements` intake holds six items and the workstream has still
-  not started. It is now on the critical path, since the product owner's own
-  project starts depend on the workflow improvements it owns.
+- v026 is complete and recommended on `main`. `recursive-e2e` is paused by the
+  product owner as of 2026-08-18 after completing Stage 6; Stage 7 is its next
+  task when resumed. Its widened registered goal remains accurate because it
+  delivered product work as well as recursive-E2E evidence.
+- `workflow-improvements` is paused as of 2026-08-17 with its intake
+  dispositioned. `project-management` itself has seven pending intake items
+  from that workstream; they have been read but not yet dispositioned.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
@@ -133,7 +133,8 @@ protocol is a release commitment at all.
 
 ## Open Threads
 
-Written at pause on 2026-08-16. This is a trial of the `Open Threads` shape
+Written at pause on 2026-08-16 and re-read on resume on 2026-08-18. This is a
+trial of the `Open Threads` shape
 proposed to `workflow-improvements`; the format is not ratified, and structuring
 this workstream's own handoff needs no protocol change. Kept deliberately short:
 questions and reasoning hooks, not a transcript.
