@@ -31,10 +31,9 @@ active continuation branch.
 - On 2026-08-12 the product owner explicitly closed Stage 5. The unexecuted
   authorization-negative Docker/network/sudo plan proof was transferred to the
   V1 backlog and does not reopen Stage 5.
-- The Stage 6 live launch slice is successful: the production planner launched
-  a detached v025 successor and the independent inspector passed. Stage 6
-  hardening and exhaustive expected-plan/failure-path coverage remain open
-  before the stage is declared complete.
+- The Stage 6 live launch slice succeeded: the production planner launched a
+  detached v025 successor and the independent inspector passed. The later
+  hardening and scoped failure-path work described below completed the stage.
 - The Stage 6 inspector is now hardened and proven live. It compares a launched
   successor against a complete machine-readable expected plan instead of four
   spot-checked fields, and the retained plan is bound to the run manifest by
@@ -47,8 +46,9 @@ active continuation branch.
   The product owner replaced the remaining cleanup-proof proposal with a
   simpler GUID-derived naming rule: cleanup accepts the random run ID and
   derives the exact Docker name rather than accepting an arbitrary target or
-  re-proving labels. That rule is implemented and tested. Stage 6 is complete
-  for its current scope.
+  re-proving labels. That rule is implemented and tested. The launcher also
+  injects the same value as `DEVCAPSULE_RUN_ID` so the successor can identify
+  its own run. Stage 6 is complete for its current scope.
 - Work resumed on the conforming `recursive-e2e/stage-4` branch from current
   remote `main`.
 - Stage 3 proved an exact, independent, credential-free local clone and a clean
@@ -268,16 +268,28 @@ exact successor container` and retained the vanished ID as diagnostic evidence.
 The focused real-Docker E2E passed. Failed-launch cleanup now accepts only the
 run ID, derives `devcapsule-e2e-RUN_ID-successor`, and issues removal for that
 name rather than an arbitrary or inspection-selected target. The full `nox -s
-build` gate also passed with mypy clean over 100 files, 343 fast tests passing
-with 11 deselected, all six packaging integrations passing, and the local
-self-contained PEX plus CLI smoke checks passing.
+build` gate also passed with mypy clean over 100 files, 343
+fast tests passing with 11 deselected, all six packaging integrations passing,
+and the local self-contained PEX plus CLI smoke checks passing.
+
+Run-ID self-reflection validation on 2026-08-18: the recursive successor plan
+now injects `DEVCAPSULE_RUN_ID` with the exact random run ID used by the
+container name, workspace, and cleanup API. Independent inspection requires
+the in-container probe to return that exact value. The focused plan and
+inspection suite passed with 65 tests, and the real-Docker E2E passed after
+reading the value inside the running v026 container with `printenv`. The full
+`nox -s build` gate passed with mypy clean over 100 files, 346 fast tests
+passing with 11 deselected, all six packaging integrations passing, and the
+local self-contained PEX plus CLI smoke checks passing.
 
 ## Last Task And Status
 
-Last task: harden the Stage 6 inspector so it compares the complete expected
-Docker plan, mounts, identity, security settings, and runtime-plan digest.
+Last task: expose the launcher's random run ID inside the running successor as
+`DEVCAPSULE_RUN_ID` and independently prove exact agreement.
 
-Status: complete and proven live. On 2026-08-14 run
+Status: complete and proven through a real-Docker `printenv` probe, exact-plan
+comparison, and an in-container readiness probe that rejects a different run
+ID. The preceding inspector work remains proven live: on 2026-08-14 run
 `482c34f24fc5c438da7b24ff172a619b` launched a successor through the
 clean-clone PEX and passed the hardened inspection twice. A new
 `devcapsule/recursive_successor_plan.py` derives an
@@ -489,8 +501,9 @@ Stage 6 is complete for its current scope:
    128-bit run ID. Its container is named
    `devcapsule-e2e-RUN_ID-successor`; its workspace and staging path contain the
    same ID. Failed-launch cleanup accepts only that run ID, derives the Docker
-   name, and removes by name. Labels remain useful evidence but are not a second
-   deletion proof.
+   name, and removes by name. The running successor receives the value as
+   `DEVCAPSULE_RUN_ID` for self-reflection. Labels remain useful evidence but
+   are not a second deletion proof.
 
 No further product-owner GUI validation is required for Stage 6. The GUID is a
 collision-free ownership key, not a secret from processes already authorized

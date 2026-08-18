@@ -633,7 +633,9 @@ work is automated coverage for three user-visible promises:
    128-bit run ID. The successor container name and every exclusive run-resource
    path contain that ID. Cleanup accepts the run ID, derives the exact Docker
    name, and removes by name; it does not accept an arbitrary container target
-   or perform a separate label-inspection proof.
+   or perform a separate label-inspection proof. The successor receives the
+   same value as `DEVCAPSULE_RUN_ID`, so software inside it can identify its own
+   run without inspecting Docker or a host-side manifest.
 
 These are agent-implemented regression tests, not another manual GUI exercise
 for the product owner. The detailed plan below defines how the implementation
@@ -734,7 +736,8 @@ devcapsule.e2e.role=successor
 
 The GUID-derived container name is the cleanup target. Labels remain useful
 inspection evidence. The full Docker container ID and image ID remain the
-authoritative identities for inspection after creation.
+authoritative identities for inspection after creation. The launch plan also
+sets `DEVCAPSULE_RUN_ID=RUN_ID` inside the successor.
 
 ### Runtime Inputs And Host Translation
 

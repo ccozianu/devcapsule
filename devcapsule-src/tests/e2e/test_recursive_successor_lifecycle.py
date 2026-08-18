@@ -99,6 +99,7 @@ def test_externally_removed_capsule_is_reported_as_failed(tmp_path: Path) -> Non
         "devcapsule.e2e.role": "successor",
     }
     create_args = [docker, "create", "--name", name, "--network", "none"]
+    create_args.extend(("--env", f"DEVCAPSULE_RUN_ID={run_id}"))
     for label, value in ownership.items():
         create_args.extend(("--label", f"{label}={value}"))
     create_args.extend((image, "/tmp/devcapsule-e2e-runtime-plan.json"))
@@ -121,6 +122,8 @@ def test_externally_removed_capsule_is_reported_as_failed(tmp_path: Path) -> Non
         )
         command(docker, "cp", str(launcher_path), f"{container_id}:/tmp/devcapsule-e2e-pycharm.sh")
         command(docker, "start", container_id)
+        reflected_run_id = command(docker, "exec", container_id, "printenv", "DEVCAPSULE_RUN_ID")
+        assert reflected_run_id.stdout.strip() == run_id
         running = command(docker, "inspect", "--format", "{{.State.Running}}", container_id)
         if running.stdout.strip() != "true":
             logs = command(docker, "logs", container_id, check=False)
@@ -144,7 +147,7 @@ def test_externally_removed_capsule_is_reported_as_failed(tmp_path: Path) -> Non
                 for key, value in (image_inspection["Config"].get("Labels") or {}).items()
                 if str(key).startswith("devcapsule.")
             },
-            environment={},
+            environment={"DEVCAPSULE_RUN_ID": run_id},
             secret_environment=(),
             mounts=(),
             tmpfs={},
