@@ -328,12 +328,12 @@ thread 8 above. Nothing is lost if that file is gone.
 ## External State And Risks
 
 - Paused 2026-08-19 for travel. The product owner reports that this laptop
-  occasionally suffers kernel crashes when Docker instances are preserved through
-  standby — rare but frequent enough to matter — so everything was pushed rather
+  occasionally suffers kernel crashes when Docker instances are preserved
+  through standby — rare but frequent enough to matter — so everything was pushed rather
   than merely committed. At the pause, local and remote agreed on both branches:
   `project-management/coordination` at `5f5ce8a` and later, and
-  `project-management/outbox` at `afb893f`. Nothing was left in a stash or in the
-  working tree. Re-verify these refs on resume rather than trusting this line.
+  `project-management/outbox` at `afb893f`. Nothing was left in a stash or in
+  the working tree. Re-verify these refs on resume rather than trusting this line.
 
 - Corrected 2026-08-15: this environment does have Git publication credentials
   and can push branches and unprotected `main`, and the local Docker CLI is
