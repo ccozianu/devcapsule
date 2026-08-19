@@ -47,6 +47,8 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Project management current status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md)
 - [Recursive dogfood E2E current status](engineering-docs/wip/2026-08-06-recursive-e2e/CURRENT-STATUS.md)
 - [Workflow improvements current status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md)
+- [Sample demo projects current status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md)
+- [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)
 
 ## Engineering Design Notes
 
@@ -93,16 +95,21 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Docker4PyCharm Historical Reference
 
+The `docker4pycharm/` directory is the original shell-based PyCharm MVP this
+project was bootstrapped from, frozen at that point in time. Read these for
+history; record current decisions in the active documents above.
+
 - [Docker PyCharm isolation README](docker4pycharm/README.md)
 - [Historical root project brief](engineering-docs/implementation-notes/docker4pycharm/historical-root-readme.md)
 - [Post-MVP refactoring strategy](engineering-docs/design-notes/docker4pycharm/future-agent-refactoring-brief.md)
 - [PyCharm AI plugin and ChatGPT subscription setup](docs/guides/docker4pycharm-ai-plugin-and-chatgpt-setup.md)
 - [Debugging notes](engineering-docs/implementation-notes/docker4pycharm/debugging.md)
-- [Vibe-coding process bootstrap template](docker4pycharm/image-assets/vibe-coding-process.md)
+- [Vibe-coding process bootstrap template, frozen copy](docker4pycharm/image-assets/vibe-coding-process.md)
 
 ## Implementation Notes And Decisions
 
 - [User-requested session-record policy](engineering-docs/session-records/devcapsule/README.md)
+- [Inspector hardening, samples, and workflow bootstrap session record](engineering-docs/session-records/devcapsule/2026-08-16-inspector-hardening-samples-and-workflow-bootstrap.md)
 - [v021 external dogfood and V1 backlog session record](engineering-docs/session-records/devcapsule/2026-08-03-v021-external-dogfood-and-v1-backlog.md)
 - [D-0004 configuration and images CLI session record](engineering-docs/session-records/devcapsule/2026-08-01-d-0004-configuration-and-images-cli.md)
 - [Per-project IDE state split](engineering-docs/design-notes/docker4pycharm/2026-06-21-per-project-ide-state-split.md)
@@ -121,9 +128,13 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Recursive dogfood E2E milestone plan](engineering-docs/implementation-notes/devcapsule/2026-08-06-recursive-dogfood-e2e-milestone-plan.md)
 - [Recursive dogfood Stage 2 execution checklist](engineering-docs/implementation-notes/devcapsule/2026-08-06-recursive-dogfood-stage-2-execution-checklist.md)
 - [DevCapsule V1 test backlog](engineering-docs/implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md)
+- [Host browser URL bridge TLDR](engineering-docs/implementation-notes/devcapsule/2026-08-17-host-browser-url-bridge-tldr.md)
+- [V2 launcher-loss resource reconciliation](engineering-docs/implementation-notes/devcapsule/2026-08-18-v2-launch-resource-reconciliation.md)
 
 ## Bugs
 
+- [X11 passthrough grants the container a full host session credential](engineering-docs/bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)
+- [Detached DevCapsule containers exit and are never cleaned up](engineering-docs/bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md)
 - [Codex ACP fails because explicit CODEX_HOME does not exist](engineering-docs/bugs/devcapsule/2026-08-03-codex-acp-missing-home.md)
 - [Authorized development sudo is reported as enabled but is unusable](engineering-docs/bugs/devcapsule/2026-08-03-authorized-development-sudo-misreported.md)
 - [PyCharm recommends its native launcher](engineering-docs/bugs/devcapsule/2026-08-03-jetbrains-native-launcher.md)

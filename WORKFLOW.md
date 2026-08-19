@@ -4,6 +4,192 @@ This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
 
+## Purpose And Principles
+
+This document structures how a human and a coding agent build software
+together. Its purpose is to make that pair more productive than either would be
+alone, and it tries to achieve that by removing specific frictions rather than
+by adding process. Every rule below is meant to pay for itself.
+
+The rules follow from a small number of intents. Read a rule against these when
+it seems arbitrary, and reason from these when the document is silent.
+
+**Resumability.** A competent human/agent pair should be able to open this
+repository cold, discover the current state, and continue — without access to
+the conversation that produced it. Sessions end abruptly, models change,
+context windows fill, and people forget. So state lives in committed files
+rather than in chat, exactly one document is authoritative for each effort, and
+the next step is written down rather than remembered. A workflow that only
+works while someone remembers the last conversation is not a workflow.
+
+**Low-ceremony coordination.** Coordination should cost as little as it can
+while still working. Where several efforts run concurrently, the structure
+exists to keep them from colliding — not to schedule them, gate them, or make
+them negotiate. Contention is treated as a design failure rather than something
+to arbitrate. Prefer conventions that make conflicts impossible over procedures
+that resolve them, and prefer a rule an agent can apply alone over one
+requiring a round trip.
+
+**No accidental loss of knowledge.** Anything of importance surfaced during
+development is recorded in the source tree and is predictably discoverable.
+*Predictably* is the operative word: a fact stored somewhere nobody thinks to
+look has been lost as surely as one never written. This is why documents have
+assigned roles and fixed locations, and why an index exists at all. Knowledge
+that only survives in a chat log is one session away from gone.
+
+**Latitude where this document is silent.** The workflow is incomplete and says
+so. What it does not expressly deny is allowed, and a pair meeting an
+unforeseen situation decides for themselves what best suits it rather than
+stalling. The obligations that keep this safe rather than merely permissive are
+in *Latitude Where This Document Is Silent*.
+
+**Retrospective value, subordinate to the work.** Record enough about how the
+project evolved to support later analysis, learning, and rediscovery of
+reasoning that would otherwise have to be reconstructed. But the source tree's
+first purpose is the software. Process records are placed and structured so
+that someone reading the code can ignore them entirely, and so that they never
+compete with source for attention or for space in the paths people actually
+work in.
+
+**Explicit decision rights.** The pair is not two interchangeable actors.
+Mechanical, reversible, and evidently-intended work is the agent's to do
+without asking; product intent, ambiguity that changes the outcome, and
+irreversible or outward-facing acts are the human's. This document says which
+is which at each point rather than leaving each pair to renegotiate it, because
+an agent that asks about everything is useless and one that asks about nothing
+is dangerous.
+
+**Portability across agents and projects.** The workflow must work for any
+capable agent, not one vendor's, and in an adopter's repository, not only this
+one. It therefore lives in plain markdown in the source tree, depends on no
+tool-specific storage or feature, and keeps project-specific facts separate
+from the reusable protocol.
+
+### When These Conflict
+
+They will. Recording everything imaginable serves knowledge and violates low
+ceremony. Full retrospective detail competes with a source tree that stays
+about the software. Latitude sits in tension with predictability.
+
+Three tiebreaks, in order:
+
+1. **Resumability wins.** If dropping a record would leave the next pair unable
+   to continue, or able to continue only by guessing, write it. This is the
+   purpose the others serve.
+2. **Write what changes future behavior; skip what merely proves work
+   happened.** A decision, a constraint, a rejected alternative, or a
+   non-obvious reason changes what someone does next. A narrative of activity
+   does not. When unsure, ask what a reader would do differently having read it.
+3. **Prefer one durable record to several.** Update an existing document rather
+   than adding one; link rather than copy; put a fact where its role says it
+   belongs even when somewhere else is more convenient today. Duplication is
+   how records drift apart and stop being trustworthy.
+
+### How To Read This Document
+
+Humans: the *Multiple-Stream Workflow* and *Markdown Roles* sections carry the
+structure; the rest is detail you can consult when it becomes relevant.
+
+Agents: read the whole applicable path before acting, treat the numbered
+restrictions and procedures as binding, and treat prose as the reasoning that
+explains them. Where a rule and this preamble appear to disagree, the rule
+governs and the disagreement is a defect worth reporting.
+
+## Checkouts, Branches, And Workstreams
+
+Work means editing files in a **checkout**. Everything this document describes
+happens either in a checkout or in the shared remote that checkouts push to.
+These terms are used precisely and never interchangeably.
+
+- **Project** — the repository and its history.
+- **Remote** — the shared hosted copy, such as a GitHub repository. It is the
+  coordination point: where branches meet, where `main` is authoritative, and
+  where pull requests and review happen.
+- **Checkout** — one local clone directory. Where a pair actually edits files.
+- **Branch** — a line of development within the project.
+- **Workstream** — a named, registered effort with its own goal and handoff.
+  A `multiple-streams` concept only; `single-stream` projects have branches and
+  no workstreams.
+- **Pair** — one human and one agent working together in one checkout.
+
+The relationships, which fix what every "current" in this document means:
+
+- A project has one authoritative remote and any number of checkouts.
+- A checkout has exactly one current branch.
+- Every branch other than `main` belongs to exactly one workstream.
+- A workstream may own several branches.
+- A checkout therefore has at most one selected workstream at any moment. The
+  *current branch* determines the *current workstream*, not the reverse.
+
+**Sequential within a checkout, concurrent across checkouts.** One checkout can
+work on many workstreams over time by switching branches, but only one at a
+time, and only from a clean tree — mixing two workstreams' uncommitted changes
+in one directory is what the protocol exists to prevent. Genuine concurrency
+comes from several pairs working in several checkouts, integrating through the
+remote. It does not come from any local arrangement of directories.
+
+**What is shared and what is local.** The remote carries everything the project
+agrees on: branches, `main`, the registry, handoffs, and intake. A checkout
+carries only local facts: which one it is, what branch it is on, and what is
+uncommitted in it. Nothing about a checkout is registered or coordinated.
+
+This is why two pairs can hold different current workstreams at the same moment
+without either being wrong, and why the registry is a record rather than a
+presence or locking system. A workstream listed as active means someone opened
+it and has not concluded it — not that anyone is working on it right now.
+
+**Two pairs may select the same workstream.** Nothing prevents it and no lock
+exists. They will contend on one handoff, which is a single file both are
+expected to keep current, so coordinate outside the protocol before doing it
+deliberately. If it happens by accident, the usual result is a conflict in that
+handoff rather than lost work.
+
+## Latitude Where This Document Is Silent
+
+This workflow is incomplete, and for V1 the project says so rather than
+pretending otherwise. It was written from real use, and real use keeps
+producing situations it does not describe. Adopters should expect to meet them.
+
+**The principle: what this document does not expressly deny is allowed.** A
+human/agent pair that reaches a situation the protocol does not cover resolves
+it with judgment and keeps working. Being stopped by silence is itself a
+failure — the protocol exists to make work possible and legible, not to
+authorize each step of it.
+
+**Silence is not the same as a rule you dislike.** Before invoking this,
+establish that the protocol is actually silent. A rule that is inconvenient,
+costly, or arrived at for reasons no longer visible is still a rule; change it
+through the workflow-owning workstream rather than around it.
+
+**Express denials are not silence.** This principle never overrides an
+instruction to stop, ask, refrain, or seek authority. Those are decisions
+already made, usually because the failure they prevent is expensive or
+irreversible. In this document they include, and are not limited to: never
+force-pushing `main`; stopping before editing when branch and registry
+disagree; not inferring permission to update `main` from the mere ability to do
+so; the carve-outs in restriction 11; and every explicit instruction to ask the
+human. Where such a rule applies, follow it and raise the difficulty.
+
+**Ambiguity and contradiction are defects, not silence.** If two rules conflict,
+or one admits several readings that lead to materially different work, that is a
+flaw in this document. Choose the reading that best serves the evident intent,
+say which reading you chose, and report the defect. Do not treat a contradiction
+as permission to pick whichever side is convenient.
+
+**Exercised latitude must be recorded.** This is the obligation that makes the
+permission safe. When a pair resolves something the protocol does not cover,
+record in the selected handoff what was missing, what was done, and why. If the
+gap would recur in any project rather than only this one, deliver it to the
+workstream that owns the workflow, through the sender's outbox. Unrecorded
+latitude means the gap stays invisible, the next pair re-derives it differently,
+and two projects using "the same" workflow quietly diverge. Recorded latitude is
+how the next version of this document gets written.
+
+**Scope.** This clause is a V1 position, adopted 2026-08-17. It reflects a
+workflow young enough that its gaps outnumber the cost of specifying them in
+advance. Revisit it when the gaps become rare enough that discovering one is a
+surprise rather than a routine event.
+
 ## Workflow Type Selection
 
 Before interpreting project status, read the top-level `workflow-type` field in
@@ -25,7 +211,8 @@ not runtime behavior or live contributor presence.
 - root `CURRENT-STATUS.md` is the detailed active handoff;
 - it records current state, evidence, and one next resumable slice;
 - routine checkpoints update that file; and
-- branches and worktrees remain optional implementation tools.
+- branches remain the unit of work, and how many checkouts exist locally is
+  an implementation detail.
 
 The remaining general sections of this document apply as they did before
 multiple-stream support was introduced.
@@ -35,7 +222,10 @@ multiple-stream support was introduced.
 ### Definition And Restrictions
 
 A workstream is a bounded set of changes developed toward one goal. It begins,
-develops, and ends successfully or unsuccessfully.
+develops, and ends successfully or unsuccessfully. Exactly one exception
+exists: the reserved `project-management` workstream, which every
+multiple-stream project has and which stays open for as long as the project
+uses that mode. See *The Reserved `project-management` Workstream*.
 
 The following restrictions keep concurrent work understandable:
 
@@ -48,7 +238,9 @@ The following restrictions keep concurrent work understandable:
 4. Every branch other than `main` belongs to exactly one workstream.
 5. Each workstream branch name begins with `<mnemonic>/`.
 6. A workstream may have more than one branch, but every branch starts from
-   `main` and is intended to return to `main` if the workstream succeeds.
+   `main` and is intended to return to `main` if the workstream succeeds. Its
+   outbox branch is the exception: it starts from `main` and returns to `main`
+   repeatedly, throughout the workstream's life rather than at its end.
 7. `main` belongs to no workstream. It is the shared registration, visibility,
    finalization, and integration branch.
 8. Ordinary workstream implementation does not happen directly on `main`.
@@ -56,8 +248,112 @@ The following restrictions keep concurrent work understandable:
    `engineering-docs/wip/<start-date>-<mnemonic>/CURRENT-STATUS.md`.
 10. Root `CURRENT-STATUS.md` on `main` lists open workstreams only. An open
    workstream remains listed while active, paused, blocked, or integrating.
-11. One workstream does not edit another workstream's WIP directory or commit
-    another worktree's recovery state.
+11. No workstream holds exclusive editing rights over a file. A workstream may
+    edit any file its task genuinely requires, and exclusivity may not be
+    inferred from a file's subject, its directory, or which workstream created
+    it. Two carve-outs stand: another workstream's WIP handoff directory
+    excluding its `intake/` subdirectory, and uncommitted recovery state in
+    another checkout.
+    Each is a workstream's account of its own state, which another workstream
+    cannot restate accurately; report what you observe about another workstream
+    instead of editing its record. Delivering work to another workstream is a
+    different act from restating its state, and belongs in its `intake/`; see
+    *Workstream Intake*. Wider
+    exclusivity applies only where a documented locking protocol exists and is
+    actually used for that file. No such protocol exists today.
+12. `project-management` is a reserved mnemonic. Exactly one workstream in the
+    project carries it, no ordinary workstream may take it, and it is never
+    archived and recreated while the project stays in `multiple-streams` mode.
+13. `<mnemonic>/outbox` is a reserved branch name in every workstream. It
+    carries only what the workstream sends to `main` ahead of its own
+    integration, never its working changes. See *The Outbox Branch*.
+
+### Initializing Multiple-Stream Mode
+
+Selecting `multiple-streams` is an act with required structure, whether it
+happens when a project is first set up or when an existing single-stream
+project adopts the mode later. Both paths produce the same starting shape.
+
+In one commit on `main`:
+
+1. Set `workflow-type = "multiple-streams"` in `.devcapsule/devcapsule.toml`.
+2. Convert root `CURRENT-STATUS.md` from a detailed handoff into the compact
+   open-workstream registry. Detailed state carried over from single-stream
+   mode moves into a workstream handoff rather than staying at the root.
+3. Create the reserved `project-management` workstream by the procedure in
+   *Beginning A Workstream*, using the initialization date as its immutable
+   ISO start date, and register it in the new registry.
+4. Create `engineering-docs/wip/` and `engineering-docs/archive/`.
+
+A multiple-stream project with no `project-management` workstream is
+incompletely initialized. Report that rather than working around it.
+
+Initialization creates exactly one workstream. Ordinary workstreams begin
+afterwards, separately, and only when there is real work for them.
+
+### The Reserved `project-management` Workstream
+
+Coordinating a portfolio of workstreams is itself continuing work, and it
+belongs to no single bounded effort. Without a reserved home, it either lands
+in whichever workstream happens to be selected — distorting that workstream's
+scope and its record — or it survives only in conversation. The reserved
+workstream gives it a durable owner.
+
+**Scope.** It owns project-wide priorities, sequencing, cross-workstream
+dependencies, portfolio-level checkpoints, lifecycle decisions about opening,
+pausing, resuming, blocking, and concluding other workstreams, and routing work
+that has no owning workstream yet.
+
+Three exclusions keep it from absorbing the project:
+
+- It is not a second registry. Root `CURRENT-STATUS.md` on `main` remains the
+  single authoritative list of open workstreams. `project-management` records
+  reasoning, sequencing, and dependencies, not a parallel copy of the roster.
+- It is not an implementation catch-all. Work that fits an open workstream's
+  goal belongs to that workstream. Work that fits none is a reason to begin a
+  workstream, which is a `project-management` decision to make and hand over,
+  not work for it to perform.
+- It does not own other workstreams' state. Restriction 11's carve-out binds it
+  like anyone else: it reports what it observes about another workstream and
+  delivers to that workstream's `intake/`; it does not edit that workstream's
+  handoff.
+
+Its coordination authority is advisory and recorded, not procedural. It does
+not gate other workstreams' commits, integrations, or checkpoints.
+
+**Lifecycle.** It is permanent for the lifetime of `multiple-streams` mode
+rather than open-ended by neglect. Restriction 12 reserves its mnemonic;
+initialization creates it; it has no completion criteria and is never listed as
+active-with-a-final-goal. Its registry state reads `active; permanent
+coordination`, and paused or blocked are as legitimate for it as for any other
+workstream — a project can go a long time with nothing to coordinate.
+
+**Branches, selection, and integration are ordinary.** Its branches are
+`project-management/<topic>`, forked from `main`, returning to `main` by the
+repository's default delivery method. `project-management/coordination` is the
+conventional first branch. Checkout selection, intake, checkpoints, commit
+cadence, and integration follow the same rules as any other workstream. Only
+its lifecycle is special.
+
+**Retirement.** It ends only when the project leaves `multiple-streams` mode,
+never as an ordinary conclusion. Migrating to `single-stream`, in one commit on
+`main`:
+
+1. Confirm no ordinary workstream is still open. Migrating with open
+   workstreams silently orphans their handoffs; conclude or archive them first.
+   Its own intake must be empty as well, and it is the last queue that can be
+   emptied: once it is gone there is nowhere left to forward anything.
+2. Fold the coordination state that remains useful into root
+   `CURRENT-STATUS.md`, which becomes the detailed single-stream handoff again.
+3. Move `engineering-docs/wip/<start-date>-project-management/` to
+   `engineering-docs/archive/<start-date>-project-management/` unchanged, and
+   record the migration, its date, and the resulting mode in its final status.
+4. Set `workflow-type = "single-stream"`.
+
+**Adoption exception.** A project adopting `multiple-streams` that already has
+a branch, directory, or bounded workstream named `project-management` records a
+migration exception in the reserved workstream's handoff, in the same form as
+any other adoption exception, rather than renaming history.
 
 ### Beginning A Workstream
 
@@ -69,10 +365,21 @@ Begin from a clean, current `main` checkout:
 3. Record the start date, goal, state, branch prefix, integration target,
    delivery method or applicable repository default, current task, and next
    resumable task.
-4. Add the workstream to root `CURRENT-STATUS.md`.
-5. Commit that source-level registration on `main`.
-6. Fork the first `<mnemonic>/...` branch from that commit.
-7. Perform workstream changes only on its associated branch or branches.
+4. Create `engineering-docs/wip/<start-date>-<mnemonic>/intake/README.md` so the
+   workstream can receive work from others, and an empty
+   `intake-dispositions.md` beside it so the two halves of the record exist
+   from the start; see *Workstream Intake* and *The Disposition Log*.
+5. Add the workstream to root `CURRENT-STATUS.md`.
+6. Deliver that source-level registration to `main` through the outbox of the
+   workstream opening it; see *The Outbox Branch*. Registration is a message to
+   the project, not part of anyone's deliverable, so it travels the same route
+   as intake and does not require committing directly to `main`. At
+   initialization, when no workstream exists yet to send it, the initializing
+   commit on `main` carries it.
+7. Fork the first `<mnemonic>/...` branch from the registration commit once it
+   is on `main`.
+8. Perform workstream changes only on its associated branch or branches. Its
+   own `<mnemonic>/outbox` is created on first use, not at registration.
 
 A branch created before the registration commit is not a valid new workstream
 branch. Existing branches that predate adoption require an explicit migration
@@ -88,17 +395,18 @@ Workstream discovery and checkout selection are related but distinct:
   not from a potentially stale copy of root `CURRENT-STATUS.md` on a long-lived
   workstream branch. The mainline ref is normally current local `main`, or a
   fetched remote-tracking `main` when it is newer and authoritative. If the
-  candidates have diverged, do not choose silently. Refresh them according to
-  repository policy when an operation requires current shared state; routine
-  offline resumption may use the latest unambiguous locally available snapshot.
-- The current worktree and its checked-out branch provide the persistent local
+  candidates have diverged, do not choose silently; resolve the divergence
+  under *Verifying Shared Branch State*. Refresh them according to repository
+  policy when an operation requires current shared state; routine offline
+  resumption may use the latest unambiguous locally available snapshot.
+- The current checkout and its branch provide the persistent local
   selection. This first protocol deliberately defines no second untracked
   "current workstream" preference file.
 
-Select exactly one editing workstream for the current worktree:
+Select exactly one editing workstream for the current checkout:
 
-1. Identify the current Git worktree, branch, and dirty state, then read the
-   open-workstream registry from the locally accepted mainline ref.
+1. Identify the current checkout, its branch, and its dirty state, then read
+   the open-workstream registry from the locally accepted mainline ref.
 2. If the user explicitly names an open workstream, select it. Explicit intent
    chooses the target but does not reassign the current branch or authorize
    mixing dirty state.
@@ -111,26 +419,386 @@ Select exactly one editing workstream for the current worktree:
 5. `main` belongs to no workstream and therefore has no default editing
    workstream. Registry coordination and repository-wide inspection may occur
    there. Workstream changes require an explicit selection followed by a switch
-   to that workstream's clean branch or worktree.
-6. Detached HEAD, an unregistered branch, or more than one plausible mapping
+   to that workstream's branch in a clean checkout.
+6. A checked-out `<mnemonic>/outbox` identifies its workstream but is not an
+   editing checkout. It carries only outbound messages; see *The Outbox
+   Branch*. Do not resume workstream work there. Switch to a working branch
+   first, and treat uncommitted working changes found on an outbox as recovery
+   material that belongs elsewhere.
+7. Detached HEAD, an unregistered branch, or more than one plausible mapping
    has no default. Ask the user only when the desired workstream cannot be
    established from explicit intent and a unique registered association.
-7. Follow the selected registry row's handoff link. Do not guess its start date
+8. Follow the selected registry row's handoff link. Do not guess its start date
    from branch or commit timestamps. On the selected workstream branch, its
    committed handoff is authoritative for the latest track-local state; the
    copy reachable from `main` is the latest published snapshot.
+9. Read the selected workstream's `intake/` directory from the locally accepted
+   mainline ref before planning the session. Items there are work other
+   workstreams have delivered and this workstream has not yet dispositioned;
+   see *Workstream Intake*. A handoff read without its intake is an incomplete
+   picture of what the workstream owns.
 
-If the selected workstream differs from the current branch, switch to its clean
-worktree before editing. Do not combine dirty state from two workstreams, and
-do not use a stash as their durable handoff boundary. Different users and
-clones may select different workstreams independently because their checked-out
-branches and worktrees are local state.
+If the selected workstream differs from the current branch, switch to that
+branch in a clean checkout before editing. Do not combine dirty state from two
+workstreams, and do not use a stash as their durable handoff boundary.
+Different users and clones may select different workstreams independently
+because their checked-out branches are local state.
+
+**Local checkout arrangement is an implementation detail.** This protocol is
+defined in terms of branches, not directories. One checkout has one branch and
+therefore at most one selected workstream; that is the whole rule. How many
+checkouts exist on a machine, and whether an extra one is a second clone, a Git
+worktree, or a container, is the developer's choice. None of it is workflow
+state: nothing about it is registered, recorded, or coordinated, and where
+several exist each obeys the selection rules on its own.
+
+Checkouts made for other purposes — running the product against itself,
+reproducing a bug, testing a build — are not workstream checkouts and this
+document does not govern them.
+
+### Workstream Intake
+
+Every workstream directory carries an `intake/` subdirectory. It is the only
+place another workstream may write inside a workstream's WIP directory, and it
+exists because a protocol that forbids all such writing has no way to hand work
+over. Announcing a handoff in the sender's own checkpoint does not deliver it:
+the recipient reads its own handoff at session start, so an item recorded
+anywhere else is invisible to the workstream expected to do it.
+
+**Writing an item.** Any workstream, or the user, may add a file. One item per
+file, named `YYYY-MM-DD-<sender-mnemonic>-<slug>.md`, where the date is the
+delivery date. The file states what is being handed over, why it belongs to the
+recipient rather than the sender, the evidence or documents behind it, and what
+accepting it would mean. The sender does not assign priority, sequence, or a
+release target; those are the receiving workstream's judgment.
+
+**Delivery must reach `main` promptly.** An intake file that waits for the
+sender's own integration is invisible for as long as that takes, which
+reproduces the failure this mechanism exists to fix. Deliver it through the
+sender's outbox branch, separately from the sender's ordinary work. Intake
+delivery is deliberately decoupled from the sender's delivery schedule. See
+*The Outbox Branch*.
+
+**Ownership is asymmetric.** A sender may add files and amend files it wrote. It
+may not edit another sender's file, remove any file, or touch anything else in
+the recipient's directory. Only the receiving workstream removes or reclassifies
+items in its own intake. Its account of itself remains exclusively its own.
+
+**Disposition has exactly two outcomes: acknowledge or forward.** Every item
+ends in one of them, and no item may be left alone indefinitely; see *Intake
+Gates Completion*.
+
+Scheduling is not a third outcome. An item accepted but not scheduled yet is
+acknowledged, with its position recorded. "Later" is a property of work a
+workstream owns, not a way to avoid owning it.
+
+**Acknowledge** means the workstream takes the item as its own responsibility
+and turns it into work it will actually do. Recording an opinion about an item
+is not acknowledging it; converting it into a requirement, backlog entry, task,
+or next step is.
+
+1. On the working branch, record it in the handoff as a requirement or task,
+   with the reasoning that led to accepting it, and place it in the
+   workstream's order of work.
+2. Through the outbox, in one commit, add an entry to the disposition log and
+   delete the intake file from `main`.
+
+**Forward** means the workstream is not the right owner. Legitimate reasons
+include: the item is not a well-formed requirement; it will not be fixed; it
+belongs to a different workstream; it belongs to a later release; or it is out
+of this workstream's registered scope. The workstream states the reason but
+does not choose a new owner — routing is `project-management`'s decision.
+
+1. Through the outbox, write a new item into
+   `engineering-docs/wip/<start-date>-project-management/intake/`, following
+   *Writing an item*. Include the original item's full text, or its path and
+   the revision it can be recovered from, together with the reason for
+   refusing it.
+2. In the same outbox commit, add an entry to the disposition log naming where
+   the item went, and delete the original item from `main`.
+3. Record in the handoff what was forwarded and why, so the decision is not
+   silently reopened later.
+
+**Deleting from `main` is the recipient's job, and it is prompt.** The queue is
+read from `main`, so an item still present there has not been dispositioned.
+Deleting through the outbox keeps that true; deleting only on a working branch
+leaves `main` advertising work that is already handled for as long as that
+branch takes to merge. The working branch picks the deletion up at its next
+synchronization, so do not also delete it there.
+
+Intake is a queue, not an archive. Git retains every item and every reason.
+
+### The Disposition Log
+
+Each workstream keeps one append-only log at
+`engineering-docs/wip/<start-date>-<mnemonic>/intake-dispositions.md`, recording
+what became of every item it received. It is written by the receiving
+workstream only, and it is pushed to `main` through the outbox in the same
+commit that removes the item from the queue.
+
+**The invariant that makes it useful.** On `main`, every item ever delivered to
+a workstream is in exactly one of two places: still in its `intake/`, meaning
+undispositioned, or in that workstream's disposition log, meaning resolved.
+Never both, never neither. Writing the entry and deleting the item in one
+commit is what keeps that true, which is why they are one step and not two.
+
+This is the acknowledgement path. A sender does not need to be told what
+happened to what it delivered; it looks, in one of two predictable places, and
+`main` is current for both because intake delivery and disposition both travel
+the outbox promptly. It is also why no reply is written back into the sender's
+intake: a reply is not work, and a queue whose whole meaning is "own this or
+forward it" should not carry messages that are neither.
+
+**One entry per item**, appended, newest last, never edited or removed:
+
+| Item | Dispositioned | Outcome | Note |
+|---|---|---|---|
+| `2026-08-16-sender-some-slug.md` | 2026-08-16 | acknowledged | One line. Full reasoning in the handoff. |
+| `2026-08-16-sender-other-slug.md` | 2026-08-17 | forwarded | Where it went, so the trail can be followed. |
+
+The note is one line. The reasoning belongs in the handoff, which is where a
+disposition is argued; the log records that it happened and points at it.
+
+**The log is an archive, not a queue.** Unlike `intake/`, it is never pruned,
+and it travels with the workstream into `engineering-docs/archive/` at the end.
+A concluded workstream's log is the record of what it was asked to do and what
+it decided, which is exactly what a later reader reopening one of those
+decisions needs.
+
+Because the log is a workstream's account of its own decisions, restriction 11
+applies: only the receiving workstream writes it. Anyone may read it, and
+reading it is the intended use.
+
+**Items from `project-management` are not forwardable.** That workstream is
+authoritative for structuring work — what is worked on, by whom, in what order
+— so an item it sends is a routing decision, not a proposal, and forwarding it
+back would be a loop. Acknowledge it.
+
+A recipient that believes such an item is genuinely wrong — impossible,
+misrouted, or in conflict with its registered scope — raises that with the
+human rather than returning it through intake. Until the routing decision
+changes, the item stands.
+
+**`project-management`'s own dispositions are terminal.** It has nowhere to
+forward to, so an item reaching it ends there in one of three ways: assigned to
+a workstream by delivering it onward, made the reason to begin a new
+workstream, or dropped with recorded reasoning. This is what stops a refused
+item from circulating indefinitely.
+
+**Intake gates completion.** A workstream is not complete, successfully or
+unsuccessfully, while any item remains in its intake on `main`. An empty intake
+is a precondition of concluding, checked as part of the completion sequence.
+A workstream ending unsuccessfully still owes its queue a disposition: items it
+will not do are forwarded to `project-management`, not abandoned with the
+workstream. Leaving items behind would silently destroy work other workstreams
+handed over in good faith.
+
+**Presence.** The directory carries a `README.md` so that an empty intake is
+unambiguous rather than an untracked absence. Intake items are not listed in
+`index.md` or in the workstream's own document index; the directory listing is
+the queue, and indexing it would create churn for items designed to be
+short-lived. The disposition log is the opposite case: it is durable, so it
+belongs in the workstream's own document index, though not in `index.md`, which
+lists workstream status files rather than their internal documents.
+
+### The Outbox Branch
+
+Intake defines where a message lands. The outbox defines how it travels.
+
+Every workstream has one standing branch named `<mnemonic>/outbox`. It carries
+what the workstream needs to publish to `main` ahead of, and independently of,
+its own integration. A workstream's working branch may run for weeks; anything
+riding along with it is invisible until it merges, which is the failure intake
+was built to fix, one step further along.
+
+**What the outbox carries.** Anything the project needs to know now that is not
+part of the sender's own deliverable:
+
+- intake items delivered to other workstreams;
+- registrations of new workstreams the sender is opening;
+- changes to the sender's own row in root `CURRENT-STATUS.md` — state, branch
+  association, or anything else other agents route by; and
+- the sender's own records — its handoff and its disposition log — when
+  something on `main` refers to them or when it pauses. See *Publishing Before
+  Integration*.
+
+The last matters more than it looks. The registry is how every other checkout
+decides where work belongs, and a routing fact that waits for the sender's
+integration leaves `main` describing a branch that may no longer exist. Under
+*Selecting Work At Session Start* that is invalid routing, so a stale row does
+not merely mislead; it stops other agents before they edit.
+
+The outbox is also the answer to the standing question of how main-first
+registration coexists with a pull-request delivery policy: registration travels
+the same route as any other message, so nothing has to commit directly to
+`main`.
+
+**What it must never carry.** The sender's working changes. Merging an outbox
+publishes everything on it, so a working change that leaks into one is
+unfinished work promoted to `main` without review. Keep the two branches
+strictly separate; when in doubt, rebuild the outbox rather than reuse a dirty
+one.
+
+**Sending.** From a clean checkout, and never from the working branch:
+
+1. Fetch, and create or hard-reset `<mnemonic>/outbox` to current `main`. The
+   outbox holds no history of its own worth preserving; every send starts from
+   `main`.
+2. Add only the files being sent. One commit per coherent delivery.
+3. Push the branch and deliver it to `main` by the repository's default method.
+4. Leave the branch in place until the next send, then reset it again from
+   step 1.
+
+**Do not assume a merged outbox is an ancestor of `main`.** Whether it is
+depends on the repository's merge strategy: fast-forward and merge-commit
+delivery leave it reachable, while squash and rebase merges rewrite the commits
+and leave the branch pointing at history `main` no longer contains. Resetting
+from step 1 is correct under every strategy, which is why it is stated as a
+reset rather than as continuing from where the branch stands. Expect that reset
+to require a force-push, and note that this is a case the prohibition on
+force-pushing `main` does not reach: an outbox has no independent content to
+lose, since everything on it is either already merged or being replaced.
+
+Sending is a small, self-contained operation. It does not touch the sender's
+working branch, does not require that branch to be clean or current, and is not
+a checkpoint of the sender's own work.
+
+**Receiving is not symmetric.** A recipient does nothing to receive. Items
+appear in its `intake/` directory when the outbox merges to `main`, and it sees
+them by staying current with `main`.
+
+**Ending.** The outbox branch is deleted when the workstream ends, like any
+other branch it owns. An outbox with unmerged commits at that point is
+undelivered mail: merge it before concluding, or say in the final status why it
+was abandoned.
+
+### Publishing Before Integration
+
+A workstream's branch holds its work until integration. Not everything on that
+branch is work: some files are how the rest of the project reads the workstream
+while it runs, and those are useless anywhere `main` cannot see them.
+
+**Two kinds of file, and they travel differently.**
+
+- **The deliverable** — changes to shared documents, code, and requirements: what
+  the workstream exists to produce. It travels the workstream's own branch and
+  reaches `main` by repository policy, because it is reviewed as a whole.
+- **Records** — the files that describe the workstream itself: its handoff, its
+  disposition log, its registry row, and its intake directory. Nobody reviews
+  these as a deliverable; they are the project's view of a workstream in flight.
+  They travel the outbox, and may do so at any time.
+
+**Publish a record early when something outside the branch depends on it.**
+Three cases, each observed rather than imagined:
+
+1. **A document on `main` refers to it.** A rule that names a per-workstream
+   path — as *The Disposition Log* does — sends every reader to that path. If
+   the file exists only on a branch, the rule points at nothing, and a reader
+   cannot tell an unwritten record from an unpublished one.
+2. **The workstream pauses or blocks.** The registry sends whoever considers
+   resuming it to its handoff, and the copy on `main` is what they read before
+   deciding to check anything out. A handoff frozen at the last integration
+   describes a workstream that no longer exists.
+3. **Another workstream needs it to act.** Anything a recipient must read before
+   it can proceed is undelivered until `main` has it, which is the whole reason
+   the outbox exists.
+
+**The target lands no later than the reference.** When a change to a shared
+document creates a reference to a per-workstream file, send the file through the
+outbox before, or in the same round as, the referencing change reaches `main`.
+The deliverable travels a pull request and the record travels the outbox, so in
+practice the outbox goes first. A reference published ahead of its target is a
+broken rule for as long as the gap lasts.
+
+**Send the branch's current copy verbatim.** Publishing a record is not an
+occasion to write a different version for `main`. Copy what the branch holds, so
+the two are identical: the branch then needs no special treatment at its next
+synchronization, and identical content merges without conflict no matter which
+side a later reader compares. Two versions of one record is the failure this
+whole mechanism exists to avoid, reintroduced at a different level.
+
+**This is not a way to put deliverable content on `main` early.** The test is
+whether anyone would review it as part of the workstream's work. If yes, it is
+deliverable and the outbox must not carry it; merging an outbox publishes
+everything on it, without the review the deliverable is owed. A workstream that
+finds itself wanting to publish half its deliverable has a scope problem or a
+second workstream, not a routing problem.
+
+**The deliverable may still land in slices.** Integrating a finished slice
+through an ordinary pull request before the workstream is done is permitted and
+often right: a correction other workstreams are waiting on should not sit behind
+work that has months to run. The completion sequence concludes a workstream; it
+is not the only moment one may deliver. Slices travel the working branch under
+repository policy, never the outbox, and the handoff records what has already
+landed so a later reader is not misled about what remains.
+
+### Staying Current With `main`
+
+`main` is the medium every message travels through, so a workstream that does
+not watch it does not receive. Intake arrives there, registrations arrive
+there, and repository-wide coordination facts arrive there.
+
+Synchronize the working branch with `main` often — at least at every stage
+boundary, before beginning a substantial slice, and before integrating.
+
+**Method follows publication state.** Rebasing an unpublished branch onto
+`main` is clean, and it silently drops commits that already landed, which
+matters in a repository whose merge strategy rewrites them. Rebasing a
+published branch rewrites shared history and needs a force-push; do that only
+when the branch is known to be unshared, and prefer merging `main` in
+otherwise. Rebase what only you have; merge what others may have.
+
+**After your own delivery lands, reset rather than rebase.** Under a squash or
+rebase merge, a branch whose pull request has merged holds no content `main`
+lacks, but its commits have different identities from the ones `main` now
+carries. Rebasing then replays commits one at a time onto a `main` that already
+contains their final effect, which conflicts on intermediate states even though
+the end states agree. Confirm the branch has nothing unique — comparing trees,
+not commit identities, since the identities are guaranteed to differ — and hard
+reset it to `main`. Rebase is for carrying unlanded work forward; it is the
+wrong tool for a branch with nothing left to carry.
+
+This rule is about keeping a workstream branch current with `main`. It says
+nothing about how work is delivered *to* `main`, which follows repository
+policy and its configured merge strategy or merge queue.
+
+**Conflicts split by kind.** Mechanical conflicts — reformatting, moved
+sections, adjacent edits — are ordinary agent work; resolve them and say so.
+Semantic conflicts, where two workstreams assert incompatible things, are the
+user's decision. Do not let an unresolved conflict of either kind become a
+reason to stop synchronizing entirely; that is how a branch drifts far enough
+that the conflict becomes unaffordable.
+
+Two practical consequences:
+
+- A stale branch cannot act on its own intake. Discovery reads `main`, so items
+  are visible from anywhere, but the files an agent must edit and delete when
+  dispositioning them exist only on a synchronized branch. Synchronize before
+  planning a session's work, not after.
+- A long-lived branch that never rebases accumulates conflicts against work it
+  could have absorbed cheaply, and diverges from coordination decisions it is
+  expected to be following.
 
 ### Development And Checkpoints
 
 The workstream handoff—not root `CURRENT-STATUS.md`—records detailed progress,
 evidence, the current or last task, and the next resumable task. Routine
 workstream commits update only that handoff and workstream-owned files.
+
+**Commit often.** Commit each coherent unit of work as it is finished rather
+than accumulating many files across a long session. An uncommitted session is
+one interruption away from losing not just the changes but the order in which
+decisions were made, which is the part no one can reconstruct. Committing is
+cheap and local; it is not publication, and it does not require the work to be
+complete. A checkpoint is a statement about project state and belongs in the
+handoff; a commit is a save point. Every checkpoint is committed, but most
+commits are not checkpoints.
+
+Commits reach `main` through the repository's configured merge strategy, so
+whether frequent commits become individual commits on `main` is a property of
+that strategy rather than of this rule. Write commit messages that would read
+well either way, and do not let uncertainty about the merge boundary become a
+reason to delay committing.
 
 Keep all unfinished workstream documentation beneath:
 
@@ -148,6 +816,96 @@ when visibility is useful. Publish documentation-only checkpoints, then
 synchronize the workstream branch with the resulting `main` state before
 editing the same files again. The branch handoff remains authoritative for the
 latest track-local state; the copy on `main` is the latest published snapshot.
+
+### Workstream States, Pausing, And Resuming
+
+Every open workstream is in exactly one state, recorded in its registry row and
+in its handoff.
+
+- **active** — being worked on, or expected to be shortly.
+- **paused** — deliberately set down. Nothing external prevents work; the
+  project chose to spend attention elsewhere. Resuming is a decision.
+- **blocked** — cannot proceed. Something external is required: an answer, a
+  dependency, a credential, another workstream's delivery. Resuming is an
+  event, not a decision.
+- **integrating** — in the completion sequence, not taking new work.
+
+Paused and blocked look alike from outside and behave differently. A paused
+workstream needs someone to choose it. A blocked one needs its blocker cleared,
+so it must name the blocker and what would clear it, or nobody can tell when it
+became resumable.
+
+#### Pausing
+
+Pausing is a deliberate act with a small ceremony, placed where the knowledge
+is. Only the pair stopping work knows whether a thread finished or was
+suspended, and they know it at the moment they stop; asking on return is
+guesswork after the information is gone.
+
+Before leaving a workstream:
+
+1. Commit everything. If anything must stay uncommitted, say in the handoff
+   what and why.
+2. Update the handoff: current state, the last task and its status, and the
+   next resumable task.
+3. Write *Open Threads* — see below. This is the part that does not survive
+   any other way.
+4. Send anything owed through the outbox, including the handoff itself. A
+   paused workstream holding undelivered mail blocks its recipients without
+   telling them, and one whose handoff on `main` predates the pause tells
+   whoever considers resuming it nothing about why it stopped. See *Publishing
+   Before Integration*.
+5. Record external state that will outlive the session: running containers,
+   held ports, manual environment setup, anything that decays.
+6. Update the registry row to `paused` or `blocked`, with a short reason. If
+   blocked, name the blocker and what would clear it, and tell whoever can
+   clear it — through their intake if it is another workstream. A blocked
+   workstream nobody was told about is indistinguishable from an abandoned one.
+
+#### Open Threads
+
+A bounded section in the handoff, written at pause, holding what state
+resumption alone would lose. Three parts:
+
+- **Awaiting the human** — questions that need a decision before the work can
+  sensibly continue. Each states what turns on the answer.
+- **Weighed and unresolved** — options considered and not settled, with enough
+  reasoning that someone can reopen the question intelligently rather than
+  rediscover it. Include what was rejected and why; a rejected option with no
+  recorded reason gets re-proposed.
+- **Deliberately not preserved** — what was let go on purpose. Naming it stops
+  a later reader hunting for a conversation that was intentionally dropped.
+
+Roughly ten lines, not a transcript. It is deliberately too small to become a
+dumping ground; anything larger belongs in a design note or, on explicit
+request, a session record.
+
+**Conversational replay is not a goal.** This document does not try to restore a
+dialogue. Context is cleared, models change, and a replayed transcript is
+expensive to read and mostly noise. What is worth carrying is the reasoning, not
+the exchange that produced it. Depending on any agent's session-resumption
+feature would also break portability, so capture is repository-level by
+construction.
+
+#### Resuming
+
+1. Read the registry from the mainline ref, then the handoff, then intake.
+2. Synchronize the branch with `main` before planning. Intake and coordination
+   arrive there while a workstream sleeps, and the longer the pause the more
+   arrived.
+3. Read *Open Threads* before planning the session, not after. It is the
+   difference between knowing what is next and knowing why it is next.
+4. Re-verify what the handoff asserts about external state. Handoffs record
+   facts that were true at pause; containers exit, ports are taken, branches
+   move. Treat *External State And Risks* as claims to check, not as current
+   truth.
+5. Put unanswered questions from *Open Threads* to the human early, before
+   doing work whose shape depends on the answers.
+6. Update the registry row to `active`.
+
+A workstream resumed without its *Open Threads* read is resumed at the level of
+tasks and not of reasoning, which is how a settled question gets reopened and a
+rejected option gets proposed again.
 
 ### Draft User Documentation
 
@@ -195,6 +953,11 @@ unless the repository or selected handoff explicitly permits direct
 integration. Do not infer permission to update `main` merely from the ability
 to do so.
 
+Before integration begins, the workstream's intake on `main` must be empty. See
+*Intake Gates Completion*. Check this first: a forwarded item has to travel the
+outbox and reach `main`, so discovering a full queue late in the sequence stalls
+the integration rather than merely adding a step.
+
 Before integration begins, the selected handoff records:
 
 - the integration target, normally `main`;
@@ -211,12 +974,13 @@ the intended result ambiguous.
 
 #### 1. Prepare The Integration Candidate
 
-1. Verify the designated integration branch and every involved worktree are
+1. Verify the designated integration branch and every checkout holding it are
    clean and all accepted workstream changes are committed. Freeze that branch
    against unrelated work while integration proceeds.
 2. Inspect current local and remote `main`, fetching remote refs when network
-   access is available. Do not discard local commits or choose a side when
-   local and remote `main` have diverged.
+   access is available. If they have diverged, resolve it under *Verifying
+   Shared Branch State*: reset only when every local commit is proven already
+   upstream, and otherwise do not discard local commits or choose a side.
 3. Synchronize the integration branch with current `main` according to
    repository policy. A project may require rebasing, merging `main`, a hosting
    platform's update-branch operation, or a merge queue. Pull-request delivery
@@ -283,8 +1047,10 @@ Use this path only when repository policy or the selected handoff explicitly
 permits direct integration:
 
 1. Bring clean local `main` to the accepted remote `main` by ordinary
-   fast-forward. If they have diverged, stop and ask the human rather than
-   choosing or discarding history.
+   fast-forward. If they have diverged, apply *Verifying Shared Branch State*.
+   Reset local `main` only when every local-only commit is proven already
+   upstream, reporting that evidence; otherwise stop and ask the human rather
+   than choosing or discarding history.
 2. Rebase the frozen integration branch onto local `main` and rerun required
    validation. Resolve mechanical conflicts and ask the human when intent is
    required.
@@ -302,10 +1068,16 @@ permits direct integration:
 The workstream is completely done only when remote `main` contains the final
 tree produced by either delivery path. Until then, an open integration pull
 request or a local `main` ahead of its remote is pending integration, not a
-completed workstream. Associated worktrees and branches may be removed after
-completion once their changes are reachable from remote `main`.
+completed workstream. Associated branches may be removed after completion
+once their changes are reachable from remote `main`.
 
 ### Unsuccessful Completion
+
+Ending unsuccessfully does not discharge the intake queue. Before the sequence
+below, disposition every remaining item: forward to `project-management`
+anything this workstream will not do, with the reason. Work handed over in good
+faith must not disappear with the workstream that failed to do it. See *Intake
+Gates Completion*.
 
 Do not promote unfinished source or user documentation. On `main`:
 
@@ -333,7 +1105,7 @@ chosen integration branch, delivery method, and applicable repository policy
 in the handoff. Workstream state in Git and the hosting platform is durable but
 not a live lock or presence system.
 
-After interruption, enumerate worktrees and branches, inspect each dirty state
+After interruption, enumerate checkouts and branches, inspect each dirty state
 separately, compare local `main` with remote `main`, match branch prefixes to
 workstreams, and resume from the selected workstream's last committed status.
 An open integration pull request or a local finalization already
@@ -531,7 +1303,10 @@ Use markdown files with distinct responsibilities:
   details, debugging history, checklists, and other evidence that should not
   clutter the active task list.
 - `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/`: temporary documentation and the
-  detailed handoff for an open workstream in `multiple-streams` mode.
+  detailed handoff for an open workstream in `multiple-streams` mode. Exactly
+  one of these is always the reserved `project-management` workstream, which
+  holds project-wide priorities, sequencing, and lifecycle reasoning rather
+  than a second copy of the registry.
 - `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`: final status and retained
   historical material for an ended workstream.
 - `engineering-docs/bugs/`: one file per active or recently investigated
@@ -955,6 +1730,52 @@ Before editing or committing:
 4. If pushing is blocked by missing user credentials, commit locally and let the
    human push externally.
 
+### Verifying Shared Branch State
+
+Two questions about shared refs are easy to answer incorrectly by inspection.
+Run the check rather than inferring the answer.
+
+**Has this branch's work reached `main`?** Ancestry is the wrong test. A squash,
+a rebase, or a merge queue rewrites commits, so
+
+```text
+git merge-base --is-ancestor <branch> origin/main
+```
+
+answers "no" for work that is already fully integrated. An agent that trusts it
+concludes the merge failed and redoes integrated work. Compare by patch
+identity instead:
+
+```text
+git cherry origin/main <branch>
+```
+
+Lines beginning `+` are genuinely absent from `main`. Lines beginning `-` are
+already upstream under different commit identifiers. No `+` lines means the
+work has landed, whatever the commit identifiers say.
+
+**Have two refs diverged, and is the divergence real?** When a local ref and its
+remote have both advanced, first establish whether the local-only commits carry
+anything that is actually missing:
+
+```text
+git rev-list --left-right --count <local>...<remote>
+git cherry <remote> <local>
+```
+
+If every local commit is reported as already upstream, the divergence is an
+artifact of rewritten history and resetting the local ref to the remote one
+discards nothing. An agent may do that without asking, and must then report the
+evidence it relied on: the counts, the `git cherry` output, and the ref it
+reset.
+
+If any commit is genuinely missing, stop and ask the human. Do not choose a
+side, discard history, or force-push to resolve it.
+
+This applies to any ref, not only `main`. A stale workstream branch left by an
+earlier session diverges the same way and is resolved the same way. Never
+force-push `main` under either outcome.
+
 ## Applying This To Other Projects
 
 When using a Dockerized IDE environment created by this project on another
@@ -976,7 +1797,9 @@ Bootstrap the vibe-coding process documentation from
 Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
 docs/, and engineering-docs/ as appropriate. Preserve existing project docs
 and adapt the process to this repository. Set workflow-type in
-.devcapsule/devcapsule.toml to single-stream or multiple-streams.
+.devcapsule/devcapsule.toml to single-stream or multiple-streams. If
+multiple-streams, follow Initializing Multiple-Stream Mode, including the
+reserved project-management workstream.
 ```
 
 At minimum, add or update these files in the target project:

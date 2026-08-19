@@ -21,7 +21,10 @@ workstream explicitly, preserve one independently resumable handoff for each,
 associate every non-main branch with exactly one workstream, isolate unfinished
 documentation, and define deterministic beginning, development, successful or
 unsuccessful completion, integration, and recovery rules without relying on
-conversation history. Successful integration must be executable as a routine
+conversation history. Initializing or adopting the mode must create exactly one
+reserved `project-management` workstream that owns project-wide priorities,
+sequencing, cross-workstream dependencies, and lifecycle decisions, remains
+open for the lifetime of the mode, and ends only on migration away from it. Successful integration must be executable as a routine
 agent operation while respecting repository policy: prepare and validate a
 frozen integration branch, finalize the workstream records, and deliver through
 a pull request by default or through explicitly permitted direct-main
@@ -52,6 +55,15 @@ This requirement is satisfied when repository inspection shows that:
 - every open workstream has
   `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`, using its
   immutable ISO start date;
+- work handed between workstreams has a defined queue, a delivery route that
+  does not wait on the sender's own integration, exactly two disposition
+  outcomes, and a completion gate that prevents a workstream from concluding
+  while items remain undispositioned;
+- exactly one open workstream uses the reserved `project-management` mnemonic,
+  is registered like any other, and carries a handoff whose scope, permanent
+  lifecycle, branch association, and retirement-on-migration match
+  `WORKFLOW.md`; and the agent instructions and the reusable bootstrap template
+  require initialization and adoption to create it;
 - ended workstreams preserve that directory name under
   `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`; and
 - selection reads the registry from an unambiguous locally accepted mainline

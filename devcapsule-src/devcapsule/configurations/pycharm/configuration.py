@@ -140,6 +140,12 @@ class PycharmConfiguration:
             help="Skip preflight for an existing PyCharm config .lock.",
         ),
         click.Option(
+            ["--host-browser/--no-host-browser"],
+            default=False,
+            show_default=True,
+            help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
+        ),
+        click.Option(
             ["--docker-arg"],
             multiple=True,
             help="Append one raw docker-run argument; repeat for advanced cases.",
@@ -276,6 +282,7 @@ class PycharmConfiguration:
             writable_root=kwargs["writable_root"],
             enable_sudo=kwargs["dev_sudo"],
             ignore_config_lock=kwargs["ignore_config_lock"],
+            enable_host_browser=kwargs["host_browser"],
             extra_docker_args=list(kwargs["docker_arg"] or []),
         )
 

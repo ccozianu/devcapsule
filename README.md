@@ -29,8 +29,16 @@ developer-owned configuration authorizes host access.
 - `engineering-docs/` — contributor- and agent-facing requirements,
   specifications, decisions, design notes, implementation evidence, and
   workflow records.
-- `docker4pycharm/` — historical shell-based PyCharm MVP and reference
-  material; it is not the source of the active implementation.
+- `docker4pycharm/` — the original shell-based PyCharm MVP that this project
+  was bootstrapped from, frozen at that point in time. It is reference
+  material, not the source of the active implementation, and no current
+  decision should be recorded there. Its maintained descendant is
+  `devcapsule-src/devcapsule/assets/docker4pycharm/`, which installed builds
+  extract and run; the two have already diverged. Note that
+  `devcapsule.compat.script_path()` still prefers the frozen root copy when it
+  is present, so source checkouts and installed builds run different revisions
+  of `bootstrap-project.sh` and `check-runtime-deps.sh`. See
+  [`docker4pycharm/README.md`](docker4pycharm/README.md).
 - `.devcapsule/` — this project's capability declaration and platform lock.
 
 The `-src` suffix is deliberate: in a default clone named `devcapsule`, the
@@ -40,19 +48,41 @@ directories.
 
 ## Developer Setup
 
-The Python project uses Nox as its primary validation entry point. From the
-repository root:
+The Python project uses Nox as its primary validation entry point. Bootstrap a
+checkout-local developer environment from the repository root, then invoke
+Nox through that environment explicitly:
 
 ```text
 cd devcapsule-src
-python -m nox -s tests
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r dev-requirements.txt
+.venv/bin/python -m pip install -e . --no-deps
+.venv/bin/python -m nox -s tests
 ```
 
 Run the full local gate before handing off implementation changes:
 
 ```text
 cd devcapsule-src
-python -m nox -s build
+.venv/bin/python -m nox -s build
+```
+
+Calling the virtualenv's interpreter directly is intentional: it works without
+shell activation and cannot silently fall through to `/usr/bin/python` because
+an activation script contains an obsolete path. Activation remains supported:
+`. .venv/bin/activate && python -m nox -s build`.
+
+Python virtualenv activation scripts and installed console-script shebangs
+embed the absolute directory where the environment was created. After moving
+or renaming the checkout or `devcapsule-src/`, recreate the disposable
+developer environment rather than carrying it to the new path:
+
+```text
+cd devcapsule-src
+deactivate 2>/dev/null || true
+python3.12 -m venv --clear .venv
+.venv/bin/python -m pip install -r dev-requirements.txt
+.venv/bin/python -m pip install -e . --no-deps
 ```
 
 The full gate includes compilation, shell syntax checks, pytest, type checks,
@@ -66,6 +96,10 @@ deliberately discard cached Nox environments, add
 
 For CLI installation and usage, see
 [`devcapsule-src/README.md`](devcapsule-src/README.md).
+The initial binary distribution channel is GitHub Releases: pushing a numeric
+`v*` tag runs the backend release workflow, which builds and clean-machine
+proves the self-contained Linux x86-64 PEX before publishing it with a SHA-256
+checksum, then downloads and proves the published bytes again.
 
 ## Development Principles
 

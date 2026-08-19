@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
+import zipfile
+from pathlib import Path
 
 import pytest
+
+from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenBroker
 
 
 @pytest.mark.integration
@@ -66,6 +70,44 @@ def test_built_pex_exposes_recursive_host_public_interface(built_pex: Path) -> N
 
 
 @pytest.mark.integration
+def test_xdg_open_dispatches_through_built_pex_to_exact_host_argument(
+    built_pex: Path,
+    tmp_path: Path,
+) -> None:
+    xdg_open = shutil.which("xdg-open")
+    if xdg_open is None:
+        pytest.skip("xdg-open is unavailable on this packaging-test host")
+    socket_path = tmp_path / "host-open.sock"
+    captured = tmp_path / "captured-url"
+    url = "https://example.test/path?a=one&b=%24%28touch%20nope%29#fragment"
+    opener = (
+        sys.executable,
+        "-c",
+        "from pathlib import Path; import sys; Path(sys.argv[1]).write_text(sys.argv[2])",
+        str(captured),
+    )
+
+    with HostOpenBroker(socket_path, opener=opener):
+        completed = subprocess.run(
+            [xdg_open, url],
+            check=False,
+            text=True,
+            capture_output=True,
+            env={
+                **os.environ,
+                "BROWSER": f"{built_pex} host-open",
+                HOST_OPEN_SOCKET_ENV: str(socket_path),
+                "DISPLAY": "",
+                "XDG_CURRENT_DESKTOP": "",
+                "DE": "",
+            },
+        )
+
+    assert completed.returncode == 0, completed.stderr
+    assert captured.read_text(encoding="utf-8") == url
+
+
+@pytest.mark.integration
 def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> None:
     completed = subprocess.run(
         [str(built_pex), "version", "--json"],
@@ -76,11 +118,15 @@ def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> No
 
     assert completed.returncode == 0, completed.stderr
     value = json.loads(completed.stdout)
-    assert built_pex.name == "devcapsule-local.pex"
     assert value["schema_version"] == 1
     assert value["version"] == "0.1.0"
-    assert value["source_revision"] == "unknown"
-    assert value["source_url"] == "unknown"
+    if built_pex.name == "devcapsule-local.pex":
+        assert value["source_revision"] == "unknown"
+        assert value["source_url"] == "unknown"
+    else:
+        assert built_pex.name == "devcapsule.pex"
+        assert re.fullmatch(r"[0-9a-f]{40,64}", value["source_revision"])
+        assert value["source_url"].endswith(f"/commit/{value['source_revision']}")
     assert set(value) == {
         "schema_version",
         "version",
@@ -140,15 +186,42 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
     ).stdout.strip()
 
     output = project / "dist" / "devcapsule.pex"
+    build_environment = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in {"DEVCAPSULE_SOURCE_REPOSITORY", "DEVCAPSULE_SOURCE_REVISION"}
+    }
+    build_environment["PYTHON"] = sys.executable
     completed = subprocess.run(
         [str(scripts / "build-pex.sh"), "--allow-unpublished-revision"],
         check=False,
         text=True,
         capture_output=True,
-        env={**os.environ, "PYTHON": sys.executable},
+        env=build_environment,
     )
 
     assert completed.returncode == 0, completed.stderr
+    assert output.read_bytes().startswith(b"\x7fELF")
+    assert zipfile.is_zipfile(output)
+
+    inspected = subprocess.run(
+        [str(output)],
+        check=False,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "SCIE": "inspect"},
+    )
+    assert inspected.returncode == 0, inspected.stderr
+    lift = json.loads(inspected.stdout)["scie"]["lift"]
+    embedded = {item.get("key"): item for item in lift["files"]}
+    assert embedded["python-distribution"]["name"].startswith(
+        "cpython-3.12.14+20260814-"
+    )
+    assert embedded["python-distribution"]["name"].endswith(
+        "-install_only_stripped.tar.gz"
+    )
+    assert embedded["pex"]["executable"] is True
+
     version = subprocess.run(
         [str(output), "version", "--json"],
         check=True,

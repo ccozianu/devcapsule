@@ -68,6 +68,12 @@ download and rebuild after strict descriptor verification. The real vendor archi
 from this default E2E because the current Linux download is approximately
 1.28 GB; a separately explicit vendor test will cover that path.
 
+The successor-lifecycle E2E starts the lock-recommended DevCapsule base through
+its real embedded PEX runtime, removes that exact test-owned container
+externally with `docker rm --force`, and proves the independent successor
+inspection reports failure rather than stale success. Override its already-local
+image with `DEVCAPSULE_EARLY_EXIT_E2E_IMAGE`; the test never pulls implicitly.
+
 The contributor-bootstrap E2E launches a disposable managed base and performs
 a clean local clone, isolated Python 3.12 venv creation, locked dependency
 installation, editable package installation, and import-path verification. It

@@ -1230,6 +1230,12 @@ def _run_command() -> click.Command:
     @click.option("--docker-daemon", type=click.Choice(["none", "host-socket"]))
     @click.option("--development-sudo", is_flag=True, default=None)
     @click.option(
+        "--host-browser/--no-host-browser",
+        default=False,
+        show_default=True,
+        help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
+    )
+    @click.option(
         "--no-recursive-e2e",
         is_flag=True,
         help="Disable DevCapsule recursive-E2E readiness for this launch.",
@@ -1241,6 +1247,7 @@ def _run_command() -> click.Command:
         force: bool,
         docker_daemon: str | None,
         development_sudo: bool | None,
+        host_browser: bool,
         no_recursive_e2e: bool,
         container_name: str | None,
     ) -> int:
@@ -1380,6 +1387,7 @@ def _run_command() -> click.Command:
                 secret_environment=tuple(sorted(secret_environment.values())),
                 extra_docker_args=["--pull=never"],
                 project_state=None,
+                enable_host_browser=host_browser,
             )
         )
 
@@ -1439,6 +1447,12 @@ def _run_image_command() -> click.Command:
     @click.option("--project-state", type=click.Path(path_type=Path))
     @click.option("--docker-daemon", type=click.Choice(["none", "host-socket"]), default="none", show_default=True)
     @click.option("--development-sudo", is_flag=True)
+    @click.option(
+        "--host-browser/--no-host-browser",
+        default=False,
+        show_default=True,
+        help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
+    )
     @click.option("--name", "container_name")
     @click.pass_obj
     def run_image(
@@ -1451,6 +1465,7 @@ def _run_image_command() -> click.Command:
         project_state: Path | None,
         docker_daemon: str,
         development_sudo: bool,
+        host_browser: bool,
         container_name: str | None,
     ) -> int:
         candidate = context.start_path()
@@ -1473,6 +1488,7 @@ def _run_image_command() -> click.Command:
                 plugins=plugins,
                 docker_mode=docker_mode,
                 enable_sudo=development_sudo,
+                enable_host_browser=host_browser,
                 extra_docker_args=["--pull=never"],
             )
         )

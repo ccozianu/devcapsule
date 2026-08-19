@@ -33,17 +33,41 @@ Nox is the preferred developer cycle. By default this repository reuses Nox's
 managed virtual environments between runs, so repeated commands avoid starting
 from a completely fresh venv unless explicitly requested.
 
-Run these commands from a Python environment where Nox is installed.
+Create the checkout-local developer environment once, then call its interpreter
+explicitly. Shell activation is optional.
 
 ```bash
 cd devcapsule-src
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r dev-requirements.txt
+.venv/bin/python -m pip install -e . --no-deps
 
-python -m nox -s tests   # Python compile checks plus pytest
-python -m nox -s syntax  # Python compile checks plus shell syntax checks
-python -m nox -s typecheck  # mypy for package, tests, and noxfile.py
-python -m nox -s smoke   # source CLI and shell-wrapper help smoke tests
-python -m nox -s pex     # build the PEX artifact and smoke-test it
-python -m nox -s build   # full local gate
+.venv/bin/python -m nox -s tests   # Python compile checks plus pytest
+.venv/bin/python -m nox -s syntax  # Python compile checks plus shell syntax checks
+.venv/bin/python -m nox -s typecheck  # mypy for package, tests, and noxfile.py
+.venv/bin/python -m nox -s smoke   # source CLI and shell-wrapper help smoke tests
+.venv/bin/python -m nox -s pex     # build the PEX artifact and smoke-test it
+.venv/bin/python -m nox -s build   # full local gate
+```
+
+The explicit interpreter path prevents a broken activation from silently
+selecting `/usr/bin/python`. If preferred, activation works too:
+
+```bash
+. .venv/bin/activate
+python -m nox -s build
+```
+
+A Python virtualenv is not relocatable: its activation scripts and installed
+console-script shebangs contain the absolute path where it was created. If the
+checkout or `devcapsule-src/` directory moves, rebuild this disposable
+environment at its final path:
+
+```bash
+deactivate 2>/dev/null || true
+python3.12 -m venv --clear .venv
+.venv/bin/python -m pip install -r dev-requirements.txt
+.venv/bin/python -m pip install -e . --no-deps
 ```
 
 The `tests` session is the Nox way to run pytest for this project. It installs
@@ -58,8 +82,8 @@ The `build` session is the default Nox session, so these are equivalent:
 
 ```bash
 cd devcapsule-src
-python -m nox
-python -m nox -s build
+.venv/bin/python -m nox
+.venv/bin/python -m nox -s build
 ```
 
 Run a clean-slate build when dependency or environment reuse could hide a
@@ -67,7 +91,7 @@ problem:
 
 ```bash
 cd devcapsule-src
-python -m nox --no-reuse-existing-virtualenvs -s build
+.venv/bin/python -m nox --no-reuse-existing-virtualenvs -s build
 ```
 
 If you want to discard all cached Nox environments before a clean build:
@@ -75,7 +99,7 @@ If you want to discard all cached Nox environments before a clean build:
 ```bash
 cd devcapsule-src
 rm -rf .nox
-python -m nox -s build
+.venv/bin/python -m nox -s build
 ```
 
 The manual virtualenv workflow is still supported when directly inspecting a
@@ -112,7 +136,11 @@ python -m piptools compile --strip-extras --extra dev pyproject.toml --output-fi
 
 ## End-User Artifact
 
-Build a single-file PEX archive from a contributor environment:
+The published `devcapsule.pex` is a native Linux executable with an eagerly
+embedded, stripped CPython runtime. An end user runs it directly: no Conda,
+Python, pip, virtualenv, or first-run runtime download is required.
+
+Build the single-file PEX scie from a contributor environment:
 
 ```bash
 cd devcapsule-src
@@ -171,17 +199,64 @@ If the contributor environment is not activated, point the script at it:
 PYTHON=/path/to/venv/bin/python devcapsule-src/scripts/build-pex.sh
 ```
 
-Run the artifact with Python 3.12+:
+Run the artifact directly:
 
 ```bash
-python3.12 devcapsule-src/dist/devcapsule.pex --help
-python3.12 devcapsule-src/dist/devcapsule.pex pycharm run --help
-python3.12 devcapsule-src/dist/devcapsule.pex pycharm build --help
+devcapsule-src/dist/devcapsule.pex --help
+devcapsule-src/dist/devcapsule.pex pycharm run --help
+devcapsule-src/dist/devcapsule.pex pycharm build --help
 ```
 
-The archive contains the Python CLI, runtime dependencies, and the legacy
+GitHub Releases is the initial public download channel. Release assets contain
+the PEX and its checksum; downloading the raw asset requires restoring its
+executable bit:
+
+```bash
+release_tag=v026
+curl --fail --location --output devcapsule.pex \
+  "https://github.com/ccozianu/devcapsule/releases/download/${release_tag}/devcapsule.pex"
+curl --fail --location --output devcapsule.pex.sha256 \
+  "https://github.com/ccozianu/devcapsule/releases/download/${release_tag}/devcapsule.pex.sha256"
+sha256sum --check devcapsule.pex.sha256
+chmod 0755 devcapsule.pex
+./devcapsule.pex version --json
+```
+
+The GitHub backend owns release construction. Pushing a numeric `v*` tag (for
+example `v026`) runs `.github/workflows/release-pex.yml`, which checks out that
+exact tag, runs source validation, builds the self-contained PEX, and proves it
+inside a network-disabled Ubuntu container with no Python. Only then does it
+create the GitHub Release with `devcapsule.pex` and
+`devcapsule.pex.sha256`. The workflow downloads the published assets, verifies
+their checksum and byte identity, restores the executable bit, and repeats the
+no-Python/no-network proof. A manual workflow run can retry an existing tag;
+if its Release already exists, the rebuilt bytes must match and are never
+silently replaced.
+
+The executable contains CPython 3.12.14 from the pinned 20260814 Python Build
+Standalone release, the Python CLI, runtime dependencies, and the legacy
 PyCharm build/runtime helper assets still needed by the current delegated
 `pycharm build`, `pycharm check-runtime`, and `bootstrap project` commands.
+It targets `linux-x86_64`, matching the supported v026 host and Docker base.
+
+Before publishing, prove the artifact on a network-disabled Ubuntu image that
+contains no Python interpreter:
+
+```bash
+python -m nox -s pex_clean_machine
+```
+
+To prove an already-built or downloaded artifact rather than having Nox build
+the local candidate first, select it explicitly:
+
+```bash
+DEVCAPSULE_PEX_UNDER_TEST="$PWD/dist/devcapsule.pex" \
+  python -m nox -s pex_clean_machine
+```
+
+Developers who deliberately manage Python tools can instead install the source
+checkout in one command with `uv tool install ./devcapsule-src`; this is an
+alternative development workflow, not an end-user prerequisite.
 
 The PEX build embeds `/tmp/devcapsule-pex-root` as its default runtime
 extraction/cache root so it does not depend on IDE project-state cache
@@ -217,13 +292,13 @@ devcapsule images build \
   --network host
 
 # When invoked from a PEX, that PEX is embedded by default.
-python3.12 dist/devcapsule.pex images build \
+dist/devcapsule.pex images build \
   --type base \
   --tag devcapsule-base:debug-v023 \
   --source-revision "$(git rev-parse HEAD)"
 
 # WIP: build the NVIDIA CUDA development variant for specialized validation.
-python3.12 dist/devcapsule.pex images build \
+dist/devcapsule.pex images build \
   --type base \
   --recipe nvidia-cuda-devel \
   --tag devcapsule-base:cuda-v023 \
@@ -457,12 +532,12 @@ that same environment explicitly without launching a container, use:
 ```bash
 devcapsule project --path /path/to/checkout config resolve
 devcapsule project --path /path/to/checkout config authorize base-image \
-  docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81
+  docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a
 devcapsule project --path /path/to/checkout config resolve
 devcapsule images build \
   --type environment \
   --project /path/to/checkout \
-  --alias devcapsule-local-pycharm:debug-v024
+  --alias devcapsule-local-pycharm:debug-v026
 ```
 
 The platform lock must select a DevCapsule base plus a
@@ -512,7 +587,7 @@ For developer-built base testing, `base-image` also accepts an already-local
 DevCapsule metadata-v1 base name:
 
 ```bash
-devcapsule project config authorize base-image devcapsule-local-base:v024
+devcapsule project config authorize base-image devcapsule-local-base:v026
 devcapsule project config resolve
 devcapsule project run
 ```
@@ -534,14 +609,16 @@ selected local image must still pass DevCapsule metadata, platform, and
 immutable image-ID inspection.
 
 This repository's current Linux dogfood lock uses published digest
-`docker.io/mycodespaceai/devcapsule-base@sha256:0c9ebc0c9744a525c160bba1a0f75dacd27cd16cb5dfee769f69bc2c3165fb81`.
-The associated `ubuntu-24.04-v024` tag is only a dogfood discovery tag;
+`docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a`.
+The associated `ubuntu-24.04-v026` tag is only a dogfood discovery tag;
 official V1 artifacts will use semantic release versions and committed locks
 will continue to use immutable digests.
 
-The immutable v024 image uses agent-neutral base recipe version 2, embeds the
-DevCapsule PEX, and exposes source revision `e2dae20...` at the canonical
-`ccozianu/devcapsule` repository. It contains no ambient agent CLI.
+The immutable v026 image uses agent-neutral base recipe version 5, embeds the
+self-contained DevCapsule PEX released from source revision `91d50b1...` at
+the canonical `ccozianu/devcapsule` repository, and contains the supported
+Python, Node.js, Java, Maven, and PostgreSQL client toolchain. It contains no
+ambient agent CLI.
 
 The command obtains the selected base when it is not local, verifies that it
 is a managed metadata-v1 base for the locked platform, and downloads the
@@ -580,11 +657,29 @@ socket. Treat the embedded browser as a project preview surface, not as a
 general-purpose browser for untrusted sites. Docker's outer isolation policy
 is unchanged.
 
+External hyperlinks use a separate, opt-in host integration. Add
+`--host-browser` to `project run`, `run-image`, or `pycharm run` to let
+`xdg-open` inside the capsule ask a launcher-owned Unix-socket broker to open
+an absolute HTTP(S) URL in the physical host's default browser. The protocol
+does not expose the host desktop session bus, accept commands or filesystem
+paths, or invoke a shell. The socket is mounted read-only and its physical
+host source is omitted from ordinary evidence. Any process running as the
+capsule user can exercise the enabled bridge, so it is disabled unless the
+developer makes this run-once choice. Use `--no-host-browser` to override a
+higher-level launcher choice explicitly.
+
+A recursive launch can propagate an existing authorized broker to its
+successor; it cannot create host-browser access from inside a capsule. The
+physical-host foreground launcher owns the broker lifetime and removes its
+private runtime directory on exit. A nested detached successor therefore
+retains working links only while that owning outer launch remains alive.
+
 For a formation-based run, DevCapsule generates a version-1 runtime plan from
 the same component template used in the image's formation identity. The JSON
 contains only in-container project/home/state destinations, the runtime
-UID/GID/username, and component adapter configuration—never host source/state
-paths, checkout files, credentials, or authorization evidence. The launcher
+UID/GID/username, component adapter configuration, and names of enabled host
+integrations—never host source/state paths, checkout files, credentials, or
+authorization secrets. The launcher
 writes it to a temporary mode-`0644` file, mounts it read-only at
 `/etc/devcapsule/runtime-plan.json`, and removes it with the generated identity
 files after exit or launch preparation failure. No command follows the image
@@ -621,7 +716,10 @@ Normal launch then uses the committed manifest and platform lock plus that
 checkout-local resolution:
 
 ```bash
-devcapsule project run --docker-daemon host-socket --development-sudo
+devcapsule project run \
+  --docker-daemon host-socket \
+  --development-sudo \
+  --host-browser
 ```
 
 For the DevCapsule repository's own recursive dogfood validation, this same
@@ -777,8 +875,10 @@ for construction and diagnosis. It passes `--pull=never` to Docker, so a
 missing local image fails instead of pulling or resolving another image. It
 defaults to no Docker-daemon access. Use
 `--docker-daemon host-socket` and `--development-sudo` only as explicit
-run-once relaxations. The broader capability-first state-management CLI remains
-under development.
+run-once relaxations. `--host-browser` is a separate run-once capability for
+opening HTTP(S) hyperlinks in the physical host browser; it does not imply
+Docker, network, sudo, or credential access. The broader capability-first
+state-management CLI remains under development.
 
 The first dogfood validation intentionally supplies the existing directories
 once, before the planned `state adopt` command persists those mappings:

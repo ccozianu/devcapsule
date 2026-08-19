@@ -20,6 +20,12 @@ The human/agent development workflow used to build this repository should
 itself be available to users of Dockerized environments created by this project
 when they choose that mode.
 
+The workflow is not required to be complete. It must state that it is
+incomplete, tell adopters what to do where it is silent, and give them a route
+for returning what they discover, so that underspecification degrades into
+recorded findings rather than into blocked work or silent divergence between
+projects that believe they share a protocol.
+
 ## Why This Exists
 
 The workflow is part of the product idea, not just an internal convenience.
@@ -39,7 +45,10 @@ useful in practice.
 - target repositories can choose the linear or multiple-workstream protocol in
   committed project metadata;
 - template/bootstrap material teaches the same structure future adopters are
-  expected to use.
+  expected to use;
+- the workflow states its own incompleteness, distinguishes silence from
+  express denial, and requires exercised latitude to be recorded; and
+- adopters have a defined route for returning gaps they discover.
 
 ## Related
 

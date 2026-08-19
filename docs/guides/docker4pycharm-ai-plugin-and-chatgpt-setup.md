@@ -122,11 +122,20 @@ Use your ChatGPT subscription path first. Use an OpenAI API key only if you inte
 
 ## Container-specific login notes
 
-Because PyCharm runs inside a container, the browser-based sign-in flow may need validation.
+Because PyCharm runs inside a container, enable the narrow host-browser bridge
+for a launch that needs browser-based sign-in:
+
+```bash
+devcapsule project run --host-browser
+```
+
+The bridge accepts only absolute HTTP(S) URLs and opens them in the physical
+host's default browser. It is a run-once host capability available to every
+process running as the capsule user, so it is not enabled implicitly.
 
 Expected possibilities:
 
-- The plugin may open a login URL and allow normal browser sign-in.
+- The plugin may open a login URL through the authorized host browser and allow normal browser sign-in.
 - The plugin may offer a copy/paste login URL that you can open in the host browser.
 - The localhost callback may fail if the browser opens on the host while the callback listener is inside the container.
 
@@ -138,7 +147,10 @@ If login fails, try these in order:
 4. As a fallback, use an OpenAI API key authentication path or JetBrains AI subscription path if acceptable.
 5. Record exactly what failed before changing the Docker launcher.
 
-Do not broaden Docker access casually just to make login work. Any relaxation such as host networking, browser bridging, or extra mounts should become an explicit, documented launcher option.
+Do not broaden Docker access casually just to make login work. Browser
+bridging is independent of Docker and networking authorization; use the
+dedicated `--host-browser` option rather than adding a session-bus mount or a
+general host command bridge.
 
 ## What to ask the future ChatGPT development agent to do
 

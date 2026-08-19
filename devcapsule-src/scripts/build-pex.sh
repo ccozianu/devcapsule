@@ -19,13 +19,18 @@ Output policy:
   clean unpublished HEAD  dist/devcapsule.pex
   --allow-local-source     dist/devcapsule-local.pex
 
-Build a single-file DevCapsule PEX archive from the local package and the
-pinned runtime dependency lock file.
+Build a directly executable DevCapsule PEX scie from the local package and the
+pinned runtime dependency lock file. The scie eagerly embeds portable CPython,
+so the resulting artifact needs neither host Python nor a first-run download.
 
 Environment:
-  PYTHON                 Python executable used to run PEX. Default: python
-  DOCKER4IDES_PEX_SHEBANG  Shebang embedded in the archive.
-                           Default: /usr/bin/env python3.12
+  PYTHON                 Python executable used for the build. Default: python
+  DEVCAPSULE_SCIE_PLATFORM
+                         Native target platform. Default: linux-x86_64
+  DEVCAPSULE_SCIE_PYTHON_VERSION
+                         Embedded CPython version. Default: 3.12.14
+  DEVCAPSULE_SCIE_PBS_RELEASE
+                         Python Build Standalone release. Default: 20260814
   DOCKER4IDES_RUNTIME_PEX_ROOT
                          Runtime extraction/cache root embedded in the archive.
                          Default: /tmp/devcapsule-pex-root
@@ -93,7 +98,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 python_bin="${PYTHON:-python}"
-pex_shebang="${DOCKER4IDES_PEX_SHEBANG:-/usr/bin/env python3.12}"
+scie_platform="${DEVCAPSULE_SCIE_PLATFORM:-linux-x86_64}"
+scie_python_version="${DEVCAPSULE_SCIE_PYTHON_VERSION:-3.12.14}"
+scie_pbs_release="${DEVCAPSULE_SCIE_PBS_RELEASE:-20260814}"
 runtime_pex_root="${DOCKER4IDES_RUNTIME_PEX_ROOT:-/tmp/devcapsule-pex-root}"
 
 if [[ ${allow_local_source} -eq 1 && ${output_explicit} -eq 0 ]]; then
@@ -216,14 +223,22 @@ Path(path).write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) +
 PY
 
 rm -rf "${project_dir}/build" "${project_dir}/devcapsule.egg-info"
+scie_build_output="${build_root}/devcapsule-scie"
 "${python_bin}" -m pex \
   -r "${project_dir}/requirements.txt" \
   "${build_root}" \
   -c devcapsule \
-  --python-shebang "${pex_shebang}" \
   --runtime-pex-root "${runtime_pex_root}" \
-  -o "${output}"
+  --scie eager \
+  --scie-only \
+  --scie-platform "${scie_platform}" \
+  --scie-python-version "${scie_python_version}" \
+  --scie-pbs-release "${scie_pbs_release}" \
+  --scie-pbs-stripped \
+  -o "${scie_build_output}"
+install -m 0755 "${scie_build_output}" "${output}"
 
 echo "${output}"
+echo "Self-contained runtime: CPython ${scie_python_version} (${scie_platform}, PBS ${scie_pbs_release})"
 echo "Source revision: ${source_revision}"
 echo "Source URL: ${source_url}"

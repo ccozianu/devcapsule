@@ -301,6 +301,15 @@ than filesystem deletion.
 `devcapsule run` uses the persistent home and all state contracts pinned by the
 project lock.
 
+The native-X11 launcher exposes host-browser integration only through the
+explicit `--host-browser` run option. When selected, a private, same-user Unix
+socket carries only validated absolute HTTP(S) URLs to a physical-host broker;
+the capsule does not receive the host desktop session bus or an arbitrary
+command channel. The socket source is not persisted in the runtime plan, while
+the plan names the enabled `browser-open` integration. Nested capsules may
+propagate an inherited broker but may not create physical-host access. The
+owning physical-host foreground launch controls broker lifetime and cleanup.
+
 `devcapsule run-image IMAGE` is the legacy, compatibility, dogfood, and
 recovery escape hatch. It may run with or without a project declaration and
 does not infer component contracts from the project lock. When it discovers

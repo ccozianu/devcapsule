@@ -24,6 +24,14 @@ from ...host_daemon import (
     requires_translation,
     translate_bind_sources,
 )
+from ...host_open import (
+    HOST_OPEN_BROWSER,
+    HOST_OPEN_INTEGRATION,
+    HOST_OPEN_SOCKET_DESTINATION,
+    HOST_OPEN_SOCKET_ENV,
+    HostOpenError,
+    host_open_bridge,
+)
 from ...materialization import RUNTIME_PLAN_PATH
 from ...project import ProjectMountError
 from ...runtime import (
@@ -118,6 +126,7 @@ class PycharmRunOptions:
     additional_environment: dict[str, str] = field(default_factory=dict)
     secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
+    enable_host_browser: bool = False
 
 
 @dataclass
@@ -154,6 +163,7 @@ class PycharmRunConfig:
     memory_limit_bytes: int | None
     runtime_plan: RuntimePlan | None
     use_image_process: bool
+    host_browser_socket: Path | None = None
     additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_environment: tuple[tuple[str, str], ...] = ()
     secret_environment: tuple[str, ...] = ()
@@ -166,25 +176,37 @@ class PycharmRunConfig:
 def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None) -> int:
     """Run PyCharm through the translated Python launcher."""
 
-    runtime_env = dict(os.environ if env is None else env)
-    config = build_run_config(options, runtime_env)
-    runtime_env = host_backed_runtime_environment(runtime_env)
-    files = prepare_temp_runtime_files(config, runtime_env)
     try:
-        if config.enable_sudo:
-            ensure_sudoers_policy_ownership(config, files, runtime_env)
-        docker_args = build_docker_args(config, files, runtime_env)
-        docker_args = translate_for_external_daemon(docker_args, runtime_env)
-        print_storage_summary(config)
-        if config.enable_sudo:
-            print_sudo_warning()
-        command = ["docker", "run", *docker_args, config.image]
-        if not config.use_image_process:
-            command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
-        completed = subprocess.run(command, check=False, env=runtime_env)
-        return completed.returncode
-    finally:
-        cleanup_temp_runtime_files(files)
+        runtime_env = host_backed_runtime_environment(
+            dict(os.environ if env is None else env)
+        )
+        with host_open_bridge(
+            runtime_env,
+            enabled=options.enable_host_browser,
+        ) as browser_socket:
+            if browser_socket is None:
+                runtime_env.pop(HOST_OPEN_SOCKET_ENV, None)
+            else:
+                runtime_env[HOST_OPEN_SOCKET_ENV] = str(browser_socket)
+            config = build_run_config(options, runtime_env)
+            files = prepare_temp_runtime_files(config, runtime_env)
+            try:
+                if config.enable_sudo:
+                    ensure_sudoers_policy_ownership(config, files, runtime_env)
+                docker_args = build_docker_args(config, files, runtime_env)
+                docker_args = translate_for_external_daemon(docker_args, runtime_env)
+                print_storage_summary(config)
+                if config.enable_sudo:
+                    print_sudo_warning()
+                command = ["docker", "run", *docker_args, config.image]
+                if not config.use_image_process:
+                    command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
+                completed = subprocess.run(command, check=False, env=runtime_env)
+                return completed.returncode
+            finally:
+                cleanup_temp_runtime_files(files)
+    except HostOpenError as exc:
+        raise PycharmRunError(str(exc)) from exc
 
 
 def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
@@ -453,7 +475,26 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             )
         resolved_source = resolve_existing_or_create(source)
         additional_state_mounts.append((logical_name, str(resolved_source), destination))
-    fixed_environment = options.runtime_plan.component_environment() if options.runtime_plan else {}
+    host_browser_socket: Path | None = None
+    configured_browser_socket = env.get(HOST_OPEN_SOCKET_ENV)
+    if options.enable_host_browser and configured_browser_socket:
+        candidate = Path(configured_browser_socket)
+        if not candidate.is_absolute() or ".." in candidate.parts or not is_socket(candidate):
+            raise PycharmRunError("The authorized host-browser socket is absent or unsafe.")
+        host_browser_socket = candidate
+
+    selected_runtime_plan = options.runtime_plan
+    if host_browser_socket is not None and selected_runtime_plan is not None:
+        selected_runtime_plan = selected_runtime_plan.with_host_integration(
+            HOST_OPEN_INTEGRATION
+        )
+    fixed_environment = selected_runtime_plan.component_environment() if selected_runtime_plan else {}
+    if host_browser_socket is not None and (
+        "BROWSER" in fixed_environment or HOST_OPEN_SOCKET_ENV in fixed_environment
+    ):
+        raise PycharmRunError(
+            "Component runtime metadata conflicts with the host-browser integration."
+        )
     additional_environment: list[tuple[str, str]] = []
     for name, value in sorted(options.additional_environment.items()):
         if not name.isascii() or not name.isidentifier() or name.upper() != name:
@@ -516,8 +557,9 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ignore_config_lock=ignore_config_lock,
         network_mode=options.network_mode,
         memory_limit_bytes=options.memory_limit_bytes,
-        runtime_plan=options.runtime_plan,
+        runtime_plan=selected_runtime_plan,
         use_image_process=options.use_image_process,
+        host_browser_socket=host_browser_socket,
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),
         secret_environment=tuple(sorted(set(options.secret_environment))),
@@ -626,6 +668,20 @@ def build_docker_args(
     if config.runtime_plan is not None:
         for name, value in sorted(config.runtime_plan.component_environment().items()):
             args.extend(["--env", f"{name}={value}"])
+    if config.host_browser_socket is not None:
+        args.extend(
+            [
+                "--env",
+                f"BROWSER={HOST_OPEN_BROWSER}",
+                "--env",
+                f"{HOST_OPEN_SOCKET_ENV}={HOST_OPEN_SOCKET_DESTINATION}",
+                "--mount",
+                (
+                    f"type=bind,src={config.host_browser_socket},"
+                    f"dst={HOST_OPEN_SOCKET_DESTINATION},ro"
+                ),
+            ]
+        )
     for name, value in config.additional_environment:
         args.extend(["--env", f"{name}={value}"])
     for name in config.secret_environment:
@@ -1108,6 +1164,13 @@ Embedded browser security:
   JCEF's inner Chromium sandbox is disabled for V1 container compatibility.
   Embedded content inherits the IDE user's project, state, network, and any
   separately authorized Docker access. Docker's outer isolation is unchanged."""
+    host_browser_disclosure = ""
+    if config.host_browser_socket is not None:
+        host_browser_disclosure = """
+
+Host browser integration:
+  Enabled through a URL-only HTTP(S) broker. Any process running as the
+  capsule user can ask the physical host to navigate its default browser."""
     print(
         f"""PyCharm storage:
   Persistent home:       {config.persistent_home}
@@ -1116,7 +1179,7 @@ Embedded browser security:
   PyCharm system:         {config.ide_system}
   PyCharm logs:           {config.ide_log}
   Tool cache:             {config.tool_cache}
-  Container project path: {config.project_mount}{browser_disclosure}""",
+  Container project path: {config.project_mount}{browser_disclosure}{host_browser_disclosure}""",
         file=sys.stderr,
     )
 
