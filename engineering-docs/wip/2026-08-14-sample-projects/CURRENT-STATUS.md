@@ -41,28 +41,31 @@ name, not a typo in this record.
   submodule.
 - `trading-research` is the second sample. Its public repository is
   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, and it is
-  wired in as a submodule at commit `6f44b16`. Its initial design brief and
-  pipeline pseudocode are present in the sample repository under
-  `engineering-docs/sketch-of-a-project/`.
+  wired in as a submodule at commit `bfee9a1`. Its initial design brief and
+  pipeline pseudocode are present in the sample repository, and it now has a
+  DevCapsule declaration and Linux lock selecting Python, PyCharm, Codex, and
+  Claude Code without yet creating Python-project structure.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: add `trading-research` as the second sample and read its initial
-project sketch.
+Last task: initialize `trading-research` as a PyCharm DevCapsule with Python,
+Codex, and Claude Code support, without scaffolding a Python project.
 
-Status: complete. `.gitmodules` and the parent tree now record the sample at
-`devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`,
-pinning published commit `6f44b16`. The design is understood at the conceptual
-level; implementation scope and the remaining contract decisions will be
-developed interactively with the product owner.
+Status: complete. The sample's published commit `bfee9a1` contains only the
+requested `.devcapsule/` declaration and lock in addition to the existing
+project sketches. No `pyproject.toml`, package directory, dependency manifest,
+test tree, or other Python skeleton was added. The parent gitlink pins that
+commit.
 
 ## Evidence
 
-- The trading-research gitlink pins `6f44b16`, the published `origin/main` of
-  its repository; the submodule worktree is clean and both initial design files
-  were read in full.
+- The trading-research gitlink pins `bfee9a1`, the published `origin/main` of
+  its repository; the submodule worktree is clean.
+- An isolated `devcapsule project config list` accepted the declaration and
+  lock, selected PyCharm, Codex, and Claude Code, and reported only the expected
+  developer-owned base-image and Claude-download authorizations as unresolved.
 - Sample backend tests: `4 passed` against temporary SQLite.
 - Full CRUD verified against real PostgreSQL 17 over `psycopg`: create, list,
   patch, and delete all behaved correctly, and the verification database was
@@ -157,8 +160,10 @@ therefore acquired per developer after explicit terms authorization.
    The initial sketch specifies an evaluation-first, rotated multi-LLM debate
    over canonical atomic claims, followed by a deterministic LLM-free merge
    that reports convergence, majority, or divergence without treating
-   agreement as correctness. Capabilities, services, GUI use, and the specific
-   DevCapsule behaviors it should prove remain to be defined interactively.
+   agreement as correctness. Its initial DevCapsule declares `python`,
+   `python-ide`, `codex-agent`, and `claude-code-agent`; service needs and the
+   specific DevCapsule behaviors it should prove remain to be defined
+   interactively.
 
 ## Adopter-Path Verification
 
@@ -205,11 +210,13 @@ foreground/detached lifecycle evidence is recorded in the
 
 ## Next Resumable Task
 
-Develop the `trading-research` sample's scope interactively from its initial
-design. Start with the eval-harness milestone and settle the load-bearing open
-contracts before implementing the debate machinery: canonical alignment of
-semantically equivalent claims, treatment of `JUDGMENT` claims, and degraded
-quorum behavior.
+Enter the initialized `trading-research` DevCapsule, approve its developer-owned
+base-image and Claude-download recommendations, and continue the design
+discussion there. The agents inside that capsule will scaffold the Python
+project only after the product owner asks them to. Begin implementation planning
+with the eval-harness milestone and the load-bearing open contracts: canonical
+alignment of semantically equivalent claims, treatment of `JUDGMENT` claims,
+and degraded-quorum behavior.
 
 The earlier `fastapi-webapp` GUI-launch limitation was addressed by this
 branch's container-path translation and host-backed staging changes; a live
