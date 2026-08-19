@@ -154,11 +154,35 @@ current remote `main` at `a72d0a8` before project-management work resumed.
 
 ## Last Task And Status
 
-Last task: the 2026-08-19 session, which the product owner interrupted for
-travel. It was a coordination session rather than a ledger session, and it
-produced five decisions and five sends.
+Last task: the second 2026-08-19 session, which resumed this workstream after
+the travel pause. It spent itself on verification and correction rather than on
+new decisions, and ended inside a question the product owner asked to persist
+rather than answer.
 
-Status: complete, everything committed and pushed. What it decided:
+Status: complete, everything committed and pushed. It is preserved in full as
+the
+[2026-08-19 session record](../../session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md),
+written at the product owner's explicit request. What it did:
+
+1. **Re-verified the pause claims**, and found the handoff stale in the
+   project's favour: both pull requests had merged, so the five deliveries and
+   the `contained-display` registration were already on `main`. The blocker the
+   handoff led with did not exist.
+2. **Resent the one commit that had not travelled** — the ratified-boundary
+   amendment — from an outbox reset to current `main`, now `b1f7273`. First send
+   on this workstream to match the shape the outbox rule actually describes.
+3. **Synchronized**: local `main` fast-forwarded to `21d2503`, this branch
+   rebased onto it and force-pushed with a lease.
+4. **Framed the individual projects** rather than planning them, because nothing
+   project-specific is recorded anywhere in the repository. The frame and its
+   one coordination question are thread 7 below.
+
+Preceding task: the first 2026-08-19 session, which the product owner
+interrupted for travel. It was a coordination session rather than a ledger
+session, and it produced five decisions and five sends.
+
+Status: complete, and delivered — its sends reached `main` through `PR #30`
+and `PR #31` during the pause. What it decided:
 
 1. **The workflow is in V1 as an optional component**, owned by
    `workflow-improvements`. Recorded as the ledger's sixth decided row.
@@ -200,6 +224,15 @@ eight unowned shortcomings and seven documented items to pin to V1; and the
 
 ## Next Resumable Task
 
+**Resume inside the individual-projects question**, which is where this pair
+stopped. The product owner chose that topic for the second 2026-08-19 session
+and then asked for the conversation to be persisted before answering it. The
+frame is complete and needs no rebuilding — it is thread 7 below, and in full in
+the [session record](../../session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md).
+What is missing is only what he alone can supply: which projects, and whether
+they owe findings back to this repository. Do not re-derive the frame; ask the
+question.
+
 **The outbox no longer blocks the work.** `PR #30` and `PR #31` merged during
 the pause, so all five deliveries are on `main` and `contained-display` is
 registered. One follow-up commit remains: the ratified-boundary amendment, now
@@ -207,7 +240,7 @@ on `project-management/outbox` at `b1f7273`, needs a pull request the product
 owner must open. It refines an item already delivered rather than announcing
 anything new, so it gates nothing below.
 
-Define V1. Until now V1 has been a target held in the product owner's head
+Then define V1. Until now V1 has been a target held in the product owner's head
 plus a dated gap-review snapshot; the obvious prerequisites were clear, but the
 release boundary is not. Complete the [V1 scope ledger](v1-scope-ledger.md),
 which now holds six decided or proposed rows.
@@ -249,7 +282,9 @@ protocol is a release commitment at all.
 
 ## Open Threads
 
-Rewritten at the 2026-08-19 pause, which the product owner called for travel.
+Reviewed at the second 2026-08-19 pause and carried forward; only thread 7
+changed, gaining the frame the session built. Rewritten at the first 2026-08-19
+pause, which the product owner called for travel.
 Threads settled during that session have been removed rather than annotated;
 what remains is live. Originally written at the 2026-08-16 pause. This is a
 trial of the `Open Threads` shape
@@ -284,12 +319,22 @@ questions and reasoning hooks, not a transcript.
    mention trackers at all. The status was deliberately left unchanged, because
    flipping a requirement's status is the product owner's call; `accepted` is
    the honest value if he wants it changed.
-7. **The individual projects were never discussed.** The product owner said v026
-   is good enough to spawn the projects raised in an earlier session, and that
-   he would bring each one up shortly. The session ended first. The general
-   judgment is recorded — go, but know the X11 exposure is open and that real
-   projects will probably reopen the V1 rulings on service dependencies and port
-   allocation — and nothing project-specific exists.
+7. **The individual projects: framed on 2026-08-19, still unnamed.** The
+   product owner chose this topic and then asked for persistence before
+   answering, so the question is live and unchanged. A search of the
+   checkpoints, the session records, the sample-projects handoff, and all of
+   `engineering-docs/` confirms **nothing project-specific is recorded
+   anywhere**; the projects exist only in his head, and inventing candidates
+   would put agent-authored fiction into project memory. What was put to him:
+   the X11 passthrough hands every GUI capsule his trusted host session cookie
+   and cannot be avoided while `DISPLAY` is required, and real projects worsen
+   exactly the dimension that matters because agent work runs for hours; service
+   dependencies and port allocation both reopen open V1 decisions; and — the
+   part worth keeping — if each project is its own repository rather than a
+   workstream here, findings have **no route home**, because a separate project
+   has no outbox into this one. Per project he would be asked for: name and
+   repository, size, declared capabilities, services beyond the checkout,
+   whether it is GUI-driven, and what it should prove about DevCapsule.
 8. **Two carried items from the 2026-08-18 critique, now the only part of it not
    superseded.** Whether the process-to-product commit ratio is acceptable
    dogfood cost or a signal to freeze `WORKFLOW.md` and spend the next stretch
@@ -328,10 +373,16 @@ questions and reasoning hooks, not a transcript.
 
 ### Deliberately Not Preserved
 
-The conversation itself. Decisions are in the ledger, the checkpoints, and the
-two 2026-08-19 notes, and everything above is what would otherwise have been
-lost. Nothing from the 2026-08-16 or 2026-08-19 sessions needs recovering to
-resume this workstream.
+The conversations up to and including the first 2026-08-19 session. Their
+decisions are in the ledger, the checkpoints, and the two 2026-08-19 notes, and
+everything above is what would otherwise have been lost. Nothing from the
+2026-08-16 or first 2026-08-19 sessions needs recovering to resume.
+
+The second 2026-08-19 session is the exception, and preserved in full at the
+product owner's explicit request: see the
+[session record](../../session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md).
+It is a supplement, not a substitute — this handoff, the ledger, and the
+requirement records remain canonical, and the record says so itself.
 
 Also not preserved, deliberately: the scratch file holding the 2026-08-18
 Git-as-substrate critique. It lived outside the repository, its substance is in
@@ -348,6 +399,15 @@ thread 8 above. Nothing is lost if that file is gone.
   `project-management/outbox` at `afb893f`. Nothing was left in a stash or in
   the working tree. Re-verify these refs on resume rather than trusting this
   line.
+- Paused again 2026-08-19, at the end of the resume session, when the product
+  owner asked for the conversation to be persisted as the handoff. Everything is
+  committed and pushed rather than merely committed, for the standby-crash
+  reason below. At this pause: `project-management/coordination` at the head of
+  this branch and `project-management/outbox` at `b1f7273`, local and remote
+  agreed on both, nothing stashed and nothing dirty. The outbox carries one
+  undelivered item and needs a pull request. Re-verify these refs on resume
+  rather than trusting this line — the previous pause line was honest and still
+  went stale within a day, because the product owner acted between sessions.
 - Resumed 2026-08-19 and re-verified. The pause line held: nothing was stashed
   and nothing was dirty. `origin/main` had advanced nine commits past the local
   copy through `PR #30` and `PR #31`, so local `main` was fast-forwarded to
