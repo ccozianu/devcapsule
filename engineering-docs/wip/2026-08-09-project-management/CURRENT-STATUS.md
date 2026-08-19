@@ -278,4 +278,5 @@ the 2026-08-16 session needs recovering to resume this workstream.
 - [V1 scope ledger](v1-scope-ledger.md)
 - [Workflow prior-art comparison 2026-08-16](2026-08-16-workflow-prior-art-comparison.md)
 - [Display transport options and clipboard policy 2026-08-19](2026-08-19-display-transport-options.md)
+- [The workflow versus Jira and GitHub Issues 2026-08-19](2026-08-19-workflow-versus-issue-trackers.md)
 - [Coordination backlog](coordination-backlog.md)
