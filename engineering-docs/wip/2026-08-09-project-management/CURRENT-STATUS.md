@@ -98,9 +98,23 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   to move it to a separate ref in the same repository. The later items were
   appended rather than sent from a reset branch, because resetting would have
   destroyed the earlier ones as undelivered mail; that gap is already reported
-  in the 2026-08-18 outbox-is-a-mechanism item. All five await a pull request
-  this environment still cannot open — re-verified 2026-08-18 that there is no
-  `gh` CLI and no GitHub token here.
+  in the 2026-08-18 outbox-is-a-mechanism item.
+- **Delivered, verified on resume 2026-08-19.** The product owner opened and
+  merged both pending pull requests while this pair was paused: `PR #30` took
+  the outbox at `4b46db5` onto `main`, and `PR #31` took this branch at
+  `6a690c1`. All five deliveries — the registry-row ownership gap, the goal-cell
+  offer, the information-model task, the workflow-component notice, and the
+  coordination-storage analysis with the `contained-display` registration — are
+  now in their recipients' `intake/` directories on `origin/main`. The
+  registration is real to everyone, and the three uncommunicated decisions are
+  communicated.
+- One outbox commit did not travel: `afb893f`, the amendment that separates the
+  ratified storage boundary from the argument around it, was written after the
+  branch state `PR #30` merged. On resume it was resent from an outbox reset to
+  current `main`, now at `b1f7273` and carrying that single item, which is the
+  shape the outbox rule asks for and the one the earlier append violated. It
+  awaits a pull request this environment still cannot open — re-verified
+  2026-08-19 that there is no `gh` CLI and no `GH_TOKEN` or `GITHUB_TOKEN` here.
 - The product owner ratified a storage boundary on 2026-08-19: durable records
   stay on `main` and keep review; coordination state — the chatter, status, and
   coordination items — moves off the main branch, with a detached branch
@@ -186,15 +200,14 @@ eight unowned shortcomings and seven documented items to pin to V1; and the
 
 ## Next Resumable Task
 
-**First, before anything else: the outbox needs a pull request.** Five
-deliveries sit on `project-management/outbox` at `afb893f` and none of them
-exist on `main`, so no recipient can see any of them — including a workstream
-registration, which means `contained-display` is not yet real to anyone but this
-branch. This environment cannot open pull requests. Until that merges, three of
-the five decisions above have been made and not communicated, which is the
-precise failure this workstream has now recorded three times.
+**The outbox no longer blocks the work.** `PR #30` and `PR #31` merged during
+the pause, so all five deliveries are on `main` and `contained-display` is
+registered. One follow-up commit remains: the ratified-boundary amendment, now
+on `project-management/outbox` at `b1f7273`, needs a pull request the product
+owner must open. It refines an item already delivered rather than announcing
+anything new, so it gates nothing below.
 
-Then define V1. Until now V1 has been a target held in the product owner's head
+Define V1. Until now V1 has been a target held in the product owner's head
 plus a dated gap-review snapshot; the obvious prerequisites were clear, but the
 release boundary is not. Complete the [V1 scope ledger](v1-scope-ledger.md),
 which now holds six decided or proposed rows.
@@ -335,6 +348,14 @@ thread 8 above. Nothing is lost if that file is gone.
   `project-management/outbox` at `afb893f`. Nothing was left in a stash or in
   the working tree. Re-verify these refs on resume rather than trusting this
   line.
+- Resumed 2026-08-19 and re-verified. The pause line held: nothing was stashed
+  and nothing was dirty. `origin/main` had advanced nine commits past the local
+  copy through `PR #30` and `PR #31`, so local `main` was fast-forwarded to
+  `21d2503` and this branch was rebased onto it, dropping the four commits
+  `PR #31` had already landed and carrying the four written after it. Because
+  this branch is published but unshared, the rebase was force-pushed with a
+  lease rather than merged. The outbox was reset from current `main` and resent,
+  as recorded above. Local and remote now agree on both branches.
 
 - Corrected 2026-08-15: this environment does have Git publication credentials
   and can push branches and unprotected `main`, and the local Docker CLI is
