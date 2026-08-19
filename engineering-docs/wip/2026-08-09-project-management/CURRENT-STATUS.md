@@ -88,15 +88,18 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   workstream's account of itself, and a recipient that has stopped is exactly
   the case the durable queue and *Intake Gates Completion* exist to cover.
 - The outbox is pushed and undelivered as of 2026-08-18. Local and remote
-  `project-management/outbox` both stand at `6cdea9e`, carrying four items: the
+  `project-management/outbox` both stand at `1227f6b`, carrying five items: the
   registry-row ownership gap to `workflow-improvements` and the offer to
   `recursive-e2e` to widen its own goal cell, both from the `PR #28` conflict;
   the product owner's task to `workflow-improvements` to define the workflow's
   information model minimally and for non-native readers; and the notice that
-  the same workstream owns the in-V1 workflow component. The later items were
+  the same workstream owns the in-V1 workflow component; and, on 2026-08-19, the
+  measured case that coordination state does not belong on `main` at all, with
+  the recommendation to move it to a separate ref in the same repository. The
+  later items were
   appended rather than sent from a reset branch, because resetting would have
   destroyed the earlier ones as undelivered mail; that gap is already reported
-  in the 2026-08-18 outbox-is-a-mechanism item. All four await a pull request
+  in the 2026-08-18 outbox-is-a-mechanism item. All five await a pull request
   this environment still cannot open — re-verified 2026-08-18 that there is no
   `gh` CLI and no GitHub token here.
 - The V1 ledger gained its sixth decided row on 2026-08-18: the workflow ships
