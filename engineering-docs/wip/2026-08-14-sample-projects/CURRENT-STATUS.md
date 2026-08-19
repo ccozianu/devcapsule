@@ -39,29 +39,30 @@ name, not a typo in this record.
 - The workstream is registered and its first branch is associated.
 - The `fastapi-webapp` sample is complete, published, and wired in as a
   submodule.
-- `trading-research` is the second planned sample. Its public repository is
-  `git@github.com:ccozianu/devcapsule-sample-trading-research.git`; it is
-  reachable but has no commit or default branch yet, so Git cannot record a
-  submodule pointer until the product owner publishes the initial project notes.
-  An empty local clone currently exists at the intended resource path
-  `devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`.
+- `trading-research` is the second sample. Its public repository is
+  `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, and it is
+  wired in as a submodule at commit `6f44b16`. Its initial design brief and
+  pipeline pseudocode are present in the sample repository under
+  `engineering-docs/sketch-of-a-project/`.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: register `trading-research` as the second sample and synchronize the
-long-lived sample branch with current `main`.
+Last task: add `trading-research` as the second sample and read its initial
+project sketch.
 
-Status: partially complete. The repository and intended resource path are now
-recorded, but the submodule cannot be added while the remote has no commit.
-The synchronization merged `origin/main` into this published branch and
-resolved one mechanical overlap in the PyCharm launcher by preserving current
-mainline host-browser behavior together with the already-integrated
-container-path translation. The focused launcher suite passes: `62 passed`.
+Status: complete. `.gitmodules` and the parent tree now record the sample at
+`devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`,
+pinning published commit `6f44b16`. The design is understood at the conceptual
+level; implementation scope and the remaining contract decisions will be
+developed interactively with the product owner.
 
 ## Evidence
 
+- The trading-research gitlink pins `6f44b16`, the published `origin/main` of
+  its repository; the submodule worktree is clean and both initial design files
+  were read in full.
 - Sample backend tests: `4 passed` against temporary SQLite.
 - Full CRUD verified against real PostgreSQL 17 over `psycopg`: create, list,
   patch, and delete all behaved correctly, and the verification database was
@@ -150,13 +151,14 @@ therefore acquired per developer after explicit terms authorization.
    inside DevCapsule.
 
 2. `trading-research` (second, current priority): public repository
-   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, to be
-   mounted at
+   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, mounted as
+   a submodule at
    `devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`.
-   The product owner will publish initial Markdown notes separately, then
-   define the project interactively. Capabilities, services, GUI use, and the
-   specific DevCapsule behaviors it should prove remain intentionally
-   unspecified until that discussion.
+   The initial sketch specifies an evaluation-first, rotated multi-LLM debate
+   over canonical atomic claims, followed by a deterministic LLM-free merge
+   that reports convergence, majority, or divergence without treating
+   agreement as correctness. Capabilities, services, GUI use, and the specific
+   DevCapsule behaviors it should prove remain to be defined interactively.
 
 ## Adopter-Path Verification
 
@@ -203,10 +205,11 @@ foreground/detached lifecycle evidence is recorded in the
 
 ## Next Resumable Task
 
-After the product owner publishes the initial Markdown commit to
-`devcapsule-sample-trading-research`, add it as the submodule
-`devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`,
-then read those notes and develop the sample's scope interactively.
+Develop the `trading-research` sample's scope interactively from its initial
+design. Start with the eval-harness milestone and settle the load-bearing open
+contracts before implementing the debate machinery: canonical alignment of
+semantically equivalent claims, treatment of `JUDGMENT` claims, and degraded
+quorum behavior.
 
 The earlier `fastapi-webapp` GUI-launch limitation was addressed by this
 branch's container-path translation and host-backed staging changes; a live

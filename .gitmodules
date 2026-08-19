@@ -1,3 +1,6 @@
 [submodule "devcapsule-src/tests/resources/sample_projects/fastapi-webapp"]
 	path = devcapsule-src/tests/resources/sample_projects/fastapi-webapp
 	url = git@github.com:ccozianu/devcapsule-sample-fastapi-webbapp.git
+[submodule "devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research"]
+	path = devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research
+	url = git@github.com:ccozianu/devcapsule-sample-trading-research.git
