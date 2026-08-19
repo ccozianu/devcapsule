@@ -8,7 +8,7 @@ State: active
 
 Integration target: `main`
 
-Requirements: `R-PRODUCT-002`, `R-SCOPE-001`
+Requirements: `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCS-001`
 
 ## Goal
 
@@ -39,17 +39,26 @@ name, not a typo in this record.
 - The workstream is registered and its first branch is associated.
 - The `fastapi-webapp` sample is complete, published, and wired in as a
   submodule.
+- `trading-research` is the second planned sample. Its public repository is
+  `git@github.com:ccozianu/devcapsule-sample-trading-research.git`; it is
+  reachable but has no commit or default branch yet, so Git cannot record a
+  submodule pointer until the product owner publishes the initial project notes.
+  An empty local clone currently exists at the intended resource path
+  `devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: build the first sample project, `fastapi-webapp`.
+Last task: register `trading-research` as the second sample and synchronize the
+long-lived sample branch with current `main`.
 
-Status: complete. The sample repository is
-`git@github.com:ccozianu/devcapsule-sample-fastapi-webbapp` at commit
-`7bf15e5`, and the parent records that pointer at
-`devcapsule-src/tests/resources/sample_projects/fastapi-webapp`.
+Status: partially complete. The repository and intended resource path are now
+recorded, but the submodule cannot be added while the remote has no commit.
+The synchronization merged `origin/main` into this published branch and
+resolved one mechanical overlap in the PyCharm launcher by preserving current
+mainline host-browser behavior together with the already-integrated
+container-path translation. The focused launcher suite passes: `62 passed`.
 
 ## Evidence
 
@@ -140,13 +149,19 @@ therefore acquired per developer after explicit terms authorization.
    and lock, and a `developer-readme.md` explaining how to start development
    inside DevCapsule.
 
-Further samples are deliberately unspecified until the first one proves the
-shape.
+2. `trading-research` (second, current priority): public repository
+   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, to be
+   mounted at
+   `devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`.
+   The product owner will publish initial Markdown notes separately, then
+   define the project interactively. Capabilities, services, GUI use, and the
+   specific DevCapsule behaviors it should prove remain intentionally
+   unspecified until that discussion.
 
 ## Adopter-Path Verification
 
-Run on 2026-08-15. Three of the four criteria passed; the GUI launch is blocked
-for a structural reason recorded below.
+Run on 2026-08-15. All four criteria passed after the containerized-launch gaps
+found during the first attempt were fixed on this branch.
 
 - An isolated adopter checkout authorized the published base digest, host
   Docker, host networking, and the Claude Code download, then resolved. No
@@ -174,35 +189,28 @@ for a structural reason recorded below.
   authorization, and `--all-recommended` refuses to run without an interactive
   terminal while being presented as the primary path.
 
-### Blocked: GUI Launch From Inside A Capsule
+### GUI Launch From Inside A Capsule
 
-`devcapsule project run` could not be exercised, and this is a product
-limitation rather than a sample defect. Ordinary launch performs no host-path
-translation: it assumes it is running on the host. Issued from inside a
-DevCapsule container it hands the host daemon a bind source such as
-`/workspace/.../fastapi-webapp`, which does not exist on the host. Docker
-creates missing bind sources as empty directories, so the IDE would open an
-empty project instead of failing loudly.
-
-The recursive workstream solved exactly this with `HostDaemonLaunchContext`
-translation, but that machinery is engineering-mode and gated to DevCapsule's
-own project identity, so a sample cannot use it.
-
-Consequences:
-
-- Verifying the GUI launch of any sample requires either a host-side run or a
-  product change; it cannot be completed from this environment.
-- Anyone developing sample projects inside DevCapsule hits the same wall.
+The first attempt exposed three host-only assumptions: bind sources were not
+translated through the current container's mounts, the launcher ignored the
+Docker socket named by `DOCKER_HOST`, and transient launch files were staged on
+a container-local filesystem the host daemon could not read. Commits `2f9f605`
+and `ebccbec` fixed those paths and added failure messages for untranslatable
+mounts. A live foreground launch against `fastapi-webapp` subsequently started
+the sample environment and removed its container when the IDE exited; the
+foreground/detached lifecycle evidence is recorded in the
+[detached-container bug](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md).
 
 ## Next Resumable Task
 
-Decide how the sample GUI launch gets verified, then verify it.
+After the product owner publishes the initial Markdown commit to
+`devcapsule-sample-trading-research`, add it as the submodule
+`devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`,
+then read those notes and develop the sample's scope interactively.
 
-Either run `devcapsule project run` against the sample from the host, which
-needs no product change and closes this criterion immediately, or decide that
-ordinary launch should become recursion-aware and route that to
-`project-management` as a product change. The silent empty-directory failure
-mode is worth addressing regardless of which route is chosen.
+The earlier `fastapi-webapp` GUI-launch limitation was addressed by this
+branch's container-path translation and host-backed staging changes; a live
+foreground run against the sample is recorded in the detached-container bug.
 
 ## Feature-Gap Escalation Rule
 
