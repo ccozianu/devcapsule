@@ -433,9 +433,9 @@ against terms that are about to be renamed would be built twice.
 product owner. Durable records — requirements, decision records, bugs, and
 user-facing documentation — stay on `main`, on the main branch, where they are
 reviewed and adjacent to the code that references them. Coordination state —
-status, handoffs, intake, disposition logs, checkpoints, and the registry — moves
-off the main branch, with a detached branch as the preferred shape because it is
-the simplest thing that works.
+status, handoffs, intake, disposition logs, checkpoints, and the registry —
+moves off the main branch, with a detached branch as the preferred shape because
+it is the simplest thing that works.
 
 The decision followed a measured case: 84% of non-merge commits since adoption
 touch no code, work management outnumbers product code 80 to 32 with workflow
