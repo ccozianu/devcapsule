@@ -71,8 +71,11 @@ Still open for the active V1 target:
 
 Explicitly later or deferred:
 
-- `R-SETTINGS-001` — per-IDE settings profile seeding.
 - `R-DOCS-001` — generated documentation index from frontmatter metadata.
+
+The implementation-agnostic requirement for copied per-IDE profile prototypes
+is indexed by the root `REQUIREMENTS.md`; its implementation target remains to
+be assigned.
 
 ## Requirement Index
 
@@ -80,7 +83,6 @@ Explicitly later or deferred:
 
 - `R-ENV-001` — [Dockerized PyCharm Runtime](../engineering-docs/requirements/devcapsule/r-env-001-dockerized-pycharm-runtime.md)
 - `R-STATE-001` — [Persistent IDE State And Plugins](../engineering-docs/requirements/devcapsule/r-state-001-persistent-ide-state-and-plugins.md)
-- `R-SETTINGS-001` — [Per-IDE Settings Profile Seed](../engineering-docs/requirements/devcapsule/r-settings-001-per-ide-settings-profile-seed.md)
 - `R-SCOPE-001` — [Explicit Host Filesystem Exposure](../engineering-docs/requirements/devcapsule/r-scope-001-explicit-host-filesystem-exposure.md)
 - `R-DEV-001` — [Useful Development Tooling Baseline](../engineering-docs/requirements/devcapsule/r-dev-001-useful-development-tooling-baseline.md)
 - `R-GIT-001` — [Git Identity And Credentials Without Host Credential Mounts](../engineering-docs/requirements/devcapsule/r-git-001-git-identity-and-credentials-without-host-credential-mounts.md)

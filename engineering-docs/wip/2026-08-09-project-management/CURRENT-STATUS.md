@@ -148,34 +148,32 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   resolved in favour of `recursive-e2e`'s version. The checkpoint, the ledger,
   and the registry updates are therefore on `main`, and this branch has been
   rebased onto `fdf4c37`.
+- Real-project dogfood produced an accepted product requirement on 2026-08-19:
+  each compatible IDE gets one developer-owned prototype of configuration and
+  plugins, new projects receive independent full copies by default, an explicit
+  clean start remains available, and later prototype updates are explicit after
+  an advisory post-exit comparison. `R-SETTINGS-001` moved from a deferred
+  implementation requirement to the product requirement set, and the
+  [IDE profile prototype specification](../../specifications/product/ide-profile-prototypes.md)
+  records the lifecycle. Its release target remains undecided.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
 
 ## Last Task And Status
 
-Last task: the second 2026-08-19 session, which resumed this workstream after
-the travel pause. It spent itself on verification and correction rather than on
-new decisions, and ended inside a question the product owner asked to persist
-rather than answer.
+Last task: capture the IDE-profile behavior decided while bootstrapping the
+first named real project, `devcapsule-sample-trading-research`.
 
-Status: complete, everything committed and pushed. It is preserved in full as
-the
-[2026-08-19 session record](../../session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md),
-written at the product owner's explicit request. What it did:
+Status: complete. The former deferred `R-SETTINGS-001` is now an accepted,
+implementation-agnostic product requirement, with a dedicated specification
+covering first-session capture, independent physical copies, explicit empty
+state, advisory change detection, explicit atomic promotion, compatibility,
+concurrency, and failure safety. The implementation release remains unassigned.
 
-1. **Re-verified the pause claims**, and found the handoff stale in the
-   project's favour: both pull requests had merged, so the five deliveries and
-   the `contained-display` registration were already on `main`. The blocker the
-   handoff led with did not exist.
-2. **Resent the one commit that had not travelled** — the ratified-boundary
-   amendment — from an outbox reset to current `main`, now `b1f7273`. First send
-   on this workstream to match the shape the outbox rule actually describes.
-3. **Synchronized**: local `main` fast-forwarded to `21d2503`, this branch
-   rebased onto it and force-pushed with a lease.
-4. **Framed the individual projects** rather than planning them, because nothing
-   project-specific is recorded anywhere in the repository. The frame and its
-   one coordination question are thread 7 below.
+Preceding task: the second 2026-08-19 session, which resumed this workstream
+after the travel pause. Status: complete and preserved in the
+[2026-08-19 session record](../../session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md).
 
 Preceding task: the first 2026-08-19 session, which the product owner
 interrupted for travel. It was a coordination session rather than a ledger
@@ -224,14 +222,13 @@ eight unowned shortcomings and seven documented items to pin to V1; and the
 
 ## Next Resumable Task
 
-**Resume inside the individual-projects question**, which is where this pair
-stopped. The product owner chose that topic for the second 2026-08-19 session
-and then asked for the conversation to be persisted before answering it. The
-frame is complete and needs no rebuilding — it is thread 7 below, and in full in
-the [session record](../../session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md).
-What is missing is only what he alone can supply: which projects, and whether
-they owe findings back to this repository. Do not re-derive the frame; ask the
-question.
+**Resume inside the individual-projects question.** The first project is now
+named: `devcapsule-sample-trading-research`, a Python/PyCharm project with Codex
+and Claude Code. Its first finding already returned to this repository as
+`R-SETTINGS-001`. What remains is to name any other projects and decide whether
+returning DevCapsule findings is an explicit obligation for all of them or only
+an emergent practice. The original frame remains in thread 7 below and in the
+[session record](../../session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md).
 
 **The outbox no longer blocks the work.** `PR #30` and `PR #31` merged during
 the pause, so all five deliveries are on `main` and `contained-display` is
@@ -319,13 +316,14 @@ questions and reasoning hooks, not a transcript.
    mention trackers at all. The status was deliberately left unchanged, because
    flipping a requirement's status is the product owner's call; `accepted` is
    the honest value if he wants it changed.
-7. **The individual projects: framed on 2026-08-19, still unnamed.** The
-   product owner chose this topic and then asked for persistence before
-   answering, so the question is live and unchanged. A search of the
-   checkpoints, the session records, the sample-projects handoff, and all of
-   `engineering-docs/` confirms **nothing project-specific is recorded
-   anywhere**; the projects exist only in his head, and inventing candidates
-   would put agent-authored fiction into project memory. What was put to him:
+7. **The individual projects: first one named, routing rule still implicit.**
+   `devcapsule-sample-trading-research` is the first real project: a
+   Python/PyCharm environment with Codex and Claude Code. It is carried by the
+   `sample-projects` workstream, so its finding about copied per-IDE profile
+   prototypes had a route home and became accepted `R-SETTINGS-001`. The open
+   coordination question is whether every real project explicitly owes such
+   findings back to this repository, especially when a future project is a
+   separate repository without an in-repository workstream. The original frame:
    the X11 passthrough hands every GUI capsule his trusted host session cookie
    and cannot be avoided while `DISPLAY` is required, and real projects worsen
    exactly the dimension that matters because agent work runs for hours; service

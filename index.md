@@ -28,6 +28,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-PRODUCT-006 Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - [R-DOCS-001 Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - [R-DOCS-002 Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
+- [R-SETTINGS-001 Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
 
 ## Design Decisions
@@ -39,6 +40,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Specifications
 
+- [IDE profile prototypes](engineering-docs/specifications/product/ide-profile-prototypes.md)
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 
 ## Workstream Status
@@ -65,7 +67,6 @@ status file; internal WIP/archive documents use the local index in that status.
 - [DevCapsule implementation requirements overview](devcapsule-src/REQUIREMENTS.md)
 - [R-ENV-001 Dockerized PyCharm Runtime](engineering-docs/requirements/devcapsule/r-env-001-dockerized-pycharm-runtime.md)
 - [R-STATE-001 Persistent IDE State And Plugins](engineering-docs/requirements/devcapsule/r-state-001-persistent-ide-state-and-plugins.md)
-- [R-SETTINGS-001 Per-IDE Settings Profile Seed](engineering-docs/requirements/devcapsule/r-settings-001-per-ide-settings-profile-seed.md)
 - [R-SCOPE-001 Explicit Host Filesystem Exposure](engineering-docs/requirements/devcapsule/r-scope-001-explicit-host-filesystem-exposure.md)
 - [R-DEV-001 Useful Development Tooling Baseline](engineering-docs/requirements/devcapsule/r-dev-001-useful-development-tooling-baseline.md)
 - [R-GIT-001 Git Identity And Credentials Without Host Credential Mounts](engineering-docs/requirements/devcapsule/r-git-001-git-identity-and-credentials-without-host-credential-mounts.md)
