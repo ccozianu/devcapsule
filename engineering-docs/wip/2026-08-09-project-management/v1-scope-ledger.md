@@ -121,8 +121,12 @@ projects on. Deferring the transport defers the fix to the
 not the obligation: the containment claim cannot be announced as verified while
 the X socket carries a full host session credential.
 
-Owner: unassigned; may warrant a separate workstream rather than joining an
-existing one.
+Owner: `contained-display`, the workstream opened for this row on 2026-08-19 at
+the product owner's direction. It is named for its subject rather than for v027,
+because a workstream named after a release either outlives it or mis-fits it
+when scope moves. It owns the transport decision, the interim mitigation for the
+window before that transport ships, clipboard policy, and the regression test.
+The `xdg-open` shim stays with `recursive-e2e` in v026.
 
 **The URL-open fix is split out of this row and shipped in v026.** The
 `xdg-open` and `BROWSER` shim forwarding to a host-side helper behaves
