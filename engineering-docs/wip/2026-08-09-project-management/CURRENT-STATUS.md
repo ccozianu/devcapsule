@@ -87,12 +87,50 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   authoritative invariant is evaluated against `main`, not against a
   workstream's account of itself, and a recipient that has stopped is exactly
   the case the durable queue and *Intake Gates Completion* exist to cover.
-- A second outbox send is pushed and undelivered as of 2026-08-18. Local and
-  remote `project-management/outbox` both stand at `401f5b3`, carrying two items
-  that came out of the `PR #28` conflict: the registry-row ownership gap to
-  `workflow-improvements`, and the offer to `recursive-e2e` to widen its own
-  goal cell. It awaits a pull request this environment still cannot open —
-  re-verified 2026-08-18 that there is no `gh` CLI and no GitHub token here.
+- The outbox is pushed and undelivered as of 2026-08-18. Local and remote
+  `project-management/outbox` both stand at `4b46db5`, carrying six deliveries
+  including the `contained-display` registration: the
+  registry-row ownership gap to `workflow-improvements` and the offer to
+  `recursive-e2e` to widen its own goal cell, both from the `PR #28` conflict;
+  the product owner's task to `workflow-improvements` to define the workflow's
+  information model minimally and for non-native readers; and the notice that
+  the same workstream owns the in-V1 workflow component; and, on 2026-08-19, the
+  measured case that coordination state does not belong on `main` at all, with
+  the recommendation to move it to a separate ref in the same repository. The
+  later items were
+  appended rather than sent from a reset branch, because resetting would have
+  destroyed the earlier ones as undelivered mail; that gap is already reported
+  in the 2026-08-18 outbox-is-a-mechanism item. All five await a pull request
+  this environment still cannot open — re-verified 2026-08-18 that there is no
+  `gh` CLI and no GitHub token here.
+- The product owner ratified a storage boundary on 2026-08-19: durable records
+  stay on `main` and keep review; coordination state — the chatter, status, and
+  coordination items — moves off the main branch, with a detached branch
+  preferred. It is recorded as a constraint on the workflow-component ledger row
+  rather than as its own row, since the component's shape already owns it, and
+  the item on the outbox now separates the ratified boundary from the argument
+  around it. Not yet implemented, and deliberately sequenced after the
+  information model so the protocol text is not written twice.
+- `contained-display` was opened on 2026-08-19 at the product owner's direction,
+  resolving the unassigned owner on the contained-display ledger row. The
+  question of whether to conclude `recursive-e2e` and open a v027 workstream was
+  raised and answered no on two grounds: Stage 7 is the persistence and
+  safe-cleanup half of that workstream's own registered goal, and its intake is
+  not clear, which *Intake Gates Completion* makes a hard bar. It ends when
+  Stage 7 lands and its intake clears, not administratively.
+- Found while checking that bar, and reported to nobody yet: on `main`,
+  `recursive-e2e`'s `2026-08-17-workflow-improvements-external-resource-reaping`
+  item is in **both** `intake/` and its disposition log, which that log's own
+  header forbids. The disposition was recorded on the branch on 2026-08-17 and
+  the deletion never reached `main`. Harmless in itself, one line for its owner
+  to fix through its outbox, and the same failure family as the stranded items.
+- The V1 ledger gained its sixth decided row on 2026-08-18: the workflow ships
+  in V1 as an optional component, owned by `workflow-improvements`. The row
+  states the tooling question as open and sequenced behind the information
+  model, which discharges shortcoming 8's requirement that a workflow-tooling
+  deferral not be silent. The product owner also accepted the present
+  terminology ambiguity for the duration of the current dogfood work, which is
+  why the information model was sent as a task rather than fixed in place.
 - `PR #28`, this workstream's own delivery of the 2026-08-16 checkpoint and the
   ledger work, merged at `8b2ac0c` on 2026-08-18 with its registry conflict
   resolved in favour of `recursive-e2e`'s version. The checkpoint, the ledger,
@@ -239,4 +277,5 @@ the 2026-08-16 session needs recovering to resume this workstream.
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
 - [V1 scope ledger](v1-scope-ledger.md)
 - [Workflow prior-art comparison 2026-08-16](2026-08-16-workflow-prior-art-comparison.md)
+- [Display transport options and clipboard policy 2026-08-19](2026-08-19-display-transport-options.md)
 - [Coordination backlog](coordination-backlog.md)

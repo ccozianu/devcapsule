@@ -121,8 +121,12 @@ projects on. Deferring the transport defers the fix to the
 not the obligation: the containment claim cannot be announced as verified while
 the X socket carries a full host session credential.
 
-Owner: unassigned; may warrant a separate workstream rather than joining an
-existing one.
+Owner: `contained-display`, the workstream opened for this row on 2026-08-19 at
+the product owner's direction. It is named for its subject rather than for v027,
+because a workstream named after a release either outlives it or mis-fits it
+when scope moves. It owns the transport decision, the interim mitigation for the
+window before that transport ships, clipboard policy, and the regression test.
+The `xdg-open` shim stays with `recursive-e2e` in v026.
 
 **The URL-open fix is split out of this row and shipped in v026.** The
 `xdg-open` and `BROWSER` shim forwarding to a host-side helper behaves
@@ -354,6 +358,124 @@ if it follows the display work rather than preceding it.
 competes with concurrency and the entry point, or immediately after it, where it
 becomes the first post-V1 milestone and gives the announcement a concrete next
 promise.
+
+### The Workflow Ships As An Optional Component
+
+Verdict: `in-v1`
+
+Decided: 2026-08-18, by the product owner.
+
+Owner: `workflow-improvements`, assigned 2026-08-18 and responsible for defining
+the final shape of the workflow component. Release target: V1; its position
+within the release shape is not yet set, because the shape itself is unbuilt.
+
+Serves `R-PRODUCT-004`. Discharges the unstated deferral named in shortcoming 8
+of the [V1 readiness assessment](2026-08-16-v1-readiness-assessment.md), which
+held that deferring workflow tooling past V1 is defensible but leaving the
+deferral unstated is not. It is stated below.
+
+**Decision.** The workflow developed in this repository is offered to adopters
+as a component they may choose, not as something the product imposes. An
+adopter may install it, install a different workflow, or use none, and the
+product works in each case.
+
+**Rationale, in the product owner's terms.** Many users will not have had time
+to develop a workflow that addresses what this one addresses. Those users are
+well served by being able to adopt one that makes working with agents better.
+Users who already have something better keep it, and lose nothing by the offer.
+
+**This ratifies rather than changes `R-PRODUCT-004`.** That requirement already
+says the workflow should be available to users of environments this project
+creates "when they choose that mode". The optionality is in the requirement;
+what was missing was a release commitment to actually ship it, and an owner.
+Both are recorded here.
+
+**Consistent with `D-0005`.** Bases stay neutral and components materialize per
+developer after explicit authorization. The workflow becomes one more curated,
+optional component, on the same footing as the three agent components, rather
+than an assumption baked into the base.
+
+**The open sub-question: whether the component includes tooling.** The original
+design assumed the human/agent pair is itself sufficient tooling. This
+repository's own use gives a mixed verdict, and the split is consistent enough
+to design against:
+
+- The assumption *held* wherever judgment was required — writing intake items,
+  routing work, resolving the registry-row conflict by ownership rather than by
+  diff, and choosing on 2026-08-18 to append to the outbox where the documented
+  reset would have destroyed undelivered mail. A tool following the letter would
+  have got that last one wrong.
+- The assumption *failed* wherever verification was required, and failed the
+  same way each time: two intake items sat stranded on a branch for two days
+  while a checkpoint asserted they were delivered; a handoff carried "awaiting a
+  pull request" past the merge that resolved it; the registry collided as a hot
+  shared file in `PR #26` and `PR #28`.
+
+The failures share three properties that better prompting does not remove.
+Verification is work whose expected result is "nothing to report", so it is the
+first thing dropped and its omission is indistinguishable from its performance;
+the agent reads its own documents as evidence; and nothing breaks when the
+invariant is violated, so no signal exists for the agent to notice.
+
+The shape this suggests, offered to the owner as an argument rather than a
+specification, is **the agent writes and the tool checks** — a small set of
+verifiers and two or three mechanical actions, not a workflow engine, since an
+engine would displace the judgment layer that demonstrably works. It also has an
+adoption argument independent of correctness: the user this row is for will not
+read a 1,838-line normative document, but will run a command that tells them
+what is wrong.
+
+Not decided here. Sequenced behind the information-model task delivered to
+`workflow-improvements` on 2026-08-18, because verification tooling written
+against terms that are about to be renamed would be built twice.
+
+**A storage boundary now constrains the shape.** Decided 2026-08-19 by the
+product owner. Durable records — requirements, decision records, bugs, and
+user-facing documentation — stay on `main`, on the main branch, where they are
+reviewed and adjacent to the code that references them. Coordination state —
+status, handoffs, intake, disposition logs, checkpoints, and the registry —
+moves off the main branch, with a detached branch as the preferred shape because
+it is the simplest thing that works.
+
+The decision followed a measured case: 84% of non-merge commits since adoption
+touch no code, work management outnumbers product code 80 to 32 with workflow
+definition already discounted, and four of ten pull requests existed only to
+deliver mail. Whatever storage shape the component ends up with is what adopters
+inherit, so this is a product decision rather than repository housekeeping.
+
+The owner keeps the file list, the cross-boundary link convention, the timing,
+whether any of it is a V1 commitment, and how the ref is written and read. On
+this analysis the outbox concept does not survive the change, which is why the
+information-model task was told to treat it as contingent.
+
+**Required outcome for V1, as far as this row can state it.**
+
+- An adopter can obtain the workflow as a component, and can decline it without
+  losing product function.
+- What the product actually depends on is stated, so that "install a different
+  workflow" is a real option rather than an aspiration. `workflow-improvements`
+  assessed that dependency as three things — `AGENTS.md` as the agent's entry
+  point, `workflow-type` in `.devcapsule/devcapsule.toml`, and the
+  `engineering-docs/` layout — and that assessment is the natural starting
+  point.
+- Starting does not require reading the full normative document first.
+- Acceptance evidence is a fresh project in each configuration: one that
+  declines the component and works, and one that adopts it and can begin a
+  workstream from the component's own instructions.
+
+The owner completes these criteria as it defines the shape; they are stated here
+so the row is checkable rather than aspirational, not to constrain the design.
+
+**Explicitly not decided by this row.** Whether the component ships with
+verification tooling; whether the workflow's text lives in this repository or an
+extracted one; and whether the workflow owes humans a separate readable
+document. The latter two are `project-management` decisions still held in its
+intake, and neither blocks this row, because shipping as an optional component
+is compatible with every outcome of both.
+
+**Cost.** Unestimated, and deliberately so: the shape is undefined and the
+information-model task precedes it. This is the only `in-v1` row carrying no
+estimate, which matters when the release shape is rebuilt.
 
 ## Rows Still To Be Written
 
