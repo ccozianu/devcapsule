@@ -48,7 +48,15 @@ useful in practice.
   expected to use;
 - the workflow states its own incompleteness, distinguishes silence from
   express denial, and requires exercised latitude to be recorded; and
-- adopters have a defined route for returning gaps they discover.
+- adopters have a defined route for returning gaps they discover;
+- adopting the workflow does not require an adopter to stop using an issue
+  tracker they already have, and nothing in it assumes the tracker's absence;
+  and
+- minimum viable adoption is small enough to state in a sentence — the agent
+  entry point plus the one record it keeps current — with the rest of the
+  protocol reachable as depth rather than required reading. Added 2026-08-19,
+  because a workflow whose entry cost is nineteen terms and 1,838 lines is not
+  adoptable however good its content is.
 
 ## Related
 
