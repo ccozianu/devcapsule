@@ -185,6 +185,25 @@ the generic resolved slot names and container paths, and adapter
 configuration; it neither chooses host storage nor recognizes component
 names.
 
+## IDE Profile Prototypes
+
+An IDE profile prototype is different from a named state profile or an adopted
+host directory. It is a developer-owned snapshot used only as the source for
+independent project-state copies; projects do not mount the prototype itself.
+
+For eligible IDE configuration and plugin slots, the first successful
+foreground IDE session may establish the default prototype after exit. Later
+projects receive ordinary physical copies by default or may explicitly request
+empty state. After initial creation, prototype replacement is explicit, and
+the launcher only reports interesting post-session differences and the command
+that would promote them.
+
+This copied-profile model preserves project concurrency without sharing
+lock-bearing writable directories. It does not apply to project indexes,
+caches, logs, the general persistent home, agent state, or credentials managed
+outside the IDE profile. The complete lifecycle and failure invariants are in
+the [IDE profile prototype specification](ide-profile-prototypes.md).
+
 ## Slot Storage
 
 Directory-backed slots are allocated beneath the matching XDG root:

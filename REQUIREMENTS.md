@@ -82,6 +82,10 @@ Current release/stabilization reality:
 - `R-DOCS-001` — [Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - `R-DOCS-002` — [Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
 
+### Developer Experience And Persistence
+
+- `R-SETTINGS-001` — [Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
+
 ### Product Adoption And Positioning
 
 - `R-GTM-001` — [Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
