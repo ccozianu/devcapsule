@@ -429,6 +429,25 @@ Not decided here. Sequenced behind the information-model task delivered to
 `workflow-improvements` on 2026-08-18, because verification tooling written
 against terms that are about to be renamed would be built twice.
 
+**A storage boundary now constrains the shape.** Decided 2026-08-19 by the
+product owner. Durable records — requirements, decision records, bugs, and
+user-facing documentation — stay on `main`, on the main branch, where they are
+reviewed and adjacent to the code that references them. Coordination state —
+status, handoffs, intake, disposition logs, checkpoints, and the registry — moves
+off the main branch, with a detached branch as the preferred shape because it is
+the simplest thing that works.
+
+The decision followed a measured case: 84% of non-merge commits since adoption
+touch no code, work management outnumbers product code 80 to 32 with workflow
+definition already discounted, and four of ten pull requests existed only to
+deliver mail. Whatever storage shape the component ends up with is what adopters
+inherit, so this is a product decision rather than repository housekeeping.
+
+The owner keeps the file list, the cross-boundary link convention, the timing,
+whether any of it is a V1 commitment, and how the ref is written and read. On
+this analysis the outbox concept does not survive the change, which is why the
+information-model task was told to treat it as contingent.
+
 **Required outcome for V1, as far as this row can state it.**
 
 - An adopter can obtain the workflow as a component, and can decline it without

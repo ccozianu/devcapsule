@@ -103,6 +103,14 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   in the 2026-08-18 outbox-is-a-mechanism item. All five await a pull request
   this environment still cannot open — re-verified 2026-08-18 that there is no
   `gh` CLI and no GitHub token here.
+- The product owner ratified a storage boundary on 2026-08-19: durable records
+  stay on `main` and keep review; coordination state — the chatter, status, and
+  coordination items — moves off the main branch, with a detached branch
+  preferred. It is recorded as a constraint on the workflow-component ledger row
+  rather than as its own row, since the component's shape already owns it, and
+  the item on the outbox now separates the ratified boundary from the argument
+  around it. Not yet implemented, and deliberately sequenced after the
+  information model so the protocol text is not written twice.
 - `contained-display` was opened on 2026-08-19 at the product owner's direction,
   resolving the unassigned owner on the contained-display ledger row. The
   question of whether to conclude `recursive-e2e` and open a v027 workstream was
