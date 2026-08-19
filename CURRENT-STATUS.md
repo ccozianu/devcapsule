@@ -12,6 +12,7 @@ state belongs in each linked workstream handoff.
 | `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | paused 2026-08-17; intake dispositioned, one backlog item ready to pick up, one acknowledged item blocked on `recursive-e2e` Stage 7 | `workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
 | `project-management` | 2026-08-09 | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active; permanent coordination | `project-management/coordination` | [workstream status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md) |
 | `sample-projects` | 2026-08-14 | Provide realistic sample projects as submodules that demonstrate ordinary adopter development inside DevCapsule | active; first sample in progress | `sample-projects/fastapi-webapp` | [workstream status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md) |
+| `contained-display` | 2026-08-19 | Give the capsule its own display environment, closing the host-session credential exposure and the desktop-integration gap that shares its root cause | open; not yet started | `contained-display/`; no branch yet | [workstream status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md) |
 
 Paused and blocked workstreams remain open until they conclude successfully or
 unsuccessfully. The one exception is `project-management`, which every
