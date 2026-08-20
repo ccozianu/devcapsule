@@ -41,35 +41,39 @@ name, not a typo in this record.
   submodule.
 - `trading-research` is the second sample. Its public repository is
   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, and it is
-  wired in as a submodule at commit `2de3eb1`. Its initial design brief and
+  wired in as a submodule at commit `2eac3c2`. Its initial design brief and
   pipeline pseudocode are present in the sample repository, and it now has a
   DevCapsule declaration and Linux lock selecting Python, PyCharm, Codex, and
-  Claude Code without yet creating Python-project structure. The declaration
-  recommends host networking with an explicit workflow justification.
+  Claude Code. Its evaluation-first Python scaffold implements deterministic
+  claim classification and calibration reporting. The declaration recommends
+  host networking with an explicit workflow justification.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: enable explicitly authorized host networking for the
-`trading-research` DevCapsule.
+Last task: publish the initial evaluation-first Python scaffold and explicitly
+authorized host networking for the `trading-research` DevCapsule.
 
-Status: complete locally. Sample commit `2de3eb1` adds the host-network
+Status: complete and published. Sample `origin/main` is at `2eac3c2`. The
+project now has requirements, dependency-free deterministic domain/merge/eval
+modules, and eight passing tests. The earlier commit adds the host-network
 recommendation and refreshes the lock's manifest digest while preserving every
 pinned formation input. This checkout has authorized `network = "host"`; its
-generated resolution is fresh. No Python project structure was added.
+generated resolution is fresh.
 
 ## Evidence
 
-- The trading-research gitlink pins local sample commit `2de3eb1`; the only
-  unrelated nested-worktree state is an untracked `.idea/` directory observed
-  during this work and deliberately excluded from the change.
+- The trading-research gitlink pins `2eac3c2`, the published `origin/main` of
+  its repository; generated `.idea/` and Python cache files are ignored.
 - An isolated `devcapsule project config list` accepted the declaration and
   lock, selected PyCharm, Codex, and Claude Code, and reported only the expected
   developer-owned base-image and Claude-download authorizations as unresolved.
 - After the host-network change, `devcapsule project config list` reports
   `network` as `authorized` with value `host`, and the generated resolution
   records `network = "host"` and reports `fresh`.
+- Trading-research validation: eight unit tests pass and `python -m compileall`
+  succeeds across `src` and `tests`.
 - Sample backend tests: `4 passed` against temporary SQLite.
 - Full CRUD verified against real PostgreSQL 17 over `psycopg`: create, list,
   patch, and delete all behaved correctly, and the verification database was
@@ -166,8 +170,8 @@ therefore acquired per developer after explicit terms authorization.
    that reports convergence, majority, or divergence without treating
    agreement as correctness. Its initial DevCapsule declares `python`,
    `python-ide`, `codex-agent`, and `claude-code-agent`, and recommends host
-   networking; remaining service needs and the specific DevCapsule behaviors
-   it should prove remain to be defined interactively.
+   networking. Its initial deterministic Python scaffold is published; the
+   next milestone is a small human-reviewed labeled fixture set.
 
 ## Adopter-Path Verification
 
@@ -214,14 +218,13 @@ foreground/detached lifecycle evidence is recorded in the
 
 ## Next Resumable Task
 
-Enter the initialized `trading-research` DevCapsule, approve its remaining
-developer-owned base-image and Claude-download recommendations, and continue
-the design discussion there. Host networking is already authorized for this
-checkout. The agents inside that capsule will scaffold the Python project only
-after the product owner asks them to. Begin implementation planning with the
-eval-harness milestone and the load-bearing open contracts: canonical alignment
-of semantically equivalent claims, treatment of `JUDGMENT` claims, and
-degraded-quorum behavior.
+In the `trading-research` DevCapsule, define and load the first small,
+human-reviewed labeled fixture set. Record source/license metadata, gold atomic
+claims, and an explicit grading rule; then report the single-best and
+flat-majority baselines without live model calls. Capture R-EVAL-002 once the
+fixture scope is chosen. Host networking is already authorized for this
+checkout; base-image authorization remains required for launch and the Claude
+Code download authorization remains recommended.
 
 The earlier `fastapi-webapp` GUI-launch limitation was addressed by this
 branch's container-path translation and host-backed staging changes; a live
