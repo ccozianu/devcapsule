@@ -299,8 +299,10 @@ Nox, and build-information suite passed 22 tests. The complete dirty-tree
 `nox -s build` gate passed with mypy clean over 102 source files, 358 tests
 passing with 11 deselected, all six packaging integrations passing, and the
 local self-contained artifact reporting `local-v026` with package version
-`0.1.1`. The dirty-tree gate correctly preserved any prior public artifact;
-the clean-tree public-artifact proof follows the implementation commit.
+`0.1.1`. The dirty-tree gate correctly preserved any prior public artifact.
+After commit, the complete clean-tree gate passed again and built both
+`dist/devcapsule-local.pex` and the exact-revision `dist/devcapsule.pex`; both
+reported package version `0.1.1` and mnemonic `local-v026`.
 
 Host-browser cleanup acceptance on 2026-08-18: after the accepted v026 IDE
 exited, the product owner verified that the PEX removed the broker socket and
