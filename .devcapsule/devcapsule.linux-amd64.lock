@@ -7,6 +7,7 @@ platform = "linux-amd64"
 # Globally resolvable dogfood base. The digest, rather than the mutable v026
 # discovery tag, is the committed formation input.
 reference = "docker.io/mycodespaceai/devcapsule-base@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a"
+build-mnemonic = "v026"
 
 [components]
 interactive-surface = "pycharm"

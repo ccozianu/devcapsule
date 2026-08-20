@@ -201,11 +201,13 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.base.recipe-version", BASE_RECIPE_VERSION),
                     ("devcapsule.base.recipe-status", recipe.status),
                     ("devcapsule.pex.sha256", file_sha256(pex)),
+                    ("devcapsule.pex.build-mnemonic", build_info.build_mnemonic),
                     ("devcapsule.source.repository", build_info.source_repository),
                     ("devcapsule.source.revision", build_info.source_revision),
                     ("devcapsule.source.url", build_info.source_url),
                     ("org.opencontainers.image.source", build_info.source_repository),
                     ("org.opencontainers.image.revision", build_info.source_revision),
+                    ("org.opencontainers.image.version", build_info.build_mnemonic),
                 )
                 + recipe.labels
                 + (

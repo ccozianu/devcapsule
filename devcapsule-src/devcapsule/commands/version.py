@@ -19,7 +19,7 @@ class VersionCommand(BaseCommand):
         if self.as_json:
             click.echo(build_info_json(info))
             return 0
-        click.echo(f"DevCapsule {info.version}")
+        click.echo(f"DevCapsule {info.build_mnemonic} (package {info.version})")
         click.echo(f"Source repository: {info.source_repository}")
         click.echo(f"Source revision: {info.source_revision}")
         click.echo(f"Source URL: {info.source_url}")

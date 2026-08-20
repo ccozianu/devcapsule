@@ -41,6 +41,9 @@ dev = [
 devcapsule = "devcapsule.cli:main"
 devcapsule-runtime = "devcapsule.container_runtime.entrypoint:main"
 
+[tool.devcapsule]
+release-series = "v026"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["devcapsule*"]

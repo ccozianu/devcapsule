@@ -36,6 +36,7 @@ OCI_REGISTRY_HOST_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 CONFIGURATION_VALUE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$")
 MEMORY_SIZE_PATTERN = re.compile(r"^([1-9][0-9]*)(B|KiB|MiB|GiB|TiB)$")
+RELEASE_BUILD_MNEMONIC_PATTERN = re.compile(r"^v[0-9][0-9A-Za-z._-]*$")
 CONFIGURATION_VALUE_TYPES = {"string", "integer", "boolean", "memory-size"}
 RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size"}
 
@@ -83,6 +84,7 @@ class AuthorizationDeclaration:
     recommended_value: AuthorizationScalar
     recommendation_digest: str
     description: str
+    display_value: str | None = None
 
 
 @dataclass(frozen=True)
@@ -414,11 +416,21 @@ def authorization_declarations(
     declarations: dict[str, AuthorizationDeclaration] = {}
     if "base" in lock:
         reference = locked_base_reference(lock)
+        build_mnemonic = locked_base_build_mnemonic(lock)
+        display_value = (
+            f"{build_mnemonic} — {reference}" if build_mnemonic is not None else None
+        )
         declarations["base-image"] = AuthorizationDeclaration(
             name="base-image",
             recommended_value=reference,
             recommendation_digest=canonical_digest(lock),
-            description="Execute the exact registry digest selected by the platform lock.",
+            description=(
+                f"Execute DevCapsule {build_mnemonic} at the exact registry digest selected "
+                "by the platform lock."
+                if build_mnemonic is not None
+                else "Execute the exact registry digest selected by the platform lock."
+            ),
+            display_value=display_value,
         )
 
     components = lock.get("components", {})
@@ -822,6 +834,20 @@ def locked_base_reference(lock: Mapping[str, Any], *, source: str = "platform lo
         raise ProjectConfigurationError(f"Invalid {source} base.reference {reference!r}: {exc}") from exc
 
 
+def locked_base_build_mnemonic(lock: Mapping[str, Any]) -> str | None:
+    base = lock.get("base")
+    if not isinstance(base, dict):
+        raise ProjectConfigurationError("Platform lock does not define formation base inputs.")
+    value = base.get("build-mnemonic")
+    if value is None:
+        return None
+    if not isinstance(value, str) or RELEASE_BUILD_MNEMONIC_PATTERN.fullmatch(value) is None:
+        raise ProjectConfigurationError(
+            "Platform lock base.build-mnemonic must be a release mnemonic such as 'v026'."
+        )
+    return value
+
+
 def authorized_base_selection(
     lock: Mapping[str, Any],
     checkout: Mapping[str, Any],
@@ -829,6 +855,7 @@ def authorized_base_selection(
     required: bool = True,
 ) -> AuthorizedBaseSelection | None:
     locked_reference = locked_base_reference(lock)
+    build_mnemonic = locked_base_build_mnemonic(lock)
     authorization_root = checkout.get("authorization")
     authorization = (
         authorization_root.get("base-image") if isinstance(authorization_root, dict) else None
@@ -836,8 +863,13 @@ def authorized_base_selection(
     command = f"devcapsule project config authorize base-image {locked_reference}"
     if not isinstance(authorization, dict):
         if required:
+            recognizable_base = (
+                f"DevCapsule {build_mnemonic} base {locked_reference}"
+                if build_mnemonic is not None
+                else f"base {locked_reference}"
+            )
             raise ProjectConfigurationError(
-                f"The lock recommends base {locked_reference}, but this checkout has not authorized it; "
+                f"The lock recommends {recognizable_base}, but this checkout has not authorized it; "
                 f"run '{command}', or explicitly authorize an inspected local DevCapsule base."
             )
         return None

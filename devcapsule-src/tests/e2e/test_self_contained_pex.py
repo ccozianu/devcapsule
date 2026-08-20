@@ -61,7 +61,10 @@ done
         completed = command(docker, "start", "--attach", container, check=False)
         assert completed.returncode == 0, completed.stderr
         version = json.loads(completed.stdout)
-        assert version["schema_version"] == 1
+        assert version["schema_version"] == 2
         assert version["version"] == "0.1.0"
+        assert version["build_mnemonic"] == os.environ.get(
+            "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC", "local-v026"
+        )
     finally:
         command(docker, "rm", "--force", container, check=False)

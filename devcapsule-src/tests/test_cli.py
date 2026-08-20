@@ -395,6 +395,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
         config=SimpleNamespace(
             labels={
                 "devcapsule.base.recipe-version": "1",
+                "devcapsule.pex.build-mnemonic": "v026",
                 "devcapsule.pex.sha256": "a" * 64,
                 "devcapsule.source.revision": "revision-1",
             }
@@ -435,6 +436,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
     assert build.call_args.kwargs == {"network": "host"}
     output = capsys.readouterr().out
     assert "Image ID: sha256:abc123" in output
+    assert "DevCapsule build: v026" in output
     assert "Source verification: public GitHub commit reachable" in output
 
 
@@ -803,3 +805,4 @@ def test_build_pex_script_is_available() -> None:
     assert "needs neither host Python nor a first-run download" in completed.stdout
     assert "--allow-unpublished-revision" in completed.stdout
     assert "--allow-local-source" in completed.stdout
+    assert "--release-mnemonic" in completed.stdout

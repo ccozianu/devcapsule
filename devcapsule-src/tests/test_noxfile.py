@@ -22,6 +22,8 @@ def test_release_workflow_scopes_source_repository_to_pex_build_step() -> None:
         "DEVCAPSULE_SOURCE_REPOSITORY: "
         "${{ github.server_url }}/${{ github.repository }}"
     ) in build_step
+    assert '--release-mnemonic "$RELEASE_TAG"' in build_step
+    assert '"build_mnemonic"' in build_step
 
 
 def test_public_pex_is_skipped_and_advertised_for_dirty_repository() -> None:

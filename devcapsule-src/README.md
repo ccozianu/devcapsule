@@ -161,6 +161,10 @@ For an explicit dirty development build, use
 `scripts/build-pex.sh --allow-local-source`. That PEX discloses an `unknown`
 revision instead of presenting local bytes as public source. The Nox build
 gate uses this escape hatch because it validates changes before commit.
+Every non-release build also embeds the recognizable mnemonic `local-v026`,
+where `v026` comes from `[tool.devcapsule].release-series` in `pyproject.toml`.
+The mnemonic describes the release line for humans; source revision and the
+artifact SHA-256 remain the exact identities.
 
 For a clean commit that has not been pushed yet, use
 `scripts/build-pex.sh --allow-unpublished-revision`. It embeds the exact local
@@ -232,6 +236,14 @@ their checksum and byte identity, restores the executable bit, and repeats the
 no-Python/no-network proof. A manual workflow run can retry an existing tag;
 if its Release already exists, the rebuilt bytes must match and are never
 silently replaced.
+
+The release workflow passes the exact tag to the build as its official
+mnemonic. The build rejects a mnemonic that is not an exact tag for the
+checkout revision or is outside the configured release series. Thus
+`version --json` reports `v026` for the official release and `local-v026` for
+ordinary development artifacts; base-image builds propagate the same value as
+the `devcapsule.pex.build-mnemonic` and `org.opencontainers.image.version` OCI
+labels.
 
 The executable contains CPython 3.12.14 from the pinned 20260814 Python Build
 Standalone release, the Python CLI, runtime dependencies, and the legacy
@@ -556,6 +568,13 @@ devcapsule project config authorize docker-daemon host-socket
 devcapsule project config authorize network host
 devcapsule project config authorize development-sudo true
 ```
+
+A formation lock may pair its immutable base reference with a presentation-only
+`base.build-mnemonic`, such as `v026`. Configuration listings, authorization
+previews, and missing-authorization errors show that mnemonic beside the full
+digest so the developer can recognize the release being reviewed. The
+authorization record still binds the exact digest and complete lock; the
+mnemonic is never accepted as an artifact identity.
 
 `config authorize NAME VALUE` accepts only the lock-selected base and curated
 host recommendations declared by the project. It writes the exact value and a

@@ -22,19 +22,32 @@ class BuildInfo:
     source_repository: str
     source_revision: str
     source_url: str
+    build_mnemonic: str = "unknown"
 
     @classmethod
     def from_mapping(cls, value: object) -> BuildInfo:
         if not isinstance(value, dict):
             raise BuildInfoError("build information must be a JSON object")
-        if value.get("schema_version") != 1:
-            raise BuildInfoError(f"unsupported build-information schema: {value.get('schema_version')!r}")
+        schema_version = value.get("schema_version")
+        if schema_version not in {1, 2}:
+            raise BuildInfoError(f"unsupported build-information schema: {schema_version!r}")
+        build_mnemonic = (
+            "unknown" if schema_version == 1 else _string(value, "build_mnemonic")
+        )
+        if build_mnemonic != "unknown" and re.fullmatch(
+            r"(?:local-)?v[0-9][0-9A-Za-z._-]*", build_mnemonic
+        ) is None:
+            raise BuildInfoError(
+                "build information 'build_mnemonic' must be a release tag such as "
+                "'v026' or a local release-series label such as 'local-v026'"
+            )
         return cls(
-            schema_version=1,
+            schema_version=schema_version,
             version=_string(value, "version"),
             source_repository=_string(value, "source_repository"),
             source_revision=_string(value, "source_revision"),
             source_url=_string(value, "source_url"),
+            build_mnemonic=build_mnemonic,
         )
 
     @classmethod
