@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devcapsule"
-version = "0.1.0"
+version = "0.1.1"
 description = "Profile-driven Docker launch tooling for isolated IDE development environments."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -94,7 +94,7 @@ skip_covered = true
 
 [tool.mypy]
 python_version = "3.12"
-files = ["devcapsule", "tests", "noxfile.py"]
+files = ["devcapsule", "tests", "noxfile.py", "scripts/bump-version.py"]
 # Sample projects are independent submodules with their own dependencies. They
 # are checked by their own tooling, not by DevCapsule's gate.
 exclude = "(^|/)tests/resources/sample_projects/"

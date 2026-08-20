@@ -7,6 +7,7 @@ from zipfile import ZipFile
 
 import pytest
 
+from devcapsule import __version__
 from devcapsule import cli
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 
@@ -90,6 +91,6 @@ def test_editable_install_falls_back_to_build_info_beside_module(tmp_path: Path)
         resources.return_value.joinpath.return_value = missing_resource
         info = current_build_info()
 
-    assert info.version == "0.1.0"
+    assert info.version == __version__
     assert info.build_mnemonic == "local-v026"
     assert info.source_revision == "unknown"

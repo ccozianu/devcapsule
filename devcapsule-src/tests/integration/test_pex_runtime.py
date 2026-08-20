@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from devcapsule import __version__
 from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenBroker
 
 
@@ -119,7 +120,7 @@ def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> No
     assert completed.returncode == 0, completed.stderr
     value = json.loads(completed.stdout)
     assert value["schema_version"] == 2
-    assert value["version"] == "0.1.0"
+    assert value["version"] == __version__
     assert value["build_mnemonic"] == os.environ.get(
         "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC", "local-v026"
     )
@@ -154,7 +155,8 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
     )
     for name in ("pyproject.toml", "README.md", "requirements.txt"):
         shutil.copy2(source_project / name, project / name)
-    shutil.copy2(source_project / "scripts" / "build-pex.sh", scripts / "build-pex.sh")
+    for name in ("build-pex.sh", "bump-version.py"):
+        shutil.copy2(source_project / "scripts" / name, scripts / name)
 
     subprocess.run(["git", "init", "-q", str(repository)], check=True)
     subprocess.run(

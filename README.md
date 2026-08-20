@@ -67,6 +67,19 @@ cd devcapsule-src
 .venv/bin/python -m nox -s build
 ```
 
+Advance the Python distribution version deliberately before preparing a new
+release. The bump accepts `major`, `minor`, `patch`, or an explicit greater
+`MAJOR.MINOR.PATCH` value and updates every checked-in version source together:
+
+```text
+cd devcapsule-src
+.venv/bin/python -m nox -s bump -- patch
+```
+
+Review and commit the bump, then run the full build again. The package version
+is independent of the human-facing release-series mnemonic and the immutable
+source revision embedded in each PEX.
+
 Calling the virtualenv's interpreter directly is intentional: it works without
 shell activation and cannot silently fall through to `/usr/bin/python` because
 an activation script contains an obsolete path. Activation remains supported:

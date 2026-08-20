@@ -132,6 +132,7 @@ EOF
   exit 1
 fi
 
+"${python_bin}" "${project_dir}/scripts/bump-version.py" --check
 project_version="$("${python_bin}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])' "${project_dir}/pyproject.toml")"
 release_series="$("${python_bin}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["tool"]["devcapsule"]["release-series"])' "${project_dir}/pyproject.toml")"
 if [[ ! "${release_series}" =~ ^v[0-9][0-9A-Za-z._-]*$ ]]; then
@@ -151,6 +152,7 @@ if [[ -n "${repo_root}" ]]; then
     devcapsule-src/devcapsule \
     devcapsule-src/pyproject.toml \
     devcapsule-src/requirements.txt \
+    devcapsule-src/scripts/bump-version.py \
     devcapsule-src/scripts/build-pex.sh)" ]]; then
     source_inputs_dirty=0
   fi

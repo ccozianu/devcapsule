@@ -123,3 +123,14 @@ def test_clean_machine_proof_forwards_selected_pex() -> None:
             "DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE": "ubuntu:24.04",
         },
     )
+
+
+def test_bump_session_forwards_the_developer_selected_revision() -> None:
+    session = Mock()
+    session.posargs = ["patch"]
+
+    noxfile.bump_version(session)
+
+    session.run.assert_called_once_with(
+        "python", str(noxfile.VERSION_SCRIPT), "patch"
+    )

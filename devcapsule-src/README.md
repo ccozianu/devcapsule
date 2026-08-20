@@ -134,6 +134,27 @@ python -m piptools compile --strip-extras pyproject.toml --output-file requireme
 python -m piptools compile --strip-extras --extra dev pyproject.toml --output-file dev-requirements.txt
 ```
 
+## Distribution Version
+
+The Python distribution version is advanced only by an explicit developer
+command. From `devcapsule-src/`, select a semantic increment or provide the
+exact next numeric version:
+
+```bash
+python -m nox -s bump -- patch
+python -m nox -s bump -- minor
+python -m nox -s bump -- major
+python -m nox -s bump -- 0.2.0
+```
+
+The command updates the package metadata, importable `__version__`, and source
+build information together. It refuses malformed, equal, or decreasing
+versions. Review and commit those source changes before building a public
+revision-bearing artifact. `python -m nox -s build` and `scripts/build-pex.sh`
+both verify that the checked-in versions agree; the resulting PEX reports the
+selected package version separately from its release mnemonic and source
+revision.
+
 ## End-User Artifact
 
 The published `devcapsule.pex` is a native Linux executable with an eagerly
