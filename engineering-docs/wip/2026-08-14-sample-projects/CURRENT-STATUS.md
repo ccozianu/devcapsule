@@ -41,31 +41,35 @@ name, not a typo in this record.
   submodule.
 - `trading-research` is the second sample. Its public repository is
   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, and it is
-  wired in as a submodule at commit `bfee9a1`. Its initial design brief and
+  wired in as a submodule at commit `2de3eb1`. Its initial design brief and
   pipeline pseudocode are present in the sample repository, and it now has a
   DevCapsule declaration and Linux lock selecting Python, PyCharm, Codex, and
-  Claude Code without yet creating Python-project structure.
+  Claude Code without yet creating Python-project structure. The declaration
+  recommends host networking with an explicit workflow justification.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: initialize `trading-research` as a PyCharm DevCapsule with Python,
-Codex, and Claude Code support, without scaffolding a Python project.
+Last task: enable explicitly authorized host networking for the
+`trading-research` DevCapsule.
 
-Status: complete. The sample's published commit `bfee9a1` contains only the
-requested `.devcapsule/` declaration and lock in addition to the existing
-project sketches. No `pyproject.toml`, package directory, dependency manifest,
-test tree, or other Python skeleton was added. The parent gitlink pins that
-commit.
+Status: complete locally. Sample commit `2de3eb1` adds the host-network
+recommendation and refreshes the lock's manifest digest while preserving every
+pinned formation input. This checkout has authorized `network = "host"`; its
+generated resolution is fresh. No Python project structure was added.
 
 ## Evidence
 
-- The trading-research gitlink pins `bfee9a1`, the published `origin/main` of
-  its repository; the submodule worktree is clean.
+- The trading-research gitlink pins local sample commit `2de3eb1`; the only
+  unrelated nested-worktree state is an untracked `.idea/` directory observed
+  during this work and deliberately excluded from the change.
 - An isolated `devcapsule project config list` accepted the declaration and
   lock, selected PyCharm, Codex, and Claude Code, and reported only the expected
   developer-owned base-image and Claude-download authorizations as unresolved.
+- After the host-network change, `devcapsule project config list` reports
+  `network` as `authorized` with value `host`, and the generated resolution
+  records `network = "host"` and reports `fresh`.
 - Sample backend tests: `4 passed` against temporary SQLite.
 - Full CRUD verified against real PostgreSQL 17 over `psycopg`: create, list,
   patch, and delete all behaved correctly, and the verification database was
@@ -161,9 +165,9 @@ therefore acquired per developer after explicit terms authorization.
    over canonical atomic claims, followed by a deterministic LLM-free merge
    that reports convergence, majority, or divergence without treating
    agreement as correctness. Its initial DevCapsule declares `python`,
-   `python-ide`, `codex-agent`, and `claude-code-agent`; service needs and the
-   specific DevCapsule behaviors it should prove remain to be defined
-   interactively.
+   `python-ide`, `codex-agent`, and `claude-code-agent`, and recommends host
+   networking; remaining service needs and the specific DevCapsule behaviors
+   it should prove remain to be defined interactively.
 
 ## Adopter-Path Verification
 
@@ -210,13 +214,14 @@ foreground/detached lifecycle evidence is recorded in the
 
 ## Next Resumable Task
 
-Enter the initialized `trading-research` DevCapsule, approve its developer-owned
-base-image and Claude-download recommendations, and continue the design
-discussion there. The agents inside that capsule will scaffold the Python
-project only after the product owner asks them to. Begin implementation planning
-with the eval-harness milestone and the load-bearing open contracts: canonical
-alignment of semantically equivalent claims, treatment of `JUDGMENT` claims,
-and degraded-quorum behavior.
+Enter the initialized `trading-research` DevCapsule, approve its remaining
+developer-owned base-image and Claude-download recommendations, and continue
+the design discussion there. Host networking is already authorized for this
+checkout. The agents inside that capsule will scaffold the Python project only
+after the product owner asks them to. Begin implementation planning with the
+eval-harness milestone and the load-bearing open contracts: canonical alignment
+of semantically equivalent claims, treatment of `JUDGMENT` claims, and
+degraded-quorum behavior.
 
 The earlier `fastapi-webapp` GUI-launch limitation was addressed by this
 branch's container-path translation and host-backed staging changes; a live
