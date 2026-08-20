@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused 2026-08-20 after the v026 build-mnemonic fix; Stage 7 remains next
+State: paused 2026-08-20 after the explicit package-version bump workflow and 0.1.1 bump; Stage 7 remains next
 
 Integration target: `main`
 
@@ -106,6 +106,13 @@ active continuation branch.
   weakening what authorization records. The existing `v026` GitHub Release is
   immutable; publishing labeled official bytes requires a new patch tag such
   as `v026.1` after integration.
+- The product owner then observed that both artifacts built by `nox -s build`
+  still carried Python distribution version `0.1.0`. The distribution version
+  is now an independently managed identity: `nox -s bump -- patch`, `minor`,
+  `major`, or an explicit greater numeric version updates all checked-in
+  version sources together. Builds reject disagreement. The workflow was used
+  to advance the current candidate to `0.1.1`; release mnemonic and immutable
+  source revision remain separate fields.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -154,6 +161,13 @@ cleanup are also complete. Changed:
   configuration and authorization UI leads with `v026` beside the full digest,
   while normalization, stored authorization, and freshness remain bound to the
   immutable reference and complete lock digest.
+- The new `bump` Nox session gives developers an explicit package-version
+  transition. It accepts `major`, `minor`, `patch`, or a greater
+  `MAJOR.MINOR.PATCH`, updates package metadata, `devcapsule.__version__`, and
+  editable-source build information together, and rejects invalid,
+  non-advancing, or inconsistent versions. The PEX builder and full Nox gate
+  verify that those sources agree before building. The current distribution
+  was advanced from `0.1.0` to `0.1.1` through that command.
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
   embedded interpreter is stripped and makes no first-run download.
@@ -279,6 +293,14 @@ plain and JSON output; all six packaging integrations passed against those
 bytes, and the network-disabled clean-machine proof passed without host Python.
 The release guard rejected combining an official mnemonic with a local or
 unpublished build.
+
+Package-version validation on 2026-08-20: the focused version-management,
+Nox, and build-information suite passed 22 tests. The complete dirty-tree
+`nox -s build` gate passed with mypy clean over 102 source files, 358 tests
+passing with 11 deselected, all six packaging integrations passing, and the
+local self-contained artifact reporting `local-v026` with package version
+`0.1.1`. The dirty-tree gate correctly preserved any prior public artifact;
+the clean-tree public-artifact proof follows the implementation commit.
 
 Host-browser cleanup acceptance on 2026-08-18: after the accepted v026 IDE
 exited, the product owner verified that the PEX removed the broker socket and
@@ -558,9 +580,9 @@ proof requires one, and keep the older run as historical evidence only.
 
 ## Open Threads
 
-- Decide whether to publish the first labeled official artifact as `v026.1`;
-  the existing `v026` tag and Release assets are immutable and must not be
-  replaced.
+- Decide whether to publish the first labeled official artifact as `v026.1`
+  with package version `0.1.1`; the existing `v026` tag and Release assets are
+  immutable and must not be replaced.
 - Resume with Stage 7 persistence and deterministic cleanup. Use the random run
   ID as the common name in every exclusive run resource.
 - Prefer the retained `482c34f2…` run when its evidence is sufficient, but use
@@ -572,8 +594,9 @@ proof requires one, and keep the older run as historical evidence only.
   preserved as V1 work. It is filed for V2 in
   `2026-08-18-v2-launch-resource-reconciliation.md` and does not reopen Stage
   6.
-- The branch contains completed, locally validated Stage 6 follow-up commits
-  that are not yet on `main`; integration remains outstanding.
+- The branch contains the completed, locally validated build-mnemonic and
+  package-version follow-up commits that are not yet on `main`; integration
+  remains outstanding.
 
 ## External State And Risks
 
