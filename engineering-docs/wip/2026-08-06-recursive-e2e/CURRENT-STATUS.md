@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused 2026-08-18 by product-owner decision after Stage 6 completion
+State: paused 2026-08-20 after the v026 build-mnemonic fix; Stage 7 remains next
 
 Integration target: `main`
 
@@ -98,6 +98,14 @@ active continuation branch.
   guidance uses the immutable digest rather than the mutable discovery tag.
   Existing checkout authorization becomes stale intentionally so each
   developer must review and authorize the new exact formation input.
+- On 2026-08-20 the product owner found that digest-only base authorization was
+  not meaningful to a human reviewer. Commit `2152c81` adds build-information
+  schema 2: official PEX builds carry their exact release tag, contributor PEX
+  builds carry `local-v026`, base builds propagate the mnemonic into OCI
+  labels, and locks may present `v026` beside the immutable digest without
+  weakening what authorization records. The existing `v026` GitHub Release is
+  immutable; publishing labeled official bytes requires a new patch tag such
+  as `v026.1` after integration.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -137,6 +145,15 @@ mainline recommendation are complete. `origin/main` contains the change at
 merge commit `a72d0a8`. The external-removal E2E and GUID-derived failed-launch
 cleanup are also complete. Changed:
 
+- PEX build metadata now distinguishes the official release mnemonic from its
+  package version and source revision. `[tool.devcapsule].release-series`
+  selects `v026`; local builds emit `local-v026`; the release backend passes
+  and verifies its exact tag. Base images inherit
+  `devcapsule.pex.build-mnemonic` and `org.opencontainers.image.version`.
+- Platform locks may carry presentation-only `base.build-mnemonic`. The
+  configuration and authorization UI leads with `v026` beside the full digest,
+  while normalization, stored authorization, and freshness remain bound to the
+  immutable reference and complete lock digest.
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
   embedded interpreter is stripped and makes no first-run download.
@@ -253,6 +270,15 @@ over 99 files, 341 tests passing with 10 deselected, all six packaging
 integrations passing, and the local self-contained PEX plus CLI smoke checks
 passing. The dirty-tree gate correctly skipped only the revision-bearing public
 PEX.
+
+Build-mnemonic validation on 2026-08-20: schema-v1 PEX reading remains
+compatible; schema-v2 unit and authorization-display coverage passes. The full
+source gate passed with 348 tests and 11 deselected, mypy clean over 100 files,
+and shell/source syntax clean. A freshly built PEX reported `local-v026` in
+plain and JSON output; all six packaging integrations passed against those
+bytes, and the network-disabled clean-machine proof passed without host Python.
+The release guard rejected combining an official mnemonic with a local or
+unpublished build.
 
 Host-browser cleanup acceptance on 2026-08-18: after the accepted v026 IDE
 exited, the product owner verified that the PEX removed the broker socket and
@@ -532,6 +558,9 @@ proof requires one, and keep the older run as historical evidence only.
 
 ## Open Threads
 
+- Decide whether to publish the first labeled official artifact as `v026.1`;
+  the existing `v026` tag and Release assets are immutable and must not be
+  replaced.
 - Resume with Stage 7 persistence and deterministic cleanup. Use the random run
   ID as the common name in every exclusive run resource.
 - Prefer the retained `482c34f2…` run when its evidence is sufficient, but use
