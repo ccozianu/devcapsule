@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/devcapsule.iml" filepath="$PROJECT_DIR$/.idea/devcapsule.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/project.iml" filepath="$PROJECT_DIR$/.idea/project.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/rotated-consensus.iml" filepath="$PROJECT_DIR$/.idea/rotated-consensus.iml" />
     </modules>
   </component>
 </project>
