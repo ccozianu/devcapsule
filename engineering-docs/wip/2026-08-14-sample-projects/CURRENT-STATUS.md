@@ -4,11 +4,11 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: active
+State: paused 2026-08-21 after adopting the packaged DevCapsule workflow in trading-research; labeled fixtures remain next
 
 Integration target: `main`
 
-Requirements: `R-PRODUCT-002`, `R-SCOPE-001`
+Requirements: `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCS-001`
 
 ## Goal
 
@@ -39,20 +39,48 @@ name, not a typo in this record.
 - The workstream is registered and its first branch is associated.
 - The `fastapi-webapp` sample is complete, published, and wired in as a
   submodule.
+- `trading-research` is the second sample. Its public repository is
+  `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, and it is
+  wired in as a submodule at commit `f058c8c`. Its initial design brief and
+  pipeline pseudocode are present in the sample repository, and it now has a
+  DevCapsule declaration and Linux lock selecting Python, PyCharm, Codex, and
+  Claude Code. Its evaluation-first Python scaffold implements deterministic
+  claim classification and calibration reporting. The declaration recommends
+  host networking with an explicit workflow justification.
+- The sample now carries the reusable packaged `WORKFLOW.md`, the current
+  generic `AGENTS.md` entry point, and a project-owned `CURRENT-STATUS.md` and
+  documentation index. Its live status no longer resides in README.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: build the first sample project, `fastapi-webapp`.
+Last task: upgrade `trading-research` with the workflow definition packaged in
+the newly fixed local PEX while preserving its project-owned state.
 
-Status: complete. The sample repository is
-`git@github.com:ccozianu/devcapsule-sample-fastapi-webbapp` at commit
-`7bf15e5`, and the parent records that pointer at
-`devcapsule-src/tests/resources/sample_projects/fastapi-webapp`.
+Status: complete and published. Sample `origin/main` is at `f058c8c`. Bare
+workflow bootstrap was first fixed and packaged on `recursive-e2e/stage-4`;
+the exact local PEX then refreshed only the reusable definitions and created
+the missing project-instance handoff and index. Existing requirements, source,
+configuration, and project brief were preserved. This checkout has authorized
+`network = "host"`; its generated resolution is fresh.
 
 ## Evidence
 
+- The trading-research gitlink pins `f058c8c`, the published `origin/main` of
+  its repository; generated `.idea/` and Python cache files are ignored.
+- The installed `WORKFLOW.md` is byte-identical to the packaged definition in
+  the local `devcapsule-local.pex` source tree. Eight unit tests and Python
+  compilation pass after the migration, and the nested repository is clean
+  and synchronized with its `origin/main`.
+- An isolated `devcapsule project config list` accepted the declaration and
+  lock, selected PyCharm, Codex, and Claude Code, and reported only the expected
+  developer-owned base-image and Claude-download authorizations as unresolved.
+- After the host-network change, `devcapsule project config list` reports
+  `network` as `authorized` with value `host`, and the generated resolution
+  records `network = "host"` and reports `fresh`.
+- Trading-research validation: eight unit tests pass and `python -m compileall`
+  succeeds across `src` and `tests`.
 - Sample backend tests: `4 passed` against temporary SQLite.
 - Full CRUD verified against real PostgreSQL 17 over `psycopg`: create, list,
   patch, and delete all behaved correctly, and the verification database was
@@ -140,13 +168,23 @@ therefore acquired per developer after explicit terms authorization.
    and lock, and a `developer-readme.md` explaining how to start development
    inside DevCapsule.
 
-Further samples are deliberately unspecified until the first one proves the
-shape.
+2. `trading-research` (second, current priority): public repository
+   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, mounted as
+   a submodule at
+   `devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research`.
+   The initial sketch specifies an evaluation-first, rotated multi-LLM debate
+   over canonical atomic claims, followed by a deterministic LLM-free merge
+   that reports convergence, majority, or divergence without treating
+   agreement as correctness. Its initial DevCapsule declares `python`,
+   `python-ide`, `codex-agent`, and `claude-code-agent`, and recommends host
+   networking. Its initial deterministic Python scaffold is published; the
+   workflow definition and project-owned handoff are now published as well;
+   the next milestone is a small human-reviewed labeled fixture set.
 
 ## Adopter-Path Verification
 
-Run on 2026-08-15. Three of the four criteria passed; the GUI launch is blocked
-for a structural reason recorded below.
+Run on 2026-08-15. All four criteria passed after the containerized-launch gaps
+found during the first attempt were fixed on this branch.
 
 - An isolated adopter checkout authorized the published base digest, host
   Docker, host networking, and the Claude Code download, then resolved. No
@@ -174,35 +212,38 @@ for a structural reason recorded below.
   authorization, and `--all-recommended` refuses to run without an interactive
   terminal while being presented as the primary path.
 
-### Blocked: GUI Launch From Inside A Capsule
+### GUI Launch From Inside A Capsule
 
-`devcapsule project run` could not be exercised, and this is a product
-limitation rather than a sample defect. Ordinary launch performs no host-path
-translation: it assumes it is running on the host. Issued from inside a
-DevCapsule container it hands the host daemon a bind source such as
-`/workspace/.../fastapi-webapp`, which does not exist on the host. Docker
-creates missing bind sources as empty directories, so the IDE would open an
-empty project instead of failing loudly.
-
-The recursive workstream solved exactly this with `HostDaemonLaunchContext`
-translation, but that machinery is engineering-mode and gated to DevCapsule's
-own project identity, so a sample cannot use it.
-
-Consequences:
-
-- Verifying the GUI launch of any sample requires either a host-side run or a
-  product change; it cannot be completed from this environment.
-- Anyone developing sample projects inside DevCapsule hits the same wall.
+The first attempt exposed three host-only assumptions: bind sources were not
+translated through the current container's mounts, the launcher ignored the
+Docker socket named by `DOCKER_HOST`, and transient launch files were staged on
+a container-local filesystem the host daemon could not read. Commits `2f9f605`
+and `ebccbec` fixed those paths and added failure messages for untranslatable
+mounts. A live foreground launch against `fastapi-webapp` subsequently started
+the sample environment and removed its container when the IDE exited; the
+foreground/detached lifecycle evidence is recorded in the
+[detached-container bug](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md).
 
 ## Next Resumable Task
 
-Decide how the sample GUI launch gets verified, then verify it.
+In the `trading-research` DevCapsule, define and load the first small,
+human-reviewed labeled fixture set. Record source/license metadata, gold atomic
+claims, and an explicit grading rule; then report the single-best and
+flat-majority baselines without live model calls. Capture R-EVAL-002 once the
+fixture scope is chosen. Host networking is already authorized for this
+checkout; base-image authorization remains required for launch and the Claude
+Code download authorization remains recommended.
 
-Either run `devcapsule project run` against the sample from the host, which
-needs no product change and closes this criterion immediately, or decide that
-ordinary launch should become recursion-aware and route that to
-`project-management` as a product change. The silent empty-directory failure
-mode is worth addressing regardless of which route is chosen.
+The earlier `fastapi-webapp` GUI-launch limitation was addressed by this
+branch's container-path translation and host-backed staging changes; a live
+foreground run against the sample is recorded in the detached-container bug.
+
+## Open Threads
+
+- Fixture scope, source licensing, and the explicit grading rule remain for
+  the next interactive trading-research session.
+- The sample-projects branch and updated gitlink are not yet integrated into
+  DevCapsule `main`.
 
 ## Feature-Gap Escalation Rule
 
