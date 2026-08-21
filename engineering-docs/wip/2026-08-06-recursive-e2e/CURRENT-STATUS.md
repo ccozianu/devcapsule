@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused 2026-08-18 by product-owner decision after Stage 6 completion
+State: paused 2026-08-21 after packaging and natively installing the reusable project workflow; Stage 7 remains next
 
 Integration target: `main`
 
@@ -98,6 +98,30 @@ active continuation branch.
   guidance uses the immutable digest rather than the mutable discovery tag.
   Existing checkout authorization becomes stale intentionally so each
   developer must review and authorize the new exact formation input.
+- On 2026-08-20 the product owner found that digest-only base authorization was
+  not meaningful to a human reviewer. Commit `2152c81` adds build-information
+  schema 2: official PEX builds carry their exact release tag, contributor PEX
+  builds carry `local-v026`, base builds propagate the mnemonic into OCI
+  labels, and locks may present `v026` beside the immutable digest without
+  weakening what authorization records. The existing `v026` GitHub Release is
+  immutable; publishing labeled official bytes requires a new patch tag such
+  as `v026.1` after integration.
+- The product owner then observed that both artifacts built by `nox -s build`
+  still carried Python distribution version `0.1.0`. The distribution version
+  is now an independently managed identity: `nox -s bump -- patch`, `minor`,
+  `major`, or an explicit greater numeric version updates all checked-in
+  version sources together. Builds reject disagreement. The workflow was used
+  to advance the current candidate to `0.1.1`; release mnemonic and immutable
+  source revision remain separate fields.
+- On 2026-08-21 the trading-research adopter exposed that `devcapsule
+  bootstrap` still delegated to a shell asset and did not install
+  `WORKFLOW.md` from the self-contained PEX. Commit `f4ce952` makes bootstrap
+  native, packages reusable `AGENTS.md` and `WORKFLOW.md` definitions
+  separately from project-instance templates, and initializes either a
+  single-stream handoff or a multiple-stream registry and reserved
+  project-management workstream. Existing project state is preserved;
+  reusable definitions change only through the explicit
+  `--refresh-workflow-definition` option.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -126,9 +150,10 @@ active continuation branch.
 
 ## Current Priority And Status
 
-Current task: begin Stage 7 with the random run ID as the common name embedded
-in every exclusive run resource. Recovery after abnormal launcher loss is
-filed for V2 and is no longer an open Stage 6 discussion.
+Current task: the directly requested adopter-bootstrap defect is complete and
+validated. Resume by beginning Stage 7 with the random run ID as the common
+name embedded in every exclusive run resource. Recovery after abnormal
+launcher loss is filed for V2 and is no longer an open Stage 6 discussion.
 
 Status: implementation, integration, the first backend-built standalone PEX
 release, matching Docker publication, immutable-digest pull and offline proof,
@@ -137,6 +162,28 @@ mainline recommendation are complete. `origin/main` contains the change at
 merge commit `a72d0a8`. The external-removal E2E and GUID-derived failed-launch
 cleanup are also complete. Changed:
 
+- PEX build metadata now distinguishes the official release mnemonic from its
+  package version and source revision. `[tool.devcapsule].release-series`
+  selects `v026`; local builds emit `local-v026`; the release backend passes
+  and verifies its exact tag. Base images inherit
+  `devcapsule.pex.build-mnemonic` and `org.opencontainers.image.version`.
+- Platform locks may carry presentation-only `base.build-mnemonic`. The
+  configuration and authorization UI leads with `v026` beside the full digest,
+  while normalization, stored authorization, and freshness remain bound to the
+  immutable reference and complete lock digest.
+- The new `bump` Nox session gives developers an explicit package-version
+  transition. It accepts `major`, `minor`, `patch`, or a greater
+  `MAJOR.MINOR.PATCH`, updates package metadata, `devcapsule.__version__`, and
+  editable-source build information together, and rejects invalid,
+  non-advancing, or inconsistent versions. The PEX builder and full Nox gate
+  verify that those sources agree before building. The current distribution
+  was advanced from `0.1.0` to `0.1.1` through that command.
+- `devcapsule bootstrap` and `devcapsule bootstrap project` now install the
+  workflow through Python-native package resources. Reusable definitions live
+  under `devcapsule.assets.project_workflow/definition`; separately rendered
+  templates initialize adopter-owned status, requirements, index, bug, and
+  multiple-stream coordination files. Bare bootstrap uses the process's
+  current directory rather than ambient container `PROJECT_PATH`.
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
   embedded interpreter is stripped and makes no first-run download.
@@ -253,6 +300,37 @@ over 99 files, 341 tests passing with 10 deselected, all six packaging
 integrations passing, and the local self-contained PEX plus CLI smoke checks
 passing. The dirty-tree gate correctly skipped only the revision-bearing public
 PEX.
+
+Build-mnemonic validation on 2026-08-20: schema-v1 PEX reading remains
+compatible; schema-v2 unit and authorization-display coverage passes. The full
+source gate passed with 348 tests and 11 deselected, mypy clean over 100 files,
+and shell/source syntax clean. A freshly built PEX reported `local-v026` in
+plain and JSON output; all six packaging integrations passed against those
+bytes, and the network-disabled clean-machine proof passed without host Python.
+The release guard rejected combining an official mnemonic with a local or
+unpublished build.
+
+Package-version validation on 2026-08-20: the focused version-management,
+Nox, and build-information suite passed 22 tests. The complete dirty-tree
+`nox -s build` gate passed with mypy clean over 102 source files, 358 tests
+passing with 11 deselected, all six packaging integrations passing, and the
+local self-contained artifact reporting `local-v026` with package version
+`0.1.1`. The dirty-tree gate correctly preserved any prior public artifact.
+After commit, the complete clean-tree gate passed again and built both
+`dist/devcapsule-local.pex` and the exact-revision `dist/devcapsule.pex`; both
+reported package version `0.1.1` and mnemonic `local-v026`.
+
+Workflow-bootstrap validation on 2026-08-21: the complete clean-tree Nox gate
+passed at commit `f4ce952`; mypy found no issues over 105 source files, 366
+fast tests passed with 12 deselected, and all seven packaging integrations
+passed. Both local and exact-revision PEX artifacts were built and directly
+smoke-tested. The PEX integration invoked bare `devcapsule bootstrap` from an
+empty adopter directory and verified that its installed `WORKFLOW.md` exactly
+matches the packaged reusable definition and that a single-stream
+`CURRENT-STATUS.md` exists. Seven focused workflow-bootstrap tests cover
+definition refresh, instance preservation, legacy handoff migration,
+single-/multiple-stream initialization, idempotence, invalid declarations, and
+incomplete multiple-stream rejection.
 
 Host-browser cleanup acceptance on 2026-08-18: after the accepted v026 IDE
 exited, the product owner verified that the PEX removed the broker socket and
@@ -532,6 +610,9 @@ proof requires one, and keep the older run as historical evidence only.
 
 ## Open Threads
 
+- Decide whether to publish the first labeled official artifact as `v026.1`
+  with package version `0.1.1`; the existing `v026` tag and Release assets are
+  immutable and must not be replaced.
 - Resume with Stage 7 persistence and deterministic cleanup. Use the random run
   ID as the common name in every exclusive run resource.
 - Prefer the retained `482c34f2…` run when its evidence is sufficient, but use
@@ -543,8 +624,21 @@ proof requires one, and keep the older run as historical evidence only.
   preserved as V1 work. It is filed for V2 in
   `2026-08-18-v2-launch-resource-reconciliation.md` and does not reopen Stage
   6.
-- The branch contains completed, locally validated Stage 6 follow-up commits
-  that are not yet on `main`; integration remains outstanding.
+- The branch contains the completed, locally validated build-mnemonic and
+  package-version and workflow-bootstrap follow-up commits that are not yet on
+  `main`; integration remains outstanding.
+
+## Workflow Latitude Used
+
+The protocol does not assign a newly discovered adopter-facing product defect
+to a workstream when that defect interrupts active dogfood across two existing
+workstreams. The product owner explicitly made the defect the immediate task.
+It was implemented on `recursive-e2e/stage-4` because it is a v026 executable
+distribution defect discovered while using the v026 PEX; `sample-projects`
+owns only the adopter repository update, and `workflow-improvements` owns
+protocol conventions rather than the product bootstrap implementation. This
+routing decision is recorded here because the gap can recur and should later
+be considered by `workflow-improvements`.
 
 ## External State And Risks
 
