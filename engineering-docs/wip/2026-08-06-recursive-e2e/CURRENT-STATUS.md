@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused 2026-08-20 after the explicit package-version bump workflow and 0.1.1 bump; Stage 7 remains next
+State: paused 2026-08-21 after packaging and natively installing the reusable project workflow; Stage 7 remains next
 
 Integration target: `main`
 
@@ -113,6 +113,15 @@ active continuation branch.
   version sources together. Builds reject disagreement. The workflow was used
   to advance the current candidate to `0.1.1`; release mnemonic and immutable
   source revision remain separate fields.
+- On 2026-08-21 the trading-research adopter exposed that `devcapsule
+  bootstrap` still delegated to a shell asset and did not install
+  `WORKFLOW.md` from the self-contained PEX. Commit `f4ce952` makes bootstrap
+  native, packages reusable `AGENTS.md` and `WORKFLOW.md` definitions
+  separately from project-instance templates, and initializes either a
+  single-stream handoff or a multiple-stream registry and reserved
+  project-management workstream. Existing project state is preserved;
+  reusable definitions change only through the explicit
+  `--refresh-workflow-definition` option.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -141,9 +150,10 @@ active continuation branch.
 
 ## Current Priority And Status
 
-Current task: begin Stage 7 with the random run ID as the common name embedded
-in every exclusive run resource. Recovery after abnormal launcher loss is
-filed for V2 and is no longer an open Stage 6 discussion.
+Current task: the directly requested adopter-bootstrap defect is complete and
+validated. Resume by beginning Stage 7 with the random run ID as the common
+name embedded in every exclusive run resource. Recovery after abnormal
+launcher loss is filed for V2 and is no longer an open Stage 6 discussion.
 
 Status: implementation, integration, the first backend-built standalone PEX
 release, matching Docker publication, immutable-digest pull and offline proof,
@@ -168,6 +178,12 @@ cleanup are also complete. Changed:
   non-advancing, or inconsistent versions. The PEX builder and full Nox gate
   verify that those sources agree before building. The current distribution
   was advanced from `0.1.0` to `0.1.1` through that command.
+- `devcapsule bootstrap` and `devcapsule bootstrap project` now install the
+  workflow through Python-native package resources. Reusable definitions live
+  under `devcapsule.assets.project_workflow/definition`; separately rendered
+  templates initialize adopter-owned status, requirements, index, bug, and
+  multiple-stream coordination files. Bare bootstrap uses the process's
+  current directory rather than ambient container `PROJECT_PATH`.
 - `scripts/build-pex.sh` now emits only an eager native PEX scie, pinning Linux
   x86-64, CPython 3.12.14, and Python Build Standalone release 20260814. The
   embedded interpreter is stripped and makes no first-run download.
@@ -303,6 +319,18 @@ local self-contained artifact reporting `local-v026` with package version
 After commit, the complete clean-tree gate passed again and built both
 `dist/devcapsule-local.pex` and the exact-revision `dist/devcapsule.pex`; both
 reported package version `0.1.1` and mnemonic `local-v026`.
+
+Workflow-bootstrap validation on 2026-08-21: the complete clean-tree Nox gate
+passed at commit `f4ce952`; mypy found no issues over 105 source files, 366
+fast tests passed with 12 deselected, and all seven packaging integrations
+passed. Both local and exact-revision PEX artifacts were built and directly
+smoke-tested. The PEX integration invoked bare `devcapsule bootstrap` from an
+empty adopter directory and verified that its installed `WORKFLOW.md` exactly
+matches the packaged reusable definition and that a single-stream
+`CURRENT-STATUS.md` exists. Seven focused workflow-bootstrap tests cover
+definition refresh, instance preservation, legacy handoff migration,
+single-/multiple-stream initialization, idempotence, invalid declarations, and
+incomplete multiple-stream rejection.
 
 Host-browser cleanup acceptance on 2026-08-18: after the accepted v026 IDE
 exited, the product owner verified that the PEX removed the broker socket and
@@ -597,8 +625,20 @@ proof requires one, and keep the older run as historical evidence only.
   `2026-08-18-v2-launch-resource-reconciliation.md` and does not reopen Stage
   6.
 - The branch contains the completed, locally validated build-mnemonic and
-  package-version follow-up commits that are not yet on `main`; integration
-  remains outstanding.
+  package-version and workflow-bootstrap follow-up commits that are not yet on
+  `main`; integration remains outstanding.
+
+## Workflow Latitude Used
+
+The protocol does not assign a newly discovered adopter-facing product defect
+to a workstream when that defect interrupts active dogfood across two existing
+workstreams. The product owner explicitly made the defect the immediate task.
+It was implemented on `recursive-e2e/stage-4` because it is a v026 executable
+distribution defect discovered while using the v026 PEX; `sample-projects`
+owns only the adopter repository update, and `workflow-improvements` owns
+protocol conventions rather than the product bootstrap implementation. This
+routing decision is recorded here because the gap can recur and should later
+be considered by `workflow-improvements`.
 
 ## External State And Risks
 
