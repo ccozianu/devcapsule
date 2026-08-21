@@ -4,7 +4,7 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: paused 2026-08-21 after adopting the packaged DevCapsule workflow in trading-research; labeled fixtures remain next
+State: paused 2026-08-21 after adding human-authorized workstream-change rules; labeled fixtures remain next
 
 Integration target: `main`
 
@@ -50,20 +50,24 @@ name, not a typo in this record.
 - The sample now carries the reusable packaged `WORKFLOW.md`, the current
   generic `AGENTS.md` entry point, and a project-owned `CURRENT-STATUS.md` and
   documentation index. Its live status no longer resides in README.
+- On the product owner's explicit direction, this branch now amends the
+  project workflow so an agent cannot autonomously leave or return to a
+  workstream after work begins. A proposed change must be explained to and
+  specifically authorized by the human first.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: upgrade `trading-research` with the workflow definition packaged in
-the newly fixed local PEX while preserving its project-owned state.
+Last task: close the protocol gap that allowed an agent to infer a workstream
+change, work elsewhere, and return without specific human instructions.
 
-Status: complete and published. Sample `origin/main` is at `f058c8c`. Bare
-workflow bootstrap was first fixed and packaged on `recursive-e2e/stage-4`;
-the exact local PEX then refreshed only the reusable definitions and created
-the missing project-instance handoff and index. Existing requirements, source,
-configuration, and project brief were preserved. This checkout has authorized
-`network = "host"`; its generated resolution is fresh.
+Status: implemented on this branch at the product owner's direction. Initial
+selection remains discoverable from the checked-out branch, but selection is
+sticky after work begins. A later change—and any return—requires a specific
+human instruction. Read-only inspection and same-workstream outbox use are
+explicitly distinguished from a change. The sample remains published at
+`f058c8c`; this checkout's generated resolution remains fresh.
 
 ## Evidence
 
@@ -73,6 +77,9 @@ configuration, and project brief were preserved. This checkout has authorized
   the local `devcapsule-local.pex` source tree. Eight unit tests and Python
   compilation pass after the migration, and the nested repository is clean
   and synchronized with its `origin/main`.
+- The new restriction covers both changing the current checkout and editing
+  through a second clone or worktree, so local directory arrangement cannot
+  bypass the human authorization boundary.
 - An isolated `devcapsule project config list` accepted the declaration and
   lock, selected PyCharm, Codex, and Claude Code, and reported only the expected
   developer-owned base-image and Claude-download authorizations as unresolved.
@@ -244,14 +251,20 @@ foreground run against the sample is recorded in the detached-container bug.
   the next interactive trading-research session.
 - The sample-projects branch and updated gitlink are not yet integrated into
   DevCapsule `main`.
+- The packaged workflow-definition asset was introduced on the separate
+  `recursive-e2e/stage-4` branch and is not present on this branch. Integration
+  must copy this workflow amendment into that packaged definition so the
+  byte-identity test and adopter PEX remain current; doing so was not attempted
+  here because the human did not authorize another workstream change.
 
 ## Feature-Gap Escalation Rule
 
 If completing a sample requires a DevCapsule capability that does not exist,
-pause this workstream and switch to `project-management` to sequence the gap
-rather than working around it inside a sample. Record the exact missing
+pause and ask the human whether to switch to `project-management` to sequence
+the gap rather than working around it inside a sample. Record the exact missing
 capability, the sample that exposed it, and the workaround considered and
-rejected.
+rejected. Do not make or later reverse that workstream change without the
+human's specific instruction.
 
 ## External State And Risks
 
