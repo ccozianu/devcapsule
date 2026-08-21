@@ -122,11 +122,12 @@ The relationships, which fix what every "current" in this document means:
   *current branch* determines the *current workstream*, not the reverse.
 
 **Sequential within a checkout, concurrent across checkouts.** One checkout can
-work on many workstreams over time by switching branches, but only one at a
-time, and only from a clean tree — mixing two workstreams' uncommitted changes
-in one directory is what the protocol exists to prevent. Genuine concurrency
-comes from several pairs working in several checkouts, integrating through the
-remote. It does not come from any local arrangement of directories.
+work on many workstreams over time when the human specifically directs a
+change, but only one at a time, and only from a clean tree — mixing two
+workstreams' uncommitted changes in one directory is what the protocol exists
+to prevent. Genuine concurrency comes from several pairs working in several
+checkouts, integrating through the remote. It does not come from any local
+arrangement of directories.
 
 **What is shared and what is local.** The remote carries everything the project
 agrees on: branches, `main`, the registry, handoffs, and intake. A checkout
@@ -267,6 +268,15 @@ The following restrictions keep concurrent work understandable:
 13. `<mnemonic>/outbox` is a reserved branch name in every workstream. It
     carries only what the workstream sends to `main` ahead of its own
     integration, never its working changes. See *The Outbox Branch*.
+14. Once a pair has selected a workstream and begun the task, an agent may
+    change workstreams only in response to a specific instruction from the
+    human to do so. The agent may not infer that authority from task subject,
+    file location, apparent ownership, urgency, dependency routing, a planned
+    next step in another handoff, or the availability of another checkout. If
+    the agent believes a change is needed, it stops before switching or editing
+    in the proposed workstream, explains why, and asks the human. Returning to
+    the earlier workstream is another change and requires its own specific
+    human instruction.
 
 ### Initializing Multiple-Stream Mode
 
@@ -438,11 +448,47 @@ Select exactly one editing workstream for the current checkout:
    see *Workstream Intake*. A handoff read without its intake is an incomplete
    picture of what the workstream owns.
 
-If the selected workstream differs from the current branch, switch to that
-branch in a clean checkout before editing. Do not combine dirty state from two
-workstreams, and do not use a stash as their durable handoff boundary.
-Different users and clones may select different workstreams independently
-because their checked-out branches are local state.
+If the selected workstream differs from the current branch during initial
+selection, switch to that branch in a clean checkout before editing only when
+the human's instruction specifically identifies that workstream. Otherwise,
+stop and ask rather than treating routing inference as authority to switch. Do
+not combine dirty state from two workstreams, and do not use a stash as their
+durable handoff boundary. Different users and clones may select different
+workstreams independently because their checked-out branches are local state.
+
+### Changing Workstreams During A Task
+
+Initial selection and a later change are different events. At session start,
+the current branch may identify the selected workstream under the rules above.
+After the pair has begun work there, that selection is sticky for the task.
+
+A specific human instruction must identify the target workstream, branch, or
+otherwise unmistakably direct that the work be performed there. A request that
+merely exposes work belonging elsewhere is not such an instruction. Neither is
+an agent's conclusion that another workstream would be a better organizational
+fit.
+
+If an agent thinks a change is necessary, it must pause before changing any
+checkout to the proposed workstream or making edits attributed to it. It tells
+the human:
+
+1. the currently selected workstream;
+2. the proposed target;
+3. why the current task appears to require the change; and
+4. what will happen to unfinished work in the current workstream.
+
+The agent waits for the human's specific direction. If the human approves,
+the pair deliberately pauses or otherwise hands off the current workstream,
+then enters the approved target through a clean, correctly associated branch.
+Completion of the target does not authorize an automatic return: changing back
+also waits for specific human direction.
+
+Read-only inspection of another workstream's published state is not a
+workstream change. Nor is using the selected workstream's own outbox under its
+special rules. Creating, entering, or reusing another checkout to perform
+edits for a different workstream is a change regardless of whether the current
+checkout's branch moves; local directory arrangement cannot bypass the human
+authorization rule.
 
 **Local checkout arrangement is an implementation detail.** This protocol is
 defined in terms of branches, not directories. One checkout has one branch and

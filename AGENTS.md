@@ -19,8 +19,8 @@ to correct it rather than guessing which handoff protocol applies.
 Work means editing files in a **checkout**: one local clone directory. A
 checkout has one current branch, that branch belongs to one workstream, and so
 a checkout has at most one selected workstream at a time. A checkout may work
-on many workstreams over time by switching branches from a clean tree, but
-never on two at once. Concurrency comes from several human/agent pairs in
+on many workstreams over time when the human specifically directs each change,
+but never on two at once. Concurrency comes from several human/agent pairs in
 several checkouts integrating through the shared remote, not from any local
 arrangement of directories, which is an implementation detail and not workflow
 state. See *Checkouts, Branches, And Workstreams* in `WORKFLOW.md`.
@@ -68,9 +68,14 @@ around it. See *The Reserved `project-management` Workstream* in `WORKFLOW.md`.
 The checked-out branch is the persistent local workstream selection; there is
 no separate untracked selection file. `main`, detached
 HEAD, and unregistered branches have no default editing workstream. If the
-selected workstream differs from the current branch, move to that branch in a
-clean checkout before editing. Treat a branch-to-registry mismatch as invalid
-routing and stop rather than guessing.
+initially selected workstream differs from the current branch, move to that
+branch in a clean checkout before editing only when the human specifically
+identified the target; otherwise ask. After work begins, never change
+workstreams autonomously, including by editing through another checkout. If a
+change appears necessary, stop, give the human the proposed target and
+rationale, and wait for a specific instruction. Returning is another change
+and requires another instruction. Treat a branch-to-registry mismatch as
+invalid routing and stop rather than guessing.
 
 Pay special attention to the selected handoff's current stage, current state,
 and planned next step. Then read any target-specific documents referenced
