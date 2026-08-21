@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from devcapsule import __version__
 from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenBroker
 
 
@@ -48,6 +49,30 @@ def test_built_pex_exposes_recursive_preflight_help(built_pex: Path) -> None:
     )
     assert run_help.returncode == 0, run_help.stderr
     assert "--keep-on-failure" in run_help.stdout
+
+
+@pytest.mark.integration
+def test_built_pex_bootstraps_packaged_workflow(
+    built_pex: Path, tmp_path: Path
+) -> None:
+    project = tmp_path / "adopter"
+    project.mkdir()
+
+    completed = subprocess.run(
+        [str(built_pex), "bootstrap"],
+        check=False,
+        text=True,
+        capture_output=True,
+        cwd=project,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert (project / "WORKFLOW.md").read_text(encoding="utf-8") == (
+        Path(__file__).resolve().parents[3] / "WORKFLOW.md"
+    ).read_text(encoding="utf-8")
+    assert "Workflow type: `single-stream`" in (
+        project / "CURRENT-STATUS.md"
+    ).read_text(encoding="utf-8")
 
 
 @pytest.mark.integration
@@ -118,8 +143,11 @@ def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> No
 
     assert completed.returncode == 0, completed.stderr
     value = json.loads(completed.stdout)
-    assert value["schema_version"] == 1
-    assert value["version"] == "0.1.0"
+    assert value["schema_version"] == 2
+    assert value["version"] == __version__
+    assert value["build_mnemonic"] == os.environ.get(
+        "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC", "local-v026"
+    )
     if built_pex.name == "devcapsule-local.pex":
         assert value["source_revision"] == "unknown"
         assert value["source_url"] == "unknown"
@@ -130,6 +158,7 @@ def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> No
     assert set(value) == {
         "schema_version",
         "version",
+        "build_mnemonic",
         "source_repository",
         "source_revision",
         "source_url",
@@ -150,7 +179,8 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
     )
     for name in ("pyproject.toml", "README.md", "requirements.txt"):
         shutil.copy2(source_project / name, project / name)
-    shutil.copy2(source_project / "scripts" / "build-pex.sh", scripts / "build-pex.sh")
+    for name in ("build-pex.sh", "bump-version.py"):
+        shutil.copy2(source_project / "scripts" / name, scripts / name)
 
     subprocess.run(["git", "init", "-q", str(repository)], check=True)
     subprocess.run(
@@ -229,6 +259,7 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
         capture_output=True,
     )
     value = json.loads(version.stdout)
+    assert value["build_mnemonic"] == "local-v026"
     assert value["source_revision"] == revision
     assert value["source_repository"] == "https://github.com/example/devcapsule-unpublished-test"
     assert value["source_url"].endswith(f"/commit/{revision}")

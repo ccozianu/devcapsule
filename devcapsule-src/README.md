@@ -134,6 +134,27 @@ python -m piptools compile --strip-extras pyproject.toml --output-file requireme
 python -m piptools compile --strip-extras --extra dev pyproject.toml --output-file dev-requirements.txt
 ```
 
+## Distribution Version
+
+The Python distribution version is advanced only by an explicit developer
+command. From `devcapsule-src/`, select a semantic increment or provide the
+exact next numeric version:
+
+```bash
+python -m nox -s bump -- patch
+python -m nox -s bump -- minor
+python -m nox -s bump -- major
+python -m nox -s bump -- 0.2.0
+```
+
+The command updates the package metadata, importable `__version__`, and source
+build information together. It refuses malformed, equal, or decreasing
+versions. Review and commit those source changes before building a public
+revision-bearing artifact. `python -m nox -s build` and `scripts/build-pex.sh`
+both verify that the checked-in versions agree; the resulting PEX reports the
+selected package version separately from its release mnemonic and source
+revision.
+
 ## End-User Artifact
 
 The published `devcapsule.pex` is a native Linux executable with an eagerly
@@ -161,6 +182,10 @@ For an explicit dirty development build, use
 `scripts/build-pex.sh --allow-local-source`. That PEX discloses an `unknown`
 revision instead of presenting local bytes as public source. The Nox build
 gate uses this escape hatch because it validates changes before commit.
+Every non-release build also embeds the recognizable mnemonic `local-v026`,
+where `v026` comes from `[tool.devcapsule].release-series` in `pyproject.toml`.
+The mnemonic describes the release line for humans; source revision and the
+artifact SHA-256 remain the exact identities.
 
 For a clean commit that has not been pushed yet, use
 `scripts/build-pex.sh --allow-unpublished-revision`. It embeds the exact local
@@ -233,10 +258,19 @@ no-Python/no-network proof. A manual workflow run can retry an existing tag;
 if its Release already exists, the rebuilt bytes must match and are never
 silently replaced.
 
+The release workflow passes the exact tag to the build as its official
+mnemonic. The build rejects a mnemonic that is not an exact tag for the
+checkout revision or is outside the configured release series. Thus
+`version --json` reports `v026` for the official release and `local-v026` for
+ordinary development artifacts; base-image builds propagate the same value as
+the `devcapsule.pex.build-mnemonic` and `org.opencontainers.image.version` OCI
+labels.
+
 The executable contains CPython 3.12.14 from the pinned 20260814 Python Build
 Standalone release, the Python CLI, runtime dependencies, and the legacy
 PyCharm build/runtime helper assets still needed by the current delegated
-`pycharm build`, `pycharm check-runtime`, and `bootstrap project` commands.
+`pycharm build` and `pycharm check-runtime` commands. The Python-native
+workflow bootstrap assets are packaged separately.
 It targets `linux-x86_64`, matching the supported v026 host and Docker base.
 
 Before publishing, prove the artifact on a network-disabled Ubuntu image that
@@ -557,6 +591,13 @@ devcapsule project config authorize network host
 devcapsule project config authorize development-sudo true
 ```
 
+A formation lock may pair its immutable base reference with a presentation-only
+`base.build-mnemonic`, such as `v026`. Configuration listings, authorization
+previews, and missing-authorization errors show that mnemonic beside the full
+digest so the developer can recognize the release being reviewed. The
+authorization record still binds the exact digest and complete lock; the
+mnemonic is never accepted as an artifact identity.
+
 `config authorize NAME VALUE` accepts only the lock-selected base and curated
 host recommendations declared by the project. It writes the exact value and a
 digest of the relevant recommendation to this checkout's input file. A changed
@@ -798,8 +839,32 @@ devcapsule codium_with_claude run --project /path/to/project --project-state-roo
 devcapsule codium_with_claude run --project /path/to/project --project-mount /workspace/project
 devcapsule codium_with_claude run --project /path/to/project --debug-shell
 devcapsule codium_with_claude run --project /path/to/project --network host
+devcapsule bootstrap
 devcapsule bootstrap project --project /path/to/project
 ```
+
+### Project Workflow Bootstrap
+
+`bootstrap` (or the explicit `bootstrap project`) is Python-native and uses workflow assets embedded in the
+installed distribution or self-contained PEX. It installs reusable
+`AGENTS.md` and `WORKFLOW.md` definitions separately from project-owned
+`CURRENT-STATUS.md`, `REQUIREMENTS.md`, `index.md`, and engineering-record
+state. A missing `workflow-type` in `.devcapsule/devcapsule.toml` means
+`single-stream`; `multiple-streams` additionally initializes the reserved
+`project-management` registry and handoff.
+
+Existing files are preserved. An older README-centered handoff is copied into
+a newly created single-stream `CURRENT-STATUS.md`. To deliberately replace
+only the reusable definition files while preserving all project state, run:
+
+```bash
+devcapsule bootstrap project --project /path/to/project \
+  --refresh-workflow-definition
+```
+
+See the repository's
+[`project workflow bootstrap specification`](../engineering-docs/specifications/product/project-workflow-bootstrap.md)
+for the definition/instance boundary and idempotency contract.
 
 `pycharm build` and `codium_with_claude build` use Ubuntu 24.04 and install
 Python plus a pinned Node.js archive under `/opt/node/node-{version}`, expose

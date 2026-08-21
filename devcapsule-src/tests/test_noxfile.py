@@ -22,6 +22,8 @@ def test_release_workflow_scopes_source_repository_to_pex_build_step() -> None:
         "DEVCAPSULE_SOURCE_REPOSITORY: "
         "${{ github.server_url }}/${{ github.repository }}"
     ) in build_step
+    assert '--release-mnemonic "$RELEASE_TAG"' in build_step
+    assert '"build_mnemonic"' in build_step
 
 
 def test_public_pex_is_skipped_and_advertised_for_dirty_repository() -> None:
@@ -120,4 +122,15 @@ def test_clean_machine_proof_forwards_selected_pex() -> None:
             noxfile.PEX_UNDER_TEST_ENV: "/tmp/published-devcapsule.pex",
             "DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE": "ubuntu:24.04",
         },
+    )
+
+
+def test_bump_session_forwards_the_developer_selected_revision() -> None:
+    session = Mock()
+    session.posargs = ["patch"]
+
+    noxfile.bump_version(session)
+
+    session.run.assert_called_once_with(
+        "python", str(noxfile.VERSION_SCRIPT), "patch"
     )

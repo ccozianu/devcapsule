@@ -28,6 +28,9 @@ post-MVP framework work.
   parity for the documented launch surface
 - Remove Python `pycharm run` dependence on historical bootstrap scripts as an
   implementation path
+- Install the reusable human/agent workflow and initialize project-owned state
+  through a Python-native `bootstrap project` command whose assets are embedded
+  in the distributable PEX. Added by product-owner direction on 2026-08-21.
 - Replace the delegated PyCharm image builder with a Python-native,
   configuration-neutral build pipeline
 - Support editable source install, pinned contributor setup, Nox build gate,
@@ -68,8 +71,7 @@ post-MVP framework work.
 - General YAML/JSON profile loading beyond the V1 proof point
 - Broader IDE-family adapters beyond the V1 VSCodium plus Claude proof point
 - Extension/plugin installation workflows beyond persistent plugin state
-- Translating `pycharm check-runtime` and `bootstrap project` away from shell
-  delegation
+- Translating `pycharm check-runtime` away from shell delegation
 - Verifiable supply-chain provenance, signed SBOMs, cryptographic artifact
   signatures, build attestations, automated provenance/policy enforcement, and
   fully automated release orchestration beyond the checksums, source metadata,

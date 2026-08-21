@@ -23,7 +23,13 @@ from devcapsule.image_build import render_build_context
 from devcapsule.image_tooling import MAVEN_VERSION, TEMURIN_VERSION
 
 
-def pex_fixture(path: Path, *, revision: str = "a" * 40, public: bool = True) -> Path:
+def pex_fixture(
+    path: Path,
+    *,
+    revision: str = "a" * 40,
+    public: bool = True,
+    build_mnemonic: str = "v026",
+) -> Path:
     repository = "https://github.com/example/devcapsule" if public else "unknown"
     source_url = f"{repository}/commit/{revision}" if public else "unknown"
     with ZipFile(path, "w") as archive:
@@ -31,8 +37,9 @@ def pex_fixture(path: Path, *, revision: str = "a" * 40, public: bool = True) ->
             ".deps/devcapsule-0.1.0-py3-none-any.whl/devcapsule/_build_info.json",
             json.dumps(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "version": "0.1.0",
+                    "build_mnemonic": build_mnemonic,
                     "source_repository": repository,
                     "source_revision": revision,
                     "source_url": source_url,
@@ -83,6 +90,7 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert ("devcapsule.component.postgresql-client.license", "PostgreSQL") in plan.labels
     assert ("devcapsule.base.recipe-status", "ready") in plan.labels
     assert ("devcapsule.pex.sha256", hashlib.sha256(pex.read_bytes()).hexdigest()) in plan.labels
+    assert ("devcapsule.pex.build-mnemonic", "v026") in plan.labels
     assert ("devcapsule.source.repository", "https://github.com/example/devcapsule") in plan.labels
     assert ("devcapsule.source.revision", "a" * 40) in plan.labels
     assert (
@@ -91,6 +99,7 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     ) in plan.labels
     assert ("org.opencontainers.image.source", "https://github.com/example/devcapsule") in plan.labels
     assert ("org.opencontainers.image.revision", "a" * 40) in plan.labels
+    assert ("org.opencontainers.image.version", "v026") in plan.labels
     assert ("devcapsule.component.temurin.version", TEMURIN_VERSION) in plan.labels
     assert ("devcapsule.component.maven.version", MAVEN_VERSION) in plan.labels
     assert (
@@ -186,10 +195,16 @@ def test_base_image_requires_public_pex_revision_by_default(tmp_path: Path) -> N
 
 
 def test_base_image_allows_explicit_local_source_escape_hatch(tmp_path: Path) -> None:
-    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    pex = pex_fixture(
+        tmp_path / "devcapsule.pex",
+        revision="unknown",
+        public=False,
+        build_mnemonic="local-v026",
+    )
     plan = build_base_image_spec(BaseImageBuildOptions(pex, allow_local_source=True)).build_plan()
 
     assert ("devcapsule.source.revision", "unknown") in plan.labels
+    assert ("devcapsule.pex.build-mnemonic", "local-v026") in plan.labels
 
 
 def test_base_image_local_source_escape_hatch_skips_public_verification(tmp_path: Path) -> None:

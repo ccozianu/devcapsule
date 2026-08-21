@@ -8,6 +8,7 @@ from unittest.mock import patch
 import zipfile
 
 import click
+import pytest
 
 from devcapsule import cli, compat
 from devcapsule.configurations.pycharm._image_build import PycharmImageBuildOptions
@@ -256,16 +257,23 @@ def test_runtime_check_pycharm_delegates_to_current_script() -> None:
     assert command[1:] == []
 
 
-def test_bootstrap_project_delegates_to_current_script() -> None:
-    with patch.object(compat.subprocess, "run") as run:
-        run.return_value.returncode = 0
-
-        result = cli.main(["bootstrap", "project", "--project", "/tmp/example"])
+def test_bootstrap_project_installs_packaged_workflow(tmp_path: Path) -> None:
+    result = cli.main(["bootstrap", "project", "--project", str(tmp_path)])
 
     assert result == 0
-    command = run.call_args.args[0]
-    assert command[0].endswith("docker4pycharm/bootstrap-project.sh")
-    assert command[1:] == ["--project", "/tmp/example"]
+    assert (tmp_path / "WORKFLOW.md").is_file()
+    assert (tmp_path / "CURRENT-STATUS.md").is_file()
+
+
+def test_bootstrap_without_subcommand_uses_current_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    assert cli.main(["bootstrap"]) == 0
+
+    assert (tmp_path / "WORKFLOW.md").is_file()
+    assert (tmp_path / "CURRENT-STATUS.md").is_file()
 
 
 def test_repo_root_can_be_overridden(tmp_path: Path) -> None:
@@ -395,6 +403,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
         config=SimpleNamespace(
             labels={
                 "devcapsule.base.recipe-version": "1",
+                "devcapsule.pex.build-mnemonic": "v026",
                 "devcapsule.pex.sha256": "a" * 64,
                 "devcapsule.source.revision": "revision-1",
             }
@@ -435,6 +444,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
     assert build.call_args.kwargs == {"network": "host"}
     output = capsys.readouterr().out
     assert "Image ID: sha256:abc123" in output
+    assert "DevCapsule build: v026" in output
     assert "Source verification: public GitHub commit reachable" in output
 
 
@@ -803,3 +813,4 @@ def test_build_pex_script_is_available() -> None:
     assert "needs neither host Python nor a first-run download" in completed.stdout
     assert "--allow-unpublished-revision" in completed.stdout
     assert "--allow-local-source" in completed.stdout
+    assert "--release-mnemonic" in completed.stdout

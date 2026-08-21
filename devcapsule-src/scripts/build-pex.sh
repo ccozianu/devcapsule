@@ -10,6 +10,7 @@ Options:
   --output PATH             Output archive. Defaults by source policy.
   --source-revision SHA     Assert and embed this full source commit.
   --source-repository URL   Public HTTPS GitHub repository URL.
+  --release-mnemonic TAG   Mark an official release build with its exact Git tag.
   --allow-unpublished-revision
                             Embed clean HEAD without checking that GitHub advertises it.
   --allow-local-source      Permit dirty inputs and disclose unknown revision.
@@ -47,6 +48,7 @@ output="${project_dir}/dist/devcapsule.pex"
 output_explicit=0
 source_revision="${DEVCAPSULE_SOURCE_REVISION:-}"
 source_repository="${DEVCAPSULE_SOURCE_REPOSITORY:-}"
+release_mnemonic=""
 allow_local_source=0
 allow_unpublished_revision=0
 
@@ -75,6 +77,14 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       source_repository="${2%.git}"
+      shift 2
+      ;;
+    --release-mnemonic)
+      if [[ $# -lt 2 ]]; then
+        echo "scripts/build-pex.sh: --release-mnemonic requires a value" >&2
+        exit 2
+      fi
+      release_mnemonic="$2"
       shift 2
       ;;
     --allow-local-source)
@@ -122,6 +132,15 @@ EOF
   exit 1
 fi
 
+"${python_bin}" "${project_dir}/scripts/bump-version.py" --check
+project_version="$("${python_bin}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])' "${project_dir}/pyproject.toml")"
+release_series="$("${python_bin}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["tool"]["devcapsule"]["release-series"])' "${project_dir}/pyproject.toml")"
+if [[ ! "${release_series}" =~ ^v[0-9][0-9A-Za-z._-]*$ ]]; then
+  echo "scripts/build-pex.sh: configured release series is invalid: ${release_series}" >&2
+  exit 1
+fi
+build_mnemonic="local-${release_series}"
+
 mkdir -p "$(dirname "${output}")"
 
 repo_root="$(git -C "${project_dir}" rev-parse --show-toplevel 2>/dev/null || true)"
@@ -133,6 +152,7 @@ if [[ -n "${repo_root}" ]]; then
     devcapsule-src/devcapsule \
     devcapsule-src/pyproject.toml \
     devcapsule-src/requirements.txt \
+    devcapsule-src/scripts/bump-version.py \
     devcapsule-src/scripts/build-pex.sh)" ]]; then
     source_inputs_dirty=0
   fi
@@ -158,6 +178,30 @@ elif [[ ${source_inputs_dirty} -ne 0 ]]; then
 elif [[ "${source_revision}" != "${head_revision}" ]]; then
   echo "scripts/build-pex.sh: source revision does not match checkout HEAD ${head_revision}" >&2
   exit 1
+fi
+
+if [[ -n "${release_mnemonic}" ]]; then
+  if [[ ${allow_local_source} -eq 1 || ${allow_unpublished_revision} -eq 1 ]]; then
+    echo "scripts/build-pex.sh: --release-mnemonic cannot mark a local or unpublished build" >&2
+    exit 2
+  fi
+  if [[ ! "${release_mnemonic}" =~ ^v[0-9][0-9A-Za-z._-]*$ ]]; then
+    echo "scripts/build-pex.sh: release mnemonic must be a numeric v* tag" >&2
+    exit 2
+  fi
+  if [[ "${release_mnemonic}" != "${release_series}" && \
+        "${release_mnemonic}" != "${release_series}."* && \
+        "${release_mnemonic}" != "${release_series}-"* && \
+        "${release_mnemonic}" != "${release_series}_"* ]]; then
+    echo "scripts/build-pex.sh: release mnemonic ${release_mnemonic} is outside configured series ${release_series}" >&2
+    exit 2
+  fi
+  tagged_revision="$(git -C "${repo_root}" rev-list -n 1 "refs/tags/${release_mnemonic}" 2>/dev/null || true)"
+  if [[ -z "${repo_root}" || "${tagged_revision}" != "${head_revision}" ]]; then
+    echo "scripts/build-pex.sh: release mnemonic ${release_mnemonic} must be an exact tag for checkout HEAD" >&2
+    exit 1
+  fi
+  build_mnemonic="${release_mnemonic}"
 fi
 
 if [[ -z "${source_repository}" && -n "${repo_root}" ]]; then
@@ -200,21 +244,22 @@ build_root="$(mktemp -d "${TMPDIR:-/tmp}/devcapsule-pex-build.XXXXXXXX")"
 trap 'rm -rf "${build_root}"' EXIT
 cp "${project_dir}/pyproject.toml" "${project_dir}/README.md" "${build_root}/"
 cp -a "${project_dir}/devcapsule" "${build_root}/devcapsule"
-project_version="$("${python_bin}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])' "${project_dir}/pyproject.toml")"
 "${python_bin}" - \
   "${build_root}/devcapsule/_build_info.json" \
   "${project_version}" \
   "${source_repository}" \
   "${source_revision}" \
-  "${source_url}" <<'PY'
+  "${source_url}" \
+  "${build_mnemonic}" <<'PY'
 import json
 from pathlib import Path
 import sys
 
-path, version, repository, revision, url = sys.argv[1:]
+path, version, repository, revision, url, build_mnemonic = sys.argv[1:]
 value = {
-    "schema_version": 1,
+    "schema_version": 2,
     "version": version,
+    "build_mnemonic": build_mnemonic,
     "source_repository": repository,
     "source_revision": revision,
     "source_url": url,
@@ -239,6 +284,7 @@ scie_build_output="${build_root}/devcapsule-scie"
 install -m 0755 "${scie_build_output}" "${output}"
 
 echo "${output}"
+echo "Build mnemonic: ${build_mnemonic}"
 echo "Self-contained runtime: CPython ${scie_python_version} (${scie_platform}, PBS ${scie_pbs_release})"
 echo "Source revision: ${source_revision}"
 echo "Source URL: ${source_url}"

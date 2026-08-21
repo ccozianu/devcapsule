@@ -72,6 +72,7 @@ def write_formation_lock(project: Path, reference: str = LOCKED_BASE) -> Path:
                 "",
                 "[base]",
                 f'reference = "{reference}"',
+                'build-mnemonic = "v026"',
                 "",
                 "[components]",
                 'interactive-surface = "pycharm"',
@@ -261,6 +262,8 @@ def test_project_config_list_materializes_default_checkout_and_reports_readiness
         assert "optional-unbound" in output
         assert "OPENAI_API_KEY" in output
         assert "missing-required" in output
+        assert "v026" in output
+        assert LOCKED_BASE in output
         assert "missing-recommended" in output
         assert "unresolved" in output
 

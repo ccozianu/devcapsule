@@ -16,6 +16,7 @@ TEST_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule-local.pex"
 PUBLIC_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
 PUBLIC_PEX_REPOSITORY_ENV = "DEVCAPSULE_PUBLIC_PEX_SOURCE_REPOSITORY"
 PEX_UNDER_TEST_ENV = "DEVCAPSULE_PEX_UNDER_TEST"
+VERSION_SCRIPT = PROJECT_ROOT / "scripts" / "bump-version.py"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -25,6 +26,10 @@ def install_locked(session: nox.Session) -> None:
 
 def check_python_syntax(session: nox.Session) -> None:
     session.run("python", "-m", "compileall", "-q", str(PROJECT_ROOT / "devcapsule"))
+
+
+def check_distribution_version(session: nox.Session) -> None:
+    session.run("python", str(VERSION_SCRIPT), "--check")
 
 
 def check_shell_syntax(session: nox.Session) -> None:
@@ -96,6 +101,7 @@ def run_typecheck(session: nox.Session) -> None:
         str(PROJECT_ROOT / "devcapsule"),
         str(PROJECT_ROOT / "tests"),
         str(PROJECT_ROOT / "noxfile.py"),
+        str(VERSION_SCRIPT),
     )
 
 
@@ -229,6 +235,13 @@ def syntax(session: nox.Session) -> None:
     check_shell_syntax(session)
 
 
+@nox.session(name="bump", python="3.12")
+def bump_version(session: nox.Session) -> None:
+    """Advance the package version by major/minor/patch or to an explicit version."""
+
+    session.run("python", str(VERSION_SCRIPT), *session.posargs)
+
+
 @nox.session(python="3.12")
 def tests(session: nox.Session) -> None:
     install_locked(session)
@@ -305,6 +318,7 @@ def recursive_dogfood_e2e(session: nox.Session) -> None:
 @nox.session(python="3.12")
 def build(session: nox.Session) -> None:
     install_locked(session)
+    check_distribution_version(session)
     check_python_syntax(session)
     check_shell_syntax(session)
     run_typecheck(session)

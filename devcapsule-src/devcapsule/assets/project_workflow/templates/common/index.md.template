@@ -1,0 +1,24 @@
+# Documentation Index
+
+## Project Orientation And Workflow
+
+- [Project brief](README.md)
+- [Documentation index](index.md)
+- [Agent instructions](AGENTS.md)
+- [Reusable human/agent workflow](WORKFLOW.md)
+- [Current status and handoff](CURRENT-STATUS.md)
+- [Requirements register](REQUIREMENTS.md)
+
+## Engineering Records
+
+- `engineering-docs/requirements/` — accepted detailed requirements
+- `engineering-docs/specifications/` — testable product and behavior contracts
+- `engineering-docs/decisions/` — durable decisions and rationale
+- `engineering-docs/design-notes/` — exploratory design work
+- `engineering-docs/implementation-notes/` — implementation plans and evidence
+- `engineering-docs/bugs/` — reproducible defects and close criteria
+- `engineering-docs/wip/` — active multiple-stream workstream state
+- `engineering-docs/archive/` — concluded multiple-stream workstream state
+- `engineering-docs/session-records/` — explicitly requested session records
+
+{{WORKSTREAM_INDEX}}

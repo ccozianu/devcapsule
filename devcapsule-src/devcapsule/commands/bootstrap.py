@@ -1,47 +1,90 @@
-"""Bootstrap command adapter."""
+"""Install packaged workflow definitions and initialize project memory."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import click
 
 from devcapsule.commands.base import BaseCommand
-from devcapsule.compat import run_script
+from devcapsule.compat import CliError
+from devcapsule.workflow_bootstrap import WorkflowBootstrapError, bootstrap_project
 
 
 class BootstrapCommand(BaseCommand):
     name = "bootstrap"
     help = "Bootstrap project workflow files."
 
-    _forward_context = {
-        "allow_extra_args": True,
-        "ignore_unknown_options": True,
-        "help_option_names": [],
-    }
-
     @classmethod
     def to_click_command(cls) -> click.Command:
-        group = click.Group(name=cls.name, help=cls.help, no_args_is_help=True)
+        @click.group(
+            name=cls.name,
+            help=cls.help,
+            invoke_without_command=True,
+        )
+        @click.option(
+            "--project",
+            "project_path",
+            type=click.Path(path_type=Path, file_okay=False, dir_okay=True),
+            help="Project directory. Defaults to PROJECT_PATH or the current directory.",
+        )
+        @click.option(
+            "--refresh-workflow-definition",
+            is_flag=True,
+            help="Replace reusable AGENTS.md and WORKFLOW.md; preserve project-owned state.",
+        )
+        @click.pass_context
+        def group(
+            ctx: click.Context,
+            project_path: Path | None,
+            refresh_workflow_definition: bool,
+        ) -> int | None:
+            if ctx.invoked_subcommand is not None:
+                return None
+            return cls._bootstrap(project_path, refresh_workflow_definition)
+
         group.add_command(cls._project_command())
         return group
 
     @classmethod
     def _project_command(cls) -> click.Command:
-        @click.pass_context
-        def callback(ctx: click.Context, **kwargs: Any) -> int:
-            return run_script("docker4pycharm/bootstrap-project.sh", list(ctx.args))
-
-        return click.Command(
-            name="project",
-            callback=callback,
-            help="Seed human/agent workflow files in a project.",
-            context_settings=cls._forward_context,
+        @click.command("project", help="Install workflow files and initialize project memory.")
+        @click.option(
+            "--project",
+            "project_path",
+            type=click.Path(path_type=Path, file_okay=False, dir_okay=True),
+            help="Project directory. Defaults to PROJECT_PATH or the current directory.",
         )
+        @click.option(
+            "--refresh-workflow-definition",
+            is_flag=True,
+            help="Replace reusable AGENTS.md and WORKFLOW.md; preserve project-owned state.",
+        )
+        def command(
+            project_path: Path | None, refresh_workflow_definition: bool
+        ) -> int:
+            return cls._bootstrap(project_path, refresh_workflow_definition)
+
+        return command
+
+    @staticmethod
+    def _bootstrap(
+        project_path: Path | None, refresh_workflow_definition: bool
+    ) -> int:
+        selected = project_path or Path(".")
+        try:
+            report = bootstrap_project(
+                selected,
+                refresh_workflow_definition=refresh_workflow_definition,
+            )
+        except WorkflowBootstrapError as exc:
+            raise CliError(str(exc)) from exc
+        click.echo(report.render())
+        return 0
 
     def run(self) -> Any:
         raise NotImplementedError("Bootstrap is a Click command group.")
 
 
 COMMAND = BootstrapCommand
-

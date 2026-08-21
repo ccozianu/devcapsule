@@ -685,7 +685,7 @@ def _configuration_authorization_rows(
 
     rows: list[ConfigurationListRow] = []
     for name, declaration in sorted(declarations.items()):
-        recommended = render_authorization_value(declaration.recommended_value)
+        recommended = _authorization_display_value(declaration)
         record = authorization.get(name)
         if record is None:
             status = "missing-required" if name == "base-image" else "missing-recommended"
@@ -1076,7 +1076,10 @@ def _config_authorize_command() -> click.Command:
                 _checkout_host_environment_bindings(checkout),
             ),
         )
-        click.echo(f"Authorized {name} for this checkout: {render_authorization_value(normalized)}")
+        authorized_value = render_authorization_value(normalized)
+        if local_base_identity is None and declaration.display_value is not None:
+            authorized_value = declaration.display_value
+        click.echo(f"Authorized {name} for this checkout: {authorized_value}")
         if local_base_identity is not None:
             click.echo(f"Local image ID: {local_base_identity}")
             click.echo(
@@ -1118,7 +1121,7 @@ def _authorize_all_recommended(
 
     click.echo(f"The following authorizations will be granted for checkout {root}:")
     for name, declaration in sorted(declarations.items()):
-        rendered = render_authorization_value(declaration.recommended_value)
+        rendered = _authorization_display_value(declaration)
         click.echo(f"- {name}: {rendered}")
         click.echo(f"  Justification: {declaration.description}")
         click.echo(f"  Recommendation digest: {declaration.recommendation_digest}")
@@ -1166,6 +1169,10 @@ def _authorize_all_recommended(
     click.echo(f"Checkout input: {input_path}")
     click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
     return 0
+
+
+def _authorization_display_value(declaration: AuthorizationDeclaration) -> str:
+    return declaration.display_value or render_authorization_value(declaration.recommended_value)
 
 
 def _state_command() -> click.Command:

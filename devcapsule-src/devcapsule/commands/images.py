@@ -158,6 +158,9 @@ class ImagesCommand(BaseCommand):
             recipe_version = labels.get("devcapsule.base.recipe-version", BASE_RECIPE_VERSION)
             recipe_status = labels.get("devcapsule.base.recipe-status", selected_recipe.status)
             click.echo(f"Base recipe: {recipe_name}@{recipe_version} ({recipe_status.upper()})")
+            click.echo(
+                f"DevCapsule build: {labels.get('devcapsule.pex.build-mnemonic', 'unknown')}"
+            )
             click.echo(f"PEX SHA-256: {labels.get('devcapsule.pex.sha256', 'unknown')}")
             click.echo(f"Source revision: {labels.get('devcapsule.source.revision', 'unknown')}")
             click.echo(f"Source URL: {labels.get('devcapsule.source.url', 'unknown')}")

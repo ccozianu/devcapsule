@@ -7,6 +7,7 @@ from zipfile import ZipFile
 
 import pytest
 
+from devcapsule import __version__
 from devcapsule import cli
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 
@@ -22,6 +23,36 @@ def test_public_build_identity_requires_canonical_github_commit_url() -> None:
     )
     assert info.has_public_revision is True
     assert BuildInfo(1, "1.0.0", info.source_repository, revision, "unknown").has_public_revision is False
+
+
+def test_build_information_accepts_release_and_local_mnemonics() -> None:
+    common = {
+        "schema_version": 2,
+        "version": "1.0.0",
+        "source_repository": "unknown",
+        "source_revision": "unknown",
+        "source_url": "unknown",
+    }
+
+    assert BuildInfo.from_mapping({**common, "build_mnemonic": "v026"}).build_mnemonic == "v026"
+    assert (
+        BuildInfo.from_mapping({**common, "build_mnemonic": "local-v026"}).build_mnemonic
+        == "local-v026"
+    )
+
+
+def test_build_information_rejects_unrecognizable_mnemonic() -> None:
+    with pytest.raises(BuildInfoError, match="build_mnemonic"):
+        BuildInfo.from_mapping(
+            {
+                "schema_version": 2,
+                "version": "1.0.0",
+                "build_mnemonic": "development",
+                "source_repository": "unknown",
+                "source_revision": "unknown",
+                "source_url": "unknown",
+            }
+        )
 
 
 def test_read_pex_build_info_does_not_execute_artifact(tmp_path: Path) -> None:
@@ -60,5 +91,6 @@ def test_editable_install_falls_back_to_build_info_beside_module(tmp_path: Path)
         resources.return_value.joinpath.return_value = missing_resource
         info = current_build_info()
 
-    assert info.version == "0.1.0"
+    assert info.version == __version__
+    assert info.build_mnemonic == "local-v026"
     assert info.source_revision == "unknown"

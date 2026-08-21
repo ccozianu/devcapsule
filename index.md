@@ -40,6 +40,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Specifications
 
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
+- [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
 ## Workstream Status
 
@@ -81,6 +82,9 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-PYTHON-MVP-003 Python MVP Feature Scope](engineering-docs/requirements/devcapsule/r-python-mvp-003-python-mvp-feature-scope.md)
 - [R-IMAGE-BUILD-001 Python-Native Composable Image Building](engineering-docs/requirements/devcapsule/r-image-build-001-python-native-composable-image-building.md)
 - [R-FRAMEWORK-001 Shared Python DevCapsule Orchestration](engineering-docs/requirements/devcapsule/r-framework-001-shared-python-docker4ide-orchestration.md)
+- [Packaged project workflow asset boundary](devcapsule-src/devcapsule/assets/project_workflow/README.md)
+- [Packaged generic agent instructions](devcapsule-src/devcapsule/assets/project_workflow/definition/AGENTS.md)
+- [Packaged generic workflow definition](devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md)
 - [PyCharm image vibe-coding bootstrap template](devcapsule-src/devcapsule/assets/pycharm/image-assets/vibe-coding-process.md)
 - [Legacy-compatible PyCharm bootstrap template copy](devcapsule-src/devcapsule/assets/docker4pycharm/image-assets/vibe-coding-process.md)
 - [TypeScript five-in-a-row sample project](devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow/README.md)
