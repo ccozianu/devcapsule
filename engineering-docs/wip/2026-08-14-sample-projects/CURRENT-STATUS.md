@@ -4,7 +4,7 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: active
+State: paused 2026-08-21 after adopting the packaged DevCapsule workflow in trading-research; labeled fixtures remain next
 
 Integration target: `main`
 
@@ -41,31 +41,38 @@ name, not a typo in this record.
   submodule.
 - `trading-research` is the second sample. Its public repository is
   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, and it is
-  wired in as a submodule at commit `2eac3c2`. Its initial design brief and
+  wired in as a submodule at commit `f058c8c`. Its initial design brief and
   pipeline pseudocode are present in the sample repository, and it now has a
   DevCapsule declaration and Linux lock selecting Python, PyCharm, Codex, and
   Claude Code. Its evaluation-first Python scaffold implements deterministic
   claim classification and calibration reporting. The declaration recommends
   host networking with an explicit workflow justification.
+- The sample now carries the reusable packaged `WORKFLOW.md`, the current
+  generic `AGENTS.md` entry point, and a project-owned `CURRENT-STATUS.md` and
+  documentation index. Its live status no longer resides in README.
 - Three DevCapsule gaps were found while building it. None blocked the sample;
   all are recorded below for `project-management` to sequence.
 
 ## Last Task And Status
 
-Last task: publish the initial evaluation-first Python scaffold and explicitly
-authorized host networking for the `trading-research` DevCapsule.
+Last task: upgrade `trading-research` with the workflow definition packaged in
+the newly fixed local PEX while preserving its project-owned state.
 
-Status: complete and published. Sample `origin/main` is at `2eac3c2`. The
-project now has requirements, dependency-free deterministic domain/merge/eval
-modules, and eight passing tests. The earlier commit adds the host-network
-recommendation and refreshes the lock's manifest digest while preserving every
-pinned formation input. This checkout has authorized `network = "host"`; its
-generated resolution is fresh.
+Status: complete and published. Sample `origin/main` is at `f058c8c`. Bare
+workflow bootstrap was first fixed and packaged on `recursive-e2e/stage-4`;
+the exact local PEX then refreshed only the reusable definitions and created
+the missing project-instance handoff and index. Existing requirements, source,
+configuration, and project brief were preserved. This checkout has authorized
+`network = "host"`; its generated resolution is fresh.
 
 ## Evidence
 
-- The trading-research gitlink pins `2eac3c2`, the published `origin/main` of
+- The trading-research gitlink pins `f058c8c`, the published `origin/main` of
   its repository; generated `.idea/` and Python cache files are ignored.
+- The installed `WORKFLOW.md` is byte-identical to the packaged definition in
+  the local `devcapsule-local.pex` source tree. Eight unit tests and Python
+  compilation pass after the migration, and the nested repository is clean
+  and synchronized with its `origin/main`.
 - An isolated `devcapsule project config list` accepted the declaration and
   lock, selected PyCharm, Codex, and Claude Code, and reported only the expected
   developer-owned base-image and Claude-download authorizations as unresolved.
@@ -171,7 +178,8 @@ therefore acquired per developer after explicit terms authorization.
    agreement as correctness. Its initial DevCapsule declares `python`,
    `python-ide`, `codex-agent`, and `claude-code-agent`, and recommends host
    networking. Its initial deterministic Python scaffold is published; the
-   next milestone is a small human-reviewed labeled fixture set.
+   workflow definition and project-owned handoff are now published as well;
+   the next milestone is a small human-reviewed labeled fixture set.
 
 ## Adopter-Path Verification
 
@@ -229,6 +237,13 @@ Code download authorization remains recommended.
 The earlier `fastapi-webapp` GUI-launch limitation was addressed by this
 branch's container-path translation and host-backed staging changes; a live
 foreground run against the sample is recorded in the detached-container bug.
+
+## Open Threads
+
+- Fixture scope, source licensing, and the explicit grading rule remain for
+  the next interactive trading-research session.
+- The sample-projects branch and updated gitlink are not yet integrated into
+  DevCapsule `main`.
 
 ## Feature-Gap Escalation Rule
 
