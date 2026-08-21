@@ -269,7 +269,8 @@ labels.
 The executable contains CPython 3.12.14 from the pinned 20260814 Python Build
 Standalone release, the Python CLI, runtime dependencies, and the legacy
 PyCharm build/runtime helper assets still needed by the current delegated
-`pycharm build`, `pycharm check-runtime`, and `bootstrap project` commands.
+`pycharm build` and `pycharm check-runtime` commands. The Python-native
+workflow bootstrap assets are packaged separately.
 It targets `linux-x86_64`, matching the supported v026 host and Docker base.
 
 Before publishing, prove the artifact on a network-disabled Ubuntu image that
@@ -838,8 +839,32 @@ devcapsule codium_with_claude run --project /path/to/project --project-state-roo
 devcapsule codium_with_claude run --project /path/to/project --project-mount /workspace/project
 devcapsule codium_with_claude run --project /path/to/project --debug-shell
 devcapsule codium_with_claude run --project /path/to/project --network host
+devcapsule bootstrap
 devcapsule bootstrap project --project /path/to/project
 ```
+
+### Project Workflow Bootstrap
+
+`bootstrap` (or the explicit `bootstrap project`) is Python-native and uses workflow assets embedded in the
+installed distribution or self-contained PEX. It installs reusable
+`AGENTS.md` and `WORKFLOW.md` definitions separately from project-owned
+`CURRENT-STATUS.md`, `REQUIREMENTS.md`, `index.md`, and engineering-record
+state. A missing `workflow-type` in `.devcapsule/devcapsule.toml` means
+`single-stream`; `multiple-streams` additionally initializes the reserved
+`project-management` registry and handoff.
+
+Existing files are preserved. An older README-centered handoff is copied into
+a newly created single-stream `CURRENT-STATUS.md`. To deliberately replace
+only the reusable definition files while preserving all project state, run:
+
+```bash
+devcapsule bootstrap project --project /path/to/project \
+  --refresh-workflow-definition
+```
+
+See the repository's
+[`project workflow bootstrap specification`](../engineering-docs/specifications/product/project-workflow-bootstrap.md)
+for the definition/instance boundary and idempotency contract.
 
 `pycharm build` and `codium_with_claude build` use Ubuntu 24.04 and install
 Python plus a pinned Node.js archive under `/opt/node/node-{version}`, expose

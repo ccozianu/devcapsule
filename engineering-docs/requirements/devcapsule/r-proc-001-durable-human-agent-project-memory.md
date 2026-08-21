@@ -25,13 +25,18 @@ conversation history.
 - `WORKFLOW.md`
 - root `REQUIREMENTS.md`
 - `AGENTS.md`
-- `docker4pycharm/image-assets/vibe-coding-process.md`
-- `docker4pycharm/bootstrap-project.sh`
+- `devcapsule-src/devcapsule/assets/project_workflow/`
+- `devcapsule-src/devcapsule/workflow_bootstrap.py`
+- `devcapsule bootstrap project`
 
 ## Verification
 
+- Source coverage keeps the packaged workflow definition synchronized with the
+  root protocol.
+- Packaging integration proves the PEX installs `WORKFLOW.md` and initializes
+  project-owned handoff state without a source checkout.
 - Future sessions should verify that active tasks and bug records cite
-  requirement IDs where applicable
+  requirement IDs where applicable.
 
 ## Related
 

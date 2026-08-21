@@ -52,6 +52,30 @@ def test_built_pex_exposes_recursive_preflight_help(built_pex: Path) -> None:
 
 
 @pytest.mark.integration
+def test_built_pex_bootstraps_packaged_workflow(
+    built_pex: Path, tmp_path: Path
+) -> None:
+    project = tmp_path / "adopter"
+    project.mkdir()
+
+    completed = subprocess.run(
+        [str(built_pex), "bootstrap"],
+        check=False,
+        text=True,
+        capture_output=True,
+        cwd=project,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert (project / "WORKFLOW.md").read_text(encoding="utf-8") == (
+        Path(__file__).resolve().parents[3] / "WORKFLOW.md"
+    ).read_text(encoding="utf-8")
+    assert "Workflow type: `single-stream`" in (
+        project / "CURRENT-STATUS.md"
+    ).read_text(encoding="utf-8")
+
+
+@pytest.mark.integration
 def test_built_pex_exposes_recursive_host_public_interface(built_pex: Path) -> None:
     completed = subprocess.run(
         [

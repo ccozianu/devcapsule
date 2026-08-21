@@ -25,6 +25,8 @@ developer-owned configuration authorizes host access.
 
 - `devcapsule-src/` — active Python distribution project: packaging, tests,
   runtime assets, and the `devcapsule/` import package.
+- `devcapsule-src/devcapsule/assets/project_workflow/` — reusable workflow
+  definitions and separate project-instance templates embedded in the PEX.
 - `docs/` — stable product guidance for DevCapsule users and adopters.
 - `engineering-docs/` — contributor- and agent-facing requirements,
   specifications, decisions, design notes, implementation evidence, and
@@ -34,10 +36,11 @@ developer-owned configuration authorizes host access.
   material, not the source of the active implementation, and no current
   decision should be recorded there. Its maintained descendant is
   `devcapsule-src/devcapsule/assets/docker4pycharm/`, which installed builds
-  extract and run; the two have already diverged. Note that
-  `devcapsule.compat.script_path()` still prefers the frozen root copy when it
-  is present, so source checkouts and installed builds run different revisions
-  of `bootstrap-project.sh` and `check-runtime-deps.sh`. See
+  extract for remaining legacy-compatible operations; the two have already
+  diverged. `bootstrap project` is now Python-native and does not use either
+  shell copy. Note that `devcapsule.compat.script_path()` still prefers the
+  frozen root copy for delegated commands such as `check-runtime-deps.sh`, so
+  source checkouts and installed builds can run different revisions. See
   [`docker4pycharm/README.md`](docker4pycharm/README.md).
 - `.devcapsule/` — this project's capability declaration and platform lock.
 

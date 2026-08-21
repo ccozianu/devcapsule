@@ -1,0 +1,28 @@
+# Workstream Current Status: Project Management
+
+Mnemonic: `project-management`
+
+Start date: `{{START_DATE}}`
+
+State: active; permanent coordination
+
+Branch association: `project-management/coordination`
+
+## Goal
+
+Maintain project-wide priorities, sequencing, cross-workstream dependencies,
+and lifecycle decisions while this repository uses multiple-streams mode.
+
+## Current State
+
+The reserved workstream was initialized. Replace this with the first verified
+portfolio state after registration reaches main.
+
+## Planned Next Step
+
+Review the project brief and register or prioritize the first delivery
+workstream.
+
+## Open Threads
+
+- None recorded yet.

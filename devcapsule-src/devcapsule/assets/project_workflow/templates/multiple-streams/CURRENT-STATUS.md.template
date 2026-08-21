@@ -1,0 +1,12 @@
+# Current Status
+
+Workflow type: `multiple-streams`
+
+This file is the compact mainline registry. Detailed state belongs in each
+registered workstream handoff.
+
+## Open Workstreams
+
+| Mnemonic | Started | Goal | State | Branch association | Handoff |
+|---|---|---|---|---|---|
+| `project-management` | {{START_DATE}} | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active; permanent coordination | `project-management/coordination` | [workstream status](engineering-docs/wip/{{START_DATE}}-project-management/CURRENT-STATUS.md) |
