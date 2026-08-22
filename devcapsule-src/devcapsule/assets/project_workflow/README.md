@@ -17,7 +17,9 @@ and next step. Updating a reusable definition must not overwrite project state.
 Bootstrap therefore installs missing definitions by default and refreshes
 existing definitions only with `--refresh-workflow-definition`.
 
-The root DevCapsule repository is itself an instance of this workflow. Its
-root `WORKFLOW.md` is kept byte-identical to the packaged reusable definition
-by automated coverage; its `CURRENT-STATUS.md`, `.devcapsule/` declaration,
-and `engineering-docs/wip/` records are DevCapsule-specific instance state.
+The root DevCapsule repository is itself an instance of this workflow, but its
+`WORKFLOW.md` serves the needs of developing DevCapsule and need not be
+byte-identical to the general-purpose definition shipped to adopters. Packaging
+coverage verifies that a built PEX installs the definition selected from this
+asset directory. The root `CURRENT-STATUS.md`, `.devcapsule/` declaration, and
+`engineering-docs/wip/` records are also DevCapsule-specific instance state.
