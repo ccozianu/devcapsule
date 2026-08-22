@@ -253,13 +253,10 @@ foreground run against the sample is recorded in the detached-container bug.
   repository and packaged workflow definitions. The current byte-identity test
   remains executable but is marked flaky and non-blocking until that test
   contract is settled; this is an implementation issue, not a design decision.
-- The sample-projects branch and updated gitlink are not yet integrated into
-  DevCapsule `main`.
-- The packaged workflow-definition asset was introduced on the separate
-  `recursive-e2e/stage-4` branch and is not present on this branch. Integration
-  must copy this workflow amendment into that packaged definition so the
-  byte-identity test and adopter PEX remain current; doing so was not attempted
-  here because the human did not authorize another workstream change.
+- The packaged workflow definition and root mothership workflow serve different
+  purposes and need not be byte-identical. PEX integration coverage now checks
+  bootstrap output against the packaged source asset; this follow-up correction
+  is not yet integrated into DevCapsule `main`.
 
 ## Feature-Gap Escalation Rule
 

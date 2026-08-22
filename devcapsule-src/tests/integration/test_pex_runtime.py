@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
@@ -67,9 +68,14 @@ def test_built_pex_bootstraps_packaged_workflow(
     )
 
     assert completed.returncode == 0, completed.stderr
-    assert (project / "WORKFLOW.md").read_text(encoding="utf-8") == (
-        Path(__file__).resolve().parents[3] / "WORKFLOW.md"
-    ).read_text(encoding="utf-8")
+    packaged_workflow = (
+        files("devcapsule.assets.project_workflow")
+        .joinpath("definition", "WORKFLOW.md")
+        .read_text(encoding="utf-8")
+    )
+    assert (project / "WORKFLOW.md").read_text(
+        encoding="utf-8"
+    ) == packaged_workflow
     assert "Workflow type: `single-stream`" in (
         project / "CURRENT-STATUS.md"
     ).read_text(encoding="utf-8")
