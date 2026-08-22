@@ -249,6 +249,10 @@ foreground run against the sample is recorded in the detached-container bug.
 
 - Fixture scope, source licensing, and the explicit grading rule remain for
   the next interactive trading-research session.
+- Implementation follow-up: define the correct release-discipline test for the
+  repository and packaged workflow definitions. The current byte-identity test
+  remains executable but is marked flaky and non-blocking until that test
+  contract is settled; this is an implementation issue, not a design decision.
 - The sample-projects branch and updated gitlink are not yet integrated into
   DevCapsule `main`.
 - The packaged workflow-definition asset was introduced on the separate
