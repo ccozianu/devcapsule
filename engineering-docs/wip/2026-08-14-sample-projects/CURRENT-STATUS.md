@@ -4,7 +4,7 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: paused 2026-08-21 after adding human-authorized workstream-change rules; labeled fixtures remain next
+State: paused 2026-08-22 after correcting v026.1 release coverage and advancing the trading-research sample; labeled fixtures remain next
 
 Integration target: `main`
 
@@ -41,12 +41,13 @@ name, not a typo in this record.
   submodule.
 - `trading-research` is the second sample. Its public repository is
   `git@github.com:ccozianu/devcapsule-sample-trading-research.git`, and it is
-  wired in as a submodule at commit `f058c8c`. Its initial design brief and
+  wired in as a submodule at commit `5ee3877`. Its initial design brief and
   pipeline pseudocode are present in the sample repository, and it now has a
   DevCapsule declaration and Linux lock selecting Python, PyCharm, Codex, and
   Claude Code. Its evaluation-first Python scaffold implements deterministic
   claim classification and calibration reporting. The declaration recommends
-  host networking with an explicit workflow justification.
+  host networking with an explicit workflow justification. The repository has
+  adopted multiple-stream mode and completed its foundation-recovery workstream.
 - The sample now carries the reusable packaged `WORKFLOW.md`, the current
   generic `AGENTS.md` entry point, and a project-owned `CURRENT-STATUS.md` and
   documentation index. Its live status no longer resides in README.
@@ -59,20 +60,23 @@ name, not a typo in this record.
 
 ## Last Task And Status
 
-Last task: close the protocol gap that allowed an agent to infer a workstream
-change, work elsewhere, and return without specific human instructions.
+Last task: correct the v026.1 release gate's assumptions about the mothership
+and packaged reusable workflow, then prepare this workstream for pause.
 
-Status: implemented on this branch at the product owner's direction. Initial
-selection remains discoverable from the checked-out branch, but selection is
-sticky after work begins. A later change—and any return—requires a specific
-human instruction. Read-only inspection and same-workstream outbox use are
-explicitly distinguished from a change. The sample remains published at
-`f058c8c`; this checkout's generated resolution remains fresh.
+Status: completed. The byte-identity unit check remains executable but
+non-blocking while release-discipline coverage is redesigned; the PEX
+integration test now verifies bootstrap output against the packaged source
+asset. Those corrections and the generated-IDE-file ignore reached `main`
+through PR #38. The trading-research pointer now advances to its published
+`5ee3877` multiple-stream baseline.
 
 ## Evidence
 
-- The trading-research gitlink pins `f058c8c`, the published `origin/main` of
+- The trading-research gitlink pins `5ee3877`, the published `origin/main` of
   its repository; generated `.idea/` and Python cache files are ignored.
+- The exact release packaging integration command passed against a freshly
+  rebuilt local PEX: `7 passed`. Workflow bootstrap unit coverage reports
+  `6 passed, 1 xfailed`, with the deferred byte-identity result non-blocking.
 - The installed `WORKFLOW.md` is byte-identical to the packaged definition in
   the local `devcapsule-local.pex` source tree. Eight unit tests and Python
   compilation pass after the migration, and the nested repository is clean
@@ -253,10 +257,10 @@ foreground run against the sample is recorded in the detached-container bug.
   repository and packaged workflow definitions. The current byte-identity test
   remains executable but is marked flaky and non-blocking until that test
   contract is settled; this is an implementation issue, not a design decision.
-- The packaged workflow definition and root mothership workflow serve different
-  purposes and need not be byte-identical. PEX integration coverage now checks
-  bootstrap output against the packaged source asset; this follow-up correction
-  is not yet integrated into DevCapsule `main`.
+- Deliberately not preserved: a generated trading-research lock rewrite that
+  replaced public digest-pinned inputs with the checkout-local image tag
+  `devcapsule-local-pycharm:5dfa686ce5dc74688955`. The committed portable lock
+  was restored before recording the published submodule revision.
 
 ## Feature-Gap Escalation Rule
 
