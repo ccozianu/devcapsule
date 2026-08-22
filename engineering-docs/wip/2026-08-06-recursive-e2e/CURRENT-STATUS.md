@@ -4,7 +4,7 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused 2026-08-21 after packaging and natively installing the reusable project workflow; Stage 7 remains next
+State: active 2026-08-22; Stage 7 persistence and deterministic cleanup are next
 
 Integration target: `main`
 
@@ -14,7 +14,8 @@ Requirements: `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`
 
 From the accepted running v024 dogfood container, use a clean clone of a later
 DevCapsule revision to build and launch a successor environment while proving
-source identity, host-boundary authorization, persistence, and safe cleanup.
+source identity, host-boundary authorization, persistence, and safe cleanup;
+also own the v026 base and executable deliverables delegated on 2026-08-16.
 
 ## Branch Association
 
@@ -122,6 +123,11 @@ active continuation branch.
   project-management workstream. Existing project state is preserved;
   reusable definitions change only through the explicit
   `--refresh-workflow-definition` option.
+- On 2026-08-22 the corrected `v026.1` tag resolved to `main` revision
+  `489642e`; the backend published the package-version `0.1.1` PEX and checksum
+  after source, packaging, and clean-machine validation. The release PEX is
+  40,274,243 bytes with SHA-256
+  `353b98b62fa1cd30bc0f2da17effd8981e044d2f2fd91c306e6fa4092c70c493`.
 - The native-X11 hyperlink bug is implemented at commit `6d8f53c`. An explicit
   `--host-browser` launch starts a same-user, URL-only Unix-socket broker on the
   physical host; the capsule's `xdg-open` dispatches through the matching PEX,
@@ -155,12 +161,13 @@ validated. Resume by beginning Stage 7 with the random run ID as the common
 name embedded in every exclusive run resource. Recovery after abnormal
 launcher loss is filed for V2 and is no longer an open Stage 6 discussion.
 
-Status: implementation, integration, the first backend-built standalone PEX
-release, matching Docker publication, immutable-digest pull and offline proof,
-functional host-browser GUI acceptance including cleanup, and the v026
-mainline recommendation are complete. `origin/main` contains the change at
-merge commit `a72d0a8`. The external-removal E2E and GUID-derived failed-launch
-cleanup are also complete. Changed:
+Status: Stages 0 through 6, the backend-built standalone PEX releases, matching
+Docker publication, immutable-digest pull and offline proof, functional
+host-browser GUI acceptance including cleanup, and the v026 mainline
+recommendation are complete. `origin/main` contains the completed follow-ups at
+`489642e`, and `v026.1` is published from that exact revision. Stage 7 is now
+active; the external-removal E2E and GUID-derived failed-launch cleanup provide
+its starting boundary. Changed:
 
 - PEX build metadata now distinguishes the official release mnemonic from its
   package version and source revision. `[tool.devcapsule].release-series`
@@ -607,12 +614,16 @@ proof requires one, and keep the older run as historical evidence only.
    enumeration by owner; and safe removal boundaries. Closing the detached
    successor cleanup bug is a consequence of this task, not a separate
    implementation.
+2. **The two delegated v026 deliverables.** Acknowledged from
+   `project-management` and completed: the self-contained executable plus
+   clean-machine proof and the host-browser URL-open bridge are published and
+   accepted.
+3. **Widen the registered goal to reflect delivered product work.** Accepted
+   from `project-management`. The goal now records ownership of the v026 base
+   and executable deliverables rather than describing only recursive launch.
 
 ## Open Threads
 
-- Decide whether to publish the first labeled official artifact as `v026.1`
-  with package version `0.1.1`; the existing `v026` tag and Release assets are
-  immutable and must not be replaced.
 - Resume with Stage 7 persistence and deterministic cleanup. Use the random run
   ID as the common name in every exclusive run resource.
 - Prefer the retained `482c34f2…` run when its evidence is sufficient, but use
@@ -624,9 +635,9 @@ proof requires one, and keep the older run as historical evidence only.
   preserved as V1 work. It is filed for V2 in
   `2026-08-18-v2-launch-resource-reconciliation.md` and does not reopen Stage
   6.
-- The branch contains the completed, locally validated build-mnemonic and
-  package-version and workflow-bootstrap follow-up commits that are not yet on
-  `main`; integration remains outstanding.
+- Stage 7 is ready before `workflow-improvements` has finalized the external-
+  resource ownership convention. A readiness notice is being sent through the
+  recursive outbox so that dependency can be reordered explicitly.
 
 ## Workflow Latitude Used
 
@@ -642,6 +653,10 @@ be considered by `workflow-improvements`.
 
 ## External State And Risks
 
+- Re-verified 2026-08-22: both retained successors still exist and remain
+  `Exited (0)`. Docker inspection still exposes their exact ownership-derived
+  names and the host-side run-root mount paths for `482c34f2…` and `b2093d85…`.
+  Neither container nor either run root was removed during resumption.
 - Re-verified 2026-08-17 at session start, correcting the entry below it: the
   Stage 6 successor
   `9a2c3c787f2ea0577d2f95a117b986084a9e0a55e9852b4e3d0b558c69ad32f6` is
