@@ -82,6 +82,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-PYTHON-MVP-003 Python MVP Feature Scope](engineering-docs/requirements/devcapsule/r-python-mvp-003-python-mvp-feature-scope.md)
 - [R-IMAGE-BUILD-001 Python-Native Composable Image Building](engineering-docs/requirements/devcapsule/r-image-build-001-python-native-composable-image-building.md)
 - [R-FRAMEWORK-001 Shared Python DevCapsule Orchestration](engineering-docs/requirements/devcapsule/r-framework-001-shared-python-docker4ide-orchestration.md)
+- [R-COMPAT-001 Client Upgrades Require No User Action For Existing Projects](engineering-docs/requirements/devcapsule/r-compat-001-client-upgrades-require-no-user-action.md)
 - [Packaged project workflow asset boundary](devcapsule-src/devcapsule/assets/project_workflow/README.md)
 - [Packaged generic agent instructions](devcapsule-src/devcapsule/assets/project_workflow/definition/AGENTS.md)
 - [Packaged generic workflow definition](devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md)

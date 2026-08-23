@@ -5,6 +5,15 @@ Status: product design draft; this is not current CLI usage documentation
 Audience: developers creating, evaluating, or adopting a DevCapsule-enabled
 project
 
+Baseline: every claim in this document about what the tool does today — each
+gap, hole, defect, and file:line reference — was verified against `main` at
+commit `489642e` (2026-08-22), during the design sessions of 2026-08-23. The
+ideal experience specified here is compared against that snapshot and no
+other. As implementation catches up, those present-tense observations become
+historical notes about `489642e`, not statements about the current tree; they
+are deliberately left un-updated so the record of what was wrong, and why each
+decision was taken, survives the fix.
+
 ## The Promise
 
 A DevCapsule-enabled project should open as a complete, reproducible
@@ -88,21 +97,338 @@ actual path written. Users may edit ordinary values and non-secret provider
 references in this file directly. The adjacent `devcapsule.resolved.toml` is
 generated output and is never edited as configuration input.
 
+## The First Run: Cases And Properties
+
+Every first run is the same act: bring the four items in *Four Things With
+Different Owners* into existence, in owner order. The cases differ only in
+which of them already exist and who authors the rest.
+
+Three cases are canonical, accepted by the product owner on 2026-08-23:
+
+| Case | The user's position | Manifest | Platform lock | Checkout configuration | Materialized image |
+| --- | --- | --- | --- | --- | --- |
+| **New project** | an idea, no code yet | authored here | authored here | authored here | built here |
+| **Existing project** | code exists, not onboarded | authored here, against existing code | authored here | authored here | built here |
+| **New checkout** | the project already carries DevCapsule settings | given | given | authored here | built or reused |
+
+Related situations are sub-cases of these three, not additional cases. They are
+recorded because the common story must survive them, and because each one
+currently reaches a question this narrative does not answer:
+
+- **No platform lock for the user's platform.** The lock is per-platform and
+  the filename says so; the client derives the alias from the host
+  (`platform_alias()`, `project_configuration.py:599`). A user on a platform
+  the project has never locked has a complete and correct project half and
+  still cannot run. A sub-case of *New checkout*.
+- **A second checkout of the same project on one workstation.** Named checkout
+  files live under the same project-identity directory precisely so that one
+  checkout cannot inherit another's permissions. Some settings for this project
+  demonstrably exist on this machine and are deliberately withheld; what may be
+  offered and what must be re-answered is unstated. A sub-case of *New
+  checkout*.
+- **A fork or template instantiation.** Manifest and lock are inherited, but
+  project identity must not be: `creator` and `slug` key the checkout
+  directory. Looks like *New checkout*, must behave like *New project* on
+  exactly those fields.
+- **An evaluator** who wants to know what a run will do to their machine before
+  authorizing it. A display and acknowledgement question inside *New checkout*.
+- **A learning or course project**, named as the third adoption moment in
+  `docs/product/v1-announcement.md`. Many disposable checkouts of one upstream
+  project, by users who are not its owners.
+- **An existing project that already carries an environment definition** — a
+  devcontainer, a Dockerfile, a virtualenv recipe. This changes what
+  initialization may infer, not the shape of the case. A sub-case of *Existing
+  project*.
+
+### Properties The First-Run Story Must Satisfy
+
+1. **A first run reaches a running capsule in the documented minimum for its
+   case**, and that minimum is stated for each of the three cases. Today no
+   document states it: four sources describe mutually inconsistent first-run
+   flows, and none of them is the implemented one.
+2. **An upgraded client requires nothing of the user.** See `R-COMPAT-001`.
+   This property is not about the first run of DevCapsule on a project; it is
+   about every later run, and it constrains the same code the first run
+   exercises.
+
+### Non-Interactive Runs Are Handled Elsewhere
+
+Runs with no human present — scripted, automated, or agent-driven, whether the
+first run or a later one — are deliberately outside this narrative. They are
+not deferred: the product owner ruled on 2026-08-23 that they block the V1
+release. The item was delivered to `project-management` on that date for
+ownership and sequencing.
+
+The two properties above and the three cases still apply to them. What does not
+apply is every interaction this narrative uses to satisfy those properties:
+vendor-acquisition acknowledgement, authorization prompts, and any question
+asked at a terminal.
+
+### What This Narrative Does Not Yet Settle
+
+The common story itself is open work. Known holes, each verified against the
+current tree:
+
+- **The platform lock is authored by nobody** — settled 2026-08-23: `init`
+  authors it as part of its postcondition; see *Initializing A New Project*.
+- **`devcapsule project lock` cannot author a V1 lock.** It is a dogfood stub
+  that requires an existing local image reference and writes neither a pinned
+  base nor component digests nor a materialization recipe. Generation now
+  belongs inside `init`; whether a standalone regeneration command survives,
+  and under what non-misleading name, is open.
+- **The four first-run flows disagree.** `D-0001` section 9,
+  `docs/product/v1-announcement.md`, and the implementation still describe
+  sequences that the specification below supersedes for the first case, and
+  the announcement's verbs do not exist in the CLI. The second and third
+  cases are not yet written.
+
+*Initializing A New Project* below is now the settled specification for the
+first case. *Starting From An Existing Repository* remains the partial
+pre-existing account of the third case, preserved until that case is written,
+and should be read as evidence rather than specification.
+
 ## Initializing A New Project
 
-A project creator initializes a new declaration at the current directory or an
-explicit target:
+Settled with the product owner on 2026-08-23. This section is the
+specification for the first canonical case; the sequence and option spelling
+may be refined, but the postcondition, the three entry states, and the
+derive/ask discipline are decided.
 
-```bash
-devcapsule project init
-devcapsule project --path /path/to/new-project init
-```
+### The Postcondition
 
-Initialization is create-only and refuses to overwrite an existing
-declaration. It does not register a workstation checkout by itself. The first
-persistent `project config set`, `bind`, `authorize`, or `resolve` operation
-creates the developer-owned checkout record that later appears in `project
-list`.
+A successful `devcapsule project init` leaves the project **fully
+initialized and runnable by its owner**: a valid `.devcapsule/devcapsule.toml`
+and at least one usable platform lock exist, the owner's checkout record is
+registered, and a fresh resolution stands. `init` achieves the last two by
+internally invoking `config resolve` once its own questions are answered, so
+`devcapsule project init` followed by `devcapsule project run` is the entire
+first-run experience for a project owner. There is no separate mandatory lock
+step, and no path on which the tool later interrupts ordinary work to demand
+one. The old flow —
+`init`, then a printed instruction to generate the lock by other means — is
+retired; it documented a dead end, because the standalone lock command cannot
+author a V1 lock.
+
+"At least one" is deliberate. A project locked for one platform is complete;
+a missing lock for the current platform is the collaborator sub-case of *New
+checkout*, not an incomplete initialization, and growing another platform's
+lock is always an explicit act rather than something inferred from a platform
+mismatch.
+
+### The Lock Is A Record, Not A Mandate
+
+The platform lock is the durable record of one resolution: the version set
+and property defaults that the resolution matrix derived from the normalized
+capability set and the target platform. Committing it is what makes the
+project optimally consumable by collaborators — reproducible, reviewable in
+Git, and free of first-run surprises — and producing it is therefore an
+owner-side obligation attached to `init`, the one moment the tool knows with
+certainty that the user is the owner.
+
+It is not a permission gate. During normal usage the tooling must never
+refuse ordinary work with an instruction to run a lock-generation command;
+the checkout-side resolution layer, whose source digests exist for exactly
+this purpose, is where drift is detected and remedied. A present lock is
+always honored, never silently ignored; an absent one is a shareability gap
+for the owner to close, not a reason to stop a consumer.
+
+### Three Entry States
+
+1. **Nothing is initialized.** `init` creates the declaration and the
+   platform lock in one action.
+2. **Partially initialized.** A manifest without a lock, an orphan
+   `.devcapsule/` directory, the debris of an interrupted `init` — the
+   command completes what is missing and honors what exists. No flag is
+   required; repair is `init`'s own job. This replaces the current
+   create-only refusal, under which a crashed `init` produces a project that
+   can never be initialized and an error message pointing at a file that may
+   not exist.
+3. **Fully initialized.** `init` fails loudly, stating that the project is
+   complete and naming `--regenerate` as the deliberate way forward.
+
+A hand-authored or copied `devcapsule.toml` is the ordinary form of state 2,
+not an error: the owner may have written it in an editor or carried it over
+from a reference project. `init` honors it and generates what follows from
+it.
+
+### Derive, Report, Ask
+
+The line between what `init` decides and what it asks is fixed, because
+"best effort plus a message" is exactly how silent decisions are born:
+
+- **Derive and report** what follows from the user's declaration: component
+  versions, digests, and the materialization recipe from the resolution
+  matrix; name, slug, and mount from the directory and defaults, overridable
+  by flag. These are facts the user can inspect but is never asked about.
+- **Ask** what encodes intent the tool cannot derive: the security-sensitive
+  host-access recommendations — network mode, docker daemon,
+  development sudo. The manifest schema already requires a `justification`
+  alongside each recommended value, so the interactive prompt collects
+  precisely what the format demands.
+
+What `init` collects from the owner are the project's **recommendations**.
+Every consumer still authorizes their own checkout; the owner's answers at
+`init` spare consumers nothing on the security tier, so no checkout ever
+inherits a permission through the project.
+
+Every question has a flag, and interaction happens only where flags are
+absent — the `ssh-keygen` model. A fully-flagged invocation is therefore
+noninteractive by construction, which is the down payment on the
+non-interactive operation item delivered to `project-management`.
+
+### Offline And The Embedded Matrix
+
+The client ships a minimal embedded resolution matrix with base digests
+pinned, so `init` resolves entirely from local data: it is a pure
+file-producing command that requires no network and no host capability. In
+particular it never probes the container daemon — the daemon is exactly the
+capability that requires explicit authorization, and creating a project must
+not depend on it. When `init` resolves offline it says so, warning that the
+embedded matrix was used without checking for updates. Whether the locked
+base image is actually present locally is `run`'s discovery, made at run
+time with its own remedy.
+
+The `resolution-matrix-version` recorded in the lock is informational,
+per `R-COMPAT-001`. A newer client's matrix changes what would be generated
+next time, never the validity of the lock that stands. No code may compare
+the recorded matrix version against the client's and refuse.
+
+### `--regenerate`
+
+`--regenerate` rewrites the derived and keeps the authored: it re-runs
+resolution against the current matrix and rewrites the platform lock, and it
+does not discard the manifest the owner wrote. Git sees an ordinary
+modification; `init` never runs git commands on the user's behalf.
+
+It deliberately does not touch the developer-owned checkout records under
+the configuration root. The digest bindings do that work with precision: a
+regenerated lock changes the digest the base-image authorization accepted,
+so that acceptance goes stale and is re-asked, while authorizations bound to
+unchanged recommendation subtrees remain valid. Invalidation lands exactly
+where regeneration touched, and a project-side command never deletes a
+developer-owned record.
+
+A truly blank slate — removing `.devcapsule/` from the tree and the
+project's directory under the configuration root — is a burdensome,
+error-prone, cross-tree cleanup, and a partial one is dangerous: re-creating
+a project under a surviving checkout record would let the old project's
+authorizations attach to the new one. `--regenerate` exists so users are
+never pushed toward attempting it by hand.
+
+### Every Node Has One Name
+
+Every node in the configuration tree that can need user input is addressable
+on the command line by the same canonical name the `config` family uses.
+`init` does not invent a parallel flag vocabulary: the spelling accepted by
+`config set`, `config bind`, and `config authorize` is the spelling `init`
+accepts, so the prompt and the flag are guaranteed to agree, and anything the
+tool can ask can also be pre-answered.
+
+### One Elicitation: Init Ends Resolved
+
+Settled with the product owner on 2026-08-23. For any node, the value is
+sought in one fixed order, and a prompt is only ever the last resort:
+
+1. the command line;
+2. an answer already given earlier in the same flow;
+3. an existing record — manifest, lock, or checkout configuration;
+4. a derivable default;
+5. otherwise, if the node is mandatory: prompt, `ssh-keygen` style.
+
+Asking a question whose answer exists upstream of step 5 is a defect. When
+`init` invokes `resolve` internally, the user is never asked the same thing
+twice — not by special-case plumbing, but because each answer is written
+immediately into the artifact that owns it: a recommendation with its
+justification into the manifest, an authorization or checkout value into the
+developer-owned checkout record. The internally invoked `resolve` then reads
+those records exactly as a standalone `resolve` would, and finds every
+question answered. There is no separate answer cache; a persistent one would
+be a fifth artifact with no owner in *Four Things With Different Owners*, and
+a second source of truth that can drift from the first.
+
+For the project owner at `init`, one prompt legitimately serves two acts:
+answering "network mode: host, because ..." records the project's
+recommendation and, in the same stroke, the owner's own checkout
+authorization. The two remain distinct artifacts with distinct owners; they
+merely share an elicitation for the one person who is both. No other checkout
+inherits anything from it.
+
+In a noninteractive context, a mandatory node that reaches step 5 is a clean
+failure that lists **all** missing nodes at once with their canonical names —
+batch mode, not death at the first missing answer. A fully specified command
+line therefore never prompts and ends resolved, which is the noninteractive
+first run by construction.
+
+### The Scoped-Digest Principle
+
+Every derived artifact records digests of exactly the inputs it derives
+from, and nothing more. The manifest-digest failure was a violation of
+precisely this: the lock derives from the capability set and the platform,
+but recorded a digest of the entire manifest, so a workflow-protocol field —
+an input to nothing the lock contains — could invalidate it fatally.
+
+Project identity is an **address, never an input**: `creator` and `slug`
+locate records, and no derived artifact's validity may depend on them, so
+renaming a project invalidates nothing.
+
+Still open in this specification: relocation of checkout records when project
+identity changes.
+
+### Change Arriving From The Project Remote
+
+Settled with the product owner on 2026-08-23. A `git pull` can change the
+project's half of the configuration tree under a consumer's feet. This is the
+situation the retired whole-manifest digest gate was defending against, and it
+is handled by the machinery above without new mechanism — which is the test
+the machinery was designed to pass. What arrives is one of three kinds of
+thing:
+
+1. **A new demand** — a mandatory node this checkout has never answered. Under
+   the elicitation order this is indistinguishable from a first-run unanswered
+   node: the value is absent everywhere upstream of the prompt, so the next
+   `resolve` or `run` asks it, once. The consumer meets a new project
+   requirement exactly the way the owner met it at `init`.
+2. **A changed question** — a recommendation whose value or justification
+   moved. The checkout's authorization is bound to that recommendation
+   subtree's digest, so it goes stale — correctly, because an answer must not
+   outlive its question. Exactly that node is re-asked. This is what the
+   retired gate got right in kind and wrong in everything else: right that a
+   changed input demands attention; wrong in scope (a whole-file hash), wrong
+   in remedy (a command that could not help), and wrong in fatality (blocking
+   even inspection).
+3. **Changed derived facts** — a new platform lock from the owner: a new base
+   digest or bumped components. The base-image acceptance is bound to the old
+   lock digest and goes stale; one re-acceptance shows old and new. Nothing
+   else in the checkout is touched, because nothing else derived from what
+   changed.
+
+A change to project identity or to workflow protocol fields invalidates
+nothing, because identity is an address and no derived artifact consumes those
+fields. The failure that motivated this section is structurally impossible
+here.
+
+Three properties keep the choice with the user:
+
+- **Show the diff, not the demand.** Every re-ask displays what changed, from
+  what to what, and the upstream justification. The user is deciding, not
+  complying.
+- **Declining is an answer.** A "no" is recorded like any other answer and is
+  not re-asked at every run. What a decline means is graded per node: a
+  declined base-image acceptance may mean continuing on the previously
+  accepted formation as an explicit, recorded deviation (see *Select a
+  different environment explicitly*); a declined new mandatory demand may mean
+  the project genuinely cannot run for this checkout. The tool states which
+  consequence applies; it never bare-refuses.
+- **Inspection never gates.** `config list` and every other read-only command
+  work in every drift state and display the pending questions. The state the
+  user must reason about is the state the tool must show.
+
+Drift is detected when the tool reads — at `resolve` and `run` — never by
+watching the repository; the pull is git's business. The experience is: pull,
+`run`, and `run` reports "the project changed these things" and walks exactly
+those nodes. Whether that walk happens inline in `run` or by directing to
+`resolve` is the V1/V2 seam recorded in *V2 direction: configuration inside
+`devcapsule project run`*.
 
 ## Starting From An Existing Repository
 
