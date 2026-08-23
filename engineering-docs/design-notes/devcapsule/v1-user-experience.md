@@ -5,6 +5,15 @@ Status: product design draft; this is not current CLI usage documentation
 Audience: developers creating, evaluating, or adopting a DevCapsule-enabled
 project
 
+Baseline: every claim in this document about what the tool does today — each
+gap, hole, defect, and file:line reference — was verified against `main` at
+commit `489642e` (2026-08-22), during the design sessions of 2026-08-23. The
+ideal experience specified here is compared against that snapshot and no
+other. As implementation catches up, those present-tense observations become
+historical notes about `489642e`, not statements about the current tree; they
+are deliberately left un-updated so the record of what was wrong, and why each
+decision was taken, survives the fix.
+
 ## The Promise
 
 A DevCapsule-enabled project should open as a complete, reproducible
