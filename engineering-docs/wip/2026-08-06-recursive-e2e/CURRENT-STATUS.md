@@ -602,6 +602,51 @@ the older `b2093d85…` run predates the retained plan. Prefer the newer run as
 the Stage 7 subject where possible, launch a fresh successor if the persistence
 proof requires one, and keep the older run as historical evidence only.
 
+## Directed Follow-On Work (2026-08-23)
+
+Ordered by the product owner on 2026-08-23, after the first-run UX design
+sessions and the stale-lock fix (`054df4e`). Re-sequenced the same day: the
+owner is the only current user of the trading-research sample project and is
+blocked by the stale-lock failure in released clients, so an expedient patch
+release comes first.
+
+1. **Cut v026.2 carrying the stale-lock fix.** Patch release inside the
+   `v026` series: `054df4e` plus the distribution-version advance to
+   `0.1.2`. No CLI shape change rides it. Path: merge this branch to `main`,
+   tag `v026.2` on the merge commit, and the tag push triggers
+   `release-pex.yml` to build, validate, and publish the PEX exactly as
+   `v026.1` was published. Unblocks the trading-research checkout on a
+   released client.
+2. **Prepare v027, the replacement for v026.1.** Not a patch release: it
+   carries the significantly changed command-line shape and behavior settled
+   in `engineering-docs/design-notes/devcapsule/v1-user-experience.md` —
+   `init` with the full postcondition (manifest, platform lock, owner
+   checkout record, fresh resolution), the canonical-node-name option
+   vocabulary shared with the `config` family, the one-elicitation order with
+   `ssh-keygen`-style prompting, and the retirement of the standalone lock
+   stub. The mnemonic jump (no v026.2) is deliberate: it marks the CLI shape
+   boundary. Release notes must state the changed surface; `R-COMPAT-001`
+   governs everything the new client reads from existing projects.
+3. **Remediate `project_configuration.py` to the Hoare standard —
+   immediately after v027 preparation; the owner ranks it highest priority
+   once v027 exists.** From the 2026-08-23 diagnosis:
+   1072 lines, 43 module-level names, none underscore-private, no
+   `__all__`, 3 comment lines; at least 11 names are de-facto private. The
+   buried `lock_for` policy that caused the stale-lock failure is the
+   canonical cost. Scope: (a) declare the public surface (`__all__`,
+   underscore-prefix the de-facto privates); (b) comment every policy point —
+   each `raise` states what it defends and whose remedy applies; (c) split
+   the module along the four-owner boundary of *Four Things With Different
+   Owners* (manifest / platform lock / checkout / resolution); (d) settled
+   by the product owner: `config list` must stop initializing checkout
+   records — inspection does not mutate — with the record creation moving to
+   the resolve path that already owns it. Items (a) and (b) may land earlier
+   inside ordinary v027 work under the standing Hoare directive; (c) and (d)
+   are this task.
+
+Sequencing of this pair relative to Stage 7 persistence remains the product
+owner's call and is not decided here.
+
 ## Acknowledged Work
 
 1. **Implement external-resource ownership and reaping in Stage 7.**

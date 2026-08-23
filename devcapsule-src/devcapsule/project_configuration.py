@@ -765,15 +765,36 @@ def manifest_for(project: Path) -> tuple[Path, dict[str, Any]]:
 
 
 def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
+    """Load the committed platform lock for this host's platform.
+
+    The lock is the project-side record of one resolution: the version set and
+    property defaults selected for one platform. It is a record, not a
+    permission gate: loading it must never refuse ordinary work because some
+    other project input changed. Drift between the manifest and a checkout's
+    generated resolution belongs to the resolution layer
+    (``fresh_resolved_project``), whose source digests name exactly what
+    drifted and whose remedy — ``devcapsule project config resolve`` — actually
+    reconciles it. See "The Lock Is A Record, Not A Mandate" in
+    ``engineering-docs/design-notes/devcapsule/v1-user-experience.md``.
+
+    Committed locks may carry a ``manifest-digest`` of the whole manifest.
+    This function once compared it and refused every dependent command after
+    any manifest edit, fatally and with a remedy that could not help. The
+    field is deliberately not read: a lock derives from the capability set and
+    the platform, so no other manifest field may affect its validity (the
+    scoped-digest principle), and R-COMPAT-001 forbids demanding user action
+    to keep existing committed locks working.
+    """
+
     path = root / ".devcapsule" / f"devcapsule.{platform_alias()}.lock"
     if not path.is_file():
-        raise ProjectConfigurationError(f"Missing {path}; run 'devcapsule project lock' on this platform.")
+        raise ProjectConfigurationError(
+            f"Missing {path}: this project carries no platform lock for {platform_alias()}. "
+            "The platform lock is authored on the project side and committed with the project."
+        )
     value = load_toml(path)
     if value.get("devcapsule-lock-format-version") != 1:
         raise ProjectConfigurationError(f"{path} has an unsupported lock format version.")
-    expected = canonical_digest(manifest)
-    if value.get("manifest-digest") != expected:
-        raise ProjectConfigurationError(f"{path} is stale; run 'devcapsule project lock'.")
     if "base" in value:
         locked_base_reference(value, source=str(path))
     return path, value

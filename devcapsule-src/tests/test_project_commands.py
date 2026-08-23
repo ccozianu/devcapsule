@@ -1280,3 +1280,60 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
 def test_committed_base_reference_rejects_local_or_mutable_names(reference: str) -> None:
     with pytest.raises(ProjectConfigurationError):
         immutable_registry_reference(reference)
+
+
+def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
+    tmp_path: Path, capsys
+) -> None:
+    """Regression: an ordinary manifest edit must never dead-end the checkout.
+
+    Editing the manifest after the lock exists (the trading-research failure:
+    adding ``workflow-type`` as the workflow-init step instructs) used to make
+    every project command — including read-only ``config list`` — fail with
+    "<lock> is stale; run 'devcapsule project lock'", a remedy that could not
+    produce a valid lock. The lock's ``manifest-digest`` is informational
+    (R-COMPAT-001): drift is the resolution layer's to report, ``config
+    resolve`` is the remedy, and inspection never gates.
+    """
+
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        lock_path = project / ".devcapsule" / "devcapsule.linux-amd64.lock"
+        lock_before = lock_path.read_text(encoding="utf-8")
+
+        # Edit the manifest WITHOUT re-syncing the lock's manifest-digest --
+        # exactly what a user does when adopting the multiple-stream workflow.
+        manifest_path = project / ".devcapsule" / "devcapsule.toml"
+        manifest_path.write_text(
+            'workflow-type = "multiple-streams"\n'
+            + manifest_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+        # Inspection never gates: list succeeds and reports the resolution
+        # as stale instead of refusing to run.
+        capsys.readouterr()
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        listing = capsys.readouterr().out
+        resolution_row = next(line for line in listing.splitlines() if line.startswith("resolution"))
+        assert "stale" in resolution_row
+        assert "manifest" in resolution_row
+
+        # The documented remedy reconciles the ordinary change.
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        records = registered_checkouts()
+        assert [record.status for record in records] == ["ready"]
+
+        # The committed lock is a record: reconciling a manifest edit does not
+        # rewrite it, and its stale manifest-digest field is simply not read.
+        assert lock_path.read_text(encoding="utf-8") == lock_before
+
+        capsys.readouterr()
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert "stale" not in capsys.readouterr().out
