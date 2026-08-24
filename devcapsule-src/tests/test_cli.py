@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import zipfile
 
-import click
 import pytest
 
 from devcapsule import cli, compat
@@ -278,11 +277,11 @@ def test_bootstrap_without_subcommand_uses_current_directory(
 
 def test_repo_root_can_be_overridden(tmp_path: Path) -> None:
     with patch.dict(os.environ, {"DOCKER4IDES_REPO_ROOT": str(tmp_path)}):
-        assert cli.repo_root() == tmp_path.resolve()
+        assert compat.repo_root() == tmp_path.resolve()
 
 
 def test_top_level_commands_are_discovered() -> None:
-    commands = cli.cli.list_commands(click.Context(cli.cli))
+    commands = cli.command_names()
 
     assert "bootstrap" in commands
     assert "pycharm" in commands

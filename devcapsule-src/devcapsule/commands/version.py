@@ -2,27 +2,35 @@
 
 from __future__ import annotations
 
-import click
+import argparse
 
 from devcapsule.build_info import build_info_json, current_build_info
-from devcapsule.commands.base import BaseCommand
+from devcapsule.commands.framework import Command
 
 
-class VersionCommand(BaseCommand):
-    as_json: bool
+class VersionCommand(Command):
     name = "version"
     help = "Show this DevCapsule distribution's version and public source identity."
-    params = [click.Option(("--json", "as_json"), is_flag=True, help="Emit stable machine-readable JSON.")]
 
-    def run(self) -> int:
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--json",
+            dest="as_json",
+            action="store_true",
+            help="Emit stable machine-readable JSON.",
+        )
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         info = current_build_info()
-        if self.as_json:
-            click.echo(build_info_json(info))
+        if arguments.as_json:
+            print(build_info_json(info))
             return 0
-        click.echo(f"DevCapsule {info.build_mnemonic} (package {info.version})")
-        click.echo(f"Source repository: {info.source_repository}")
-        click.echo(f"Source revision: {info.source_revision}")
-        click.echo(f"Source URL: {info.source_url}")
+        print(f"DevCapsule {info.build_mnemonic} (package {info.version})")
+        print(f"Source repository: {info.source_repository}")
+        print(f"Source revision: {info.source_revision}")
+        print(f"Source URL: {info.source_url}")
         return 0
 
 
