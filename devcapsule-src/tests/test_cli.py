@@ -381,12 +381,21 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
             patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
         ):
             run.return_value.returncode = 0
-            assert cli.main(["project", "--path", str(project), "run"]) == 0
+            assert cli.main(
+                [
+                    "project", "--path", str(project), "run",
+                    "--", "--cap-add", "SYS_PTRACE",
+                ]
+            ) == 0
 
     command = run.call_args.args[0]
     assert "local/pycharm:dogfood" in command
     assert command[command.index("--network") + 1] == "bridge"
     assert command[command.index("--memory") + 1] == str(8 * 1024**3)
+    # The tail after '--' is handed verbatim to docker run, in the options
+    # region before the image.
+    assert command[command.index("--cap-add") + 1] == "SYS_PTRACE"
+    assert command.index("--cap-add") < command.index("local/pycharm:dogfood")
     assert f"type=bind,src={state_roots['home'].resolve()},dst=/home/devcapsule" in command
     assert f"type=bind,src={state_roots['pycharm/system'].resolve()},dst=/ide-project-state/system" in command
 

@@ -177,6 +177,53 @@ def test_carrier_grammar_rejects_an_unquoted_justification() -> None:
         )
 
 
+class _Launcher(Command):
+    name = "launcher"
+    help = "Forward a raw tail to another program."
+    passthrough_dest = "forwarded"
+    passthrough_metavar = "OTHER-OPTIONS"
+    seen: tuple[object, object] | None = None
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--own-option")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        cls.seen = (arguments.own_option, tuple(arguments.forwarded))
+        return 0
+
+
+def test_passthrough_splits_at_the_first_separator_verbatim() -> None:
+    assert (
+        _Launcher.invoke(
+            "launcher",
+            ["--own-option", "x", "--", "--network", "host", "--", "--own-option"],
+        )
+        == 0
+    )
+    # Everything after the first standalone "--" arrives untouched, including
+    # later separators and tokens spelled like the command's own options.
+    assert _Launcher.seen == ("x", ("--network", "host", "--", "--own-option"))
+
+
+def test_passthrough_absent_yields_an_empty_tail() -> None:
+    assert _Launcher.invoke("launcher", ["--own-option", "x"]) == 0
+    assert _Launcher.seen == ("x", ())
+
+
+def test_passthrough_usage_names_the_forwarded_surface(capsys) -> None:
+    with pytest.raises(SystemExit) as leave:
+        _Launcher.invoke("launcher", ["--help"])
+    assert leave.value.code == 0
+    assert "[-- OTHER-OPTIONS]" in capsys.readouterr().out
+
+
+def test_unknown_option_before_the_separator_still_fails() -> None:
+    with pytest.raises(UsageError):
+        _Launcher.invoke("launcher", ["--bogus", "--", "--network", "host"])
+
+
 def test_top_level_unknown_command_and_option_fail_with_exit_code_two(capsys) -> None:
     assert cli.main(["definitely-not-a-command"]) == 2
     assert "unknown command" in capsys.readouterr().err

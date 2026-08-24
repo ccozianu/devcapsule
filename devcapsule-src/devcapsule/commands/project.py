@@ -732,7 +732,12 @@ class RecursiveE2EGroup(Group):
 
 class ProjectRunCommand(Command):
     name = "run"
-    help = "Run the project from its platform lock and developer-owned resolution."
+    help = (
+        "Run the project from its platform lock and developer-owned resolution. "
+        "Everything after '--' is handed verbatim to 'docker run'."
+    )
+    passthrough_dest = "docker_options"
+    passthrough_metavar = "DOCKER-RUN-OPTIONS"
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -858,6 +863,15 @@ class ProjectRunCommand(Command):
                 print(
                     "Recursive E2E readiness: unavailable because host Docker access is not authorized."
                 )
+        docker_options = list(arguments.docker_options)
+        if docker_options:
+            # The user is deliberately stepping outside the resolved plan;
+            # show exactly what is being handed to docker, once, conspicuously.
+            print(
+                "WARNING: passing raw docker run options outside the resolved plan: "
+                + " ".join(docker_options),
+                file=sys.stderr,
+            )
         return run_pycharm(
             PycharmRunOptions(
                 project=root,
@@ -884,7 +898,7 @@ class ProjectRunCommand(Command):
                 ),
                 additional_environment=recursive_environment,
                 secret_environment=tuple(sorted(secret_environment.values())),
-                extra_docker_args=["--pull=never"],
+                extra_docker_args=["--pull=never", *docker_options],
                 project_state=None,
                 enable_host_browser=arguments.host_browser,
             )
@@ -893,7 +907,12 @@ class ProjectRunCommand(Command):
 
 class ProjectRunImageCommand(Command):
     name = "run-image"
-    help = "Run a local PyCharm-compatible image without project lock resolution."
+    help = (
+        "Run a local PyCharm-compatible image without project lock resolution. "
+        "Everything after '--' is handed verbatim to 'docker run'."
+    )
+    passthrough_dest = "docker_options"
+    passthrough_metavar = "DOCKER-RUN-OPTIONS"
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -927,6 +946,12 @@ class ProjectRunImageCommand(Command):
         docker_mode = (
             DockerMode.host if arguments.docker_daemon == "host-socket" else DockerMode.none
         )
+        docker_options = list(arguments.docker_options)
+        if docker_options:
+            print(
+                "WARNING: passing raw docker run options: " + " ".join(docker_options),
+                file=sys.stderr,
+            )
         return run_pycharm(
             PycharmRunOptions(
                 project=project,
@@ -940,7 +965,7 @@ class ProjectRunImageCommand(Command):
                 docker_mode=docker_mode,
                 enable_sudo=arguments.development_sudo,
                 enable_host_browser=arguments.host_browser,
-                extra_docker_args=["--pull=never"],
+                extra_docker_args=["--pull=never", *docker_options],
             )
         )
 

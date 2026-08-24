@@ -51,11 +51,20 @@ class _LeafParser(argparse.ArgumentParser):
 
 
 class Command:
-    """One leaf command: declarative argparse options plus a ``run`` body."""
+    """One leaf command: declarative argparse options plus a ``run`` body.
+
+    A command that hands part of its invocation to another program verbatim
+    (``run [OPTIONS] -- DOCKER-RUN-OPTIONS``) sets ``passthrough_dest``:
+    everything after the first standalone ``--`` bypasses argparse entirely
+    and arrives untouched as that namespace attribute — the framework never
+    interprets, reorders, or validates another program's surface.
+    """
 
     name: ClassVar[str]
     help: ClassVar[str] = ""
     hidden: ClassVar[bool] = False
+    passthrough_dest: ClassVar[str | None] = None
+    passthrough_metavar: ClassVar[str] = "PASSTHROUGH-OPTIONS"
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -67,9 +76,20 @@ class Command:
 
     @classmethod
     def invoke(cls, prog: str, argv: Sequence[str], context: object | None = None) -> int:
+        tokens = list(argv)
+        passthrough: list[str] = []
+        if cls.passthrough_dest is not None and "--" in tokens:
+            separator = tokens.index("--")
+            tokens, passthrough = tokens[:separator], tokens[separator + 1 :]
         parser = _LeafParser(prog=prog, description=cls.help or None, allow_abbrev=False)
         cls.configure(parser)
-        return cls.run(parser.parse_args(list(argv)), context)
+        if cls.passthrough_dest is not None:
+            generated = parser.format_usage().removeprefix("usage: ").rstrip()
+            parser.usage = f"{generated} [-- {cls.passthrough_metavar}]"
+        arguments = parser.parse_args(tokens)
+        if cls.passthrough_dest is not None:
+            setattr(arguments, cls.passthrough_dest, passthrough)
+        return cls.run(arguments, context)
 
 
 class Group:
