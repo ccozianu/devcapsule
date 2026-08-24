@@ -25,35 +25,46 @@ LOCKED_BASE = f"docker.io/example/devcapsule-base@sha256:{'b' * 64}"
 
 
 def initialize_project(project: Path) -> None:
-    assert (
-        cli.main(
-            [
-                "project",
-                "--path",
-                str(project),
-                "init",
-                "--creator",
-                "dev@example.test",
-                "--need",
-                "python",
-                "--need",
-                "python-ide",
-            ]
-        )
-        == 0
-    )
-    assert (
-        cli.main(
-            [
-                "project",
-                "--path",
-                str(project),
-                "lock",
-                "--image",
-                "local/pycharm:dogfood",
-            ]
-        )
-        == 0
+    """Author the legacy dogfood project fixture directly.
+
+    A hand-authored manifest is the ordinary partially-initialized form the
+    v027 init honors, and the image-reference lock is the retired lock stub's
+    output shape, kept as a compatibility fixture now that the stub is gone.
+    """
+
+    target = project / ".devcapsule"
+    target.mkdir(parents=True, exist_ok=True)
+    manifest_lines = [
+        "devcapsule-schema-version = 1",
+        "",
+        "[capabilities]",
+        'need = ["python", "python-ide"]',
+        "",
+        "[project]",
+        f'name = "{project.name}"',
+        f'slug = "{project.name.lower()}"',
+        'creator = "mailto:dev@example.test"',
+        'mount = "/workspace/project"',
+        "",
+    ]
+    (target / "devcapsule.toml").write_text("\n".join(manifest_lines), encoding="utf-8")
+    with (target / "devcapsule.toml").open("rb") as stream:
+        manifest = tomllib.load(stream)
+    lock_lines = [
+        "devcapsule-lock-format-version = 1",
+        'resolution-matrix-version = "dogfood-v1"',
+        f'manifest-digest = "{canonical_digest(manifest)}"',
+        'platform = "linux-amd64"',
+        "",
+        "[image]",
+        'reference = "local/pycharm:dogfood"',
+        "",
+        "[components]",
+        'interactive-surface = "pycharm"',
+        "",
+    ]
+    (target / "devcapsule.linux-amd64.lock").write_text(
+        "\n".join(lock_lines), encoding="utf-8"
     )
 
 
@@ -377,8 +388,7 @@ def test_project_config_list_reports_complete_and_stale_readiness(
                     "config",
                     "bind",
                     "home",
-                    "--host-directory",
-                    str(bound_home),
+                    f"host-directory:{bound_home}",
                 ]
             )
             == 0
@@ -494,8 +504,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                     "config",
                     "bind",
                     "codex/openai-api-key",
-                    "--host-environment-variable",
-                    "OPENAI_API_KEY",
+                    "host-environment:OPENAI_API_KEY",
                 ]
             )
             == 0
@@ -754,8 +763,7 @@ def test_project_config_bind_uses_component_metadata_and_resolves_host_directori
                         "config",
                         "bind",
                         slot,
-                        "--host-directory",
-                        str(directory),
+                        f"host-directory:{directory}",
                     ]
                 )
                 == 0
@@ -773,8 +781,7 @@ def test_project_config_bind_uses_component_metadata_and_resolves_host_directori
                     "config",
                     "bind",
                     "pycharm/unknown",
-                    "--host-directory",
-                    str(directories["home"]),
+                    f"host-directory:{directories["home"]}",
                 ]
             )
             == 2
@@ -789,8 +796,7 @@ def test_project_config_bind_uses_component_metadata_and_resolves_host_directori
                     "config",
                     "bind",
                     "home",
-                    "--host-directory",
-                    str(tmp_path / "missing"),
+                    f"host-directory:{tmp_path / "missing"}",
                 ]
             )
             == 2

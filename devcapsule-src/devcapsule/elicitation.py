@@ -119,6 +119,7 @@ class Elicitor:
         existing: str | None = None,
         default: str | None = None,
         empty_answer: str | None = None,
+        omitted_answer: str | None = None,
         validate: Callable[[str], str] | None = None,
     ) -> Elicited | None:
         """Seek one node facet's answer; return None when it stays unanswered.
@@ -128,7 +129,12 @@ class Elicitor:
         (step 4).  ``empty_answer`` is different from ``default``: it is the
         interpretation of pressing Enter at the prompt — used for intent
         questions that must be *asked* but have a safe answer, which a
-        derivable default would silently skip.  ``validate`` normalizes a
+        derivable default would silently skip.  ``omitted_answer`` is the
+        noninteractive counterpart, settled by the product owner on
+        2026-08-24: an intent question left unflagged in a noninteractive run
+        takes this safe answer silently instead of batch-failing.  Questions
+        with no safe omission — executing an artifact, accepting vendor
+        terms — pass neither and batch-fail.  ``validate`` normalizes a
         candidate or raises :class:`CliError`; a bad command-line or recorded
         value fails immediately, while a bad prompted value re-asks.
 
@@ -156,6 +162,8 @@ class Elicitor:
         if not mandatory:
             return None
         if not self._interactive:
+            if omitted_answer is not None:
+                return self._record(key, omitted_answer, SOURCE_DEFAULT)
             self._missing.append(_Missing(name, facet, remedy))
             return None
         return self._prompt(key, description, empty_answer, validate, remedy)
@@ -165,12 +173,15 @@ class Elicitor:
 
         return tuple(_display_name(item.name, item.facet) for item in self._missing)
 
-    def finish(self) -> None:
+    def finish(self, *, require_all_consumed: bool = True) -> None:
         """Fail once, listing every missing node and every unmatched answer.
 
         Unconsumed command-line answers are failures, not surplus: a typo'd
         node name that was silently ignored would let the user believe the
-        answer was recorded.
+        answer was recorded.  A caller failing early — before the questions
+        that would consume later answers were even reachable — passes
+        ``require_all_consumed=False`` so those answers are not misreported
+        as unknown.
         """
 
         problems: list[str] = []
@@ -180,10 +191,11 @@ class Elicitor:
                 f"  {_display_name(item.name, item.facet)}: {item.remedy}"
                 for item in self._missing
             )
-        unconsumed = sorted(key for key in self._command_line if key not in self._consumed)
-        if unconsumed:
-            problems.append("These supplied answers matched no question this command asks:")
-            problems.extend(f"  {_display_name(name, facet)}" for name, facet in unconsumed)
+        if require_all_consumed:
+            unconsumed = sorted(key for key in self._command_line if key not in self._consumed)
+            if unconsumed:
+                problems.append("These supplied answers matched no question this command asks:")
+                problems.extend(f"  {_display_name(name, facet)}" for name, facet in unconsumed)
         if problems:
             raise ElicitationIncomplete("\n".join(problems))
 

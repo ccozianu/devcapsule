@@ -122,6 +122,28 @@ def test_an_answer_no_question_consumed_is_a_failure() -> None:
         elicitor.finish()
 
 
+def test_an_early_finish_does_not_misreport_unreached_answers() -> None:
+    elicitor = Elicitor({("later-node", "value"): "x"}, interactive=False)
+    assert elicitor.seek("first", description="Example", remedy="--set first VALUE") is None
+    with pytest.raises(ElicitationIncomplete) as failure:
+        elicitor.finish(require_all_consumed=False)
+    assert "later-node" not in str(failure.value)
+
+
+def test_noninteractive_omission_takes_the_declared_safe_answer() -> None:
+    elicitor = Elicitor(interactive=False)
+    answer = elicitor.seek(
+        "docker-daemon",
+        description="Recommend docker access",
+        remedy="--authorize docker-daemon host-socket",
+        empty_answer="none",
+        omitted_answer="none",
+    )
+    assert answer is not None
+    assert (answer.value, answer.source) == ("none", SOURCE_DEFAULT)
+    elicitor.finish()
+
+
 def test_prompt_reads_validates_and_normalizes() -> None:
     output = io.StringIO()
     elicitor = Elicitor(

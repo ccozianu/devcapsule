@@ -1,22 +1,51 @@
-"""Project and checkout command subtree."""
+"""Project and checkout command subtree.
+
+Command classes here declare parameters and print operation reports; policy
+and artifact writes live in :mod:`devcapsule.project_operations` and the
+modules it composes.  The configuration grammar is the settled v027 shape:
+every mutation is ``VERB NAME VALUE`` with the node's one canonical name —
+``set NAME VALUE``, ``bind NAME PROVIDER:VALUE``,
+``authorize NAME VALUE [JUSTIFICATION]``, ``unset NAME`` — and ``init``
+accepts the same spellings through its carrier options.  The standalone
+``lock`` stub is retired: the platform lock is authored by ``init`` from the
+embedded resolution matrix.
+"""
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 import json
 from pathlib import Path
 import os
 import sys
-from typing import Any
+from typing import Any, Mapping
 
-import click
 import readchar
 
-from devcapsule.commands.base import BaseCommand
+from devcapsule.commands.framework import (
+    Command,
+    Group,
+    add_carrier_options,
+    carrier_answers,
+)
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
+from devcapsule.configuration_nodes import (
+    CARRIER_FAMILY_BIND,
+    CARRIER_FAMILY_SET,
+    PROVIDER_HOST_DIRECTORY,
+    build_node_registry,
+)
 from devcapsule.environment_realization import realize_environment, required_local_image
 from devcapsule.materialization import validate_base_image
-from devcapsule.project import project_namespace, sanitize_name
+from devcapsule.project import project_namespace
+from devcapsule.project_operations import (
+    CheckoutRecord,
+    InitializeRequest,
+    ProvidedAnswer,
+    initialize_project,
+    resolve_checkout,
+)
 from devcapsule.project_runtime_plan import project_runtime_plan
 from devcapsule.recursive_dogfood import (
     RECURSIVE_E2E_ENABLED_ENV,
@@ -44,7 +73,6 @@ from devcapsule.project_configuration import (
     authorized_base_selection,
     authorization_declarations,
     atomic_write,
-    canonical_digest,
     checkout_record_paths,
     configuration_binding_declarations,
     component_secret_inputs,
@@ -59,8 +87,6 @@ from devcapsule.project_configuration import (
     named_checkout_record_paths,
     normalize_configuration_value,
     normalize_authorization_value,
-    platform_alias,
-    quote_toml,
     registered_checkouts,
     render_checkout,
     render_authorization_value,
@@ -68,7 +94,6 @@ from devcapsule.project_configuration import (
     resolve_secret_bindings,
     stale_resolution_inputs,
 )
-from devcapsule.project_operations import CheckoutRecord, resolve_checkout
 
 
 @dataclass(frozen=True)
@@ -82,197 +107,20 @@ class ProjectCommandContext:
         return self.start_path().expanduser().resolve()
 
 
-class ProjectCommand(BaseCommand):
-    name = "project"
-    help = "Initialize, list, configure, and run DevCapsule project checkouts."
+def _project_context(context: object | None) -> ProjectCommandContext:
+    assert isinstance(context, ProjectCommandContext)
+    return context
+
+
+class ProjectListCommand(Command):
+    name = "list"
+    help = "List developer-owned checkout records from the XDG registry."
 
     @classmethod
-    def to_click_command(cls) -> click.Command:
-        @click.group(name=cls.name, help=cls.help, no_args_is_help=True)
-        @click.option(
-            "--path",
-            "selected_path",
-            type=click.Path(path_type=Path),
-            help="Project root or descendant; defaults to discovery from the current directory.",
-        )
-        @click.pass_context
-        def group(ctx: click.Context, selected_path: Path | None) -> None:
-            ctx.obj = ProjectCommandContext(selected_path)
-
-        group.add_command(_list_command())
-        group.add_command(_init_command())
-        group.add_command(_checkout_command())
-        group.add_command(_lock_command())
-        group.add_command(_config_command())
-        group.add_command(_state_command())
-        group.add_command(_recursive_e2e_command())
-        group.add_command(_run_command())
-        group.add_command(_run_image_command())
-        return group
-
-    def run(self) -> Any:
-        raise NotImplementedError("Project is a Click command group.")
-
-
-def _recursive_e2e_command() -> click.Command:
-    @click.group(
-        "recursive-e2e",
-        help="Run DevCapsule's project-specific recursive dogfood validation.",
-        no_args_is_help=True,
-    )
-    def group() -> None:
-        pass
-
-    @click.command("preflight")
-    @click.option(
-        "--runtime-plan",
-        type=click.Path(path_type=Path),
-        default=Path("/etc/devcapsule/runtime-plan.json"),
-        show_default=True,
-        help="External runtime plan mounted into the current capsule.",
-    )
-    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
-    @click.option(
-        "--show-host-paths",
-        is_flag=True,
-        help="Include sensitive host mount sources after an explicit warning.",
-    )
-    @click.pass_obj
-    def preflight(
-        context: ProjectCommandContext,
-        runtime_plan: Path,
-        as_json: bool,
-        show_host_paths: bool,
-    ) -> int:
-        root = _recursive_project_root(context)
-        _warn_for_host_path_disclosure(show_host_paths)
-        report = run_recursive_preflight(root, runtime_plan_path=runtime_plan)
-        click.echo(
-            preflight_json(report, show_host_paths=show_host_paths)
-            if as_json
-            else render_preflight(report, show_host_paths=show_host_paths)
-        )
-        return 0 if report.ready else 1
-
-    @click.command("run")
-    @click.option(
-        "--runtime-plan",
-        type=click.Path(path_type=Path),
-        default=Path("/etc/devcapsule/runtime-plan.json"),
-        show_default=True,
-        help="External runtime plan mounted into the current capsule.",
-    )
-    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
-    @click.option(
-        "--show-host-paths",
-        is_flag=True,
-        help="Include sensitive host mount sources after an explicit warning.",
-    )
-    @click.option(
-        "--keep-on-failure",
-        is_flag=True,
-        help="Preserve only this run's ownership-marked workspace after failure.",
-    )
-    @click.pass_obj
-    def run_recursive(
-        context: ProjectCommandContext,
-        runtime_plan: Path,
-        as_json: bool,
-        show_host_paths: bool,
-        keep_on_failure: bool,
-    ) -> int:
-        root = _recursive_project_root(context)
-        _warn_for_host_path_disclosure(show_host_paths)
-        try:
-            result = run_recursive_e2e_dry_run(
-                root,
-                runtime_plan_path=runtime_plan,
-                keep_on_failure=keep_on_failure,
-            )
-        except RecursivePreflightFailed as exc:
-            click.echo(
-                preflight_json(exc.report, show_host_paths=show_host_paths)
-                if as_json
-                else render_preflight(exc.report, show_host_paths=show_host_paths)
-            )
-            return 1
-        except RecursiveE2EError as exc:
-            raise ProjectConfigurationError(str(exc)) from exc
-        mapping = result.to_mapping(show_host_paths=show_host_paths)
-        click.echo(
-            result.to_json(show_host_paths=show_host_paths)
-            if as_json
-            else json.dumps(mapping, ensure_ascii=False, indent=2, sort_keys=True)
-        )
-        return 0
-
-    @click.command("launch-successor")
-    @click.option("--run-id", required=True, help="Existing retained materialization run ID.")
-    @click.option(
-        "--runtime-plan",
-        type=click.Path(path_type=Path),
-        default=Path("/etc/devcapsule/runtime-plan.json"),
-        show_default=True,
-    )
-    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
-    @click.pass_obj
-    def launch_successor_command(
-        context: ProjectCommandContext,
-        run_id: str,
-        runtime_plan: Path,
-        as_json: bool,
-    ) -> int:
-        root = _recursive_project_root(context)
-        try:
-            result = launch_successor(root, run_id, runtime_plan_path=runtime_plan)
-        except RecursiveSuccessorError as exc:
-            raise ProjectConfigurationError(str(exc)) from exc
-        click.echo(result.to_json() if as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True))
-        return 0
-
-    @click.command("inspect-successor")
-    @click.option("--run-id", required=True, help="Existing retained successor run ID.")
-    @click.option("--json", "as_json", is_flag=True, help="Emit stable machine-readable JSON.")
-    def inspect_successor_command(run_id: str, as_json: bool) -> int:
-        try:
-            result = inspect_successor(run_id)
-        except RecursiveSuccessorError as exc:
-            raise ProjectConfigurationError(str(exc)) from exc
-        click.echo(result.to_json() if as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True))
-        return 0
-
-    group.add_command(preflight)
-    group.add_command(run_recursive)
-    group.add_command(launch_successor_command)
-    group.add_command(inspect_successor_command)
-    return group
-
-
-def _recursive_project_root(context: ProjectCommandContext) -> Path:
-    root = discover_project(context.start_path())
-    try:
-        return require_recursive_e2e_project(root)
-    except PreflightError as exc:
-        raise ProjectConfigurationError(str(exc)) from exc
-
-
-def _warn_for_host_path_disclosure(show_host_paths: bool) -> None:
-    if show_host_paths:
-        click.secho(
-            "WARNING: debug output includes raw host filesystem mappings; "
-            "do not share it unsanitized.",
-            fg="yellow",
-            err=True,
-        )
-
-
-def _list_command() -> click.Command:
-    @click.command("list", help="List developer-owned checkout records from the XDG registry.")
-    @click.pass_obj
-    def list_projects(_context: ProjectCommandContext) -> int:
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         records = registered_checkouts()
         if not records:
-            click.echo(f"No registered DevCapsule project checkouts found in {config_root() / 'projects'}.")
+            print(f"No registered DevCapsule project checkouts found in {config_root() / 'projects'}.")
             return 0
         headers = ("PROJECT", "CHECKOUT", "PATH", "STATUS")
         rows = [
@@ -285,129 +133,108 @@ def _list_command() -> click.Command:
             for record in records
         ]
         widths = [max(len(header), *(len(row[index]) for row in rows)) for index, header in enumerate(headers)]
-        click.echo("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
+        print("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
         for row in rows:
-            click.echo("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
+            print("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
         return 0
 
-    return list_projects
 
+class ProjectInitCommand(Command):
+    name = "init"
+    help = (
+        "Initialize the project: manifest, platform lock, owner checkout record, "
+        "and a fresh resolution."
+    )
 
-def _init_command() -> click.Command:
-    @click.command("init", help="Create a new .devcapsule project declaration without overwriting.")
-    @click.option("--need", multiple=True, required=True)
-    @click.option("--name", "project_name")
-    @click.option("--slug")
-    @click.option("--creator", required=True)
-    @click.option("--project-mount", default="/workspace/project", show_default=True)
-    @click.pass_obj
-    def init_project(
-        context: ProjectCommandContext,
-        need: tuple[str, ...],
-        project_name: str | None,
-        slug: str | None,
-        creator: str,
-        project_mount: str,
-    ) -> int:
-        project = context.target_path()
-        target = project / ".devcapsule"
-        if target.exists():
-            raise ProjectConfigurationError(
-                f"{project} is already initialized; inspect {target / 'devcapsule.toml'} instead."
-            )
-        if not project.is_dir():
-            raise ProjectConfigurationError(f"Project directory does not exist: {project}")
-        normalized_creator = creator if ":" in creator else f"mailto:{creator}"
-        name = project_name or project.name
-        project_slug = slug or sanitize_name(project.name).lower()
-        needs = sorted(set(need))
-        content = (
-            "devcapsule-schema-version = 1\n\n"
-            "[capabilities]\n"
-            f"need = [{', '.join(quote_toml(item) for item in needs)}]\n\n"
-            "[project]\n"
-            f"name = {quote_toml(name)}\n"
-            f"slug = {quote_toml(project_slug)}\n"
-            f"creator = {quote_toml(normalized_creator)}\n"
-            f"mount = {quote_toml(project_mount)}\n"
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--need",
+            action="append",
+            default=[],
+            metavar="CAPABILITY",
+            help="A capability the project needs; repeatable.",
         )
-        target.mkdir(mode=0o755)
-        (target / "devcapsule.toml").write_text(content, encoding="utf-8")
-        click.echo(f"Created {target / 'devcapsule.toml'}")
-        click.echo("Next: generate or add the platform lock, then run 'devcapsule project config resolve'.")
+        parser.add_argument("--name", dest="project_name", help="Project display name.")
+        parser.add_argument("--slug", help="Project identity slug.")
+        parser.add_argument("--creator", help="Project creator URL or email address.")
+        parser.add_argument("--project-mount", help="In-container project mount path.")
+        parser.add_argument(
+            "--regenerate",
+            action="store_true",
+            help="Rewrite the derived platform lock from the current embedded matrix; keep the authored manifest.",
+        )
+        add_carrier_options(parser)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        answers = tuple(
+            ProvidedAnswer(
+                family=answer.family,
+                name=answer.name,
+                value=answer.value,
+                justification=answer.justification,
+            )
+            for answer in carrier_answers(arguments)
+        )
+        report = initialize_project(
+            InitializeRequest(
+                directory=_project_context(context).target_path(),
+                need=tuple(arguments.need),
+                project_name=arguments.project_name,
+                slug=arguments.slug,
+                creator=arguments.creator,
+                project_mount=arguments.project_mount,
+                answers=answers,
+                regenerate=arguments.regenerate,
+            )
+        )
+        print(report.render())
         return 0
 
-    return init_project
 
+class CheckoutRegisterCommand(Command):
+    name = "register"
+    help = "Register this checkout under a distinct workstation-owned name."
 
-def _checkout_command() -> click.Command:
-    group = click.Group(name="checkout", help="Register additional local checkouts.", no_args_is_help=True)
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("checkout_name", metavar="NAME")
 
-    @click.command("register")
-    @click.argument("name")
-    @click.pass_obj
-    def register(context: ProjectCommandContext, name: str) -> int:
-        root, manifest = manifest_for(context.start_path())
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest = manifest_for(_project_context(context).start_path())
         selected_input = find_checkout_record(manifest, root)
         if selected_input is not None:
             raise ProjectConfigurationError(f"Checkout is already registered in {selected_input}.")
-        input_path, output_path = named_checkout_record_paths(manifest, name)
+        input_path, output_path = named_checkout_record_paths(manifest, arguments.checkout_name)
         if input_path.exists() or output_path.exists():
-            raise ProjectConfigurationError(f"Checkout name {name!r} is already in use under {input_path.parent}.")
+            raise ProjectConfigurationError(
+                f"Checkout name {arguments.checkout_name!r} is already in use under {input_path.parent}."
+            )
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
-        click.echo(f"Registered checkout {name!r}: {input_path}")
+        print(f"Registered checkout {arguments.checkout_name!r}: {input_path}")
         return 0
 
-    group.add_command(register)
-    return group
+
+class CheckoutGroup(Group):
+    name = "checkout"
+    help = "Register additional local checkouts."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {CheckoutRegisterCommand.name: CheckoutRegisterCommand}
 
 
-def _lock_command() -> click.Command:
-    @click.command("lock", help="Generate the current-platform lock for the initial curated PyCharm slice.")
-    @click.option(
-        "--image",
-        required=True,
-        help="Existing local PyCharm image reference to pin for this dogfood slice.",
-    )
-    @click.pass_obj
-    def lock_project(context: ProjectCommandContext, image: str) -> int:
-        root, manifest = manifest_for(context.start_path())
-        alias = platform_alias()
-        output = root / ".devcapsule" / f"devcapsule.{alias}.lock"
-        content = (
-            "devcapsule-lock-format-version = 1\n"
-            'resolution-matrix-version = "dogfood-v1"\n'
-            f"manifest-digest = {quote_toml(canonical_digest(manifest))}\n"
-            f"platform = {quote_toml(alias)}\n\n"
-            "[image]\n"
-            f"reference = {quote_toml(image)}\n\n"
-            "[components]\n"
-            'interactive-surface = "pycharm"\n'
-        )
-        atomic_write(output, content, mode=0o644)
-        click.echo(f"Generated {output}")
-        click.echo("This dogfood lock pins a local image tag; immutable formation locks remain follow-up work.")
+class ConfigResolveCommand(Command):
+    name = "resolve"
+    help = "Validate the combined configuration and write the generated resolution."
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        report = resolve_checkout(_project_context(context).start_path())
+        print(report.render())
         return 0
-
-    return lock_project
-
-
-def _config_command() -> click.Command:
-    group = click.Group(name="config", help="Inspect and resolve layered project configuration.", no_args_is_help=True)
-
-    @click.command("resolve")
-    @click.pass_obj
-    def resolve(context: ProjectCommandContext) -> int:
-        report = resolve_checkout(context.start_path())
-        click.echo(report.render())
-        return 0
-
-    group.add_command(_config_list_command())
-    group.add_command(resolve)
-    group.add_command(_config_set_command())
-    group.add_command(_config_bind_command())
-    group.add_command(_config_authorize_command())
-    return group
 
 
 @dataclass(frozen=True)
@@ -418,35 +245,37 @@ class ConfigurationListRow:
     value: str
 
 
-def _config_list_command() -> click.Command:
-    @click.command("list", help="Show configured values, bindings, authorizations, and resolution readiness.")
-    @click.pass_obj
-    def list_configuration(context: ProjectCommandContext) -> int:
-        root, manifest = manifest_for(context.start_path())
+class ConfigListCommand(Command):
+    name = "list"
+    help = "Show configured values, bindings, authorizations, and resolution readiness."
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest = manifest_for(_project_context(context).start_path())
         _lock_path, lock = lock_for(root, manifest)
         input_path, resolution_path = checkout_record_paths(manifest, root)
         if not input_path.is_file():
             atomic_write(input_path, render_checkout(manifest, root, {}, {}))
-            click.echo(f"Initialized checkout input: {input_path}")
+            print(f"Initialized checkout input: {input_path}")
         if not resolution_path.is_file():
             atomic_write(
                 resolution_path,
                 'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
             )
-            click.echo(f"Initialized resolution placeholder: {resolution_path}")
+            print(f"Initialized resolution placeholder: {resolution_path}")
         checkout = load_toml(input_path)
 
         identity = manifest["project"]
-        click.echo(f"Project: {identity['creator']}/{identity['slug']}")
-        click.echo(f"Checkout: {root}")
+        print(f"Project: {identity['creator']}/{identity['slug']}")
+        print(f"Checkout: {root}")
         checkout_name = (
             "default"
             if input_path.name == "devcapsule.checkout.toml"
             else input_path.name.removesuffix(".checkout.toml")
         )
-        click.echo(f"Checkout name: {checkout_name}")
-        click.echo(f"Checkout input: {input_path}")
-        click.echo(f"Generated plan: {resolution_path}")
+        print(f"Checkout name: {checkout_name}")
+        print(f"Checkout input: {input_path}")
+        print(f"Generated plan: {resolution_path}")
 
         rows = [
             *_configuration_value_rows(manifest, checkout),
@@ -463,7 +292,705 @@ def _config_list_command() -> click.Command:
         _print_configuration_rows(rows)
         return 0
 
-    return list_configuration
+
+class ConfigSetCommand(Command):
+    name = "set"
+    help = "Set one ordinary value declared by the project configuration metadata."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME")
+        parser.add_argument("value", metavar="VALUE")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest = manifest_for(_project_context(context).start_path())
+        normalized = normalize_configuration_value(manifest, arguments.node_name, arguments.value)
+        record = CheckoutRecord(manifest, root)
+        record.values[arguments.node_name] = normalized
+        record.write()
+        print(f"Set {arguments.node_name} = {render_toml_scalar(normalized)}")
+        print(f"Checkout input: {record.input_path}")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigBindCommand(Command):
+    name = "bind"
+    help = "Bind a declared logical resource to a developer-owned provider (PROVIDER:VALUE)."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME")
+        parser.add_argument(
+            "value",
+            metavar="PROVIDER:VALUE",
+            help="host-directory:PATH for state, host-environment:VARIABLE for a declared secret.",
+        )
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = arguments.node_name
+        root, manifest = manifest_for(_project_context(context).start_path())
+        _lock_path, lock = lock_for(root, manifest)
+        registry = build_node_registry(manifest, lock)
+        provider, raw_value = registry.split_bind_value(name, arguments.value)
+        node = registry.node(name)
+
+        record = CheckoutRecord(manifest, root)
+        if name in record.state:
+            raise ProjectConfigurationError(
+                f"State resource {name!r} was already adopted; remove that transitional entry before binding it."
+            )
+        if provider == PROVIDER_HOST_DIRECTORY:
+            source = Path(raw_value).expanduser().resolve()
+            if not source.is_dir():
+                raise ProjectConfigurationError(
+                    f"Binding source is not an existing directory: {source}"
+                )
+            record.directory_bindings[name] = str(source)
+            record.write()
+            declaration = node.declaration
+            print(
+                f"WARNING: exposing host directory read-write for {name}: {source} -> "
+                f"{declaration.container_path}",
+                file=sys.stderr,
+            )
+            print(f"Sensitivity: {declaration.sensitivity}", file=sys.stderr)
+            if not declaration.concurrent:
+                print(
+                    "Concurrency: exclusive; do not share this binding with a concurrent capsule.",
+                    file=sys.stderr,
+                )
+            print(f"Bound {name} to host directory: {source}")
+        else:
+            secret = node.declaration
+            if raw_value != secret.environment_variable:
+                raise ProjectConfigurationError(
+                    f"Secret input {name!r} must use host environment variable "
+                    f"{secret.environment_variable!r}."
+                )
+            record.environment_bindings[name] = raw_value
+            record.write()
+            print(
+                f"WARNING: {raw_value} will be visible to every process in the capsule "
+                "and through Docker container inspection while it runs.",
+                file=sys.stderr,
+            )
+            print(f"Bound {name} to host environment variable: {raw_value}")
+        print(f"Checkout input: {record.input_path}")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigUnsetCommand(Command):
+    name = "unset"
+    help = "Remove one recorded answer from this checkout."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = arguments.node_name
+        root, manifest = manifest_for(_project_context(context).start_path())
+        _lock_path, lock = lock_for(root, manifest)
+        registry = build_node_registry(manifest, lock)
+        node = registry.node(name)
+        record = CheckoutRecord(manifest, root)
+        if node.family == CARRIER_FAMILY_SET:
+            removed = record.values.pop(name, None)
+        elif node.family == CARRIER_FAMILY_BIND:
+            removed = (
+                record.directory_bindings.pop(name, None)
+                or record.environment_bindings.pop(name, None)
+                # A transitional 'state adopt' entry answers the same node.
+                or record.state.pop(name, None)
+            )
+        else:
+            removed = record.authorization.pop(name, None)
+        if removed is None:
+            raise ProjectConfigurationError(
+                f"Configuration node {name!r} has no recorded answer for this checkout."
+            )
+        record.write()
+        print(f"Unset {name} for this checkout.")
+        print(f"Checkout input: {record.input_path}")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigAuthorizeCommand(Command):
+    name = "authorize"
+    help = (
+        "Authorize project-recommended host access or select an exact inspected "
+        "local DevCapsule base."
+    )
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME", nargs="?")
+        parser.add_argument("value", metavar="VALUE", nargs="?")
+        parser.add_argument("justification", metavar="JUSTIFICATION", nargs="?")
+        parser.add_argument(
+            "--all-recommended",
+            action="store_true",
+            help="Preview every recommendation and authorize all only after the y key is pressed.",
+        )
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = arguments.node_name
+        value = arguments.value
+        root, manifest = manifest_for(_project_context(context).start_path())
+        _lock_path, lock = lock_for(root, manifest)
+        declarations = authorization_declarations(manifest, lock)
+        if arguments.all_recommended:
+            if name is not None or value is not None:
+                raise ProjectConfigurationError(
+                    "--all-recommended cannot be combined with an authorization NAME or VALUE."
+                )
+            return _authorize_all_recommended(root, manifest, declarations)
+        if name is None or value is None:
+            raise ProjectConfigurationError(
+                "Provide NAME VALUE, or use --all-recommended for interactive bulk authorization."
+            )
+        if arguments.justification is not None:
+            # The justification facet belongs to recommendation authoring at
+            # init; an already-declared recommendation carries its own.
+            raise ProjectConfigurationError(
+                "A justification is recorded when the project owner authors the recommendation "
+                "at 'devcapsule project init'; it does not apply to authorizing this checkout."
+            )
+        declaration = declarations.get(name)
+        if declaration is None:
+            available = ", ".join(sorted(declarations)) or "none"
+            raise ProjectConfigurationError(
+                f"Authorization {name!r} is not declared by this project and lock; "
+                f"declared authorizations: {available}."
+            )
+        local_base_identity: str | None = None
+        local_base_value = name == "base-image" and value != declaration.recommended_value
+        if local_base_value:
+            try:
+                immutable_registry_reference(value)
+            except ProjectConfigurationError:
+                pass
+            else:
+                # A different published digest needs its own project-reviewed
+                # recommendation. Only a daemon-local selection is exempt.
+                normalize_authorization_value(declaration, value)
+            platform_name = lock.get("platform")
+            if not isinstance(platform_name, str) or not platform_name:
+                raise ProjectConfigurationError("Platform lock must name its target platform.")
+            local_base = required_local_image(value)
+            validate_base_image(
+                local_base,
+                platform=platform_name,
+                expected_identity=None,
+            )
+            normalized: str | bool = value
+            local_base_identity = local_base.identity
+        else:
+            normalized = normalize_authorization_value(declaration, value)
+
+        record = CheckoutRecord(manifest, root)
+        input_path = record.input_path
+        if name == "base-image":
+            record.authorization[name] = {
+                "reference": normalized,
+                "lock-digest": declaration.recommendation_digest,
+            }
+            if local_base_identity is not None:
+                record.authorization[name]["image-id"] = local_base_identity
+        else:
+            record.authorization[name] = {
+                "value": normalized,
+                "recommendation-digest": declaration.recommendation_digest,
+            }
+        record.write()
+        authorized_value = render_authorization_value(normalized)
+        if local_base_identity is None and declaration.display_value is not None:
+            authorized_value = declaration.display_value
+        print(f"Authorized {name} for this checkout: {authorized_value}")
+        if local_base_identity is not None:
+            print(f"Local image ID: {local_base_identity}")
+            print(
+                "This developer-owned selection overrides the published base recommendation "
+                "for this checkout."
+            )
+        else:
+            print(f"Recommendation: {declaration.description}")
+        print(f"Recommendation digest: {declaration.recommendation_digest}")
+        print(f"Checkout input: {input_path}")
+        print(
+            "This authorization applies only to the exact recorded value, image identity when "
+            "local, and current lock."
+        )
+        print("Run 'devcapsule project config resolve' before materialization or launch.")
+        return 0
+
+
+class ConfigGroup(Group):
+    name = "config"
+    help = "Inspect and resolve layered project configuration."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {
+            ConfigListCommand.name: ConfigListCommand,
+            ConfigResolveCommand.name: ConfigResolveCommand,
+            ConfigSetCommand.name: ConfigSetCommand,
+            ConfigBindCommand.name: ConfigBindCommand,
+            ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
+            ConfigUnsetCommand.name: ConfigUnsetCommand,
+        }
+
+
+class StateAdoptCommand(Command):
+    name = "adopt"
+    help = "Adopt an existing host directory for a declared state slot."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("slot")
+        parser.add_argument("--from", dest="source", type=Path, required=True)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        slot = arguments.slot
+        root, manifest = manifest_for(_project_context(context).start_path())
+        lock_path, lock = lock_for(root, manifest)
+        declarations = configuration_binding_declarations(lock, source=str(lock_path))
+        if slot not in declarations:
+            available = ", ".join(sorted(declarations))
+            raise ProjectConfigurationError(
+                f"State resource {slot!r} is not declared by the selected components; "
+                f"declared resources: {available}."
+            )
+        source = arguments.source.expanduser().resolve()
+        if not source.is_dir():
+            raise ProjectConfigurationError(f"State source is not a directory: {source}")
+        record = CheckoutRecord(manifest, root)
+        if slot in record.directory_bindings:
+            raise ProjectConfigurationError(
+                f"State resource {slot!r} is already configuration-bound; it cannot also be adopted."
+            )
+        record.state[slot] = str(source)
+        record.write()
+        print(f"Adopted {slot}: {source}")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class StateGroup(Group):
+    name = "state"
+    help = "Inspect and adopt checkout-scoped persistent state."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {StateAdoptCommand.name: StateAdoptCommand}
+
+
+def _add_runtime_plan_options(parser: argparse.ArgumentParser, *, host_paths: bool = True) -> None:
+    parser.add_argument(
+        "--runtime-plan",
+        type=Path,
+        default=Path("/etc/devcapsule/runtime-plan.json"),
+        help="External runtime plan mounted into the current capsule.",
+    )
+    parser.add_argument(
+        "--json", dest="as_json", action="store_true", help="Emit stable machine-readable JSON."
+    )
+    if host_paths:
+        parser.add_argument(
+            "--show-host-paths",
+            action="store_true",
+            help="Include sensitive host mount sources after an explicit warning.",
+        )
+
+
+class RecursivePreflightCommand(Command):
+    name = "preflight"
+    help = "Check recursive dogfood readiness for this capsule."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_runtime_plan_options(parser)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root = _recursive_project_root(_project_context(context))
+        _warn_for_host_path_disclosure(arguments.show_host_paths)
+        report = run_recursive_preflight(root, runtime_plan_path=arguments.runtime_plan)
+        print(
+            preflight_json(report, show_host_paths=arguments.show_host_paths)
+            if arguments.as_json
+            else render_preflight(report, show_host_paths=arguments.show_host_paths)
+        )
+        return 0 if report.ready else 1
+
+
+class RecursiveRunCommand(Command):
+    name = "run"
+    help = "Run the recursive dogfood E2E dry run."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_runtime_plan_options(parser)
+        parser.add_argument(
+            "--keep-on-failure",
+            action="store_true",
+            help="Preserve only this run's ownership-marked workspace after failure.",
+        )
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root = _recursive_project_root(_project_context(context))
+        _warn_for_host_path_disclosure(arguments.show_host_paths)
+        try:
+            result = run_recursive_e2e_dry_run(
+                root,
+                runtime_plan_path=arguments.runtime_plan,
+                keep_on_failure=arguments.keep_on_failure,
+            )
+        except RecursivePreflightFailed as exc:
+            print(
+                preflight_json(exc.report, show_host_paths=arguments.show_host_paths)
+                if arguments.as_json
+                else render_preflight(exc.report, show_host_paths=arguments.show_host_paths)
+            )
+            return 1
+        except RecursiveE2EError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        mapping = result.to_mapping(show_host_paths=arguments.show_host_paths)
+        print(
+            result.to_json(show_host_paths=arguments.show_host_paths)
+            if arguments.as_json
+            else json.dumps(mapping, ensure_ascii=False, indent=2, sort_keys=True)
+        )
+        return 0
+
+
+class RecursiveLaunchSuccessorCommand(Command):
+    name = "launch-successor"
+    help = "Launch a successor capsule from a retained materialization run."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--run-id", required=True, help="Existing retained materialization run ID.")
+        _add_runtime_plan_options(parser, host_paths=False)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root = _recursive_project_root(_project_context(context))
+        try:
+            result = launch_successor(
+                root, arguments.run_id, runtime_plan_path=arguments.runtime_plan
+            )
+        except RecursiveSuccessorError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        print(result.to_json() if arguments.as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True))
+        return 0
+
+
+class RecursiveInspectSuccessorCommand(Command):
+    name = "inspect-successor"
+    help = "Independently inspect a retained successor against its expected plan."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--run-id", required=True, help="Existing retained successor run ID.")
+        parser.add_argument(
+            "--json", dest="as_json", action="store_true", help="Emit stable machine-readable JSON."
+        )
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        try:
+            result = inspect_successor(arguments.run_id)
+        except RecursiveSuccessorError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        print(result.to_json() if arguments.as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True))
+        return 0
+
+
+class RecursiveE2EGroup(Group):
+    name = "recursive-e2e"
+    help = "Run DevCapsule's project-specific recursive dogfood validation."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {
+            RecursivePreflightCommand.name: RecursivePreflightCommand,
+            RecursiveRunCommand.name: RecursiveRunCommand,
+            RecursiveLaunchSuccessorCommand.name: RecursiveLaunchSuccessorCommand,
+            RecursiveInspectSuccessorCommand.name: RecursiveInspectSuccessorCommand,
+        }
+
+
+class ProjectRunCommand(Command):
+    name = "run"
+    help = "Run the project from its platform lock and developer-owned resolution."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--force", action="store_true", help="Use stale generated resolution once, with a warning."
+        )
+        parser.add_argument("--docker-daemon", choices=["none", "host-socket"])
+        parser.add_argument(
+            "--development-sudo", action="store_const", const=True, default=None
+        )
+        parser.add_argument(
+            "--host-browser",
+            action=argparse.BooleanOptionalAction,
+            default=False,
+            help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
+        )
+        parser.add_argument(
+            "--no-recursive-e2e",
+            action="store_true",
+            help="Disable DevCapsule recursive-E2E readiness for this launch.",
+        )
+        parser.add_argument("--name", dest="container_name")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest = manifest_for(_project_context(context).start_path())
+        _lock_path, lock = lock_for(root, manifest)
+        input_path, output_path = checkout_record_paths(manifest, root)
+        if not input_path.is_file() or not output_path.is_file():
+            raise ProjectConfigurationError(
+                "Local resolution is missing; run 'devcapsule project config resolve'."
+            )
+        checkout = load_toml(input_path)
+        resolved = load_toml(output_path)
+        stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
+        if stale and not arguments.force:
+            raise ProjectConfigurationError(
+                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
+            )
+        if stale:
+            print(f"WARNING: using stale generated resolution once ({', '.join(stale)}).", file=sys.stderr)
+        runtime = resolved.get("runtime", {})
+        if not isinstance(runtime, dict) or runtime.get("component") != "pycharm":
+            raise ProjectConfigurationError("The first run slice supports only resolved PyCharm environments.")
+        image = runtime.get("image")
+        checkout_runtime_plan = None
+        use_image_process = False
+        if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
+            selected = ResolvedProject(
+                root=root,
+                manifest=manifest,
+                lock_path=_lock_path,
+                lock=lock,
+                checkout_path=input_path,
+                checkout=checkout,
+                resolution_path=output_path,
+                resolution=resolved,
+            )
+            realized = realize_environment(selected)
+            image = realized.image.reference
+            checkout_runtime_plan = project_runtime_plan(selected, realized.locked)
+            use_image_process = True
+            action = "Materialized" if realized.created else "Reused"
+            print(f"{action} canonical environment: {image}")
+        if not isinstance(image, str) or not image:
+            raise ProjectConfigurationError("The resolved PyCharm environment has no runnable image.")
+        memory_limit = runtime.get("memory-limit-bytes")
+        if memory_limit is not None and (
+            not isinstance(memory_limit, int) or isinstance(memory_limit, bool) or memory_limit <= 0
+        ):
+            raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
+        state_root = resolved.get("state", {})
+        state = dict(state_root.get("adopted", {}))
+        state.update(state_root.get("bindings", {}))
+        secret_root = resolved.get("secret", {})
+        secret_bindings_root = (
+            secret_root.get("bindings", {}) if isinstance(secret_root, dict) else {}
+        )
+        secret_environment = (
+            secret_bindings_root.get("host-environment", {})
+            if isinstance(secret_bindings_root, dict)
+            else {}
+        )
+        if not isinstance(secret_environment, dict) or not all(
+            isinstance(name, str) and isinstance(source, str)
+            for name, source in secret_environment.items()
+        ):
+            raise ProjectConfigurationError(
+                "Resolved secret.bindings.host-environment must contain environment names."
+            )
+        host = resolved.get("host", {})
+        authorization = resolved.get("authorization", {})
+        selected_docker_daemon = (
+            arguments.docker_daemon
+            or authorization.get("docker-daemon")
+            or host.get("docker-daemon", "none")
+        )
+        selected_sudo = arguments.development_sudo
+        if selected_sudo is None:
+            selected_sudo = bool(
+                authorization.get("development-sudo", host.get("development-sudo", False))
+            )
+        selected_network = str(authorization.get("network", host.get("network", "bridge")))
+        if arguments.no_recursive_e2e:
+            selected_docker_daemon = "none"
+            selected_sudo = False
+            selected_network = "bridge"
+        recursive_environment = recursive_e2e_launch_environment(
+            root,
+            docker_daemon=str(selected_docker_daemon),
+            disabled=arguments.no_recursive_e2e,
+        )
+        readiness = recursive_environment.get(RECURSIVE_E2E_ENABLED_ENV)
+        if readiness is not None:
+            if readiness == "1":
+                print("Recursive E2E readiness: enabled for this DevCapsule launch.")
+            elif arguments.no_recursive_e2e:
+                print(
+                    "Recursive E2E readiness: disabled for this launch; host Docker, "
+                    "host networking, and development sudo were downgraded."
+                )
+            else:
+                print(
+                    "Recursive E2E readiness: unavailable because host Docker access is not authorized."
+                )
+        return run_pycharm(
+            PycharmRunOptions(
+                project=root,
+                project_mount=str(runtime["project-mount"]),
+                image=image,
+                name=arguments.container_name,
+                persistent_home=Path(state["home"]) if "home" in state else None,
+                ide_config=Path(state["pycharm/config"]) if "pycharm/config" in state else None,
+                plugins=Path(state["pycharm/plugins"]) if "pycharm/plugins" in state else None,
+                ide_system=Path(state["pycharm/system"]) if "pycharm/system" in state else None,
+                ide_log=Path(state["pycharm/log"]) if "pycharm/log" in state else None,
+                tool_cache=Path(state["pycharm/cache"]) if "pycharm/cache" in state else None,
+                docker_mode=DockerMode.host if selected_docker_daemon == "host-socket" else DockerMode.none,
+                enable_sudo=bool(selected_sudo),
+                network_mode=selected_network,
+                memory_limit_bytes=memory_limit,
+                runtime_plan=checkout_runtime_plan,
+                use_image_process=use_image_process,
+                additional_state_mounts=_additional_component_state_mounts(
+                    root,
+                    lock,
+                    state,
+                    checkout_runtime_plan,
+                ),
+                additional_environment=recursive_environment,
+                secret_environment=tuple(sorted(secret_environment.values())),
+                extra_docker_args=["--pull=never"],
+                project_state=None,
+                enable_host_browser=arguments.host_browser,
+            )
+        )
+
+
+class ProjectRunImageCommand(Command):
+    name = "run-image"
+    help = "Run a local PyCharm-compatible image without project lock resolution."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("image")
+        parser.add_argument("--project-mount", help="Absolute in-container project path.")
+        parser.add_argument("--home", type=Path)
+        parser.add_argument("--global-settings", type=Path)
+        parser.add_argument("--plugins", type=Path)
+        parser.add_argument("--project-state", type=Path)
+        parser.add_argument(
+            "--docker-daemon", choices=["none", "host-socket"], default="none"
+        )
+        parser.add_argument("--development-sudo", action="store_true")
+        parser.add_argument(
+            "--host-browser",
+            action=argparse.BooleanOptionalAction,
+            default=False,
+            help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
+        )
+        parser.add_argument("--name", dest="container_name")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        candidate = _project_context(context).start_path()
+        try:
+            project = discover_project(candidate)
+        except ProjectConfigurationError:
+            project = candidate.expanduser().resolve()
+        if not project.is_dir():
+            raise ProjectConfigurationError(f"Project directory does not exist: {project}")
+        docker_mode = (
+            DockerMode.host if arguments.docker_daemon == "host-socket" else DockerMode.none
+        )
+        return run_pycharm(
+            PycharmRunOptions(
+                project=project,
+                project_mount=arguments.project_mount,
+                image=arguments.image,
+                name=arguments.container_name,
+                persistent_home=arguments.home,
+                global_settings=arguments.global_settings,
+                project_state=arguments.project_state,
+                plugins=arguments.plugins,
+                docker_mode=docker_mode,
+                enable_sudo=arguments.development_sudo,
+                enable_host_browser=arguments.host_browser,
+                extra_docker_args=["--pull=never"],
+            )
+        )
+
+
+class ProjectCommand(Group):
+    name = "project"
+    help = "Initialize, list, configure, and run DevCapsule project checkouts."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--path",
+            dest="selected_path",
+            type=Path,
+            help="Project root or descendant; defaults to discovery from the current directory.",
+        )
+
+    @classmethod
+    def make_context(cls, arguments: argparse.Namespace, parent: object | None) -> object | None:
+        return ProjectCommandContext(arguments.selected_path)
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {
+            ProjectListCommand.name: ProjectListCommand,
+            ProjectInitCommand.name: ProjectInitCommand,
+            CheckoutGroup.name: CheckoutGroup,
+            ConfigGroup.name: ConfigGroup,
+            StateGroup.name: StateGroup,
+            RecursiveE2EGroup.name: RecursiveE2EGroup,
+            ProjectRunCommand.name: ProjectRunCommand,
+            ProjectRunImageCommand.name: ProjectRunImageCommand,
+        }
+
+
+def _recursive_project_root(context: ProjectCommandContext) -> Path:
+    root = discover_project(context.start_path())
+    try:
+        return require_recursive_e2e_project(root)
+    except PreflightError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
+
+
+def _warn_for_host_path_disclosure(show_host_paths: bool) -> None:
+    if show_host_paths:
+        print(
+            "WARNING: debug output includes raw host filesystem mappings; "
+            "do not share it unsanitized.",
+            file=sys.stderr,
+        )
 
 
 def _configuration_value_rows(
@@ -644,227 +1171,10 @@ def _print_configuration_rows(rows: list[ConfigurationListRow]) -> None:
     headers = ("KIND", "NAME", "STATUS", "VALUE / RECOMMENDATION")
     values = [(row.kind, row.name, row.status, row.value) for row in rows]
     widths = [max(len(headers[index]), *(len(row[index]) for row in values)) for index in range(4)]
-    click.echo("")
-    click.echo("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
+    print("")
+    print("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
     for row in values:
-        click.echo("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
-
-
-def _config_set_command() -> click.Command:
-    @click.command("set", help="Set one ordinary value declared by the project configuration metadata.")
-    @click.argument("name")
-    @click.argument("value")
-    @click.pass_obj
-    def set_value(context: ProjectCommandContext, name: str, value: str) -> int:
-        root, manifest = manifest_for(context.start_path())
-        normalized = normalize_configuration_value(manifest, name, value)
-        record = CheckoutRecord(manifest, root)
-        record.values[name] = normalized
-        record.write()
-        click.echo(f"Set {name} = {render_toml_scalar(normalized)}")
-        click.echo(f"Checkout input: {record.input_path}")
-        click.echo("Run 'devcapsule project config resolve' before launch.")
-        return 0
-
-    return set_value
-
-
-def _config_bind_command() -> click.Command:
-    @click.command("bind", help="Bind a declared logical resource to a developer-owned provider.")
-    @click.argument("name")
-    @click.option(
-        "--host-directory",
-        "directory_source",
-        type=click.Path(path_type=Path),
-        help="Existing host directory to expose read-write at the declared container path.",
-    )
-    @click.option(
-        "--host-environment-variable",
-        "environment_source",
-        help="Explicitly deliver a declared secret from the same-named host environment variable.",
-    )
-    @click.pass_obj
-    def bind(
-        context: ProjectCommandContext,
-        name: str,
-        directory_source: Path | None,
-        environment_source: str | None,
-    ) -> int:
-        if (directory_source is None) == (environment_source is None):
-            raise click.UsageError(
-                "Select exactly one provider: --host-directory or --host-environment-variable."
-            )
-        root, manifest = manifest_for(context.start_path())
-        lock_path, lock = lock_for(root, manifest)
-        declarations = configuration_binding_declarations(lock, source=str(lock_path))
-        secret_declarations = component_secret_inputs(lock, source=str(lock_path))
-
-        record = CheckoutRecord(manifest, root)
-        if name in record.state:
-            raise ProjectConfigurationError(
-                f"State resource {name!r} was already adopted; remove that transitional entry before binding it."
-            )
-        if directory_source is not None:
-            declaration = declarations.get(name)
-            if declaration is None:
-                available = ", ".join(sorted(declarations))
-                raise ProjectConfigurationError(
-                    f"Configuration binding {name!r} is not declared as a directory resource; "
-                    f"declared directory bindings: {available}."
-                )
-            source = directory_source.expanduser().resolve()
-            if not source.is_dir():
-                raise ProjectConfigurationError(
-                    f"Binding source is not an existing directory: {source}"
-                )
-            record.directory_bindings[name] = str(source)
-        else:
-            secret = secret_declarations.get(name)
-            if secret is None:
-                available = ", ".join(sorted(secret_declarations)) or "none"
-                raise ProjectConfigurationError(
-                    f"Configuration binding {name!r} is not a declared secret input; "
-                    f"declared secret inputs: {available}."
-                )
-            if environment_source != secret.environment_variable:
-                raise ProjectConfigurationError(
-                    f"Secret input {name!r} must use host environment variable "
-                    f"{secret.environment_variable!r}."
-                )
-            record.environment_bindings[name] = environment_source
-        record.write()
-        input_path = record.input_path
-        if environment_source is not None:
-            click.echo(
-                f"WARNING: {environment_source} will be visible to every process in the capsule "
-                "and through Docker container inspection while it runs.",
-                err=True,
-            )
-            click.echo(f"Bound {name} to host environment variable: {environment_source}")
-            click.echo(f"Checkout input: {input_path}")
-            click.echo("Run 'devcapsule project config resolve' before launch.")
-            return 0
-        assert declaration is not None
-        click.echo(
-            f"WARNING: exposing host directory read-write for {name}: {source} -> "
-            f"{declaration.container_path}",
-            err=True,
-        )
-        click.echo(f"Sensitivity: {declaration.sensitivity}", err=True)
-        if not declaration.concurrent:
-            click.echo("Concurrency: exclusive; do not share this binding with a concurrent capsule.", err=True)
-        click.echo(f"Bound {name} to host directory: {source}")
-        click.echo(f"Checkout input: {input_path}")
-        click.echo("Run 'devcapsule project config resolve' before launch.")
-        return 0
-
-    return bind
-
-
-def _config_authorize_command() -> click.Command:
-    @click.command(
-        "authorize",
-        help=(
-            "Authorize project-recommended host access or select an exact inspected "
-            "local DevCapsule base."
-        ),
-    )
-    @click.argument("name", required=False)
-    @click.argument("value", required=False)
-    @click.option(
-        "--all-recommended",
-        is_flag=True,
-        help="Preview every recommendation and authorize all only after the y key is pressed.",
-    )
-    @click.pass_obj
-    def authorize(
-        context: ProjectCommandContext,
-        name: str | None,
-        value: str | None,
-        all_recommended: bool,
-    ) -> int:
-        root, manifest = manifest_for(context.start_path())
-        _lock_path, lock = lock_for(root, manifest)
-        declarations = authorization_declarations(manifest, lock)
-        if all_recommended:
-            if name is not None or value is not None:
-                raise click.UsageError(
-                    "--all-recommended cannot be combined with an authorization NAME or VALUE."
-                )
-            return _authorize_all_recommended(root, manifest, declarations)
-        if name is None or value is None:
-            raise click.UsageError(
-                "Provide NAME VALUE, or use --all-recommended for interactive bulk authorization."
-            )
-        declaration = declarations.get(name)
-        if declaration is None:
-            available = ", ".join(sorted(declarations)) or "none"
-            raise ProjectConfigurationError(
-                f"Authorization {name!r} is not declared by this project and lock; "
-                f"declared authorizations: {available}."
-            )
-        local_base_identity: str | None = None
-        local_base_value = name == "base-image" and value != declaration.recommended_value
-        if local_base_value:
-            try:
-                immutable_registry_reference(value)
-            except ProjectConfigurationError:
-                pass
-            else:
-                # A different published digest needs its own project-reviewed
-                # recommendation. Only a daemon-local selection is exempt.
-                normalize_authorization_value(declaration, value)
-            platform_name = lock.get("platform")
-            if not isinstance(platform_name, str) or not platform_name:
-                raise ProjectConfigurationError("Platform lock must name its target platform.")
-            local_base = required_local_image(value)
-            validate_base_image(
-                local_base,
-                platform=platform_name,
-                expected_identity=None,
-            )
-            normalized: str | bool = value
-            local_base_identity = local_base.identity
-        else:
-            normalized = normalize_authorization_value(declaration, value)
-
-        record = CheckoutRecord(manifest, root)
-        input_path = record.input_path
-        if name == "base-image":
-            record.authorization[name] = {
-                "reference": normalized,
-                "lock-digest": declaration.recommendation_digest,
-            }
-            if local_base_identity is not None:
-                record.authorization[name]["image-id"] = local_base_identity
-        else:
-            record.authorization[name] = {
-                "value": normalized,
-                "recommendation-digest": declaration.recommendation_digest,
-            }
-        record.write()
-        authorized_value = render_authorization_value(normalized)
-        if local_base_identity is None and declaration.display_value is not None:
-            authorized_value = declaration.display_value
-        click.echo(f"Authorized {name} for this checkout: {authorized_value}")
-        if local_base_identity is not None:
-            click.echo(f"Local image ID: {local_base_identity}")
-            click.echo(
-                "This developer-owned selection overrides the published base recommendation "
-                "for this checkout."
-            )
-        else:
-            click.echo(f"Recommendation: {declaration.description}")
-        click.echo(f"Recommendation digest: {declaration.recommendation_digest}")
-        click.echo(f"Checkout input: {input_path}")
-        click.echo(
-            "This authorization applies only to the exact recorded value, image identity when "
-            "local, and current lock."
-        )
-        click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
-        return 0
-
-    return authorize
+        print("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
 
 
 def _authorize_all_recommended(
@@ -878,26 +1188,26 @@ def _authorize_all_recommended(
     record = CheckoutRecord(manifest, root)
     input_path = record.input_path
 
-    click.echo(f"The following authorizations will be granted for checkout {root}:")
+    print(f"The following authorizations will be granted for checkout {root}:")
     for name, declaration in sorted(declarations.items()):
         rendered = _authorization_display_value(declaration)
-        click.echo(f"- {name}: {rendered}")
-        click.echo(f"  Justification: {declaration.description}")
-        click.echo(f"  Recommendation digest: {declaration.recommendation_digest}")
+        print(f"- {name}: {rendered}")
+        print(f"  Justification: {declaration.description}")
+        print(f"  Recommendation digest: {declaration.recommendation_digest}")
     if not sys.stdin.isatty():
         raise ProjectConfigurationError(
             "--all-recommended requires an interactive terminal; authorize each exact value "
             "individually in non-interactive workflows."
         )
-    click.echo("Press y to authorize every recommendation; any other key cancels: ", nl=False)
+    print("Press y to authorize every recommendation; any other key cancels: ", end="", flush=True)
     try:
         accepted = readchar.readkey() == "y"
     except (EOFError, OSError) as exc:
-        click.echo("")
+        print("")
         raise ProjectConfigurationError(f"Cannot read authorization confirmation key: {exc}") from exc
-    click.echo("")
+    print("")
     if not accepted:
-        click.echo("Authorization cancelled; no changes written.")
+        print("Authorization cancelled; no changes written.")
         return 1
 
     for name, declaration in declarations.items():
@@ -912,211 +1222,14 @@ def _authorize_all_recommended(
                 "recommendation-digest": declaration.recommendation_digest,
             }
     record.write()
-    click.echo(f"Authorized {len(declarations)} recommendations for this checkout.")
-    click.echo(f"Checkout input: {input_path}")
-    click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
+    print(f"Authorized {len(declarations)} recommendations for this checkout.")
+    print(f"Checkout input: {input_path}")
+    print("Run 'devcapsule project config resolve' before materialization or launch.")
     return 0
 
 
 def _authorization_display_value(declaration: AuthorizationDeclaration) -> str:
     return declaration.display_value or render_authorization_value(declaration.recommended_value)
-
-
-def _state_command() -> click.Command:
-    group = click.Group(name="state", help="Inspect and adopt checkout-scoped persistent state.", no_args_is_help=True)
-
-    @click.command("adopt")
-    @click.argument("slot")
-    @click.option("--from", "source", type=click.Path(path_type=Path), required=True)
-    @click.pass_obj
-    def adopt(context: ProjectCommandContext, slot: str, source: Path) -> int:
-        root, manifest = manifest_for(context.start_path())
-        lock_path, lock = lock_for(root, manifest)
-        declarations = configuration_binding_declarations(lock, source=str(lock_path))
-        if slot not in declarations:
-            available = ", ".join(sorted(declarations))
-            raise ProjectConfigurationError(
-                f"State resource {slot!r} is not declared by the selected components; "
-                f"declared resources: {available}."
-            )
-        source = source.expanduser().resolve()
-        if not source.is_dir():
-            raise ProjectConfigurationError(f"State source is not a directory: {source}")
-        record = CheckoutRecord(manifest, root)
-        if slot in record.directory_bindings:
-            raise ProjectConfigurationError(
-                f"State resource {slot!r} is already configuration-bound; it cannot also be adopted."
-            )
-        record.state[slot] = str(source)
-        record.write()
-        click.echo(f"Adopted {slot}: {source}")
-        click.echo("Run 'devcapsule project config resolve' before launch.")
-        return 0
-
-    group.add_command(adopt)
-    return group
-
-
-def _run_command() -> click.Command:
-    @click.command("run", help="Run the project from its platform lock and developer-owned resolution.")
-    @click.option("--force", is_flag=True, help="Use stale generated resolution once, with a warning.")
-    @click.option("--docker-daemon", type=click.Choice(["none", "host-socket"]))
-    @click.option("--development-sudo", is_flag=True, default=None)
-    @click.option(
-        "--host-browser/--no-host-browser",
-        default=False,
-        show_default=True,
-        help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
-    )
-    @click.option(
-        "--no-recursive-e2e",
-        is_flag=True,
-        help="Disable DevCapsule recursive-E2E readiness for this launch.",
-    )
-    @click.option("--name", "container_name")
-    @click.pass_obj
-    def run_project(
-        context: ProjectCommandContext,
-        force: bool,
-        docker_daemon: str | None,
-        development_sudo: bool | None,
-        host_browser: bool,
-        no_recursive_e2e: bool,
-        container_name: str | None,
-    ) -> int:
-        root, manifest = manifest_for(context.start_path())
-        _lock_path, lock = lock_for(root, manifest)
-        input_path, output_path = checkout_record_paths(manifest, root)
-        if not input_path.is_file() or not output_path.is_file():
-            raise ProjectConfigurationError(
-                "Local resolution is missing; run 'devcapsule project config resolve'."
-            )
-        checkout = load_toml(input_path)
-        resolved = load_toml(output_path)
-        stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
-        if stale and not force:
-            raise ProjectConfigurationError(
-                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
-            )
-        if stale:
-            click.echo(f"WARNING: using stale generated resolution once ({', '.join(stale)}).", err=True)
-        runtime = resolved.get("runtime", {})
-        if not isinstance(runtime, dict) or runtime.get("component") != "pycharm":
-            raise ProjectConfigurationError("The first run slice supports only resolved PyCharm environments.")
-        image = runtime.get("image")
-        checkout_runtime_plan = None
-        use_image_process = False
-        if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
-            selected = ResolvedProject(
-                root=root,
-                manifest=manifest,
-                lock_path=_lock_path,
-                lock=lock,
-                checkout_path=input_path,
-                checkout=checkout,
-                resolution_path=output_path,
-                resolution=resolved,
-            )
-            realized = realize_environment(selected)
-            image = realized.image.reference
-            checkout_runtime_plan = project_runtime_plan(selected, realized.locked)
-            use_image_process = True
-            action = "Materialized" if realized.created else "Reused"
-            click.echo(f"{action} canonical environment: {image}")
-        if not isinstance(image, str) or not image:
-            raise ProjectConfigurationError("The resolved PyCharm environment has no runnable image.")
-        memory_limit = runtime.get("memory-limit-bytes")
-        if memory_limit is not None and (
-            not isinstance(memory_limit, int) or isinstance(memory_limit, bool) or memory_limit <= 0
-        ):
-            raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
-        state_root = resolved.get("state", {})
-        state = dict(state_root.get("adopted", {}))
-        state.update(state_root.get("bindings", {}))
-        secret_root = resolved.get("secret", {})
-        secret_bindings_root = (
-            secret_root.get("bindings", {}) if isinstance(secret_root, dict) else {}
-        )
-        secret_environment = (
-            secret_bindings_root.get("host-environment", {})
-            if isinstance(secret_bindings_root, dict)
-            else {}
-        )
-        if not isinstance(secret_environment, dict) or not all(
-            isinstance(name, str) and isinstance(source, str)
-            for name, source in secret_environment.items()
-        ):
-            raise ProjectConfigurationError(
-                "Resolved secret.bindings.host-environment must contain environment names."
-            )
-        host = resolved.get("host", {})
-        authorization = resolved.get("authorization", {})
-        selected_docker_daemon = (
-            docker_daemon
-            or authorization.get("docker-daemon")
-            or host.get("docker-daemon", "none")
-        )
-        selected_sudo = development_sudo
-        if selected_sudo is None:
-            selected_sudo = bool(
-                authorization.get("development-sudo", host.get("development-sudo", False))
-            )
-        selected_network = str(authorization.get("network", host.get("network", "bridge")))
-        if no_recursive_e2e:
-            selected_docker_daemon = "none"
-            selected_sudo = False
-            selected_network = "bridge"
-        recursive_environment = recursive_e2e_launch_environment(
-            root,
-            docker_daemon=str(selected_docker_daemon),
-            disabled=no_recursive_e2e,
-        )
-        readiness = recursive_environment.get(RECURSIVE_E2E_ENABLED_ENV)
-        if readiness is not None:
-            if readiness == "1":
-                click.echo("Recursive E2E readiness: enabled for this DevCapsule launch.")
-            elif no_recursive_e2e:
-                click.echo(
-                    "Recursive E2E readiness: disabled for this launch; host Docker, "
-                    "host networking, and development sudo were downgraded."
-                )
-            else:
-                click.echo(
-                    "Recursive E2E readiness: unavailable because host Docker access is not authorized."
-                )
-        return run_pycharm(
-            PycharmRunOptions(
-                project=root,
-                project_mount=str(runtime["project-mount"]),
-                image=image,
-                name=container_name,
-                persistent_home=Path(state["home"]) if "home" in state else None,
-                ide_config=Path(state["pycharm/config"]) if "pycharm/config" in state else None,
-                plugins=Path(state["pycharm/plugins"]) if "pycharm/plugins" in state else None,
-                ide_system=Path(state["pycharm/system"]) if "pycharm/system" in state else None,
-                ide_log=Path(state["pycharm/log"]) if "pycharm/log" in state else None,
-                tool_cache=Path(state["pycharm/cache"]) if "pycharm/cache" in state else None,
-                docker_mode=DockerMode.host if selected_docker_daemon == "host-socket" else DockerMode.none,
-                enable_sudo=bool(selected_sudo),
-                network_mode=selected_network,
-                memory_limit_bytes=memory_limit,
-                runtime_plan=checkout_runtime_plan,
-                use_image_process=use_image_process,
-                additional_state_mounts=_additional_component_state_mounts(
-                    root,
-                    lock,
-                    state,
-                    checkout_runtime_plan,
-                ),
-                additional_environment=recursive_environment,
-                secret_environment=tuple(sorted(secret_environment.values())),
-                extra_docker_args=["--pull=never"],
-                project_state=None,
-                enable_host_browser=host_browser,
-            )
-        )
-
-    return run_project
 
 
 def _additional_component_state_mounts(
@@ -1157,68 +1270,6 @@ def _managed_binding_path(root: Path, declaration: Any) -> Path:
     if declaration.name == "home":
         return namespace / "home"
     return namespace / "components" / str(declaration.component_id) / str(declaration.slot_name)
-
-
-def _run_image_command() -> click.Command:
-    @click.command(
-        "run-image",
-        help="Run a local PyCharm-compatible image without project lock resolution.",
-    )
-    @click.argument("image")
-    @click.option("--project-mount", help="Absolute in-container project path.")
-    @click.option("--home", type=click.Path(path_type=Path))
-    @click.option("--global-settings", type=click.Path(path_type=Path))
-    @click.option("--plugins", type=click.Path(path_type=Path))
-    @click.option("--project-state", type=click.Path(path_type=Path))
-    @click.option("--docker-daemon", type=click.Choice(["none", "host-socket"]), default="none", show_default=True)
-    @click.option("--development-sudo", is_flag=True)
-    @click.option(
-        "--host-browser/--no-host-browser",
-        default=False,
-        show_default=True,
-        help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
-    )
-    @click.option("--name", "container_name")
-    @click.pass_obj
-    def run_image(
-        context: ProjectCommandContext,
-        image: str,
-        project_mount: str | None,
-        home: Path | None,
-        global_settings: Path | None,
-        plugins: Path | None,
-        project_state: Path | None,
-        docker_daemon: str,
-        development_sudo: bool,
-        host_browser: bool,
-        container_name: str | None,
-    ) -> int:
-        candidate = context.start_path()
-        try:
-            project = discover_project(candidate)
-        except ProjectConfigurationError:
-            project = candidate.expanduser().resolve()
-        if not project.is_dir():
-            raise ProjectConfigurationError(f"Project directory does not exist: {project}")
-        docker_mode = DockerMode.host if docker_daemon == "host-socket" else DockerMode.none
-        return run_pycharm(
-            PycharmRunOptions(
-                project=project,
-                project_mount=project_mount,
-                image=image,
-                name=container_name,
-                persistent_home=home,
-                global_settings=global_settings,
-                project_state=project_state,
-                plugins=plugins,
-                docker_mode=docker_mode,
-                enable_sudo=development_sudo,
-                enable_host_browser=host_browser,
-                extra_docker_args=["--pull=never"],
-            )
-        )
-
-    return run_image
 
 
 COMMAND = ProjectCommand
