@@ -4,9 +4,10 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: active 2026-08-24; v026.2 is published, v027 preparation is
-substantially complete on this branch, and the Hoare remediation then Stage 7
-follow per the directed order
+State: paused 2026-08-24 with v026.2 published and v027 preparation
+code-complete on `recursive-e2e/stage-4`; resume with the
+`project_configuration.py` Hoare remediation (directed item 3), then the
+version advance and release acts, then Stage 7 per the owner's sequencing
 
 Integration target: `main`
 
@@ -723,6 +724,23 @@ owner's call and is not decided here.
 - Resume Stage 7 persistence and deterministic cleanup after the directed
   pair, using the random run ID as the common name in every exclusive run
   resource.
+- The session's nine commits (`466a202`..`04df047` plus this pause commit)
+  are pushed on `origin/recursive-e2e/stage-4`; no pull request to `main` is
+  open yet, deliberately, because the Hoare remediation is ranked ahead of
+  the v027 release and should ride the same integration.
+- Pause-protocol gap, exercised latitude: the pause rule says the outbox
+  carries the handoff so main's registry link stays readable, but
+  `origin/recursive-e2e/outbox` (`2f9c364`) still holds deliveries that have
+  not reached `main`'s project-management intake (the promised-work audit
+  request and the non-interactive-runs item), and the outbox rule says a send
+  carries only what is being sent. Resetting the outbox would destroy the
+  pending deliveries, so the handoff was not sent; it is current on the
+  pushed workstream branch. The conflict between "reset from main, carry only
+  the new send" and "the outbox still holds unreceived mail" recurs for any
+  workstream and belongs to `workflow-improvements`.
+- Deliberately not preserved: the local checkout's `.idea/` drift and the
+  trading-research submodule pointer drift are the owner's working state and
+  were left uncommitted.
 - Prefer the retained `482c34f2…` run when its evidence is sufficient, but use
   a fresh launch for behavior that requires a running successor or the new
   `DEVCAPSULE_RUN_ID` environment contract.
