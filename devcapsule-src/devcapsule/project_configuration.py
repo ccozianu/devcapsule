@@ -43,6 +43,18 @@ RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size"}
 ConfigurationScalar = str | int | bool
 AuthorizationScalar = str | bool
 
+# The curated V1 host-access recommendation vocabulary.  Each entry maps a
+# node's canonical name to the manifest subtree that declares its
+# recommendation and to the single supported V1 value.  ``init`` asks exactly
+# these questions when it authors a manifest, and ``authorization_declarations``
+# turns present declarations into authorization nodes; they share this one
+# table so the asked question and the honored declaration cannot drift.
+CURATED_HOST_RECOMMENDATIONS: dict[str, tuple[tuple[str, ...], AuthorizationScalar]] = {
+    "docker-daemon": (("docker", "mode", "recommended"), "host-socket"),
+    "network": (("network", "mode", "recommended"), "host"),
+    "development-sudo": (("privilege", "development-sudo", "recommended"), True),
+}
+
 
 @dataclass(frozen=True)
 class RegisteredCheckout:
@@ -469,12 +481,7 @@ def authorization_declarations(
     host = manifest.get("host", {})
     if not isinstance(host, dict):
         raise ProjectConfigurationError("Project declaration host metadata must be a table.")
-    recommendation_paths: dict[str, tuple[tuple[str, ...], AuthorizationScalar]] = {
-        "docker-daemon": (("docker", "mode", "recommended"), "host-socket"),
-        "network": (("network", "mode", "recommended"), "host"),
-        "development-sudo": (("privilege", "development-sudo", "recommended"), True),
-    }
-    for name, (path, supported_value) in recommendation_paths.items():
+    for name, (path, supported_value) in CURATED_HOST_RECOMMENDATIONS.items():
         recommendation: object = host
         for key in path:
             if not isinstance(recommendation, dict) or key not in recommendation:
