@@ -65,11 +65,10 @@ from devcapsule.project_configuration import (
     render_checkout,
     render_authorization_value,
     render_toml_scalar,
-    resolve_configuration_bindings,
-    resolve_configuration_values,
     resolve_secret_bindings,
-    resolved_checkout_authorizations,
+    stale_resolution_inputs,
 )
+from devcapsule.project_operations import CheckoutRecord, resolve_checkout
 
 
 @dataclass(frozen=True)
@@ -399,120 +398,8 @@ def _config_command() -> click.Command:
     @click.command("resolve")
     @click.pass_obj
     def resolve(context: ProjectCommandContext) -> int:
-        root, manifest = manifest_for(context.start_path())
-        lock_path, lock = lock_for(root, manifest)
-        input_path, output = checkout_record_paths(manifest, root)
-        if not input_path.is_file():
-            atomic_write(input_path, render_checkout(manifest, root, {}, {}))
-            click.echo(f"Registered checkout: {input_path}")
-        checkout = load_toml(input_path)
-        if checkout.get("devcapsule-checkout-schema-version") != 1:
-            raise ProjectConfigurationError(f"{input_path} has an unsupported checkout schema version.")
-        if Path(str(checkout.get("checkout", {}).get("path", ""))).resolve() != root:
-            raise ProjectConfigurationError(f"{input_path} does not match observed checkout {root}.")
-        image = lock.get("image", {}).get("reference")
-        component = lock.get("components", {}).get("interactive-surface")
-        has_formation = isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict)
-        if component != "pycharm" or (not image and not has_formation):
-            raise ProjectConfigurationError(
-                "The V1 slice requires a lock selecting either a completed PyCharm image or PyCharm formation inputs."
-            )
-        state = checkout.get("state", {}).get("adopted", {})
-        host = checkout.get("host", {})
-        values, runtime_effects = resolve_configuration_values(manifest, checkout)
-        bindings = resolve_configuration_bindings(lock, checkout)
-        secret_bindings = resolve_secret_bindings(lock, checkout)
-        overlap = sorted(set(state) & set(bindings))
-        if overlap:
-            raise ProjectConfigurationError(
-                "State resources cannot be both adopted and configuration-bound: "
-                + ", ".join(overlap)
-                + "."
-            )
-        authorizations = resolved_checkout_authorizations(manifest, lock, checkout)
-        lines = [
-            "devcapsule-resolved-schema-version = 1",
-            "",
-            "[sources]",
-            f"manifest = {quote_toml(canonical_digest(manifest))}",
-            f"platform-lock = {quote_toml(canonical_digest(lock))}",
-            f"checkout-input = {quote_toml(canonical_digest(checkout))}",
-            'workstation-config = "absent"',
-            "",
-            "[runtime]",
-            f"component = {quote_toml(str(component))}",
-            f"project-mount = {quote_toml(str(manifest['project']['mount']))}",
-        ]
-        lines.extend(
-            f"{key} = {render_toml_scalar(value)}" for key, value in sorted(runtime_effects.items())
-        )
-        if image:
-            lines.append(f"image = {quote_toml(str(image))}")
-        if values:
-            lines.extend(["", "[configuration.values]"])
-            lines.extend(
-                f"{quote_toml(key)} = {render_toml_scalar(value)}"
-                for key, value in sorted(values.items())
-            )
-        if state:
-            lines.extend(["", "[state.adopted]"])
-            lines.extend(
-                f"{quote_toml(str(key))} = {quote_toml(str(value))}" for key, value in sorted(state.items())
-            )
-        if bindings:
-            lines.extend(["", "[state.bindings]"])
-            lines.extend(
-                f"{quote_toml(key)} = {quote_toml(value)}"
-                for key, value in sorted(bindings.items())
-            )
-        if secret_bindings:
-            lines.extend(["", "[secret.bindings.host-environment]"])
-            lines.extend(
-                f"{quote_toml(key)} = {quote_toml(value)}"
-                for key, value in sorted(secret_bindings.items())
-            )
-        if host:
-            lines.extend(["", "[host]"])
-            for key, value in sorted(host.items()):
-                rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
-                lines.append(f"{key} = {rendered}")
-        runtime_authorizations = {
-            key: value for key, value in authorizations.items() if key != "base-image"
-        }
-        if runtime_authorizations:
-            lines.extend(["", "[authorization]"])
-            lines.extend(
-                f"{key} = {render_toml_scalar(value)}"
-                for key, value in sorted(runtime_authorizations.items())
-            )
-        authorized_base = authorizations.get("base-image")
-        if authorized_base is not None:
-            if not isinstance(authorized_base, str):
-                raise ProjectConfigurationError("Resolved base-image authorization must be a string.")
-            base_selection = authorized_base_selection(lock, checkout)
-            if base_selection is None:  # pragma: no cover - authorized_base establishes it.
-                raise ProjectConfigurationError("Resolved base-image authorization is missing.")
-            if base_selection.local_image_identity is not None:
-                local_base = required_local_image(base_selection.reference)
-                validate_base_image(
-                    local_base,
-                    platform=str(lock["platform"]),
-                    expected_identity=base_selection.local_image_identity,
-                )
-            lines.extend(
-                [
-                    "",
-                    "[authorization.base-image]",
-                    f"reference = {quote_toml(base_selection.reference)}",
-                    f"lock-digest = {quote_toml(canonical_digest(lock))}",
-                ]
-            )
-            if base_selection.local_image_identity is not None:
-                lines.append(
-                    f"image-id = {quote_toml(base_selection.local_image_identity)}"
-                )
-        atomic_write(output, "\n".join(lines) + "\n")
-        click.echo(f"Resolved {output} from {lock_path.name}")
+        report = resolve_checkout(context.start_path())
+        click.echo(report.render())
         return 0
 
     group.add_command(_config_list_command())
@@ -745,15 +632,9 @@ def _configuration_resolution_row(
         )
     if resolved.get("status") == "unresolved":
         return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path))
-    expected = {
-        "manifest": canonical_digest(manifest),
-        "platform-lock": canonical_digest(lock),
-        "checkout-input": canonical_digest(checkout),
-    }
-    actual = resolved.get("sources", {})
-    if not isinstance(actual, dict):
+    if not isinstance(resolved.get("sources", {}), dict):
         return ConfigurationListRow("resolution", "generated", "invalid", "sources is not a table")
-    stale = [name for name, digest in expected.items() if actual.get(name) != digest]
+    stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
     if stale:
         return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale))
     return ConfigurationListRow("resolution", "generated", "fresh", str(resolution_path))
@@ -777,38 +658,11 @@ def _config_set_command() -> click.Command:
     def set_value(context: ProjectCommandContext, name: str, value: str) -> int:
         root, manifest = manifest_for(context.start_path())
         normalized = normalize_configuration_value(manifest, name, value)
-        input_path, _output_path = checkout_record_paths(manifest, root)
-        checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
-        recorded_path = checkout.get("checkout", {}).get("path")
-        if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
-            raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
-        state = dict(checkout.get("state", {}).get("adopted", {}))
-        host = dict(checkout.get("host", {}))
-        authorization = dict(checkout.get("authorization", {}))
-        configuration = checkout.get("configuration", {})
-        if not isinstance(configuration, dict):
-            raise ProjectConfigurationError("Checkout configuration must be a table.")
-        existing_values = configuration.get("values", {})
-        if not isinstance(existing_values, dict):
-            raise ProjectConfigurationError("Checkout configuration.values must be a table.")
-        values = dict(existing_values)
-        values[name] = normalized
-        bindings = _checkout_host_directory_bindings(checkout)
-        atomic_write(
-            input_path,
-            render_checkout(
-                manifest,
-                root,
-                state,
-                host,
-                authorization,
-                values,
-                bindings,
-                _checkout_host_environment_bindings(checkout),
-            ),
-        )
+        record = CheckoutRecord(manifest, root)
+        record.values[name] = normalized
+        record.write()
         click.echo(f"Set {name} = {render_toml_scalar(normalized)}")
-        click.echo(f"Checkout input: {input_path}")
+        click.echo(f"Checkout input: {record.input_path}")
         click.echo("Run 'devcapsule project config resolve' before launch.")
         return 0
 
@@ -845,21 +699,11 @@ def _config_bind_command() -> click.Command:
         declarations = configuration_binding_declarations(lock, source=str(lock_path))
         secret_declarations = component_secret_inputs(lock, source=str(lock_path))
 
-        input_path, _output_path = checkout_record_paths(manifest, root)
-        checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
-        recorded_path = checkout.get("checkout", {}).get("path")
-        if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
-            raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
-        state = dict(checkout.get("state", {}).get("adopted", {}))
-        if name in state:
+        record = CheckoutRecord(manifest, root)
+        if name in record.state:
             raise ProjectConfigurationError(
                 f"State resource {name!r} was already adopted; remove that transitional entry before binding it."
             )
-        host = dict(checkout.get("host", {}))
-        authorization = dict(checkout.get("authorization", {}))
-        values = _checkout_values(checkout)
-        bindings = _checkout_host_directory_bindings(checkout)
-        secret_bindings = _checkout_host_environment_bindings(checkout)
         if directory_source is not None:
             declaration = declarations.get(name)
             if declaration is None:
@@ -873,7 +717,7 @@ def _config_bind_command() -> click.Command:
                 raise ProjectConfigurationError(
                     f"Binding source is not an existing directory: {source}"
                 )
-            bindings[name] = str(source)
+            record.directory_bindings[name] = str(source)
         else:
             secret = secret_declarations.get(name)
             if secret is None:
@@ -887,20 +731,9 @@ def _config_bind_command() -> click.Command:
                     f"Secret input {name!r} must use host environment variable "
                     f"{secret.environment_variable!r}."
                 )
-            secret_bindings[name] = environment_source
-        atomic_write(
-            input_path,
-            render_checkout(
-                manifest,
-                root,
-                state,
-                host,
-                authorization,
-                values,
-                bindings,
-                secret_bindings,
-            ),
-        )
+            record.environment_bindings[name] = environment_source
+        record.write()
+        input_path = record.input_path
         if environment_source is not None:
             click.echo(
                 f"WARNING: {environment_source} will be visible to every process in the capsule "
@@ -926,52 +759,6 @@ def _config_bind_command() -> click.Command:
         return 0
 
     return bind
-
-
-def _checkout_values(checkout: dict[str, Any]) -> dict[str, Any]:
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        raise ProjectConfigurationError("Checkout configuration must be a table.")
-    values = configuration.get("values", {})
-    if not isinstance(values, dict):
-        raise ProjectConfigurationError("Checkout configuration.values must be a table.")
-    return dict(values)
-
-
-def _checkout_host_directory_bindings(checkout: dict[str, Any]) -> dict[str, str]:
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        raise ProjectConfigurationError("Checkout configuration must be a table.")
-    bindings = configuration.get("bindings", {})
-    if not isinstance(bindings, dict):
-        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
-    host_directories = bindings.get("host-directory", {})
-    if not isinstance(host_directories, dict) or not all(
-        isinstance(name, str) and isinstance(source, str)
-        for name, source in host_directories.items()
-    ):
-        raise ProjectConfigurationError(
-            "Checkout configuration.bindings.host-directory must contain path strings."
-        )
-    return dict(host_directories)
-
-
-def _checkout_host_environment_bindings(checkout: dict[str, Any]) -> dict[str, str]:
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        raise ProjectConfigurationError("Checkout configuration must be a table.")
-    bindings = configuration.get("bindings", {})
-    if not isinstance(bindings, dict):
-        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
-    host_environment = bindings.get("host-environment", {})
-    if not isinstance(host_environment, dict) or not all(
-        isinstance(name, str) and isinstance(source, str)
-        for name, source in host_environment.items()
-    ):
-        raise ProjectConfigurationError(
-            "Checkout configuration.bindings.host-environment must contain environment names."
-        )
-    return dict(host_environment)
 
 
 def _config_authorize_command() -> click.Command:
@@ -1041,41 +828,21 @@ def _config_authorize_command() -> click.Command:
         else:
             normalized = normalize_authorization_value(declaration, value)
 
-        input_path, _output_path = checkout_record_paths(manifest, root)
-        checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
-        recorded_path = checkout.get("checkout", {}).get("path")
-        if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
-            raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
-        state = dict(checkout.get("state", {}).get("adopted", {}))
-        host = dict(checkout.get("host", {}))
-        authorization = dict(checkout.get("authorization", {}))
-        values = _checkout_values(checkout)
-        bindings = _checkout_host_directory_bindings(checkout)
+        record = CheckoutRecord(manifest, root)
+        input_path = record.input_path
         if name == "base-image":
-            authorization[name] = {
+            record.authorization[name] = {
                 "reference": normalized,
                 "lock-digest": declaration.recommendation_digest,
             }
             if local_base_identity is not None:
-                authorization[name]["image-id"] = local_base_identity
+                record.authorization[name]["image-id"] = local_base_identity
         else:
-            authorization[name] = {
+            record.authorization[name] = {
                 "value": normalized,
                 "recommendation-digest": declaration.recommendation_digest,
             }
-        atomic_write(
-            input_path,
-            render_checkout(
-                manifest,
-                root,
-                state,
-                host,
-                authorization,
-                values,
-                bindings,
-                _checkout_host_environment_bindings(checkout),
-            ),
-        )
+        record.write()
         authorized_value = render_authorization_value(normalized)
         if local_base_identity is None and declaration.display_value is not None:
             authorized_value = declaration.display_value
@@ -1108,16 +875,8 @@ def _authorize_all_recommended(
     if not declarations:
         raise ProjectConfigurationError("This project and lock declare no authorization recommendations.")
 
-    input_path, _output_path = checkout_record_paths(manifest, root)
-    checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
-    recorded_path = checkout.get("checkout", {}).get("path")
-    if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
-        raise ProjectConfigurationError(f"{input_path} belongs to another checkout: {recorded_path}")
-    state = dict(checkout.get("state", {}).get("adopted", {}))
-    host = dict(checkout.get("host", {}))
-    authorization = dict(checkout.get("authorization", {}))
-    values = _checkout_values(checkout)
-    bindings = _checkout_host_directory_bindings(checkout)
+    record = CheckoutRecord(manifest, root)
+    input_path = record.input_path
 
     click.echo(f"The following authorizations will be granted for checkout {root}:")
     for name, declaration in sorted(declarations.items()):
@@ -1143,28 +902,16 @@ def _authorize_all_recommended(
 
     for name, declaration in declarations.items():
         if name == "base-image":
-            authorization[name] = {
+            record.authorization[name] = {
                 "reference": declaration.recommended_value,
                 "lock-digest": declaration.recommendation_digest,
             }
         else:
-            authorization[name] = {
+            record.authorization[name] = {
                 "value": declaration.recommended_value,
                 "recommendation-digest": declaration.recommendation_digest,
             }
-    atomic_write(
-        input_path,
-        render_checkout(
-            manifest,
-            root,
-            state,
-            host,
-            authorization,
-            values,
-            bindings,
-            _checkout_host_environment_bindings(checkout),
-        ),
-    )
+    record.write()
     click.echo(f"Authorized {len(declarations)} recommendations for this checkout.")
     click.echo(f"Checkout input: {input_path}")
     click.echo("Run 'devcapsule project config resolve' before materialization or launch.")
@@ -1195,34 +942,13 @@ def _state_command() -> click.Command:
         source = source.expanduser().resolve()
         if not source.is_dir():
             raise ProjectConfigurationError(f"State source is not a directory: {source}")
-        path, _resolved = checkout_record_paths(manifest, root)
-        checkout: dict[str, Any] = load_toml(path) if path.is_file() else {}
-        recorded_path = checkout.get("checkout", {}).get("path")
-        if recorded_path and Path(recorded_path).resolve() != root:
-            raise ProjectConfigurationError(f"{path} belongs to another checkout: {recorded_path}")
-        state = dict(checkout.get("state", {}).get("adopted", {}))
-        host = dict(checkout.get("host", {}))
-        authorization = dict(checkout.get("authorization", {}))
-        values = _checkout_values(checkout)
-        bindings = _checkout_host_directory_bindings(checkout)
-        if slot in bindings:
+        record = CheckoutRecord(manifest, root)
+        if slot in record.directory_bindings:
             raise ProjectConfigurationError(
                 f"State resource {slot!r} is already configuration-bound; it cannot also be adopted."
             )
-        state[slot] = str(source)
-        atomic_write(
-            path,
-            render_checkout(
-                manifest,
-                root,
-                state,
-                host,
-                authorization,
-                values,
-                bindings,
-                _checkout_host_environment_bindings(checkout),
-            ),
-        )
+        record.state[slot] = str(source)
+        record.write()
         click.echo(f"Adopted {slot}: {source}")
         click.echo("Run 'devcapsule project config resolve' before launch.")
         return 0
@@ -1267,15 +993,7 @@ def _run_command() -> click.Command:
             )
         checkout = load_toml(input_path)
         resolved = load_toml(output_path)
-        expected = {
-            "manifest": canonical_digest(manifest),
-            "platform-lock": canonical_digest(lock),
-            "checkout-input": canonical_digest(checkout),
-        }
-        actual = resolved.get("sources", {})
-        if not isinstance(actual, dict):
-            raise ProjectConfigurationError("Generated resolution sources must be a table.")
-        stale = [name for name, digest in expected.items() if actual.get(name) != digest]
+        stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
         if stale and not force:
             raise ProjectConfigurationError(
                 f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."

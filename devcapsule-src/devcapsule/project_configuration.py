@@ -962,6 +962,40 @@ def authorized_base_reference(
     return selection.reference if selection is not None else None
 
 
+def resolution_source_digests(
+    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
+) -> dict[str, str]:
+    """The exact source digests a fresh generated resolution must record."""
+
+    return {
+        "manifest": canonical_digest(manifest),
+        "platform-lock": canonical_digest(lock),
+        "checkout-input": canonical_digest(checkout),
+    }
+
+
+def stale_resolution_inputs(
+    manifest: Mapping[str, Any],
+    lock: Mapping[str, Any],
+    checkout: Mapping[str, Any],
+    resolution: Mapping[str, Any],
+) -> tuple[str, ...]:
+    """Name exactly which generated-resolution inputs have drifted.
+
+    This is the single staleness policy for the resolution layer: drift is
+    detected here — never by a loader refusing to read an artifact — and the
+    remedy is always ``devcapsule project config resolve``.  Every consumer
+    (``config list``, ``run``, ``fresh_resolved_project``) asks this one
+    function so the policy cannot fork.
+    """
+
+    actual = resolution.get("sources", {})
+    if not isinstance(actual, dict):
+        raise ProjectConfigurationError("Generated resolution sources must be a table.")
+    expected = resolution_source_digests(manifest, lock, checkout)
+    return tuple(name for name, digest in expected.items() if actual.get(name) != digest)
+
+
 def fresh_resolved_project(project: Path) -> ResolvedProject:
     """Load one checkout and require its generated resolution to be fresh."""
 
@@ -974,13 +1008,7 @@ def fresh_resolved_project(project: Path) -> ResolvedProject:
         )
     checkout = load_toml(checkout_path)
     resolution = load_toml(resolution_path)
-    expected = {
-        "manifest": canonical_digest(manifest),
-        "platform-lock": canonical_digest(lock),
-        "checkout-input": canonical_digest(checkout),
-    }
-    actual = resolution.get("sources", {})
-    stale = [name for name, digest in expected.items() if actual.get(name) != digest]
+    stale = stale_resolution_inputs(manifest, lock, checkout, resolution)
     if stale:
         raise ProjectConfigurationError(
             f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."

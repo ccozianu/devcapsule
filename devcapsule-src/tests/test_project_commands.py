@@ -1021,7 +1021,7 @@ def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id
         }
 
         with patch(
-            "devcapsule.commands.project.required_local_image",
+            "devcapsule.project_operations.required_local_image",
             return_value=local_base,
         ) as inspect_resolved_local:
             assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
