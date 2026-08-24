@@ -384,6 +384,7 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
             assert cli.main(
                 [
                     "project", "--path", str(project), "run",
+                    "--set", "runtime.memory-limit", "4GiB",
                     "--", "--cap-add", "SYS_PTRACE",
                 ]
             ) == 0
@@ -391,7 +392,8 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
     command = run.call_args.args[0]
     assert "local/pycharm:dogfood" in command
     assert command[command.index("--network") + 1] == "bridge"
-    assert command[command.index("--memory") + 1] == str(8 * 1024**3)
+    # The run-once --set answer overrides the resolved 8GiB for this launch.
+    assert command[command.index("--memory") + 1] == str(4 * 1024**3)
     # The tail after '--' is handed verbatim to docker run, in the options
     # region before the image.
     assert command[command.index("--cap-add") + 1] == "SYS_PTRACE"

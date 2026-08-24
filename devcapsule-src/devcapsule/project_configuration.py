@@ -53,6 +53,34 @@ CURATED_HOST_RECOMMENDATIONS: dict[str, tuple[tuple[str, ...], AuthorizationScal
     "docker-daemon": (("docker", "mode", "recommended"), "host-socket"),
     "network": (("network", "mode", "recommended"), "host"),
     "development-sudo": (("privilege", "development-sudo", "recommended"), True),
+    "host-browser": (("browser", "host-open", "recommended"), True),
+}
+
+# Host capabilities that exist as authorization nodes on every project,
+# whether or not the project recommends them. Settled by the product owner on
+# 2026-08-24: host-browser, docker-daemon, and development-sudo are proper
+# configuration nodes under authorize. These are developer-owned choices —
+# "Denial is the default. The developer may deny it, allow it once, allow it
+# for this checkout" — so their availability cannot depend on the project's
+# advice; a recommendation merely attaches the project's justification and
+# rebinds the answer to it. Host networking is deliberately absent: its
+# run-once form is the raw docker passthrough, and its persistent relaxation
+# remains a project-recommended decision.
+WORKSTATION_CAPABILITY_DEFAULTS: dict[str, tuple[AuthorizationScalar, str]] = {
+    "docker-daemon": (
+        "host-socket",
+        "Expose the host Docker daemon socket to the capsule; this permits broad "
+        "control of the host.",
+    ),
+    "development-sudo": (
+        True,
+        "Enable the declared development-sudo behavior inside the capsule.",
+    ),
+    "host-browser": (
+        True,
+        "Open HTTP(S) links from the capsule in the physical host's default browser "
+        "through the URL-only broker.",
+    ),
 }
 
 
@@ -97,6 +125,9 @@ class AuthorizationDeclaration:
     recommendation_digest: str
     description: str
     display_value: str | None = None
+    # False for workstation-capability defaults the project did not recommend;
+    # bulk authorization of "everything recommended" must not include them.
+    project_recommended: bool = True
 
 
 @dataclass(frozen=True)
@@ -510,6 +541,21 @@ def authorization_declarations(
             recommended_value=supported_value,
             recommendation_digest=canonical_digest({"name": name, "recommendation": recommendation}),
             description=justification,
+        )
+    for name, (supported_value, description) in WORKSTATION_CAPABILITY_DEFAULTS.items():
+        if name in declarations:
+            continue
+        # The digest is a stable constant distinct from every recommendation
+        # digest, so a later project recommendation correctly stales the
+        # workstation-default answer: the question changed, so it is re-asked.
+        declarations[name] = AuthorizationDeclaration(
+            name=name,
+            recommended_value=supported_value,
+            recommendation_digest=canonical_digest(
+                {"name": name, "recommendation": "workstation-default"}
+            ),
+            description=description,
+            project_recommended=False,
         )
     return declarations
 

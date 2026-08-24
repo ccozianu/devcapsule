@@ -359,12 +359,29 @@ devcapsule project config unset      NAME
   authoring at `init`; a consumer authorizing an already-declared
   recommendation never supplies one, because an answer's justification lives
   with the question in the manifest.
-- `init` (and, when its regrammar lands, `run` for run-once choices) carries
-  the same spellings through repeatable carrier options:
-  `--set NAME VALUE`, `--bind NAME PROVIDER:VALUE`,
+- `init` and `run` carry the same spellings through repeatable carrier
+  options: `--set NAME VALUE`, `--bind NAME PROVIDER:VALUE`,
   `--authorize NAME VALUE [JUSTIFICATION]`. The scope of an answer comes
   from the command: `init` persists into the owning artifact, `run` applies
-  once.
+  once, echoes the deviation, and writes nothing.
+- `run [RUN-OPTIONS] -- DOCKER-RUN-OPTIONS` hands everything after the first
+  standalone `--` verbatim to `docker run` (settled 2026-08-24): DevCapsule
+  stops modeling docker's option surface; raw options are conspicuously
+  reported as a deviation from the resolved plan. The bespoke run flags
+  (`--docker-daemon`, `--development-sudo`, `--host-browser`) are dropped
+  from `run`; `run-image` keeps its dedicated flags because it deliberately
+  reads no lock and therefore has no node registry.
+- `host-browser`, `docker-daemon`, and `development-sudo` are proper
+  authorization nodes (settled 2026-08-24) that exist on every project as
+  workstation capabilities: denial stays the default, a project
+  recommendation merely attaches its justification and rebinds the answer's
+  digest, and `--all-recommended` never includes an unrecommended
+  workstation capability. `host-browser` gains the recommendation path
+  `[host.browser.host-open.recommended]` and is now persistable, closing the
+  gap where it existed only as a per-launch flag. Host networking is
+  deliberately not a workstation default: its run-once form is the docker
+  passthrough, and its persistent relaxation remains a project-recommended
+  decision.
 - Uniqueness of node names is enforced by construction in the node registry
   (`devcapsule/configuration_nodes.py`); a name that means two things would
   make the grammar and the prompt ambiguous.

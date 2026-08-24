@@ -85,6 +85,7 @@ from devcapsule.project_configuration import (
     lock_for,
     manifest_for,
     named_checkout_record_paths,
+    memory_size_bytes,
     normalize_configuration_value,
     normalize_authorization_value,
     registered_checkouts,
@@ -730,11 +731,18 @@ class RecursiveE2EGroup(Group):
         }
 
 
+# The authorization nodes whose run-once answers feed the launch plan; every
+# other authorization (base-image, acquisitions) is inherently persistent.
+_RUN_ONCE_AUTHORIZATIONS = ("docker-daemon", "network", "development-sudo", "host-browser")
+
+
 class ProjectRunCommand(Command):
     name = "run"
     help = (
         "Run the project from its platform lock and developer-owned resolution. "
-        "Everything after '--' is handed verbatim to 'docker run'."
+        "Run-once answers use the config grammar (--authorize NAME VALUE, "
+        "--set NAME VALUE) and are never persisted; everything after '--' is "
+        "handed verbatim to 'docker run'."
     )
     passthrough_dest = "docker_options"
     passthrough_metavar = "DOCKER-RUN-OPTIONS"
@@ -744,22 +752,13 @@ class ProjectRunCommand(Command):
         parser.add_argument(
             "--force", action="store_true", help="Use stale generated resolution once, with a warning."
         )
-        parser.add_argument("--docker-daemon", choices=["none", "host-socket"])
-        parser.add_argument(
-            "--development-sudo", action="store_const", const=True, default=None
-        )
-        parser.add_argument(
-            "--host-browser",
-            action=argparse.BooleanOptionalAction,
-            default=False,
-            help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
-        )
         parser.add_argument(
             "--no-recursive-e2e",
             action="store_true",
             help="Disable DevCapsule recursive-E2E readiness for this launch.",
         )
         parser.add_argument("--name", dest="container_name")
+        add_carrier_options(parser, families=("set", "authorize"))
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
@@ -830,17 +829,29 @@ class ProjectRunCommand(Command):
             )
         host = resolved.get("host", {})
         authorization = resolved.get("authorization", {})
+        overrides, memory_override = _run_once_answers(arguments, manifest, lock)
+        if memory_override is not None:
+            memory_limit = memory_override
         selected_docker_daemon = (
-            arguments.docker_daemon
+            overrides.get("docker-daemon")
             or authorization.get("docker-daemon")
             or host.get("docker-daemon", "none")
         )
-        selected_sudo = arguments.development_sudo
-        if selected_sudo is None:
-            selected_sudo = bool(
-                authorization.get("development-sudo", host.get("development-sudo", False))
+        selected_sudo = bool(
+            overrides.get(
+                "development-sudo",
+                authorization.get("development-sudo", host.get("development-sudo", False)),
             )
-        selected_network = str(authorization.get("network", host.get("network", "bridge")))
+        )
+        selected_network = str(
+            overrides.get("network", authorization.get("network", host.get("network", "bridge")))
+        )
+        selected_host_browser = bool(
+            overrides.get(
+                "host-browser",
+                authorization.get("host-browser", host.get("host-browser", False)),
+            )
+        )
         if arguments.no_recursive_e2e:
             selected_docker_daemon = "none"
             selected_sudo = False
@@ -900,9 +911,58 @@ class ProjectRunCommand(Command):
                 secret_environment=tuple(sorted(secret_environment.values())),
                 extra_docker_args=["--pull=never", *docker_options],
                 project_state=None,
-                enable_host_browser=arguments.host_browser,
+                enable_host_browser=selected_host_browser,
             )
         )
+
+
+def _run_once_answers(
+    arguments: argparse.Namespace,
+    manifest: dict[str, Any],
+    lock: dict[str, Any],
+) -> tuple[dict[str, Any], int | None]:
+    """Validate run-once --authorize/--set answers and derive their launch effects.
+
+    Run-once answers use the same node names and value spellings as the
+    persistent config family, are applied to this launch only, and are never
+    written anywhere.  Each accepted answer is echoed conspicuously, because a
+    run-once choice is a deliberate deviation from the recorded resolution.
+    """
+
+    overrides: dict[str, Any] = {}
+    memory_override: int | None = None
+    for answer in carrier_answers(arguments, families=("set", "authorize")):
+        if answer.justification is not None:
+            raise ProjectConfigurationError(
+                "A justification is recorded when the project owner authors the recommendation "
+                "at 'devcapsule project init'; it does not apply to a run-once answer."
+            )
+        if answer.family == "authorize":
+            declarations = authorization_declarations(manifest, lock)
+            declaration = declarations.get(answer.name)
+            if declaration is None or answer.name not in _RUN_ONCE_AUTHORIZATIONS:
+                available = ", ".join(
+                    name for name in _RUN_ONCE_AUTHORIZATIONS if name in declarations
+                )
+                raise ProjectConfigurationError(
+                    f"Authorization {answer.name!r} cannot be answered run-once; "
+                    f"run-once authorizations: {available}."
+                )
+            overrides[answer.name] = normalize_authorization_value(declaration, answer.value)
+            print(
+                f"Run-once authorization: {answer.name} = {answer.value}", file=sys.stderr
+            )
+        else:
+            normalized = normalize_configuration_value(manifest, answer.name, answer.value)
+            declaration_metadata = configuration_value_declarations(manifest)[answer.name]
+            if declaration_metadata.get("runtime-effect") != "docker.memory-limit":
+                raise ProjectConfigurationError(
+                    f"Configuration value {answer.name!r} has no run-once launch effect; "
+                    "record it persistently with 'devcapsule project config set'."
+                )
+            memory_override = memory_size_bytes(str(normalized))
+            print(f"Run-once value: {answer.name} = {normalized}", file=sys.stderr)
+    return overrides, memory_override
 
 
 class ProjectRunImageCommand(Command):
@@ -1127,7 +1187,14 @@ def _configuration_authorization_rows(
         recommended = _authorization_display_value(declaration)
         record = authorization.get(name)
         if record is None:
-            status = "missing-required" if name == "base-image" else "missing-recommended"
+            if name == "base-image":
+                status = "missing-required"
+            elif declaration.project_recommended:
+                status = "missing-recommended"
+            else:
+                # A workstation capability nobody asked for yet: available to
+                # authorize, not a gap the project expects filled.
+                status = "available"
             rows.append(ConfigurationListRow("authorization", name, status, recommended))
             continue
         if not isinstance(record, dict):
@@ -1207,6 +1274,14 @@ def _authorize_all_recommended(
     manifest: dict[str, Any],
     declarations: dict[str, AuthorizationDeclaration],
 ) -> int:
+    # Bulk authorization covers what the project and lock actually recommend;
+    # workstation-capability defaults are individual decisions and must never
+    # ride along in an "authorize everything recommended" stroke.
+    declarations = {
+        name: declaration
+        for name, declaration in declarations.items()
+        if declaration.project_recommended
+    }
     if not declarations:
         raise ProjectConfigurationError("This project and lock declare no authorization recommendations.")
 

@@ -345,9 +345,9 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
     project = tmp_path / "interactive-project"
     project.mkdir()
     prompts = io.StringIO()
-    # creator; need; three recommendations (Enter = none); base (Enter = yes).
+    # creator; need; four recommendations (Enter = none); base (Enter = yes).
     answers = io.StringIO(
-        "https://github.com/example\npython python-ide\n\n\n\n\n"
+        "https://github.com/example\npython python-ide\n\n\n\n\n\n"
     )
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         report = initialize_project(
@@ -369,7 +369,7 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
 def test_interactive_decline_of_the_base_is_a_clean_failure(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
-    answers = io.StringIO("https://github.com/example\npython-ide\n\n\n\nno\n")
+    answers = io.StringIO("https://github.com/example\npython-ide\n\n\n\n\nno\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with pytest.raises(ProjectConfigurationError, match="declined"):
             initialize_project(

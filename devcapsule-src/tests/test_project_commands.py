@@ -528,9 +528,12 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                         "--path",
                         str(project),
                         "run",
-                        "--docker-daemon",
+                        "--authorize",
+                        "docker-daemon",
                         "host-socket",
-                        "--host-browser",
+                        "--authorize",
+                        "host-browser",
+                        "true",
                     ]
                 )
                 == 0
@@ -585,9 +588,12 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                         "--path",
                         str(project),
                         "run",
-                        "--docker-daemon",
+                        "--authorize",
+                        "docker-daemon",
                         "host-socket",
-                        "--development-sudo",
+                        "--authorize",
+                        "development-sudo",
+                        "true",
                         "--no-recursive-e2e",
                     ]
                 )
@@ -601,6 +607,65 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         assert downgraded.additional_environment == {"DEVCAPSULE_RECURSIVE_E2E": "0"}
         assert downgraded.enable_host_browser is False
         assert "were downgraded" in capsys.readouterr().out
+
+
+def test_host_browser_authorization_persists_and_drives_run(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        # The manifest recommends nothing: host-browser is a workstation
+        # capability the developer may authorize without project advice.
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "host-browser",
+                    "true",
+                ]
+            )
+            == 0
+        )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        with patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch:
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+    assert launch.call_args.args[0].enable_host_browser is True
+
+
+def test_run_once_authorization_rejects_unknown_and_persistent_nodes(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "run",
+                    "--authorize",
+                    "quantum-tunnel",
+                    "open",
+                ]
+            )
+            == 2
+        )
+    message = capsys.readouterr().err
+    assert "cannot be answered run-once" in message
+    assert "docker-daemon" in message
 
 
 def test_project_run_does_not_launch_when_environment_realization_fails(
