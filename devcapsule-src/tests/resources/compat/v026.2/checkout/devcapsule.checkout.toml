@@ -1,0 +1,8 @@
+devcapsule-checkout-schema-version = 1
+
+[project]
+creator = "mailto:compat-fixture@example.test"
+slug = "project"
+
+[checkout]
+path = "@CHECKOUT_PATH@"

@@ -1145,7 +1145,7 @@ def test_project_config_authorize_all_recommended_previews_and_requires_lowercas
 
         with (
             patch("devcapsule.commands.project.sys.stdin") as terminal,
-            patch("devcapsule.commands.project.readchar.readkey", return_value="y") as readkey,
+            patch("devcapsule.commands.project._confirmation_key", return_value="y") as readkey,
         ):
             terminal.isatty.return_value = True
             assert (
@@ -1204,7 +1204,7 @@ def test_project_config_authorize_all_recommended_cancels_without_lowercase_y(
         capsys.readouterr()
         with (
             patch("devcapsule.commands.project.sys.stdin") as terminal,
-            patch("devcapsule.commands.project.readchar.readkey", return_value=key),
+            patch("devcapsule.commands.project._confirmation_key", return_value=key),
         ):
             terminal.isatty.return_value = True
             assert (
@@ -1238,7 +1238,7 @@ def test_project_config_authorize_all_recommended_rejects_noninteractive_input(
         capsys.readouterr()
         with (
             patch("devcapsule.commands.project.sys.stdin") as terminal,
-            patch("devcapsule.commands.project.readchar.readkey") as readkey,
+            patch("devcapsule.commands.project._confirmation_key") as readkey,
         ):
             terminal.isatty.return_value = False
             assert (

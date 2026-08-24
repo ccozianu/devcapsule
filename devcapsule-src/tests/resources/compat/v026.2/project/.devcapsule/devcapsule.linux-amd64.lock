@@ -1,0 +1,10 @@
+devcapsule-lock-format-version = 1
+resolution-matrix-version = "dogfood-v1"
+manifest-digest = "0b4e78e8177543228172e51c89dc555bd57fb08799fe1c3e6741867184f79dbf"
+platform = "linux-amd64"
+
+[image]
+reference = "local/pycharm:compat-fixture"
+
+[components]
+interactive-surface = "pycharm"

@@ -126,7 +126,7 @@ Because PyCharm runs inside a container, enable the narrow host-browser bridge
 for a launch that needs browser-based sign-in:
 
 ```bash
-devcapsule project run --host-browser
+devcapsule project run --authorize host-browser true
 ```
 
 The bridge accepts only absolute HTTP(S) URLs and opens them in the physical
@@ -149,8 +149,9 @@ If login fails, try these in order:
 
 Do not broaden Docker access casually just to make login work. Browser
 bridging is independent of Docker and networking authorization; use the
-dedicated `--host-browser` option rather than adding a session-bus mount or a
-general host command bridge.
+dedicated `host-browser` authorization (run-once as above, or persistently
+with `devcapsule project config authorize host-browser true`) rather than
+adding a session-bus mount or a general host command bridge.
 
 ## What to ask the future ChatGPT development agent to do
 

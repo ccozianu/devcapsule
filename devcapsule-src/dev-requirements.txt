@@ -20,7 +20,6 @@ charset-normalizer==3.4.9
     # via requests
 click==8.4.2
     # via
-    #   devcapsule (pyproject.toml)
     #   genbadge
     #   pip-tools
 colorlog==6.10.1
@@ -95,8 +94,6 @@ pytest-cov==7.1.0
 python-discovery==1.4.3
     # via virtualenv
 python-on-whales==0.81.0
-    # via devcapsule (pyproject.toml)
-readchar==4.2.2
     # via devcapsule (pyproject.toml)
 requests==2.34.2
     # via genbadge

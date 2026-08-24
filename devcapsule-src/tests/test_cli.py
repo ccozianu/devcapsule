@@ -826,7 +826,8 @@ def test_vscode_with_claude_configuration_identity() -> None:
 def test_vscode_with_claude_run_fails_explicitly(capsys) -> None:
     result = cli.main(["vscode_with_claude", "run"])
 
-    assert result == 1
+    # Every CLI failure exits 2 since the v027 boundary unified error handling.
+    assert result == 2
     assert "not implemented yet" in capsys.readouterr().err
 
 

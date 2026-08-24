@@ -1,0 +1,12 @@
+devcapsule-resolved-schema-version = 1
+
+[sources]
+manifest = "0b4e78e8177543228172e51c89dc555bd57fb08799fe1c3e6741867184f79dbf"
+platform-lock = "7d79f545ef9ec556783c803167a94c9a0eb45a74ed53badd960d7bb2c276c6c7"
+checkout-input = "@CHECKOUT_INPUT_DIGEST@"
+workstation-config = "absent"
+
+[runtime]
+component = "pycharm"
+project-mount = "/workspace/project"
+image = "local/pycharm:compat-fixture"

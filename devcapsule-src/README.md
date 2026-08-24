@@ -507,15 +507,15 @@ bound to developer-owned storage. The initial provider accepts only an
 existing host directory:
 
 ```bash
-devcapsule project config bind home --host-directory /path/to/home
-devcapsule project config bind pycharm/config --host-directory /path/to/config
-devcapsule project config bind pycharm/plugins --host-directory /path/to/plugins
-devcapsule project config bind pycharm/system --host-directory /path/to/system
-devcapsule project config bind pycharm/log --host-directory /path/to/log
-devcapsule project config bind pycharm/cache --host-directory /path/to/cache
-devcapsule project config bind codex/home --host-directory /path/to/codex-home
+devcapsule project config bind home host-directory:/path/to/home
+devcapsule project config bind pycharm/config host-directory:/path/to/config
+devcapsule project config bind pycharm/plugins host-directory:/path/to/plugins
+devcapsule project config bind pycharm/system host-directory:/path/to/system
+devcapsule project config bind pycharm/log host-directory:/path/to/log
+devcapsule project config bind pycharm/cache host-directory:/path/to/cache
+devcapsule project config bind codex/home host-directory:/path/to/codex-home
 devcapsule project config bind codex/openai-api-key \
-  --host-environment-variable OPENAI_API_KEY
+  host-environment:OPENAI_API_KEY
 devcapsule project config resolve
 ```
 
@@ -698,16 +698,18 @@ socket. Treat the embedded browser as a project preview surface, not as a
 general-purpose browser for untrusted sites. Docker's outer isolation policy
 is unchanged.
 
-External hyperlinks use a separate, opt-in host integration. Add
-`--host-browser` to `project run`, `run-image`, or `pycharm run` to let
-`xdg-open` inside the capsule ask a launcher-owned Unix-socket broker to open
-an absolute HTTP(S) URL in the physical host's default browser. The protocol
-does not expose the host desktop session bus, accept commands or filesystem
-paths, or invoke a shell. The socket is mounted read-only and its physical
-host source is omitted from ordinary evidence. Any process running as the
-capsule user can exercise the enabled bridge, so it is disabled unless the
-developer makes this run-once choice. Use `--no-host-browser` to override a
-higher-level launcher choice explicitly.
+External hyperlinks use a separate, opt-in host integration. Authorize
+`host-browser` persistently with `devcapsule project config authorize
+host-browser true`, or for one launch with `project run --authorize
+host-browser true` (`run-image` and `pycharm run` keep their dedicated
+`--host-browser` flag) to let `xdg-open` inside the capsule ask a
+launcher-owned Unix-socket broker to open an absolute HTTP(S) URL in the
+physical host's default browser. The protocol does not expose the host
+desktop session bus, accept commands or filesystem paths, or invoke a shell.
+The socket is mounted read-only and its physical host source is omitted from
+ordinary evidence. Any process running as the capsule user can exercise the
+enabled bridge, so it is disabled unless the developer makes this explicit
+choice.
 
 A recursive launch can propagate an existing authorized broker to its
 successor; it cannot create host-browser access from inside a capsule. The
@@ -730,16 +732,25 @@ explicit runtime effects continue in Stage 3 of the active dogfood plan.
 
 ### Capability-first dogfood path
 
-The first capability-first slice supports a locally built PyCharm image. New
-projects can create a declaration and current-platform dogfood lock with:
+`devcapsule project init` initializes a project completely: it authors (or
+honors) the declaration, derives the current-platform lock offline from the
+client's embedded resolution matrix, records the owner's checkout answers,
+and ends with a fresh resolution, so `init` followed by `run` is the entire
+owner first-run:
 
 ```bash
 devcapsule project --path . init --creator https://github.com/example \
   --need python --need python-ide --need docker-cli
-devcapsule project lock --image mycodespace.ai/pycharm:debug-v018
 ```
 
-`project init` is create-only and leaves an existing `.devcapsule/` untouched.
+Interactively, `init` asks only what no flag, existing record, or derivable
+default already answers; every question can be pre-answered with the same
+spellings the `config` family uses (`--set NAME VALUE`,
+`--bind NAME PROVIDER:VALUE`, `--authorize NAME VALUE [JUSTIFICATION]`).
+Repairing a partially initialized project is `init`'s own job, and
+`init --regenerate` rewrites the derived platform lock while keeping the
+authored manifest. Dogfood image locks written by the retired
+`project lock` stub remain fully readable.
 Adopt the six existing dogfood state directories once, then generate the local
 developer-owned resolution:
 

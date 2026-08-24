@@ -196,10 +196,10 @@ def test_run_network_mode_applies_to_normal_and_debug_shell(tmp_path: Path) -> N
         assert command[network_index + 1] == "host"
 
 
-def test_codium_run_command_exposes_shared_state_layout_options() -> None:
-    command = CodiumWithClaudeConfiguration().run_command()
-    option_names = {option for param in command.params for option in getattr(param, "opts", [])}
+def test_codium_run_command_exposes_shared_state_layout_options(capsys) -> None:
+    assert cli.main(["codium_with_claude", "run", "--help"]) == 0
+    output = capsys.readouterr().out
 
-    assert "--profile" in option_names
-    assert "--project-state-root" in option_names
-    assert "--project-mount" in option_names
+    assert "--profile" in output
+    assert "--project-state-root" in output
+    assert "--project-mount" in output

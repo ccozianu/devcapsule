@@ -19,9 +19,9 @@ import json
 from pathlib import Path
 import os
 import sys
+import termios
+import tty
 from typing import Any, Mapping
-
-import readchar
 
 from devcapsule.commands.framework import (
     Command,
@@ -1301,8 +1301,8 @@ def _authorize_all_recommended(
         )
     print("Press y to authorize every recommendation; any other key cancels: ", end="", flush=True)
     try:
-        accepted = readchar.readkey() == "y"
-    except (EOFError, OSError) as exc:
+        accepted = _confirmation_key() == "y"
+    except (EOFError, OSError, termios.error) as exc:
         print("")
         raise ProjectConfigurationError(f"Cannot read authorization confirmation key: {exc}") from exc
     print("")
@@ -1326,6 +1326,23 @@ def _authorize_all_recommended(
     print(f"Checkout input: {input_path}")
     print("Run 'devcapsule project config resolve' before materialization or launch.")
     return 0
+
+
+def _confirmation_key() -> str:
+    """Read one raw keypress without echo or a newline.
+
+    The bulk-authorization confirmation is deliberately a single keypress so
+    a stray Enter in a paste cannot accept it; the interactive-terminal guard
+    above runs first, so stdin is a tty here.
+    """
+
+    descriptor = sys.stdin.fileno()
+    saved = termios.tcgetattr(descriptor)
+    try:
+        tty.setraw(descriptor)
+        return sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(descriptor, termios.TCSADRAIN, saved)
 
 
 def _authorization_display_value(declaration: AuthorizationDeclaration) -> str:
