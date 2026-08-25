@@ -43,6 +43,46 @@ RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size"}
 ConfigurationScalar = str | int | bool
 AuthorizationScalar = str | bool
 
+# The curated V1 host-access recommendation vocabulary.  Each entry maps a
+# node's canonical name to the manifest subtree that declares its
+# recommendation and to the single supported V1 value.  ``init`` asks exactly
+# these questions when it authors a manifest, and ``authorization_declarations``
+# turns present declarations into authorization nodes; they share this one
+# table so the asked question and the honored declaration cannot drift.
+CURATED_HOST_RECOMMENDATIONS: dict[str, tuple[tuple[str, ...], AuthorizationScalar]] = {
+    "docker-daemon": (("docker", "mode", "recommended"), "host-socket"),
+    "network": (("network", "mode", "recommended"), "host"),
+    "development-sudo": (("privilege", "development-sudo", "recommended"), True),
+    "host-browser": (("browser", "host-open", "recommended"), True),
+}
+
+# Host capabilities that exist as authorization nodes on every project,
+# whether or not the project recommends them. Settled by the product owner on
+# 2026-08-24: host-browser, docker-daemon, and development-sudo are proper
+# configuration nodes under authorize. These are developer-owned choices —
+# "Denial is the default. The developer may deny it, allow it once, allow it
+# for this checkout" — so their availability cannot depend on the project's
+# advice; a recommendation merely attaches the project's justification and
+# rebinds the answer to it. Host networking is deliberately absent: its
+# run-once form is the raw docker passthrough, and its persistent relaxation
+# remains a project-recommended decision.
+WORKSTATION_CAPABILITY_DEFAULTS: dict[str, tuple[AuthorizationScalar, str]] = {
+    "docker-daemon": (
+        "host-socket",
+        "Expose the host Docker daemon socket to the capsule; this permits broad "
+        "control of the host.",
+    ),
+    "development-sudo": (
+        True,
+        "Enable the declared development-sudo behavior inside the capsule.",
+    ),
+    "host-browser": (
+        True,
+        "Open HTTP(S) links from the capsule in the physical host's default browser "
+        "through the URL-only broker.",
+    ),
+}
+
 
 @dataclass(frozen=True)
 class RegisteredCheckout:
@@ -85,6 +125,9 @@ class AuthorizationDeclaration:
     recommendation_digest: str
     description: str
     display_value: str | None = None
+    # False for workstation-capability defaults the project did not recommend;
+    # bulk authorization of "everything recommended" must not include them.
+    project_recommended: bool = True
 
 
 @dataclass(frozen=True)
@@ -469,12 +512,7 @@ def authorization_declarations(
     host = manifest.get("host", {})
     if not isinstance(host, dict):
         raise ProjectConfigurationError("Project declaration host metadata must be a table.")
-    recommendation_paths: dict[str, tuple[tuple[str, ...], AuthorizationScalar]] = {
-        "docker-daemon": (("docker", "mode", "recommended"), "host-socket"),
-        "network": (("network", "mode", "recommended"), "host"),
-        "development-sudo": (("privilege", "development-sudo", "recommended"), True),
-    }
-    for name, (path, supported_value) in recommendation_paths.items():
+    for name, (path, supported_value) in CURATED_HOST_RECOMMENDATIONS.items():
         recommendation: object = host
         for key in path:
             if not isinstance(recommendation, dict) or key not in recommendation:
@@ -503,6 +541,21 @@ def authorization_declarations(
             recommended_value=supported_value,
             recommendation_digest=canonical_digest({"name": name, "recommendation": recommendation}),
             description=justification,
+        )
+    for name, (supported_value, description) in WORKSTATION_CAPABILITY_DEFAULTS.items():
+        if name in declarations:
+            continue
+        # The digest is a stable constant distinct from every recommendation
+        # digest, so a later project recommendation correctly stales the
+        # workstation-default answer: the question changed, so it is re-asked.
+        declarations[name] = AuthorizationDeclaration(
+            name=name,
+            recommended_value=supported_value,
+            recommendation_digest=canonical_digest(
+                {"name": name, "recommendation": "workstation-default"}
+            ),
+            description=description,
+            project_recommended=False,
         )
     return declarations
 
@@ -955,6 +1008,40 @@ def authorized_base_reference(
     return selection.reference if selection is not None else None
 
 
+def resolution_source_digests(
+    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
+) -> dict[str, str]:
+    """The exact source digests a fresh generated resolution must record."""
+
+    return {
+        "manifest": canonical_digest(manifest),
+        "platform-lock": canonical_digest(lock),
+        "checkout-input": canonical_digest(checkout),
+    }
+
+
+def stale_resolution_inputs(
+    manifest: Mapping[str, Any],
+    lock: Mapping[str, Any],
+    checkout: Mapping[str, Any],
+    resolution: Mapping[str, Any],
+) -> tuple[str, ...]:
+    """Name exactly which generated-resolution inputs have drifted.
+
+    This is the single staleness policy for the resolution layer: drift is
+    detected here — never by a loader refusing to read an artifact — and the
+    remedy is always ``devcapsule project config resolve``.  Every consumer
+    (``config list``, ``run``, ``fresh_resolved_project``) asks this one
+    function so the policy cannot fork.
+    """
+
+    actual = resolution.get("sources", {})
+    if not isinstance(actual, dict):
+        raise ProjectConfigurationError("Generated resolution sources must be a table.")
+    expected = resolution_source_digests(manifest, lock, checkout)
+    return tuple(name for name, digest in expected.items() if actual.get(name) != digest)
+
+
 def fresh_resolved_project(project: Path) -> ResolvedProject:
     """Load one checkout and require its generated resolution to be fresh."""
 
@@ -967,13 +1054,7 @@ def fresh_resolved_project(project: Path) -> ResolvedProject:
         )
     checkout = load_toml(checkout_path)
     resolution = load_toml(resolution_path)
-    expected = {
-        "manifest": canonical_digest(manifest),
-        "platform-lock": canonical_digest(lock),
-        "checkout-input": canonical_digest(checkout),
-    }
-    actual = resolution.get("sources", {})
-    stale = [name for name, digest in expected.items() if actual.get(name) != digest]
+    stale = stale_resolution_inputs(manifest, lock, checkout, resolution)
     if stale:
         raise ProjectConfigurationError(
             f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."

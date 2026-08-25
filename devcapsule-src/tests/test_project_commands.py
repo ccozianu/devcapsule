@@ -25,35 +25,46 @@ LOCKED_BASE = f"docker.io/example/devcapsule-base@sha256:{'b' * 64}"
 
 
 def initialize_project(project: Path) -> None:
-    assert (
-        cli.main(
-            [
-                "project",
-                "--path",
-                str(project),
-                "init",
-                "--creator",
-                "dev@example.test",
-                "--need",
-                "python",
-                "--need",
-                "python-ide",
-            ]
-        )
-        == 0
-    )
-    assert (
-        cli.main(
-            [
-                "project",
-                "--path",
-                str(project),
-                "lock",
-                "--image",
-                "local/pycharm:dogfood",
-            ]
-        )
-        == 0
+    """Author the legacy dogfood project fixture directly.
+
+    A hand-authored manifest is the ordinary partially-initialized form the
+    v027 init honors, and the image-reference lock is the retired lock stub's
+    output shape, kept as a compatibility fixture now that the stub is gone.
+    """
+
+    target = project / ".devcapsule"
+    target.mkdir(parents=True, exist_ok=True)
+    manifest_lines = [
+        "devcapsule-schema-version = 1",
+        "",
+        "[capabilities]",
+        'need = ["python", "python-ide"]',
+        "",
+        "[project]",
+        f'name = "{project.name}"',
+        f'slug = "{project.name.lower()}"',
+        'creator = "mailto:dev@example.test"',
+        'mount = "/workspace/project"',
+        "",
+    ]
+    (target / "devcapsule.toml").write_text("\n".join(manifest_lines), encoding="utf-8")
+    with (target / "devcapsule.toml").open("rb") as stream:
+        manifest = tomllib.load(stream)
+    lock_lines = [
+        "devcapsule-lock-format-version = 1",
+        'resolution-matrix-version = "dogfood-v1"',
+        f'manifest-digest = "{canonical_digest(manifest)}"',
+        'platform = "linux-amd64"',
+        "",
+        "[image]",
+        'reference = "local/pycharm:dogfood"',
+        "",
+        "[components]",
+        'interactive-surface = "pycharm"',
+        "",
+    ]
+    (target / "devcapsule.linux-amd64.lock").write_text(
+        "\n".join(lock_lines), encoding="utf-8"
     )
 
 
@@ -377,8 +388,7 @@ def test_project_config_list_reports_complete_and_stale_readiness(
                     "config",
                     "bind",
                     "home",
-                    "--host-directory",
-                    str(bound_home),
+                    f"host-directory:{bound_home}",
                 ]
             )
             == 0
@@ -494,8 +504,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                     "config",
                     "bind",
                     "codex/openai-api-key",
-                    "--host-environment-variable",
-                    "OPENAI_API_KEY",
+                    "host-environment:OPENAI_API_KEY",
                 ]
             )
             == 0
@@ -519,9 +528,12 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                         "--path",
                         str(project),
                         "run",
-                        "--docker-daemon",
+                        "--authorize",
+                        "docker-daemon",
                         "host-socket",
-                        "--host-browser",
+                        "--authorize",
+                        "host-browser",
+                        "true",
                     ]
                 )
                 == 0
@@ -576,9 +588,12 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
                         "--path",
                         str(project),
                         "run",
-                        "--docker-daemon",
+                        "--authorize",
+                        "docker-daemon",
                         "host-socket",
-                        "--development-sudo",
+                        "--authorize",
+                        "development-sudo",
+                        "true",
                         "--no-recursive-e2e",
                     ]
                 )
@@ -592,6 +607,65 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         assert downgraded.additional_environment == {"DEVCAPSULE_RECURSIVE_E2E": "0"}
         assert downgraded.enable_host_browser is False
         assert "were downgraded" in capsys.readouterr().out
+
+
+def test_host_browser_authorization_persists_and_drives_run(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        # The manifest recommends nothing: host-browser is a workstation
+        # capability the developer may authorize without project advice.
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "host-browser",
+                    "true",
+                ]
+            )
+            == 0
+        )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        with patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch:
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+    assert launch.call_args.args[0].enable_host_browser is True
+
+
+def test_run_once_authorization_rejects_unknown_and_persistent_nodes(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "run",
+                    "--authorize",
+                    "quantum-tunnel",
+                    "open",
+                ]
+            )
+            == 2
+        )
+    message = capsys.readouterr().err
+    assert "cannot be answered run-once" in message
+    assert "docker-daemon" in message
 
 
 def test_project_run_does_not_launch_when_environment_realization_fails(
@@ -754,8 +828,7 @@ def test_project_config_bind_uses_component_metadata_and_resolves_host_directori
                         "config",
                         "bind",
                         slot,
-                        "--host-directory",
-                        str(directory),
+                        f"host-directory:{directory}",
                     ]
                 )
                 == 0
@@ -773,8 +846,7 @@ def test_project_config_bind_uses_component_metadata_and_resolves_host_directori
                     "config",
                     "bind",
                     "pycharm/unknown",
-                    "--host-directory",
-                    str(directories["home"]),
+                    f"host-directory:{directories["home"]}",
                 ]
             )
             == 2
@@ -789,8 +861,7 @@ def test_project_config_bind_uses_component_metadata_and_resolves_host_directori
                     "config",
                     "bind",
                     "home",
-                    "--host-directory",
-                    str(tmp_path / "missing"),
+                    f"host-directory:{tmp_path / "missing"}",
                 ]
             )
             == 2
@@ -1021,7 +1092,7 @@ def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id
         }
 
         with patch(
-            "devcapsule.commands.project.required_local_image",
+            "devcapsule.project_operations.required_local_image",
             return_value=local_base,
         ) as inspect_resolved_local:
             assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
@@ -1074,7 +1145,7 @@ def test_project_config_authorize_all_recommended_previews_and_requires_lowercas
 
         with (
             patch("devcapsule.commands.project.sys.stdin") as terminal,
-            patch("devcapsule.commands.project.readchar.readkey", return_value="y") as readkey,
+            patch("devcapsule.commands.project._confirmation_key", return_value="y") as readkey,
         ):
             terminal.isatty.return_value = True
             assert (
@@ -1133,7 +1204,7 @@ def test_project_config_authorize_all_recommended_cancels_without_lowercase_y(
         capsys.readouterr()
         with (
             patch("devcapsule.commands.project.sys.stdin") as terminal,
-            patch("devcapsule.commands.project.readchar.readkey", return_value=key),
+            patch("devcapsule.commands.project._confirmation_key", return_value=key),
         ):
             terminal.isatty.return_value = True
             assert (
@@ -1167,7 +1238,7 @@ def test_project_config_authorize_all_recommended_rejects_noninteractive_input(
         capsys.readouterr()
         with (
             patch("devcapsule.commands.project.sys.stdin") as terminal,
-            patch("devcapsule.commands.project.readchar.readkey") as readkey,
+            patch("devcapsule.commands.project._confirmation_key") as readkey,
         ):
             terminal.isatty.return_value = False
             assert (

@@ -8,7 +8,6 @@ import subprocess
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-import click
 import pytest
 
 from devcapsule import cli
@@ -186,7 +185,8 @@ def test_physical_host_bridge_owns_and_cleans_broker(tmp_path: Path) -> None:
 
 
 def test_hidden_host_open_command_uses_authorized_environment(tmp_path: Path, capsys) -> None:
-    assert "host-open" not in cli.cli.list_commands(click.Context(cli.cli))
+    assert "host-open" not in cli.command_names()
+    assert "host-open" in cli.command_names(include_hidden=True)
     path = tmp_path / "host-open.sock"
     with (
         patch("devcapsule.host_open.subprocess.run", return_value=SimpleNamespace(returncode=0)),

@@ -2,23 +2,26 @@
 
 from __future__ import annotations
 
-import click
+import argparse
 
-from devcapsule.commands.base import BaseCommand
+from devcapsule.commands.framework import Command
 from devcapsule.compat import CliError
 from devcapsule.host_open import HostOpenError, open_host_url
 
 
-class HostOpenCommand(BaseCommand):
-    url: str
+class HostOpenCommand(Command):
     name = "host-open"
     hidden = True
     help = "Ask an authorized physical-host broker to open one HTTP(S) URL."
-    params = [click.Argument(("url",), required=True)]
 
-    def run(self) -> int:
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("url")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         try:
-            open_host_url(self.url)
+            open_host_url(arguments.url)
         except HostOpenError as exc:
             raise CliError(str(exc)) from exc
         return 0

@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import zipfile
 
-import click
 import pytest
 
 from devcapsule import cli, compat
@@ -278,11 +277,11 @@ def test_bootstrap_without_subcommand_uses_current_directory(
 
 def test_repo_root_can_be_overridden(tmp_path: Path) -> None:
     with patch.dict(os.environ, {"DOCKER4IDES_REPO_ROOT": str(tmp_path)}):
-        assert cli.repo_root() == tmp_path.resolve()
+        assert compat.repo_root() == tmp_path.resolve()
 
 
 def test_top_level_commands_are_discovered() -> None:
-    commands = cli.cli.list_commands(click.Context(cli.cli))
+    commands = cli.command_names()
 
     assert "bootstrap" in commands
     assert "pycharm" in commands
@@ -320,31 +319,57 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
         "XDG_DATA_HOME": str(tmp_path / "data"),
         "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
     }
+    target = project / ".devcapsule"
+    target.mkdir()
+    (target / "devcapsule.toml").write_text(
+        "\n".join(
+            [
+                "devcapsule-schema-version = 1",
+                "",
+                "[capabilities]",
+                'need = ["python", "python-ide"]',
+                "",
+                "[project]",
+                'name = "project"',
+                'slug = "project"',
+                'creator = "mailto:dev@example.test"',
+                'mount = "/workspace/existing"',
+                "",
+                '[configuration.values."runtime.memory-limit"]',
+                'type = "memory-size"',
+                'runtime-effect = "docker.memory-limit"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    import tomllib
+
+    with (target / "devcapsule.toml").open("rb") as stream:
+        manifest_value = tomllib.load(stream)
+    (target / "devcapsule.linux-amd64.lock").write_text(
+        "\n".join(
+            [
+                "devcapsule-lock-format-version = 1",
+                'resolution-matrix-version = "dogfood-v1"',
+                f'manifest-digest = "{canonical_digest(manifest_value)}"',
+                'platform = "linux-amd64"',
+                "",
+                "[image]",
+                'reference = "local/pycharm:dogfood"',
+                "",
+                "[components]",
+                'interactive-surface = "pycharm"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
     with patch.dict(os.environ, env, clear=False):
-        assert cli.main([
-            "project", "--path", str(project), "init", "--creator", "dev@example.test",
-            "--project-mount", "/workspace/existing", "--need", "python", "--need", "python-ide",
-        ]) == 0
-        manifest = project / ".devcapsule" / "devcapsule.toml"
-        original = manifest.read_bytes()
-        assert cli.main([
-            "project", "--path", str(project), "init", "--creator", "dev@example.test", "--need", "python"
-        ]) == 2
-        assert manifest.read_bytes() == original
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8")
-            + "\n[configuration.values.\"runtime.memory-limit\"]\n"
-            + 'type = "memory-size"\n'
-            + 'runtime-effect = "docker.memory-limit"\n',
-            encoding="utf-8",
-        )
-        assert cli.main([
-            "project", "--path", str(project), "lock", "--image", "local/pycharm:dogfood"
-        ]) == 0
         for slot, path in state_roots.items():
             assert cli.main([
                 "project", "--path", str(project), "config", "bind", slot,
-                "--host-directory", str(path)
+                f"host-directory:{path}",
             ]) == 0
         assert cli.main([
             "project", "--path", str(project), "config", "set", "runtime.memory-limit", "8GiB"
@@ -356,12 +381,23 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
             patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
         ):
             run.return_value.returncode = 0
-            assert cli.main(["project", "--path", str(project), "run"]) == 0
+            assert cli.main(
+                [
+                    "project", "--path", str(project), "run",
+                    "--set", "runtime.memory-limit", "4GiB",
+                    "--", "--cap-add", "SYS_PTRACE",
+                ]
+            ) == 0
 
     command = run.call_args.args[0]
     assert "local/pycharm:dogfood" in command
     assert command[command.index("--network") + 1] == "bridge"
-    assert command[command.index("--memory") + 1] == str(8 * 1024**3)
+    # The run-once --set answer overrides the resolved 8GiB for this launch.
+    assert command[command.index("--memory") + 1] == str(4 * 1024**3)
+    # The tail after '--' is handed verbatim to docker run, in the options
+    # region before the image.
+    assert command[command.index("--cap-add") + 1] == "SYS_PTRACE"
+    assert command.index("--cap-add") < command.index("local/pycharm:dogfood")
     assert f"type=bind,src={state_roots['home'].resolve()},dst=/home/devcapsule" in command
     assert f"type=bind,src={state_roots['pycharm/system'].resolve()},dst=/ide-project-state/system" in command
 
@@ -790,7 +826,8 @@ def test_vscode_with_claude_configuration_identity() -> None:
 def test_vscode_with_claude_run_fails_explicitly(capsys) -> None:
     result = cli.main(["vscode_with_claude", "run"])
 
-    assert result == 1
+    # Every CLI failure exits 2 since the v027 boundary unified error handling.
+    assert result == 2
     assert "not implemented yet" in capsys.readouterr().err
 
 

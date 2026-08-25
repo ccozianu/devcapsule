@@ -1,0 +1,10 @@
+devcapsule-schema-version = 1
+
+[capabilities]
+need = ["python", "python-ide"]
+
+[project]
+name = "project"
+slug = "project"
+creator = "mailto:compat-fixture@example.test"
+mount = "/workspace/project"

@@ -1,0 +1,15 @@
+devcapsule-schema-version = 1
+workflow-type = "multiple-streams"
+
+[capabilities]
+need = ["claude-code-agent", "codex-agent", "python", "python-ide"]
+
+[project]
+name = "DevCapsule Sample: Trading Research"
+slug = "devcapsule-sample-trading-research"
+creator = "https://github.com/ccozianu"
+mount = "/workspace/trading-research"
+
+[host.network.mode.recommended]
+value = "host"
+justification = "Reach host-bound market-data, model, and development services used by the trading-research workflow."

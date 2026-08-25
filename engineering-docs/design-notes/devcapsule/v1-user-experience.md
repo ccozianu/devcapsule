@@ -174,8 +174,10 @@ current tree:
 - **`devcapsule project lock` cannot author a V1 lock.** It is a dogfood stub
   that requires an existing local image reference and writes neither a pinned
   base nor component digests nor a materialization recipe. Generation now
-  belongs inside `init`; whether a standalone regeneration command survives,
-  and under what non-misleading name, is open.
+  belongs inside `init`; settled 2026-08-24: no standalone regeneration
+  command survives — the stub is retired and `init --regenerate` is the
+  deliberate regeneration spelling. Locks the stub already wrote remain
+  readable per `R-COMPAT-001`.
 - **The four first-run flows disagree.** `D-0001` section 9,
   `docs/product/v1-announcement.md`, and the implementation still describe
   sequences that the specification below supersedes for the first case, and
@@ -323,6 +325,75 @@ on the command line by the same canonical name the `config` family uses.
 `config set`, `config bind`, and `config authorize` is the spelling `init`
 accepts, so the prompt and the flag are guaranteed to agree, and anything the
 tool can ask can also be pre-answered.
+
+#### The settled grammar (2026-08-24)
+
+Settled with the product owner on 2026-08-24, answering open questions 2 and
+7 of *Questions This Narrative Must Settle*; this is intended to be the last
+redesign of the configuration argument syntax.
+
+The governing principle: **flags name mechanics, nodes name content.** A
+datum that would appear in the manifest, lock, checkout record, or resolution
+is a node, addressed by its one canonical name through the regular grammar on
+every command; flags are reserved for facts about the invocation itself
+(`--path`, `--json`, `--force`, `--regenerate`, container `--name`). Adding a
+component, capability, or host boundary therefore adds registry rows, never
+syntax.
+
+Every configuration mutation is `VERB NAME VALUE`:
+
+```text
+devcapsule project config set        NAME VALUE
+devcapsule project config bind       NAME PROVIDER:VALUE
+devcapsule project config authorize  NAME VALUE [JUSTIFICATION]
+devcapsule project config unset      NAME
+```
+
+- The three verbs remain distinct because the security tiering is
+  intentional; `unset` is the one reset spelling for every family.
+- `bind` values carry their provider in the value (`host-directory:PATH`,
+  `host-environment:VARIABLE`), split on the first colon against the node's
+  closed provider set, so new providers are new value prefixes rather than
+  new flags.
+- The optional trailing `JUSTIFICATION` token exists for recommendation
+  authoring at `init`; a consumer authorizing an already-declared
+  recommendation never supplies one, because an answer's justification lives
+  with the question in the manifest.
+- `init` and `run` carry the same spellings through repeatable carrier
+  options: `--set NAME VALUE`, `--bind NAME PROVIDER:VALUE`,
+  `--authorize NAME VALUE [JUSTIFICATION]`. The scope of an answer comes
+  from the command: `init` persists into the owning artifact, `run` applies
+  once, echoes the deviation, and writes nothing.
+- `run [RUN-OPTIONS] -- DOCKER-RUN-OPTIONS` hands everything after the first
+  standalone `--` verbatim to `docker run` (settled 2026-08-24): DevCapsule
+  stops modeling docker's option surface; raw options are conspicuously
+  reported as a deviation from the resolved plan. The bespoke run flags
+  (`--docker-daemon`, `--development-sudo`, `--host-browser`) are dropped
+  from `run`; `run-image` keeps its dedicated flags because it deliberately
+  reads no lock and therefore has no node registry.
+- `host-browser`, `docker-daemon`, and `development-sudo` are proper
+  authorization nodes (settled 2026-08-24) that exist on every project as
+  workstation capabilities: denial stays the default, a project
+  recommendation merely attaches its justification and rebinds the answer's
+  digest, and `--all-recommended` never includes an unrecommended
+  workstation capability. `host-browser` gains the recommendation path
+  `[host.browser.host-open.recommended]` and is now persistable, closing the
+  gap where it existed only as a per-launch flag. Host networking is
+  deliberately not a workstation default: its run-once form is the docker
+  passthrough, and its persistent relaxation remains a project-recommended
+  decision.
+- Uniqueness of node names is enforced by construction in the node registry
+  (`devcapsule/configuration_nodes.py`); a name that means two things would
+  make the grammar and the prompt ambiguous.
+
+Two subsidiary decisions of the same date: the CLI parses with a small owned
+framework over stdlib `argparse` (variable-arity carriers are exactly what
+Click cannot declare through public API), superseding the Click architecture
+brief in `click-based-cli-parsing-brief.md`; and a noninteractive `init`
+records no recommendation for an unflagged host-recommendation intent
+question — the same answer as pressing Enter — while acquisitions with no
+safe omission (`base-image`, `claude-code-download`) batch-fail with
+copy-pasteable remedies.
 
 ### One Elicitation: Init Ends Resolved
 

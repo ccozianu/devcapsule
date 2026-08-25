@@ -1,5 +1,13 @@
 # Class-Based Click CLI Architecture Brief
 
+Status: superseded 2026-08-24. The v027 CLI parses with a small owned
+framework over stdlib `argparse` (`devcapsule/commands/framework.py`) because
+the settled configuration grammar needs variable-arity options
+(`--authorize NAME VALUE [JUSTIFICATION]`), which Click cannot declare
+through public API. The brief's portable ideas — one class per command,
+discovery, no central edit per new command — carry over; its Click binding
+does not. See *The settled grammar (2026-08-24)* in `v1-user-experience.md`.
+
 ## Goal
 
 Implement a Python command-line package using **Click** where:
