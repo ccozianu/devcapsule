@@ -6,9 +6,12 @@ Start date: 2026-08-06
 
 State: resumed 2026-08-26. The v027 preparation is merged to `main` through
 PR #41; the distribution version is advanced to 0.2.1 and the complete e2e
-and recursive-dogfood-e2e suites pass against the new argparse CLI. Next is
-the `project_configuration.py` Hoare remediation (directed item 3), then the
-owner's release acts, then Stage 7 per the owner's sequencing
+and recursive-dogfood-e2e suites pass against the new argparse CLI. On
+2026-08-26 the owner re-sequenced: the engineering improvements (including
+the `project_configuration.py` Hoare remediation) move past v027 to v028 or
+later, and the owner is trying a local v027 build first. Next are the
+release-series advance and the owner's release acts, then Stage 7 per the
+owner's sequencing
 
 Integration target: `main`
 
@@ -183,14 +186,40 @@ draft carry the changed surface. Grammar and argparse decisions of
 2026-08-23/24 are recorded in the v1-user-experience design note, and the
 Click CLI brief is marked superseded.
 
-Remaining before the v027 tag, in the directed order: the
-`project_configuration.py` Hoare remediation (directed item 3, ranked highest
-once v027 exists) and the owner's release acts (tag, backend publication).
-The v027 preparation itself reached `main` through PR #41 on 2026-08-25, and
-the distribution-version advance is done: the owner selected 0.2.1 directly
-on 2026-08-26 and commit `a684529` applies it to all three version sources
-through the bump tool. Stage 7 sequencing relative to that pair remains the
-product owner's call.
+Remaining before the v027 tag: advance `[tool.devcapsule].release-series`
+from `v026` to `v027` (a local 0.2.1 build still reports mnemonic
+`local-v026`, and the release guard binds the official mnemonic to the
+tag), then the owner's release acts (tag, backend publication). The v027
+preparation itself reached `main` through PR #41 on 2026-08-25, and the
+distribution-version advance is done: the owner selected 0.2.1 directly on
+2026-08-26 and commit `a684529` applies it to all three version sources
+through the bump tool.
+
+Re-sequenced by the owner on 2026-08-26: the `project_configuration.py`
+Hoare remediation (directed item 3) and the other engineering improvements
+below no longer gate v027. They are deferred to v028 or v029 — or v030 if
+v027 proves flaky and stabilization fixes crowd them out — because the CLI
+replacement was itself a large change and release experience should come
+first. Stage 7 sequencing remains the product owner's call.
+
+Deferred engineering improvements (v028 and later):
+
+1. The `project_configuration.py` Hoare remediation, directed item 3 below:
+   the four-owner module split and moving checkout-record creation out of
+   `config list` into the resolve path. Its scope and the 2026-08-23
+   diagnosis remain recorded in the directed-work section.
+2. A testability seam at the Docker launch boundary, diagnosed 2026-08-26:
+   argument construction is pure and well tested (`build_docker_args`,
+   `build_codium_run_command`), but each launcher then calls
+   `subprocess.run` directly (`configurations/pycharm/_launcher.py`,
+   `configurations/codium_with_claude/_launcher.py`,
+   `recursive_successor.py`), so no test between the unit and real-Docker
+   e2e levels can assert what command a CLI invocation would execute. An
+   injectable runner would close that gap. Diagnosis only; no design is
+   settled.
+
+The list stays open: defects and cleanups surfaced while shaking out v027
+join it rather than growing the v027 scope, unless the owner promotes one.
 
 E2E validation on 2026-08-26, closing the gap that the new argparse CLI had
 never run the real-Docker suites: from a pristine clone of `a684529` under
@@ -687,8 +716,9 @@ release comes first.
    boundary. Release notes must state the changed surface; `R-COMPAT-001`
    governs everything the new client reads from existing projects.
 3. **Remediate `project_configuration.py` to the Hoare standard —
-   immediately after v027 preparation; the owner ranks it highest priority
-   once v027 exists.** From the 2026-08-23 diagnosis:
+   re-sequenced 2026-08-26: deferred past the v027 release to v028 or
+   later; see the deferred-improvements list above.** From the 2026-08-23
+   diagnosis:
    1072 lines, 43 module-level names, none underscore-private, no
    `__all__`, 3 comment lines; at least 11 names are de-facto private. The
    buried `lock_for` policy that caused the stale-lock failure is the
@@ -729,9 +759,12 @@ owner's call and is not decided here.
 ## Open Threads
 
 - v027 preparation is merged to `main` (PR #41) and the version advance to
-  0.2.1 is committed, but v027 is not released: the Hoare remediation
-  (directed item 3) comes first per the owner's ranking, then the owner's
-  tag/publish acts. The release-notes draft is
+  0.2.1 is committed, but v027 is not released: the release-series advance
+  to `v027` and the owner's tag/publish acts remain. The Hoare remediation
+  no longer gates the release; it leads the deferred-improvements list for
+  v028+. The owner is exercising a local 0.2.1 build
+  (`dist/devcapsule-local.pex`, built 2026-08-26) before the release acts.
+  The release-notes draft is
   [v027-release-notes-draft.md](v027-release-notes-draft.md).
 - Run-once carrier answers can enable a capability but not disable a
   persistent authorization (each node has one authorizable V1 value); if
