@@ -4,10 +4,11 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused 2026-08-24 with v026.2 published and v027 preparation
-code-complete on `recursive-e2e/stage-4`; resume with the
-`project_configuration.py` Hoare remediation (directed item 3), then the
-version advance and release acts, then Stage 7 per the owner's sequencing
+State: resumed 2026-08-26. The v027 preparation is merged to `main` through
+PR #41; the distribution version is advanced to 0.2.1 and the complete e2e
+and recursive-dogfood-e2e suites pass against the new argparse CLI. Next is
+the `project_configuration.py` Hoare remediation (directed item 3), then the
+owner's release acts, then Stage 7 per the owner's sequencing
 
 Integration target: `main`
 
@@ -184,9 +185,25 @@ Click CLI brief is marked superseded.
 
 Remaining before the v027 tag, in the directed order: the
 `project_configuration.py` Hoare remediation (directed item 3, ranked highest
-once v027 exists), the distribution-version advance via `nox -s bump`, and
-the owner's release acts (merge, tag, backend publication). Stage 7
-sequencing relative to that pair remains the product owner's call.
+once v027 exists) and the owner's release acts (tag, backend publication).
+The v027 preparation itself reached `main` through PR #41 on 2026-08-25, and
+the distribution-version advance is done: the owner selected 0.2.1 directly
+on 2026-08-26 and commit `a684529` applies it to all three version sources
+through the bump tool. Stage 7 sequencing relative to that pair remains the
+product owner's call.
+
+E2E validation on 2026-08-26, closing the gap that the new argparse CLI had
+never run the real-Docker suites: from a pristine clone of `a684529` under
+persistent home (the `checkout-mount` preflight check requires the checkout
+to be Docker-mount-backed, so a `/tmp` clone cannot serve), `nox -s e2e`
+passed 4 of 4 (contributor bootstrap, successor lifecycle, runtime image,
+self-contained PEX) and `nox -s recursive_dogfood_e2e` passed 2 of 2
+(recursive local clone, contributor bootstrap) with preflight READY,
+`cleanup_complete` true, and no Docker mutation. The contributor-bootstrap
+test also enforces a fully clean source checkout including untracked files,
+so it cannot run from the owner's working checkout while `.idea` and
+submodule-pointer drift are present; the clean-clone route is the way to run
+it without disturbing that state.
 
 Status: Stages 0 through 6, the backend-built standalone PEX releases, matching
 Docker publication, immutable-digest pull and offline proof, functional
@@ -711,11 +728,10 @@ owner's call and is not decided here.
 
 ## Open Threads
 
-- v027 preparation is code-complete on this branch but not released: the
-  Hoare remediation (directed item 3) comes first per the owner's ranking,
-  then the distribution-version advance (`nox -s bump -- minor` is the
-  natural spelling for a CLI-shape release) and the owner's merge/tag/publish
-  acts. The release-notes draft is
+- v027 preparation is merged to `main` (PR #41) and the version advance to
+  0.2.1 is committed, but v027 is not released: the Hoare remediation
+  (directed item 3) comes first per the owner's ranking, then the owner's
+  tag/publish acts. The release-notes draft is
   [v027-release-notes-draft.md](v027-release-notes-draft.md).
 - Run-once carrier answers can enable a capability but not disable a
   persistent authorization (each node has one authorizable V1 value); if
