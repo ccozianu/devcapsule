@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devcapsule"
-version = "0.2.1"
+version = "0.2.7"
 description = "Profile-driven Docker launch tooling for isolated IDE development environments."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -38,9 +38,6 @@ dev = [
 [project.scripts]
 devcapsule = "devcapsule.cli:main"
 devcapsule-runtime = "devcapsule.container_runtime.entrypoint:main"
-
-[tool.devcapsule]
-release-series = "v026"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -134,12 +134,11 @@ fi
 
 "${python_bin}" "${project_dir}/scripts/bump-version.py" --check
 project_version="$("${python_bin}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["project"]["version"])' "${project_dir}/pyproject.toml")"
-release_series="$("${python_bin}" -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["tool"]["devcapsule"]["release-series"])' "${project_dir}/pyproject.toml")"
-if [[ ! "${release_series}" =~ ^v[0-9][0-9A-Za-z._-]*$ ]]; then
-  echo "scripts/build-pex.sh: configured release series is invalid: ${release_series}" >&2
-  exit 1
-fi
-build_mnemonic="local-${release_series}"
+# The release identity is derived from the package version, not configured
+# separately. A contributor binary carries the target platform so distinct
+# unofficial artifacts stay distinguishable; the official mnemonic is exactly
+# the release tag, asserted below.
+build_mnemonic="v${project_version}-local-${scie_platform}"
 
 mkdir -p "$(dirname "${output}")"
 
@@ -185,15 +184,8 @@ if [[ -n "${release_mnemonic}" ]]; then
     echo "scripts/build-pex.sh: --release-mnemonic cannot mark a local or unpublished build" >&2
     exit 2
   fi
-  if [[ ! "${release_mnemonic}" =~ ^v[0-9][0-9A-Za-z._-]*$ ]]; then
-    echo "scripts/build-pex.sh: release mnemonic must be a numeric v* tag" >&2
-    exit 2
-  fi
-  if [[ "${release_mnemonic}" != "${release_series}" && \
-        "${release_mnemonic}" != "${release_series}."* && \
-        "${release_mnemonic}" != "${release_series}-"* && \
-        "${release_mnemonic}" != "${release_series}_"* ]]; then
-    echo "scripts/build-pex.sh: release mnemonic ${release_mnemonic} is outside configured series ${release_series}" >&2
+  if [[ "${release_mnemonic}" != "v${project_version}" ]]; then
+    echo "scripts/build-pex.sh: release mnemonic ${release_mnemonic} must be v${project_version}, the checked-in package version" >&2
     exit 2
   fi
   tagged_revision="$(git -C "${repo_root}" rev-list -n 1 "refs/tags/${release_mnemonic}" 2>/dev/null || true)"

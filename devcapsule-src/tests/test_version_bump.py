@@ -26,7 +26,8 @@ def project(tmp_path: Path, *, version: str = "1.2.3") -> Path:
         f'"""Test package."""\n\n__version__ = "{version}"\n', encoding="utf-8"
     )
     (package / "_build_info.json").write_text(
-        f'{{"schema_version":2,"version":"{version}"}}\n', encoding="utf-8"
+        f'{{"build_mnemonic":"v{version}-local","schema_version":2,"version":"{version}"}}\n',
+        encoding="utf-8",
     )
     return root
 
@@ -54,9 +55,9 @@ def test_bump_updates_every_distribution_version_source(
     assert f'__version__ = "{expected}"' in (
         root / "devcapsule" / "__init__.py"
     ).read_text(encoding="utf-8")
-    assert f'"version":"{expected}"' in (
-        root / "devcapsule" / "_build_info.json"
-    ).read_text(encoding="utf-8")
+    build_info = (root / "devcapsule" / "_build_info.json").read_text(encoding="utf-8")
+    assert f'"version":"{expected}"' in build_info
+    assert f'"build_mnemonic":"v{expected}-local"' in build_info
 
 
 @pytest.mark.parametrize("requested", ["1.2.3", "1.2.2", "v1.2.4", "banana"])
@@ -78,4 +79,15 @@ def test_check_rejects_disagreeing_version_sources(tmp_path: Path) -> None:
     )
 
     with pytest.raises(VERSION_MODULE.VersionError, match="versions disagree"):
+        VERSION_MODULE.checked_version(root)
+
+
+def test_check_rejects_stale_editable_build_mnemonic(tmp_path: Path) -> None:
+    root = project(tmp_path)
+    (root / "devcapsule" / "_build_info.json").write_text(
+        '{"build_mnemonic":"local-v026","schema_version":2,"version":"1.2.3"}\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VERSION_MODULE.VersionError, match="build_mnemonic"):
         VERSION_MODULE.checked_version(root)

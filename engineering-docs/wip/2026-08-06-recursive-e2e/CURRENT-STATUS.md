@@ -9,9 +9,9 @@ PR #41; the distribution version is advanced to 0.2.1 and the complete e2e
 and recursive-dogfood-e2e suites pass against the new argparse CLI. On
 2026-08-26 the owner re-sequenced: the engineering improvements (including
 the `project_configuration.py` Hoare remediation) move past v027 to v028 or
-later, and the owner is trying a local v027 build first. Next are the
-release-series advance and the owner's release acts, then Stage 7 per the
-owner's sequencing
+later, and the owner is trying a local build first. The release identity is now unified
+with the package version (0.2.7, tag `v0.2.7`). Next are the owner's
+release acts, then Stage 7 per the owner's sequencing
 
 Integration target: `main`
 
@@ -186,14 +186,25 @@ draft carry the changed surface. Grammar and argparse decisions of
 2026-08-23/24 are recorded in the v1-user-experience design note, and the
 Click CLI brief is marked superseded.
 
-Remaining before the v027 tag: advance `[tool.devcapsule].release-series`
-from `v026` to `v027` (a local 0.2.1 build still reports mnemonic
-`local-v026`, and the release guard binds the official mnemonic to the
-tag), then the owner's release acts (tag, backend publication). The v027
-preparation itself reached `main` through PR #41 on 2026-08-25, and the
-distribution-version advance is done: the owner selected 0.2.1 directly on
-2026-08-26 and commit `a684529` applies it to all three version sources
-through the bump tool.
+Remaining before the release: only the owner's release acts — integrate the
+branch, tag `v0.2.7`, backend publication. On 2026-08-26 the owner unified
+the release identity with the package version, replacing the planned `v027`
+mnemonic: `[tool.devcapsule].release-series` is deleted, the package version
+was advanced to 0.2.7 so the patch digit echoes the old series ordinal, and
+the mnemonic is now derived — official builds report `v<version>` and must
+match the Git tag exactly, contributor binaries report
+`v<version>-local-<platform>` (the build script's scie platform, today
+`linux-x86_64`), and editable source installs report `v<version>-local`,
+kept in lockstep with the version by the bump tool. v026-era mnemonics stay
+readable and the build-information schema remains 2. The v027 preparation
+itself reached `main` through PR #41 on 2026-08-25.
+
+Unification validation on 2026-08-26: the full `nox -s build` gate passed
+with mypy clean over 115 source files, 434 fast tests (12 deselected, 1
+xfailed), all seven packaging integrations, and a local PEX reporting
+version `0.2.7` with mnemonic `v0.2.7-local-linux-x86_64`. The release
+workflow needed no change: its tag trigger and guards already accept
+`v0.2.7`, and it already requires mnemonic equal to tag.
 
 Re-sequenced by the owner on 2026-08-26: the `project_configuration.py`
 Hoare remediation (directed item 3) and the other engineering improvements
@@ -217,20 +228,11 @@ Deferred engineering improvements (v028 and later):
    e2e levels can assert what command a CLI invocation would execute. An
    injectable runner would close that gap. Diagnosis only; no design is
    settled.
-3. Unify the release identity with the package version, proposed by the
-   owner on 2026-08-26: retire the separate `[tool.devcapsule]`
-   release-series mnemonic so one number serves tags, locks, labels, and
-   the distribution. The open design question is how a unified version
-   expresses build provenance (official versus contributor build), which
-   the mnemonic carries today: the owner suggested a fourth numeric
-   version field; the PEP 440 local version segment (`0.2.1` official,
-   `0.2.1+local` contributor, rendered `0.2.1-local` in Docker tags,
-   which forbid `+`) is the standard alternative and, unlike a fourth
-   ordered field, does not make provenance participate in version
-   ordering. Touches the bump tool, `build-pex.sh`, `build_info.py`
-   (likely schema 3), the release workflow's tag guard, image labels,
-   lock presentation, docs, and `R-COMPAT-001` reading of v026-era
-   mnemonic-bearing artifacts. No design is settled.
+3. Done — promoted by the owner the same day it was proposed. The release
+   identity is unified with the package version; the settled value
+   vocabulary is `v<version>` official, `v<version>-local` editable
+   source, `v<version>-local-<platform>` contributor binary. See the
+   unification entry in *Current Priority And Status*.
 
 The list stays open: defects and cleanups surfaced while shaking out v027
 join it rather than growing the v027 scope, unless the owner promotes one.
@@ -772,14 +774,13 @@ owner's call and is not decided here.
 
 ## Open Threads
 
-- v027 preparation is merged to `main` (PR #41) and the version advance to
-  0.2.1 is committed, but v027 is not released: the release-series advance
-  to `v027` and the owner's tag/publish acts remain. The Hoare remediation
-  no longer gates the release; it leads the deferred-improvements list for
-  v028+. The owner is exercising a local 0.2.1 build
-  (`dist/devcapsule-local.pex`, built 2026-08-26) before the release acts.
-  The release-notes draft is
-  [v027-release-notes-draft.md](v027-release-notes-draft.md).
+- The release is prepared but not cut: the branch carries the 0.2.7 version
+  advance and the release-identity unification, and only the owner's acts
+  remain — integrate, tag `v0.2.7`, backend publication. The Hoare
+  remediation does not gate the release; it leads the deferred-improvements
+  list for v028+. The owner is exercising a local 0.2.7 build
+  (`dist/devcapsule-local.pex`) before the release acts. The release-notes
+  draft is [v027-release-notes-draft.md](v027-release-notes-draft.md).
 - Run-once carrier answers can enable a capability but not disable a
   persistent authorization (each node has one authorizable V1 value); if
   per-run disabling is ever wanted, it is a value-vocabulary decision, not a

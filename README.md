@@ -80,8 +80,9 @@ cd devcapsule-src
 ```
 
 Review and commit the bump, then run the full build again. The package version
-is independent of the human-facing release-series mnemonic and the immutable
-source revision embedded in each PEX.
+is the release identity: official releases are tagged `v<version>`, and local
+builds derive a `v<version>-local[-<platform>]` mnemonic from it. Only the
+immutable source revision embedded in each PEX is a separate identity.
 
 Calling the virtualenv's interpreter directly is intentional: it works without
 shell activation and cannot silently fall through to `/usr/bin/python` because

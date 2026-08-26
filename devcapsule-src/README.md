@@ -182,10 +182,12 @@ For an explicit dirty development build, use
 `scripts/build-pex.sh --allow-local-source`. That PEX discloses an `unknown`
 revision instead of presenting local bytes as public source. The Nox build
 gate uses this escape hatch because it validates changes before commit.
-Every non-release build also embeds the recognizable mnemonic `local-v026`,
-where `v026` comes from `[tool.devcapsule].release-series` in `pyproject.toml`.
-The mnemonic describes the release line for humans; source revision and the
-artifact SHA-256 remain the exact identities.
+Every non-release binary also embeds a recognizable derived mnemonic such as
+`v0.2.7-local-linux-x86_64`: the package version from `pyproject.toml`, a
+`-local` marker, and the binary's target platform. An editable source install
+reports plain `v0.2.7-local` because it is not a binary artifact. The mnemonic
+describes the release identity for humans; source revision and the artifact
+SHA-256 remain the exact identities.
 
 For a clean commit that has not been pushed yet, use
 `scripts/build-pex.sh --allow-unpublished-revision`. It embeds the exact local
@@ -260,11 +262,13 @@ silently replaced.
 
 The release workflow passes the exact tag to the build as its official
 mnemonic. The build rejects a mnemonic that is not an exact tag for the
-checkout revision or is outside the configured release series. Thus
-`version --json` reports `v026` for the official release and `local-v026` for
-ordinary development artifacts; base-image builds propagate the same value as
-the `devcapsule.pex.build-mnemonic` and `org.opencontainers.image.version` OCI
-labels.
+checkout revision or does not equal `v` plus the checked-in package version,
+so an official release is always tagged `v<version>` (for example `v0.2.7`).
+Thus `version --json` reports `v0.2.7` for the official release and
+`v0.2.7-local-linux-x86_64` for ordinary development binaries; base-image
+builds propagate the same value as the `devcapsule.pex.build-mnemonic` and
+`org.opencontainers.image.version` OCI labels. Artifacts from the v026-era
+scheme (`v026`, `local-v026`) remain readable.
 
 The executable contains CPython 3.12.14 from the pinned 20260814 Python Build
 Standalone release, the Python CLI, runtime dependencies, and the legacy
