@@ -39,7 +39,9 @@ class BuildInfo:
         ) is None:
             raise BuildInfoError(
                 "build information 'build_mnemonic' must be a release tag such as "
-                "'v026' or a local release-series label such as 'local-v026'"
+                "'v0.2.7', a local label such as 'v0.2.7-local' or "
+                "'v0.2.7-local-linux-x86_64', or a v026-era label such as "
+                "'v026' or 'local-v026'"
             )
         return cls(
             schema_version=schema_version,

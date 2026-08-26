@@ -70,8 +70,17 @@ def _build_info_version_and_replacement(
     current = document.get("version")
     if not isinstance(current, str):
         raise VersionError(f"{path} must contain a string version")
+    # The editable-source build mnemonic is derived, not independently
+    # managed: it must always read v<version>-local. Official and binary
+    # mnemonics are stamped at build time by scripts/build-pex.sh instead.
+    if document.get("build_mnemonic") != f"v{current}-local":
+        raise VersionError(
+            f"{path} build_mnemonic must be 'v{current}-local'; "
+            "the editable-source mnemonic is derived from the version"
+        )
     if replacement is not None:
         document["version"] = replacement
+        document["build_mnemonic"] = f"v{replacement}-local"
     updated = json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
     return current, updated
 

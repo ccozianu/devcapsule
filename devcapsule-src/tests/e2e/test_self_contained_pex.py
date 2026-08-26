@@ -65,7 +65,8 @@ done
         assert version["schema_version"] == 2
         assert version["version"] == __version__
         assert version["build_mnemonic"] == os.environ.get(
-            "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC", "local-v026"
+            "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC",
+            f"v{__version__}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}",
         )
     finally:
         command(docker, "rm", "--force", container, check=False)

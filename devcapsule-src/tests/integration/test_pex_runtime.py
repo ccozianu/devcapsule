@@ -152,7 +152,8 @@ def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> No
     assert value["schema_version"] == 2
     assert value["version"] == __version__
     assert value["build_mnemonic"] == os.environ.get(
-        "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC", "local-v026"
+        "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC",
+        f"v{__version__}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}",
     )
     if built_pex.name == "devcapsule-local.pex":
         assert value["source_revision"] == "unknown"
@@ -265,7 +266,9 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
         capture_output=True,
     )
     value = json.loads(version.stdout)
-    assert value["build_mnemonic"] == "local-v026"
+    assert value["build_mnemonic"] == (
+        f"v{__version__}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}"
+    )
     assert value["source_revision"] == revision
     assert value["source_repository"] == "https://github.com/example/devcapsule-unpublished-test"
     assert value["source_url"].endswith(f"/commit/{revision}")

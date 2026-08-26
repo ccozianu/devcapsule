@@ -34,6 +34,11 @@ def test_build_information_accepts_release_and_local_mnemonics() -> None:
         "source_url": "unknown",
     }
 
+    # Current derived forms: an official tag, an editable-source label, and a
+    # contributor binary label carrying its target platform.
+    for mnemonic in ("v0.2.7", "v0.2.7-local", "v0.2.7-local-linux-x86_64"):
+        assert BuildInfo.from_mapping({**common, "build_mnemonic": mnemonic}).build_mnemonic == mnemonic
+    # v026-era artifacts remain readable (R-COMPAT-001).
     assert BuildInfo.from_mapping({**common, "build_mnemonic": "v026"}).build_mnemonic == "v026"
     assert (
         BuildInfo.from_mapping({**common, "build_mnemonic": "local-v026"}).build_mnemonic
@@ -92,5 +97,5 @@ def test_editable_install_falls_back_to_build_info_beside_module(tmp_path: Path)
         info = current_build_info()
 
     assert info.version == __version__
-    assert info.build_mnemonic == "local-v026"
+    assert info.build_mnemonic == f"v{__version__}-local"
     assert info.source_revision == "unknown"

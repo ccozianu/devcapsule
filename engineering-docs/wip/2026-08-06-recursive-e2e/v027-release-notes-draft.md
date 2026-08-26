@@ -1,9 +1,20 @@
-# v027 Release Notes — Draft
+# v0.2.7 Release Notes — Draft
 
 Status: draft maintained during v027 preparation; becomes the release text
 when the tag is cut. `R-COMPAT-001` requires the changed surface to be named
-here; the mnemonic jump from v026.2 (no v026.3) deliberately marks the
+here. This release was planned as mnemonic `v027`; on 2026-08-26 the owner
+unified the release identity with the package version, so the tag is
+`v0.2.7` and the jump from v026.2 (no v026.3) deliberately marks the
 command-line shape boundary.
+
+## One release identity
+
+The separate release-series mnemonic is retired. The package version is now
+the release identity: official releases are tagged `v<version>` (this one is
+`v0.2.7`), contributor binaries report `v<version>-local-<platform>` (for
+example `v0.2.7-local-linux-x86_64`), and editable source installs report
+`v<version>-local`. Artifacts and images from the v026-era scheme (`v026`,
+`local-v026`) remain fully readable.
 
 ## The changed command surface
 
