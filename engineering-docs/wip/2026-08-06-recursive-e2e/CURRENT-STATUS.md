@@ -217,6 +217,20 @@ Deferred engineering improvements (v028 and later):
    e2e levels can assert what command a CLI invocation would execute. An
    injectable runner would close that gap. Diagnosis only; no design is
    settled.
+3. Unify the release identity with the package version, proposed by the
+   owner on 2026-08-26: retire the separate `[tool.devcapsule]`
+   release-series mnemonic so one number serves tags, locks, labels, and
+   the distribution. The open design question is how a unified version
+   expresses build provenance (official versus contributor build), which
+   the mnemonic carries today: the owner suggested a fourth numeric
+   version field; the PEP 440 local version segment (`0.2.1` official,
+   `0.2.1+local` contributor, rendered `0.2.1-local` in Docker tags,
+   which forbid `+`) is the standard alternative and, unlike a fourth
+   ordered field, does not make provenance participate in version
+   ordering. Touches the bump tool, `build-pex.sh`, `build_info.py`
+   (likely schema 3), the release workflow's tag guard, image labels,
+   lock presentation, docs, and `R-COMPAT-001` reading of v026-era
+   mnemonic-bearing artifacts. No design is settled.
 
 The list stays open: defects and cleanups surfaced while shaking out v027
 join it rather than growing the v027 scope, unless the owner promotes one.
