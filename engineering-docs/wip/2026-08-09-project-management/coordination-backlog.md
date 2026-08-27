@@ -44,3 +44,61 @@ Related: `WORKFLOW.md` rule 11 currently states a narrower exclusivity for
 another workstream's WIP directory and recovery state. Whether that is a
 carve-out or a contradiction should be reconciled by `workflow-improvements`
 independently of this item, since readers need an answer now.
+
+## Dissolved Stage 7 Items
+
+Opened: 2026-08-27, when the product owner judged `recursive-e2e`'s pending
+Stage 7 not consequential enough to gate that workstream's conclusion and
+directed its identified items here as decisions to be made, not work already
+scheduled. Each leaves this backlog when it gains a release target and an
+owner, or a recorded rejection.
+
+### External-Resource Ownership And Reaping
+
+Release target: **undecided**
+
+The Stage 7 implementation half of the convention `workflow-improvements`
+retained; closes the
+[detached-successor cleanup bug](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md).
+The 2026-08-16 readiness assessment ranked this the top at-risk V1 item, but
+that ranking predates v0.2.7: the ordinary attached run's exit cleanup is
+verified (v026 acceptance, including broker-resource removal), so the
+accumulation problem is specific to detached and E2E launches. The remaining
+decision is whether that narrower exposure still earns V1 scope, and if so
+which workstream implements it. The convention-readiness notice delivered to
+`workflow-improvements`' intake on 2026-08-27 is overtaken if this item is
+deferred or rejected; that workstream should disposition it against this
+entry's outcome.
+
+### Retained-Successor Evidence Disposal
+
+Release target: **undecided; cheap either way**
+
+Two exited successor containers (`b2093d85…` and `482c34f2…` runs) and their
+run roots remain on the owner's host under a do-not-delete constraint that
+existed for Stage 7's benefit. With Stage 7 dissolved, decide when to release
+the constraint and remove them — by their exact GUID-derived names, which is
+itself a small live exercise of the cleanup rule.
+
+### Successor Persistence And Stability Proof
+
+Release target: **undecided; likely reject**
+
+The bounded second-inspection stability result was never produced: both
+retained successors exited while paused, so it needs a fresh launch. Its value
+was recursive-dogfood assurance, not adopter-facing persistence — project
+state and home persistence are separately covered. Recording rejection is a
+valid outcome.
+
+### Non-Interactive Runs
+
+Release target: **undecided — but the product owner ruled on 2026-08-23 that
+this blocks V1**; the entry must not bury that ruling.
+
+Delivered to this workstream's intake on 2026-08-27 (written 2026-08-23,
+delayed by the outbox failure). Unattended operation has no owner, no
+requirement, and no defined behavior for authorization and acquisition
+acknowledgements. The decisions it needs are recorded in the intake item:
+support versus explicit refusal in V1, the pre-recorded authorization shape if
+supported, whether it becomes a requirement and a ledger row, and which
+workstream carries it.
