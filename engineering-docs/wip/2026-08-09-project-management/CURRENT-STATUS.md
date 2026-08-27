@@ -162,8 +162,36 @@ current remote `main` at `a72d0a8` before project-management work resumed.
 
 ## Last Task And Status
 
-Last task: capture the IDE-profile behavior decided while bootstrapping the
-first named real project, `devcapsule-sample-trading-research`.
+Last task: the 2026-08-27 session, resumed at the product owner's direction
+after v0.2.7 (the new argparse CLI under the unified release identity) was
+released and verified. A high-progress coordination session; the owner ended
+it deliberately without forcing the pending decisions.
+
+Status: complete. What it did:
+
+1. **`recursive-e2e` concluded successfully** (PR #44). Its outbox was first
+   recovered and delivered (PR #43) — including the 2026-08-17 audit request
+   that a later outbox reset had orphaned, the exact failure mode it
+   reports. Its branches are deleted; its archive is
+   `engineering-docs/archive/2026-08-06-recursive-e2e/`.
+2. **Stage 7 dissolved** by the owner's ruling into four decision entries in
+   the [coordination backlog](coordination-backlog.md) (*Dissolved Stage 7
+   Items*), including the non-interactive-runs item the owner ruled
+   release-blocking on 2026-08-23.
+3. **The ledger gained two rows**: the decided `in-v1` VSCodium
+   independent-IDE surface (retire `codium_with_claude`, normal project
+   path; chess-club website proposed as its sample), and the `proposed`
+   capsule supervisor (capsule lifetime = supervisor, not one foreground
+   IDE; multi-IDE sessions; the natural non-interactive mechanism).
+4. **The supported-project-types recap** was discussed and shaped
+   (Python app/library, data-research, Python+TS web app, agent choice,
+   independent IDE; Java/CUDA/teams explicitly not claimable) but is not yet
+   written into the ledger — it awaits the release-thesis answer.
+
+The previous task record follows.
+
+Previous task: capture the IDE-profile behavior decided while bootstrapping
+the first named real project, `devcapsule-sample-trading-research`.
 
 Status: complete. The former deferred `R-SETTINGS-001` is now an accepted,
 implementation-agnostic product requirement, with a dedicated specification
@@ -221,6 +249,32 @@ eight unowned shortcomings and seven documented items to pin to V1; and the
 [first portfolio checkpoint](2026-08-15-portfolio-checkpoint.md).
 
 ## Next Resumable Task
+
+**Resume at the four questions recorded at the 2026-08-27 pause**, in rough
+order of leverage. The owner deliberately left them undecided — good
+progress does not require premature decisions.
+
+1. **The release thesis**: containment product versus workspace product.
+   Still gating roughly half the unwritten ledger rows (F1–F8, E1–E8), and
+   the session's supported-project-types recap leans containment. Standing
+   agent recommendation: containment.
+2. **The capsule-supervisor split**: ratify, amend, or reject the proposal
+   that V1 carries the supervisor as lifecycle anchor only (headless-capable,
+   explicit session end — which answers the release-blocking
+   non-interactive-runs backlog item) while the desktop-integration layer
+   (tray, one-click secondary IDEs, multi-IDE sessions) leads the first
+   post-V1 milestone.
+3. **Register `codium-surface`**: the VSCodium row is decided `in-v1` but
+   has no owning workstream; registration is main-first, and its scope
+   should be shaped against the supervisor answer in question 2.
+4. **Disposition this workstream's own intake** — now nine items: the seven
+   workflow-improvements items pending since 2026-08-18, plus the recovered
+   audit request (its answer is now largely known: outbox resets destroyed
+   undelivered mail; the recovery is documented in the recursive-e2e
+   conclusion) and the non-interactive-runs item (already represented in the
+   backlog; the disposition should record that).
+
+The earlier task list follows and remains valid behind these.
 
 **Resume inside the individual-projects question.** The first project is now
 named: `devcapsule-sample-trading-research`, a Python/PyCharm project with Codex
@@ -389,6 +443,18 @@ thread 8 above. Nothing is lost if that file is gone.
 
 ## External State And Risks
 
+- Paused 2026-08-27 at the end of the conclusion session. Everything is
+  committed and pushed: `project-management/coordination` carries this
+  handoff, the two new ledger rows, the backlog's dissolved-Stage-7 section,
+  and the earlier per-IDE profile spec commit, all rebased onto `main` at
+  `f29f31c`. Exercised latitude, recorded per the pause rule: the handoff
+  was deliberately **not** sent alone through the outbox, because it
+  references ledger rows and backlog entries that are deliverable content on
+  this same branch — sending the record without its targets would publish
+  broken references, and "the target lands no later than the reference"
+  wins. Main's copy of this handoff is stale until the branch next
+  integrates by pull request. The owner's `.idea` and trading-research
+  submodule drift remain deliberately uncommitted working state.
 - Paused 2026-08-19 for travel. The product owner reports that this laptop
   occasionally suffers kernel crashes when Docker instances are preserved
   through standby — rare but frequent enough to matter — so everything was
