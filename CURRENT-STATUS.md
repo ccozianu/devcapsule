@@ -8,7 +8,6 @@ state belongs in each linked workstream handoff.
 
 | Mnemonic | Started | Goal | State | Branch association | Handoff |
 |---|---|---|---|---|---|
-| `recursive-e2e` | 2026-08-06 | Build and launch a successor DevCapsule from inside the accepted dogfood environment | paused 2026-08-24 with v026.2 published and v027 preparation code-complete on its branch; the Hoare remediation of `project_configuration.py` is next | `recursive-e2e/stage-4`; the initial milestone branch is a historical adoption exception | [workstream status](engineering-docs/wip/2026-08-06-recursive-e2e/CURRENT-STATUS.md) |
 | `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | paused 2026-08-17; intake dispositioned, one backlog item ready to pick up, one acknowledged item blocked on `recursive-e2e` Stage 7 | `workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
 | `project-management` | 2026-08-09 | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active; permanent coordination | `project-management/coordination` | [workstream status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md) |
 | `sample-projects` | 2026-08-14 | Provide realistic sample projects as submodules that demonstrate ordinary adopter development inside DevCapsule | paused 2026-08-21 after adding human-authorized workstream-change rules; labeled fixtures are next | `sample-projects/fastapi-webapp` | [workstream status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md) |
@@ -53,10 +52,11 @@ protocol.
 
 - Keep host filesystem, credentials, Docker, devices, and networking exposure
   explicit and preserve `R-SCOPE-001`, `R-DOCKER-001`, and `R-PRODUCT-002`.
-- Current release sequencing, decided 2026-08-16: v026 carries a self-contained
-  tool entry point and the URL-open fix, owned by `recursive-e2e`, and bugs
-  fixed for v026 are the current top priority. The contained-display work moves
-  to v027. See the
+- Release sequencing: the v026 series and v0.2.7 (the new CLI, under the
+  unified release identity decided 2026-08-26) are released; `recursive-e2e`
+  concluded 2026-08-27 with its remaining items dissolved into the
+  project-management coordination backlog. The contained-display release
+  target is open under the unified versioning. See the
   [portfolio checkpoint](engineering-docs/wip/2026-08-09-project-management/2026-08-16-portfolio-checkpoint.md)
   and the [V1 scope ledger](engineering-docs/wip/2026-08-09-project-management/v1-scope-ledger.md).
 - Bases stay agent-neutral per `D-0005`: no ambient agent CLI is installed and

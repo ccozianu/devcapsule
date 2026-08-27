@@ -4,14 +4,46 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: resumed 2026-08-26. The v027 preparation is merged to `main` through
-PR #41; the distribution version is advanced to 0.2.1 and the complete e2e
-and recursive-dogfood-e2e suites pass against the new argparse CLI. On
-2026-08-26 the owner re-sequenced: the engineering improvements (including
-the `project_configuration.py` Hoare remediation) move past v027 to v028 or
-later, and the owner is trying a local build first. The release identity is now unified
-with the package version (0.2.7, tag `v0.2.7`). Next are the owner's
-release acts, then Stage 7 per the owner's sequencing
+State: **concluded successfully 2026-08-27** by the product owner's
+direction. See *Conclusion* below; this directory is archived and no agent
+selects this workstream again.
+
+## Conclusion
+
+Concluded successfully on 2026-08-27. The registered goal is met in
+substance: a successor DevCapsule was built and launched from inside the
+accepted dogfood environment with source identity, host-boundary
+authorization, and cleanup proven through Stages 0–6, and the delegated
+product deliverables went far beyond the original scope — the v026/v026.1/
+v026.2 releases, the self-contained PEX with clean-machine proof, the
+host-browser bridge, the v0.2.7 argparse CLI with the settled configuration
+grammar, the unified release identity, and full real-Docker e2e validation
+of all of it. Release v0.2.7 is published and verified against the live
+GitHub release; the owner dogfoods it daily.
+
+The one unfinished piece, Stage 7 persistence and deterministic cleanup, was
+deliberately rescoped rather than abandoned: on 2026-08-27 the product owner
+judged it not consequential enough to hold this workstream open and
+dissolved its items into decision entries in the
+[project-management coordination backlog](../../wip/2026-08-09-project-management/coordination-backlog.md)
+(*Dissolved Stage 7 Items*: external-resource reaping, retained-evidence
+disposal, the persistence proof, and the non-interactive-runs item). The
+capsule-supervisor proposal in the
+[V1 scope ledger](../../wip/2026-08-09-project-management/v1-scope-ledger.md)
+supersedes the lifecycle assumption Stage 7 was written against.
+
+Final branches and revisions: `recursive-e2e/stage-4` concluded at this
+commit atop `main` `28a14c9`; the released revision is `db8058c` (tag
+`v0.2.7`); the outbox was emptied through PR #43 and both branches are
+deleted after this conclusion merges. Intake is clear and every item this
+workstream ever received is in its disposition log below.
+
+Reconsideration condition: if a backlog entry above earns V1 scope, it opens
+a new subject-named workstream (for example `run-lifecycle`); this mnemonic
+is never reused. The retained successor containers `b2093d85…` and
+`482c34f2…` and their run roots remain on the owner's host under the
+backlog's evidence-disposal entry — their do-not-delete constraint now lives
+there, not here.
 
 Integration target: `main`
 
@@ -186,8 +218,22 @@ draft carry the changed surface. Grammar and argparse decisions of
 2026-08-23/24 are recorded in the v1-user-experience design note, and the
 Click CLI brief is marked superseded.
 
-Remaining before the release: only the owner's release acts — integrate the
-branch, tag `v0.2.7`, backend publication. On 2026-08-26 the owner unified
+Released. `v0.2.7` was published on 2026-08-26 and verified against the
+live GitHub release on 2026-08-27: the tag points at `main` merge revision
+`db8058cedbf7a16f9d893c089662680256a90659` (PR #42, containing the
+unification commit `2489e29`); `devcapsule.pex` is 40,164,540 bytes with
+SHA-256 `fbc1928d9abb6d2f7cf473f7403feddbef46b81dd0ef99c2d425fc844f55c29e`
+matching its published checksum; the released client reports version
+`0.2.7`, mnemonic `v0.2.7`, and that exact source revision. One incident
+during the release acts: the tag was first cut from a stale local `main`
+at `230bb65` (2026-08-19, predating even `--release-mnemonic`), and the
+backend failed safely at the unknown option before any publication; the
+owner replaced the tag at the correct merge revision the same day. The
+guard chain worked as designed — an old revision cannot silently ship
+under a new tag.
+
+The release-acts checklist below predates publication and is kept for the
+record. On 2026-08-26 the owner unified
 the release identity with the package version, replacing the planned `v027`
 mnemonic: `[tool.devcapsule].release-series` is deleted, the package version
 was advanced to 0.2.7 so the patch digit echoes the old series ordinal, and
@@ -774,13 +820,24 @@ owner's call and is not decided here.
 
 ## Open Threads
 
-- The release is prepared but not cut: the branch carries the 0.2.7 version
-  advance and the release-identity unification, and only the owner's acts
-  remain — integrate, tag `v0.2.7`, backend publication. The Hoare
-  remediation does not gate the release; it leads the deferred-improvements
-  list for v028+. The owner is exercising a local 0.2.7 build
-  (`dist/devcapsule-local.pex`) before the release acts. The release-notes
-  draft is [v027-release-notes-draft.md](v027-release-notes-draft.md).
+- v0.2.7 is released and verified (see *Current Priority And Status*). The
+  published GitHub release used auto-generated notes; the curated draft in
+  [v027-release-notes-draft.md](v027-release-notes-draft.md) names the
+  changed surface per `R-COMPAT-001` and has not been applied to the release
+  page. Whether to replace the release text with the curated draft is the
+  owner's choice and is quick to do.
+- No base image carries the new release identity yet: the recommended base
+  remains the v026-era digest, which is correct and compatible. Publishing a
+  base rebuilt from the released v0.2.7 bytes (labels would inherit mnemonic
+  `v0.2.7`) is undone and was not part of the release acts.
+- The trading-research submodule pointer in this checkout has moved forward:
+  the owner advanced that sample project using the released v0.2.7 client on
+  2026-08-26/27. Committing the pointer update belongs to `sample-projects`
+  (or the owner directly), not this workstream; it remains uncommitted here.
+- On 2026-08-27 the owner switched this checkout to `project-management` to
+  inventory who should do what, and how much, for V1. This workstream is
+  paused with more owner-identified work remaining (Stage 7, deferred
+  improvements) and resumes on the owner's instruction.
 - Run-once carrier answers can enable a capability but not disable a
   persistent authorization (each node has one authorizable V1 value); if
   per-run disabling is ever wanted, it is a value-vocabulary decision, not a
@@ -788,10 +845,10 @@ owner's call and is not decided here.
 - Resume Stage 7 persistence and deterministic cleanup after the directed
   pair, using the random run ID as the common name in every exclusive run
   resource.
-- The session's nine commits (`466a202`..`04df047` plus this pause commit)
-  are pushed on `origin/recursive-e2e/stage-4`; no pull request to `main` is
-  open yet, deliberately, because the Hoare remediation is ranked ahead of
-  the v027 release and should ride the same integration.
+- Overtaken: the v027-preparation commits reached `main` through PR #41 and
+  the version-advance/unification commits through PR #42, which is the
+  released revision. Only this pause's handoff commit rides the branch
+  ahead of `main`.
 - Pause-protocol gap, exercised latitude: the pause rule says the outbox
   carries the handoff so main's registry link stays readable, but
   `origin/recursive-e2e/outbox` (`2f9c364`) still holds deliveries that have
