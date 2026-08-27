@@ -4,12 +4,46 @@ Mnemonic: `recursive-e2e`
 
 Start date: 2026-08-06
 
-State: paused 2026-08-27 with release v0.2.7 published and verified. The
-argparse CLI, the unified release identity, and the full e2e validation are
-released; the owner has begun dogfooding the released client on the
-trading-research adopter and states more work remains on this workstream.
-Remaining: Stage 7 persistence/cleanup and the deferred engineering
-improvements (v028+), per the owner's sequencing
+State: **concluded successfully 2026-08-27** by the product owner's
+direction. See *Conclusion* below; this directory is archived and no agent
+selects this workstream again.
+
+## Conclusion
+
+Concluded successfully on 2026-08-27. The registered goal is met in
+substance: a successor DevCapsule was built and launched from inside the
+accepted dogfood environment with source identity, host-boundary
+authorization, and cleanup proven through Stages 0–6, and the delegated
+product deliverables went far beyond the original scope — the v026/v026.1/
+v026.2 releases, the self-contained PEX with clean-machine proof, the
+host-browser bridge, the v0.2.7 argparse CLI with the settled configuration
+grammar, the unified release identity, and full real-Docker e2e validation
+of all of it. Release v0.2.7 is published and verified against the live
+GitHub release; the owner dogfoods it daily.
+
+The one unfinished piece, Stage 7 persistence and deterministic cleanup, was
+deliberately rescoped rather than abandoned: on 2026-08-27 the product owner
+judged it not consequential enough to hold this workstream open and
+dissolved its items into decision entries in the
+[project-management coordination backlog](../../wip/2026-08-09-project-management/coordination-backlog.md)
+(*Dissolved Stage 7 Items*: external-resource reaping, retained-evidence
+disposal, the persistence proof, and the non-interactive-runs item). The
+capsule-supervisor proposal in the
+[V1 scope ledger](../../wip/2026-08-09-project-management/v1-scope-ledger.md)
+supersedes the lifecycle assumption Stage 7 was written against.
+
+Final branches and revisions: `recursive-e2e/stage-4` concluded at this
+commit atop `main` `28a14c9`; the released revision is `db8058c` (tag
+`v0.2.7`); the outbox was emptied through PR #43 and both branches are
+deleted after this conclusion merges. Intake is clear and every item this
+workstream ever received is in its disposition log below.
+
+Reconsideration condition: if a backlog entry above earns V1 scope, it opens
+a new subject-named workstream (for example `run-lifecycle`); this mnemonic
+is never reused. The retained successor containers `b2093d85…` and
+`482c34f2…` and their run roots remain on the owner's host under the
+backlog's evidence-disposal entry — their do-not-delete constraint now lives
+there, not here.
 
 Integration target: `main`
 
