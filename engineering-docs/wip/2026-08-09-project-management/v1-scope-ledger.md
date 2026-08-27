@@ -477,6 +477,44 @@ is compatible with every outcome of both.
 information-model task precedes it. This is the only `in-v1` row carrying no
 estimate, which matters when the release shape is rebuilt.
 
+### Independent IDE Surface: VSCodium On The Normal Project Path
+
+Verdict: `in-v1`
+
+Decided: 2026-08-27, by the product owner: retiring the legacy
+`codium_with_claude` command and moving VSCodium onto the normal project path
+is a high-priority task, because V1 must showcase an independent,
+fully open-source IDE.
+
+Owner: unassigned. Routing options: `recursive-e2e` (owns the v0.2.7 CLI and
+launch framework this must integrate with, but is paused with Stage 7
+remaining) or a newly registered product workstream. This supersedes the
+earlier "concurrency was chosen over VSCodium" trade for the release shape,
+which must be rebuilt accordingly.
+
+**Scope.**
+
+- Retire the `codium_with_claude` command tree. The name welds the IDE to one
+  agent, which contradicts the agent-neutrality claim; the replacement is a
+  neutral `codium` interactive surface with agents as separately authorized
+  components, the shape the PyCharm path already has.
+- The embedded resolution matrix gains `codium` as a second
+  `interactive-surface` value with its own pinned component table; `init`,
+  the lock, and `project run` select it like any other node.
+- Launch-path parity verified on the Codium surface: host-browser bridge,
+  runtime plan, run manifest and inspection, GUID-derived cleanup.
+- The extension-ecosystem boundary is stated, not discovered: VSCodium ships
+  Open VSX, so TS/JS/HTML/CSS (built into core) are first-class while
+  proprietary marketplace extensions such as Pylance are unavailable. The
+  showcase therefore leads with a JS/TS project rather than Python.
+- Acceptance evidence: a named sample project proving install → init → run →
+  agent session → IDE work → clean exit on the Codium surface. Candidate,
+  proposed 2026-08-27: the chess-club website — a small HTML/JS/TS site
+  started by one developer and maintained by a part-time student, exercising
+  the sequential-handoff story no other sample covers. It additionally
+  depends on dev-server preview and promotes the different-UID
+  second-developer proof from unverified to gating.
+
 ## Rows Still To Be Written
 
 The remainder of this ledger is the next task: one row per gap `F1`–`F8` and
