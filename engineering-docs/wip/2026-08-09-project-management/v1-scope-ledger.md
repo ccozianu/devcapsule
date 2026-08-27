@@ -515,6 +515,53 @@ which must be rebuilt accordingly.
   depends on dev-server preview and promotes the different-UID
   second-developer proof from unverified to gating.
 
+### Capsule Supervisor And Multi-IDE Sessions
+
+Verdict: `proposed`. Raised by the product owner on 2026-08-27; the V1-window
+question is deliberately open.
+
+**The revised design assumption.** Today a capsule's lifetime is one
+foreground IDE process: the launcher execs the IDE as the container's main
+process and the capsule ends when it exits. That identity made exit cleanup
+automatic, and it makes multi-IDE sessions impossible. Common adopter
+scenarios — Java or Python backend in PyCharm/IDEA/Eclipse beside an HTML/TS
+frontend in VSCodium — need two IDEs against one checkout, and the two-capsule
+dodge collides on IDE state directories and ports.
+
+**Direction.** A minimal supervisor/helper program is the container's entry
+process. It offers one-click launch of secondary IDEs, desktop integration
+such as a tray icon, and an explicit session end. Capsule lifetime becomes
+supervisor lifetime; IDEs are children; cleanup becomes supervised rather
+than a side effect of one process exiting — which revises the semantics of
+the reaping item in the coordination backlog.
+
+**Why it reaches further than multi-IDE.**
+
+- It is the natural mechanism for non-interactive runs (the release-blocking
+  backlog item): an unattended capsule is the supervisor with no GUI
+  children.
+- The owner's e2e thesis: if the supervisor is well integrated into the
+  desktop, IDEs launched from it are too — and the supervisor is DevCapsule's
+  own code, so desktop integration becomes automatable proof rather than
+  manual GUI acceptance.
+- A contained display needs a session anchor (tray, launcher) anyway; built
+  transport-agnostic, the supervisor serves host-X11 today and the contained
+  display later.
+- Natural host for the host-open bridge client, run self-identification, and
+  a health/inspection endpoint.
+
+**Costs and risks.** A new product component with PID-1 duties (signal
+forwarding, child reaping), a tray/toolkit choice per transport, and constant
+pressure on "minimal". The resolution matrix's single `interactive-surface`
+value becomes a set of installed surfaces plus the supervisor as entry
+process.
+
+**Open decisions.** Whether the supervisor is inside the V1 window or V1
+states the one-IDE limitation and the supervisor leads the first post-V1
+milestone; and how the VSCodium row sequences against it — its scope should
+be shaped to land inside the supervisor model rather than adding a second
+exclusive-foreground launch path.
+
 ## Rows Still To Be Written
 
 The remainder of this ledger is the next task: one row per gap `F1`–`F8` and
