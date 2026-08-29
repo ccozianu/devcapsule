@@ -28,6 +28,10 @@ registering `codium-surface`: no registration happens until that work starts.
   home so the deferral is visible rather than silent.
 - `rejected`: considered and intentionally not pursued.
 - `proposed`: recorded during planning; not yet ratified by the product owner.
+- `v1-optional`: added 2026-08-29 by the product owner. The feature is neither
+  committed nor deferred; the call is deliberately postponed until a V1
+  candidate exists, and is then made against the candidate rather than
+  against a plan. Rows with this verdict live in *Optional For V1* below.
 
 A `proposed` verdict is not a commitment. It is carried here so that the
 pending decision is itself visible.
@@ -689,8 +693,9 @@ workstream that builds it.
 - Quarkus REST services.
 
 **Supersedes** the recap's "Java explicitly not claimable", per the amended IDE
-coverage row. Of the recap's other exclusions, CUDA is not decided by this row
-and remains open; the team claim was settled on 2026-08-29 by the product
+coverage row. Of the recap's other exclusions, CUDA now carries the
+`v1-optional` verdict in *Optional For V1* below — decided at candidate time,
+no longer gating the plan; the team claim was settled on 2026-08-29 by the product
 owner — the workflow is promised for small teams of **one to five
 developers**, as recorded in `docs/product/issue-tracker-positioning.md`. This
 also resolves the previously noted record tension between the 2026-08-19
@@ -732,6 +737,36 @@ category's most common cold-start — code you did not write and do not yet
 trust.
 
 **Showcase.** The Java library sample from the amended IDE coverage row.
+
+## Optional For V1, Decided At Candidate Time
+
+Created 2026-08-29 at the product owner's direction: a separate list of
+features that are optional for V1, with the in-or-out call deliberately made
+at the end, once a V1 candidate exists. Parking an item here is itself a
+decision — it removes the item from the set gating the release plan without
+silently dropping it. Each entry states what the candidate-time call actually
+decides.
+
+### CUDA
+
+Verdict: `v1-optional`. Moved here 2026-08-29 by the product owner, closing
+the gap review's functional scope decision 1 as a release-plan gate.
+
+**What already works, unclaimed.** The v0.2.7 CLI's supplementary-argument
+syntax ends DevCapsule arguments at `--` and hands everything after it
+verbatim to `docker run` (`devcapsule/commands/project.py`, `run` and
+`run-image`, with a printed warning). A user can therefore grant GPU access
+today with `devcapsule project run -- --gpus all`, given the NVIDIA container
+toolkit on the host; pip-installed frameworks that bundle their CUDA runtime
+(PyTorch and peers) then work against the injected driver. This is the expert
+path: verbatim, warned, and unvalidated.
+
+**What the candidate-time call decides.** Whether V1 *claims* CUDA — which
+means the `E8` validation set (positive device authorization, negative
+no-device behavior, a real workload), documentation, possibly a first-class
+authorization instead of raw passthrough, and the NVIDIA/CUDA recipe's
+supported-versus-experimental status — or ships with the passthrough
+available but CUDA absent from the announced feature set.
 
 ## Rows Still To Be Written
 
