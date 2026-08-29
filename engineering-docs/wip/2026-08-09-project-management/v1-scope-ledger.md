@@ -738,6 +738,39 @@ trust.
 
 **Showcase.** The Java library sample from the amended IDE coverage row.
 
+### Human-Readable Workflow Documentation
+
+Verdict: `in-v1`
+
+Decided: 2026-08-29, by the product owner: the project owes its human readers
+— its own product owner, and every adopter — workflow documentation
+structured for understanding rather than for lookup. This dispositions the
+2026-08-17 intake item as accepted release content serving `R-PRODUCT-004`:
+an adopter who cannot understand the workflow cannot adopt it.
+
+Owner: none yet; assigned at pickup per the 2026-08-29 unowned-rows ruling.
+
+**Recommended shape, inherited from the intake item and not yet ratified.**
+An explicit onramp inside `WORKFLOW.md` — "if you are a human, read these
+sections and stop" — with the remainder marked reference material, building
+on the roughly 150 human-facing lines already written (*Purpose And
+Principles*, *How To Read This Document*, *Checkouts, Branches, And
+Workstreams*). A second parallel document is the shape to avoid, on this
+project's own evidence: duplicated normative text has diverged twice, and
+the non-normative copy loses because nobody's work breaks when it is wrong.
+Roughly a session's work in the recommended shape.
+
+**Sequencing.** The final shape is settled together with the still-open
+workflow extraction-and-seam decision, which largely determines the
+packaging: a workflow extracted to its own repository would carry its
+onramp differently. The division of labor with the adopter-facing
+[issue-tracker positioning](../../../docs/product/issue-tracker-positioning.md)
+stands: that document is the *why*, this one is the *how*.
+
+**Acceptance evidence.** A reader following the marked human path can state
+what adopting the workflow asks of them and what they get, without reading
+the reference sections.
+
 ## Optional For V1, Decided At Candidate Time
 
 Created 2026-08-29 at the product owner's direction: a separate list of

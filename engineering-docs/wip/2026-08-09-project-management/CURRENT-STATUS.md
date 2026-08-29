@@ -226,10 +226,19 @@ nine pending items. Per the intake convention the files are removed from
   becomes due. Recorded here rather than in that workstream's handoff, which
   restriction 11 protects from other workstreams' edits.
 
-Still pending in `intake/`, five items: the outbox-adoption item of 2026-08-16
+- **`2026-08-17-workflow-improvements-human-readable-workflow-doc.md` —
+  accepted, 2026-08-29, by the product owner: the project owes a
+  human-readable workflow document.** Recorded as the `in-v1` ledger row
+  *Human-Readable Workflow Documentation*, unowned until pickup. The intake
+  item's recommended shape — an onramp inside `WORKFLOW.md` rather than a
+  second parallel document, on the duplicated-normative-text evidence — is
+  carried in the row as recommended-not-ratified, with the final shape
+  settled together with the extraction-and-seam decision it interacts with.
+
+Still pending in `intake/`, four items: the outbox-adoption item of 2026-08-16
 (overtaken by events; closure expected next), the initialization-tooling
-routing item, and three 2026-08-17 policy questions (human-readable workflow
-document, workflow extraction and seam, skill packaging).
+routing item, and two 2026-08-17 policy questions (workflow extraction and
+seam, skill packaging).
 
 ## Last Task And Status
 
