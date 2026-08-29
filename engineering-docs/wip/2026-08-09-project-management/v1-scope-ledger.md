@@ -359,6 +359,15 @@ competes with concurrency and the entry point, or immediately after it, where it
 becomes the first post-V1 milestone and gives the announcement a concrete next
 promise.
 
+**Amended 2026-08-29, by the product owner.** The open question above is
+settled: Java is inside V1, as samples — a Java library project and a Quarkus
+REST service — under the maximal-wow release ruling recorded in *The Release
+Budget* row. The Java library sample doubles as the showcase for the
+*DevCapsule On The Side* row, using an existing project of the owner's that
+fits it. The Eclipse-versus-IDEA route choice and the sequencing note above
+remain open and unchanged; what is no longer open is whether Java waits for a
+later release.
+
 ### The Workflow Ships As An Optional Component
 
 Verdict: `in-v1`
@@ -562,6 +571,146 @@ milestone; and how the VSCodium row sequences against it — its scope should
 be shaped to land inside the supervisor model rather than adding a second
 exclusive-foreground launch path.
 
+### The Release Thesis: Workspace And Containment
+
+Verdict: `in-v1`. The thesis is the release framing itself; it has no deferral
+home.
+
+Decided: 2026-08-29, by the product owner, settling the first of the four
+resume questions recorded at the 2026-08-27 pause. The recorded alternatives —
+a containment-led release or a workspace-led release — are both rejected as
+sole leads.
+
+Owner: `project-management`. The thesis is applied here, when writing the
+remaining rows of this ledger; it assigns no implementation work of its own.
+
+**Statement.** DevCapsule V1 is a workspace product wherein agents are sensibly
+contained so that the user can happily run yolo mode by default. Workspace is
+the category; containment is the differentiator. This is the product owner's
+formulation, verbatim in substance: the two candidate theses were never
+competing capabilities, only competing headlines, and the release claims both
+because the containment is what makes the workspace safe to hand to an agent.
+
+**Consequences.**
+
+1. **Every user-visible containment claim is release-blocking.** The
+   obligations this ledger already records stop being deferrable: the
+   [X11 session-credential bug](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)
+   must be closed by the contained display before the claim is announced, and
+   the Docker-socket asterisk in the fourth-agent row must be resolved or
+   plainly disclaimed. An agent running unattended for hours with the host
+   session credential is precisely what the headline says cannot happen.
+2. **Yolo mode by default is promoted from dogfood workaround to product
+   requirement.** Provisioning must seed the agent-side bypass-permissions
+   configuration so the capsule comes up with the agent already trusted to act
+   freely inside the boundary; today that seeding is a manual step. The
+   boundary must be strong enough that this default is honest.
+3. **Breadth is decided per-row, not wholesale.** The remaining gap rows
+   (`F1`–`F8`, `E1`–`E8`), Java, CUDA, and the starter catalog no longer wait
+   on a thesis; each is judged by one test: *does this surface keep the
+   yolo-by-default promise honest and provable within the V1 window?*
+4. **The announcement already carries this thesis.** The one-sentence
+   positioning in `docs/product/v1-announcement.md` — a reproducible, AI-ready
+   workspace with explicit host-access boundaries — is the workspace noun with
+   the containment clause. Its accuracy against the implementation is a
+   separate, recorded review.
+
+### The Release Budget: Maximal Wow, In Spirit
+
+Verdict: `in-v1` as the release framing, alongside the thesis row above.
+
+Decided: 2026-08-29, by the product owner: "we can take longer than the initial
+twelve weeks we budgeted, but it will be wow."
+
+Owner: `project-management`, applied when writing and re-judging rows.
+
+**Statement.** V1 ships when it earns a maximal wow factor in the spirit of the
+workspace-and-containment thesis, not when a calendar window closes. The
+twelve-week budget is lifted.
+
+**Consequences.**
+
+1. The proposed twelve-week release shape — never ratified, and already stale
+   after the contained display moved — is now **superseded**, not merely stale.
+   A release shape must be rebuilt wow-first once the remaining gap rows are
+   written.
+2. Every deferral whose only justification was the twelve-week window loses
+   that justification and must be re-judged on the thesis test alone: VSCodium
+   (`F4`), the conformance suite (`E5`), the starter catalog (`F5`),
+   scaffolding commands, the service-dependency model, and CUDA.
+3. "Longer" is not "unbounded": rows still carry acceptance evidence, and the
+   wow bar is the thesis made visible — a contained workspace a reader can see
+   is safe to hand to an agent in yolo mode.
+
+### Supported Project Types: The Union
+
+Verdict: `in-v1`
+
+Decided: 2026-08-29, by the product owner. The announcement's concrete type
+list and the 2026-08-27 supported-project-types recap had diverged; the owner
+ruled the divergence reconciled by taking the union. This row also finally
+writes the recap into the ledger, which had waited on the release thesis.
+
+Owner: `project-management` for the list itself; each sample is owned by the
+workstream that builds it.
+
+**The union set.**
+
+- Python command-line tooling;
+- Python library projects;
+- Python FastAPI web services, including a JavaScript/TypeScript frontend
+  (the recap's "Python+TS web app", already anchored by the `fastapi-webapp`
+  sample);
+- Python data-research projects (anchored by
+  `devcapsule-sample-trading-research`, the first named real project);
+- Java library projects (also the *DevCapsule On The Side* showcase); and
+- Quarkus REST services.
+
+**Supersedes** the recap's "Java explicitly not claimable", per the amended IDE
+coverage row. Of the recap's other exclusions, CUDA is not decided by this row
+and remains open; the team claim was settled on 2026-08-29 by the product
+owner — the workflow is promised for small teams of **one to five
+developers**, as recorded in `docs/product/issue-tracker-positioning.md`. This
+also resolves the previously noted record tension between the 2026-08-19
+use-case set (which included small teams) and the recap (which excluded team
+claims), in the use-case set's favor.
+
+### DevCapsule On The Side: Adopting A Third-Party Project
+
+Verdict: `in-v1`
+
+Decided: 2026-08-29, by the product owner, who supplied the scenario verbatim
+and holds a Java library sample project that fits it.
+
+Owner: **none yet** — an unresolved defect per this ledger's own rule. The
+natural candidates are the yet-unregistered `codium-surface` workstream or a
+new workstream registered with it; the resume question about registering
+`codium-surface` should settle both at once.
+
+**Scenario.** An experienced software engineer, a hobbyist, or a student wants
+to browse and work on a third-party project that has no DevCapsule support.
+Sending a pull request that plants a `.devcapsule` directory inside an
+established upstream project is obviously not an option. A suitable command
+line therefore organizes a *devcapsule on the side*: the full workspace —
+manifest, lock, state, project memory — lives outside the third-party tree,
+which stays pristine.
+
+**Why it is new scope.** Today the manifest is strictly in-tree:
+`manifest_for` requires `<root>/.devcapsule/devcapsule.toml`
+(`devcapsule/project_configuration.py:814`), and project discovery walks
+upward looking for that directory. On-the-side needs an out-of-tree manifest
+home, a discovery-or-registration path to it, and a stance on where its
+project memory lives.
+
+**Why it belongs to the thesis.** Browsing unknown third-party code is the
+single strongest yolo-mode story the product has: the user is running someone
+else's code, and an agent against it, precisely because the boundary makes
+that safe. It is the containment differentiator demonstrated on the workspace
+category's most common cold-start — code you did not write and do not yet
+trust.
+
+**Showcase.** The Java library sample from the amended IDE coverage row.
+
 ## Rows Still To Be Written
 
 The remainder of this ledger is the next task: one row per gap `F1`–`F8` and
@@ -573,6 +722,7 @@ items from the readiness assessment, each reduced to a single recorded home.
 
 The twelve-week release shape discussed on 2026-08-16, including the deferral
 of VSCodium (`F4`), the conformance suite (`E5`), the starter catalog (`F5`),
-scaffolding commands, the service-dependency model, and CUDA support, is
-`proposed` and awaits ratification. It is deliberately not recorded as decided
-here.
+scaffolding commands, the service-dependency model, and CUDA support, was
+carried as `proposed` and never ratified. On 2026-08-29 it was **superseded**
+by *The Release Budget: Maximal Wow, In Spirit* row above; its deferrals must
+be re-judged on the thesis test rather than inherited.
