@@ -13,11 +13,12 @@ boundaries.
 
 ## Why An Adopter Should Care
 
-DevCapsule is for three common moments in the life of a developer:
+DevCapsule is for four common moments in the life of a developer:
 
 1. starting a new project;
 2. retrofitting an existing project;
-3. setting up a learning or course project.
+3. setting up a learning or course project;
+4. exploring a third-party project that has no DevCapsule support.
 
 In all three cases, the promise is the same:
 
@@ -28,7 +29,7 @@ In all three cases, the promise is the same:
 - let AI agents work in a real environment without giving them broad,
   accidental access to your machine.
 
-## Three High-Value Use Cases
+## Four High-Value Use Cases
 
 ### 1. Start a new project with better defaults from day one
 
@@ -81,6 +82,28 @@ DevCapsule makes that kind of work easier:
 
 That makes it easier to focus on learning the stack or the concept instead of
 debugging your machine.
+
+### 4. Explore a third-party project with a devcapsule on the side
+
+Whether you are an experienced engineer evaluating a dependency, a hobbyist, or
+a student reading real code, most projects you want to dig into have no
+DevCapsule support — and sending an upstream pull request that plants workspace
+files inside an established project is obviously not an option.
+
+DevCapsule lets you organize a *devcapsule on the side*: the whole workspace —
+environment, boundaries, project memory — lives beside the checkout, and the
+third-party tree stays pristine:
+
+- bring up a real IDE and agent surface against code you did not write;
+- keep your notes, experiments, and agent context in the side workspace
+  instead of scattering them into the upstream tree;
+- let an agent work freely against unfamiliar code, because the explicit
+  boundary is what makes that safe;
+- throw the side workspace away, or keep it for the next visit, without
+  leaving a trace in the project.
+
+This is the containment story at its sharpest: the code you trust least gets
+the same full workspace, with none of your machine on the table.
 
 ## The Problem
 
@@ -155,7 +178,8 @@ around a small set of explicit starter project types:
 
 - Python command-line tooling;
 - Python library projects;
-- Python FastAPI web services;
+- Python data-research projects;
+- Python FastAPI web services, including a JavaScript/TypeScript frontend;
 - Java library projects;
 - Quarkus REST services.
 
@@ -167,6 +191,7 @@ type:
 ```text
 devcapsule new --type python-cli --name my-tool
 devcapsule new --type python-lib --name my-lib
+devcapsule new --type data-research --name my-research
 devcapsule new --type fastapi --name my-service
 devcapsule new --type java-lib --name my-lib
 devcapsule new --type quarkus-rest --name my-service
@@ -191,6 +216,14 @@ devcapsule adopt --path . --type quarkus-rest
 
 The goal is not to rewrite an existing codebase. The goal is to make it
 progressively more reproducible, resumable, AI-ready, and easier to hand off.
+
+For a project you do not own, the same flow works on the side: the workspace
+definition, state, and project memory are kept beside the checkout rather than
+inside it, so a third-party tree needs no upstream change at all:
+
+```text
+devcapsule adopt --path ./their-project --on-the-side
+```
 
 ## A Concrete Before/After
 
@@ -222,6 +255,29 @@ DevCapsule is aimed at the broader workspace problem:
 
 The point is not that devcontainers are wrong. The point is that many adopters
 need the full workspace story, not only the application runtime story.
+
+## Does This Replace Your Issue Tracker? No.
+
+The in-repo records DevCapsule ships are not project management, and adopting
+them requires abandoning nothing. They are the agent's memory: what the agent
+reads to resume useful work, and what it writes so the next session — human or
+agent — can pick up where this one stopped. A tracker is where people agree;
+the tree is what the agent can read at the moment it acts.
+
+If your project already runs on Jira or GitHub Issues, that stays your system
+of record. DevCapsule's workflow then manages only what passes between you and
+the agent, and in V1 you carry context across that boundary yourself — by copy
+and paste if need be. No tracker integration is claimed.
+
+For smaller projects — and most of DevCapsule's V1 audience is a solo
+developer or a team of one to five, for whom the realistic alternative to
+in-tree records is no records at all — the same workflow can carry the
+project's engineering records outright.
+
+A tracker still does plenty of things better: search, notifications,
+assignment, dashboards, and letting non-developers participate. Teams that
+need those keep their tracker. The full position is in
+[DevCapsule workflow and issue trackers](issue-tracker-positioning.md).
 
 ## What V1 Includes
 

@@ -59,11 +59,16 @@ The reasoning, the measurements behind it, and the larger-team roadmap are in
 the `project-management` note
 [The workflow versus Jira and GitHub Issues](../../wip/2026-08-09-project-management/2026-08-19-workflow-versus-issue-trackers.md).
 
-**Status consequence, flagged not resolved.** The current artifact,
-`docs/product/v1-announcement.md`, does not mention issue trackers at all, so it
-does not satisfy the criteria added above. This record's `status: implemented`
-therefore needs the product owner's review; it has deliberately not been changed
-here.
+**Status consequence, resolved 2026-08-29.** The flag previously recorded here
+— that `docs/product/v1-announcement.md` did not mention issue trackers at all
+— is closed. At the product owner's direction the announcement now answers the
+objection in its "Does This Replace Your Issue Tracker? No." section, and a
+standalone referenceable statement exists at
+`docs/product/issue-tracker-positioning.md`, which also records the owner's
+2026-08-29 rulings: alongside a larger team process the workflow manages
+strictly the human–agent channel with the human ferrying context in V1, and
+for small projects it may carry the engineering records outright, promised for
+one to five developers. `status: implemented` is accurate again.
 
 ## Related
 
