@@ -110,3 +110,18 @@ non-interactive runs are the supervisor with no GUI children, so the
 from the list above: the pre-recorded authorization and acquisition
 acknowledgement shape, the requirement record, and the owning workstream
 (the supervisor core itself has none registered yet).
+
+### Workflow Invariants As Pre-Commit Hooks
+
+Release target: undecided. Owner: none yet, per the 2026-08-29 unowned-rows
+ruling; assigned at pickup.
+
+Directed by the product owner on 2026-08-29 while dispositioning the
+intake-staleness item. The workflow's mechanical invariants — the intake
+exclusive-or, append-only disposition logs, intake naming, the WIP carve-out,
+registry agreement — become a `devcapsule workflow verify` check exposed to
+adopters as opt-in `pre-commit` local hooks seeded by bootstrap, and to this
+repository as a Nox gate session. Design fleshed out in
+[the 2026-08-29 note](2026-08-29-workflow-invariants-pre-commit.md). Shares
+its delivery path with the initialization-tooling intake item; whichever
+workstream picks up one should expect the other.

@@ -204,11 +204,27 @@ nine pending items. Per the intake convention the files are removed from
   entry, with owner assignment deferred until pickup per the 2026-08-29
   unowned-rows ruling.
 
-Still pending in `intake/`, six items: the outbox-adoption item of 2026-08-16
+- **`2026-08-17-workflow-improvements-intake-staleness-is-yours.md` —
+  decided, 2026-08-29, by the product owner.** No dedicated staleness
+  mechanism will exist; that is the decision, deliberately recorded. What is
+  adopted instead is the **invariant**: the intake exclusive-or becomes
+  mechanically checked, via the `pre-commit`-based design in
+  [Workflow Invariants As Pre-Commit Hooks](2026-08-29-workflow-invariants-pre-commit.md)
+  and its coordination-backlog entry — offered to adopters as opt-in local
+  hooks and run in this repository's Nox gate, which supplies the
+  checker-is-not-the-delinquent property the checkpoint-sweep option wanted
+  without a manual obligation. The release gate remains what catches rot; the
+  same-day evidence for the invariant check is commits `3873356`/`df36750`,
+  where this workstream broke the invariant and nothing mechanical noticed.
+  The item's rider — the `workflow-improvements` lifecycle call, sharpened by
+  Stage 7's dissolution having changed the shape of that workstream's one
+  blocked item — is deliberately not decided here and stays with the
+  remaining intake work.
+
+Still pending in `intake/`, five items: the outbox-adoption item of 2026-08-16
 (overtaken by events; closure expected next), the initialization-tooling
-routing item, and the four 2026-08-17 policy questions (human-readable
-workflow document, intake staleness, workflow extraction and seam, skill
-packaging).
+routing item, and three 2026-08-17 policy questions (human-readable workflow
+document, workflow extraction and seam, skill packaging).
 
 ## Last Task And Status
 
