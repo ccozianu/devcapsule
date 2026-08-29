@@ -102,3 +102,11 @@ acknowledgements. The decisions it needs are recorded in the intake item:
 support versus explicit refusal in V1, the pre-recorded authorization shape if
 supported, whether it becomes a requirement and a ledger row, and which
 workstream carries it.
+
+**Mechanism decided 2026-08-29.** The product owner ratified the capsule
+supervisor for V1 (ledger row *Capsule Supervisor And Multi-IDE Sessions*):
+non-interactive runs are the supervisor with no GUI children, so the
+"support versus refusal" question is answered — supported, in V1. Still open
+from the list above: the pre-recorded authorization and acquisition
+acknowledgement shape, the requirement record, and the owning workstream
+(the supervisor core itself has none registered yet).

@@ -526,8 +526,18 @@ which must be rebuilt accordingly.
 
 ### Capsule Supervisor And Multi-IDE Sessions
 
-Verdict: `proposed`. Raised by the product owner on 2026-08-27; the V1-window
-question is deliberately open.
+Verdict: `in-v1` for the supervisor core; `deferred` for the
+desktop-integration layer, whose stated later home is the first post-V1
+milestone.
+
+Decided: 2026-08-29, by the product owner, ratifying the split exactly as
+proposed: the supervisor is in V1 as the capsule's lifecycle anchor — entry
+process, IDEs as supervised children, supervised cleanup, explicit session
+end, headless-capable, which is what answers the release-blocking
+non-interactive-runs backlog item. Desktop integration — the tray icon,
+one-click secondary IDEs, and multi-IDE sessions — is post-V1, so V1 states
+the one-interactive-IDE limitation. Raised by the product owner on
+2026-08-27.
 
 **The revised design assumption.** Today a capsule's lifetime is one
 foreground IDE process: the launcher execs the IDE as the container's main
@@ -565,11 +575,15 @@ pressure on "minimal". The resolution matrix's single `interactive-surface`
 value becomes a set of installed surfaces plus the supervisor as entry
 process.
 
-**Open decisions.** Whether the supervisor is inside the V1 window or V1
-states the one-IDE limitation and the supervisor leads the first post-V1
-milestone; and how the VSCodium row sequences against it — its scope should
-be shaped to land inside the supervisor model rather than adding a second
-exclusive-foreground launch path.
+**Open decisions.** The 2026-08-29 ruling settled the V1-window question (see
+the verdict above): the supervisor core is in V1, and the desktop-integration
+layer leads the first post-V1 milestone rather than V1 carrying a one-IDE
+caveat forever. Still open: how the VSCodium row sequences against the
+supervisor — its scope should be shaped to land inside the supervisor model
+rather than adding a second exclusive-foreground launch path — which is the
+`codium-surface` registration question. Note the supervisor core has no
+registered owning workstream yet either; both registrations are main-first
+and can be settled together.
 
 ### The Release Thesis: Workspace And Containment
 
