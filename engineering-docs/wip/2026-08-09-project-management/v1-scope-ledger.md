@@ -13,6 +13,14 @@ items recorded as a sentence inside another document reliably fail to ship.
 Every row carries a verdict, an owner, and acceptance evidence. A row with no
 owner is an unresolved defect in this ledger, not a normal state.
 
+**Amended 2026-08-29, by the product owner.** An unowned row is acceptable as
+a standing state: workstreams are assigned when the work is picked up, not at
+decision time. The rule above survives in weakened form — a row with no owner
+is not a defect, but no unowned row may be reported as in progress, and the
+release gate still requires every `in-v1` row to have found an owner before
+its work is claimed done. This settled the 2026-08-27 resume question about
+registering `codium-surface`: no registration happens until that work starts.
+
 ## Verdict Values
 
 - `in-v1`: committed to the V1 release.
@@ -696,10 +704,10 @@ Verdict: `in-v1`
 Decided: 2026-08-29, by the product owner, who supplied the scenario verbatim
 and holds a Java library sample project that fits it.
 
-Owner: **none yet** — an unresolved defect per this ledger's own rule. The
-natural candidates are the yet-unregistered `codium-surface` workstream or a
-new workstream registered with it; the resume question about registering
-`codium-surface` should settle both at once.
+Owner: none yet — acceptable under the 2026-08-29 amendment to this ledger's
+owner rule; assigned when the work is picked up. The natural candidates are
+the yet-unregistered `codium-surface` workstream or a new workstream
+registered with it.
 
 **Scenario.** An experienced software engineer, a hobbyist, or a student wants
 to browse and work on a third-party project that has no DevCapsule support.
