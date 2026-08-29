@@ -218,8 +218,13 @@ nine pending items. Per the intake convention the files are removed from
   where this workstream broke the invariant and nothing mechanical noticed.
   The item's rider — the `workflow-improvements` lifecycle call, sharpened by
   Stage 7's dissolution having changed the shape of that workstream's one
-  blocked item — is deliberately not decided here and stays with the
-  remaining intake work.
+  blocked item — was decided on 2026-08-29 by the product owner:
+  `workflow-improvements` **stays open, idle**. It keeps its one acknowledged
+  item (the external-resource ownership convention, whose blocker changed
+  shape when Stage 7 dissolved into backlog entries) rather than concluding
+  and handing it onward, and it resumes when that item or new protocol work
+  becomes due. Recorded here rather than in that workstream's handoff, which
+  restriction 11 protects from other workstreams' edits.
 
 Still pending in `intake/`, five items: the outbox-adoption item of 2026-08-16
 (overtaken by events; closure expected next), the initialization-tooling
