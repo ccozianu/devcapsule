@@ -245,10 +245,18 @@ nine pending items. Per the intake convention the files are removed from
   into the *Human-Readable Workflow Documentation* row and the open
   extraction-and-seam decision rather than dying with the rejection.
 
-Still pending in `intake/`, three items: the outbox-adoption item of
-2026-08-16 (overtaken by events; closure expected next), the
-initialization-tooling routing item, and the workflow extraction-and-seam
-question.
+- **`2026-08-17-workflow-improvements-workflow-extraction-and-seam.md` —
+  decided, 2026-08-29, by the product owner.** V1 ships with this workflow;
+  `R-PRODUCT-004` stands unamended, so the decision-record amendment the item
+  anticipated is unnecessary. Whether an adopter can install an alternative
+  workflow moved to the ledger's *Optional For V1* list as
+  *An Alternative Workflow Can Be Installed*, in plain words — the owner
+  retired the word "seam" as unintuitive. Extraction to a separate repository
+  is not pursued; its named costs stay recorded in the item (Git history).
+
+Still pending in `intake/`, two items: the outbox-adoption item of 2026-08-16
+(overtaken by events; closure expected next) and the initialization-tooling
+routing item.
 
 ## Last Task And Status
 

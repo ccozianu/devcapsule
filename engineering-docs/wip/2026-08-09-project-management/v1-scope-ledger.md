@@ -760,10 +760,12 @@ project's own evidence: duplicated normative text has diverged twice, and
 the non-normative copy loses because nobody's work breaks when it is wrong.
 Roughly a session's work in the recommended shape.
 
-**Sequencing.** The final shape is settled together with the still-open
-workflow extraction-and-seam decision, which largely determines the
-packaging: a workflow extracted to its own repository would carry its
-onramp differently. The division of labor with the adopter-facing
+**Sequencing.** Originally settled together with the workflow extraction
+question; that question closed on 2026-08-29 — V1 ships with this workflow,
+extraction is not pursued, and alternative-workflow installability is a
+`v1-optional` check — so the recommended onramp shape has no remaining
+blocker, though it stays recommended rather than ratified. The division of
+labor with the adopter-facing
 [issue-tracker positioning](../../../docs/product/issue-tracker-positioning.md)
 stands: that document is the *why*, this one is the *how*.
 
@@ -797,9 +799,8 @@ that fix is portable: a small mandatory core (selection, synchronization,
 intake, checkpoints) with procedure in linked files loaded when reached.
 `AGENTS.md` currently points at a single 1772-line document with no layering,
 a cost paid on every turn of every session. This layering work folds into the
-*Human-Readable Workflow Documentation* row's onramp shape and interacts with
-the open extraction-and-seam decision; it does not die with the skill
-rejection. If vendor packaging is ever wanted after the trigger fires, the
+*Human-Readable Workflow Documentation* row's onramp shape; it does not die
+with the skill rejection. If vendor packaging is ever wanted after the trigger fires, the
 natural shape is per-agent adapters generated from the neutral source,
 materialized per developer after explicit authorization — exactly like the
 curated agent CLIs — so the neutral source never depends on the adapter.
@@ -833,6 +834,34 @@ no-device behavior, a real workload), documentation, possibly a first-class
 authorization instead of raw passthrough, and the NVIDIA/CUDA recipe's
 supported-versus-experimental status — or ships with the passthrough
 available but CUDA absent from the announced feature set.
+
+### An Alternative Workflow Can Be Installed
+
+Verdict: `v1-optional`. Created 2026-08-29 by the product owner, who also
+retired the word "seam" from this question as unintuitive for a human reader;
+the plain statement below replaces it. This dispositions the 2026-08-17
+extraction intake item: **V1 ships with this workflow** — `R-PRODUCT-004`
+stands unamended — and whether an adopter can install an alternative workflow
+is checked against the V1 candidate, not decided now.
+
+**What the check involves, in plain words.** As far as is currently known,
+the product itself depends on exactly three things: `AGENTS.md` as the entry
+point an agent reads first, `workflow-type` in `.devcapsule/devcapsule.toml`,
+and the `engineering-docs/` directory layout. Everything else in
+`WORKFLOW.md` is protocol content an adopter could replace wholesale. The
+candidate-time call decides whether V1 verifies and documents that boundary —
+saying so in *Applying This To Other Projects*, which currently assumes
+adopters take this workflow rather than choose one — or leaves the workflow
+fixed for V1. The check is a documentation change, roughly one editing
+session, no code.
+
+**Extraction to a separate repository is not pursued.** Its named costs stand
+recorded in the dispositioned intake item (Git history): the dogfood loop
+would cross a repository boundary, a separate repository implies versions and
+migration for a workflow that changed eleven times in two days, and the
+submodule-versus-vendoring tradeoff should be decided once with
+`sample-projects`. It would only become worth revisiting after installable
+alternatives exist, at which point it is packaging rather than guesswork.
 
 ## Rows Still To Be Written
 
