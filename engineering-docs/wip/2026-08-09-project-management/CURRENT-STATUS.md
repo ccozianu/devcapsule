@@ -235,10 +235,20 @@ nine pending items. Per the intake convention the files are removed from
   carried in the row as recommended-not-ratified, with the final shape
   settled together with the extraction-and-seam decision it interacts with.
 
-Still pending in `intake/`, four items: the outbox-adoption item of 2026-08-16
-(overtaken by events; closure expected next), the initialization-tooling
-routing item, and two 2026-08-17 policy questions (workflow extraction and
-seam, skill packaging).
+- **`2026-08-17-workflow-improvements-workflow-loading-and-packaging.md` —
+  rejected for V1, 2026-08-29, by the product owner**, unless the skills
+  convention is identified as widely adopted and buying our users something
+  tangible — the stated reopening trigger. Recorded as the `rejected` ledger
+  row *Workflow Packaging As A Vendor "Skill"*. The item's underlying
+  progressive-disclosure finding (layer the 1772-line document: small
+  mandatory core, procedure loaded on demand) is deliberately kept, folded
+  into the *Human-Readable Workflow Documentation* row and the open
+  extraction-and-seam decision rather than dying with the rejection.
+
+Still pending in `intake/`, three items: the outbox-adoption item of
+2026-08-16 (overtaken by events; closure expected next), the
+initialization-tooling routing item, and the workflow extraction-and-seam
+question.
 
 ## Last Task And Status
 

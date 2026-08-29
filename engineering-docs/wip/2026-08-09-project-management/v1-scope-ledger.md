@@ -771,6 +771,39 @@ stands: that document is the *why*, this one is the *how*.
 what adopting the workflow asks of them and what they get, without reading
 the reference sections.
 
+### Workflow Packaging As A Vendor "Skill"
+
+Verdict: `rejected` for V1, with a stated reconsideration condition.
+
+Decided: 2026-08-29, by the product owner: DevCapsule does not package its
+workflow as a vendor "skill" for V1, **unless** the skills convention is
+identified as widely adopted and as buying our users something tangible. The
+condition is the reopening trigger; absent it, this stays rejected.
+
+Owner: not applicable while rejected; the reconsideration, if triggered, is a
+`project-management` routing decision.
+
+**Grounds, inherited from the 2026-08-17 intake item** — all three are
+existing project decisions rather than opinions: skills are a vendor
+mechanism while `R-PRODUCT-004` requires the workflow to transfer across
+agents; this repository's own root instructions forbid storing anything in
+agent-specific files for exactly that reason; and `AGENTS.md` is the neutral
+entry point several agents already read, so reshaping around one vendor's
+loader would invert a deliberate decision. Rejecting costs nothing today.
+
+**The finding underneath it, deliberately kept.** What a skill actually buys
+is progressive disclosure — load a small core, pull the rest on demand — and
+that fix is portable: a small mandatory core (selection, synchronization,
+intake, checkpoints) with procedure in linked files loaded when reached.
+`AGENTS.md` currently points at a single 1772-line document with no layering,
+a cost paid on every turn of every session. This layering work folds into the
+*Human-Readable Workflow Documentation* row's onramp shape and interacts with
+the open extraction-and-seam decision; it does not die with the skill
+rejection. If vendor packaging is ever wanted after the trigger fires, the
+natural shape is per-agent adapters generated from the neutral source,
+materialized per developer after explicit authorization — exactly like the
+curated agent CLIs — so the neutral source never depends on the adapter.
+
 ## Optional For V1, Decided At Candidate Time
 
 Created 2026-08-29 at the product owner's direction: a separate list of

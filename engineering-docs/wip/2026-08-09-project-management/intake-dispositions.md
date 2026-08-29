@@ -11,3 +11,4 @@ workstream's handoff. See *The Disposition Log* in `WORKFLOW.md`.
 | `2026-08-23-recursive-e2e-non-interactive-runs-have-no-owner.md` | 2026-08-29 | accepted | Already represented by the backlog's *Non-Interactive Runs* entry; mechanism decided 2026-08-29: the capsule supervisor. |
 | `2026-08-17-workflow-improvements-intake-staleness-is-yours.md` | 2026-08-29 | decided | No staleness mechanism, deliberately; the invariant is adopted instead, as pre-commit/Nox checks. Full reasoning in the handoff. |
 | `2026-08-17-workflow-improvements-human-readable-workflow-doc.md` | 2026-08-29 | accepted | Owed, in V1: ledger row *Human-Readable Workflow Documentation*; onramp shape recommended, settled with the extraction decision. |
+| `2026-08-17-workflow-improvements-workflow-loading-and-packaging.md` | 2026-08-29 | rejected | No skill packaging for V1 unless the convention proves widely adopted and tangibly useful; ledger row records it. Layering finding kept. |
