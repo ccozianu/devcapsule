@@ -162,6 +162,14 @@ current remote `main` at `a72d0a8` before project-management work resumed.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
+- Decided 2026-08-29, by the product owner, closing the individual-projects
+  routing question (formerly Open Thread 7): there will be **no dedicated
+  findings-route mechanism** for real projects living in separate
+  repositories — it is too fanciful a feature for V1. Adopters and external
+  projects report findings as ordinary GitHub issues on the DevCapsule
+  repository. In-tree projects carried by `sample-projects`, such as
+  `devcapsule-sample-trading-research`, keep the workstream-intake route that
+  already produced `R-SETTINGS-001`. No further action.
 
 ## Intake Dispositions
 
@@ -468,32 +476,16 @@ questions and reasoning hooks, not a transcript.
    mention trackers at all. The status was deliberately left unchanged, because
    flipping a requirement's status is the product owner's call; `accepted` is
    the honest value if he wants it changed.
-7. **The individual projects: first one named, routing rule still implicit.**
-   `devcapsule-sample-trading-research` is the first real project: a
-   Python/PyCharm environment with Codex and Claude Code. It is carried by the
-   `sample-projects` workstream, so its finding about copied per-IDE profile
-   prototypes had a route home and became accepted `R-SETTINGS-001`. The open
-   coordination question is whether every real project explicitly owes such
-   findings back to this repository, especially when a future project is a
-   separate repository without an in-repository workstream. The original frame:
-   the X11 passthrough hands every GUI capsule his trusted host session cookie
-   and cannot be avoided while `DISPLAY` is required, and real projects worsen
-   exactly the dimension that matters because agent work runs for hours; service
-   dependencies and port allocation both reopen open V1 decisions; and — the
-   part worth keeping — if each project is its own repository rather than a
-   workstream here, findings have **no route home**, because a separate project
-   has no outbox into this one. Per project he would be asked for: name and
-   repository, size, declared capabilities, services beyond the checkout,
-   whether it is GUI-driven, and what it should prove about DevCapsule.
-8. **Two carried items from the 2026-08-18 critique, now the only part of it not
+7. **One carried item from the 2026-08-18 critique, now the only part of it not
    superseded.** Whether the process-to-product commit ratio is acceptable
    dogfood cost or a signal to freeze `WORKFLOW.md` and spend the next stretch
-   on the product; and the seven intake items in this workstream's own
-   `intake/`, read on 2026-08-18 and still undispositioned. That critique was
+   on the product. That critique was
    parked in a scratch file outside the repository; its measurements and
-   recommendation are now in the delivered coordination-storage item, and these
-   two questions are all that had no home.
-9. **Whether the storage boundary earns a `Shared Constraints` line** in the
+   recommendation are now in the delivered coordination-storage item. Its
+   companion question — the seven then-undispositioned intake items — closed
+   on 2026-08-29 when the intake was dispositioned down to two mechanical
+   items; see *Intake Dispositions*.
+8. **Whether the storage boundary earns a `Shared Constraints` line** in the
    root registry. Offered twice and not taken. The argument against is that it
    is not implemented yet, so a constraint would describe an intention.
 
