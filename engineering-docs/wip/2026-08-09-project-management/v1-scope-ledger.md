@@ -477,6 +477,91 @@ is compatible with every outcome of both.
 information-model task precedes it. This is the only `in-v1` row carrying no
 estimate, which matters when the release shape is rebuilt.
 
+### Independent IDE Surface: VSCodium On The Normal Project Path
+
+Verdict: `in-v1`
+
+Decided: 2026-08-27, by the product owner: retiring the legacy
+`codium_with_claude` command and moving VSCodium onto the normal project path
+is a high-priority task, because V1 must showcase an independent,
+fully open-source IDE.
+
+Owner: unassigned. Routing options: `recursive-e2e` (owns the v0.2.7 CLI and
+launch framework this must integrate with, but is paused with Stage 7
+remaining) or a newly registered product workstream. This supersedes the
+earlier "concurrency was chosen over VSCodium" trade for the release shape,
+which must be rebuilt accordingly.
+
+**Scope.**
+
+- Retire the `codium_with_claude` command tree. The name welds the IDE to one
+  agent, which contradicts the agent-neutrality claim; the replacement is a
+  neutral `codium` interactive surface with agents as separately authorized
+  components, the shape the PyCharm path already has.
+- The embedded resolution matrix gains `codium` as a second
+  `interactive-surface` value with its own pinned component table; `init`,
+  the lock, and `project run` select it like any other node.
+- Launch-path parity verified on the Codium surface: host-browser bridge,
+  runtime plan, run manifest and inspection, GUID-derived cleanup.
+- The extension-ecosystem boundary is stated, not discovered: VSCodium ships
+  Open VSX, so TS/JS/HTML/CSS (built into core) are first-class while
+  proprietary marketplace extensions such as Pylance are unavailable. The
+  showcase therefore leads with a JS/TS project rather than Python.
+- Acceptance evidence: a named sample project proving install → init → run →
+  agent session → IDE work → clean exit on the Codium surface. Candidate,
+  proposed 2026-08-27: the chess-club website — a small HTML/JS/TS site
+  started by one developer and maintained by a part-time student, exercising
+  the sequential-handoff story no other sample covers. It additionally
+  depends on dev-server preview and promotes the different-UID
+  second-developer proof from unverified to gating.
+
+### Capsule Supervisor And Multi-IDE Sessions
+
+Verdict: `proposed`. Raised by the product owner on 2026-08-27; the V1-window
+question is deliberately open.
+
+**The revised design assumption.** Today a capsule's lifetime is one
+foreground IDE process: the launcher execs the IDE as the container's main
+process and the capsule ends when it exits. That identity made exit cleanup
+automatic, and it makes multi-IDE sessions impossible. Common adopter
+scenarios — Java or Python backend in PyCharm/IDEA/Eclipse beside an HTML/TS
+frontend in VSCodium — need two IDEs against one checkout, and the two-capsule
+dodge collides on IDE state directories and ports.
+
+**Direction.** A minimal supervisor/helper program is the container's entry
+process. It offers one-click launch of secondary IDEs, desktop integration
+such as a tray icon, and an explicit session end. Capsule lifetime becomes
+supervisor lifetime; IDEs are children; cleanup becomes supervised rather
+than a side effect of one process exiting — which revises the semantics of
+the reaping item in the coordination backlog.
+
+**Why it reaches further than multi-IDE.**
+
+- It is the natural mechanism for non-interactive runs (the release-blocking
+  backlog item): an unattended capsule is the supervisor with no GUI
+  children.
+- The owner's e2e thesis: if the supervisor is well integrated into the
+  desktop, IDEs launched from it are too — and the supervisor is DevCapsule's
+  own code, so desktop integration becomes automatable proof rather than
+  manual GUI acceptance.
+- A contained display needs a session anchor (tray, launcher) anyway; built
+  transport-agnostic, the supervisor serves host-X11 today and the contained
+  display later.
+- Natural host for the host-open bridge client, run self-identification, and
+  a health/inspection endpoint.
+
+**Costs and risks.** A new product component with PID-1 duties (signal
+forwarding, child reaping), a tray/toolkit choice per transport, and constant
+pressure on "minimal". The resolution matrix's single `interactive-surface`
+value becomes a set of installed surfaces plus the supervisor as entry
+process.
+
+**Open decisions.** Whether the supervisor is inside the V1 window or V1
+states the one-IDE limitation and the supervisor leads the first post-V1
+milestone; and how the VSCodium row sequences against it — its scope should
+be shaped to land inside the supervisor model rather than adding a second
+exclusive-foreground launch path.
+
 ## Rows Still To Be Written
 
 The remainder of this ledger is the next task: one row per gap `F1`–`F8` and
