@@ -22,14 +22,17 @@ This permanent track coordinates other workstreams but does not duplicate
 their detailed handoffs, implement their scoped changes, edit their WIP state,
 or become a miscellaneous backlog.
 
-## Lifecycle Exception
+## Lifecycle
 
-The user explicitly opened this permanent workstream as a one-off operation
-before the general workflow defines it. Unlike ordinary bounded workstreams,
-`project-management` remains open while the repository uses
-`workflow-type = "multiple-streams"`. The `workflow-improvements` backlog owns
-formalizing that exception for all multiple-stream projects, including any
-valid retirement or workflow-mode migration procedure.
+`project-management` is the reserved workstream that `WORKFLOW.md` requires of
+every multiple-stream project; it conforms to the general rule rather than
+being excepted from it, and remains open while the repository uses
+`workflow-type = "multiple-streams"`. Two historical facts worth keeping: the
+workstream predates the rule — it was opened on 2026-08-09 by explicit
+product-owner decision and the rule was written on 2026-08-16 — and one narrow
+adoption exception survives: this repository adopted `multiple-streams` on
+2026-08-08 and created the reserved workstream a day later, whereas a
+conforming project creates both in the same commit.
 
 ## Branch Association
 
@@ -159,6 +162,53 @@ current remote `main` at `a72d0a8` before project-management work resumed.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
+
+## Intake Dispositions
+
+Recorded 2026-08-29, at the product owner's direction, closing three of the
+nine pending items. Per the intake convention the files are removed from
+`intake/`; Git retains them.
+
+- **`2026-08-16-workflow-improvements-reserved-workstream-adopted.md` —
+  accepted, reconciliation done.** The stale *Lifecycle Exception* section of
+  this handoff is replaced by *Lifecycle* above, stating conformance to the
+  now-general reserved-workstream rule while keeping the two historical facts
+  the sender flagged as worth keeping. The retirement pointer is gone;
+  `WORKFLOW.md` now defines retirement.
+- **`2026-08-17-recursive-e2e-audit-undelivered-work.md` — answered.** The
+  audit's finding, supported by persisted records rather than reconstructed
+  conversation: undelivered work was lost because **outbox resets destroy
+  undelivered mail, and the protocol as then specified permitted exactly
+  that** — a send resets the outbox from current `main` and carries only what
+  is being sent, with no rule protecting unreceived mail still on the branch.
+  The specified protocol was followed; the specification was incomplete. The
+  decisive evidence is self-demonstrating: this very audit request, pushed on
+  `recursive-e2e/outbox` at `ebad342` on 2026-08-17, was itself orphaned by a
+  later reset — the exact failure mode it asked about — and was recovered and
+  delivered only on 2026-08-27 through PR #43. The recovery and the recurring
+  reset-versus-unreceived-mail tension are recorded in the `recursive-e2e`
+  conclusion (`engineering-docs/archive/2026-08-06-recursive-e2e/`); the
+  2026-08-27 pause record of this handoff shows the same tension governed this
+  workstream's own send ordering. Preventing recurrence is protocol content
+  and belongs to `workflow-improvements` when it next resumes; the exposure
+  ends structurally only when a send stops implying a reset while unreceived
+  mail exists.
+- **`2026-08-23-recursive-e2e-non-interactive-runs-have-no-owner.md` —
+  accepted, already represented.** The release-blocking ruling of 2026-08-23
+  is carried by the coordination backlog's *Non-Interactive Runs* entry, which
+  since 2026-08-29 also records the decided mechanism: the capsule supervisor
+  with no GUI children (ledger row *Capsule Supervisor And Multi-IDE
+  Sessions*). Of the decisions the item asked for, support-versus-refusal is
+  decided (supported, in V1); the authorization/acknowledgement shape, the
+  requirement record, and the owning workstream remain open in that backlog
+  entry, with owner assignment deferred until pickup per the 2026-08-29
+  unowned-rows ruling.
+
+Still pending in `intake/`, six items: the outbox-adoption item of 2026-08-16
+(overtaken by events; closure expected next), the initialization-tooling
+routing item, and the four 2026-08-17 policy questions (human-readable
+workflow document, intake staleness, workflow extraction and seam, skill
+packaging).
 
 ## Last Task And Status
 
