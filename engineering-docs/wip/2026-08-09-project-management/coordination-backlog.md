@@ -142,3 +142,26 @@ teach the bootstrap to initialize multiple-stream mode, including the reserved
 workstream, per `WORKFLOW.md`'s *Initializing Multiple-Stream Mode*. Shares
 its delivery path with the pre-commit invariants entry above — the same
 bootstrap seeds both.
+
+### Silent Empty Bind-Source Failure
+
+Release target: V1, per the ledger's at-risk homes. Owner: none yet; assigned
+at pickup.
+
+At-risk item 6 of the readiness assessment, homed here 2026-08-30. Docker
+invents an empty directory when a bind source is missing — a data-shaped
+silent failure that recurred twice in one recorded session. Make it
+structurally loud once: launches must verify bind sources exist and refuse
+with an actionable message rather than let Docker fabricate them.
+
+### Submodule Pointer Publication Ordering
+
+Release target: V1, per the ledger's at-risk homes. Owner: none yet;
+`sample-projects` is the natural owner at pickup, since its submodules are
+where the failure bites.
+
+At-risk item 7 of the readiness assessment, homed here 2026-08-30. `main`
+can currently advertise a submodule pointer that no clone resolves, breaking
+the first command an adopter runs. Specify and check the publication order:
+the submodule's commit is publicly reachable before the superproject pointer
+lands.

@@ -8,8 +8,9 @@ and small teams using AI coding agents in real projects.
 ## One-Sentence Positioning
 
 DevCapsule v1 gives a project a reproducible, AI-ready workspace with durable
-project memory, strong engineering defaults, and explicit host-access
-boundaries.
+project memory, strong engineering defaults, and host-access boundaries
+explicit and strong enough that you can happily let your AI agent run at full
+autonomy — yolo mode — by default.
 
 ## Why An Adopter Should Care
 
@@ -309,7 +310,8 @@ It aims for something more useful:
 
 DevCapsule v1 helps developers and AI coding agents resume real work faster by
 giving each project a reproducible IDE workspace, durable project memory,
-strong engineering defaults, and explicit host-access boundaries.
+strong engineering defaults, and host-access boundaries strong enough to run
+your agent in yolo mode by default.
 
 ## Recommended Launch Angle
 

@@ -133,6 +133,15 @@ projects on. Deferring the transport defers the fix to the
 not the obligation: the containment claim cannot be announced as verified while
 the X socket carries a full host session credential.
 
+**Release target restated, 2026-08-30.** The `v027` label above predates the
+version-identity unification; the release now numbered 0.2.7 was the argparse
+CLI release and did not carry the display. The target is restated without a
+number: the first release after the display spike ratifies, sequenced with
+the supervisor core (which needs a session anchor under any transport), under
+the maximal-wow budget. The obligation is unchanged — under the
+workspace-and-containment thesis this row is release-blocking wherever the
+containment claim is user-visible.
+
 Owner: `contained-display`, the workstream opened for this row on 2026-08-19 at
 the product owner's direction. It is named for its subject rather than for v027,
 because a workstream named after a release either outlives it or mis-fits it
@@ -906,18 +915,243 @@ existing rules. `workflow-improvements` staying open-idle (decided
 2026-08-29) is consistent: it resumes at this check, or earlier only if a
 defect in the frozen rules blocks work.
 
-## Rows Still To Be Written
+### D-0001 Catalog Freshness And Update Preview
 
-The remainder of this ledger is the next task: one row per gap `F1`–`F8` and
-`E1`–`E8`, each with a verdict, an owning workstream, and acceptance evidence;
-the five functional scope decisions the gap review left open; a V1 acceptance
-section naming which requirement records must reach `validated`, which open
-bugs block the release, and which documents must exist; and the seven at-risk
-items from the readiness assessment, each reduced to a single recorded home.
+Verdict: `v1-optional`, **agent-proposed 2026-08-30, awaiting ratification** —
+the one Optional entry not yet ruled by the product owner. This is the gap
+review's functional scope decision 2: whether `D-0001`'s catalog freshness,
+security-advisory warning, and explicit update-preview contract ships in 1.0.
+The candidate-time call decides whether the contract is implemented against
+the starter catalog as it actually ships, superseded, or explicitly deferred;
+parking it here keeps the decision visible without gating the plan.
 
-The twelve-week release shape discussed on 2026-08-16, including the deferral
-of VSCodium (`F4`), the conformance suite (`E5`), the starter catalog (`F5`),
-scaffolding commands, the service-dependency model, and CUDA support, was
-carried as `proposed` and never ratified. On 2026-08-29 it was **superseded**
-by *The Release Budget: Maximal Wow, In Spirit* row above; its deferrals must
-be re-judged on the thesis test rather than inherited.
+## Gap Verdicts: F1–F8 And E1–E8
+
+Written 2026-08-30 against the
+[V1 gap review](../../design-notes/devcapsule/2026-08-06-v1-gap-review.md),
+under the workspace-and-containment thesis, the maximal-wow budget, and the
+per-row test those rows establish: *does this surface keep the
+yolo-by-default promise honest and provable?* Verdicts follow from the
+owner's recorded rulings wherever one applies; the entries marked
+**agent-proposed** are new judgment and await ratification. Owners are
+assigned at pickup per the 2026-08-29 unowned-rows ruling. The gap review's
+detailed required outcomes remain normative; these rows record the release
+verdict and what has already happened.
+
+### F1: Clean Checkout To Ready Development Environment
+
+Verdict: `in-v1`. Follows from the announcement's core promise and the
+readiness assessment's at-risk item 4, which this row gives its single home.
+Owner: none yet. The ecosystem-bootstrap adapter contract, explicit first-run
+consent, and idempotent readiness remain as specified; the Java samples now
+supply the required non-Python adapter case. Source bugs:
+[ecosystem-aware project bootstrap](../../bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md)
+and
+[component tooling runtime path](../../bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md),
+both release-blocking through this row.
+
+### F2: Complete The PyCharm Reference Experience
+
+Verdict: `in-v1`. PyCharm is the decided reference IDE. Owner: none yet.
+Partially delivered by v0.2.7: the configuration grammar, elicitation engine,
+offline platform locks, and defaults-versus-overrides model shipped with the
+argparse CLI. Remaining: the 8 GiB default with real `HostConfig.Memory`
+enforcement, Codex CLI/ACP/authentication/restart validation through
+component-owned `CODEX_HOME`
+([codex-acp-missing-home](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md)),
+fresh JCEF preview validation, and sanitized extended logging.
+
+### F3: Finish The Reusable Configuration And Component Model
+
+Verdict: `in-v1`. Owner: none yet. The component layer exists
+(`claude_code`, `codex`, `postgresql_client`, `pycharm`, and the catalog);
+what V1 owes is the documented, testable authoring path. The proof point is
+now named by the 2026-08-30 Java ruling: **Eclipse**, a genuinely different
+toolkit, authored through the contracts without copying PyCharm's private
+implementation.
+
+### F4: Reimplement The VSCodium Proof Point
+
+Verdict: `in-v1`. Subsumed by the decided
+*Independent IDE Surface: VSCodium On The Normal Project Path* row (retire
+`codium_with_claude`, chess-club sample), shaped to land inside the
+supervisor model. The gap review's obligation that survives unchanged:
+fresh reproduction of the historical Codium bug reports
+(`2026-07-13` run-option parity, `2026-07-16` ambient sudo) against the new
+implementation, closing as fixed or obsolete with evidence.
+
+### F5: Ship A Starter Configuration And Demo-Project Catalog
+
+Verdict: `in-v1`. The exact entries — the gap review's scope decision 3 —
+are decided by the *Supported Project Types: The Union* row: Python CLI,
+Python library, data-research, FastAPI with JS/TS frontend, Java library
+(Eclipse default), and Quarkus REST, each with its sample project. The
+catalog's success criterion stands: it proves self-service authoring, not
+exhaustive IDE support.
+
+### F6: Coherent Inspection And Limited Lifecycle UX
+
+Verdict: `in-v1` for read-only inspection — every effective value and its
+source, defaults versus overrides, state slots, sanitized plans, stale-
+resolution explanations — plus the already-needed safe binding and adoption.
+The destructive state surface (move/remove/clean, profiles) is
+**agent-proposed `v1-optional`**, resolving the gap review's scope decision 5
+in line with its own recommendation: implement read-only, defer destructive
+until onboarding demonstrates need, and record the change rather than omit
+silently. v0.2.7's `config`/`state` commands are the foundation. Owner: none
+yet.
+
+### F7: Close Safe Expert Runtime Control
+
+Verdict: `in-v1`. Owner: none yet. Partially delivered by v0.2.7: host
+capabilities became authorization nodes, and raw docker-run passthrough after
+`--` shipped (warned, verbatim). Remaining: structural validation of
+repeatable advanced arguments, sanitized explanation of every relaxation, and
+the restrictive-workstation-policy boundary. Two attachments:
+
+- **The `project run` security audit** — the readiness assessment's at-risk
+  item 2, homed here as a named release blocker: no option may grant host
+  access beyond the resolved authorization, and `--force` must never become
+  an authorization bypass. User documentation of the interface rides with it.
+- **Transitional `pycharm build`: agent-proposed removal** from the supported
+  V1 surface in favor of `images build`, which closes the
+  [multiline exec rendering bug](../../bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md)
+  as obsolete — the gap review's scope decision 4, awaiting ratification
+  together with the final list of surviving transitional commands.
+
+### F8: Make V1 Installable And Consumable
+
+Verdict: `in-v1`. Expanded and corrected by the decided *Self-Contained Tool
+Entry Point* row: the primary artifact is a Pex scie that runs with no Python
+installed, proven on a clean machine, with checksums, embedded revision, and
+end-user download-first documentation. Nothing further to decide here.
+
+### E1: Bootstrap And Build A Clean Source Clone Inside Dogfood
+
+Verdict: `in-v1` — **delivered**. The recursive-e2e workstream concluded
+2026-08-27 having built exactly this path; the v026.x and v0.2.7 releases
+were produced and verified through it. Evidence in
+`engineering-docs/archive/2026-08-06-recursive-e2e/`.
+
+### E2: Support Safe Recursive Host-Docker Orchestration
+
+Verdict: `in-v1` — **delivered** (`host_daemon.py`, `recursive_host.py`,
+path translation, detached successor launch), same evidence trail. Residual:
+the evidence-disposal and retained-container items dissolved from Stage 7
+into the coordination backlog.
+
+### E3: Build A Disposable Recursive Dogfood E2E Orchestrator
+
+Verdict: `in-v1` — **delivered** as `devcapsule project recursive-e2e`
+(`recursive_orchestrator.py`), which released v0.2.7. Residuals from the
+dissolved Stage 7 live in the coordination backlog: the persistence proof and
+evidence disposal. The supervisor row revises the lifecycle assumptions
+Stage 7 was written against.
+
+### E4: Make E2E Isolation, Evidence, And Cleanup Deterministic
+
+Verdict: `in-v1` — **substantially delivered** with the orchestrator (unique
+roots, test-ownership labels, cleanup on interruption). Remaining before the
+row closes: the keep-on-failure diagnostic mode confirmed as implemented or
+added, and the evidence-disposal backlog item resolved.
+
+### E5: Add A Shared Configuration Conformance Suite
+
+Verdict: `in-v1`, **agent-proposed** — the twelve-week shape's deferral of
+this suite died with that shape, and the thesis test now argues the other
+way: six project types across PyCharm, Eclipse, IDEA, and VSCodium are only
+affordable, and the yolo-by-default claim only *provable*, with common
+conformance tests per configuration (schema, formation identity, checksum
+rejection, redaction, safe-default plans, repeat launch). The historical
+Codium bugs re-close through this suite plus focused VSCodium tests. Owner:
+none yet. Awaiting ratification.
+
+### E6: Define The Automated Versus Manual GUI Boundary
+
+Verdict: `in-v1`, as revised by the supervisor row: the supervisor is
+DevCapsule's own code, so desktop integration becomes automatable proof, and
+the remaining human check stays deliberately small (window appears,
+representative use, handoff report). Pixel-level GUI automation stays out.
+
+### E7: Complete Release Engineering And Publication Validation
+
+Verdict: `in-v1`. Owner: none yet. Partially proven in practice: v026.2 and
+v0.2.7 shipped as published releases with PEX checksums verified against the
+live release. Remaining for V1: the artifact becomes the scie (entry-point
+row), immutable OCI digests for the base, the basic security scan, the
+clean-download smoke proof, and preserved sanitized release evidence. Signed
+SBOMs and attestations stay post-V1.
+
+### E8: Validate Every Platform Feature Actually Included In V1
+
+Verdict: `in-v1` for the claimed set: supported Linux/Docker-host behavior,
+safe and authorized runtime profiles, and the GUI path as the contained
+display defines it. **The authorization-negative launch proof — at-risk
+item 3 — is homed here as required acceptance evidence**: absence of
+authorization demonstrably yields no host Docker socket, no host networking,
+no development sudo, so `R-PRODUCT-002`, `R-SCOPE-001`, and `R-DOCKER-001`
+are demonstrated rather than asserted. CUDA validation follows the CUDA
+entry in *Optional For V1*: it is owed only if the candidate-time call
+claims CUDA.
+
+## At-Risk Items: Single Homes
+
+The readiness assessment's seven at-risk items, each reduced from several
+partial mentions to one recorded home. Recorded 2026-08-30.
+
+1. **External-resource ownership and reaping** → the coordination backlog's
+   reaping entry, whose semantics the supervisor row revises (supervised
+   cleanup instead of exit-side-effect). Closes the
+   [detached-successors bug](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md)
+   when done.
+2. **The `project run` interface audit and documentation** → gap row `F7`
+   above, as a named release blocker.
+3. **The authorization-negative launch proof** → gap row `E8` above, as
+   required acceptance evidence.
+4. **F1, clean checkout to ready environment** → gap row `F1` above.
+5. **The functional scope decisions** → all five now dispositioned: CUDA
+   (`v1-optional`), D-0001 freshness (`v1-optional`, proposed), starter
+   entries (the union row), transitional commands (`F7`, proposed), state
+   surface (`F6`, proposed).
+6. **The silent empty-directory failure mode** → the coordination backlog's
+   new *Silent Empty Bind-Source Failure* entry: make Docker's invented
+   empty bind sources structurally loud, once, in V1.
+7. **Submodule pointer publication ordering** → the coordination backlog's
+   new *Submodule Pointer Publication Ordering* entry, with `sample-projects`
+   the natural owner at pickup — `main` must never advertise a submodule
+   pointer no clone resolves.
+
+## V1 Acceptance
+
+**Agent-proposed 2026-08-30, awaiting ratification.** V1 is accepted when:
+
+1. **Requirements demonstrated, not asserted.** `R-PRODUCT-002`,
+   `R-SCOPE-001`, and `R-DOCKER-001` reach `validated` through the
+   authorization-negative proof (`E8`); `R-SETTINGS-001` through the profile
+   prototype lifecycle in use; `R-PRODUCT-004` through the human-readable
+   onramp; `R-GTM-001` is already satisfied.
+2. **No open release-blocking bug.** Blocking set as of this writing:
+   [X11 session credential](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)
+   (closed by the contained display — a thesis consequence),
+   [detached successors](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md)
+   (reaping), the two `F1` bootstrap bugs, and
+   [codex-acp-missing-home](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md)
+   (`F2`). The multiline `pycharm build` bug closes as obsolete if `F7`'s
+   removal proposal is ratified; the historical Codium bugs re-close through
+   `E5`; the JBR alpha-compositing and native-launcher notes stay reviews,
+   not blockers.
+3. **Documents exist**: the announcement and issue-tracker positioning
+   (exist), the human-readable workflow onramp, end-user install
+   documentation with the download-first path, and sanitized release
+   evidence for the shipped candidate.
+4. **Every `in-v1` row above has found an owner and its stated evidence** —
+   the release gate that the unowned-rows ruling explicitly preserved.
+
+## Remaining Ledger Work
+
+The ledger is now structurally complete. What remains: the product owner's
+ratification of the agent-proposed items (`E5` in-v1, `F6`'s destructive-
+surface split, `F7`'s `pycharm build` removal, D-0001's `v1-optional`
+parking, and the *V1 Acceptance* section), and the wow-first release shape,
+to be rebuilt from these rows now that the superseded twelve-week shape and
+its deferrals are gone.
