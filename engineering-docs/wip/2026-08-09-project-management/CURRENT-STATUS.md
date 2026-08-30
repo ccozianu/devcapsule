@@ -185,6 +185,24 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   Release Candidate*, which also records the freeze's interpretation: no new
   protocol changes, while already-decided release content (the human-readable
   onramp) and rule-mechanizing checks (the pre-commit invariants) proceed.
+- Decided 2026-08-30, by the product owner: **`component-catalog` is
+  registered** as the workstream that makes IDE surfaces and agent CLIs
+  regular catalog components — the `codium` interactive surface first
+  (taking ownership of the ledger row *Independent IDE Surface* and
+  subsuming the anticipated `codium-surface` registration), then the
+  Antigravity CLI as the Google agent slot. Three companion rulings recorded
+  with it: Antigravity is a **default-selected component, not a base-image
+  install** — the product owner explicitly chose this reading when the
+  base-image phrasing was flagged as conflicting with `D-0005`, so agent
+  neutrality stands, with just-in-time materialization into a cached local
+  image and an `/opt/antigravity-cli` archive-unpack prefix preferred;
+  `contained-display` is **paused until `component-catalog` shows
+  significant progress**, with a resume-time intake item directing it not to
+  change the supervisor↔component contract inadvertently; and the new
+  workstream integrates to `main` **once per validated component** (unit
+  tests plus a product-owner smoke test). The registration travels this
+  branch under the same target-lands-no-later-than-the-reference latitude as
+  the supervisor-core assignment above.
 
 ## Intake Dispositions
 
