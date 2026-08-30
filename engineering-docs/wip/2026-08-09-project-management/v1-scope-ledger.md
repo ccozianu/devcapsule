@@ -222,7 +222,13 @@ Verdict: `in-v1`
 Decided: 2026-08-16, by the product owner. V1 offers three curated agent
 components covering Anthropic, OpenAI, and Google, and the developer chooses.
 
-Owner: unassigned.
+Owner: `component-catalog` for the Antigravity CLI slot, assigned 2026-08-30
+by the product owner at that workstream's registration, together with the
+delivery contract recorded in its handoff (default-selected component,
+just-in-time local materialization into a cached image, `/opt/antigravity-cli`
+archive-unpack prefix preferred). The Claude Code and Codex slots already have
+catalog components; their remaining per-agent required outcomes stay with this
+row until claimed.
 
 This is the deliberate selection that `D-0005` anticipated, not a change to it.
 That decision adopted an agent-neutral base with agent CLIs as optional,
@@ -528,11 +534,11 @@ Decided: 2026-08-27, by the product owner: retiring the legacy
 is a high-priority task, because V1 must showcase an independent,
 fully open-source IDE.
 
-Owner: unassigned. Routing options: `recursive-e2e` (owns the v0.2.7 CLI and
-launch framework this must integrate with, but is paused with Stage 7
-remaining) or a newly registered product workstream. This supersedes the
-earlier "concurrency was chosen over VSCodium" trade for the release shape,
-which must be rebuilt accordingly.
+Owner: `component-catalog`, assigned 2026-08-30 by the product owner at
+registration — the newly registered product workstream this row's routing
+options anticipated, subsuming the working name `codium-surface`. This
+supersedes the earlier "concurrency was chosen over VSCodium" trade for the
+release shape, which must be rebuilt accordingly.
 
 **Scope.**
 
