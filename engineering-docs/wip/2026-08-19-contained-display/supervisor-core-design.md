@@ -272,14 +272,35 @@ separate processes, never linked, never in the PEX; including the server
 in the base image is the same obligation class as the GPL userland already
 there, handled by F3's per-artifact license metadata.
 
-Consequence for the spike: Xpra seamless stays in, per the ledger method,
-but now carries four asterisks — the structural Java seamless weakness,
-the surface/RCE history, dual-side version pinning, and the host install —
-against one genuine advantage, true per-window integration. **Xephyr is
-the presumptive mode 2** unless Xpra's JetBrains focus-and-menus session
-is flawless. Xephyr's costs stay as recorded: single screen, software GLX,
-desktop-in-a-window, and the clipboard bridge — which is where the
-asymmetric clipboard policy becomes code.
+**Final ruling, 2026-08-30: mode 2 is a stretch goal, not a V1 offering.**
+The owner judged both candidates less than ideal for the same reason, which
+is sharper than any per-tool asterisk: every host-side display component
+makes adopters' desktops our debugging surface — Xephyr's GLX, grab, HiDPI,
+and packaging variation, Xpra's all of that plus dual-side version pairing —
+failing on machines we do not control and cannot reproduce. The contained
+desktop inverts the ownership: the whole display stack lives in the curated
+image, identical everywhere, and the universal client is a browser the
+adopter already has. So:
+
+- **V1 offers one transport: the contained desktop** (mode 1). The product
+  is opinionated about presentation in V1 after all — because the
+  opinionated option is the one whose failures are ours to debug.
+- **Native-window modes are a recorded stretch**, not dropped: the analysis
+  above stands as the design record, Xephyr presumptive over Xpra if the
+  stretch is ever pursued, and pursuing it is a post-V1 or candidate-time
+  call.
+- **The spike simplifies** to the ledger row's original subject: Xvnc plus
+  noVNC, with a native VNC viewer as an *optional* performance upgrade —
+  optional with a browser fallback, so it never becomes a support
+  obligation. The Xephyr-versus-Xpra bake-off leaves the V1 critical path.
+- The interim dogfood window is unchanged: passthrough until mode 1 lands,
+  unoffered; the cheaper floor (removing the `xhost` advice) still rides
+  with the supervisor work.
+
+The ledger row's "X11 passthrough, if retained at all, is opt-in" language
+is consistent with this outcome (it is not retained); the stretch status of
+native-window modes is coordination to surface at this workstream's next
+integration.
 
 ## Testing Shape
 
