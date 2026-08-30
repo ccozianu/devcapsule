@@ -71,30 +71,48 @@ Not in scope: the `xdg-open`/`BROWSER` forwarding shim (shipped under
 
 ## Current Task
 
-**Design and implement the supervisor core**, per the owner's supervisor-first
-direction: a design note settling process model, child declaration, session
-end, signal/exit semantics, and the headless mode; then the implementation
-under the existing configuration contracts, validated under host X11 (the
-supervisor is transport-agnostic and must not wait for the display).
+**Implement the supervisor core, stage 1**, per the completed and
+owner-reviewed [design note](supervisor-core-design.md) — the design review
+concluded 2026-08-30 with every decision point D1–D9 ruled or carrying a
+ratified recommendation. Stage-1 scope, exactly:
 
-Two early, cheap items ride alongside rather than waiting:
+- a pure-Python PID 1 in `devcapsule_runtime` (D1): reap, signal-forward,
+  TERM-grace-KILL shutdown, honest exit codes;
+- **one distinguished foreground child** (D2 as restaged): the IDE, or the
+  headless job — the runtime plan schema is unchanged, today's launch
+  command is the declaration, no migration;
+- session ends on child exit or `docker stop`/SIGTERM (D3/D4), exit code
+  propagated; headless mode is the same slot with no GUI (the decided
+  non-interactive-runs mechanism);
+- the supervisor asks nothing and displays via stdout/logs (D8, decided);
+- internal machinery written over a set of children, exposing exactly one;
+- fake-children unit tests for the state machine, plus the e2e assertion
+  that the supervisor is PID 1 with the IDE as its child, under host X11.
 
-1. **The launcher's `xhost +SI:localuser:<user>` advice** — the 2026-08-19
-   design input's "cheaper floor". The launcher currently recommends the most
-   dangerous available action; removing that advice and stating the exposure
-   is a one-line-scale product change with immediate safety value.
-2. **The Xephyr tire-kick** (interim mitigation candidate): no base-image
-   change, doubles as the first half of the transport spike. It has a clock —
-   the owner's real projects run agents on the trusted-cookie transport today.
+One cheap item rides alongside: removing the launcher's
+`xhost +SI:localuser:<user>` advice and stating the exposure instead — the
+2026-08-19 design input's "cheaper floor", immediate safety value.
+
+**Transport rulings from the review, superseding the scope bullets above
+where they differ** (the design note is authoritative): V1 offers the
+contained desktop (Xvnc + noVNC, native viewer optional); native-window
+modes (Xephyr/Xpra) are a recorded stretch, Xephyr presumptive; X11
+passthrough is retained behind an explicit authorization node with the
+trade-off stated, the grant in the run manifest, and the regression test
+recorded as waived by authorization. The Xephyr interim tire-kick is no
+longer a scheduled item — dogfood continues on passthrough, unoffered,
+until the contained desktop lands.
 
 ## Next Resumable Task
 
-After the supervisor core runs children under host X11: the interim
-mitigation decision (Xephyr nested server versus documented exposure), then
-the transport spike (contained VNC/noVNC versus Xpra seamless) with its
-children supervised, then the ratification gate — a full day of ordinary
-development inside the result. Aesthetics that hold at hour six are the
-relevant test.
+After stage 1 is implemented and verified: the display-transport spike —
+Xvnc plus noVNC as supervised infrastructure children (product-derived,
+not user-declared), the per-run loopback token, the clipboard bridge
+implementing the asymmetric policy — then the ratification gate, a full
+day of ordinary development inside the result. Aesthetics that hold at
+hour six are the relevant test. The multi-foreground-child configuration
+language is a separate design exercise after the supervisor proves itself,
+per the D2 restaging.
 
 ## Intake Dispositions
 
@@ -135,4 +153,8 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
 
 ## Workstream Document Index
 
-None yet; the supervisor design note is the first planned document.
+- [Supervisor core design note](supervisor-core-design.md) — D1–D9, all
+  reviewed with the product owner 2026-08-30; the authoritative record of
+  the supervisor scope, the transport lineup (contained desktop offered,
+  native-window stretch, passthrough by authorization), and the D2
+  restaging to one distinguished foreground child.
