@@ -220,9 +220,46 @@ Two structural notes in favor:
   host session" holds for every non-expert user regardless of taste in
   window placement. Opinionation lands only where the thesis needs it.
 
-Awaiting the owner's ruling; the ledger row's transport method (spike, then
-a full day of ordinary development) applies to mode 2 as well as mode 1 if
-this is adopted.
+**Ruled by the product owner, 2026-08-30:** mode 3 goes — the product does
+not offer unwarranted security exposure it can help. Mode 2's tool is
+decided later, between Xephyr and Xpra, by the spike. Two recorded nuances:
+
+- **Mode 3 dies as an offered mode, not as the interim dogfood transport.**
+  Until mode 1 or 2 lands, development — including the supervisor's own
+  dogfooding — runs on X11 passthrough, so mode 3 will ironically be the
+  best-tested path for a while. That is acceptable precisely because it is
+  not offered: the exposure is ours, on our machines, already documented in
+  the bug. The retirement lands when a replacement transport does.
+- The ledger row's method (spike, then a full day of ordinary development)
+  applies to whichever mode-2 tool the spike favors.
+
+**Xpra arguments re-verified 2026-08-30**, per the 2026-08-19 note's
+currency caveat, against the live project:
+
+- *Maintenance*: healthier than the "one principal developer" line implied —
+  active releases (6.5.2 on 2026-07-27), an LTS 5.1.x channel beside the
+  6.x stable stream, prompt fixes. Softened, not reversed: concentration
+  remains.
+- *Surface*: confirmed and sharpened — recent releases fixed RCE
+  vulnerabilities in URL parsing and tightened download-path handling. The
+  fixes were prompt, but a display transport with its own RCE history is a
+  real consideration for a containment product.
+- *Java seamless weak spot*: **confirmed as structural, not stale.** The
+  issue class — focus change requests failing in Java apps, seamless
+  JetBrains windows not gaining focus, Java menus stuck above other
+  windows, mouse offsets on undecorated Java windows — spans years of
+  tickets and follows from remoting Swing's window-management assumptions
+  through a synthetic WM. JetBrains' runtime keeps evolving on its side,
+  so this is a moving target on both ends, and our reference IDE sits
+  exactly on the weak spot.
+- *Version skew*: confirmed by the project's own LTS/stable channel split.
+
+Consequence for the spike: Xpra seamless stays in, per the ledger method,
+but the burden of proof is on it to survive a JetBrains focus-and-menus
+session; Xephyr is the low-risk mode-2 candidate, with its costs (single
+screen, software GLX, desktop-in-a-window rather than per-window
+integration, clipboard bridge needed — which is where the asymmetric
+clipboard policy becomes code) already recorded.
 
 ## Testing Shape
 
