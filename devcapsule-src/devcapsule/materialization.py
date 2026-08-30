@@ -85,8 +85,6 @@ MATERIALIZATION_RECIPE_VERSION = "1"
 COMPONENT_TEMPLATE_PATH = "/etc/devcapsule/component-runtime-template.json"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
 ENTRYPOINT_CONTRACT = (
-    "/usr/bin/tini",
-    "--",
     "/opt/devcapsule/bin/devcapsule.pex",
     "runtime",
 )

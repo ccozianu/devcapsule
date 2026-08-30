@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from devcapsule.container_runtime.entrypoint import main, run
 from devcapsule.container_runtime.filesystem import FilesystemPlan, plan_filesystem, prepare_filesystem
 from devcapsule.container_runtime.graphics import environment as graphics_environment
 from devcapsule.container_runtime.identity import foreground_command
+from devcapsule.container_runtime.supervisor import SupervisedChild
 
 
 def runtime_document(tmp_path: Path) -> dict[str, object]:
@@ -195,8 +197,29 @@ def test_identity_adds_gosu_only_when_root(monkeypatch: pytest.MonkeyPatch) -> N
     assert foreground_command(("ide",), plan.identity) == ("ide",)
 
 
-def test_entrypoint_prepares_properties_and_execs_foreground(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+class SupervisorCapture:
+    """Stands in for the Supervisor to observe what the entrypoint declares."""
+
+    instances: list["SupervisorCapture"] = []
+
+    def __init__(self, children: tuple[SupervisedChild, ...]) -> None:
+        self.children = children
+        SupervisorCapture.instances.append(self)
+
+    def run(self) -> int:
+        return 42
+
+
+@pytest.fixture()
+def captured_supervisor(monkeypatch: pytest.MonkeyPatch) -> type[SupervisorCapture]:
+    SupervisorCapture.instances = []
+    monkeypatch.setattr("devcapsule.container_runtime.entrypoint.Supervisor", SupervisorCapture)
+    monkeypatch.setattr("devcapsule.container_runtime.identity.os.geteuid", lambda: 1000)
+    return SupervisorCapture
+
+
+def test_entrypoint_prepares_properties_and_supervises_foreground(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, captured_supervisor: type[SupervisorCapture]
 ) -> None:
     document = runtime_document(tmp_path)
     document["ancillary_components"] = [
@@ -208,25 +231,37 @@ def test_entrypoint_prepares_properties_and_execs_foreground(
         }
     ]
     runtime = RuntimePlan.from_mapping(document)
-    executed: list[object] = []
 
-    def capture_exec(executable: str, command: tuple[str, ...], environment: dict[str, str]) -> None:
-        executed.extend((executable, command, environment.copy()))
-        raise RuntimeError("exec captured")
-
-    monkeypatch.setattr("devcapsule.container_runtime.identity.os.geteuid", lambda: 1000)
-    monkeypatch.setattr("devcapsule.container_runtime.entrypoint.os.execvpe", capture_exec)
-    with pytest.raises(RuntimeError, match="exec captured"):
-        run(runtime)
+    assert run(runtime) == 42
 
     properties_path = tmp_path / "idea.properties"
     assert properties_path.read_text(encoding="utf-8").startswith(
         f"idea.config.path={tmp_path / 'config'}\n"
     )
-    assert executed[0] == "/opt/jetbrains/pycharm/bin/pycharm.sh"
-    assert executed[1] == ("/opt/jetbrains/pycharm/bin/pycharm.sh", "/workspace/project")
-    assert executed[2]["PYCHARM_PROPERTIES"] == str(properties_path)  # type: ignore[index]
-    assert executed[2]["CODEX_HOME"] == str(tmp_path / "codex-home")  # type: ignore[index]
+    (supervisor,) = captured_supervisor.instances
+    (child,) = supervisor.children
+    assert child.name == "jetbrains"
+    assert child.foreground is True
+    assert child.command == ("/opt/jetbrains/pycharm/bin/pycharm.sh", "/workspace/project")
+    assert os.environ["PYCHARM_PROPERTIES"] == str(properties_path)
+    assert os.environ["CODEX_HOME"] == str(tmp_path / "codex-home")
+
+
+def test_entrypoint_headless_job_takes_the_foreground_slot(
+    tmp_path: Path, captured_supervisor: type[SupervisorCapture]
+) -> None:
+    runtime = RuntimePlan.from_mapping(runtime_document(tmp_path))
+
+    assert run(runtime, job=("pytest", "-q")) == 42
+
+    (supervisor,) = captured_supervisor.instances
+    (child,) = supervisor.children
+    assert child.name == "job"
+    assert child.foreground is True
+    assert child.command == ("pytest", "-q")
+    assert child.working_directory == "/workspace/project"
+    # Headless preparation is the same as interactive minus the GUI child.
+    assert (tmp_path / "idea.properties").is_file()
 
 
 def test_entrypoint_main_accepts_forwarded_arguments(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -238,3 +273,9 @@ def test_entrypoint_main_accepts_forwarded_arguments(tmp_path: Path, capsys: pyt
 
     assert main([str(tmp_path / "missing.json")]) == 2
     assert "cannot read runtime plan" in capsys.readouterr().err
+
+    assert main([str(tmp_path / "missing.json"), "--", "true"]) == 2
+    assert "cannot read runtime plan" in capsys.readouterr().err
+
+    assert main([str(tmp_path / "missing.json"), "--"]) == 2
+    assert "usage: devcapsule runtime RUNTIME_PLAN.json" in capsys.readouterr().err

@@ -661,6 +661,12 @@ fi
 test -d /opt/claude
 test "${DISABLE_UPDATES:-}" = 1
 pgrep -fa pycharm >/dev/null
+tr '\0' ' ' </proc/1/cmdline | grep -q 'devcapsule\.pex runtime'
+supervised=0
+for pid in $(pgrep -f pycharm); do
+  if [ "$(cut -d' ' -f4 "/proc/$pid/stat" 2>/dev/null)" = 1 ]; then supervised=1; fi
+done
+test "$supervised" = 1
 python3 - <<'PY'
 import hashlib, json, os, subprocess
 commands = {
