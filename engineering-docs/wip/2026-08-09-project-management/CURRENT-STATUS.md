@@ -170,6 +170,13 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   repository. In-tree projects carried by `sample-projects`, such as
   `devcapsule-sample-trading-research`, keep the workstream-intake route that
   already produced `R-SETTINGS-001`. No further action.
+- Decided 2026-08-30, by the product owner, settling the carried commit-ratio
+  question: **`WORKFLOW.md` is considered frozen until a release candidate
+  exists.** The scheduled check — whether workflow improvements are then
+  needed — is the `v1-optional` ledger entry *Workflow Improvements At The
+  Release Candidate*, which also records the freeze's interpretation: no new
+  protocol changes, while already-decided release content (the human-readable
+  onramp) and rule-mechanizing checks (the pre-commit invariants) proceed.
 
 ## Intake Dispositions
 
@@ -262,9 +269,14 @@ nine pending items. Per the intake convention the files are removed from
   retired the word "seam" as unintuitive. Extraction to a separate repository
   is not pursued; its named costs stay recorded in the item (Git history).
 
-Still pending in `intake/`, two items: the outbox-adoption item of 2026-08-16
-(overtaken by events; closure expected next) and the initialization-tooling
-routing item.
+- **`2026-08-16-workflow-improvements-initialization-tooling-has-no-owner.md`
+  — accepted, 2026-08-30, by the product owner**, routed as directed: it is
+  now the unowned coordination-backlog entry *Multiple-Stream Initialization
+  Tooling*, assigned at pickup per the unowned-rows ruling, sharing its
+  delivery path with the pre-commit invariants entry.
+
+Still pending in `intake/`, one item: the outbox-adoption item of 2026-08-16
+(overtaken by events; mechanical closure expected next).
 
 ## Last Task And Status
 
@@ -439,53 +451,21 @@ protocol is a release commitment at all.
 
 ## Open Threads
 
-Reviewed at the second 2026-08-19 pause and carried forward; only thread 7
-changed, gaining the frame the session built. Rewritten at the first 2026-08-19
-pause, which the product owner called for travel.
-Threads settled during that session have been removed rather than annotated;
-what remains is live. Originally written at the 2026-08-16 pause. This is a
-trial of the `Open Threads` shape
-proposed to `workflow-improvements`; the format is not ratified, and structuring
-this workstream's own handoff needs no protocol change. Kept deliberately short:
-questions and reasoning hooks, not a transcript.
+Reviewed at the 2026-08-29/30 rulings sessions, which settled nearly the
+whole list: the release thesis (workspace and containment), Java (in as
+samples, Eclipse default with IDEA available), the fourth agent Case A
+(`v1-optional`), the twelve-week shape (superseded by the maximal-wow
+budget), the use-case set (recorded through the union row, the one-to-five
+promise, and the issue-tracker positioning), `R-GTM-001` (criteria satisfied,
+flag closed), and the commit-ratio question (`WORKFLOW.md` frozen until a
+release candidate). Settled threads are removed rather than annotated, per
+this section's convention. Earlier review history: rewritten at the
+2026-08-19 pauses; originally written at the 2026-08-16 pause. The format
+remains the unratified `Open Threads` trial shape.
 
 ### Awaiting The Product Owner
 
-1. **The release thesis.** Containment product — one IDE, boundary provable,
-   agent-safety wedge — versus workspace product with multi-IDE breadth. Decides
-   roughly half the unwritten ledger rows. Agent recommendation: containment,
-   because it is where the project is ahead of the field rather than behind it.
-2. **Java: inside the V1 window or immediately after.** Inside, it competes with
-   concurrency and the entry point; after, it becomes the first post-V1
-   milestone and gives the announcement a concrete next promise.
-3. **Fourth agent, Case A.** Bring-your-own-endpoint is proposed `in-v1` and
-   unratified. Case B, DevCapsule running the model, is proposed `deferred`.
-4. **The twelve-week release shape**, carried as `proposed` in the ledger and
-   never ratified — and now stale, because moving the contained display to v027
-   removed a block the shape assumed was inside the window. It needs rebuilding
-   before it can be ratified.
-5. **The use-case set grew to three on 2026-08-19** and is still unwritten. The
-   product owner named the learner or tinkerer, the serious solo developer, and
-   small teams of roughly two to five, calling the case for all three clear. It
-   has never been recorded as a ledger section, and both 2026-08-19 notes now
-   lean on it — the issue-tracker answer turns on the claim that these users
-   have no tracker to replace. Writing it up is small and overdue.
-6. **`R-GTM-001` carries `status: implemented` that is no longer true.** The
-   criteria added on 2026-08-19 require the announcement to answer the
-   issue-tracker objection, and `docs/product/v1-announcement.md` does not
-   mention trackers at all. The status was deliberately left unchanged, because
-   flipping a requirement's status is the product owner's call; `accepted` is
-   the honest value if he wants it changed.
-7. **One carried item from the 2026-08-18 critique, now the only part of it not
-   superseded.** Whether the process-to-product commit ratio is acceptable
-   dogfood cost or a signal to freeze `WORKFLOW.md` and spend the next stretch
-   on the product. That critique was
-   parked in a scratch file outside the repository; its measurements and
-   recommendation are now in the delivered coordination-storage item. Its
-   companion question — the seven then-undispositioned intake items — closed
-   on 2026-08-29 when the intake was dispositioned down to two mechanical
-   items; see *Intake Dispositions*.
-8. **Whether the storage boundary earns a `Shared Constraints` line** in the
+1. **Whether the storage boundary earns a `Shared Constraints` line** in the
    root registry. Offered twice and not taken. The argument against is that it
    is not implemented yet, so a constraint would describe an intention.
 

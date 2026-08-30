@@ -265,10 +265,14 @@ state contracts dominate, not the packaging.
 
 ### A Fourth, Open-Source Agent On A Self-Hosted Model
 
-Verdict: `proposed`. Raised by the product owner on 2026-08-16; split into two
-cases here so that neither is decided by silence.
+Verdict: Case A is `v1-optional`, decided 2026-08-30 by the product owner —
+considered after a release candidate exists; its entry in *Optional For V1*
+below states the call. Case B remains `proposed` as `deferred`. Raised by the
+product owner on 2026-08-16; split into two cases here so that neither is
+decided by silence.
 
-**Case A — bring your own endpoint. Proposed `in-v1`.** An open-source terminal
+**Case A — bring your own endpoint.** `v1-optional` since 2026-08-30; the
+original proposal was `in-v1`. An open-source terminal
 coding agent configured against a user-supplied OpenAI-compatible endpoint, base
 URL, key, and model. This covers a self-hosted server on the developer's own
 hardware, a lab machine such as the product owner's DGX-2, or any local runner
@@ -379,6 +383,14 @@ Budget* row. The Java library sample doubles as the showcase for the
 fits it. The Eclipse-versus-IDEA route choice and the sequencing note above
 remain open and unchanged; what is no longer open is whether Java waits for a
 later release.
+
+**Amended 2026-08-30, by the product owner.** The route choice is settled as
+*both*: Eclipse **and** IntelliJ IDEA are supported for the Java environment,
+with **Eclipse the default** and the choice changeable by the user in their
+project configuration. This keeps Eclipse's role as the strong genericity test
+of gap `F3` (a genuinely different toolkit) while retaining the low-cost
+JetBrains route. The sequencing note above — Java costs less after the
+contained-display work — still stands.
 
 ### The Workflow Ships As An Optional Component
 
@@ -862,6 +874,37 @@ migration for a workflow that changed eleven times in two days, and the
 submodule-versus-vendoring tradeoff should be decided once with
 `sample-projects`. It would only become worth revisiting after installable
 alternatives exist, at which point it is packaging rather than guesswork.
+
+### Fourth Agent, Case A: Bring Your Own Endpoint
+
+Verdict: `v1-optional`. Moved here 2026-08-30 by the product owner from its
+proposed `in-v1` status; the full case, requirements, agent-selection
+criteria, and honest risk stay in the decided-rows entry
+*A Fourth, Open-Source Agent On A Self-Hosted Model*.
+
+**What the candidate-time call decides.** Whether the bring-your-own-endpoint
+component (an open-source terminal agent against a user-supplied
+OpenAI-compatible endpoint) ships in the announced V1 feature set or becomes
+early post-V1 work. The strategic stakes recorded in the row — no per-token
+cost for the learner, closing the containment claim's vendor asterisk,
+completing the neutrality story — are the criteria for that call.
+
+### Workflow Improvements At The Release Candidate
+
+Verdict: `v1-optional`. Created 2026-08-30 by the product owner, settling the
+carried process-to-product commit-ratio question: **`WORKFLOW.md` is
+considered frozen until a release candidate exists.** This entry is the
+check scheduled for that moment — whether workflow improvements are needed,
+against evidence from the intervening product-focused stretch.
+
+**Recorded interpretation of the freeze**, so it does not contradict decided
+rows: frozen means no new protocol changes — the rules stop churning. Work
+already decided as release content is not blocked by it: the `in-v1`
+*Human-Readable Workflow Documentation* onramp restructures presentation
+without changing rules, and the pre-commit invariant checks mechanize
+existing rules. `workflow-improvements` staying open-idle (decided
+2026-08-29) is consistent: it resumes at this check, or earlier only if a
+defect in the frozen rules blocks work.
 
 ## Rows Still To Be Written
 

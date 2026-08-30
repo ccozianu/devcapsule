@@ -123,5 +123,22 @@ registry agreement — become a `devcapsule workflow verify` check exposed to
 adopters as opt-in `pre-commit` local hooks seeded by bootstrap, and to this
 repository as a Nox gate session. Design fleshed out in
 [the 2026-08-29 note](2026-08-29-workflow-invariants-pre-commit.md). Shares
-its delivery path with the initialization-tooling intake item; whichever
+its delivery path with the initialization-tooling entry below; whichever
 workstream picks up one should expect the other.
+
+### Multiple-Stream Initialization Tooling
+
+Release target: undecided. Owner: none yet, per the 2026-08-29 unowned-rows
+ruling; assigned at pickup.
+
+Recorded 2026-08-30 at the product owner's direction, dispositioning the
+2026-08-16 intake item from `workflow-improvements`. The owner asked that the
+reserved `project-management` workstream be "initiated by the tooling on all
+devcapsule projects"; the protocol half is done, but the only path that seeds
+workflow files today is `devcapsule bootstrap project` running
+`docker4pycharm/bootstrap-project.sh`, a script predating the multiple-stream
+workflow entirely. The work is product implementation in `devcapsule-src`:
+teach the bootstrap to initialize multiple-stream mode, including the reserved
+workstream, per `WORKFLOW.md`'s *Initializing Multiple-Stream Mode*. Shares
+its delivery path with the pre-commit invariants entry above — the same
+bootstrap seeds both.

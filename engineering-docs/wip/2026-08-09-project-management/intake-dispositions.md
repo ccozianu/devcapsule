@@ -13,3 +13,4 @@ workstream's handoff. See *The Disposition Log* in `WORKFLOW.md`.
 | `2026-08-17-workflow-improvements-human-readable-workflow-doc.md` | 2026-08-29 | accepted | Owed, in V1: ledger row *Human-Readable Workflow Documentation*; onramp shape recommended, settled with the extraction decision. |
 | `2026-08-17-workflow-improvements-workflow-loading-and-packaging.md` | 2026-08-29 | rejected | No skill packaging for V1 unless the convention proves widely adopted and tangibly useful; ledger row records it. Layering finding kept. |
 | `2026-08-17-workflow-improvements-workflow-extraction-and-seam.md` | 2026-08-29 | decided | V1 ships this workflow; alternative-workflow installability is `v1-optional`; extraction not pursued. Full reasoning in the handoff. |
+| `2026-08-16-workflow-improvements-initialization-tooling-has-no-owner.md` | 2026-08-30 | accepted | Routed to the coordination-backlog entry *Multiple-Stream Initialization Tooling*, unowned until pickup. |
