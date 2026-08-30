@@ -275,12 +275,54 @@ nine pending items. Per the intake convention the files are removed from
   Tooling*, assigned at pickup per the unowned-rows ruling, sharing its
   delivery path with the pre-commit invariants entry.
 
-Still pending in `intake/`, one item: the outbox-adoption item of 2026-08-16
-(overtaken by events; mechanical closure expected next).
+- **`2026-08-16-workflow-improvements-outbox-adopted.md` — acknowledged,
+  2026-08-30; its three consequences are resolved or routed.** (1) The two
+  then-stuck deliveries have long since landed: the v026-deliverables item
+  reached `recursive-e2e` (dispositioned in its archived log) and the
+  bug-vocabulary item sits in `workflow-improvements`' intake, awaiting that
+  workstream's release-candidate resume along with six later arrivals.
+  (2) The registration-travels-the-outbox answer is noted and already
+  reflected in the unowned-rows ruling (registration at pickup). (3) The
+  stale-README question — who owns protocol boilerplate inside another
+  workstream's carve-out — is answered as a coordination ruling: each
+  workstream owns its own copy, and the durable fix is READMEs as pointers
+  to `WORKFLOW.md` rather than restatements. This workstream's own README
+  is converted in this commit; `recursive-e2e`'s copy is archived and moot;
+  `sample-projects`' copy is flagged for that workstream's next delivery.
+
+Intake is empty. Every item ever received is in the disposition log.
 
 ## Last Task And Status
 
-Last task: the 2026-08-27 session, resumed at the product owner's direction
+Last task: the 2026-08-29/30 rulings sessions, which settled all four resume
+questions of the 2026-08-27 pause and went well beyond them.
+
+Status: complete. In summary:
+
+1. **The release thesis is decided**: workspace *and* containment — a
+   workspace product wherein agents are sensibly contained so the user can
+   happily run yolo mode by default. The twelve-week budget yielded to a
+   maximal-wow bar; Java and Quarkus are in as samples (Eclipse default,
+   IDEA available); the project-type divergence resolved by union; the
+   devcapsule-on-the-side scenario is `in-v1`; the announcement was
+   fact-checked, aligned, and now answers the issue-tracker objection with
+   `docs/product/issue-tracker-positioning.md` behind it; `R-GTM-001`'s
+   stale flag closed.
+2. **The supervisor split is ratified** (core in V1, desktop integration
+   post-V1), answering non-interactive runs; unowned rows are acceptable
+   until pickup; `WORKFLOW.md` is frozen until a release candidate; the
+   fourth agent Case A and CUDA are parked `v1-optional`.
+3. **This workstream's intake went from nine items to empty**, every
+   disposition logged; the invariant got its future guard (the pre-commit
+   proposal) after this workstream briefly violated it itself.
+4. **The ledger is structurally complete**: all sixteen gap verdicts written
+   (`E1`–`E4` recorded as delivered), the seven at-risk items homed, the
+   five scope decisions dispositioned, and a V1 acceptance section proposed.
+   Five agent-proposed items await ratification.
+
+The previous task record follows.
+
+Previous task: the 2026-08-27 session, resumed at the product owner's direction
 after v0.2.7 (the new argparse CLI under the unified release identity) was
 released and verified. A high-progress coordination session; the owner ended
 it deliberately without forcing the pending decisions.
@@ -368,31 +410,27 @@ eight unowned shortcomings and seven documented items to pin to V1; and the
 
 ## Next Resumable Task
 
-**Resume at the four questions recorded at the 2026-08-27 pause**, in rough
-order of leverage. The owner deliberately left them undecided — good
-progress does not require premature decisions.
+**All four questions of the 2026-08-27 pause are settled** (see *Last Task
+And Status*). The next resumable coordination work, in order of leverage:
 
-1. **The release thesis**: containment product versus workspace product.
-   Still gating roughly half the unwritten ledger rows (F1–F8, E1–E8), and
-   the session's supported-project-types recap leans containment. Standing
-   agent recommendation: containment.
-2. **The capsule-supervisor split**: ratify, amend, or reject the proposal
-   that V1 carries the supervisor as lifecycle anchor only (headless-capable,
-   explicit session end — which answers the release-blocking
-   non-interactive-runs backlog item) while the desktop-integration layer
-   (tray, one-click secondary IDEs, multi-IDE sessions) leads the first
-   post-V1 milestone.
-3. **Register `codium-surface`**: the VSCodium row is decided `in-v1` but
-   has no owning workstream; registration is main-first, and its scope
-   should be shaped against the supervisor answer in question 2.
-4. **Disposition this workstream's own intake** — now nine items: the seven
-   workflow-improvements items pending since 2026-08-18, plus the recovered
-   audit request (its answer is now largely known: outbox resets destroyed
-   undelivered mail; the recovery is documented in the recursive-e2e
-   conclusion) and the non-interactive-runs item (already represented in the
-   backlog; the disposition should record that).
+1. **The ratification pass.** Five agent-proposed items in the
+   [V1 scope ledger](v1-scope-ledger.md) await the product owner: `E5`
+   conformance suite `in-v1`, `F6`'s destructive-surface split, `F7`'s
+   `pycharm build` removal, D-0001 parked `v1-optional`, and the
+   *V1 Acceptance* section.
+2. **Rebuild the release shape wow-first** from the completed gap verdicts —
+   the superseded twelve-week shape's deferrals are gone; sequence the
+   unowned `in-v1` rows (supervisor core, contained display, VSCodium
+   surface, on-the-side, `F1` bootstrap, `E5`, human-readable onramp) into
+   milestones the owner can ratify.
+3. **The one live Open Thread**: whether the storage boundary earns a
+   `Shared Constraints` registry line.
 
-The earlier task list follows and remains valid behind these.
+The functional work itself proceeds outside this workstream, from the
+decided-but-unowned rows; the owner picks targets there directly.
+
+The earlier task list follows for history; its four questions are settled and
+its ledger task is done.
 
 **Resume inside the individual-projects question.** The first project is now
 named: `devcapsule-sample-trading-research`, a Python/PyCharm project with Codex
