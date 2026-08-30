@@ -254,12 +254,32 @@ currency caveat, against the live project:
   exactly on the weak spot.
 - *Version skew*: confirmed by the project's own LTS/stable channel split.
 
+**Topology and licensing, added 2026-08-30 at the owner's question.** Xpra
+in seamless mode runs on *both* sides: the server inside the capsule (a
+curated, pinned base-image component), the client on the host desktop —
+and the host client is what the user installs, from a distro deb, PyPI, or
+xpra.org's repos. The HTML5 client avoids the install but yields
+desktop-in-a-browser, not seamless windows. Consequences: the mode breaks
+"Docker plus our artifact is all you need" (acceptable for an opt-in, but
+an asterisk mode 1 does not carry), and version skew doubles — we pin the
+capsule server while the user's distro supplies the client, a mismatch we
+cannot control. Xephyr is host-side *only*: one standard X.org-tree
+package, MIT-licensed, frozen-stable, with **no capsule change at all** —
+the capsule receives a bind of one nested display socket.
+
+GPL-v2 is not a blocker in any shape used here: Xpra is invoked as
+separate processes, never linked, never in the PEX; including the server
+in the base image is the same obligation class as the GPL userland already
+there, handled by F3's per-artifact license metadata.
+
 Consequence for the spike: Xpra seamless stays in, per the ledger method,
-but the burden of proof is on it to survive a JetBrains focus-and-menus
-session; Xephyr is the low-risk mode-2 candidate, with its costs (single
-screen, software GLX, desktop-in-a-window rather than per-window
-integration, clipboard bridge needed — which is where the asymmetric
-clipboard policy becomes code) already recorded.
+but now carries four asterisks — the structural Java seamless weakness,
+the surface/RCE history, dual-side version pinning, and the host install —
+against one genuine advantage, true per-window integration. **Xephyr is
+the presumptive mode 2** unless Xpra's JetBrains focus-and-menus session
+is flawless. Xephyr's costs stay as recorded: single screen, software GLX,
+desktop-in-a-window, and the clipboard bridge — which is where the
+asymmetric clipboard policy becomes code.
 
 ## Testing Shape
 
