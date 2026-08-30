@@ -229,7 +229,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
 set -eu
 test "$$" -ne 1
 test "$PPID" -eq 1
-tr '\\0' ' ' </proc/1/cmdline | grep -q devcapsule.pex
+tr '\\0' ' ' </proc/1/cmdline | grep -q ' runtime /etc/devcapsule/runtime-plan.json'
 test "$(pwd)" = /workspace/project
 ( sleep 0.2 & )
 sleep 0.7
