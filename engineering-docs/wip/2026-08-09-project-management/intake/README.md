@@ -1,15 +1,11 @@
 # Intake: `project-management`
 
-Work other workstreams have delivered to `project-management` and that `project-management` has not yet
-accepted, deferred, or rejected.
+Work other workstreams have delivered to `project-management` and that it has
+not yet dispositioned. A file present here has not been dispositioned; every
+dispositioned item has a row in `../intake-dispositions.md`.
 
-Senders add one file per item, named `YYYY-MM-DD-<sender-mnemonic>-<slug>.md`,
-and deliver it to `main` promptly rather than waiting for their own
-integration. Senders never remove or reclassify items, and never edit anything
-else in this workstream's directory.
-
-`project-management` dispositions each item, records the outcome and its reasoning in its own
-handoff, then removes the file. This is a queue, not an archive; Git retains
-the history. A file still present here has not been dispositioned.
-
-See *Workstream Intake* in `WORKFLOW.md`.
+The delivery, naming, disposition, and acknowledgement rules are defined in
+*Workstream Intake*, *The Outbox Branch*, and *The Disposition Log* in the
+root `WORKFLOW.md`. This file deliberately does not restate them: restated
+copies of the protocol go stale in every intake directory at once when the
+rule changes, which is how this README became wrong the first time.

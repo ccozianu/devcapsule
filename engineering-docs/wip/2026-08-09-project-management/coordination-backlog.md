@@ -102,3 +102,67 @@ acknowledgements. The decisions it needs are recorded in the intake item:
 support versus explicit refusal in V1, the pre-recorded authorization shape if
 supported, whether it becomes a requirement and a ledger row, and which
 workstream carries it.
+
+**Mechanism decided 2026-08-29.** The product owner ratified the capsule
+supervisor for V1 (ledger row *Capsule Supervisor And Multi-IDE Sessions*):
+non-interactive runs are the supervisor with no GUI children, so the
+"support versus refusal" question is answered — supported, in V1. The owning
+workstream is settled 2026-08-30: `contained-display` carries the supervisor
+core and with it this item's design work. Still open from the list above: the
+pre-recorded authorization and acquisition acknowledgement shape, and the
+requirement record.
+
+### Workflow Invariants As Pre-Commit Hooks
+
+Release target: undecided. Owner: none yet, per the 2026-08-29 unowned-rows
+ruling; assigned at pickup.
+
+Directed by the product owner on 2026-08-29 while dispositioning the
+intake-staleness item. The workflow's mechanical invariants — the intake
+exclusive-or, append-only disposition logs, intake naming, the WIP carve-out,
+registry agreement — become a `devcapsule workflow verify` check exposed to
+adopters as opt-in `pre-commit` local hooks seeded by bootstrap, and to this
+repository as a Nox gate session. Design fleshed out in
+[the 2026-08-29 note](2026-08-29-workflow-invariants-pre-commit.md). Shares
+its delivery path with the initialization-tooling entry below; whichever
+workstream picks up one should expect the other.
+
+### Multiple-Stream Initialization Tooling
+
+Release target: undecided. Owner: none yet, per the 2026-08-29 unowned-rows
+ruling; assigned at pickup.
+
+Recorded 2026-08-30 at the product owner's direction, dispositioning the
+2026-08-16 intake item from `workflow-improvements`. The owner asked that the
+reserved `project-management` workstream be "initiated by the tooling on all
+devcapsule projects"; the protocol half is done, but the only path that seeds
+workflow files today is `devcapsule bootstrap project` running
+`docker4pycharm/bootstrap-project.sh`, a script predating the multiple-stream
+workflow entirely. The work is product implementation in `devcapsule-src`:
+teach the bootstrap to initialize multiple-stream mode, including the reserved
+workstream, per `WORKFLOW.md`'s *Initializing Multiple-Stream Mode*. Shares
+its delivery path with the pre-commit invariants entry above — the same
+bootstrap seeds both.
+
+### Silent Empty Bind-Source Failure
+
+Release target: V1, per the ledger's at-risk homes. Owner: none yet; assigned
+at pickup.
+
+At-risk item 6 of the readiness assessment, homed here 2026-08-30. Docker
+invents an empty directory when a bind source is missing — a data-shaped
+silent failure that recurred twice in one recorded session. Make it
+structurally loud once: launches must verify bind sources exist and refuse
+with an actionable message rather than let Docker fabricate them.
+
+### Submodule Pointer Publication Ordering
+
+Release target: V1, per the ledger's at-risk homes. Owner: none yet;
+`sample-projects` is the natural owner at pickup, since its submodules are
+where the failure bites.
+
+At-risk item 7 of the readiness assessment, homed here 2026-08-30. `main`
+can currently advertise a submodule pointer that no clone resolves, breaking
+the first command an adopter runs. Specify and check the publication order:
+the submodule's commit is publicly reachable before the superproject pointer
+lands.

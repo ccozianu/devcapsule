@@ -22,14 +22,17 @@ This permanent track coordinates other workstreams but does not duplicate
 their detailed handoffs, implement their scoped changes, edit their WIP state,
 or become a miscellaneous backlog.
 
-## Lifecycle Exception
+## Lifecycle
 
-The user explicitly opened this permanent workstream as a one-off operation
-before the general workflow defines it. Unlike ordinary bounded workstreams,
-`project-management` remains open while the repository uses
-`workflow-type = "multiple-streams"`. The `workflow-improvements` backlog owns
-formalizing that exception for all multiple-stream projects, including any
-valid retirement or workflow-mode migration procedure.
+`project-management` is the reserved workstream that `WORKFLOW.md` requires of
+every multiple-stream project; it conforms to the general rule rather than
+being excepted from it, and remains open while the repository uses
+`workflow-type = "multiple-streams"`. Two historical facts worth keeping: the
+workstream predates the rule — it was opened on 2026-08-09 by explicit
+product-owner decision and the rule was written on 2026-08-16 — and one narrow
+adoption exception survives: this repository adopted `multiple-streams` on
+2026-08-08 and created the reserved workstream a day later, whereas a
+conforming project creates both in the same commit.
 
 ## Branch Association
 
@@ -159,10 +162,175 @@ current remote `main` at `a72d0a8` before project-management work resumed.
 - `project-management` is the standing home for cross-workstream priority,
   sequencing, dependency, and lifecycle decisions.
 - No other workstream's task details or WIP documents have been moved here.
+- Decided 2026-08-29, by the product owner, closing the individual-projects
+  routing question (formerly Open Thread 7): there will be **no dedicated
+  findings-route mechanism** for real projects living in separate
+  repositories — it is too fanciful a feature for V1. Adopters and external
+  projects report findings as ordinary GitHub issues on the DevCapsule
+  repository. In-tree projects carried by `sample-projects`, such as
+  `devcapsule-sample-trading-research`, keep the workstream-intake route that
+  already produced `R-SETTINGS-001`. No further action.
+- Decided 2026-08-30, by the product owner: **the capsule supervisor core is
+  assigned to `contained-display`** — one workstream for one sequenced
+  effort, supervisor first, display as its first consumer. The assignment is
+  delivered to that workstream's intake with the recommended V1 scope cut
+  (PID-1 duties, declarative children, explicit session end, headless mode);
+  the root registry row is updated, and the delivery travels this branch
+  rather than the outbox under the recorded target-lands-no-later-than-the-
+  reference latitude, since it cites ledger rows not yet on `main`.
+- Decided 2026-08-30, by the product owner, settling the carried commit-ratio
+  question: **`WORKFLOW.md` is considered frozen until a release candidate
+  exists.** The scheduled check — whether workflow improvements are then
+  needed — is the `v1-optional` ledger entry *Workflow Improvements At The
+  Release Candidate*, which also records the freeze's interpretation: no new
+  protocol changes, while already-decided release content (the human-readable
+  onramp) and rule-mechanizing checks (the pre-commit invariants) proceed.
+
+## Intake Dispositions
+
+Recorded 2026-08-29, at the product owner's direction, closing three of the
+nine pending items. Per the intake convention the files are removed from
+`intake/`; Git retains them.
+
+- **`2026-08-16-workflow-improvements-reserved-workstream-adopted.md` —
+  accepted, reconciliation done.** The stale *Lifecycle Exception* section of
+  this handoff is replaced by *Lifecycle* above, stating conformance to the
+  now-general reserved-workstream rule while keeping the two historical facts
+  the sender flagged as worth keeping. The retirement pointer is gone;
+  `WORKFLOW.md` now defines retirement.
+- **`2026-08-17-recursive-e2e-audit-undelivered-work.md` — answered.** The
+  audit's finding, supported by persisted records rather than reconstructed
+  conversation: undelivered work was lost because **outbox resets destroy
+  undelivered mail, and the protocol as then specified permitted exactly
+  that** — a send resets the outbox from current `main` and carries only what
+  is being sent, with no rule protecting unreceived mail still on the branch.
+  The specified protocol was followed; the specification was incomplete. The
+  decisive evidence is self-demonstrating: this very audit request, pushed on
+  `recursive-e2e/outbox` at `ebad342` on 2026-08-17, was itself orphaned by a
+  later reset — the exact failure mode it asked about — and was recovered and
+  delivered only on 2026-08-27 through PR #43. The recovery and the recurring
+  reset-versus-unreceived-mail tension are recorded in the `recursive-e2e`
+  conclusion (`engineering-docs/archive/2026-08-06-recursive-e2e/`); the
+  2026-08-27 pause record of this handoff shows the same tension governed this
+  workstream's own send ordering. Preventing recurrence is protocol content
+  and belongs to `workflow-improvements` when it next resumes; the exposure
+  ends structurally only when a send stops implying a reset while unreceived
+  mail exists.
+- **`2026-08-23-recursive-e2e-non-interactive-runs-have-no-owner.md` —
+  accepted, already represented.** The release-blocking ruling of 2026-08-23
+  is carried by the coordination backlog's *Non-Interactive Runs* entry, which
+  since 2026-08-29 also records the decided mechanism: the capsule supervisor
+  with no GUI children (ledger row *Capsule Supervisor And Multi-IDE
+  Sessions*). Of the decisions the item asked for, support-versus-refusal is
+  decided (supported, in V1); the authorization/acknowledgement shape, the
+  requirement record, and the owning workstream remain open in that backlog
+  entry, with owner assignment deferred until pickup per the 2026-08-29
+  unowned-rows ruling.
+
+- **`2026-08-17-workflow-improvements-intake-staleness-is-yours.md` —
+  decided, 2026-08-29, by the product owner.** No dedicated staleness
+  mechanism will exist; that is the decision, deliberately recorded. What is
+  adopted instead is the **invariant**: the intake exclusive-or becomes
+  mechanically checked, via the `pre-commit`-based design in
+  [Workflow Invariants As Pre-Commit Hooks](2026-08-29-workflow-invariants-pre-commit.md)
+  and its coordination-backlog entry — offered to adopters as opt-in local
+  hooks and run in this repository's Nox gate, which supplies the
+  checker-is-not-the-delinquent property the checkpoint-sweep option wanted
+  without a manual obligation. The release gate remains what catches rot; the
+  same-day evidence for the invariant check is commits `3873356`/`df36750`,
+  where this workstream broke the invariant and nothing mechanical noticed.
+  The item's rider — the `workflow-improvements` lifecycle call, sharpened by
+  Stage 7's dissolution having changed the shape of that workstream's one
+  blocked item — was decided on 2026-08-29 by the product owner:
+  `workflow-improvements` **stays open, idle**. It keeps its one acknowledged
+  item (the external-resource ownership convention, whose blocker changed
+  shape when Stage 7 dissolved into backlog entries) rather than concluding
+  and handing it onward, and it resumes when that item or new protocol work
+  becomes due. Recorded here rather than in that workstream's handoff, which
+  restriction 11 protects from other workstreams' edits.
+
+- **`2026-08-17-workflow-improvements-human-readable-workflow-doc.md` —
+  accepted, 2026-08-29, by the product owner: the project owes a
+  human-readable workflow document.** Recorded as the `in-v1` ledger row
+  *Human-Readable Workflow Documentation*, unowned until pickup. The intake
+  item's recommended shape — an onramp inside `WORKFLOW.md` rather than a
+  second parallel document, on the duplicated-normative-text evidence — is
+  carried in the row as recommended-not-ratified, with the final shape
+  settled together with the extraction-and-seam decision it interacts with.
+
+- **`2026-08-17-workflow-improvements-workflow-loading-and-packaging.md` —
+  rejected for V1, 2026-08-29, by the product owner**, unless the skills
+  convention is identified as widely adopted and buying our users something
+  tangible — the stated reopening trigger. Recorded as the `rejected` ledger
+  row *Workflow Packaging As A Vendor "Skill"*. The item's underlying
+  progressive-disclosure finding (layer the 1772-line document: small
+  mandatory core, procedure loaded on demand) is deliberately kept, folded
+  into the *Human-Readable Workflow Documentation* row and the open
+  extraction-and-seam decision rather than dying with the rejection.
+
+- **`2026-08-17-workflow-improvements-workflow-extraction-and-seam.md` —
+  decided, 2026-08-29, by the product owner.** V1 ships with this workflow;
+  `R-PRODUCT-004` stands unamended, so the decision-record amendment the item
+  anticipated is unnecessary. Whether an adopter can install an alternative
+  workflow moved to the ledger's *Optional For V1* list as
+  *An Alternative Workflow Can Be Installed*, in plain words — the owner
+  retired the word "seam" as unintuitive. Extraction to a separate repository
+  is not pursued; its named costs stay recorded in the item (Git history).
+
+- **`2026-08-16-workflow-improvements-initialization-tooling-has-no-owner.md`
+  — accepted, 2026-08-30, by the product owner**, routed as directed: it is
+  now the unowned coordination-backlog entry *Multiple-Stream Initialization
+  Tooling*, assigned at pickup per the unowned-rows ruling, sharing its
+  delivery path with the pre-commit invariants entry.
+
+- **`2026-08-16-workflow-improvements-outbox-adopted.md` — acknowledged,
+  2026-08-30; its three consequences are resolved or routed.** (1) The two
+  then-stuck deliveries have long since landed: the v026-deliverables item
+  reached `recursive-e2e` (dispositioned in its archived log) and the
+  bug-vocabulary item sits in `workflow-improvements`' intake, awaiting that
+  workstream's release-candidate resume along with six later arrivals.
+  (2) The registration-travels-the-outbox answer is noted and already
+  reflected in the unowned-rows ruling (registration at pickup). (3) The
+  stale-README question — who owns protocol boilerplate inside another
+  workstream's carve-out — is answered as a coordination ruling: each
+  workstream owns its own copy, and the durable fix is READMEs as pointers
+  to `WORKFLOW.md` rather than restatements. This workstream's own README
+  is converted in this commit; `recursive-e2e`'s copy is archived and moot;
+  `sample-projects`' copy is flagged for that workstream's next delivery.
+
+Intake is empty. Every item ever received is in the disposition log.
 
 ## Last Task And Status
 
-Last task: the 2026-08-27 session, resumed at the product owner's direction
+Last task: the 2026-08-29/30 rulings sessions, which settled all four resume
+questions of the 2026-08-27 pause and went well beyond them.
+
+Status: complete. In summary:
+
+1. **The release thesis is decided**: workspace *and* containment — a
+   workspace product wherein agents are sensibly contained so the user can
+   happily run yolo mode by default. The twelve-week budget yielded to a
+   maximal-wow bar; Java and Quarkus are in as samples (Eclipse default,
+   IDEA available); the project-type divergence resolved by union; the
+   devcapsule-on-the-side scenario is `in-v1`; the announcement was
+   fact-checked, aligned, and now answers the issue-tracker objection with
+   `docs/product/issue-tracker-positioning.md` behind it; `R-GTM-001`'s
+   stale flag closed.
+2. **The supervisor split is ratified** (core in V1, desktop integration
+   post-V1), answering non-interactive runs; unowned rows are acceptable
+   until pickup; `WORKFLOW.md` is frozen until a release candidate; the
+   fourth agent Case A and CUDA are parked `v1-optional`.
+3. **This workstream's intake went from nine items to empty**, every
+   disposition logged; the invariant got its future guard (the pre-commit
+   proposal) after this workstream briefly violated it itself.
+4. **The ledger is structurally complete**: all sixteen gap verdicts written
+   (`E1`–`E4` recorded as delivered), the seven at-risk items homed, the
+   five scope decisions dispositioned, and a V1 acceptance section proposed.
+   Five agent-proposed items await ratification.
+
+The previous task record follows.
+
+Previous task: the 2026-08-27 session, resumed at the product owner's direction
 after v0.2.7 (the new argparse CLI under the unified release identity) was
 released and verified. A high-progress coordination session; the owner ended
 it deliberately without forcing the pending decisions.
@@ -250,31 +418,27 @@ eight unowned shortcomings and seven documented items to pin to V1; and the
 
 ## Next Resumable Task
 
-**Resume at the four questions recorded at the 2026-08-27 pause**, in rough
-order of leverage. The owner deliberately left them undecided — good
-progress does not require premature decisions.
+**All four questions of the 2026-08-27 pause are settled** (see *Last Task
+And Status*). The next resumable coordination work, in order of leverage:
 
-1. **The release thesis**: containment product versus workspace product.
-   Still gating roughly half the unwritten ledger rows (F1–F8, E1–E8), and
-   the session's supported-project-types recap leans containment. Standing
-   agent recommendation: containment.
-2. **The capsule-supervisor split**: ratify, amend, or reject the proposal
-   that V1 carries the supervisor as lifecycle anchor only (headless-capable,
-   explicit session end — which answers the release-blocking
-   non-interactive-runs backlog item) while the desktop-integration layer
-   (tray, one-click secondary IDEs, multi-IDE sessions) leads the first
-   post-V1 milestone.
-3. **Register `codium-surface`**: the VSCodium row is decided `in-v1` but
-   has no owning workstream; registration is main-first, and its scope
-   should be shaped against the supervisor answer in question 2.
-4. **Disposition this workstream's own intake** — now nine items: the seven
-   workflow-improvements items pending since 2026-08-18, plus the recovered
-   audit request (its answer is now largely known: outbox resets destroyed
-   undelivered mail; the recovery is documented in the recursive-e2e
-   conclusion) and the non-interactive-runs item (already represented in the
-   backlog; the disposition should record that).
+1. **The ratification pass.** Five agent-proposed items in the
+   [V1 scope ledger](v1-scope-ledger.md) await the product owner: `E5`
+   conformance suite `in-v1`, `F6`'s destructive-surface split, `F7`'s
+   `pycharm build` removal, D-0001 parked `v1-optional`, and the
+   *V1 Acceptance* section.
+2. **Rebuild the release shape wow-first** from the completed gap verdicts —
+   the superseded twelve-week shape's deferrals are gone; sequence the
+   unowned `in-v1` rows (supervisor core, contained display, VSCodium
+   surface, on-the-side, `F1` bootstrap, `E5`, human-readable onramp) into
+   milestones the owner can ratify.
+3. **The one live Open Thread**: whether the storage boundary earns a
+   `Shared Constraints` registry line.
 
-The earlier task list follows and remains valid behind these.
+The functional work itself proceeds outside this workstream, from the
+decided-but-unowned rows; the owner picks targets there directly.
+
+The earlier task list follows for history; its four questions are settled and
+its ledger task is done.
 
 **Resume inside the individual-projects question.** The first project is now
 named: `devcapsule-sample-trading-research`, a Python/PyCharm project with Codex
@@ -333,69 +497,21 @@ protocol is a release commitment at all.
 
 ## Open Threads
 
-Reviewed at the second 2026-08-19 pause and carried forward; only thread 7
-changed, gaining the frame the session built. Rewritten at the first 2026-08-19
-pause, which the product owner called for travel.
-Threads settled during that session have been removed rather than annotated;
-what remains is live. Originally written at the 2026-08-16 pause. This is a
-trial of the `Open Threads` shape
-proposed to `workflow-improvements`; the format is not ratified, and structuring
-this workstream's own handoff needs no protocol change. Kept deliberately short:
-questions and reasoning hooks, not a transcript.
+Reviewed at the 2026-08-29/30 rulings sessions, which settled nearly the
+whole list: the release thesis (workspace and containment), Java (in as
+samples, Eclipse default with IDEA available), the fourth agent Case A
+(`v1-optional`), the twelve-week shape (superseded by the maximal-wow
+budget), the use-case set (recorded through the union row, the one-to-five
+promise, and the issue-tracker positioning), `R-GTM-001` (criteria satisfied,
+flag closed), and the commit-ratio question (`WORKFLOW.md` frozen until a
+release candidate). Settled threads are removed rather than annotated, per
+this section's convention. Earlier review history: rewritten at the
+2026-08-19 pauses; originally written at the 2026-08-16 pause. The format
+remains the unratified `Open Threads` trial shape.
 
 ### Awaiting The Product Owner
 
-1. **The release thesis.** Containment product — one IDE, boundary provable,
-   agent-safety wedge — versus workspace product with multi-IDE breadth. Decides
-   roughly half the unwritten ledger rows. Agent recommendation: containment,
-   because it is where the project is ahead of the field rather than behind it.
-2. **Java: inside the V1 window or immediately after.** Inside, it competes with
-   concurrency and the entry point; after, it becomes the first post-V1
-   milestone and gives the announcement a concrete next promise.
-3. **Fourth agent, Case A.** Bring-your-own-endpoint is proposed `in-v1` and
-   unratified. Case B, DevCapsule running the model, is proposed `deferred`.
-4. **The twelve-week release shape**, carried as `proposed` in the ledger and
-   never ratified — and now stale, because moving the contained display to v027
-   removed a block the shape assumed was inside the window. It needs rebuilding
-   before it can be ratified.
-5. **The use-case set grew to three on 2026-08-19** and is still unwritten. The
-   product owner named the learner or tinkerer, the serious solo developer, and
-   small teams of roughly two to five, calling the case for all three clear. It
-   has never been recorded as a ledger section, and both 2026-08-19 notes now
-   lean on it — the issue-tracker answer turns on the claim that these users
-   have no tracker to replace. Writing it up is small and overdue.
-6. **`R-GTM-001` carries `status: implemented` that is no longer true.** The
-   criteria added on 2026-08-19 require the announcement to answer the
-   issue-tracker objection, and `docs/product/v1-announcement.md` does not
-   mention trackers at all. The status was deliberately left unchanged, because
-   flipping a requirement's status is the product owner's call; `accepted` is
-   the honest value if he wants it changed.
-7. **The individual projects: first one named, routing rule still implicit.**
-   `devcapsule-sample-trading-research` is the first real project: a
-   Python/PyCharm environment with Codex and Claude Code. It is carried by the
-   `sample-projects` workstream, so its finding about copied per-IDE profile
-   prototypes had a route home and became accepted `R-SETTINGS-001`. The open
-   coordination question is whether every real project explicitly owes such
-   findings back to this repository, especially when a future project is a
-   separate repository without an in-repository workstream. The original frame:
-   the X11 passthrough hands every GUI capsule his trusted host session cookie
-   and cannot be avoided while `DISPLAY` is required, and real projects worsen
-   exactly the dimension that matters because agent work runs for hours; service
-   dependencies and port allocation both reopen open V1 decisions; and — the
-   part worth keeping — if each project is its own repository rather than a
-   workstream here, findings have **no route home**, because a separate project
-   has no outbox into this one. Per project he would be asked for: name and
-   repository, size, declared capabilities, services beyond the checkout,
-   whether it is GUI-driven, and what it should prove about DevCapsule.
-8. **Two carried items from the 2026-08-18 critique, now the only part of it not
-   superseded.** Whether the process-to-product commit ratio is acceptable
-   dogfood cost or a signal to freeze `WORKFLOW.md` and spend the next stretch
-   on the product; and the seven intake items in this workstream's own
-   `intake/`, read on 2026-08-18 and still undispositioned. That critique was
-   parked in a scratch file outside the repository; its measurements and
-   recommendation are now in the delivered coordination-storage item, and these
-   two questions are all that had no home.
-9. **Whether the storage boundary earns a `Shared Constraints` line** in the
+1. **Whether the storage boundary earns a `Shared Constraints` line** in the
    root registry. Offered twice and not taken. The argument against is that it
    is not implemented yet, so a constraint would describe an intention.
 
