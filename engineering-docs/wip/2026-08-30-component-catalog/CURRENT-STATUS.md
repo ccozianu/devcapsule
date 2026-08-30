@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: open; registered, not yet started
+State: open; first session started 2026-08-30
 
 Integration target: `main`
 
@@ -52,9 +52,17 @@ foundation both tracks stand on.
 
 ## Branch Association
 
-Branch prefix `component-catalog/`. No branch exists yet; the first one is
-forked from this registration commit on `main`, per *Beginning A Workstream*
-in `WORKFLOW.md`.
+Branch prefix `component-catalog/`. The first branch is
+`component-catalog/codium-surface`, forked on 2026-08-30 from the
+registration merge `363f656` on `main` (`PR #48`), per *Beginning A
+Workstream* in `WORKFLOW.md`. The root registry row still reads "no branch
+yet"; the correction travels with this workstream's first integration rather
+than alone.
+
+Recorded latitude: registration shipped without the empty
+`intake-dispositions.md` that *Beginning A Workstream* step 4 requires. The
+file was added at branch opening, in this workstream's first commit. Gap
+noted here; the protocol itself needs no change, only following.
 
 ## Scope
 
@@ -137,16 +145,20 @@ the gap and coordinates; it does not reshape the supervisor.
 
 ## Current Task
 
-None yet. The workstream is registered and awaiting its first session.
+Track 1's shared foundation: generalize interactive-surface selection in
+`devcapsule/components/catalog.py` so it no longer hard-codes PyCharm, then
+shape the `codium` `ComponentDefinition` and its vscode-family runtime
+adapter against the existing `jetbrains` adapter and the legacy launcher's
+known-good mount and command behavior. First validated component integrates
+to `main` per the cadence above.
 
 ## Next Resumable Task
 
-Start track 1 with the shared foundation: generalize interactive-surface
-selection in `devcapsule/components/catalog.py`, then shape the `codium`
-component and its vscode-family adapter against the existing `jetbrains`
-adapter and the legacy launcher's known-good mount and command behavior.
-Settle the `vscode_with_claude` scope question in the same session it becomes
-relevant.
+After the `codium` component validates and integrates: track 2, the
+Antigravity CLI component, starting with the license and redistribution
+analysis the ledger gates on. Settle the `vscode_with_claude` scope question
+in whichever session it first becomes relevant — at the latest, when the
+`codium_with_claude` command tree is retired.
 
 ## External State And Risks
 
