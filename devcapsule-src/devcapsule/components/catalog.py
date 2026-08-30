@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from devcapsule.components import ComponentDefinition
 from devcapsule.components.claude_code import DEFINITION as CLAUDE_CODE
 from devcapsule.components.codex import DEFINITION as CODEX
+from devcapsule.components.codium import DEFINITION as CODIUM
 from devcapsule.components.postgresql_client import DEFINITION as POSTGRESQL_CLIENT
 from devcapsule.components.pycharm import DEFINITION as PYCHARM
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
@@ -16,8 +17,16 @@ class ComponentCatalogError(ValueError):
     """The lock selects unsupported or malformed component metadata."""
 
 
+# Components a lock may name as its one interactive-surface. Every other
+# catalog component is ancillary; a definition never appears in both roles.
+INTERACTIVE_SURFACES: dict[str, ComponentDefinition] = {
+    PYCHARM.id: PYCHARM,
+    CODIUM.id: CODIUM,
+}
+
 COMPONENTS: dict[str, ComponentDefinition] = {
     PYCHARM.id: PYCHARM,
+    CODIUM.id: CODIUM,
     CODEX.id: CODEX,
     CLAUDE_CODE.id: CLAUDE_CODE,
     POSTGRESQL_CLIENT.id: POSTGRESQL_CLIENT,
@@ -31,7 +40,10 @@ def selected_component_definitions(
     if not isinstance(components, dict):
         raise ComponentCatalogError("platform lock components must be a table")
     interactive_id = components.get("interactive-surface")
-    if interactive_id != PYCHARM.id:
+    interactive = (
+        INTERACTIVE_SURFACES.get(interactive_id) if isinstance(interactive_id, str) else None
+    )
+    if interactive is None:
         raise ComponentCatalogError(
             f"no V1 runtime template is available for interactive component {interactive_id!r}"
         )
@@ -39,6 +51,11 @@ def selected_component_definitions(
     for component_id, metadata in components.items():
         if component_id in {"interactive-surface", interactive_id}:
             continue
+        if component_id in INTERACTIVE_SURFACES:
+            raise ComponentCatalogError(
+                f"component {component_id!r} is an interactive surface and cannot "
+                f"accompany the selected surface {interactive_id!r}"
+            )
         definition = COMPONENTS.get(component_id)
         if definition is None:
             raise ComponentCatalogError(
@@ -47,7 +64,7 @@ def selected_component_definitions(
         if not isinstance(metadata, dict):
             raise ComponentCatalogError(f"components.{component_id} must be a table")
         ancillary.append(definition)
-    return PYCHARM, tuple(ancillary)
+    return interactive, tuple(ancillary)
 
 
 def selected_runtime_templates(
