@@ -875,8 +875,14 @@ def write_xauthority(xauth_file: Path, env: Mapping[str, str]) -> None:
             )
     xauth_file.chmod(0o600)
     if xauth_file.stat().st_size == 0:
+        # Deliberately no `xhost +SI:localuser:...` advice here: that command
+        # widens host X access control, and this launcher must not teach users
+        # to weaken the very boundary the product exists to keep.
         print(
-            f"Warning: no Xauthority cookie was copied. If PyCharm cannot open, run: xhost +SI:localuser:{current_host_user().name}",
+            "Warning: no Xauthority cookie was copied, so PyCharm may be unable to open a window. "
+            "Note that host X11 passthrough already hands the capsule your X session credential "
+            "(keystroke capture, window capture, input injection, clipboard); a contained display "
+            "that closes this exposure is in development.",
             file=sys.stderr,
         )
 

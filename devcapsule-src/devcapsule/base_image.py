@@ -220,7 +220,10 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.component.postgresql-client.license", "PostgreSQL"),
                 )
             ),
-            EntrypointComponent(("/usr/bin/tini", "--", PEX_DESTINATION, "runtime")),
+            # The runtime entrypoint is its own PID 1: it reaps, forwards
+            # signals, and supervises the foreground child (D1: pure Python;
+            # tini stays installed as the recorded fallback, not in front).
+            EntrypointComponent((PEX_DESTINATION, "runtime")),
             CommandComponent((RUNTIME_PLAN_PATH,)),
         ]
     )
