@@ -123,6 +123,41 @@ plan-validation work, not process-management work. It gets its own note
 after this one is reviewed; nothing in D2/D3 constrains it beyond `job`
 children existing.
 
+## D8. User Interactivity: The Supervisor Asks Nothing In V1
+
+Raised by the product owner at review: when interactivity from the user is
+needed, what UI mechanism does the supervisor get?
+
+Nearly all of the product's questions are answered before the supervisor
+exists: authorization, acquisition acknowledgements, and configuration
+elicitation run host-side in the launching terminal through the elicitation
+engine, and headless runs are pre-recorded-answers-only by D7. What remains
+mid-session is rare — a dead infrastructure child with a recoverable choice,
+a future mid-session capability request.
+
+**The trap, recorded as a standing rule.** The tempting mechanism once the
+contained display exists — a consent dialog rendered on the capsule's own
+desktop — is forgeable by construction: contained code, including an agent
+running at full autonomy, can paint a pixel-perfect copy of any prompt the
+capsule display can show. If users learn that real consent appears on the
+capsule desktop, the forgery works. Therefore: **trust-bearing prompts —
+authorization, capability grants, consent — are never rendered inside the
+capsule. In-capsule UI may display status; it never collects consent.**
+Consent is answered on the host side of the boundary, where contained code
+cannot draw.
+
+**Recommendation, in tiers:**
+
+- **V1: the supervisor asks nothing.** Every question is answered before
+  launch, pre-recorded, or the supervisor fails fast with an actionable
+  message — the product's existing refuse-with-evidence posture. In
+  foreground runs its stdout is the launching terminal, so the human sees
+  why. Zero new surface.
+- **Post-V1: the control socket is the transport, never the UI.** The
+  supervisor emits question/answer requests over the seam D4 reserves;
+  host-side surfaces render them — a CLI subcommand, the tray, a host
+  notification. The supervisor stays toolkit-free and transport-agnostic.
+
 ## Testing Shape
 
 - Unit: the reap/forward/shutdown state machine against fake children
