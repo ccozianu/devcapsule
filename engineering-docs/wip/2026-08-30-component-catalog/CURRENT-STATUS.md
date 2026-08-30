@@ -145,12 +145,33 @@ the gap and coordinates; it does not reshape the supervisor.
 
 ## Current Task
 
-Track 1's shared foundation: generalize interactive-surface selection in
-`devcapsule/components/catalog.py` so it no longer hard-codes PyCharm, then
-shape the `codium` `ComponentDefinition` and its vscode-family runtime
-adapter against the existing `jetbrains` adapter and the legacy launcher's
-known-good mount and command behavior. First validated component integrates
-to `main` per the cadence above.
+Track 1's shared foundation is implemented as of 2026-08-30 (commit
+`f886872`): the catalog selects the interactive surface from an explicit
+`INTERACTIVE_SURFACES` registry, the `codium` `ComponentDefinition` declares
+durable `user-data` and `extensions` slots plus the shared home-overlay
+cache slot, and the `vscode` family adapter reproduces the legacy launcher's
+proven foreground command (the Electron binary at the installation root —
+the retired `codium-foreground` symlink target — with `--user-data-dir`,
+`--extensions-dir`, then the project path). The generic entrypoint
+dispatches on the adapter name. Unit tests and mypy are green.
+
+What remains before the component is validatable end-to-end, in dependency
+order; each stage carries a design question for the product owner noted
+under *Open Threads*:
+
+1. Materialization: generalize `parse_locked_environment` and the
+   jetbrains-specific recipe/spec in `materialization.py` so a codium lock
+   materializes into a cached canonical image (including the setuid
+   `chrome-sandbox` fix-up the legacy image build performed).
+2. The embedded resolution matrix: a pinned codium table and the selection
+   mechanism that lets `init` produce a codium lock.
+3. `project run` and the host launcher: drop the `pycharm`-only guards in
+   `project_operations.py` and `commands/project.py`, and feed the
+   component's declared slots to the launcher generically instead of by
+   `pycharm/...` name.
+4. Retire the `codium_with_claude` command tree and settle the
+   `vscode_with_claude` question (found to be a never-implemented stub that
+   only raises "not implemented yet"; retirement looks free).
 
 ## Next Resumable Task
 
@@ -159,6 +180,29 @@ Antigravity CLI component, starting with the license and redistribution
 analysis the ledger gates on. Settle the `vscode_with_claude` scope question
 in whichever session it first becomes relevant — at the latest, when the
 `codium_with_claude` command tree is retired.
+
+## Open Threads
+
+Design questions awaiting the product owner, mapped to the remaining stages
+above:
+
+- **Surface selection mechanism** (stage 2): the matrix demands the
+  `python-ide` capability and hard-codes `interactive-surface = "pycharm"`.
+  How does a checkout choose codium — a distinct capability name, a manifest
+  configuration value, or a resolution-time choice? The codium definition
+  provisionally declares capability `python-ide` (nothing consumes the
+  property yet), matching the reading that the surface is a selection within
+  one capability.
+- **Codium pin** (stage 2): which VSCodium version/URL/sha256 the matrix
+  pins, and from where (GitHub release tarball is the natural archive-shaped
+  source; the legacy path accepted either the apt repository or a local
+  archive).
+- **Sandbox posture** (stage 1): the legacy image made `chrome-sandbox`
+  setuid root; the materialization recipe should reproduce that rather than
+  fall back to `--no-sandbox`. Confirming that posture is wanted.
+- **`vscode_with_claude` retirement** (stage 4): it is a stub that raises
+  "not implemented yet"; proposing outright retirement alongside the
+  `codium_with_claude` tree rather than componentization.
 
 ## External State And Risks
 
