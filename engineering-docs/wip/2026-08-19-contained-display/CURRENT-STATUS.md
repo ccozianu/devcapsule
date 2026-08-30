@@ -4,7 +4,7 @@ Mnemonic: `contained-display`
 
 Start date: 2026-08-19
 
-State: active; first session 2026-08-30
+State: active; stage 1 (supervisor core) implemented and verified 2026-08-30
 
 Integration target: `main`
 
@@ -71,27 +71,43 @@ Not in scope: the `xdg-open`/`BROWSER` forwarding shim (shipped under
 
 ## Current Task
 
-**Implement the supervisor core, stage 1**, per the completed and
-owner-reviewed [design note](supervisor-core-design.md) — the design review
-concluded 2026-08-30 with every decision point D1–D9 ruled or carrying a
-ratified recommendation. Stage-1 scope, exactly:
+**Stage 1 is implemented and verified** (2026-08-30, commits `500909d` and
+`a3036ec` on this branch), exactly per the owner-reviewed
+[design note](supervisor-core-design.md):
 
-- a pure-Python PID 1 in `devcapsule_runtime` (D1): reap, signal-forward,
-  TERM-grace-KILL shutdown, honest exit codes;
-- **one distinguished foreground child** (D2 as restaged): the IDE, or the
-  headless job — the runtime plan schema is unchanged, today's launch
-  command is the declaration, no migration;
-- session ends on child exit or `docker stop`/SIGTERM (D3/D4), exit code
-  propagated; headless mode is the same slot with no GUI (the decided
-  non-interactive-runs mechanism);
-- the supervisor asks nothing and displays via stdout/logs (D8, decided);
-- internal machinery written over a set of children, exposing exactly one;
-- fake-children unit tests for the state machine, plus the e2e assertion
-  that the supervisor is PID 1 with the IDE as its child, under host X11.
+- `devcapsule/container_runtime/supervisor.py` is the pure-Python PID 1
+  (D1): SIGCHLD-driven reaping including adopted orphans, SIGTERM/SIGINT
+  forwarding, TERM-grace-KILL shutdown in reverse start order (5 s grace,
+  deliberately below `docker stop`'s 10 s), honest exit codes — the
+  foreground child's own code, 128+signal for signal deaths, and
+  EX_SOFTWARE (70) naming the dead child when a non-foreground child dies
+  first. The machinery runs over an ordered child set; exactly one
+  foreground child is exposed (D2 as restaged).
+- The entrypoint supervises instead of exec-ing; the base-image ENTRYPOINT
+  dropped `tini` (recorded fallback, still installed) so the supervisor
+  really is PID 1, and the formation descriptor's entrypoint contract
+  followed, so materialization identities roll over.
+- **Headless mode** is the same distinguished slot with no GUI:
+  `devcapsule runtime RUNTIME_PLAN.json -- COMMAND...` runs the job in the
+  project directory and propagates its exit code — the decided
+  non-interactive-runs mechanism. The runtime plan schema is unchanged.
+- The supervisor asks nothing and announces on stderr (D8).
+- Evidence: fake-children unit tests (`tests/test_supervisor.py`, driven
+  in a dedicated process because the supervisor owns its thread's signal
+  mask) cover exit propagation, signal deaths, the explicit end, an
+  ignore-TERM straggler, and infrastructure-death failure; the runtime
+  image e2e asserts the supervisor is PID 1 with the IDE as its child, the
+  headless exit-code propagation with no zombies after an orphan reap, and
+  `docker stop` → graceful end with exit code 143; the recursive successor
+  probe now asserts the supervised process tree too. Unit suite 442
+  passed; mypy clean; `nox -s e2e` green except the contributor-bootstrap
+  test, blocked by pre-existing local checkout state (see *Open Threads*).
 
-One cheap item rides alongside: removing the launcher's
-`xhost +SI:localuser:<user>` advice and stating the exposure instead — the
-2026-08-19 design input's "cheaper floor", immediate safety value.
+The cheap rider landed: the launcher no longer advises
+`xhost +SI:localuser:<user>`; it states the passthrough exposure instead.
+
+**The next task is the display-transport spike** described under *Next
+Resumable Task*.
 
 **Transport rulings from the review, superseding the scope bullets above
 where they differ** (the design note is authoritative): V1 offers the
@@ -135,6 +151,30 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
   all fail from inside the capsule), not on the transport landing. Its
   maturity table carries a currency caveat and is re-verified before
   commitment.
+
+## Open Threads
+
+- **The contributor-bootstrap and recursive clean-clone e2e flows are
+  blocked by pre-existing local checkout state**, not by this work: the
+  suite requires a fully clean checkout, and the working tree carries an
+  IDE-session `.idea/devcapsule.iml` drift plus the trading-research
+  submodule pointer moved to `a99c43d` (which *is* on that submodule's
+  `origin/main`). Committing them from this branch would mix another
+  workstream's state, so they were left for the human to disposition. The
+  recursive dry-run stage (`recursive-e2e run --json`) passes; the full
+  successor launch under host X11 awaits a clean tree.
+- The D7 pre-recorded authorization/acquisition-acknowledgement design
+  note is still to be written; headless *mechanics* landed with stage 1,
+  the unattended-answers shape did not (it is plan-validation work).
+- The reaping-semantics coordination owed to `project-management`'s
+  backlog entry is now concrete: the supervisor makes the exit honest
+  (internal cleanliness, truthful exit code); container removal stays
+  host-side launcher policy. That division should be delivered to close
+  the entry.
+- Implementation subtlety worth keeping: the supervisor must hold its
+  children's `Popen` objects for the whole session — a collected `Popen`
+  reaps its zombie behind the supervisor's back and the exit is never
+  attributed. Recorded as a comment at the spawn site.
 
 ## External State And Risks
 
