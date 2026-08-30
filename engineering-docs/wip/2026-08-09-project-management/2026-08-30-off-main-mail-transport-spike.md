@@ -6,11 +6,13 @@ and task messages that does not require `main` as the transport, while
 keeping the project's standing principle that everything is reflected in the
 source tree.
 
-Status: design spike, not a decision. **`WORKFLOW.md` is frozen until a
-release candidate** (2026-08-30 ruling), so nothing here changes the protocol
-now; this note is input to the *Workflow Improvements At The Release
-Candidate* check, or to an explicit earlier unfreeze if the owner rules the
-current mail path defective enough to qualify.
+Status: design spike, owner-endorsed and **delivered to
+`workflow-improvements`' intake on 2026-08-30** with the owner's timing
+ruling: small enough to implement in time for V1, needing attention to
+detail, deliberately not being done immediately. **`WORKFLOW.md` remains
+frozen** (2026-08-30 ruling); implementation is an explicit owner-directed
+exception when scheduled, or part of the *Workflow Improvements At The
+Release Candidate* check, whichever comes first.
 
 ## The Problem, Stated Once
 
