@@ -37,7 +37,37 @@ dependent — exactly the kind of ambient variation the runtime plan exists to
 eliminate. `tini` remains the recorded fallback if signal semantics prove
 subtler than expected.
 
-## D2. Child Declaration
+## D2. Child Declaration — RESTAGED 2026-08-30
+
+**Ruled by the product owner at review:** stage 1 carries **one
+distinguished foreground child only** — the IDE, or in headless mode the
+job — because the configuration language and UX for declaring a children
+list are genuinely tricky and deserve their own design exercise, taken only
+after the supervisor has proven itself (especially for e2e testing and
+non-interactive runs).
+
+The staging is cleaner than a cut, because the declarative list below turns
+out to have no V1 customer on the user-facing side:
+
+- multiple foreground IDEs are post-V1 by the ratified supervisor split;
+- infrastructure children (Xvnc, window manager, noVNC) arrive with the
+  display stage but are **product-derived from the resolved transport,
+  never user-declared** — they use the supervisor's internal API, not the
+  configuration language;
+- the headless job is the same distinguished slot with no GUI.
+
+Stage-1 consequences: the runtime plan schema is **unchanged** — today's
+single launch command *is* the declaration — so there is no migration and
+the E3 assertion set is untouched; readiness gates are deferred to the
+display stage that needs them; the internal state machine is still written
+over a set of children (supervising N is no harder than 1 in the
+reap/forward/shutdown core, and hardcoding 1 would be artificial), but
+exactly one is exposed.
+
+The original multi-child sketch below is retained as design input for the
+later exercise, not as stage-1 scope.
+
+### The original sketch (deferred)
 
 The runtime plan gains an ordered `children` list. Each child:
 
