@@ -297,10 +297,32 @@ adopter already has. So:
   unoffered; the cheaper floor (removing the `xhost` advice) still rides
   with the supervisor work.
 
-The ledger row's "X11 passthrough, if retained at all, is opt-in" language
-is consistent with this outcome (it is not retained); the stretch status of
-native-window modes is coordination to surface at this workstream's next
-integration.
+**Amended by the product owner, same day: mode 3 is retained — behind
+explicit authorization.** The earlier "mode 3 goes" is superseded. The final
+transport lineup:
+
+- **Mode 1, contained desktop: the offered default.** The only mode the
+  product recommends, and the only one carrying the yolo-by-default claim.
+- **Mode 2, native window via Xephyr/Xpra: stretch**, unchanged from above.
+- **Mode 3, host X11 passthrough: retained as an explicitly authorized
+  mode.** It becomes an authorization node in the configuration grammar,
+  answered the way development sudo and host network already are: never a
+  default, never elicited as a suggestion, granted only by the user's
+  explicit answer with the trade-off stated at the point of decision — the
+  capsule receives the full trusted host session credential: keystroke
+  capture across the session, window capture, input injection, and
+  clipboard access. The grant appears in the run manifest and inspection
+  output; the session-credential regression test is recorded as *waived by
+  authorization* for such runs, and the yolo-by-default claim is explicitly
+  not carried in this mode.
+
+What this buys, stated honestly: the native-window desire is served today
+with zero host packages and zero new display code — the user trades the
+boundary for the window placement, knowingly — and the mode ships
+well-tested precisely because it is the path development lived on. This
+also matches the ledger row's original language exactly: "X11 passthrough,
+if retained at all, is opt-in with its trade-off documented, and is not the
+default." It is retained, and that is its shape.
 
 ## Testing Shape
 
