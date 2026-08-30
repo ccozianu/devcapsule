@@ -154,15 +154,21 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
 
 ## Open Threads
 
-- **The contributor-bootstrap and recursive clean-clone e2e flows are
-  blocked by pre-existing local checkout state**, not by this work: the
-  suite requires a fully clean checkout, and the working tree carries an
-  IDE-session `.idea/devcapsule.iml` drift plus the trading-research
-  submodule pointer moved to `a99c43d` (which *is* on that submodule's
-  `origin/main`). Committing them from this branch would mix another
-  workstream's state, so they were left for the human to disposition. The
-  recursive dry-run stage (`recursive-e2e run --json`) passes; the full
-  successor launch under host X11 awaits a clean tree.
+- **All suites are green on this branch** (checkout cleaned by the owner
+  2026-08-30): unit + mypy, `nox -s e2e` including contributor bootstrap,
+  and `nox -s recursive_dogfood_e2e` (dry-run stage plus the clean-clone
+  protocol). The supervised process tree is proven live in the
+  runtime-image e2e, which builds a base from the current PEX.
+- **The live successor launch cannot prove the supervisor yet** — not for
+  test reasons but for artifact reasons: stage 5/6
+  (`launch-successor`/`inspect-successor`) realizes the successor from the
+  checkout's *authorized base image*
+  (`docker.io/mycodespaceai/devcapsule-base@sha256:cd1a0e…`), which still
+  carries the pre-supervisor PEX with the tini entrypoint. The
+  strengthened probe would rightly fail against it. The proof lands with
+  the next base-image build from post-`500909d` source (and its local
+  authorization or publication) — a bootstrap/release step the owner
+  drives.
 - The D7 pre-recorded authorization/acquisition-acknowledgement design
   note is still to be written; headless *mechanics* landed with stage 1,
   the unattended-answers shape did not (it is plan-validation work).
