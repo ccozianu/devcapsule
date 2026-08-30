@@ -80,11 +80,31 @@ required to start.
 
 ### B. One shared `post-office` branch
 
-Same mechanics, one branch for all mailboxes. Simpler to explain, one place
-to look, but every sender contends on one ref, and the recipient-owned reset
-becomes muddier (who may reset what). Worth keeping in the drawer if
-per-workstream branches ever feel like sprawl; at four workstreams they will
-not.
+Same mechanics, one branch for all mailboxes — the product owner's original
+instinct, and it shares design A's essential insight: the wire moves off
+`main` but stays entirely inside Git. Discussed with the owner on 2026-08-30;
+A is preferred for reasons that all reduce to deletion ownership:
+
+- **Emptying the buffer is the hard problem, and A solves it structurally.**
+  On `mail/<X>` the topology itself enforces that only X resets, only after
+  ingesting. On a shared branch, "only remove files addressed to you" is a
+  convention Git cannot enforce — and the 2026-08-17 loss is what happens to
+  such conventions.
+- **A reset on a shared branch is a write against everyone**: it moves the
+  ref every other sender is racing, forcing retries across a rewrite they
+  did not cause. Per-recipient branches partition contention; a recipient's
+  reset can only disturb its own mail.
+- **"You have mail" is structural in A** (branch non-empty), but bookkeeping
+  in B (per-recipient directories plus remembered read-state, or recipients
+  writing moves into shared history).
+- **The three-place invariant stays locally checkable in A**; B entangles
+  every mailbox into one global check.
+- **Host permissions map onto `mail/*` as a namespace**; a bad push in A
+  damages one inbox, in B all of them.
+
+B's real advantage — one place to look, one convention — matters at forty
+mailboxes, not four. It stays in the drawer as the fallback if branch sprawl
+ever becomes real.
 
 ### C. Rejected briefly
 
