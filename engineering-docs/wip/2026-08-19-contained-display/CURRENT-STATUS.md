@@ -4,7 +4,10 @@ Mnemonic: `contained-display`
 
 Start date: 2026-08-19
 
-State: active; stage 1 (supervisor core) implemented and verified 2026-08-30
+State: paused 2026-08-30 with stage 1 (supervisor core) implemented, live-proven,
+and committed on `contained-display/supervisor-core`; resume at the
+display-transport spike under *Next Resumable Task*, reading *Open Threads*
+first
 
 Integration target: `main`
 
@@ -183,6 +186,12 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
   creates a fresh pre-launch retained run.
 - The published base still predates the supervisor; publishing a
   post-`500909d` base remains a release step the owner drives.
+- **The base-image override is still active on the owner's checkout**:
+  `base-image` is authorized to local `devcapsule-base:supervisor-stage1`
+  (and `claude-code-download` to `true`), so the next `project run` on
+  this checkout launches from the supervisor base. Revert with
+  `devcapsule project config authorize base-image <locked reference>` if
+  the published base is wanted before a new one ships.
 - The D7 pre-recorded authorization/acquisition-acknowledgement design
   note is still to be written; headless *mechanics* landed with stage 1,
   the unattended-answers shape did not (it is plan-validation work).
