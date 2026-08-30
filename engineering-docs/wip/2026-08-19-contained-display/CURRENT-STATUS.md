@@ -159,16 +159,30 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
   and `nox -s recursive_dogfood_e2e` (dry-run stage plus the clean-clone
   protocol). The supervised process tree is proven live in the
   runtime-image e2e, which builds a base from the current PEX.
-- **The live successor launch cannot prove the supervisor yet** — not for
-  test reasons but for artifact reasons: stage 5/6
-  (`launch-successor`/`inspect-successor`) realizes the successor from the
-  checkout's *authorized base image*
-  (`docker.io/mycodespaceai/devcapsule-base@sha256:cd1a0e…`), which still
-  carries the pre-supervisor PEX with the tini entrypoint. The
-  strengthened probe would rightly fail against it. The proof lands with
-  the next base-image build from post-`500909d` source (and its local
-  authorization or publication) — a bootstrap/release step the owner
-  drives.
+- **The live successor proof landed** (2026-08-30, after the owner pointed
+  at the command-line override path): a base was built from this source
+  (`devcapsule images build --type base --pex dist/devcapsule-local.pex
+  --allow-local-source --network host`, tagged
+  `devcapsule-base:supervisor-stage1`) and authorized for this checkout
+  (`project config authorize base-image …`, plus the recommended
+  `claude-code-download true`, both developer-owned checkout state). A
+  successor capsule launched from it reached **stage-6
+  inspection-passed** — PID 1 is the supervisor and PyCharm's `java` is
+  its direct child under host X11 — and `docker stop` ended the real IDE
+  session gracefully with exit 143 and the supervisor's announce in the
+  logs. Commit `c34ea1f` fixed the probe on the way: the PEX scie
+  re-execs through its unpacked interpreter, so PID 1 must be asserted by
+  its runtime invocation signature, not the `/opt` pex path.
+- Two live observations worth carrying into the display stage: the first
+  successor exited cleanly after ~45 s, most plausibly JetBrains
+  single-instance activation against the concurrently running dogfood
+  IDE sharing `/ide-config` on host network (the supervisor propagated
+  the clean exit honestly; a second launch stayed up); and the fabricated
+  retained-run workspace used to drive stage 5/6 by hand was removed
+  after the proof — the protocol still has no CLI that creates a fresh
+  pre-launch retained run.
+- The published base still predates the supervisor; publishing a
+  post-`500909d` base remains a release step the owner drives.
 - The D7 pre-recorded authorization/acquisition-acknowledgement design
   note is still to be written; headless *mechanics* landed with stage 1,
   the unattended-answers shape did not (it is plan-validation work).
