@@ -170,6 +170,14 @@ current remote `main` at `a72d0a8` before project-management work resumed.
   repository. In-tree projects carried by `sample-projects`, such as
   `devcapsule-sample-trading-research`, keep the workstream-intake route that
   already produced `R-SETTINGS-001`. No further action.
+- Decided 2026-08-30, by the product owner: **the capsule supervisor core is
+  assigned to `contained-display`** — one workstream for one sequenced
+  effort, supervisor first, display as its first consumer. The assignment is
+  delivered to that workstream's intake with the recommended V1 scope cut
+  (PID-1 duties, declarative children, explicit session end, headless mode);
+  the root registry row is updated, and the delivery travels this branch
+  rather than the outbox under the recorded target-lands-no-later-than-the-
+  reference latitude, since it cites ledger rows not yet on `main`.
 - Decided 2026-08-30, by the product owner, settling the carried commit-ratio
   question: **`WORKFLOW.md` is considered frozen until a release candidate
   exists.** The scheduled check — whether workflow improvements are then

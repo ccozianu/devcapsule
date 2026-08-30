@@ -572,6 +572,11 @@ one-click secondary IDEs, and multi-IDE sessions — is post-V1, so V1 states
 the one-interactive-IDE limitation. Raised by the product owner on
 2026-08-27.
 
+Owner: `contained-display`, assigned 2026-08-30 by the product owner — one
+workstream for one sequenced effort, the supervisor core first and the
+contained display as its first consumer. The assignment is delivered to that
+workstream's intake.
+
 **The revised design assumption.** Today a capsule's lifetime is one
 foreground IDE process: the launcher execs the IDE as the container's main
 process and the capsule ends when it exits. That identity made exit cleanup
@@ -614,9 +619,9 @@ layer leads the first post-V1 milestone rather than V1 carrying a one-IDE
 caveat forever. Still open: how the VSCodium row sequences against the
 supervisor — its scope should be shaped to land inside the supervisor model
 rather than adding a second exclusive-foreground launch path — which is the
-`codium-surface` registration question. Note the supervisor core has no
-registered owning workstream yet either; both registrations are main-first
-and can be settled together.
+`codium-surface` registration question. The supervisor core itself found its
+owner on 2026-08-30: `contained-display`, supervisor-first, display behind
+it.
 
 ### The Release Thesis: Workspace And Containment
 
