@@ -173,14 +173,14 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
   logs. Commit `c34ea1f` fixed the probe on the way: the PEX scie
   re-execs through its unpacked interpreter, so PID 1 must be asserted by
   its runtime invocation signature, not the `/opt` pex path.
-- Two live observations worth carrying into the display stage: the first
-  successor exited cleanly after ~45 s, most plausibly JetBrains
-  single-instance activation against the concurrently running dogfood
-  IDE sharing `/ide-config` on host network (the supervisor propagated
-  the clean exit honestly; a second launch stayed up); and the fabricated
-  retained-run workspace used to drive stage 5/6 by hand was removed
-  after the proof — the protocol still has no CLI that creates a fresh
-  pre-launch retained run.
+- Two live observations: the first successor's ~45 s clean exit was the
+  owner closing the IDE from its X window — so the D3 interactive
+  contract was itself exercised live: a human closed the real IDE and
+  the supervised session ended with an honest exit 0 (an earlier
+  single-instance-activation hypothesis recorded here was wrong); and
+  the fabricated retained-run workspace used to drive stage 5/6 by hand
+  was removed after the proof — the protocol still has no CLI that
+  creates a fresh pre-launch retained run.
 - The published base still predates the supervisor; publishing a
   post-`500909d` base remains a release step the owner drives.
 - The D7 pre-recorded authorization/acquisition-acknowledgement design
