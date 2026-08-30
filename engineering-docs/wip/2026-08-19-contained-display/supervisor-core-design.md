@@ -123,10 +123,27 @@ plan-validation work, not process-management work. It gets its own note
 after this one is reviewed; nothing in D2/D3 constrains it beyond `job`
 children existing.
 
-## D8. User Interactivity: The Supervisor Asks Nothing In V1
+## D8. User Interactivity: The Supervisor Asks Nothing — DECIDED
 
-Raised by the product owner at review: when interactivity from the user is
-needed, what UI mechanism does the supervisor get?
+**Ruled by the product owner, 2026-08-30:** the supervisor inside Docker asks
+nothing; all asks belong to the launcher that launches the Docker container,
+host-side. The owner added the display half explicitly: the supervisor must
+still *display* — asking nothing does not mean saying nothing.
+
+What it displays, by mode:
+
+- **V1 (host X11):** stdout/stderr — the launching terminal in foreground
+  runs, `docker logs` always, and failure evidence in the run record. The
+  fail-fast message is the supervisor's V1 "UI".
+- **Under the contained display, later:** a display-only status surface on
+  the capsule desktop is permitted and expected (session state, child
+  health, "session ending"), because display-only content is harmless even
+  if forged. It belongs to the desktop layer, not the V1 core.
+
+The standing rule survives unchanged below: in-capsule UI may display
+status; it never collects consent.
+
+The original analysis follows.
 
 Nearly all of the product's questions are answered before the supervisor
 exists: authorization, acquisition acknowledgements, and configuration
@@ -157,6 +174,55 @@ cannot draw.
   supervisor emits question/answer requests over the seam D4 reserves;
   host-side surfaces render them — a CLI subcommand, the tray, a host
   notification. The supervisor stays toolkit-free and transport-agnostic.
+
+## D9. Opinionated About The Capsule Desktop, Or Not?
+
+Raised by the product owner at review: given the development load of the
+contained display, are we opinionated about the capsule desktop, or do we
+offer — at least to Linux/X desktop users — the ability to keep running
+IDEs the way they do now, as native windows on their own desktop? The
+product has so far deliberately taken the non-opinionated approach.
+
+**Recommendation: non-opinionated about presentation, opinionated about the
+boundary.** The dilemma has a third position because the two current modes
+differ in *two* properties at once — where the window appears, and whether
+the capsule holds the host session credential — and those properties are
+separable:
+
+1. **Contained desktop** (default): the capsule's own display over
+   VNC/noVNC. Cross-platform, resumable, the boundary visible in every
+   screenshot. The flagship.
+2. **Native window on the host desktop** (Linux/X opt-in): a **nested X
+   server with an isolated cookie** — the Xephyr shape from the 2026-08-19
+   design input, promoted from interim stopgap to a permanent presentation
+   option. The IDE appears on the user's desktop exactly as today, but the
+   capsule is bound to one nested display socket with a cookie valid only
+   there: **it passes the same session-credential regression test as the
+   contained desktop.** Known costs stand: single screen, software GLX,
+   Linux only.
+3. **Raw trusted-cookie passthrough** (expert escape hatch, if retained):
+   today's transport, opt-in and loudly declared, never the default —
+   exactly the posture the ledger row already records ("X11 passthrough, if
+   retained at all, is opt-in with its trade-off documented"). The run
+   manifest and inspection state that the boundary test is waived; the
+   yolo-by-default claim is honestly per-transport, and this mode does not
+   carry it.
+
+Two structural notes in favor:
+
+- **The supervisor is what makes this affordable.** Transports differ only
+  in the declared infrastructure children (none; nested-X bridge; Xvnc +
+  window manager + noVNC) and the environment handed to the surface child.
+  Being non-opinionated costs configuration, not architecture — this is the
+  supervisor-first sequencing paying for itself.
+- **The boundary claim stays uniform where it matters.** Modes 1 and 2 both
+  pass the permanent regression test, so "the capsule cannot reach your
+  host session" holds for every non-expert user regardless of taste in
+  window placement. Opinionation lands only where the thesis needs it.
+
+Awaiting the owner's ruling; the ledger row's transport method (spike, then
+a full day of ordinary development) applies to mode 2 as well as mode 1 if
+this is adopted.
 
 ## Testing Shape
 
