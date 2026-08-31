@@ -17,11 +17,11 @@ from devcapsule.materialization import (
     canonical_image_name,
     canonical_json,
     component_runtime_template,
-    ensure_materialized_pycharm,
+    ensure_materialized_surface,
     formation_descriptor,
     formation_identity,
     parse_locked_environment,
-    pycharm_materialization_spec,
+    surface_materialization_spec,
     validate_base_image,
     verify_materialized_image,
 )
@@ -127,11 +127,148 @@ def test_materialized_component_template_owns_its_persistence_interface() -> Non
     assert slots["cache"]["home_overlay"] is True
 
 
+def codium_fixture_archive(path: Path) -> bytes:
+    with tarfile.open(path, "w:gz") as archive:
+        for member, content in (
+            ("codium-test/codium", b"electron-binary-fixture"),
+            ("codium-test/bin/codium", b"#!/bin/sh\n"),
+            ("codium-test/chrome-sandbox", b"sandbox-helper-fixture"),
+        ):
+            info = tarfile.TarInfo(member)
+            info.mode = 0o755
+            info.size = len(content)
+            archive.addfile(info, io.BytesIO(content))
+    return path.read_bytes()
+
+
+def codium_artifact(path: Path, digest: str = "b" * 64) -> ArtifactSpec:
+    return ArtifactSpec("1.126.04524", path.as_uri(), digest, None)
+
+
+def test_codium_formation_descriptor_has_no_variant_and_its_own_recipe(tmp_path: Path) -> None:
+    descriptor = formation_descriptor(
+        platform="linux-amd64",
+        base_identity="sha256:base",
+        artifact=codium_artifact(tmp_path / "unused.tar.gz"),
+        recipe_id="vscode-local-materialization",
+        component_id="codium",
+    )
+
+    assert descriptor["components"][0]["id"] == "codium"
+    assert "variant" not in descriptor["components"][0]
+    assert descriptor["recipe"]["id"] == "vscode-local-materialization"
+    assert descriptor["recipe"]["parameters"] == {"installation-path": "/opt/codium"}
+
+
+def test_codium_materialization_builds_a_setuid_sandbox_image(tmp_path: Path) -> None:
+    source = tmp_path / "codium.tar.gz"
+    payload = codium_fixture_archive(source)
+    spec = codium_artifact(source, hashlib.sha256(payload).hexdigest())
+    built: dict[str, ImageDetails] = {}
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        assert any(copy.destination == "/opt/codium" for copy in plan.directories)
+        sandbox_steps = [
+            step for step in plan.exec_steps if "chrome-sandbox" in " ".join(step.args)
+        ]
+        assert len(sandbox_steps) == 1
+        assert "chmod 4755 /opt/codium/chrome-sandbox" in sandbox_steps[0].args[-1]
+        labels = dict(plan.labels)
+        assert labels["devcapsule.component.id"] == "codium"
+        assert labels["devcapsule.component.vscode.version"] == "1.126.04524"
+        assert "devcapsule.component.variant" not in labels
+        built[plan.image] = image_details(plan.image, labels)
+
+    image, created = ensure_materialized_surface(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=spec,
+        cache_root=tmp_path / "cache",
+        inspect_image=lambda reference: built.get(reference),
+        build=build,
+        recipe_id="vscode-local-materialization",
+        component_id="codium",
+    )
+
+    assert created is True
+    assert image.startswith("devcapsule-local-codium:")
+
+
+def test_codium_materialization_rejects_an_archive_without_the_sandbox_helper(tmp_path: Path) -> None:
+    source = tmp_path / "codium.tar.gz"
+    payload = fixture_archive(source)  # a JetBrains-shaped archive
+    spec = codium_artifact(source, hashlib.sha256(payload).hexdigest())
+
+    with pytest.raises(CliError, match="does not contain codium"):
+        ensure_materialized_surface(
+            base_reference="base:debug",
+            base_identity="sha256:base",
+            platform="linux-amd64",
+            artifact=spec,
+            cache_root=tmp_path / "cache",
+            inspect_image=lambda reference: None,
+            build=lambda _spec: None,
+            recipe_id="vscode-local-materialization",
+            component_id="codium",
+        )
+
+
+def test_codium_lock_parses_without_variant(tmp_path: Path) -> None:
+    locked = parse_locked_environment(
+        {
+            "platform": "linux-amd64",
+            "base": {"reference": "docker.io/example/base@sha256:abc"},
+            "components": {
+                "interactive-surface": "codium",
+                "codium": {
+                    "version": "1.126.04524",
+                    "delivery-policy": "local-materialization",
+                    "url": "https://example.invalid/codium.tar.gz",
+                    "sha256": "b" * 64,
+                },
+            },
+            "materialization": {
+                "recipe": "vscode-local-materialization",
+                "recipe-version": "1",
+            },
+        }
+    )
+
+    assert locked.component_id == "codium"
+    assert locked.artifact.variant is None
+    assert locked.recipe_id == "vscode-local-materialization"
+
+
+def test_codium_lock_rejects_the_jetbrains_recipe() -> None:
+    with pytest.raises(CliError, match="vscode-local-materialization"):
+        parse_locked_environment(
+            {
+                "platform": "linux-amd64",
+                "base": {"reference": "docker.io/example/base@sha256:abc"},
+                "components": {
+                    "interactive-surface": "codium",
+                    "codium": {
+                        "version": "1.126.04524",
+                        "delivery-policy": "local-materialization",
+                        "url": "https://example.invalid/codium.tar.gz",
+                        "sha256": "b" * 64,
+                    },
+                },
+                "materialization": {
+                    "recipe": "jetbrains-local-materialization",
+                    "recipe-version": "1",
+                },
+            }
+        )
+
+
 def test_materialization_reuses_only_verified_canonical_image(tmp_path: Path) -> None:
     spec = artifact(tmp_path / "missing.tar.gz")
     canonical, labels = expected_labels("sha256:base", spec)
     builds: list[object] = []
-    image, created = ensure_materialized_pycharm(
+    image, created = ensure_materialized_surface(
         base_reference="base:debug",
         base_identity="sha256:base",
         platform="linux-amd64",
@@ -151,7 +288,7 @@ def test_materialization_rejects_conflicting_canonical_tag(tmp_path: Path) -> No
     labels["devcapsule.component.sha256"] = "b" * 64
 
     with pytest.raises(CliError, match="conflicting or malformed metadata"):
-        ensure_materialized_pycharm(
+        ensure_materialized_surface(
             base_reference="base:debug",
             base_identity="sha256:base",
             platform="linux-amd64",
@@ -177,7 +314,7 @@ def test_materialization_builds_from_verified_archive_and_rechecks_result(tmp_pa
         assert any(copy.destination == "/etc/devcapsule/component-runtime-template.json" for copy in plan.files)
         assert not any(copy.destination == "/etc/devcapsule/runtime-plan.json" for copy in plan.files)
 
-    image, created = ensure_materialized_pycharm(
+    image, created = ensure_materialized_surface(
         base_reference="base:debug",
         base_identity="sha256:base",
         platform="linux-amd64",
@@ -217,7 +354,7 @@ def test_materialization_installs_locked_codex_executable(tmp_path: Path) -> Non
         labels = dict(plan.labels)
         built[plan.image] = image_details(plan.image, labels)
 
-    image, created = ensure_materialized_pycharm(
+    image, created = ensure_materialized_surface(
         base_reference="base:debug",
         base_identity="sha256:base",
         platform="linux-amd64",
@@ -267,7 +404,7 @@ def test_materialization_installs_locked_raw_executable_and_image_environment(
         assert ("DISABLE_UPDATES", "1") in plan.env
         built[plan.image] = image_details(plan.image, dict(plan.labels))
 
-    image, created = ensure_materialized_pycharm(
+    image, created = ensure_materialized_surface(
         base_reference="base:debug",
         base_identity="sha256:base",
         platform="linux-amd64",
@@ -295,11 +432,11 @@ def test_materialized_image_has_complete_formation_labels(tmp_path: Path) -> Non
     descriptor = formation_descriptor(platform="linux-amd64", base_identity="sha256:base", artifact=spec)
     image = canonical_image_name(descriptor)
 
-    plan = pycharm_materialization_spec(
+    plan = surface_materialization_spec(
         base_reference="base:debug",
         base_identity="sha256:base",
         image=image,
-        pycharm_root=pycharm,
+        surface_root=pycharm,
         component_template=template,
         artifact=spec,
     ).build_plan()

@@ -17,7 +17,7 @@ from devcapsule.materialization import (
     ImageDetails,
     LockedEnvironment,
     cache_root,
-    ensure_materialized_pycharm,
+    ensure_materialized_surface,
     parse_locked_environment,
     validate_base_image,
 )
@@ -115,7 +115,7 @@ def realize_environment(
     if build is None:
         builder = BuildxImageBuilder(temporary_root=selected_cache / "build-contexts")
         build = lambda spec: builder.build(spec, network="none")
-    materialize_environment = materialize or ensure_materialized_pycharm
+    materialize_environment = materialize or ensure_materialized_surface
     canonical, created = materialize_environment(
         base_reference=base_reference,
         base_identity=base.identity,
@@ -127,6 +127,7 @@ def realize_environment(
         build=build,
         recipe_id=locked.recipe_id,
         recipe_version=locked.recipe_version,
+        component_id=locked.component_id,
     )
     image = require(canonical)
     return RealizedEnvironment(
