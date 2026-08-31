@@ -191,16 +191,14 @@ ledger gates on.
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
   touches the same code.
-- **Tictactoe submodule push** (owner-gated): on 2026-08-31 the
+- **Tictactoe devcapsule conversion** (sequenced): on 2026-08-31 the
   `typescript_tictactoe_5inrow` sample became a submodule like its sibling
-  samples, wired to `git@github.com:ccozianu/devcapsule-sample-typescript-tictactoe.git`
-  with its import commit ready in the local checkout. That repository does
-  not exist yet: the owner creates it, then `git push -u origin main` from
-  the submodule directory publishes the pin this branch records. Until
-  then, fresh clones cannot populate this submodule. Converting the sample
-  into a devcapsule project (committed `.devcapsule/`) deliberately waits
-  for the post-codium release that repins the base, so its lock never
-  names a base whose runtime PEX rejects codium plans.
+  samples, at `git@github.com:ccozianu/devcapsule-sample-typescript-tictactoe.git`;
+  the owner created the repository and the pinned import commit is pushed,
+  so the submodule stands complete. Converting the sample into a
+  devcapsule project (committed `.devcapsule/`) deliberately waits for the
+  post-codium release that repins the base, so its lock never names a
+  base whose runtime PEX rejects codium plans.
 
 ## External State And Risks
 
