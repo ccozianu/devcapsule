@@ -36,7 +36,7 @@ from devcapsule.project_configuration import (
 __all__ = [
     "BASE_SATISFIED_CAPABILITIES",
     "GeneratedLock",
-    "INTERACTIVE_CAPABILITY",
+    "INTERACTIVE_SURFACE_CAPABILITIES",
     "MATRIX_VERSION",
     "SUPPORTED_PLATFORMS",
     "generate_platform_lock",
@@ -45,7 +45,7 @@ __all__ = [
 ]
 
 
-MATRIX_VERSION = "embedded-1"
+MATRIX_VERSION = "embedded-2"
 
 SUPPORTED_PLATFORMS = ("linux-amd64",)
 
@@ -56,10 +56,15 @@ BASE_SATISFIED_CAPABILITIES = frozenset(
     {"python", "docker-cli", "node", "java", "maven"}
 )
 
-# The V1 curated slice has exactly one interactive surface; a capability set
-# without it has nothing to run and fails with that explanation rather than
-# generating an unrunnable lock.
-INTERACTIVE_CAPABILITY = "python-ide"
+# Each interactive capability selects exactly one surface component. A V1
+# platform lock holds exactly one interactive surface, so a capability set
+# must name exactly one of these: none has nothing to run, and two would
+# ask one lock to carry two surfaces. Both fail with that explanation
+# rather than generating an unrunnable lock.
+INTERACTIVE_SURFACE_CAPABILITIES: dict[str, str] = {
+    "python-ide": "pycharm",
+    "frontend-ide": "codium",
+}
 
 _BASE_TABLE: dict[str, Any] = {
     "reference": (
@@ -75,6 +80,26 @@ _PYCHARM_TABLE: dict[str, Any] = {
     "delivery-policy": "local-materialization",
     "url": "https://download.jetbrains.com/python/pycharm-2026.2.0.1.tar.gz",
     "sha256": "4a37cb2d15703553c61e814d8e014bfa47308508470de5f968c4e9645b771675",
+}
+
+# VSCodium 1.126.04524 is the latest published release as of 2026-08-31; the
+# checksum was recomputed locally from the downloaded archive and matches the
+# published .sha256 asset. MIT-licensed free/libre binaries, so caching them
+# in local environment images needs no per-developer acquisition terms.
+_CODIUM_TABLE: dict[str, Any] = {
+    "version": "1.126.04524",
+    "delivery-policy": "local-materialization",
+    "license": "MIT",
+    "url": (
+        "https://github.com/VSCodium/vscodium/releases/download/"
+        "1.126.04524/VSCodium-linux-x64-1.126.04524.tar.gz"
+    ),
+    "sha256": "adf3548df055d18e476cdee887488ba7486b879ad99a31a546c6b5c5ff296c24",
+}
+
+_INTERACTIVE_SURFACE_TABLES: dict[str, dict[str, Any]] = {
+    "pycharm": _PYCHARM_TABLE,
+    "codium": _CODIUM_TABLE,
 }
 
 # Ancillary component tables keyed by the capability that selects them; the
@@ -136,9 +161,17 @@ _ANCILLARY_COMPONENT_TABLES: dict[str, tuple[str, dict[str, Any]]] = {
     ),
 }
 
-_MATERIALIZATION_TABLE: dict[str, Any] = {
-    "recipe": "jetbrains-local-materialization",
-    "recipe-version": "1",
+# The materialization recipe follows the selected surface: each surface
+# family unpacks and fixes up its installation differently.
+_MATERIALIZATION_TABLES: dict[str, dict[str, Any]] = {
+    "pycharm": {
+        "recipe": "jetbrains-local-materialization",
+        "recipe-version": "1",
+    },
+    "codium": {
+        "recipe": "vscode-local-materialization",
+        "recipe-version": "1",
+    },
 }
 
 
@@ -158,7 +191,7 @@ def supported_capabilities() -> tuple[str, ...]:
     return tuple(
         sorted(
             BASE_SATISFIED_CAPABILITIES
-            | {INTERACTIVE_CAPABILITY}
+            | set(INTERACTIVE_SURFACE_CAPABILITIES)
             | set(_ANCILLARY_COMPONENT_TABLES)
         )
     )
@@ -199,15 +232,23 @@ def generate_platform_lock(need: object, platform: str) -> GeneratedLock:
             f"supported platforms: {supported}. A lock for another platform is authored "
             "on that platform."
         )
-    if INTERACTIVE_CAPABILITY not in capabilities:
+    interactive = sorted(set(capabilities) & set(INTERACTIVE_SURFACE_CAPABILITIES))
+    if not interactive:
+        choices = ", ".join(sorted(INTERACTIVE_SURFACE_CAPABILITIES))
         raise ProjectConfigurationError(
-            f"The V1 environment needs the {INTERACTIVE_CAPABILITY!r} capability to select "
-            "its interactive surface; add it to capabilities.need."
+            "The V1 environment needs an interactive-surface capability to select "
+            f"its surface; add exactly one of {choices} to capabilities.need."
         )
+    if len(interactive) > 1:
+        raise ProjectConfigurationError(
+            "A V1 platform lock holds exactly one interactive surface, but "
+            f"capabilities.need selects {', '.join(interactive)}; keep exactly one."
+        )
+    surface_id = INTERACTIVE_SURFACE_CAPABILITIES[interactive[0]]
 
     components: dict[str, Any] = {
-        "interactive-surface": "pycharm",
-        "pycharm": dict(_PYCHARM_TABLE),
+        "interactive-surface": surface_id,
+        surface_id: dict(_INTERACTIVE_SURFACE_TABLES[surface_id]),
     }
     for capability in capabilities:
         selected = _ANCILLARY_COMPONENT_TABLES.get(capability)
@@ -224,7 +265,7 @@ def generate_platform_lock(need: object, platform: str) -> GeneratedLock:
         "capabilities-digest": canonical_digest({"need": list(capabilities)}),
         "base": _BASE_TABLE,
         "components": components,
-        "materialization": _MATERIALIZATION_TABLE,
+        "materialization": dict(_MATERIALIZATION_TABLES[surface_id]),
     }
     header = (
         "# Generated by 'devcapsule project init' from the embedded resolution "

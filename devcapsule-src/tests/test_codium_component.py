@@ -33,7 +33,7 @@ def component_runtime() -> RuntimePlan:
 def test_component_is_registered_as_an_interactive_surface() -> None:
     assert COMPONENTS["codium"] is DEFINITION
     assert INTERACTIVE_SURFACES["codium"] is DEFINITION
-    assert DEFINITION.capability == "python-ide"
+    assert DEFINITION.capability == "frontend-ide"
 
 
 def test_component_declares_no_state_environment_or_secret_inputs() -> None:

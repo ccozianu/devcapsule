@@ -27,9 +27,10 @@ class CodiumComponent(ComponentDefinition):
 
     @property
     def capability(self) -> str:
-        # The V1 interactive capability; which surface satisfies it for a
-        # checkout is a selection, not a property of the capability.
-        return "python-ide"
+        # Decided 2026-08-31 by the product owner: VSCodium is the surface
+        # for frontend engineering (HTML/JavaScript/TypeScript); PyCharm
+        # remains the python-ide surface.
+        return "frontend-ide"
 
     def runtime_template(self) -> ComponentRuntimeTemplate:
         return _runtime_template()

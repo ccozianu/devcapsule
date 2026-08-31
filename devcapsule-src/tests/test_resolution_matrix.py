@@ -72,6 +72,28 @@ def test_agent_and_database_capabilities_select_their_pinned_components() -> Non
     assert postgres == {"version": "16", "delivery-policy": "base-image", "license": "PostgreSQL"}
 
 
+def test_frontend_need_generates_a_complete_codium_lock() -> None:
+    generated = generate_platform_lock(["node", "frontend-ide"], "linux-amd64")
+    lock = parse(generated.content)
+
+    assert lock["components"]["interactive-surface"] == "codium"
+    codium = lock["components"]["codium"]
+    assert codium["version"] == "1.126.04524"
+    assert codium["license"] == "MIT"
+    assert codium["delivery-policy"] == "local-materialization"
+    assert codium["url"].endswith("VSCodium-linux-x64-1.126.04524.tar.gz")
+    assert codium["sha256"] == (
+        "adf3548df055d18e476cdee887488ba7486b879ad99a31a546c6b5c5ff296c24"
+    )
+    assert lock["materialization"]["recipe"] == "vscode-local-materialization"
+    assert set(lock["components"]) == {"interactive-surface", "codium"}
+
+
+def test_two_interactive_capabilities_are_rejected() -> None:
+    with pytest.raises(ProjectConfigurationError, match="exactly one interactive surface"):
+        generate_platform_lock(["python-ide", "frontend-ide"], "linux-amd64")
+
+
 def test_unknown_capability_lists_the_supported_vocabulary() -> None:
     with pytest.raises(ProjectConfigurationError) as failure:
         generate_platform_lock(["python-ide", "quantum-debugger"], "linux-amd64")
