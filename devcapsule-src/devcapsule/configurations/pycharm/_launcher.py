@@ -122,6 +122,10 @@ class PycharmRunOptions:
     memory_limit_bytes: int | None = None
     runtime_plan: RuntimePlan | None = None
     use_image_process: bool = False
+    # When non-empty, the interactive surface's state comes from these
+    # runtime-plan-declared slot mounts and the named PyCharm state fields
+    # (ide_config, plugins, ide_system, ide_log, tool_cache) stay unused.
+    interactive_state_mounts: dict[str, tuple[Path, str]] = field(default_factory=dict)
     additional_state_mounts: dict[str, tuple[Path, str]] = field(default_factory=dict)
     additional_environment: dict[str, str] = field(default_factory=dict)
     secret_environment: tuple[str, ...] = ()
@@ -137,12 +141,13 @@ class PycharmRunConfig:
     global_settings: Path
     persistent_home: Path
     project_state: Path
-    ide_system: Path
-    ide_log: Path
-    tool_cache: Path
-    ide_config: Path
+    # None exactly when interactive_state_mounts drives the surface's state.
+    ide_system: Path | None
+    ide_log: Path | None
+    tool_cache: Path | None
+    ide_config: Path | None
     ide_config_mode: str
-    plugins: Path
+    plugins: Path | None
     project_mount: str
     docker_mode: str
     host_docker_socket: Path
@@ -164,6 +169,7 @@ class PycharmRunConfig:
     runtime_plan: RuntimePlan | None
     use_image_process: bool
     host_browser_socket: Path | None = None
+    interactive_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_environment: tuple[tuple[str, str], ...] = ()
     secret_environment: tuple[str, ...] = ()
@@ -368,50 +374,64 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         or (global_settings / "home" if legacy_global_settings else data_namespace / "home")
     )
 
-    ide_config_arg = options.ide_config if options.ide_config is not None else env.get("PYCHARM_IDE_CONFIG_DIR", "")
-    if ide_config_mode == "shared":
-        ide_config = resolve_existing_or_create(
-            global_settings / "config"
-            if legacy_global_settings
-            else data_namespace / "components" / "pycharm" / "config"
-        )
-    elif ide_config_mode == "project":
-        ide_config = resolve_existing_or_create(project_state / "config")
+    plan_driven_surface = bool(options.interactive_state_mounts)
+    if plan_driven_surface and options.runtime_plan is None:
+        raise PycharmRunError("Interactive state mounts require an external runtime plan.")
+
+    ide_config: Path | None
+    plugins: Path | None
+    ide_system: Path | None
+    ide_log: Path | None
+    tool_cache: Path | None
+    if plan_driven_surface:
+        # The runtime plan's declared slots replace every named PyCharm
+        # state location; nothing here may invent surface state paths.
+        ide_config = plugins = ide_system = ide_log = tool_cache = None
     else:
-        if not ide_config_arg:
-            raise PycharmRunError(
-                "--ide-config or PYCHARM_IDE_CONFIG_DIR is required when PYCHARM_IDE_CONFIG_MODE=custom."
+        ide_config_arg = options.ide_config if options.ide_config is not None else env.get("PYCHARM_IDE_CONFIG_DIR", "")
+        if ide_config_mode == "shared":
+            ide_config = resolve_existing_or_create(
+                global_settings / "config"
+                if legacy_global_settings
+                else data_namespace / "components" / "pycharm" / "config"
             )
-        ide_config = resolve_existing_or_create(ide_config_arg)
+        elif ide_config_mode == "project":
+            ide_config = resolve_existing_or_create(project_state / "config")
+        else:
+            if not ide_config_arg:
+                raise PycharmRunError(
+                    "--ide-config or PYCHARM_IDE_CONFIG_DIR is required when PYCHARM_IDE_CONFIG_MODE=custom."
+                )
+            ide_config = resolve_existing_or_create(ide_config_arg)
 
-    plugins = resolve_existing_or_create(
-        options.plugins
-        or env.get("PYCHARM_PLUGIN_DIR")
-        or (plugins_default if options.profile else data_namespace / "components" / "pycharm" / "plugins")
-    )
+        plugins = resolve_existing_or_create(
+            options.plugins
+            or env.get("PYCHARM_PLUGIN_DIR")
+            or (plugins_default if options.profile else data_namespace / "components" / "pycharm" / "plugins")
+        )
 
-    legacy_project_state = options.project_state is not None or options.project_state_root is not None
-    ide_system = resolve_existing_or_create(
-        options.ide_system
-        or (project_state / "system"
-        if legacy_project_state
-        else cache_namespace / "components" / "pycharm" / "system")
-    )
-    ide_log = resolve_existing_or_create(
-        options.ide_log
-        or (project_state / "log"
-        if legacy_project_state
-        else state_namespace / "components" / "pycharm" / "log")
-    )
-    tool_cache = resolve_existing_or_create(
-        options.tool_cache
-        or (project_state / "home" / ".cache"
-        if legacy_project_state
-        else cache_namespace / "components" / "pycharm" / "cache")
-    )
+        legacy_project_state = options.project_state is not None or options.project_state_root is not None
+        ide_system = resolve_existing_or_create(
+            options.ide_system
+            or (project_state / "system"
+            if legacy_project_state
+            else cache_namespace / "components" / "pycharm" / "system")
+        )
+        ide_log = resolve_existing_or_create(
+            options.ide_log
+            or (project_state / "log"
+            if legacy_project_state
+            else state_namespace / "components" / "pycharm" / "log")
+        )
+        tool_cache = resolve_existing_or_create(
+            options.tool_cache
+            or (project_state / "home" / ".cache"
+            if legacy_project_state
+            else cache_namespace / "components" / "pycharm" / "cache")
+        )
 
-    if not ignore_config_lock and ide_config_mode != "project" and (ide_config / ".lock").exists():
-        raise PycharmRunError(config_lock_message(ide_config, project, project_state))
+        if not ignore_config_lock and ide_config_mode != "project" and (ide_config / ".lock").exists():
+            raise PycharmRunError(config_lock_message(ide_config, project, project_state))
 
     # Inside a container the daemon's socket is wherever it was mounted, which
     # DOCKER_HOST already names. Preferring it over the host default keeps a
@@ -452,29 +472,27 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         if options.runtime_plan.home != "/home/devcapsule":
             raise PycharmRunError("The external runtime plan home must be /home/devcapsule.")
 
-    additional_state_mounts: list[tuple[str, str, str]] = []
     runtime_slots = options.runtime_plan.slots_by_name() if options.runtime_plan is not None else {}
     ancillary_ids = {
         component.id for component in options.runtime_plan.ancillary_components
     } if options.runtime_plan is not None else set()
-    for logical_name, (source, destination) in sorted(options.additional_state_mounts.items()):
-        namespace, separator, _local_name = logical_name.partition("/")
-        planned_destination = runtime_slots.get(logical_name)
-        if not separator or namespace not in ancillary_ids:
-            raise PycharmRunError(
-                f"Additional state mount {logical_name!r} is not owned by a declared ancillary component."
-            )
-        if planned_destination is not None and planned_destination != destination:
-            raise PycharmRunError(
-                f"Additional state mount {logical_name!r} conflicts with the external runtime plan."
-            )
-        destination_path = Path(destination)
-        if not destination_path.is_absolute() or ".." in destination_path.parts:
-            raise PycharmRunError(
-                f"Additional state mount {logical_name!r} must use an absolute container destination."
-            )
-        resolved_source = resolve_existing_or_create(source)
-        additional_state_mounts.append((logical_name, str(resolved_source), destination))
+    interactive_ids = (
+        {options.runtime_plan.component.id} if options.runtime_plan is not None else set()
+    )
+    additional_state_mounts = _validated_state_mounts(
+        options.additional_state_mounts,
+        allowed_ids=ancillary_ids,
+        runtime_slots=runtime_slots,
+        label="Additional",
+        ownership="a declared ancillary component",
+    )
+    interactive_state_mounts = _validated_state_mounts(
+        options.interactive_state_mounts,
+        allowed_ids=interactive_ids,
+        runtime_slots=runtime_slots,
+        label="Interactive",
+        ownership="the plan's interactive component",
+    )
     host_browser_socket: Path | None = None
     configured_browser_socket = env.get(HOST_OPEN_SOCKET_ENV)
     if options.enable_host_browser and configured_browser_socket:
@@ -560,6 +578,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         runtime_plan=selected_runtime_plan,
         use_image_process=options.use_image_process,
         host_browser_socket=host_browser_socket,
+        interactive_state_mounts=tuple(interactive_state_mounts),
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),
         secret_environment=tuple(sorted(set(options.secret_environment))),
@@ -571,6 +590,59 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ),
         libgl_dri3_disable=env.get("PYCHARM_LIBGL_DRI3_DISABLE", env.get("LIBGL_DRI3_DISABLE", "1")),
     )
+
+
+def _surface_state_mount_args(config: PycharmRunConfig) -> list[str]:
+    """Mount the interactive surface's state: plan-declared slots, or the
+    named PyCharm locations when no plan-driven mounts were provided."""
+
+    if config.interactive_state_mounts:
+        args: list[str] = []
+        for _logical_name, source, destination in config.interactive_state_mounts:
+            args.extend(["--mount", f"type=bind,src={source},dst={destination}"])
+        return args
+    return [
+        "--mount",
+        f"type=bind,src={config.ide_config},dst=/ide-config",
+        "--mount",
+        f"type=bind,src={config.ide_system},dst=/ide-project-state/system",
+        "--mount",
+        f"type=bind,src={config.ide_log},dst=/ide-project-state/log",
+        "--mount",
+        f"type=bind,src={config.tool_cache},dst=/home/devcapsule/.cache",
+        "--mount",
+        f"type=bind,src={config.plugins},dst=/ide-plugins",
+    ]
+
+
+def _validated_state_mounts(
+    mounts: Mapping[str, tuple[Path, str]],
+    *,
+    allowed_ids: set[str],
+    runtime_slots: Mapping[str, str],
+    label: str,
+    ownership: str,
+) -> list[tuple[str, str, str]]:
+    validated: list[tuple[str, str, str]] = []
+    for logical_name, (source, destination) in sorted(mounts.items()):
+        namespace, separator, _local_name = logical_name.partition("/")
+        planned_destination = runtime_slots.get(logical_name)
+        if not separator or namespace not in allowed_ids:
+            raise PycharmRunError(
+                f"{label} state mount {logical_name!r} is not owned by {ownership}."
+            )
+        if planned_destination is not None and planned_destination != destination:
+            raise PycharmRunError(
+                f"{label} state mount {logical_name!r} conflicts with the external runtime plan."
+            )
+        destination_path = Path(destination)
+        if not destination_path.is_absolute() or ".." in destination_path.parts:
+            raise PycharmRunError(
+                f"{label} state mount {logical_name!r} must use an absolute container destination."
+            )
+        resolved_source = resolve_existing_or_create(source)
+        validated.append((logical_name, str(resolved_source), destination))
+    return validated
 
 
 def build_docker_args(
@@ -633,16 +705,7 @@ def build_docker_args(
         f"type=bind,src={config.project},dst={config.project_mount}",
         "--mount",
         f"type=bind,src={config.persistent_home},dst=/home/devcapsule",
-        "--mount",
-        f"type=bind,src={config.ide_config},dst=/ide-config",
-        "--mount",
-        f"type=bind,src={config.ide_system},dst=/ide-project-state/system",
-        "--mount",
-        f"type=bind,src={config.ide_log},dst=/ide-project-state/log",
-        "--mount",
-        f"type=bind,src={config.tool_cache},dst=/home/devcapsule/.cache",
-        "--mount",
-        f"type=bind,src={config.plugins},dst=/ide-plugins",
+        *_surface_state_mount_args(config),
         "--mount",
         "type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix,ro",
         "--mount",
@@ -1177,6 +1240,22 @@ Embedded browser security:
 Host browser integration:
   Enabled through a URL-only HTTP(S) broker. Any process running as the
   capsule user can ask the physical host to navigate its default browser."""
+    if config.interactive_state_mounts:
+        component_id = (
+            config.runtime_plan.component.id if config.runtime_plan is not None else "surface"
+        )
+        slot_lines = "\n".join(
+            f"  {logical_name}: {source}"
+            for logical_name, source, _destination in config.interactive_state_mounts
+        )
+        print(
+            f"""{component_id} storage:
+  Persistent home:       {config.persistent_home}
+{slot_lines}
+  Container project path: {config.project_mount}{browser_disclosure}{host_browser_disclosure}""",
+            file=sys.stderr,
+        )
+        return
     print(
         f"""PyCharm storage:
   Persistent home:       {config.persistent_home}

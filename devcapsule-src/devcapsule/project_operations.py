@@ -24,6 +24,7 @@ from devcapsule.configuration_nodes import (
     PROVIDER_HOST_DIRECTORY,
     build_node_registry,
 )
+from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.elicitation import AnswerKey, Elicitor
 from devcapsule.environment_realization import required_local_image
 from devcapsule.materialization import validate_base_image
@@ -165,10 +166,10 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
     has_formation = isinstance(lock.get("base"), dict) and isinstance(
         lock.get("materialization"), dict
     )
-    if component != "pycharm" or (not image and not has_formation):
+    if component not in INTERACTIVE_SURFACES or (not image and not has_formation):
         raise ProjectConfigurationError(
-            "The V1 slice requires a lock selecting either a completed PyCharm image "
-            "or PyCharm formation inputs."
+            "The V1 slice requires a lock selecting a known interactive surface "
+            "with either a completed image or formation inputs."
         )
     state = checkout.get("state", {}).get("adopted", {})
     host = checkout.get("host", {})

@@ -10,6 +10,7 @@ import pytest
 
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.components.codex import runtime_template as codex_runtime_template
+from devcapsule.components.codium import runtime_template as codium_runtime_template
 from devcapsule.configurations.pycharm import (
     ContainerLifecycle,
     DockerMode,
@@ -99,6 +100,131 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         cleanup_temp_runtime_files(files)
     assert files.runtime_plan_file is not None
     assert not files.runtime_plan_file.exists()
+
+
+def codium_external_runtime_plan() -> RuntimePlan:
+    return RuntimePlan.for_component(
+        codium_runtime_template(),
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000, "developer"),
+    )
+
+
+def codium_interactive_state_mounts(tmp_path: Path) -> dict[str, tuple[Path, str]]:
+    return {
+        "codium/user-data": (tmp_path / "slots" / "user-data", "/ide-user-data"),
+        "codium/extensions": (tmp_path / "slots" / "extensions", "/ide-extensions"),
+        "codium/cache": (tmp_path / "slots" / "cache", "/home/devcapsule/.cache"),
+    }
+
+
+def test_plan_driven_surface_mounts_declared_slots_instead_of_pycharm_paths(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=codium_external_runtime_plan(),
+            use_image_process=True,
+            interactive_state_mounts=codium_interactive_state_mounts(tmp_path),
+        ),
+        env,
+    )
+
+    assert config.ide_config is None
+    assert config.plugins is None
+    assert config.ide_system is None
+    assert config.ide_log is None
+    assert config.tool_cache is None
+
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth",
+        passwd_file=tmp_path / "passwd",
+        group_file=tmp_path / "group",
+        runtime_plan_file=tmp_path / "runtime-plan",
+    )
+    args = build_docker_args(config, files, env)
+
+    assert f"type=bind,src={tmp_path / 'slots' / 'user-data'},dst=/ide-user-data" in args
+    assert f"type=bind,src={tmp_path / 'slots' / 'extensions'},dst=/ide-extensions" in args
+    assert (
+        f"type=bind,src={tmp_path / 'slots' / 'cache'},dst=/home/devcapsule/.cache" in args
+    )
+    assert not any("dst=/ide-config" in value for value in args)
+    assert not any("dst=/ide-plugins" in value for value in args)
+    assert not any("dst=/ide-project-state" in value for value in args)
+    # No PyCharm state directories are invented on the host for this surface.
+    data_namespace = Path(env["XDG_DATA_HOME"]) / "devcapsule" / "projects" / "by-path"
+    assert not list(data_namespace.glob("*/components/pycharm"))
+
+
+def test_interactive_state_mounts_require_a_runtime_plan(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    with pytest.raises(PycharmRunError, match="external runtime plan"):
+        build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="bridge",
+                interactive_state_mounts=codium_interactive_state_mounts(tmp_path),
+            ),
+            base_env(tmp_path),
+        )
+
+
+def test_interactive_state_mounts_must_belong_to_the_plan_component(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    with pytest.raises(PycharmRunError, match="Interactive state mount 'codex/home'"):
+        build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="bridge",
+                runtime_plan=codium_external_runtime_plan(),
+                use_image_process=True,
+                interactive_state_mounts={
+                    "codex/home": (tmp_path / "codex", "/home/devcapsule/.codex"),
+                },
+            ),
+            base_env(tmp_path),
+        )
+
+
+def test_plan_driven_storage_summary_names_the_surface_and_its_slots(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=codium_external_runtime_plan(),
+            use_image_process=True,
+            interactive_state_mounts=codium_interactive_state_mounts(tmp_path),
+        ),
+        base_env(tmp_path),
+    )
+
+    print_storage_summary(config)
+
+    output = capsys.readouterr().err
+    assert "codium storage:" in output
+    assert "codium/user-data" in output
+    assert "PyCharm config" not in output
 
 
 def test_detached_lifecycle_changes_only_the_docker_process_flags(tmp_path: Path) -> None:

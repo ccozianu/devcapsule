@@ -458,6 +458,125 @@ def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path
         assert "image" not in resolved["runtime"]
 
 
+def initialize_codium_project(project: Path) -> Path:
+    """Author a frontend project whose formation lock selects codium."""
+
+    target = project / ".devcapsule"
+    target.mkdir(parents=True, exist_ok=True)
+    manifest_lines = [
+        "devcapsule-schema-version = 1",
+        "",
+        "[capabilities]",
+        'need = ["node", "frontend-ide"]',
+        "",
+        "[project]",
+        f'name = "{project.name}"',
+        f'slug = "{project.name.lower()}"',
+        'creator = "mailto:dev@example.test"',
+        'mount = "/workspace/project"',
+        "",
+    ]
+    (target / "devcapsule.toml").write_text("\n".join(manifest_lines), encoding="utf-8")
+    with (target / "devcapsule.toml").open("rb") as stream:
+        manifest = tomllib.load(stream)
+    lock_path = target / "devcapsule.linux-amd64.lock"
+    lock_path.write_text(
+        "\n".join(
+            [
+                "devcapsule-lock-format-version = 1",
+                'resolution-matrix-version = "formation-v1"',
+                f'manifest-digest = "{canonical_digest(manifest)}"',
+                'platform = "linux-amd64"',
+                "",
+                "[base]",
+                f'reference = "{LOCKED_BASE}"',
+                'build-mnemonic = "v026"',
+                "",
+                "[components]",
+                'interactive-surface = "codium"',
+                "",
+                "[components.codium]",
+                'version = "1.126.04524"',
+                'license = "MIT"',
+                'delivery-policy = "local-materialization"',
+                'url = "https://example.test/codium.tar.gz"',
+                f'sha256 = "{"c" * 64}"',
+                "",
+                "[materialization]",
+                'recipe = "vscode-local-materialization"',
+                'recipe-version = "1"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return lock_path
+
+
+def test_project_run_launches_a_codium_surface_from_its_plan_slots(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+    }
+    canonical = "devcapsule-local-codium:0123456789abcdef0123"
+
+    with patch.dict(os.environ, env, clear=False):
+        lock_path = initialize_codium_project(project)
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "authorize", "base-image", LOCKED_BASE]
+            )
+            == 0
+        )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        records = registered_checkouts()
+        resolved_path = records[0].record_path.with_name("devcapsule.resolved.toml")
+        with resolved_path.open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert resolved["runtime"]["component"] == "codium"
+        capsys.readouterr()
+
+        realized = SimpleNamespace(
+            image=SimpleNamespace(reference=canonical),
+            created=True,
+            locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
+        )
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch,
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+
+        options = launch.call_args.args[0]
+        assert options.image == canonical
+        assert options.use_image_process is True
+        assert options.runtime_plan.component.id == "codium"
+        assert options.runtime_plan.component.adapter == "vscode"
+        assert options.ide_config is None
+        assert options.plugins is None
+        mounts = options.interactive_state_mounts
+        assert mounts["codium/user-data"][1] == "/ide-user-data"
+        assert mounts["codium/extensions"][1] == "/ide-extensions"
+        assert mounts["codium/cache"][1] == "/home/devcapsule/.cache"
+        assert mounts["codium/user-data"][0] == (
+            tmp_path
+            / "data"
+            / "devcapsule"
+            / "projects"
+            / "by-path"
+            / project_namespace(project.resolve())
+            / "components"
+            / "codium"
+            / "user-data"
+        ).resolve()
+        assert "Materialized canonical environment" in capsys.readouterr().out
+
+
 def test_project_run_realizes_formation_and_launches_canonical_image(
     tmp_path: Path, capsys
 ) -> None:
