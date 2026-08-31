@@ -145,64 +145,52 @@ the gap and coordinates; it does not reshape the supervisor.
 
 ## Current Task
 
-Track 1's shared foundation is implemented as of 2026-08-30 (commit
-`f886872`): the catalog selects the interactive surface from an explicit
-`INTERACTIVE_SURFACES` registry, the `codium` `ComponentDefinition` declares
-durable `user-data` and `extensions` slots plus the shared home-overlay
-cache slot, and the `vscode` family adapter reproduces the legacy launcher's
-proven foreground command (the Electron binary at the installation root —
-the retired `codium-foreground` symlink target — with `--user-data-dir`,
-`--extensions-dir`, then the project path). The generic entrypoint
-dispatches on the adapter name. Unit tests and mypy are green.
+Track 1 is implemented end-to-end as of 2026-08-31, on branch commits
+`f886872..7c496b2`, and live-verified from inside a capsule against the
+host daemon: `init --need node --need frontend-ide` derives a codium lock
+from matrix `embedded-2`, materialization builds the canonical image from
+the checksum-verified VSCodium 1.126.04524 release, and `project run`
+launches the surface from its plan-declared state slots with a healthy
+sandboxed renderer tree and persisting `user-data`. Product-owner rulings
+of 2026-08-31 are executed: capability `frontend-ide` selects codium
+(`python-ide` still selects PyCharm; exactly one per lock), both
+`vscode_with_claude` and `codium_with_claude` trees are retired, and the
+surface keeps Chromium's setuid renderer sandbox under a narrow capability
+grant — see the
+[setuid sandbox design note](../../design-notes/devcapsule/vscode-sandbox-setuid.md)
+for the collision with default hardening that forced the ruling.
 
-What remains before the component is validatable end-to-end, in dependency
-order; each stage carries a design question for the product owner noted
-under *Open Threads*:
-
-1. Materialization: generalize `parse_locked_environment` and the
-   jetbrains-specific recipe/spec in `materialization.py` so a codium lock
-   materializes into a cached canonical image (including the setuid
-   `chrome-sandbox` fix-up the legacy image build performed).
-2. The embedded resolution matrix: a pinned codium table and the selection
-   mechanism that lets `init` produce a codium lock.
-3. `project run` and the host launcher: drop the `pycharm`-only guards in
-   `project_operations.py` and `commands/project.py`, and feed the
-   component's declared slots to the launcher generically instead of by
-   `pycharm/...` name.
-4. Retire the `codium_with_claude` command tree and settle the
-   `vscode_with_claude` question (found to be a never-implemented stub that
-   only raises "not implemented yet"; retirement looks free).
+Remaining before the codium PR: the product owner's smoke sign-off (unit
+tests, mypy, and the live launch are done; the launch put a VSCodium window
+with the tictactoe sample on the owner's display). The smoke currently
+needs the runtime-PEX override described under *External State And Risks*.
 
 ## Next Resumable Task
 
-After the `codium` component validates and integrates: track 2, the
-Antigravity CLI component, starting with the license and redistribution
-analysis the ledger gates on. Settle the `vscode_with_claude` scope question
-in whichever session it first becomes relevant — at the latest, when the
-`codium_with_claude` command tree is retired.
+After the `codium` component integrates: track 2, the Antigravity CLI
+component, starting with the license and redistribution analysis the
+ledger gates on.
 
 ## Open Threads
 
-Design questions awaiting the product owner, mapped to the remaining stages
-above:
-
-- **Surface selection mechanism** (stage 2): the matrix demands the
-  `python-ide` capability and hard-codes `interactive-surface = "pycharm"`.
-  How does a checkout choose codium — a distinct capability name, a manifest
-  configuration value, or a resolution-time choice? The codium definition
-  provisionally declares capability `python-ide` (nothing consumes the
-  property yet), matching the reading that the surface is a selection within
-  one capability.
-- **Codium pin** (stage 2): which VSCodium version/URL/sha256 the matrix
-  pins, and from where (GitHub release tarball is the natural archive-shaped
-  source; the legacy path accepted either the apt repository or a local
-  archive).
-- **Sandbox posture** (stage 1): the legacy image made `chrome-sandbox`
-  setuid root; the materialization recipe should reproduce that rather than
-  fall back to `--no-sandbox`. Confirming that posture is wanted.
-- **`vscode_with_claude` retirement** (stage 4): it is a stub that raises
-  "not implemented yet"; proposing outright retirement alongside the
-  `codium_with_claude` tree rather than componentization.
+- **Base rebuild** (coordination fact): the v026 base's embedded runtime
+  PEX predates the `vscode` adapter, so codium containers reject their plan
+  under the stock base. Until a base built from a revision including this
+  branch ships, launches need
+  `-- --volume <host-path-to-current-pex>:/opt/devcapsule/bin/devcapsule.pex:ro`.
+  This gates codium for adopters, not the PR.
+- **PyCharm slot-path migration** (recorded follow-up): PyCharm still
+  travels the launcher's named state fields; every other surface uses the
+  generic plan-slot mounts. Migrating PyCharm onto the generic path (and
+  then retiring the named fields and the `pycharm/`-named plumbing) needs
+  its own owner smoke.
+- **Component update mechanism** (owner-stated future work, 2026-08-31):
+  warn developers when pinned components have newer releases, and advance
+  matrix pins after tests. Belongs to project-wide planning; not started.
+- **Launcher naming**: the generic project launcher still lives in
+  `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
+  surface. Deferred as cosmetic churn until the PyCharm slot migration
+  touches the same code.
 
 ## External State And Risks
 
@@ -216,6 +204,15 @@ above:
 - The smoke-test half of validation is manual and product-owner-bound, so
   integration pace is bounded by owner availability; plan sessions to end at
   smoke-testable points.
+- Reproducing the codium smoke from a capsule: a scratch checkout of the
+  `typescript_tictactoe_5inrow` sample lives at
+  `/home/devcapsule/codium-smoke-tictactoe` (host-backed, so the external
+  daemon can mount it), a current-tree PEX at
+  `/home/devcapsule/devcapsule-smoke.pex`, and the launch is
+  `devcapsule project --path . run` plus the PEX override volume from *Open
+  Threads* with the pex path translated to its host form. Raw passthrough
+  docker options are not bind-translated, so the override source must be
+  the host path.
 
 ## Workstream Document Index
 
