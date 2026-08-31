@@ -4,3 +4,6 @@
 [submodule "devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research"]
 	path = devcapsule-src/tests/resources/sample_projects/devcapsule-sample-trading-research
 	url = git@github.com:ccozianu/devcapsule-sample-trading-research.git
+[submodule "devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow"]
+	path = devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow
+	url = git@github.com:ccozianu/devcapsule-sample-typescript-tictactoe.git
