@@ -23,8 +23,10 @@ def test_top_level_help_returns_success(capsys) -> None:
     assert result == 0
     output = capsys.readouterr().out
     assert "pycharm" in output
+    # Retired 2026-08-31: the neutral codium interactive-surface component
+    # replaced both agent-welded launch trees.
     assert "vscode_with_claude" not in output
-    assert "codium_with_claude" in output
+    assert "codium_with_claude" not in output
     assert "runtime" in output
     assert "version" in output
     assert "images" in output
@@ -285,7 +287,7 @@ def test_top_level_commands_are_discovered() -> None:
     assert "bootstrap" in commands
     assert "pycharm" in commands
     assert "vscode_with_claude" not in commands
-    assert "codium_with_claude" in commands
+    assert "codium_with_claude" not in commands
     assert "project" in commands
     assert "images" in commands
     assert "version" in commands

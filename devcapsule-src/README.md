@@ -820,12 +820,13 @@ DevCapsule uses a configuration-first command model:
 devcapsule CONFIGURATION ACTION [options]
 ```
 
-`CONFIGURATION` names an IDE-plus-agent environment. `pycharm` and
-`codium_with_claude` are implemented configurations. The active public-default
-image builds bundle pinned Node.js/npm but no ambient AI-agent CLI.
-`codium_with_claude` remains a transitional proof-point name and is distinct
-from the registered,
-unimplemented `vscode_with_claude` placeholder.
+`CONFIGURATION` names a legacy launch tree; `pycharm` is the remaining
+implemented configuration. The active public-default image builds bundle
+pinned Node.js/npm but no ambient AI-agent CLI. The transitional
+`codium_with_claude` and `vscode_with_claude` trees were retired on
+2026-08-31: VSCodium is now the neutral `codium` interactive-surface
+component, selected by the `frontend-ide` capability and launched through
+the ordinary `devcapsule project run` path.
 
 End users should be able to:
 
@@ -845,15 +846,6 @@ devcapsule pycharm run --profile codex --project-state-root /path/to/workspace/.
 devcapsule project --path /path/to/project run-image pycharm-isolated:latest
 devcapsule pycharm build --pycharm /path/to/pycharm.tar.gz
 devcapsule pycharm check-runtime
-devcapsule vscode_with_claude --help
-devcapsule codium_with_claude build
-devcapsule codium_with_claude build --ide-archive /path/to/VSCodium-linux-x64.tar.gz
-devcapsule codium_with_claude run --project /path/to/project
-devcapsule codium_with_claude run --project /path/to/project --profile codex
-devcapsule codium_with_claude run --project /path/to/project --project-state-root /path/to/workspace/.state
-devcapsule codium_with_claude run --project /path/to/project --project-mount /workspace/project
-devcapsule codium_with_claude run --project /path/to/project --debug-shell
-devcapsule codium_with_claude run --project /path/to/project --network host
 devcapsule bootstrap
 devcapsule bootstrap project --project /path/to/project
 ```
