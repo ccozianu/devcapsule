@@ -875,9 +875,30 @@ def append_docker_mode_args(args: list[str], config: PycharmRunConfig, host_user
         append_sudo_or_restrictions(args, config)
 
 
+def uses_setuid_sandbox_helper(config: PycharmRunConfig) -> bool:
+    """True when the plan's surface declares Chromium's setuid sandbox helper."""
+
+    return (
+        config.runtime_plan is not None
+        and config.runtime_plan.component.configuration.get("sandbox") == "setuid-helper"
+    )
+
+
+# The narrow grant Chromium's setuid helper needs: the setuid transition
+# itself (which no-new-privileges would veto), chroot, PID/network namespace
+# creation, and the drop back to the runtime user. Ruled 2026-08-31 by the
+# product owner over --no-sandbox; see
+# engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
+SETUID_SANDBOX_CAPABILITIES = ("SETUID", "SETGID", "SYS_ADMIN", "SYS_CHROOT")
+
+
 def append_sudo_or_restrictions(args: list[str], config: PycharmRunConfig) -> None:
     if config.enable_sudo:
         args.extend(["--group-add", str(config.ide_sudo_gid)])
+    elif uses_setuid_sandbox_helper(config):
+        args.extend(["--cap-drop", "ALL"])
+        for capability in SETUID_SANDBOX_CAPABILITIES:
+            args.extend(["--cap-add", capability])
     else:
         args.extend(["--cap-drop", "ALL", "--security-opt", "no-new-privileges"])
 
@@ -1244,6 +1265,15 @@ Host browser integration:
         component_id = (
             config.runtime_plan.component.id if config.runtime_plan is not None else "surface"
         )
+        sandbox_disclosure = ""
+        if uses_setuid_sandbox_helper(config) and not config.enable_sudo:
+            sandbox_disclosure = """
+
+Renderer sandbox capabilities:
+  The surface keeps Chromium's setuid renderer sandbox, so the capsule runs
+  without no-new-privileges and with the CAP_SETUID, CAP_SETGID,
+  CAP_SYS_ADMIN, and CAP_SYS_CHROOT bounding capabilities the helper needs.
+  Docker's outer isolation is unchanged."""
         slot_lines = "\n".join(
             f"  {logical_name}: {source}"
             for logical_name, source, _destination in config.interactive_state_mounts
@@ -1252,7 +1282,7 @@ Host browser integration:
             f"""{component_id} storage:
   Persistent home:       {config.persistent_home}
 {slot_lines}
-  Container project path: {config.project_mount}{browser_disclosure}{host_browser_disclosure}""",
+  Container project path: {config.project_mount}{browser_disclosure}{sandbox_disclosure}{host_browser_disclosure}""",
             file=sys.stderr,
         )
         return

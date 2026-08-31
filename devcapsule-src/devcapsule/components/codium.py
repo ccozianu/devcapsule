@@ -69,6 +69,12 @@ def _runtime_template() -> ComponentRuntimeTemplate:
                     # is the retired launcher's proven codium-foreground
                     # behavior.
                     "launcher": "codium",
+                    # Ruled 2026-08-31 by the product owner: the renderer
+                    # sandbox stays on, so the host launcher grants the
+                    # narrow capability set Chromium's setuid helper needs;
+                    # the trade-off is analyzed in
+                    # engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
+                    "sandbox": "setuid-helper",
                     "state_slot_mapping": {
                         "user-data": "user-data",
                         "extensions": "extensions",

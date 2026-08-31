@@ -128,11 +128,14 @@ def test_materialized_component_template_owns_its_persistence_interface() -> Non
 
 
 def codium_fixture_archive(path: Path) -> bytes:
+    # Real VSCodium archives are flat: the installation sits at the archive
+    # root instead of inside one wrapping directory.
     with tarfile.open(path, "w:gz") as archive:
         for member, content in (
-            ("codium-test/codium", b"electron-binary-fixture"),
-            ("codium-test/bin/codium", b"#!/bin/sh\n"),
-            ("codium-test/chrome-sandbox", b"sandbox-helper-fixture"),
+            ("./codium", b"electron-binary-fixture"),
+            ("./bin/codium", b"#!/bin/sh\n"),
+            ("./chrome-sandbox", b"sandbox-helper-fixture"),
+            ("./product.json", b"{}\n"),
         ):
             info = tarfile.TarInfo(member)
             info.mode = 0o755

@@ -36,6 +36,9 @@ def plan(runtime: RuntimePlan) -> VscodeLaunch:
         if slot_name not in slots:
             raise RuntimePlanError(f"VS Code-family {option} mapping must name a declared state slot")
         directories[option] = slots[slot_name]
+    sandbox = config.get("sandbox")
+    if sandbox is not None and sandbox != "setuid-helper":
+        raise RuntimePlanError("VS Code-family sandbox must be 'setuid-helper' when declared")
     additional = config.get("additional_arguments", [])
     if not isinstance(additional, list):
         raise RuntimePlanError("VS Code-family additional_arguments must be an array")

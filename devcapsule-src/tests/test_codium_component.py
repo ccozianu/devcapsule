@@ -47,6 +47,7 @@ def test_runtime_template_round_trips_through_the_contract() -> None:
 
     assert template.component.id == "codium"
     assert template.component.adapter == "vscode"
+    assert template.component.configuration["sandbox"] == "setuid-helper"
     assert template.persistence.home == "required"
     assert template.persistence.xdg == "home-relative"
     assert logical_state_slots() == ("codium/user-data", "codium/extensions", "codium/cache")
@@ -140,6 +141,10 @@ def test_vscode_adapter_appends_validated_additional_arguments() -> None:
         (
             lambda config: config.update(additional_arguments="--flag"),
             "additional_arguments must be an array",
+        ),
+        (
+            lambda config: config.update(sandbox="no-sandbox"),
+            "sandbox must be 'setuid-helper'",
         ),
     ],
 )

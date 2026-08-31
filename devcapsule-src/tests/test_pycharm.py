@@ -160,6 +160,12 @@ def test_plan_driven_surface_mounts_declared_slots_instead_of_pycharm_paths(
     assert not any("dst=/ide-config" in value for value in args)
     assert not any("dst=/ide-plugins" in value for value in args)
     assert not any("dst=/ide-project-state" in value for value in args)
+    # The declared setuid sandbox helper narrows the hardening: the four
+    # capabilities it needs, and no no-new-privileges veto.
+    assert "no-new-privileges" not in args
+    assert ["--cap-drop", "ALL"] == args[args.index("--cap-drop") : args.index("--cap-drop") + 2]
+    for capability in ("SETUID", "SETGID", "SYS_ADMIN", "SYS_CHROOT"):
+        assert capability in args
     # No PyCharm state directories are invented on the host for this surface.
     data_namespace = Path(env["XDG_DATA_HOME"]) / "devcapsule" / "projects" / "by-path"
     assert not list(data_namespace.glob("*/components/pycharm"))
@@ -199,6 +205,36 @@ def test_interactive_state_mounts_must_belong_to_the_plan_component(tmp_path: Pa
             ),
             base_env(tmp_path),
         )
+
+
+def test_surfaces_without_the_sandbox_declaration_keep_full_hardening(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=external_runtime_plan(),
+            use_image_process=True,
+        ),
+        env,
+    )
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth",
+        passwd_file=tmp_path / "passwd",
+        group_file=tmp_path / "group",
+        runtime_plan_file=tmp_path / "runtime-plan",
+    )
+
+    args = build_docker_args(config, files, env)
+
+    assert "no-new-privileges" in args
+    assert "SYS_ADMIN" not in args
 
 
 def test_plan_driven_storage_summary_names_the_surface_and_its_slots(
