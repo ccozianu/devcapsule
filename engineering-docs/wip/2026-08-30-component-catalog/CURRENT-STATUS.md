@@ -215,14 +215,19 @@ ledger gates on.
   post-codium release that repins the base, so its lock never names a
   base whose runtime PEX rejects codium plans.
 
-- **Resolution-matrix redesign** (awaiting owner ruling): the 2026-09-01
-  design sessions produced two proposed decision records — D-0006 (a
-  `platforms.py` module owning host/platform friction: the `Platform`
-  enum, host detection, unified XDG derivation) and D-0007 (the
-  resolution matrix as accumulated verified combinations — edges,
-  declared couplings, default orthogonality — behind a minimal public
-  interface). No implementation until the owner decides the records;
-  the coming codium base repin is the first beneficiary.
+- **Resolution-matrix redesign** (implemented 2026-09-01): the owner
+  accepted D-0006 and D-0007 and the implementation is on this branch.
+  `platforms.py` owns the `Platform` enum and the unified XDG derivation
+  (`platform_alias` and three duplicate derivations retired); the matrix
+  resolves through `MATRICES[platform].resolve(need)` over verified
+  edges/couplings, byte-identical to the pre-refactor generator (golden
+  fixtures under `tests/resources/golden_locks/`) and reconstituting the
+  dogfood formation from the repo's own `.devcapsule` (tested). Recorded
+  implementation decision: `devcapsule-base:v0.2.8` exists but is not
+  fully tested, so it has **no edges in the matrix yet** — resolution
+  keeps selecting v026; once the owner's smoke verifies v0.2.8
+  combinations, adding its edges (and advancing the matrix version) is a
+  data change, per the model.
 
 ## External State And Risks
 

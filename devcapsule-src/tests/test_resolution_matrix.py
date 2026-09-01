@@ -7,30 +7,138 @@ import tomllib
 
 import pytest
 
+import devcapsule.resolution_matrix as resolution_matrix_module
 from devcapsule.configuration_nodes import build_node_registry
+from devcapsule.platforms import Platform
 from devcapsule.project_configuration import (
     ProjectConfigurationError,
     canonical_digest,
     lock_for,
 )
 from devcapsule.resolution_matrix import (
-    MATRIX_VERSION,
-    generate_platform_lock,
-    normalize_capability_need,
-    supported_capabilities,
+    MATRICES,
+    Formation,
+    ResolutionError,
+    ResolutionMatrix,
 )
+from devcapsule.resolution_matrix import (
+    _BasePin,
+    _ComponentPin,
+    _Coupling,
+    _VerifiedEdge,
+)
+
+
+MATRIX = MATRICES[Platform.LINUX_AMD64]
+GOLDEN_ROOT = Path(__file__).parent / "resources" / "golden_locks"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Captured from the pre-D-0007 generate_platform_lock; resolve() must keep
+# producing these bytes so standing projects regenerate identical locks.
+GOLDEN_NEEDS = {
+    "pycharm-minimal": ["python", "python-ide"],
+    "dogfood": ["claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"],
+    "codium-node": ["node", "frontend-ide"],
+    "pycharm-full": [
+        "python",
+        "python-ide",
+        "codex-agent",
+        "claude-code-agent",
+        "postgresql-client",
+    ],
+    "codium-agents": ["node", "frontend-ide", "codex-agent", "claude-code-agent"],
+}
 
 
 def parse(content: str) -> dict:
     return tomllib.loads(content)
 
 
+def rendered(need: list[str]) -> str:
+    return MATRIX.resolve(need).render_lock()
+
+
+# ---------------------------------------------------------------------------
+# The public surface
+
+
+def test_public_surface_is_minimal() -> None:
+    assert resolution_matrix_module.__all__ == [
+        "MATRICES",
+        "Formation",
+        "ResolutionError",
+        "ResolutionMatrix",
+    ]
+    for retired in (
+        "generate_platform_lock",
+        "normalize_capability_need",
+        "supported_capabilities",
+        "GeneratedLock",
+        "MATRIX_VERSION",
+        "BASE_SATISFIED_CAPABILITIES",
+        "INTERACTIVE_SURFACE_CAPABILITIES",
+        "SUPPORTED_PLATFORMS",
+    ):
+        assert not hasattr(resolution_matrix_module, retired), retired
+
+
+def test_matrices_is_total_over_platforms_and_read_only() -> None:
+    assert set(MATRICES) == set(Platform)
+    with pytest.raises(TypeError):
+        MATRICES[Platform.LINUX_AMD64] = MATRIX  # type: ignore[index]
+
+
+def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
+    assert MATRIX.capabilities() == (
+        "claude-code-agent",
+        "codex-agent",
+        "docker-cli",
+        "frontend-ide",
+        "java",
+        "maven",
+        "node",
+        "postgresql-client",
+        "python",
+        "python-ide",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Byte-identity with the pre-refactor generator, and dogfood reconstitution
+
+
+@pytest.mark.parametrize("name", sorted(GOLDEN_NEEDS))
+def test_resolution_matches_the_captured_golden_lock(name: str) -> None:
+    golden = (GOLDEN_ROOT / f"{name}.lock").read_text(encoding="utf-8")
+    assert rendered(GOLDEN_NEEDS[name]) == golden
+
+
+def test_resolution_reconstitutes_the_dogfood_environment() -> None:
+    """Resolving the dogfood checkout's own need reproduces its formation.
+
+    The committed dogfood lock is an earlier, hand-authored generation
+    (``dogfood-v1``), so header metadata legitimately differs; the formation
+    — base, components, materialization — must match exactly.
+    """
+
+    manifest_path = REPO_ROOT / ".devcapsule" / "devcapsule.toml"
+    lock_path = REPO_ROOT / ".devcapsule" / "devcapsule.linux-amd64.lock"
+    if not manifest_path.is_file() or not lock_path.is_file():
+        pytest.skip("the dogfood checkout's .devcapsule is not present")
+    need = tomllib.loads(manifest_path.read_text(encoding="utf-8"))["capabilities"]["need"]
+    dogfood = tomllib.loads(lock_path.read_text(encoding="utf-8"))
+
+    generated = parse(rendered(need))
+
+    assert generated["base"] == dogfood["base"]
+    assert generated["components"] == dogfood["components"]
+    assert generated["materialization"] == dogfood["materialization"]
+
+
 def test_minimal_need_generates_a_complete_pycharm_lock() -> None:
-    generated = generate_platform_lock(["python", "python-ide"], "linux-amd64")
-    lock = parse(generated.content)
+    lock = parse(rendered(["python", "python-ide"]))
 
     assert lock["devcapsule-lock-format-version"] == 1
-    assert lock["resolution-matrix-version"] == MATRIX_VERSION
     assert lock["platform"] == "linux-amd64"
     assert lock["base"]["reference"].startswith(
         "docker.io/mycodespaceai/devcapsule-base@sha256:"
@@ -48,91 +156,205 @@ def test_minimal_need_generates_a_complete_pycharm_lock() -> None:
     assert "manifest-digest" not in lock
 
 
-def test_agent_and_database_capabilities_select_their_pinned_components() -> None:
-    generated = generate_platform_lock(
-        ["python", "python-ide", "codex-agent", "claude-code-agent", "postgresql-client"],
-        "linux-amd64",
-    )
-    lock = parse(generated.content)
-
-    codex = lock["components"]["codex"]
-    assert codex["version"] == "0.145.0"
-    assert codex["artifacts"]["linux-amd64"]["sha256"] == (
-        "11239480f8e3efd1430f23bbe91c1a397856b8bbe6185ccbaee2382d25e03df2"
-    )
-
-    claude = lock["components"]["claude-code"]
-    assert claude["acquisition-authorization"] == "claude-code-download"
-    assert claude["terms-url"] == "https://www.anthropic.com/legal/commercial-terms"
-    assert claude["artifacts"]["linux-amd64"]["sha256"] == (
-        "6832dc3f1797b890b71116e5f2dbbf9a83fd3d0498c235b4b0f9cd0e6e499ad6"
-    )
-
-    postgres = lock["components"]["postgresql-client"]
-    assert postgres == {"version": "16", "delivery-policy": "base-image", "license": "PostgreSQL"}
-
-
 def test_frontend_need_generates_a_complete_codium_lock() -> None:
-    generated = generate_platform_lock(["node", "frontend-ide"], "linux-amd64")
-    lock = parse(generated.content)
+    lock = parse(rendered(["node", "frontend-ide"]))
 
     assert lock["components"]["interactive-surface"] == "codium"
     codium = lock["components"]["codium"]
     assert codium["version"] == "1.126.04524"
     assert codium["license"] == "MIT"
-    assert codium["delivery-policy"] == "local-materialization"
     assert codium["url"].endswith("VSCodium-linux-x64-1.126.04524.tar.gz")
-    assert codium["sha256"] == (
-        "adf3548df055d18e476cdee887488ba7486b879ad99a31a546c6b5c5ff296c24"
-    )
     assert lock["materialization"]["recipe"] == "vscode-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "codium"}
 
 
+def test_formation_reports_capabilities_and_provenance() -> None:
+    formation = MATRIX.resolve(["python-ide", "python"])
+
+    assert isinstance(formation, Formation)
+    assert formation.capabilities == ("python", "python-ide")
+    assert "pycharm 2026.2.0.1" in formation.provenance
+    assert "base v026" in formation.provenance
+
+
+# ---------------------------------------------------------------------------
+# Need validation and error explanations
+
+
 def test_two_interactive_capabilities_are_rejected() -> None:
     with pytest.raises(ProjectConfigurationError, match="exactly one interactive surface"):
-        generate_platform_lock(["python-ide", "frontend-ide"], "linux-amd64")
-
-
-def test_unknown_capability_lists_the_supported_vocabulary() -> None:
-    with pytest.raises(ProjectConfigurationError) as failure:
-        generate_platform_lock(["python-ide", "quantum-debugger"], "linux-amd64")
-    assert "'quantum-debugger'" in str(failure.value)
-    for name in supported_capabilities():
-        assert name in str(failure.value)
+        MATRIX.resolve(["python-ide", "frontend-ide"])
 
 
 def test_missing_interactive_capability_is_explained() -> None:
     with pytest.raises(ProjectConfigurationError, match="python-ide"):
-        generate_platform_lock(["python"], "linux-amd64")
+        MATRIX.resolve(["python"])
 
 
-def test_unsupported_platform_is_explained() -> None:
-    with pytest.raises(ProjectConfigurationError, match="linux-amd64"):
-        generate_platform_lock(["python-ide"], "windows-arm64")
+def test_unknown_capability_lists_the_supported_vocabulary() -> None:
+    with pytest.raises(ResolutionError) as failure:
+        MATRIX.resolve(["python-ide", "quantum-debugger"])
+    assert "'quantum-debugger'" in str(failure.value)
+    for name in MATRIX.capabilities():
+        assert name in str(failure.value)
+
+
+def test_resolution_errors_are_project_configuration_errors() -> None:
+    # Callers catching the established error hierarchy keep working.
+    assert issubclass(ResolutionError, ProjectConfigurationError)
 
 
 def test_need_is_normalized_to_a_sorted_unique_set() -> None:
-    assert normalize_capability_need(["python-ide", "python", "python-ide"]) == (
+    assert MATRIX.normalize(["python-ide", "python", "python-ide"]) == (
         "python",
         "python-ide",
     )
-    duplicated = generate_platform_lock(["python-ide", "python", "python"], "linux-amd64")
-    unique = generate_platform_lock(["python", "python-ide"], "linux-amd64")
-    assert duplicated.content == unique.content
+    assert rendered(["python-ide", "python", "python"]) == rendered(
+        ["python", "python-ide"]
+    )
 
 
 def test_malformed_need_values_are_rejected() -> None:
-    with pytest.raises(ProjectConfigurationError, match="array"):
-        normalize_capability_need("python-ide")
-    with pytest.raises(ProjectConfigurationError, match="non-empty strings"):
-        normalize_capability_need(["python-ide", 7])
+    with pytest.raises(ResolutionError, match="array"):
+        MATRIX.normalize("python-ide")
+    with pytest.raises(ResolutionError, match="non-empty strings"):
+        MATRIX.normalize(["python-ide", 7])
 
 
 def test_generation_is_deterministic() -> None:
-    first = generate_platform_lock(["python-ide", "codex-agent"], "linux-amd64")
-    second = generate_platform_lock(["python-ide", "codex-agent"], "linux-amd64")
-    assert first.content == second.content
+    assert rendered(["python-ide", "codex-agent"]) == rendered(
+        ["python-ide", "codex-agent"]
+    )
+
+
+# ---------------------------------------------------------------------------
+# The verified-combinations model: several versions per axis, sparse rows.
+# These exercise the private model deliberately — the public surface hides
+# it, and this is where its selection behavior is pinned down.
+
+
+def _synthetic_matrix(
+    edges: tuple[_VerifiedEdge, ...],
+    couplings: tuple[_Coupling, ...] = (),
+) -> ResolutionMatrix:
+    return ResolutionMatrix(
+        platform=Platform.LINUX_AMD64,
+        matrix_version="test-1",
+        bases=(
+            _BasePin("v1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        ),
+        components={
+            "ide": (
+                _ComponentPin("ide", "1.0", {"version": "1.0"}),
+                _ComponentPin("ide", "2.0", {"version": "2.0"}),
+            ),
+            "agent": (_ComponentPin("agent", "0.5", {"version": "0.5"}),),
+        },
+        edges=edges,
+        couplings=couplings,
+        surface_capabilities={"the-ide": "ide"},
+        ancillary_capabilities={"the-agent": "agent"},
+        materialization={"ide": {"recipe": "r", "recipe-version": "1"}},
+    )
+
+
+def test_resolution_prefers_the_newest_verified_combination() -> None:
+    matrix = _synthetic_matrix(
+        edges=(
+            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "v2", "smoke"),
+        )
+    )
+    lock = parse(matrix.resolve(["the-ide"]).render_lock())
+
+    assert lock["base"]["build-mnemonic"] == "v2"
+    assert lock["components"]["ide"]["version"] == "2.0"
+
+
+def test_a_base_without_verified_edges_is_not_selected() -> None:
+    # The v0.2.8 situation: a newer base is published but not yet tested.
+    # It earns no edges, so resolution keeps selecting the proven base;
+    # verifying the new base later is a data addition, not an interface
+    # change.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "2.0", "v1", "smoke"),)
+    )
+    lock = parse(matrix.resolve(["the-ide"]).render_lock())
+
+    assert lock["base"]["build-mnemonic"] == "v1"
+    assert lock["components"]["ide"]["version"] == "2.0"
+
+
+def test_an_unverified_newer_component_version_falls_back() -> None:
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "1.0", "v2", "smoke"),)
+    )
+    lock = parse(matrix.resolve(["the-ide"]).render_lock())
+
+    assert lock["base"]["build-mnemonic"] == "v2"
+    assert lock["components"]["ide"]["version"] == "1.0"
+
+
+def test_verification_of_older_combinations_does_not_expire() -> None:
+    # Adding a newer verified combination must not un-express the older one:
+    # both remain resolvable facts; selection merely prefers the newest.
+    sparse = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "1.0", "v1", "smoke"),)
+    )
+    grown = _synthetic_matrix(
+        edges=(
+            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "v2", "smoke"),
+        )
+    )
+
+    assert parse(sparse.resolve(["the-ide"]).render_lock())["base"]["build-mnemonic"] == "v1"
+    assert parse(grown.resolve(["the-ide"]).render_lock())["base"]["build-mnemonic"] == "v2"
+
+
+def test_no_verified_combination_is_a_complete_explanation() -> None:
+    matrix = _synthetic_matrix(edges=())
+    with pytest.raises(ResolutionError) as failure:
+        matrix.resolve(["the-ide"])
+    message = str(failure.value)
+    assert "No verified combination" in message
+    assert "ide" in message
+
+
+def test_an_unverified_coupling_refuses_the_composition() -> None:
+    matrix = _synthetic_matrix(
+        edges=(
+            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "v1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "v1", "smoke"),
+        ),
+        couplings=(
+            _Coupling("agent", "ide", frozenset({("0.5", "1.0")}), "smoke"),
+        ),
+    )
+    with pytest.raises(ResolutionError, match="jointly verified"):
+        matrix.resolve(["the-ide", "the-agent"])
+
+
+def test_a_verified_coupling_composes() -> None:
+    matrix = _synthetic_matrix(
+        edges=(
+            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "v1", "smoke"),
+        ),
+        couplings=(
+            _Coupling("agent", "ide", frozenset({("0.5", "1.0")}), "smoke"),
+        ),
+    )
+    lock = parse(matrix.resolve(["the-ide", "the-agent"]).render_lock())
+
+    assert lock["components"]["ide"]["version"] == "1.0"
+    assert lock["components"]["agent"]["version"] == "0.5"
+
+
+# ---------------------------------------------------------------------------
+# The generated lock keeps satisfying the real loaders
 
 
 def test_generated_lock_passes_the_real_loaders(tmp_path: Path) -> None:
@@ -149,9 +371,8 @@ def test_generated_lock_passes_the_real_loaders(tmp_path: Path) -> None:
             "mount": "/workspace/example",
         },
     }
-    generated = generate_platform_lock(need, "linux-amd64")
     (project / ".devcapsule" / "devcapsule.linux-amd64.lock").write_text(
-        generated.content, encoding="utf-8"
+        rendered(need), encoding="utf-8"
     )
 
     lock_path, lock = lock_for(project, manifest)

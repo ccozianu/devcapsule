@@ -18,7 +18,8 @@ from devcapsule.project_operations import (
     initialize_project,
 )
 from devcapsule.project_configuration import ProjectConfigurationError
-from devcapsule.resolution_matrix import MATRIX_VERSION, generate_platform_lock
+from devcapsule.platforms import Platform
+from devcapsule.resolution_matrix import MATRICES
 
 
 def isolated_env(tmp_path: Path) -> dict[str, str]:
@@ -34,9 +35,13 @@ def read_toml(path: Path) -> dict:
         return tomllib.load(stream)
 
 
+def matrix_reference_lock() -> dict:
+    content = MATRICES[Platform.LINUX_AMD64].resolve(["python-ide"]).render_lock()
+    return tomllib.loads(content)
+
+
 def matrix_base_reference() -> str:
-    generated = generate_platform_lock(["python-ide"], "linux-amd64")
-    return str(tomllib.loads(generated.content)["base"]["reference"])
+    return str(matrix_reference_lock()["base"]["reference"])
 
 
 def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, capsys) -> None:
@@ -75,7 +80,9 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
         assert manifest["capabilities"]["need"] == ["python", "python-ide"]
 
         lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
-        assert lock["resolution-matrix-version"] == MATRIX_VERSION
+        assert lock["resolution-matrix-version"] == (
+            matrix_reference_lock()["resolution-matrix-version"]
+        )
         assert lock["base"]["reference"] == matrix_base_reference()
 
         config_root = tmp_path / "config" / "devcapsule" / "projects"

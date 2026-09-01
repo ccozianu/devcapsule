@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
-import os
 from pathlib import Path
 from typing import Mapping
 
+from devcapsule.platforms import XdgHomes
 from devcapsule.container_runtime.contract import (
     ComponentRuntimeTemplate,
     Identity,
@@ -25,13 +25,8 @@ class StateRoots:
 
     @classmethod
     def from_environment(cls, env: Mapping[str, str] | None = None) -> StateRoots:
-        values = os.environ if env is None else env
-        home = Path(values.get("HOME", "~")).expanduser()
-        return cls(
-            data=Path(values.get("XDG_DATA_HOME") or home / ".local" / "share") / "devcapsule",
-            state=Path(values.get("XDG_STATE_HOME") or home / ".local" / "state") / "devcapsule",
-            cache=Path(values.get("XDG_CACHE_HOME") or home / ".cache") / "devcapsule",
-        )
+        homes = XdgHomes.from_environment(env)
+        return cls(data=homes.data, state=homes.state, cache=homes.cache)
 
     def for_kind(self, kind: str) -> Path:
         if kind == "durable":

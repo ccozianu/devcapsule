@@ -1,10 +1,10 @@
 ---
 id: D-0006
 title: One Module For Host And Platform Friction
-status: proposed
+status: accepted
 date-proposed: 2026-09-01
-date-decided:
-decided-by:
+date-decided: 2026-09-01
+decided-by: Costin Cozianu
 requirements: []
 supersedes:
 superseded-by:

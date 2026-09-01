@@ -42,7 +42,6 @@ from devcapsule.project_configuration import (
     lock_for,
     manifest_for,
     normalize_configuration_value,
-    platform_alias,
     quote_toml,
     render_authorization_value,
     render_checkout,
@@ -55,11 +54,17 @@ from devcapsule.project_configuration import (
     stale_resolution_inputs,
     validate_manifest,
 )
-from devcapsule.resolution_matrix import (
-    generate_platform_lock,
-    normalize_capability_need,
-    supported_capabilities,
-)
+from devcapsule.platforms import Platform, UnsupportedPlatformError
+from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
+
+
+def _current_matrix() -> ResolutionMatrix:
+    """This host's resolution matrix, with platform failures as user errors."""
+
+    try:
+        return MATRICES[Platform.current()]
+    except UnsupportedPlatformError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
 
 __all__ = [
     "CheckoutRecord",
@@ -363,7 +368,10 @@ def initialize_project(
     if not root.is_dir():
         raise ProjectConfigurationError(f"Project directory does not exist: {root}")
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
-    platform = platform_alias()
+    try:
+        platform = Platform.current()
+    except UnsupportedPlatformError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
     lock_path = root / ".devcapsule" / f"devcapsule.{platform}.lock"
 
     existing_manifest: dict[str, Any] | None = None
@@ -401,10 +409,10 @@ def initialize_project(
         lock_action = "Kept"
     else:
         lock_action = "Regenerated" if lock_path.is_file() else "Created"
-        generated = generate_platform_lock(list(identity.capabilities), platform)
+        generated = MATRICES[platform].resolve(list(identity.capabilities))
         # World-readable like any committed project file; the 0600 default is
         # for developer-owned records.
-        atomic_write(lock_path, generated.content, mode=0o644)
+        atomic_write(lock_path, generated.render_lock(), mode=0o644)
     _, lock = lock_for(root, manifest)
 
     declarations = authorization_declarations(manifest, lock)
@@ -528,7 +536,7 @@ def _elicit_identity(
         "need",
         description=(
             "Capabilities the project needs, space-separated "
-            f"({', '.join(supported_capabilities())})"
+            f"({', '.join(_current_matrix().capabilities())})"
         ),
         remedy="--need CAPABILITY [--need CAPABILITY ...]",
         existing=" ".join(str(item) for item in existing_need) if existing_need else None,
@@ -786,7 +794,7 @@ def _normalize_creator(value: str) -> str:
 
 def _normalize_need_string(value: str) -> str:
     names = [item for item in value.replace(",", " ").split() if item]
-    return " ".join(normalize_capability_need(names))
+    return " ".join(_current_matrix().normalize(names))
 
 
 def _write_manifest(

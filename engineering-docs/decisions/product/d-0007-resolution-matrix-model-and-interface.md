@@ -1,10 +1,10 @@
 ---
 id: D-0007
 title: Resolution Matrix As Accumulated Verified Combinations
-status: proposed
+status: accepted
 date-proposed: 2026-09-01
-date-decided:
-decided-by:
+date-decided: 2026-09-01
+decided-by: Costin Cozianu
 requirements:
   - R-COMPAT-001
 supersedes:
