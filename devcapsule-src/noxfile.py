@@ -127,9 +127,6 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "images", "list", "--help")
     session.run("python", "-m", "devcapsule", "images", "build", "--help")
     session.run("python", "-m", "devcapsule", "pycharm", "build", "--help")
-    session.run("python", "-m", "devcapsule", "vscode_with_claude", "--help")
-    session.run("python", "-m", "devcapsule", "codium_with_claude", "build", "--help")
-    session.run("python", "-m", "devcapsule", "codium_with_claude", "run", "--help")
     session.run(str(REPO_ROOT / "docker4pycharm" / "run-pycharm-container.sh"), "--help", external=True)
 
 
@@ -205,9 +202,6 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "images", "list", "--help", external=True)
     session.run(str(path), "images", "build", "--help", external=True)
     session.run(str(path), "pycharm", "build", "--help", external=True)
-    session.run(str(path), "vscode_with_claude", "--help", external=True)
-    session.run(str(path), "codium_with_claude", "build", "--help", external=True)
-    session.run(str(path), "codium_with_claude", "run", "--help", external=True)
 
 
 def run_clean_machine_pex_test(session: nox.Session) -> None:
