@@ -11,7 +11,6 @@ import pytest
 
 from devcapsule import cli, compat
 from devcapsule.configurations.pycharm._image_build import PycharmImageBuildOptions
-from devcapsule.configurations.vscode_with_claude import VscodeWithClaudeConfiguration
 from devcapsule.environment_realization import RealizedEnvironment
 from devcapsule.image_metadata import LocalImageRecord
 from devcapsule.materialization import ImageDetails, parse_locked_environment
@@ -24,8 +23,10 @@ def test_top_level_help_returns_success(capsys) -> None:
     assert result == 0
     output = capsys.readouterr().out
     assert "pycharm" in output
-    assert "vscode_with_claude" in output
-    assert "codium_with_claude" in output
+    # Retired 2026-08-31: the neutral codium interactive-surface component
+    # replaced both agent-welded launch trees.
+    assert "vscode_with_claude" not in output
+    assert "codium_with_claude" not in output
     assert "runtime" in output
     assert "version" in output
     assert "images" in output
@@ -285,8 +286,8 @@ def test_top_level_commands_are_discovered() -> None:
 
     assert "bootstrap" in commands
     assert "pycharm" in commands
-    assert "vscode_with_claude" in commands
-    assert "codium_with_claude" in commands
+    assert "vscode_with_claude" not in commands
+    assert "codium_with_claude" not in commands
     assert "project" in commands
     assert "images" in commands
     assert "version" in commands
@@ -803,32 +804,10 @@ def test_bootstrap_project_alias_is_not_supported() -> None:
     assert cli.main(["bootstrap-project", "--project", "/tmp/example"]) == 2
 
 
-def test_vscode_with_claude_configuration_is_registered(capsys) -> None:
-    result = cli.main(["vscode_with_claude", "--help"])
-
-    assert result == 0
-    output = capsys.readouterr().out
-    assert "WIP" in output
-    assert "not implemented" in output
-    assert "run" in output
-    assert "build" in output
-
-
-def test_vscode_with_claude_configuration_identity() -> None:
-    config = VscodeWithClaudeConfiguration()
-
-    assert config.name == "vscode_with_claude"
-    assert config.ide == "vscode"
-    assert config.agent == "claude"
-    assert not config.implemented
-
-
-def test_vscode_with_claude_run_fails_explicitly(capsys) -> None:
-    result = cli.main(["vscode_with_claude", "run"])
-
-    # Every CLI failure exits 2 since the v027 boundary unified error handling.
-    assert result == 2
-    assert "not implemented yet" in capsys.readouterr().err
+def test_vscode_with_claude_is_retired() -> None:
+    # Retired 2026-08-31 by the product owner: it was a registered stub that
+    # never gained an image or launcher; the codium component supersedes it.
+    assert cli.main(["vscode_with_claude", "--help"]) == 2
 
 
 def test_build_pex_script_is_available() -> None:

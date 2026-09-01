@@ -22,10 +22,11 @@ from devcapsule.components.catalog import (
     selected_component_definitions,
 )
 from devcapsule.components import LockedArtifactDeclaration
-from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
+from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.image_build import (
     DirectoryComponent,
     EnvComponent,
+    ExecComponent,
     FileComponent,
     ImageBuildSpec,
     LabelComponent,
@@ -48,7 +49,9 @@ class ArtifactSpec:
     version: str
     url: str
     sha256: str
-    variant: str = "professional"
+    # Surfaces without a lock-recorded variant (VSCodium) carry None; the
+    # ancillary-acquisition path reuses this field as a cache discriminator.
+    variant: str | None = "professional"
 
 
 @dataclass(frozen=True)
@@ -82,6 +85,59 @@ FORMATION_SCHEMA_NAME = "devcapsule-formation"
 FORMATION_SCHEMA_VERSION = 1
 MATERIALIZATION_RECIPE_ID = "jetbrains-local-materialization"
 MATERIALIZATION_RECIPE_VERSION = "1"
+
+
+@dataclass(frozen=True)
+class SurfaceMaterialization:
+    """One interactive surface's archive-to-image materialization contract."""
+
+    component_id: str
+    family: str
+    recipe_id: str
+    installation_path: str
+    # Relative paths that must exist in the unpacked archive before it is
+    # trusted as this surface's installation.
+    archive_probes: tuple[str, ...]
+    # PyCharm locks record an edition variant; other surfaces do not.
+    requires_variant: bool
+    # Root-run build steps after the installation directory is copied in.
+    post_install: tuple[ExecComponent, ...]
+
+
+SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
+    "pycharm": SurfaceMaterialization(
+        component_id="pycharm",
+        family="jetbrains",
+        recipe_id=MATERIALIZATION_RECIPE_ID,
+        installation_path="/opt/jetbrains/pycharm",
+        archive_probes=("bin/pycharm.sh",),
+        requires_variant=True,
+        post_install=(),
+    ),
+    "codium": SurfaceMaterialization(
+        component_id="codium",
+        family="vscode",
+        recipe_id="vscode-local-materialization",
+        installation_path="/opt/codium",
+        archive_probes=("codium", "bin/codium", "chrome-sandbox"),
+        requires_variant=False,
+        # Electron's setuid sandbox helper must be root-owned mode 4755 to
+        # sandbox renderers without --no-sandbox; the trade-off is analyzed in
+        # engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
+        post_install=(
+            ExecComponent(
+                (
+                    "bash",
+                    "-euo",
+                    "pipefail",
+                    "-c",
+                    "chown root:root /opt/codium/chrome-sandbox"
+                    " && chmod 4755 /opt/codium/chrome-sandbox",
+                )
+            ),
+        ),
+    ),
+}
 COMPONENT_TEMPLATE_PATH = "/etc/devcapsule/component-runtime-template.json"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
 ENTRYPOINT_CONTRACT = (
@@ -144,10 +200,24 @@ def canonical_json(value: Mapping[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def component_runtime_template() -> dict[str, Any]:
+def surface_profile(component_id: str) -> SurfaceMaterialization:
+    profile = SURFACE_MATERIALIZATIONS.get(component_id)
+    if profile is None:
+        supported = ", ".join(sorted(SURFACE_MATERIALIZATIONS))
+        raise CliError(
+            f"V1 environment materialization supports no interactive surface "
+            f"{component_id!r}; supported surfaces: {supported}."
+        )
+    return profile
+
+
+def component_runtime_template(component_id: str = "pycharm") -> dict[str, Any]:
     """Return formation-owned component data without checkout/runtime choices."""
 
-    return pycharm_runtime_template().to_mapping()
+    definition = INTERACTIVE_SURFACES.get(component_id)
+    if definition is None:
+        raise CliError(f"No interactive surface component {component_id!r} is in the catalog.")
+    return definition.runtime_template().to_mapping()
 
 
 def formation_descriptor(
@@ -158,19 +228,25 @@ def formation_descriptor(
     ancillary_artifacts: tuple[LockedArtifactDeclaration, ...] = (),
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
+    component_id: str = "pycharm",
 ) -> dict[str, Any]:
     operating_system, architecture = _split_platform(platform)
-    template_digest = hashlib.sha256(canonical_json(component_runtime_template()).encode()).hexdigest()
+    profile = surface_profile(component_id)
+    template_digest = hashlib.sha256(
+        canonical_json(component_runtime_template(component_id)).encode()
+    ).hexdigest()
     return {
         "schema": {"name": FORMATION_SCHEMA_NAME, "version": FORMATION_SCHEMA_VERSION},
         "platform": {"os": operating_system, "architecture": architecture},
         "base": {"identity": base_identity},
         "components": [
             {
-                "id": "pycharm",
+                "id": component_id,
                 "version": artifact.version,
                 "artifact": {"sha256": _validated_sha256(artifact.sha256, "Artifact SHA-256")},
-                "variant": artifact.variant,
+                # Only variant-carrying surfaces record one, keeping earlier
+                # PyCharm formation identities byte-stable.
+                **({"variant": artifact.variant} if artifact.variant is not None else {}),
             },
             *[
                 {
@@ -197,7 +273,7 @@ def formation_descriptor(
         "recipe": {
             "id": recipe_id,
             "version": recipe_version,
-            "parameters": {"installation-path": "/opt/jetbrains/pycharm"},
+            "parameters": {"installation-path": profile.installation_path},
         },
         "runtime": {
             "component-template-sha256": template_digest,
@@ -233,8 +309,7 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     base = _required_mapping(lock, "base", "platform lock")
     components = _required_mapping(lock, "components", "platform lock")
     component_id = _required_string(components, "interactive-surface", "components")
-    if component_id != "pycharm":
-        raise CliError("V1 environment materialization currently supports only a locked PyCharm surface.")
+    profile = surface_profile(component_id)
     component = _required_mapping(components, component_id, "components")
     try:
         _interactive, ancillary_definitions = selected_component_definitions(lock)
@@ -243,12 +318,18 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     materialization = _required_mapping(lock, "materialization", "platform lock")
     policy = _required_string(component, "delivery-policy", f"components.{component_id}")
     if policy != "local-materialization":
-        raise CliError("Locked PyCharm delivery-policy must be 'local-materialization'.")
+        raise CliError(
+            f"Locked {component_id} delivery-policy must be 'local-materialization'."
+        )
     artifact = ArtifactSpec(
         version=_required_string(component, "version", f"components.{component_id}"),
         url=_required_string(component, "url", f"components.{component_id}"),
         sha256=_required_string(component, "sha256", f"components.{component_id}"),
-        variant=_required_string(component, "variant", f"components.{component_id}"),
+        variant=(
+            _required_string(component, "variant", f"components.{component_id}")
+            if profile.requires_variant
+            else None
+        ),
     )
     _validated_sha256(artifact.sha256, "Locked component SHA-256")
     ancillary_artifacts: list[LockedArtifactDeclaration] = []
@@ -279,10 +360,11 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
             ancillary_artifacts.append(locked_artifact)
     recipe_id = _required_string(materialization, "recipe", "materialization")
     recipe_version = _required_string(materialization, "recipe-version", "materialization")
-    if recipe_id != MATERIALIZATION_RECIPE_ID or recipe_version != MATERIALIZATION_RECIPE_VERSION:
+    if recipe_id != profile.recipe_id or recipe_version != MATERIALIZATION_RECIPE_VERSION:
         raise CliError(
             f"Unsupported materialization recipe {recipe_id!r}@{recipe_version}; "
-            f"expected {MATERIALIZATION_RECIPE_ID!r}@{MATERIALIZATION_RECIPE_VERSION}."
+            f"the {component_id} surface expects "
+            f"{profile.recipe_id!r}@{MATERIALIZATION_RECIPE_VERSION}."
         )
     identity_value = base.get("identity")
     if identity_value is not None and not isinstance(identity_value, str):
@@ -326,19 +408,21 @@ def validate_base_image(
         )
 
 
-def pycharm_materialization_spec(
+def surface_materialization_spec(
     *,
     base_reference: str,
     base_identity: str,
     image: str,
-    pycharm_root: Path,
+    surface_root: Path,
     component_template: Path,
     artifact: ArtifactSpec,
     ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...] = (),
     platform: str = "linux-amd64",
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
+    component_id: str = "pycharm",
 ) -> ImageBuildSpec:
+    profile = surface_profile(component_id)
     descriptor = formation_descriptor(
         platform=platform,
         base_identity=base_identity,
@@ -346,6 +430,7 @@ def pycharm_materialization_spec(
         ancillary_artifacts=tuple(declaration for _path, declaration in ancillary_files),
         recipe_id=recipe_id,
         recipe_version=recipe_version,
+        component_id=component_id,
     )
     identity = formation_identity(descriptor)
     environment = _ancillary_environment(
@@ -355,7 +440,8 @@ def pycharm_materialization_spec(
         image=image,
         base_image=base_reference,
         components=(
-            DirectoryComponent(pycharm_root, "/opt/jetbrains/pycharm"),
+            DirectoryComponent(surface_root, profile.installation_path),
+            *profile.post_install,
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
             *(
                 FileComponent(path, declaration.destination, permissions=declaration.permissions)
@@ -369,19 +455,23 @@ def pycharm_materialization_spec(
                     ("devcapsule.materialization.identity", identity),
                     ("devcapsule.materialization.recipe-version", recipe_version),
                     ("devcapsule.materialization.base-identity", base_identity),
-                    ("devcapsule.component.id", "pycharm"),
+                    ("devcapsule.component.id", component_id),
                     ("devcapsule.component.version", artifact.version),
-                    ("devcapsule.component.variant", artifact.variant),
+                    *(
+                        (("devcapsule.component.variant", artifact.variant),)
+                        if artifact.variant is not None
+                        else ()
+                    ),
                     ("devcapsule.component.sha256", artifact.sha256.lower()),
-                    ("devcapsule.component.jetbrains.version", artifact.version),
-                    ("devcapsule.component.jetbrains.sha256", artifact.sha256.lower()),
+                    (f"devcapsule.component.{profile.family}.version", artifact.version),
+                    (f"devcapsule.component.{profile.family}.sha256", artifact.sha256.lower()),
                 )
             ),
         ),
     )
 
 
-def ensure_materialized_pycharm(
+def ensure_materialized_surface(
     *,
     base_reference: str,
     base_identity: str,
@@ -393,7 +483,9 @@ def ensure_materialized_pycharm(
     build: Callable[[ImageBuildSpec], None],
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
+    component_id: str = "pycharm",
 ) -> tuple[str, bool]:
+    profile = surface_profile(component_id)
     descriptor = formation_descriptor(
         platform=platform,
         base_identity=base_identity,
@@ -401,8 +493,9 @@ def ensure_materialized_pycharm(
         ancillary_artifacts=ancillary_artifacts,
         recipe_id=recipe_id,
         recipe_version=recipe_version,
+        component_id=component_id,
     )
-    image = canonical_image_name(descriptor)
+    image = canonical_image_name(descriptor, component_id)
     identity = formation_identity(descriptor)
     with _exclusive_lock(cache_root / "locks" / "materializations" / f"{identity}.lock"):
         existing = inspect_image(image)
@@ -426,16 +519,20 @@ def ensure_materialized_pycharm(
         with tempfile.TemporaryDirectory(prefix="devcapsule-materialize-", dir=work_root) as temporary_value:
             temporary = Path(temporary_value)
             try:
-                pycharm_root = normalize_archive_directory(acquisition.path, temporary)
+                surface_root = normalize_archive_directory(acquisition.path, temporary)
             except OSError as exc:
                 raise CliError(
-                    f"Cannot unpack the verified JetBrains archive beneath {work_root}: {exc}"
+                    f"Cannot unpack the verified {component_id} archive beneath {work_root}: {exc}"
                 ) from exc
-            launcher = pycharm_root / "bin" / "pycharm.sh"
-            if not launcher.is_file():
-                raise CliError("The verified JetBrains archive does not contain bin/pycharm.sh.")
+            for probe in profile.archive_probes:
+                if not (surface_root / probe).is_file():
+                    raise CliError(
+                        f"The verified {component_id} archive does not contain {probe}."
+                    )
             template_path = temporary / "component-runtime-template.json"
-            template_path.write_text(canonical_json(component_runtime_template()) + "\n", encoding="utf-8")
+            template_path.write_text(
+                canonical_json(component_runtime_template(component_id)) + "\n", encoding="utf-8"
+            )
             ancillary_files = tuple(
                 (
                     _prepare_locked_artifact(
@@ -448,17 +545,18 @@ def ensure_materialized_pycharm(
                 for index, (acquired, declaration) in enumerate(ancillary_acquisitions)
             )
             build(
-                pycharm_materialization_spec(
+                surface_materialization_spec(
                     base_reference=base_reference,
                     base_identity=base_identity,
                     image=image,
-                    pycharm_root=pycharm_root,
+                    surface_root=surface_root,
                     component_template=template_path,
                     artifact=artifact,
                     ancillary_files=ancillary_files,
                     platform=platform,
                     recipe_id=recipe_id,
                     recipe_version=recipe_version,
+                    component_id=component_id,
                 )
             )
         completed = inspect_image(image)

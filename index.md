@@ -60,6 +60,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [DevCapsule V1 user experience design draft](engineering-docs/design-notes/devcapsule/v1-user-experience.md)
 - [DevCapsule V1 gap review at 0a0ff09](engineering-docs/design-notes/devcapsule/2026-08-06-v1-gap-review.md)
 - [Click-based CLI parsing brief](engineering-docs/design-notes/devcapsule/click-based-cli-parsing-brief.md)
+- [The VS Code-family setuid sandbox helper](engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md)
 
 ## Active DevCapsule Development
 

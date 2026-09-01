@@ -282,15 +282,23 @@ def extract_resource_tree(package: str, destination: Path) -> None:
 
 
 def normalize_archive_directory(source: Path, destination: Path) -> Path:
+    """Return the installation root of an unpacked archive.
+
+    JetBrains archives wrap everything in one top-level directory; VS
+    Code-family archives are flat, with the installation at the archive root.
+    """
+
     extract_root = destination / "extract"
     extract_root.mkdir(parents=True, exist_ok=True)
     with tarfile.open(source, "r:gz") as archive:
         archive.extractall(extract_root, filter="data")
 
-    top_level_dirs = [path for path in extract_root.iterdir() if path.is_dir()]
-    if not top_level_dirs:
-        raise CliError("Could not find top-level PyCharm directory inside archive")
-    return top_level_dirs[0]
+    entries = list(extract_root.iterdir())
+    if not entries:
+        raise CliError("The verified archive contains no content")
+    if len(entries) == 1 and entries[0].is_dir():
+        return entries[0]
+    return extract_root
 
 
 def normalize_pycharm_source(source: Path, destination: Path) -> Path:

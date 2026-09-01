@@ -1,5 +1,5 @@
-"""DevCapsule command package."""
+"""DevCapsule command package.
 
-__all__ = ["__version__"]
-
-__version__ = "0.2.7"
+The distribution version is authored once, in ``pyproject.toml``; read it via
+``importlib.metadata.version("devcapsule")`` or ``build_info.current_build_info``.
+"""

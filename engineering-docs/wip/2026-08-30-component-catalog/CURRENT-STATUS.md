@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: open; registered, not yet started
+State: open; first session started 2026-08-30
 
 Integration target: `main`
 
@@ -52,9 +52,17 @@ foundation both tracks stand on.
 
 ## Branch Association
 
-Branch prefix `component-catalog/`. No branch exists yet; the first one is
-forked from this registration commit on `main`, per *Beginning A Workstream*
-in `WORKFLOW.md`.
+Branch prefix `component-catalog/`. The first branch is
+`component-catalog/codium-surface`, forked on 2026-08-30 from the
+registration merge `363f656` on `main` (`PR #48`), per *Beginning A
+Workstream* in `WORKFLOW.md`. The root registry row still reads "no branch
+yet"; the correction travels with this workstream's first integration rather
+than alone.
+
+Recorded latitude: registration shipped without the empty
+`intake-dispositions.md` that *Beginning A Workstream* step 4 requires. The
+file was added at branch opening, in this workstream's first commit. Gap
+noted here; the protocol itself needs no change, only following.
 
 ## Scope
 
@@ -137,16 +145,71 @@ the gap and coordinates; it does not reshape the supervisor.
 
 ## Current Task
 
-None yet. The workstream is registered and awaiting its first session.
+Track 1 is implemented end-to-end as of 2026-08-31, on branch commits
+`f886872..7c496b2`, and live-verified from inside a capsule against the
+host daemon: `init --need node --need frontend-ide` derives a codium lock
+from matrix `embedded-2`, materialization builds the canonical image from
+the checksum-verified VSCodium 1.126.04524 release, and `project run`
+launches the surface from its plan-declared state slots with a healthy
+sandboxed renderer tree and persisting `user-data`. Product-owner rulings
+of 2026-08-31 are executed: capability `frontend-ide` selects codium
+(`python-ide` still selects PyCharm; exactly one per lock), both
+`vscode_with_claude` and `codium_with_claude` trees are retired, and the
+surface keeps Chromium's setuid renderer sandbox under a narrow capability
+grant — see the
+[setuid sandbox design note](../../design-notes/devcapsule/vscode-sandbox-setuid.md)
+for the collision with default hardening that forced the ruling.
+
+Remaining before the codium PR: the product owner's smoke sign-off (unit
+tests, mypy, and the live launch are done; the launch put a VSCodium window
+with the tictactoe sample on the owner's display). The smoke currently
+needs the runtime-PEX override described under *External State And Risks*.
+
+Also on this branch, at the owner's direction on 2026-09-01 while preparing
+the v0.2.8 release: the distribution version is now authored solely in
+`pyproject.toml`. The checked-in `_build_info.json` and importable
+`__version__` are deleted; a missing build record now *defines* a
+source-form run, whose identity derives from the authored file (installed
+metadata is only a fallback — editable installs freeze their metadata at
+install time and go stale across bumps). Built artifacts are unchanged:
+`build-pex.sh` still stamps the full record, and `read_pex_build_info`
+still vets artifacts without executing them. `bump-version.py` now guards
+one file, so a bump is a single edited line.
 
 ## Next Resumable Task
 
-Start track 1 with the shared foundation: generalize interactive-surface
-selection in `devcapsule/components/catalog.py`, then shape the `codium`
-component and its vscode-family adapter against the existing `jetbrains`
-adapter and the legacy launcher's known-good mount and command behavior.
-Settle the `vscode_with_claude` scope question in the same session it becomes
-relevant.
+After the `codium` component integrates: track 2, the Antigravity CLI
+component, starting with the license and redistribution analysis the
+ledger gates on.
+
+## Open Threads
+
+- **Base rebuild** (coordination fact): the v026 base's embedded runtime
+  PEX predates the `vscode` adapter, so codium containers reject their plan
+  under the stock base. Until a base built from a revision including this
+  branch ships, launches need
+  `-- --volume <host-path-to-current-pex>:/opt/devcapsule/bin/devcapsule.pex:ro`.
+  This gates codium for adopters, not the PR.
+- **PyCharm slot-path migration** (recorded follow-up): PyCharm still
+  travels the launcher's named state fields; every other surface uses the
+  generic plan-slot mounts. Migrating PyCharm onto the generic path (and
+  then retiring the named fields and the `pycharm/`-named plumbing) needs
+  its own owner smoke.
+- **Component update mechanism** (owner-stated future work, 2026-08-31):
+  warn developers when pinned components have newer releases, and advance
+  matrix pins after tests. Belongs to project-wide planning; not started.
+- **Launcher naming**: the generic project launcher still lives in
+  `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
+  surface. Deferred as cosmetic churn until the PyCharm slot migration
+  touches the same code.
+- **Tictactoe devcapsule conversion** (sequenced): on 2026-08-31 the
+  `typescript_tictactoe_5inrow` sample became a submodule like its sibling
+  samples, at `git@github.com:ccozianu/devcapsule-sample-typescript-tictactoe.git`;
+  the owner created the repository and the pinned import commit is pushed,
+  so the submodule stands complete. Converting the sample into a
+  devcapsule project (committed `.devcapsule/`) deliberately waits for the
+  post-codium release that repins the base, so its lock never names a
+  base whose runtime PEX rejects codium plans.
 
 ## External State And Risks
 
@@ -160,6 +223,15 @@ relevant.
 - The smoke-test half of validation is manual and product-owner-bound, so
   integration pace is bounded by owner availability; plan sessions to end at
   smoke-testable points.
+- Reproducing the codium smoke from a capsule: a scratch checkout of the
+  `typescript_tictactoe_5inrow` sample lives at
+  `/home/devcapsule/codium-smoke-tictactoe` (host-backed, so the external
+  daemon can mount it), a current-tree PEX at
+  `/home/devcapsule/devcapsule-smoke.pex`, and the launch is
+  `devcapsule project --path . run` plus the PEX override volume from *Open
+  Threads* with the pex path translated to its host form. Raw passthrough
+  docker options are not bind-translated, so the override source must be
+  the host path.
 
 ## Workstream Document Index
 

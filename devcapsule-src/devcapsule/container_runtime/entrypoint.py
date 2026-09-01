@@ -15,7 +15,7 @@ from typing import Sequence
 
 from . import contract as rtcontract
 
-from .components import jetbrains
+from .components import jetbrains, vscode
 from .contract import RuntimePlan, RuntimePlanError
 from .filesystem import plan_filesystem, prepare_filesystem
 from .graphics import environment as graphics_environment
@@ -31,15 +31,19 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
     os.environ.update(filesystem.environment)
     os.environ.update(plan.component_environment())
     os.environ.update(graphics_environment(os.environ))
-    if plan.component.adapter != "jetbrains":
+    if plan.component.adapter == "jetbrains":
+        launch = jetbrains.plan(plan)
+        Path(launch.properties_path).write_text(launch.properties, encoding="utf-8")
+        os.environ[launch.properties_environment_variable] = launch.properties_path
+        command = launch.command
+    elif plan.component.adapter == "vscode":
+        command = vscode.plan(plan).command
+    else:
         raise RuntimePlanError(f"unsupported component adapter: {plan.component.adapter}")
-    launch = jetbrains.plan(plan)
-    Path(launch.properties_path).write_text(launch.properties, encoding="utf-8")
-    os.environ[launch.properties_environment_variable] = launch.properties_path
     if job is None:
         child = SupervisedChild(
             name=plan.component.id,
-            command=foreground_command(launch.command, plan.identity),
+            command=foreground_command(command, plan.identity),
             foreground=True,
         )
     else:

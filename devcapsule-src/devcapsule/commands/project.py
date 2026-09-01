@@ -29,6 +29,7 @@ from devcapsule.commands.framework import (
     add_carrier_options,
     carrier_answers,
 )
+from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
 from devcapsule.configuration_nodes import (
     CARRIER_FAMILY_BIND,
@@ -779,8 +780,12 @@ class ProjectRunCommand(Command):
         if stale:
             print(f"WARNING: using stale generated resolution once ({', '.join(stale)}).", file=sys.stderr)
         runtime = resolved.get("runtime", {})
-        if not isinstance(runtime, dict) or runtime.get("component") != "pycharm":
-            raise ProjectConfigurationError("The first run slice supports only resolved PyCharm environments.")
+        component = runtime.get("component") if isinstance(runtime, dict) else None
+        if not isinstance(runtime, dict) or component not in INTERACTIVE_SURFACES:
+            raise ProjectConfigurationError(
+                "Run requires a resolution selecting a known interactive surface; "
+                "run 'devcapsule project config resolve'."
+            )
         image = runtime.get("image")
         checkout_runtime_plan = None
         use_image_process = False
@@ -802,7 +807,9 @@ class ProjectRunCommand(Command):
             action = "Materialized" if realized.created else "Reused"
             print(f"{action} canonical environment: {image}")
         if not isinstance(image, str) or not image:
-            raise ProjectConfigurationError("The resolved PyCharm environment has no runnable image.")
+            raise ProjectConfigurationError(
+                f"The resolved {component} environment has no runnable image."
+            )
         memory_limit = runtime.get("memory-limit-bytes")
         if memory_limit is not None and (
             not isinstance(memory_limit, int) or isinstance(memory_limit, bool) or memory_limit <= 0
@@ -883,6 +890,28 @@ class ProjectRunCommand(Command):
                 + " ".join(docker_options),
                 file=sys.stderr,
             )
+        # PyCharm still travels through the launcher's named state fields;
+        # every other surface's state comes from its runtime-plan slots.
+        # Migrating PyCharm onto the generic slot path is a recorded follow-up.
+        interactive_state_mounts: dict[str, tuple[Path, str]] = {}
+        pycharm_state = {
+            name: Path(state[f"pycharm/{name}"]) if f"pycharm/{name}" in state else None
+            for name in ("config", "plugins", "system", "log", "cache")
+        }
+        if component != "pycharm":
+            if checkout_runtime_plan is None:
+                raise ProjectConfigurationError(
+                    f"The {component} surface requires lock formation inputs; "
+                    "regenerate the lock with 'devcapsule project init'."
+                )
+            pycharm_state = dict.fromkeys(pycharm_state)
+            interactive_state_mounts = _component_state_mounts(
+                root,
+                lock,
+                state,
+                checkout_runtime_plan,
+                {checkout_runtime_plan.component.id},
+            )
         return run_pycharm(
             PycharmRunOptions(
                 project=root,
@@ -890,22 +919,26 @@ class ProjectRunCommand(Command):
                 image=image,
                 name=arguments.container_name,
                 persistent_home=Path(state["home"]) if "home" in state else None,
-                ide_config=Path(state["pycharm/config"]) if "pycharm/config" in state else None,
-                plugins=Path(state["pycharm/plugins"]) if "pycharm/plugins" in state else None,
-                ide_system=Path(state["pycharm/system"]) if "pycharm/system" in state else None,
-                ide_log=Path(state["pycharm/log"]) if "pycharm/log" in state else None,
-                tool_cache=Path(state["pycharm/cache"]) if "pycharm/cache" in state else None,
+                ide_config=pycharm_state["config"],
+                plugins=pycharm_state["plugins"],
+                ide_system=pycharm_state["system"],
+                ide_log=pycharm_state["log"],
+                tool_cache=pycharm_state["cache"],
+                interactive_state_mounts=interactive_state_mounts,
                 docker_mode=DockerMode.host if selected_docker_daemon == "host-socket" else DockerMode.none,
                 enable_sudo=bool(selected_sudo),
                 network_mode=selected_network,
                 memory_limit_bytes=memory_limit,
                 runtime_plan=checkout_runtime_plan,
                 use_image_process=use_image_process,
-                additional_state_mounts=_additional_component_state_mounts(
+                additional_state_mounts=_component_state_mounts(
                     root,
                     lock,
                     state,
                     checkout_runtime_plan,
+                    set()
+                    if checkout_runtime_plan is None
+                    else {item.id for item in checkout_runtime_plan.ancillary_components},
                 ),
                 additional_environment=recursive_environment,
                 secret_environment=tuple(sorted(secret_environment.values())),
@@ -1349,19 +1382,19 @@ def _authorization_display_value(declaration: AuthorizationDeclaration) -> str:
     return declaration.display_value or render_authorization_value(declaration.recommended_value)
 
 
-def _additional_component_state_mounts(
+def _component_state_mounts(
     root: Path,
     lock: dict[str, Any],
     configured_state: dict[str, Any],
     runtime_plan: Any,
+    component_ids: set[str],
 ) -> dict[str, tuple[Path, str]]:
     if runtime_plan is None:
         return {}
     declarations = configuration_binding_declarations(lock)
-    ancillary_ids = {component.id for component in runtime_plan.ancillary_components}
     mounts: dict[str, tuple[Path, str]] = {}
     for name, declaration in declarations.items():
-        if declaration.component_id not in ancillary_ids:
+        if declaration.component_id not in component_ids:
             continue
         configured = configured_state.get(name)
         source = (

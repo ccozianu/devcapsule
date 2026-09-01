@@ -247,6 +247,56 @@ def test_entrypoint_prepares_properties_and_supervises_foreground(
     assert os.environ["CODEX_HOME"] == str(tmp_path / "codex-home")
 
 
+def test_entrypoint_dispatches_vscode_adapter_components(
+    tmp_path: Path, captured_supervisor: type[SupervisorCapture]
+) -> None:
+    runtime = RuntimePlan.from_mapping(
+        {
+            "version": 1,
+            "project_path": "/workspace/project",
+            "home": str(tmp_path / "home"),
+            "identity": {"uid": 1000, "gid": 1001, "user": "developer"},
+            "state_slots": [
+                {"name": "codium/user-data", "path": str(tmp_path / "user-data")},
+                {"name": "codium/extensions", "path": str(tmp_path / "extensions")},
+            ],
+            "component": {
+                "id": "codium",
+                "adapter": "vscode",
+                "configuration": {
+                    "installation_path": "/opt/codium",
+                    "launcher": "codium",
+                    "state_slot_mapping": {
+                        "user-data": "user-data",
+                        "extensions": "extensions",
+                    },
+                },
+            },
+        }
+    )
+
+    assert run(runtime) == 42
+
+    (supervisor,) = captured_supervisor.instances
+    (child,) = supervisor.children
+    assert child.name == "codium"
+    assert child.foreground is True
+    assert child.command == (
+        "/opt/codium/codium",
+        f"--user-data-dir={tmp_path / 'user-data'}",
+        f"--extensions-dir={tmp_path / 'extensions'}",
+        "/workspace/project",
+    )
+
+
+def test_entrypoint_rejects_unknown_adapters(tmp_path: Path) -> None:
+    document = runtime_document(tmp_path)
+    document["component"]["adapter"] = "fixture"  # type: ignore[index]
+
+    with pytest.raises(RuntimePlanError, match="unsupported component adapter"):
+        run(RuntimePlan.from_mapping(document))
+
+
 def test_entrypoint_headless_job_takes_the_foreground_slot(
     tmp_path: Path, captured_supervisor: type[SupervisorCapture]
 ) -> None:

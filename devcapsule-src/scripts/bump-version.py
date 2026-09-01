@@ -1,22 +1,26 @@
-"""Check or intentionally advance DevCapsule's distribution version."""
+"""Check or intentionally advance DevCapsule's distribution version.
+
+The version is authored in exactly one place, the ``[project]`` table of
+``pyproject.toml``; everything else derives it — runtime code through
+``importlib.metadata``, built artifacts through the build-time record
+``scripts/build-pex.sh`` stamps. This script therefore only validates that
+single source's shape and rewrites it on an intentional bump.
+"""
 
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 import re
 import sys
-from typing import Callable
 
 
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-VersionReader = Callable[[Path, str | None], tuple[str, str]]
 
 
 class VersionError(ValueError):
-    """The checked-in distribution versions are invalid or inconsistent."""
+    """The checked-in distribution version is invalid."""
 
 
 def _pyproject_version_and_replacement(
@@ -46,64 +50,10 @@ def _pyproject_version_and_replacement(
     return current, "".join(lines)
 
 
-def _package_version_and_replacement(
-    path: Path, replacement: str | None
-) -> tuple[str, str]:
-    text = path.read_text(encoding="utf-8")
-    match = re.search(r'^__version__ = "([^"]+)"$', text, flags=re.MULTILINE)
-    if match is None:
-        raise VersionError(f"{path} must define __version__ as a quoted string")
-    current = match.group(1)
-    updated = text
-    if replacement is not None:
-        updated = text[: match.start(1)] + replacement + text[match.end(1) :]
-    return current, updated
-
-
-def _build_info_version_and_replacement(
-    path: Path, replacement: str | None
-) -> tuple[str, str]:
-    try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise VersionError(f"cannot read {path}: {exc}") from exc
-    current = document.get("version")
-    if not isinstance(current, str):
-        raise VersionError(f"{path} must contain a string version")
-    # The editable-source build mnemonic is derived, not independently
-    # managed: it must always read v<version>-local. Official and binary
-    # mnemonics are stamped at build time by scripts/build-pex.sh instead.
-    if document.get("build_mnemonic") != f"v{current}-local":
-        raise VersionError(
-            f"{path} build_mnemonic must be 'v{current}-local'; "
-            "the editable-source mnemonic is derived from the version"
-        )
-    if replacement is not None:
-        document["version"] = replacement
-        document["build_mnemonic"] = f"v{replacement}-local"
-    updated = json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
-    return current, updated
-
-
-def _sources(project_root: Path) -> dict[Path, VersionReader]:
-    return {
-        project_root / "pyproject.toml": _pyproject_version_and_replacement,
-        project_root / "devcapsule" / "__init__.py": _package_version_and_replacement,
-        project_root
-        / "devcapsule"
-        / "_build_info.json": _build_info_version_and_replacement,
-    }
-
-
 def checked_version(project_root: Path = PROJECT_ROOT) -> str:
-    versions = {
-        path: reader(path, None)[0] for path, reader in _sources(project_root).items()
-    }
-    distinct = set(versions.values())
-    if len(distinct) != 1:
-        details = ", ".join(f"{path.name}={version}" for path, version in versions.items())
-        raise VersionError(f"distribution versions disagree: {details}")
-    version = distinct.pop()
+    version, _ = _pyproject_version_and_replacement(
+        project_root / "pyproject.toml", None
+    )
     if VERSION_PATTERN.fullmatch(version) is None:
         raise VersionError(
             f"distribution version {version!r} must use numeric MAJOR.MINOR.PATCH form"
@@ -136,12 +86,9 @@ def next_version(current: str, requested: str) -> str:
 def bump_version(requested: str, project_root: Path = PROJECT_ROOT) -> tuple[str, str]:
     current = checked_version(project_root)
     selected = next_version(current, requested)
-    replacements = {
-        path: reader(path, selected)[1]
-        for path, reader in _sources(project_root).items()
-    }
-    for path, text in replacements.items():
-        path.write_text(text, encoding="utf-8")
+    path = project_root / "pyproject.toml"
+    _, updated = _pyproject_version_and_replacement(path, selected)
+    path.write_text(updated, encoding="utf-8")
     if checked_version(project_root) != selected:
         raise VersionError("distribution version did not update consistently")
     return current, selected
@@ -152,7 +99,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         description="Check or intentionally advance the DevCapsule distribution version."
     )
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--check", action="store_true", help="verify all version sources agree")
+    group.add_argument("--check", action="store_true", help="verify the version's form")
     group.add_argument(
         "version",
         nargs="?",

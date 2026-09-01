@@ -19,7 +19,7 @@ from devcapsule.base_image import BaseImageBuildOptions, build_base_image_spec, 
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.container_runtime.contract import Identity, RuntimePlan
 from devcapsule.image_build import render_build_context
-from devcapsule.materialization import ArtifactSpec, ImageDetails, ensure_materialized_pycharm
+from devcapsule.materialization import ArtifactSpec, ImageDetails, ensure_materialized_surface
 
 DEFAULT_BASE_IMAGE = "mycodespace.ai/pycharm:debug-v018"
 
@@ -130,7 +130,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
             render_build_context(materialization_spec.build_plan(), context)
             command(docker, "build", "--pull=false", "--tag", materialization_spec.image, str(context))
 
-        materialized_image, created = ensure_materialized_pycharm(
+        materialized_image, created = ensure_materialized_surface(
             base_reference=image,
             base_identity=inspection["Id"],
             platform=f"{inspection['Os']}-{inspection['Architecture']}",
@@ -174,7 +174,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
         )
 
         archive.unlink()
-        reused_image, created = ensure_materialized_pycharm(
+        reused_image, created = ensure_materialized_surface(
             base_reference=image,
             base_identity=inspection["Id"],
             platform=f"{inspection['Os']}-{inspection['Architecture']}",
