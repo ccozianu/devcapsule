@@ -37,6 +37,8 @@ status file; internal WIP/archive documents use the local index in that status.
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)
 - [D-0004 Configuration Resolution And Guided Run Experience](engineering-docs/decisions/product/d-0004-configuration-resolution-and-guided-run.md)
 - [D-0005 Agent-Neutral Base And Optional Agent Components](engineering-docs/decisions/product/d-0005-agent-neutral-base-and-optional-agent-components.md)
+- [D-0006 One Module For Host And Platform Friction (proposed)](engineering-docs/decisions/product/d-0006-host-platform-friction-module.md)
+- [D-0007 Resolution Matrix As Accumulated Verified Combinations (proposed)](engineering-docs/decisions/product/d-0007-resolution-matrix-model-and-interface.md)
 
 ## Specifications
 

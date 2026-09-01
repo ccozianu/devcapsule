@@ -215,6 +215,15 @@ ledger gates on.
   post-codium release that repins the base, so its lock never names a
   base whose runtime PEX rejects codium plans.
 
+- **Resolution-matrix redesign** (awaiting owner ruling): the 2026-09-01
+  design sessions produced two proposed decision records — D-0006 (a
+  `platforms.py` module owning host/platform friction: the `Platform`
+  enum, host detection, unified XDG derivation) and D-0007 (the
+  resolution matrix as accumulated verified combinations — edges,
+  declared couplings, default orthogonality — behind a minimal public
+  interface). No implementation until the owner decides the records;
+  the coming codium base repin is the first beneficiary.
+
 ## External State And Risks
 
 - The Antigravity license and redistribution analysis is a gate, not a
