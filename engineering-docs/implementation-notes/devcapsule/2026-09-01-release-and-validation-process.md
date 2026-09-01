@@ -84,8 +84,9 @@ the matrix pin.
    The build refuses a PEX without a verified public revision and stamps
    the PEX digest and source identity into the image labels.
 2. Push the image and record the registry digest.
-3. Land the repin: the new digest and build mnemonic in `_BASE_TABLE`
-   and an advanced `MATRIX_VERSION` in `resolution_matrix.py`.
+3. Land the repin commit: in `resolution_matrix.py`, update `_BASE_TABLE`
+   with the new registry digest and build mnemonic, and advance
+   `MATRIX_VERSION`.
 4. Only then tag the distribution release, so the published client's
    embedded matrix pins the new base.
 
