@@ -227,7 +227,14 @@ ledger gates on.
   fully tested, so it has **no edges in the matrix yet** — resolution
   keeps selecting v026; once the owner's smoke verifies v0.2.8
   combinations, adding its edges (and advancing the matrix version) is a
-  data change, per the model.
+  data change, per the model. Fresh-checkout E2E evidence (2026-09-01):
+  a clean clone of branch revision `eb3fbe0` from GitHub (submodules
+  included) passed the full ladder from inside the dogfood capsule —
+  `nox -s build` producing a public v0.2.8 PEX from the branch, `nox -s
+  e2e` (4 Docker tests), and `nox -s recursive_dogfood_e2e` (preflight
+  all-pass, peer-capsule dry-run, contributor bootstrap, recursive local
+  clone). The checkout remains at `/home/devcapsule/e2e-fresh-devcapsule`
+  with its built artifacts for the owner's v0.2.8 smoke.
 
 ## External State And Risks
 
