@@ -39,6 +39,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [D-0005 Agent-Neutral Base And Optional Agent Components](engineering-docs/decisions/product/d-0005-agent-neutral-base-and-optional-agent-components.md)
 - [D-0006 One Module For Host And Platform Friction](engineering-docs/decisions/product/d-0006-host-platform-friction-module.md)
 - [D-0007 Resolution Matrix As Accumulated Verified Combinations](engineering-docs/decisions/product/d-0007-resolution-matrix-model-and-interface.md)
+- [D-0008 Known-Good Checkout Configuration History](engineering-docs/decisions/product/d-0008-known-good-configuration-history.md)
 
 ## Specifications
 

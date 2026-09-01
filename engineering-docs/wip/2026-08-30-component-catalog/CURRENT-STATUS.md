@@ -180,6 +180,15 @@ process this serves is now recorded in
 including the owner's 2026-09-01 validation that the 0.2.8 client runs
 correctly against the v026 base for the surfaces that base already knew.
 
+Also on this branch, at the owner's direction on 2026-09-01: D-0008
+(known-good checkout configuration history) is decided and implemented.
+`project run` exiting zero records the checkout record and its generated
+resolution as a stamped generation under the XDG state home
+(`config-history/<creator>/<slug>/<UTC-stamp>/`), iff no existing
+generation holds identical content — success is the only writer, so every
+entry is safe to restore by hand-copy. A guided `config history`/
+`restore` command surface is recorded follow-on work in the decision.
+
 ## Next Resumable Task
 
 After the `codium` component integrates: track 2, the Antigravity CLI

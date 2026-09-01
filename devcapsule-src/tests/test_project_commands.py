@@ -513,6 +513,70 @@ def initialize_codium_project(project: Path) -> Path:
     return lock_path
 
 
+def test_project_run_records_known_good_configuration_only_on_success(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "history-project"
+    project.mkdir()
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+        "XDG_STATE_HOME": str(tmp_path / "state"),
+    }
+    history_root = tmp_path / "state" / "devcapsule" / "config-history"
+
+    with patch.dict(os.environ, env, clear=False):
+        lock_path = initialize_codium_project(project)
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "authorize", "base-image", LOCKED_BASE]
+            )
+            == 0
+        )
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        realized = SimpleNamespace(
+            image=SimpleNamespace(reference="devcapsule-local-codium:0123456789abcdef0123"),
+            created=True,
+            locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
+        )
+        capsys.readouterr()
+
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=3),
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 3
+        # A failed session proves nothing; no generation appears.
+        assert not history_root.exists()
+
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0),
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+        assert "Recorded known-good configuration:" in capsys.readouterr().out
+        generations = sorted(history_root.rglob("snapshot.toml"))
+        assert len(generations) == 1
+        generation = generations[0].parent
+        records = registered_checkouts()
+        assert (generation / "devcapsule.checkout.toml").read_bytes() == (
+            records[0].record_path.read_bytes()
+        )
+        assert (generation / "devcapsule.resolved.toml").read_bytes() == (
+            records[0].record_path.with_name("devcapsule.resolved.toml").read_bytes()
+        )
+
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0),
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+        # An unchanged configuration succeeding again records nothing new.
+        assert "Recorded known-good configuration:" not in capsys.readouterr().out
+        assert sorted(history_root.rglob("snapshot.toml")) == generations
+
+
 def test_project_run_launches_a_codium_surface_from_its_plan_slots(
     tmp_path: Path, capsys
 ) -> None:
