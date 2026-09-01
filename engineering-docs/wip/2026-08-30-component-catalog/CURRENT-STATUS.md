@@ -174,7 +174,11 @@ metadata is only a fallback — editable installs freeze their metadata at
 install time and go stale across bumps). Built artifacts are unchanged:
 `build-pex.sh` still stamps the full record, and `read_pex_build_info`
 still vets artifacts without executing them. `bump-version.py` now guards
-one file, so a bump is a single edited line.
+one file, so a bump is a single edited line. The release and validation
+process this serves is now recorded in
+[the release process note](../../implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md),
+including the owner's 2026-09-01 validation that the 0.2.8 client runs
+correctly against the v026 base for the surfaces that base already knew.
 
 ## Next Resumable Task
 
