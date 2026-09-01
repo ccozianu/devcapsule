@@ -513,6 +513,55 @@ def initialize_codium_project(project: Path) -> Path:
     return lock_path
 
 
+def test_project_run_starts_immediately_after_init(tmp_path: Path, capsys) -> None:
+    """Init's postcondition is run-readiness: no 'config resolve' in between."""
+
+    project = tmp_path / "fresh-project"
+    project.mkdir()
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+        "XDG_STATE_HOME": str(tmp_path / "state"),
+    }
+    with patch.dict(os.environ, env, clear=False):
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "init",
+                    "--need",
+                    "python",
+                    "--need",
+                    "python-ide",
+                    "--creator",
+                    "https://github.com/example",
+                    "--authorize",
+                    "base-image",
+                    "yes",
+                ]
+            )
+            == 0
+        )
+        capsys.readouterr()
+        lock_text = (project / ".devcapsule" / "devcapsule.linux-amd64.lock").read_text(
+            encoding="utf-8"
+        )
+        realized = SimpleNamespace(
+            image=SimpleNamespace(reference="devcapsule-local-pycharm:0123456789abcdef0123"),
+            created=True,
+            locked=parse_locked_environment(tomllib.loads(lock_text)),
+        )
+
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0),
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+
+
 def test_project_run_records_known_good_configuration_only_on_success(
     tmp_path: Path, capsys
 ) -> None:

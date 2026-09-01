@@ -383,7 +383,23 @@ def initialize_project(
         validate_manifest(existing_manifest, manifest_path)
 
     if existing_manifest is not None and lock_path.is_file() and not request.regenerate:
-        _refuse_when_fully_initialized(root, existing_manifest)
+        if _fully_initialized(root, existing_manifest):
+            if request.answers:
+                # A repeated init carrying --authorize/--set/--bind must not
+                # silently drop the developer's expressed answers (bug of
+                # 2026-09-01): they are "individual answers" in the design's
+                # own vocabulary, applied here through the same primitives
+                # the config family uses, then resolved afresh so the init
+                # postcondition — 'project run' starts it — holds.
+                return _apply_answers_to_standing_checkout(
+                    root, manifest_path, lock_path, platform, request
+                )
+            raise ProjectConfigurationError(
+                f"{root} is already fully initialized: manifest, platform lock, "
+                "checkout record, and a fresh resolution all stand. 'devcapsule "
+                "project init --regenerate' rewrites the derived platform lock; "
+                "the 'config' family changes individual answers."
+            )
 
     elicitor = Elicitor(
         _init_command_line(request),
@@ -765,23 +781,86 @@ def _apply_extra_answers(
                 record.environment_bindings[answer.name] = value
 
 
-def _refuse_when_fully_initialized(root: Path, manifest: Mapping[str, Any]) -> None:
+def _fully_initialized(root: Path, manifest: Mapping[str, Any]) -> bool:
+    """Whether all four owned artifacts stand with a fresh resolution.
+
+    Partial and stale states stay init's own repair job; only this state
+    makes a plain re-init meaningless.
+    """
+
     _path, lock = lock_for(root, manifest)
     input_path, output_path = checkout_record_paths(manifest, root)
     if not input_path.is_file() or not output_path.is_file():
-        return
+        return False
     checkout = load_toml(input_path)
     resolution = load_toml(output_path)
     if resolution.get("devcapsule-resolved-schema-version") != 1:
-        return
+        return False
     if resolution.get("status") == "unresolved":
-        return
+        return False
     if stale_resolution_inputs(manifest, lock, checkout, resolution):
-        return
-    raise ProjectConfigurationError(
-        f"{root} is already fully initialized: manifest, platform lock, checkout record, "
-        "and a fresh resolution all stand. 'devcapsule project init --regenerate' rewrites "
-        "the derived platform lock; the 'config' family changes individual answers."
+        return False
+    return True
+
+
+def _apply_answers_to_standing_checkout(
+    root: Path,
+    manifest_path: Path,
+    lock_path: Path,
+    platform: Platform,
+    request: InitializeRequest,
+) -> InitializeReport:
+    """Apply a repeated init's carried answers to the standing checkout.
+
+    Init stays non-idempotent over authored artifacts — identity flags on a
+    standing manifest are not re-authored here — but the invocation's
+    authorization, set, and bind answers are applied exactly as the config
+    family would apply them, and the resolution is refreshed so 'project
+    run' works immediately afterward.
+    """
+
+    manifest = load_toml(manifest_path)
+    validate_manifest(manifest, manifest_path)
+    _, lock = lock_for(root, manifest)
+    declarations = authorization_declarations(manifest, lock)
+    record = CheckoutRecord(manifest, root)
+    authorize_answers = {
+        (answer.name, "value"): answer.value
+        for answer in request.answers
+        if answer.family == "authorize"
+    }
+    elicitor = Elicitor(authorize_answers, interactive=False)
+    authorized = _elicit_acquisitions(elicitor, declarations, record)
+    elicitor.finish()
+    _apply_extra_answers(request.answers, manifest, lock, record)
+    record.write()
+    resolve_report = resolve_checkout(root)
+
+    project = manifest["project"]
+    base_declaration = declarations.get("base-image")
+    if base_declaration is not None:
+        base_display = base_declaration.display_value or str(
+            base_declaration.recommended_value
+        )
+    else:
+        base_display = str(lock.get("image", {}).get("reference", "image lock"))
+    return InitializeReport(
+        manifest_path=manifest_path,
+        manifest_action="Kept",
+        project_name=str(project["name"]),
+        creator=str(project["creator"]),
+        slug=str(project["slug"]),
+        project_mount=str(project["mount"]),
+        capabilities=MATRICES[platform].normalize(
+            manifest.get("capabilities", {}).get("need", [])
+        ),
+        lock_path=lock_path,
+        lock_action="Kept",
+        base_display=base_display,
+        recommendations=(),
+        authorized=tuple(authorized),
+        checkout_record=record.input_path,
+        resolve=resolve_report,
     )
 
 

@@ -9,6 +9,7 @@ import tomllib
 from unittest.mock import patch
 
 import pytest
+import shutil
 
 from devcapsule import cli
 from devcapsule.elicitation import ElicitationIncomplete
@@ -96,6 +97,77 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
 
         assert "Created" in output
         assert "Project initialized" in output
+
+
+def full_init_command(project: Path) -> list[str]:
+    return [
+        "project",
+        "--path",
+        str(project),
+        "init",
+        "--need",
+        "python",
+        "--need",
+        "python-ide",
+        "--creator",
+        "https://github.com/example",
+        "--authorize",
+        "base-image",
+        "yes",
+    ]
+
+
+def test_repeated_init_applies_carried_answers_to_the_standing_checkout(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "fresh-project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(full_init_command(project)) == 0
+        capsys.readouterr()
+
+        # Re-pasting the identical full command must not silently drop its
+        # --authorize answers: they are applied and the resolution refreshed.
+        assert cli.main(full_init_command(project)) == 0
+        output = capsys.readouterr().out
+        assert "Kept" in output
+        assert "Authorized for this checkout: base-image." in output
+        assert "Project initialized; 'devcapsule project run' starts it." in output
+
+
+def test_repeated_init_without_answers_still_refuses(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "fresh-project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(full_init_command(project)) == 0
+        capsys.readouterr()
+
+        assert cli.main(full_init_command(project)[:-3]) == 2
+        assert "already fully initialized" in capsys.readouterr().err
+
+
+def test_init_repairs_a_deleted_checkout_config_tree(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "fresh-project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(full_init_command(project)) == 0
+        capsys.readouterr()
+        config_root = tmp_path / "config" / "devcapsule" / "projects"
+        record = next(config_root.rglob("devcapsule.checkout.toml"))
+        shutil.rmtree(record.parent)
+
+        # The owner's recovery flow: wipe the checkout's config directory and
+        # re-run the identical init; repair restores record, authorization,
+        # and a fresh resolution.
+        assert cli.main(full_init_command(project)) == 0
+        output = capsys.readouterr().out
+        assert "Authorized for this checkout: base-image." in output
+        restored = next(config_root.rglob("devcapsule.checkout.toml"))
+        assert read_toml(restored)["authorization"]["base-image"]["reference"] == (
+            matrix_base_reference()
+        )
+        resolution = read_toml(restored.with_name("devcapsule.resolved.toml"))
+        assert resolution["devcapsule-resolved-schema-version"] == 1
 
 
 def test_missing_base_authorization_batch_fails_with_the_exact_remedy(
@@ -298,7 +370,9 @@ def test_fully_initialized_project_fails_loudly_naming_regenerate(
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         assert cli.main(arguments) == 0
         capsys.readouterr()
-        assert cli.main(arguments) == 2
+        # A repeat carrying answers applies them (see the repeated-init
+        # tests); the refusal is for a repeat with nothing to apply.
+        assert cli.main(arguments[:-3]) == 2
         assert "--regenerate" in capsys.readouterr().err
         assert cli.main([*arguments, "--regenerate"]) == 0
 

@@ -2,8 +2,8 @@
 
 Date opened: 2026-09-01
 
-Status: open; reported by the product owner during the tictactoe codium
-smoke; fix scheduled after the smoke completes
+Status: fix implemented 2026-09-01, awaiting the owner's validation in the
+tictactoe smoke
 
 Requirements: R-PRODUCT-001
 
@@ -73,11 +73,30 @@ devcapsule project --path . config authorize base-image "<locked reference>"
 devcapsule project --path . config resolve
 ```
 
-## Fix Scope
+## Fix (2026-09-01)
 
-Scheduled after the tictactoe smoke. Decide and implement: make repeated
-`init` apply authorization carriers to the standing checkout (or name
-their being ignored in the refusal), and make the init report enumerate
-authorization outcomes explicitly. Add regression tests for the repeated
-and partial-init sequences alongside the existing single-invocation
-coverage.
+The owner moved the fix ahead of the smoke and additionally reported that
+after a successful init a manual `config resolve` was needed before
+`project run` — contradicting init's stated postcondition ("a fresh
+resolution stands; 'devcapsule project run' starts it").
+
+Implemented, keeping init non-idempotent over authored artifacts:
+
+- A repeated `init` over a **fully initialized, fresh** checkout that
+  carries `--authorize`/`--set`/`--bind` answers now **applies them** to
+  the standing checkout through the same primitives the config family
+  uses, then refreshes the resolution — so re-pasting the intended full
+  command self-heals, and `project run` works immediately afterward. A
+  repeat carrying **no** answers still refuses loudly naming
+  `--regenerate` and the config family.
+- Partial and stale states were already init's repair job and remain so;
+  the owner's recovery flow (`rm -rf` of the checkout's config directory,
+  then the identical init) is now covered by a regression test, alongside
+  repeated-init-with-answers, repeat-without-answers-still-refuses, and
+  an init-then-run test that asserts no `config resolve` is needed in
+  between.
+
+The exact sequence that produced the original silent "none" remains
+unreproduced (all single-invocation paths were verified loud); with the
+repair path in place, every suspected sequence now converges to a correct
+state by re-running the intended command.
