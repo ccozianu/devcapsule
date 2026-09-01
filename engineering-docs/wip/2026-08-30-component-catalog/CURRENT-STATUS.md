@@ -165,6 +165,17 @@ tests, mypy, and the live launch are done; the launch put a VSCodium window
 with the tictactoe sample on the owner's display). The smoke currently
 needs the runtime-PEX override described under *External State And Risks*.
 
+Also on this branch, at the owner's direction on 2026-09-01 while preparing
+the v0.2.8 release: the distribution version is now authored solely in
+`pyproject.toml`. The checked-in `_build_info.json` and importable
+`__version__` are deleted; a missing build record now *defines* a
+source-form run, whose identity derives from the authored file (installed
+metadata is only a fallback — editable installs freeze their metadata at
+install time and go stale across bumps). Built artifacts are unchanged:
+`build-pex.sh` still stamps the full record, and `read_pex_build_info`
+still vets artifacts without executing them. `bump-version.py` now guards
+one file, so a bump is a single edited line.
+
 ## Next Resumable Task
 
 After the `codium` component integrates: track 2, the Antigravity CLI

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from importlib.metadata import PackageNotFoundError, version as distribution_version
 from importlib.resources import files
 import json
 from pathlib import Path
 import re
+import tomllib
 from typing import Any, Mapping
 from zipfile import BadZipFile, ZipFile
 
@@ -73,10 +75,21 @@ class BuildInfo:
 
 
 def current_build_info() -> BuildInfo:
+    """Describe this running distribution: its stamped build, or its source form.
+
+    Only ``scripts/build-pex.sh`` creates ``_build_info.json``, so the record's
+    presence is the definition of a built artifact; a present-but-malformed
+    record therefore stays an error rather than masquerading as source. In its
+    absence this is a source-form run — nothing was built, so there is no build
+    to describe — and the identity is derived: the version from the installed
+    distribution metadata that ``pyproject.toml`` alone authors, and the
+    ``v<version>-local`` mnemonic that marks an unbuilt source run.
+    """
+
     resource = files("devcapsule").joinpath("_build_info.json")
     try:
         return BuildInfo.from_json(resource.read_text(encoding="utf-8"))
-    except OSError as resource_error:
+    except OSError:
         # Some editable installers expose the project root as the package's
         # resource location even though imports resolve to this source tree.
         # The sibling path preserves source/PEX command parity without
@@ -84,11 +97,56 @@ def current_build_info() -> BuildInfo:
         sibling = Path(__file__).with_name("_build_info.json")
         try:
             return BuildInfo.from_json(sibling.read_text(encoding="utf-8"))
-        except OSError as sibling_error:
-            raise BuildInfoError(
-                f"cannot read embedded build information: {resource_error}; "
-                f"source fallback failed: {sibling_error}"
-            ) from sibling_error
+        except OSError:
+            return _source_form_build_info()
+
+
+# In a source checkout the authored pyproject.toml sits beside the package;
+# in any installed form it does not, and the installed metadata answers.
+_SOURCE_PYPROJECT = Path(__file__).parents[1] / "pyproject.toml"
+
+
+def _source_form_build_info() -> BuildInfo:
+    package_version = _authored_version() or _installed_version()
+    return BuildInfo(
+        schema_version=2,
+        version=package_version,
+        source_repository="unknown",
+        source_revision="unknown",
+        source_url="unknown",
+        build_mnemonic=f"v{package_version}-local",
+    )
+
+
+def _authored_version() -> str | None:
+    """The version pyproject.toml authors, when running from a source checkout.
+
+    Preferred over installed metadata because an editable install freezes its
+    metadata at install time: after a version bump it reports the old version
+    until reinstalled, while the authored file is always current.
+    """
+
+    try:
+        document = tomllib.loads(_SOURCE_PYPROJECT.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    project = document.get("project")
+    if not isinstance(project, dict) or project.get("name") != "devcapsule":
+        return None
+    selected = project.get("version")
+    return selected if isinstance(selected, str) and selected else None
+
+
+def _installed_version() -> str:
+    try:
+        return distribution_version("devcapsule")
+    except PackageNotFoundError as exc:
+        raise BuildInfoError(
+            "the devcapsule distribution is neither a source checkout nor "
+            "installed, so no version metadata exists; install the package "
+            "(for example 'pip install -e devcapsule-src') or run a built "
+            "artifact"
+        ) from exc
 
 
 def read_pex_build_info(path: str | Path) -> BuildInfo:

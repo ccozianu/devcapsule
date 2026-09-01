@@ -8,7 +8,15 @@ import subprocess
 
 import pytest
 
-from devcapsule import __version__
+import tomllib
+
+# The artifact under test is built from this tree, so compare against the
+# authored version, not installed metadata an editable install may have frozen.
+PACKAGE_VERSION = tomllib.loads(
+    (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+)["project"]["version"]
 
 DEFAULT_CLEAN_MACHINE_IMAGE = "ubuntu:24.04"
 
@@ -63,10 +71,10 @@ done
         assert completed.returncode == 0, completed.stderr
         version = json.loads(completed.stdout)
         assert version["schema_version"] == 2
-        assert version["version"] == __version__
+        assert version["version"] == PACKAGE_VERSION
         assert version["build_mnemonic"] == os.environ.get(
             "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC",
-            f"v{__version__}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}",
+            f"v{PACKAGE_VERSION}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}",
         )
     finally:
         command(docker, "rm", "--force", container, check=False)

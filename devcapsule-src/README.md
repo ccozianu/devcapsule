@@ -147,13 +147,16 @@ python -m nox -s bump -- major
 python -m nox -s bump -- 0.2.0
 ```
 
-The command updates the package metadata, importable `__version__`, and source
-build information together. It refuses malformed, equal, or decreasing
-versions. Review and commit those source changes before building a public
-revision-bearing artifact. `python -m nox -s build` and `scripts/build-pex.sh`
-both verify that the checked-in versions agree; the resulting PEX reports the
-selected package version separately from its release mnemonic and source
-revision.
+The version is authored in exactly one place, the `[project]` table of
+`pyproject.toml`; the command rewrites that single line and refuses malformed,
+equal, or decreasing versions. Everything else derives the version: runtime
+code reads the installed distribution's metadata through `importlib.metadata`,
+and `scripts/build-pex.sh` stamps it — with the release mnemonic and source
+revision — into the build information embedded in every built artifact. A
+source checkout carries no build information at all; `devcapsule version`
+recognizes that absence as a source-form run and reports the derived
+`v<version>-local` identity. Review and commit the version change before
+building a public revision-bearing artifact.
 
 ## End-User Artifact
 

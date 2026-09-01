@@ -12,8 +12,16 @@ from pathlib import Path
 
 import pytest
 
-from devcapsule import __version__
+import tomllib
 from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenBroker
+
+# The artifact under test is built from this tree, so compare against the
+# authored version, not installed metadata an editable install may have frozen.
+PACKAGE_VERSION = tomllib.loads(
+    (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+)["project"]["version"]
 
 
 @pytest.mark.integration
@@ -150,10 +158,10 @@ def test_built_pex_exposes_self_contained_source_identity(built_pex: Path) -> No
     assert completed.returncode == 0, completed.stderr
     value = json.loads(completed.stdout)
     assert value["schema_version"] == 2
-    assert value["version"] == __version__
+    assert value["version"] == PACKAGE_VERSION
     assert value["build_mnemonic"] == os.environ.get(
         "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC",
-        f"v{__version__}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}",
+        f"v{PACKAGE_VERSION}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}",
     )
     if built_pex.name == "devcapsule-local.pex":
         assert value["source_revision"] == "unknown"
@@ -267,7 +275,7 @@ def test_clean_unpublished_revision_can_be_built_for_local_testing(tmp_path: Pat
     )
     value = json.loads(version.stdout)
     assert value["build_mnemonic"] == (
-        f"v{__version__}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}"
+        f"v{PACKAGE_VERSION}-local-{os.environ.get('DEVCAPSULE_SCIE_PLATFORM', 'linux-x86_64')}"
     )
     assert value["source_revision"] == revision
     assert value["source_repository"] == "https://github.com/example/devcapsule-unpublished-test"
