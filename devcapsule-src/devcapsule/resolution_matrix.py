@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-2"
+_MATRIX_VERSION = "embedded-3"
 
 
 # --------------------------------------------------------------------------
@@ -341,6 +341,21 @@ _V026_BASE = _BasePin(
     },
 )
 
+# The v0.2.8 base (recipe version 5, same shipped toolchain) embeds a runtime
+# PEX that understands the vscode adapter, which v026 predates; its verified
+# edges accumulate as smokes prove components against it.
+_V0_2_8_BASE = _BasePin(
+    mnemonic="v0.2.8",
+    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:8be27a7773bdb58e8d4d2f05283752736d12c2062e4c566d33d7f2e71ef336db"
+        ),
+        "build-mnemonic": "v0.2.8",
+    },
+)
+
 _PYCHARM_2026_2_0_1 = _ComponentPin(
     component_id="pycharm",
     version="2026.2.0.1",
@@ -437,7 +452,7 @@ _DOGFOOD_E2E = "recursive dogfood E2E (embedded-2 formation)"
 _LINUX_AMD64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_AMD64,
     matrix_version=_MATRIX_VERSION,
-    bases=(_V026_BASE,),
+    bases=(_V026_BASE, _V0_2_8_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),
@@ -452,6 +467,13 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             "1.126.04524",
             "v026",
             "product-owner live smoke 2026-08-31 (current-tree runtime PEX override)",
+        ),
+        _VerifiedEdge(
+            "codium",
+            "1.126.04524",
+            "v0.2.8",
+            "product-owner smoke 2026-09-02: tictactoe sample "
+            "(config-history 20260902T075529Z)",
         ),
         _VerifiedEdge("codex", "0.145.0", "v026", _DOGFOOD_E2E),
         _VerifiedEdge("claude-code", "2.1.227", "v026", _DOGFOOD_E2E),

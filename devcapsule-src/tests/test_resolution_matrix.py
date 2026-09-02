@@ -33,8 +33,10 @@ MATRIX = MATRICES[Platform.LINUX_AMD64]
 GOLDEN_ROOT = Path(__file__).parent / "resources" / "golden_locks"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Captured from the pre-D-0007 generate_platform_lock; resolve() must keep
-# producing these bytes so standing projects regenerate identical locks.
+# Byte-exact fixtures for the current matrix formation. Originally captured
+# from the pre-D-0007 generator to prove the refactor byte-identical; on a
+# deliberate pin advance they are regenerated in the same commit, so any
+# other diff in generated locks is a regression.
 GOLDEN_NEEDS = {
     "pycharm-minimal": ["python", "python-ide"],
     "dogfood": ["claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"],
@@ -166,6 +168,25 @@ def test_frontend_need_generates_a_complete_codium_lock() -> None:
     assert codium["url"].endswith("VSCodium-linux-x64-1.126.04524.tar.gz")
     assert lock["materialization"]["recipe"] == "vscode-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "codium"}
+    # Codium's newest verified base is v0.2.8 (owner smoke 2026-09-02); v026
+    # predates the vscode adapter in its embedded runtime.
+    assert lock["base"]["build-mnemonic"] == "v0.2.8"
+
+
+def test_base_selection_follows_each_needs_verified_edges() -> None:
+    """The sparse matrix in action: newest verified base per capability set.
+
+    Codium alone is proven on v0.2.8; the agents are so far proven only on
+    v026, so compositions including them stay on the base where every
+    required edge is verified.
+    """
+
+    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.2.8"
+    assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v026"
+    assert (
+        parse(rendered(["node", "frontend-ide", "codex-agent"]))["base"]["build-mnemonic"]
+        == "v026"
+    )
 
 
 def test_formation_reports_capabilities_and_provenance() -> None:
