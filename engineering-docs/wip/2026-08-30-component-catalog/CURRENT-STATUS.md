@@ -160,10 +160,18 @@ grant — see the
 [setuid sandbox design note](../../design-notes/devcapsule/vscode-sandbox-setuid.md)
 for the collision with default hardening that forced the ruling.
 
-Remaining before the codium PR: the product owner's smoke sign-off (unit
-tests, mypy, and the live launch are done; the launch put a VSCodium window
-with the tictactoe sample on the owner's display). The smoke currently
-needs the runtime-PEX override described under *External State And Risks*.
+The product owner's smoke sign-off arrived 2026-09-02: codium ran the
+tictactoe sample end-to-end on the **v0.2.8 base** (no runtime-PEX
+override), and the D-0008 history recorded the known-good configuration
+(generation `20260902T075529Z`). That run is the verified edge behind the
+`embedded-3` matrix advance: the v0.2.8 base pin
+(`sha256:8be27a77…f336db`) and the codium×v0.2.8 edge are in the matrix,
+so codium-only needs now resolve to v0.2.8 while every formation with
+still-unproven components stays on v026. The smoke also surfaced two open
+init/run authorization bugs (see the 2026-09-01 and 2026-09-02 bug
+records); the 2026-09-01 one is fixed, the 2026-09-02 one is scheduled
+after this integration. The branch is ready for the owner to open the
+codium PR.
 
 Also on this branch, at the owner's direction on 2026-09-01 while preparing
 the v0.2.8 release: the distribution version is now authored solely in
@@ -197,12 +205,13 @@ ledger gates on.
 
 ## Open Threads
 
-- **Base rebuild** (coordination fact): the v026 base's embedded runtime
-  PEX predates the `vscode` adapter, so codium containers reject their plan
-  under the stock base. Until a base built from a revision including this
-  branch ships, launches need
-  `-- --volume <host-path-to-current-pex>:/opt/devcapsule/bin/devcapsule.pex:ro`.
-  This gates codium for adopters, not the PR.
+- **Base rebuild** (updated 2026-09-02): resolved for codium-only needs —
+  the v0.2.8 base is published, owner-smoked with codium, and pinned in
+  matrix `embedded-3`, so those locks launch with no override. Formations
+  combining codium with agents still resolve to v026 (the agents have no
+  v0.2.8 edges yet) and therefore still need the runtime-PEX override
+  volume; smoking the agents on v0.2.8 and adding their edges retires the
+  override entirely.
 - **PyCharm slot-path migration** (recorded follow-up): PyCharm still
   travels the launcher's named state fields; every other surface uses the
   generic plan-slot mounts. Migrating PyCharm onto the generic path (and
