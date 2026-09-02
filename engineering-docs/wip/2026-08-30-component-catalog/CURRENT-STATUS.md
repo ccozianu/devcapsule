@@ -222,7 +222,11 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
      canonical image identity — awaiting the owner's re-smoke)
 
 New bugs found on the way join the list by owner triage rather than
-automatically blocking the release.
+automatically blocking the release. Logged but not yet triaged onto
+the list:
+[codium relaunch intermittently crashes its first renderer](../../bugs/devcapsule/2026-09-02-codium-relaunch-renderer-crash-after-clean-exit.md)
+(severity nuisance — the restart succeeds; two candidate mechanisms
+recorded with cheap discriminating diagnostics).
 
 ## Track 1 (integrated)
 
