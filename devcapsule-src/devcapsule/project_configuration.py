@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import platform
 import re
 import tomllib
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from urllib.parse import quote
 
 
 from devcapsule.compat import CliError
+from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 from devcapsule.components.catalog import (
     ComponentCatalogError,
     selected_component_definitions,
@@ -649,17 +649,8 @@ def canonical_digest(value: Mapping[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def platform_alias() -> str:
-    system = platform.system().lower()
-    machine = platform.machine().lower()
-    architecture = {"x86_64": "amd64", "aarch64": "arm64"}.get(machine, machine)
-    return f"{system}-{architecture}"
-
-
 def config_root(env: Mapping[str, str] | None = None) -> Path:
-    values = os.environ if env is None else env
-    home = Path(values.get("HOME", "~")).expanduser()
-    return Path(values.get("XDG_CONFIG_HOME") or home / ".config") / "devcapsule"
+    return XdgHomes.from_environment(env).config
 
 
 def checkout_directory(manifest: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
@@ -839,10 +830,14 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
     to keep existing committed locks working.
     """
 
-    path = root / ".devcapsule" / f"devcapsule.{platform_alias()}.lock"
+    try:
+        current = Platform.current()
+    except UnsupportedPlatformError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
+    path = root / ".devcapsule" / f"devcapsule.{current}.lock"
     if not path.is_file():
         raise ProjectConfigurationError(
-            f"Missing {path}: this project carries no platform lock for {platform_alias()}. "
+            f"Missing {path}: this project carries no platform lock for {current}. "
             "The platform lock is authored on the project side and committed with the project."
         )
     value = load_toml(path)

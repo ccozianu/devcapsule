@@ -30,6 +30,7 @@ from devcapsule.commands.framework import (
     carrier_answers,
 )
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
+from devcapsule.config_history import record_known_good_configuration
 from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
 from devcapsule.configuration_nodes import (
     CARRIER_FAMILY_BIND,
@@ -912,7 +913,7 @@ class ProjectRunCommand(Command):
                 checkout_runtime_plan,
                 {checkout_runtime_plan.component.id},
             )
-        return run_pycharm(
+        exit_code = run_pycharm(
             PycharmRunOptions(
                 project=root,
                 project_mount=str(runtime["project-mount"]),
@@ -947,6 +948,23 @@ class ProjectRunCommand(Command):
                 enable_host_browser=selected_host_browser,
             )
         )
+        if exit_code == 0:
+            # D-0008: a zero exit proves this configuration; record it as a
+            # known-good generation unless identical content already exists.
+            # Recording failure must never fail the successful run.
+            try:
+                recorded = record_known_good_configuration(
+                    manifest, input_path, output_path
+                )
+            except OSError as exc:
+                print(
+                    f"Warning: could not record the known-good configuration: {exc}",
+                    file=sys.stderr,
+                )
+            else:
+                if recorded is not None:
+                    print(f"Recorded known-good configuration: {recorded}")
+        return exit_code
 
 
 def _run_once_answers(

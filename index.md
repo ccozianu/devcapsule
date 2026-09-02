@@ -37,6 +37,9 @@ status file; internal WIP/archive documents use the local index in that status.
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)
 - [D-0004 Configuration Resolution And Guided Run Experience](engineering-docs/decisions/product/d-0004-configuration-resolution-and-guided-run.md)
 - [D-0005 Agent-Neutral Base And Optional Agent Components](engineering-docs/decisions/product/d-0005-agent-neutral-base-and-optional-agent-components.md)
+- [D-0006 One Module For Host And Platform Friction](engineering-docs/decisions/product/d-0006-host-platform-friction-module.md)
+- [D-0007 Resolution Matrix As Accumulated Verified Combinations](engineering-docs/decisions/product/d-0007-resolution-matrix-model-and-interface.md)
+- [D-0008 Known-Good Checkout Configuration History](engineering-docs/decisions/product/d-0008-known-good-configuration-history.md)
 
 ## Specifications
 
@@ -138,9 +141,12 @@ history; record current decisions in the active documents above.
 - [DevCapsule V1 test backlog](engineering-docs/implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md)
 - [Host browser URL bridge TLDR](engineering-docs/implementation-notes/devcapsule/2026-08-17-host-browser-url-bridge-tldr.md)
 - [V2 launcher-loss resource reconciliation](engineering-docs/implementation-notes/devcapsule/2026-08-18-v2-launch-resource-reconciliation.md)
+- [Release and validation process](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
 
 ## Bugs
 
+- [Init and run answers are not persisted as the authorizations they express](engineering-docs/bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
+- [init --authorize base-image left the checkout unauthorized](engineering-docs/bugs/devcapsule/2026-09-01-init-authorize-base-image-not-recorded.md)
 - [X11 passthrough grants the container a full host session credential](engineering-docs/bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)
 - [Detached DevCapsule containers exit and are never cleaned up](engineering-docs/bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md)
 - [Codex ACP fails because explicit CODEX_HOME does not exist](engineering-docs/bugs/devcapsule/2026-08-03-codex-acp-missing-home.md)

@@ -1,31 +1,42 @@
-"""The embedded resolution matrix: capability set + platform → platform lock.
+"""The resolution matrix: capability needs × platform → a verified formation.
 
-*Offline And The Embedded Matrix* (see
-``engineering-docs/design-notes/devcapsule/v1-user-experience.md``): the
-client ships a minimal embedded matrix with base digests pinned, so ``init``
-resolves entirely from local data — a pure file-producing derivation that
-needs no network and never probes the container daemon, because the daemon is
+The user expresses capability needs; this module looks up component versions
+that satisfy those needs on a platform, constrained by what has been tested
+(D-0007). Verification is a fact about a combination and does not expire:
+the matrix accumulates **verified edges** — (component version, base
+version, platform) with the evidence that verified them — plus **declared
+couplings** for component pairs with an integration surface, which need
+jointly verified version pairs. Components without a declared coupling
+compose freely on a shared verified base (default orthogonality). New
+releases append rows; removal is explicit retirement, never an implicit
+effect of newer versions arriving.
+
+Resolution selects the newest verified combination and is a pure offline
+derivation: same need, same matrix ⇒ identical lock bytes. It needs no
+network and never probes the container daemon, because the daemon is
 exactly the capability that requires explicit authorization.
 
 The generated lock follows the scoped-digest principle: it records a digest
 of exactly the inputs it derives from — the normalized capability set — and
-nothing more.  The retired whole-manifest digest is deliberately not written;
-no other manifest field may affect a lock's validity, and ``lock_for``
-already refuses to read it.  The recorded ``resolution-matrix-version`` is
-informational per ``R-COMPAT-001``: a newer client's matrix changes what
-would be *generated next time*, never the validity of a lock that stands.
+nothing more. The recorded ``resolution-matrix-version`` is informational
+per ``R-COMPAT-001``: a newer client's matrix changes what would be
+*generated next time*, never the validity of a lock that stands.
 
-The pins below are the proven current formation: the published v026 base at
-its immutable registry digest, and the exact component artifact set validated
-by the recursive dogfood E2E.  Advancing any pin advances
-``MATRIX_VERSION``.
+The public surface is deliberately minimal (Parnas): ``MATRICES`` keyed by
+``Platform``, ``ResolutionMatrix`` with ``capabilities``/``normalize``/
+``resolve``, the ``Formation`` a resolution returns, and
+``ResolutionError``. Everything else — the capability taxonomy, the pins,
+the selection policy, the evidence, the lock rendering — is this module's
+secret.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
+from devcapsule.platforms import Platform
 from devcapsule.project_configuration import (
     ProjectConfigurationError,
     canonical_digest,
@@ -34,260 +45,495 @@ from devcapsule.project_configuration import (
 )
 
 __all__ = [
-    "BASE_SATISFIED_CAPABILITIES",
-    "GeneratedLock",
-    "INTERACTIVE_SURFACE_CAPABILITIES",
-    "MATRIX_VERSION",
-    "SUPPORTED_PLATFORMS",
-    "generate_platform_lock",
-    "normalize_capability_need",
-    "supported_capabilities",
+    "MATRICES",
+    "Formation",
+    "ResolutionError",
+    "ResolutionMatrix",
 ]
 
 
-MATRIX_VERSION = "embedded-2"
+class ResolutionError(ProjectConfigurationError):
+    """The need cannot be satisfied by any verified combination.
 
-SUPPORTED_PLATFORMS = ("linux-amd64",)
+    The message is complete and displayable; callers show it verbatim.
+    """
 
-# Satisfied by every pinned base image and therefore never a lock entry:
-# recipe version 4 ships CPython, the Docker CLI suite, Node.js, and the
-# Temurin JDK plus Maven.
-BASE_SATISFIED_CAPABILITIES = frozenset(
-    {"python", "docker-cli", "node", "java", "maven"}
+
+_MATRIX_VERSION = "embedded-3"
+
+
+# --------------------------------------------------------------------------
+# The internal model: pins carry their lock fragment verbatim (the literal
+# stays visually diffable against the generated lock), the typed wrappers
+# carry what resolution needs to know about them.
+
+
+@dataclass(frozen=True)
+class _BasePin:
+    """One published base image and the capabilities it ships."""
+
+    mnemonic: str
+    satisfies: frozenset[str]
+    lock_table: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class _ComponentPin:
+    """One component version and its lock fragment."""
+
+    component_id: str
+    version: str
+    lock_table: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class _VerifiedEdge:
+    """A tested (component version, base version) pair, with its evidence."""
+
+    component_id: str
+    component_version: str
+    base_mnemonic: str
+    evidence: str
+
+
+@dataclass(frozen=True)
+class _Coupling:
+    """Two components with an integration surface needing joint verification."""
+
+    first_id: str
+    second_id: str
+    verified: frozenset[tuple[str, str]]
+    evidence: str
+
+
+@dataclass(frozen=True)
+class Formation:
+    """One resolved, verified formation, ready to be committed as a lock."""
+
+    capabilities: tuple[str, ...]
+    provenance: str
+    _document: Mapping[str, Any] = field(repr=False)
+    _header: str = field(repr=False)
+
+    def render_lock(self) -> str:
+        """The exact platform-lock bytes to write and commit."""
+
+        return self._header + _render_document(self._document)
+
+
+class ResolutionMatrix:
+    """One platform's accumulated verified combinations.
+
+    Clients know three operations: ``capabilities()`` (the askable
+    vocabulary), ``normalize()`` (canonical, vocabulary-checked form of a
+    need), and ``resolve()`` (a ``Formation`` or a ``ResolutionError``).
+    """
+
+    def __init__(
+        self,
+        *,
+        platform: Platform,
+        matrix_version: str,
+        bases: tuple[_BasePin, ...],
+        components: Mapping[str, tuple[_ComponentPin, ...]],
+        edges: tuple[_VerifiedEdge, ...],
+        couplings: tuple[_Coupling, ...],
+        surface_capabilities: Mapping[str, str],
+        ancillary_capabilities: Mapping[str, str],
+        materialization: Mapping[str, Mapping[str, Any]],
+    ) -> None:
+        # Bases and per-component pins are append-only, newest last;
+        # resolution prefers the newest verified combination.
+        self._platform = platform
+        self._matrix_version = matrix_version
+        self._bases = bases
+        self._components = components
+        self._verified = {
+            (edge.component_id, edge.component_version, edge.base_mnemonic): edge
+            for edge in edges
+        }
+        self._couplings = couplings
+        self._surface_capabilities = dict(surface_capabilities)
+        self._ancillary_capabilities = dict(ancillary_capabilities)
+        self._materialization = materialization
+
+    def capabilities(self) -> tuple[str, ...]:
+        """The complete capability vocabulary this matrix can resolve."""
+
+        base_satisfied: set[str] = set()
+        for base in self._bases:
+            base_satisfied |= base.satisfies
+        return tuple(
+            sorted(
+                base_satisfied
+                | set(self._surface_capabilities)
+                | set(self._ancillary_capabilities)
+            )
+        )
+
+    def normalize(self, need: object) -> tuple[str, ...]:
+        """Normalize a manifest ``capabilities.need`` value: sorted, unique, known."""
+
+        if not isinstance(need, Sequence) or isinstance(need, (str, bytes)):
+            raise ResolutionError("capabilities.need must be an array of capability names.")
+        names: set[str] = set()
+        for item in need:
+            if not isinstance(item, str) or not item:
+                raise ResolutionError(
+                    "capabilities.need entries must be non-empty strings."
+                )
+            names.add(item)
+        unknown = sorted(names - set(self.capabilities()))
+        if unknown:
+            raise ResolutionError(
+                "The embedded resolution matrix does not know "
+                + ", ".join(repr(name) for name in unknown)
+                + "; supported capabilities: "
+                + ", ".join(self.capabilities())
+                + "."
+            )
+        return tuple(sorted(names))
+
+    def resolve(self, need: object) -> Formation:
+        """Derive one complete verified formation from a capability set, offline."""
+
+        capabilities = self.normalize(need)
+        surface_id = self._selected_surface(capabilities)
+        required = [surface_id]
+        for capability in capabilities:
+            component_id = self._ancillary_capabilities.get(capability)
+            if component_id is not None:
+                required.append(component_id)
+        base_needs = {
+            capability
+            for capability in capabilities
+            if capability not in self._surface_capabilities
+            and capability not in self._ancillary_capabilities
+        }
+
+        failure = ""
+        for base in reversed(self._bases):
+            missing_from_base = sorted(base_needs - base.satisfies)
+            if missing_from_base:
+                failure = (
+                    f"base {base.mnemonic} does not ship "
+                    + ", ".join(missing_from_base)
+                )
+                continue
+            chosen, failure = self._verified_selection(required, base)
+            if chosen is None:
+                continue
+            return self._formation(capabilities, surface_id, base, chosen)
+        raise ResolutionError(
+            "No verified combination satisfies "
+            + ", ".join(capabilities)
+            + f" on {self._platform}: {failure}"
+        )
+
+    def _selected_surface(self, capabilities: tuple[str, ...]) -> str:
+        interactive = sorted(set(capabilities) & set(self._surface_capabilities))
+        if not interactive:
+            choices = ", ".join(sorted(self._surface_capabilities))
+            raise ResolutionError(
+                "The V1 environment needs an interactive-surface capability to select "
+                f"its surface; add exactly one of {choices} to capabilities.need."
+            )
+        if len(interactive) > 1:
+            raise ResolutionError(
+                "A V1 platform lock holds exactly one interactive surface, but "
+                f"capabilities.need selects {', '.join(interactive)}; keep exactly one."
+            )
+        return self._surface_capabilities[interactive[0]]
+
+    def _verified_selection(
+        self, required: list[str], base: _BasePin
+    ) -> tuple[dict[str, _ComponentPin] | None, str]:
+        """The newest verified pin of every required component on this base."""
+
+        chosen: dict[str, _ComponentPin] = {}
+        for component_id in required:
+            pin = next(
+                (
+                    candidate
+                    for candidate in reversed(self._components[component_id])
+                    if (component_id, candidate.version, base.mnemonic) in self._verified
+                ),
+                None,
+            )
+            if pin is None:
+                return None, (
+                    f"no verified {component_id} version against base {base.mnemonic}"
+                )
+            chosen[component_id] = pin
+        for coupling in self._couplings:
+            if coupling.first_id in chosen and coupling.second_id in chosen:
+                pair = (
+                    chosen[coupling.first_id].version,
+                    chosen[coupling.second_id].version,
+                )
+                if pair not in coupling.verified:
+                    return None, (
+                        f"{coupling.first_id} {pair[0]} and {coupling.second_id} "
+                        f"{pair[1]} have no jointly verified integration"
+                    )
+        return chosen, ""
+
+    def _formation(
+        self,
+        capabilities: tuple[str, ...],
+        surface_id: str,
+        base: _BasePin,
+        chosen: Mapping[str, _ComponentPin],
+    ) -> Formation:
+        components: dict[str, Any] = {
+            "interactive-surface": surface_id,
+            surface_id: dict(chosen[surface_id].lock_table),
+        }
+        for capability in capabilities:
+            component_id = self._ancillary_capabilities.get(capability)
+            if component_id is not None:
+                components[component_id] = dict(chosen[component_id].lock_table)
+        document: dict[str, Any] = {
+            "devcapsule-lock-format-version": 1,
+            "resolution-matrix-version": self._matrix_version,
+            "platform": self._platform.value,
+            # The scoped digest: the one derivation input beside the platform,
+            # which the filename already carries.
+            "capabilities-digest": canonical_digest({"need": list(capabilities)}),
+            "base": dict(base.lock_table),
+            "components": components,
+            "materialization": dict(self._materialization[surface_id]),
+        }
+        header = (
+            "# Generated by 'devcapsule project init' from the embedded resolution "
+            f"matrix {self._matrix_version}.\n"
+            "# Commit this file: it pins the exact environment collaborators receive.\n"
+        )
+        surface = chosen[surface_id]
+        return Formation(
+            capabilities=capabilities,
+            provenance=(
+                f"embedded resolution matrix {self._matrix_version}: "
+                f"{surface_id} {surface.version} on base {base.mnemonic}"
+            ),
+            _document=document,
+            _header=header,
+        )
+
+
+# --------------------------------------------------------------------------
+# The verified data. Pins below are lock fragments verbatim; edges record
+# what verified each (component version, base version) pair; advancing the
+# generated formation advances _MATRIX_VERSION.
+
+_V026_BASE = _BasePin(
+    mnemonic="v026",
+    # Recipe version 4 ships CPython, the Docker CLI suite, Node.js, and the
+    # Temurin JDK plus Maven; these capabilities are therefore satisfied by
+    # the base and never a lock entry.
+    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a"
+        ),
+        "build-mnemonic": "v026",
+    },
 )
 
-# Each interactive capability selects exactly one surface component. A V1
-# platform lock holds exactly one interactive surface, so a capability set
-# must name exactly one of these: none has nothing to run, and two would
-# ask one lock to carry two surfaces. Both fail with that explanation
-# rather than generating an unrunnable lock.
-INTERACTIVE_SURFACE_CAPABILITIES: dict[str, str] = {
-    "python-ide": "pycharm",
-    "frontend-ide": "codium",
-}
+# The v0.2.8 base (recipe version 5, same shipped toolchain) embeds a runtime
+# PEX that understands the vscode adapter, which v026 predates; its verified
+# edges accumulate as smokes prove components against it.
+_V0_2_8_BASE = _BasePin(
+    mnemonic="v0.2.8",
+    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:8be27a7773bdb58e8d4d2f05283752736d12c2062e4c566d33d7f2e71ef336db"
+        ),
+        "build-mnemonic": "v0.2.8",
+    },
+)
 
-_BASE_TABLE: dict[str, Any] = {
-    "reference": (
-        "docker.io/mycodespaceai/devcapsule-base"
-        "@sha256:695f9eb6dd269dc694b3367f6a2570d500b938998d6f7aa3aa00e5d04cc7394a"
-    ),
-    "build-mnemonic": "v026",
-}
-
-_PYCHARM_TABLE: dict[str, Any] = {
-    "version": "2026.2.0.1",
-    "variant": "professional",
-    "delivery-policy": "local-materialization",
-    "url": "https://download.jetbrains.com/python/pycharm-2026.2.0.1.tar.gz",
-    "sha256": "4a37cb2d15703553c61e814d8e014bfa47308508470de5f968c4e9645b771675",
-}
+_PYCHARM_2026_2_0_1 = _ComponentPin(
+    component_id="pycharm",
+    version="2026.2.0.1",
+    lock_table={
+        "version": "2026.2.0.1",
+        "variant": "professional",
+        "delivery-policy": "local-materialization",
+        "url": "https://download.jetbrains.com/python/pycharm-2026.2.0.1.tar.gz",
+        "sha256": "4a37cb2d15703553c61e814d8e014bfa47308508470de5f968c4e9645b771675",
+    },
+)
 
 # VSCodium 1.126.04524 is the latest published release as of 2026-08-31; the
 # checksum was recomputed locally from the downloaded archive and matches the
 # published .sha256 asset. MIT-licensed free/libre binaries, so caching them
 # in local environment images needs no per-developer acquisition terms.
-_CODIUM_TABLE: dict[str, Any] = {
-    "version": "1.126.04524",
-    "delivery-policy": "local-materialization",
-    "license": "MIT",
-    "url": (
-        "https://github.com/VSCodium/vscodium/releases/download/"
-        "1.126.04524/VSCodium-linux-x64-1.126.04524.tar.gz"
-    ),
-    "sha256": "adf3548df055d18e476cdee887488ba7486b879ad99a31a546c6b5c5ff296c24",
-}
-
-_INTERACTIVE_SURFACE_TABLES: dict[str, dict[str, Any]] = {
-    "pycharm": _PYCHARM_TABLE,
-    "codium": _CODIUM_TABLE,
-}
-
-# Ancillary component tables keyed by the capability that selects them; the
-# inner key is the component id the lock records.
-_ANCILLARY_COMPONENT_TABLES: dict[str, tuple[str, dict[str, Any]]] = {
-    "codex-agent": (
-        "codex",
-        {
-            "version": "0.145.0",
-            "delivery-policy": "local-materialization",
-            "integration": "jetbrains-ai-assistant",
-            "acp-version": "1.1.9",
-            "license": "Apache-2.0",
-            "artifacts": {
-                "linux-amd64": {
-                    "url": (
-                        "https://registry.npmjs.org/@openai/codex/-/"
-                        "codex-0.145.0-linux-x64.tgz"
-                    ),
-                    "sha256": (
-                        "11239480f8e3efd1430f23bbe91c1a397856b8bbe6185ccbaee2382d25e03df2"
-                    ),
-                    "archive-member": (
-                        "package/vendor/x86_64-unknown-linux-musl/bin/codex"
-                    ),
-                }
-            },
-        },
-    ),
-    "claude-code-agent": (
-        "claude-code",
-        {
-            "version": "2.1.227",
-            "delivery-policy": "local-materialization",
-            "acquisition-authorization": "claude-code-download",
-            "license": "Proprietary",
-            "terms-url": "https://www.anthropic.com/legal/commercial-terms",
-            "distribution": "user-acquired-not-redistributed",
-            "artifacts": {
-                "linux-amd64": {
-                    "url": (
-                        "https://downloads.claude.ai/claude-code-releases/"
-                        "2.1.227/linux-x64/claude"
-                    ),
-                    "sha256": (
-                        "6832dc3f1797b890b71116e5f2dbbf9a83fd3d0498c235b4b0f9cd0e6e499ad6"
-                    ),
-                }
-            },
-        },
-    ),
-    "postgresql-client": (
-        "postgresql-client",
-        {
-            "version": "16",
-            "delivery-policy": "base-image",
-            "license": "PostgreSQL",
-        },
-    ),
-}
-
-# The materialization recipe follows the selected surface: each surface
-# family unpacks and fixes up its installation differently.
-_MATERIALIZATION_TABLES: dict[str, dict[str, Any]] = {
-    "pycharm": {
-        "recipe": "jetbrains-local-materialization",
-        "recipe-version": "1",
+_CODIUM_1_126_04524 = _ComponentPin(
+    component_id="codium",
+    version="1.126.04524",
+    lock_table={
+        "version": "1.126.04524",
+        "delivery-policy": "local-materialization",
+        "license": "MIT",
+        "url": (
+            "https://github.com/VSCodium/vscodium/releases/download/"
+            "1.126.04524/VSCodium-linux-x64-1.126.04524.tar.gz"
+        ),
+        "sha256": "adf3548df055d18e476cdee887488ba7486b879ad99a31a546c6b5c5ff296c24",
     },
-    "codium": {
-        "recipe": "vscode-local-materialization",
-        "recipe-version": "1",
+)
+
+_CODEX_0_145_0 = _ComponentPin(
+    component_id="codex",
+    version="0.145.0",
+    lock_table={
+        "version": "0.145.0",
+        "delivery-policy": "local-materialization",
+        "integration": "jetbrains-ai-assistant",
+        "acp-version": "1.1.9",
+        "license": "Apache-2.0",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://registry.npmjs.org/@openai/codex/-/"
+                    "codex-0.145.0-linux-x64.tgz"
+                ),
+                "sha256": (
+                    "11239480f8e3efd1430f23bbe91c1a397856b8bbe6185ccbaee2382d25e03df2"
+                ),
+                "archive-member": (
+                    "package/vendor/x86_64-unknown-linux-musl/bin/codex"
+                ),
+            }
+        },
     },
-}
+)
 
+_CLAUDE_CODE_2_1_227 = _ComponentPin(
+    component_id="claude-code",
+    version="2.1.227",
+    lock_table={
+        "version": "2.1.227",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "claude-code-download",
+        "license": "Proprietary",
+        "terms-url": "https://www.anthropic.com/legal/commercial-terms",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://downloads.claude.ai/claude-code-releases/"
+                    "2.1.227/linux-x64/claude"
+                ),
+                "sha256": (
+                    "6832dc3f1797b890b71116e5f2dbbf9a83fd3d0498c235b4b0f9cd0e6e499ad6"
+                ),
+            }
+        },
+    },
+)
 
-@dataclass(frozen=True)
-class GeneratedLock:
-    """One derived platform lock, rendered and ready to be written."""
+_POSTGRESQL_CLIENT_16 = _ComponentPin(
+    component_id="postgresql-client",
+    version="16",
+    lock_table={
+        "version": "16",
+        "delivery-policy": "base-image",
+        "license": "PostgreSQL",
+    },
+)
 
-    platform: str
-    matrix_version: str
-    capabilities: tuple[str, ...]
-    content: str
+_DOGFOOD_E2E = "recursive dogfood E2E (embedded-2 formation)"
 
+_LINUX_AMD64_MATRIX = ResolutionMatrix(
+    platform=Platform.LINUX_AMD64,
+    matrix_version=_MATRIX_VERSION,
+    bases=(_V026_BASE, _V0_2_8_BASE),
+    components={
+        "pycharm": (_PYCHARM_2026_2_0_1,),
+        "codium": (_CODIUM_1_126_04524,),
+        "codex": (_CODEX_0_145_0,),
+        "claude-code": (_CLAUDE_CODE_2_1_227,),
+        "postgresql-client": (_POSTGRESQL_CLIENT_16,),
+    },
+    edges=(
+        _VerifiedEdge("pycharm", "2026.2.0.1", "v026", _DOGFOOD_E2E),
+        _VerifiedEdge(
+            "codium",
+            "1.126.04524",
+            "v026",
+            "product-owner live smoke 2026-08-31 (current-tree runtime PEX override)",
+        ),
+        _VerifiedEdge(
+            "codium",
+            "1.126.04524",
+            "v0.2.8",
+            "product-owner smoke 2026-09-02: tictactoe sample "
+            "(config-history 20260902T075529Z)",
+        ),
+        _VerifiedEdge("codex", "0.145.0", "v026", _DOGFOOD_E2E),
+        _VerifiedEdge("claude-code", "2.1.227", "v026", _DOGFOOD_E2E),
+        _VerifiedEdge("postgresql-client", "16", "v026", _DOGFOOD_E2E),
+    ),
+    couplings=(
+        _Coupling(
+            first_id="codex",
+            second_id="pycharm",
+            verified=frozenset({("0.145.0", "2026.2.0.1")}),
+            evidence=_DOGFOOD_E2E,
+        ),
+    ),
+    # Each interactive capability selects exactly one surface component. A V1
+    # platform lock holds exactly one interactive surface, so a capability set
+    # must name exactly one of these: none has nothing to run, and two would
+    # ask one lock to carry two surfaces.
+    surface_capabilities={
+        "python-ide": "pycharm",
+        "frontend-ide": "codium",
+    },
+    # Ancillary capabilities select additive components; the value is the
+    # component id the lock records.
+    ancillary_capabilities={
+        "codex-agent": "codex",
+        "claude-code-agent": "claude-code",
+        "postgresql-client": "postgresql-client",
+    },
+    # The materialization recipe follows the selected surface: each surface
+    # family unpacks and fixes up its installation differently.
+    materialization={
+        "pycharm": {
+            "recipe": "jetbrains-local-materialization",
+            "recipe-version": "1",
+        },
+        "codium": {
+            "recipe": "vscode-local-materialization",
+            "recipe-version": "1",
+        },
+    },
+)
 
-def supported_capabilities() -> tuple[str, ...]:
-    """The complete capability vocabulary this matrix can resolve."""
-
-    return tuple(
-        sorted(
-            BASE_SATISFIED_CAPABILITIES
-            | set(INTERACTIVE_SURFACE_CAPABILITIES)
-            | set(_ANCILLARY_COMPONENT_TABLES)
-        )
-    )
-
-
-def normalize_capability_need(need: object) -> tuple[str, ...]:
-    """Normalize a manifest ``capabilities.need`` value: sorted, unique, known."""
-
-    if not isinstance(need, Sequence) or isinstance(need, (str, bytes)):
-        raise ProjectConfigurationError("capabilities.need must be an array of capability names.")
-    names: set[str] = set()
-    for item in need:
-        if not isinstance(item, str) or not item:
-            raise ProjectConfigurationError(
-                "capabilities.need entries must be non-empty strings."
-            )
-        names.add(item)
-    unknown = sorted(names - set(supported_capabilities()))
-    if unknown:
-        raise ProjectConfigurationError(
-            "The embedded resolution matrix does not know "
-            + ", ".join(repr(name) for name in unknown)
-            + "; supported capabilities: "
-            + ", ".join(supported_capabilities())
-            + "."
-        )
-    return tuple(sorted(names))
-
-
-def generate_platform_lock(need: object, platform: str) -> GeneratedLock:
-    """Derive one complete platform lock from a capability set, offline."""
-
-    capabilities = normalize_capability_need(need)
-    if platform not in SUPPORTED_PLATFORMS:
-        supported = ", ".join(SUPPORTED_PLATFORMS)
-        raise ProjectConfigurationError(
-            f"The embedded resolution matrix has no entry for platform {platform!r}; "
-            f"supported platforms: {supported}. A lock for another platform is authored "
-            "on that platform."
-        )
-    interactive = sorted(set(capabilities) & set(INTERACTIVE_SURFACE_CAPABILITIES))
-    if not interactive:
-        choices = ", ".join(sorted(INTERACTIVE_SURFACE_CAPABILITIES))
-        raise ProjectConfigurationError(
-            "The V1 environment needs an interactive-surface capability to select "
-            f"its surface; add exactly one of {choices} to capabilities.need."
-        )
-    if len(interactive) > 1:
-        raise ProjectConfigurationError(
-            "A V1 platform lock holds exactly one interactive surface, but "
-            f"capabilities.need selects {', '.join(interactive)}; keep exactly one."
-        )
-    surface_id = INTERACTIVE_SURFACE_CAPABILITIES[interactive[0]]
-
-    components: dict[str, Any] = {
-        "interactive-surface": surface_id,
-        surface_id: dict(_INTERACTIVE_SURFACE_TABLES[surface_id]),
+# The map is the platform authority: its keys are the supported platforms,
+# total over the Platform enum (D-0006/D-0007). Clients index it with a key
+# from Platform.current() or Platform.parse(), never one built from parts.
+MATRICES: Mapping[Platform, ResolutionMatrix] = MappingProxyType(
+    {
+        Platform.LINUX_AMD64: _LINUX_AMD64_MATRIX,
     }
-    for capability in capabilities:
-        selected = _ANCILLARY_COMPONENT_TABLES.get(capability)
-        if selected is not None:
-            component_id, table = selected
-            components[component_id] = table
+)
 
-    document: dict[str, Any] = {
-        "devcapsule-lock-format-version": 1,
-        "resolution-matrix-version": MATRIX_VERSION,
-        "platform": platform,
-        # The scoped digest: the one derivation input beside the platform,
-        # which the filename already carries.
-        "capabilities-digest": canonical_digest({"need": list(capabilities)}),
-        "base": _BASE_TABLE,
-        "components": components,
-        "materialization": dict(_MATERIALIZATION_TABLES[surface_id]),
-    }
-    header = (
-        "# Generated by 'devcapsule project init' from the embedded resolution "
-        f"matrix {MATRIX_VERSION}.\n"
-        "# Commit this file: it pins the exact environment collaborators receive.\n"
-    )
-    return GeneratedLock(
-        platform=platform,
-        matrix_version=MATRIX_VERSION,
-        capabilities=capabilities,
-        content=header + _render_document(document),
-    )
+
+# --------------------------------------------------------------------------
+# Lock rendering (private): the restricted lock shape — string/int/bool
+# scalars and nested tables. Insertion order is preserved so the generated
+# file reads in the conventional lock order; generation is deterministic
+# because every input table above is built deterministically.
 
 
 def _render_document(document: Mapping[str, Any]) -> str:
-    """Render the restricted lock shape (string/int/bool scalars, nested tables).
-
-    Insertion order is preserved so the generated file reads in the
-    conventional lock order; generation is deterministic because every input
-    table is built deterministically above.
-    """
-
     lines: list[str] = []
     _render_table(None, document, lines)
     return "\n".join(lines) + "\n"

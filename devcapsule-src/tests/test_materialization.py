@@ -442,6 +442,7 @@ def test_materialized_image_has_complete_formation_labels(tmp_path: Path) -> Non
         surface_root=pycharm,
         component_template=template,
         artifact=spec,
+        platform="linux-amd64",
     ).build_plan()
     labels = dict(plan.labels)
 

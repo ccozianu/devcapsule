@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import fcntl
 import hashlib
 import json
-import os
 from pathlib import Path
 import shutil
 import tempfile
@@ -17,6 +16,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 from devcapsule.compat import CliError
+from devcapsule.platforms import XdgHomes
 from devcapsule.components.catalog import (
     ComponentCatalogError,
     selected_component_definitions,
@@ -147,9 +147,7 @@ ENTRYPOINT_CONTRACT = (
 
 
 def cache_root(env: Mapping[str, str] | None = None) -> Path:
-    values = os.environ if env is None else env
-    home = Path(values.get("HOME", "~")).expanduser()
-    return Path(values.get("XDG_CACHE_HOME") or home / ".cache") / "devcapsule"
+    return XdgHomes.from_environment(env).cache
 
 
 def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
@@ -287,21 +285,8 @@ def formation_identity(descriptor: Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical_json(descriptor).encode()).hexdigest()
 
 
-def materialization_identity(base_identity: str, artifact: ArtifactSpec, platform: str = "linux-amd64") -> str:
-    """Compatibility helper for callers that need the default PyCharm identity."""
-
-    return formation_identity(
-        formation_descriptor(platform=platform, base_identity=base_identity, artifact=artifact)
-    )
-
-
 def canonical_image_name(descriptor: Mapping[str, Any], component_id: str = "pycharm") -> str:
     return f"devcapsule-local-{component_id}:{formation_identity(descriptor)[:20]}"
-
-
-def local_image_name(base_identity: str, artifact: ArtifactSpec, platform: str = "linux-amd64") -> str:
-    descriptor = formation_descriptor(platform=platform, base_identity=base_identity, artifact=artifact)
-    return canonical_image_name(descriptor)
 
 
 def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
@@ -417,7 +402,7 @@ def surface_materialization_spec(
     component_template: Path,
     artifact: ArtifactSpec,
     ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...] = (),
-    platform: str = "linux-amd64",
+    platform: str,
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",

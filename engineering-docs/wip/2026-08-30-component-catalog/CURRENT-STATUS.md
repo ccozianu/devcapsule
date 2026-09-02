@@ -160,10 +160,18 @@ grant — see the
 [setuid sandbox design note](../../design-notes/devcapsule/vscode-sandbox-setuid.md)
 for the collision with default hardening that forced the ruling.
 
-Remaining before the codium PR: the product owner's smoke sign-off (unit
-tests, mypy, and the live launch are done; the launch put a VSCodium window
-with the tictactoe sample on the owner's display). The smoke currently
-needs the runtime-PEX override described under *External State And Risks*.
+The product owner's smoke sign-off arrived 2026-09-02: codium ran the
+tictactoe sample end-to-end on the **v0.2.8 base** (no runtime-PEX
+override), and the D-0008 history recorded the known-good configuration
+(generation `20260902T075529Z`). That run is the verified edge behind the
+`embedded-3` matrix advance: the v0.2.8 base pin
+(`sha256:8be27a77…f336db`) and the codium×v0.2.8 edge are in the matrix,
+so codium-only needs now resolve to v0.2.8 while every formation with
+still-unproven components stays on v026. The smoke also surfaced two open
+init/run authorization bugs (see the 2026-09-01 and 2026-09-02 bug
+records); the 2026-09-01 one is fixed, the 2026-09-02 one is scheduled
+after this integration. The branch is ready for the owner to open the
+codium PR.
 
 Also on this branch, at the owner's direction on 2026-09-01 while preparing
 the v0.2.8 release: the distribution version is now authored solely in
@@ -174,7 +182,20 @@ metadata is only a fallback — editable installs freeze their metadata at
 install time and go stale across bumps). Built artifacts are unchanged:
 `build-pex.sh` still stamps the full record, and `read_pex_build_info`
 still vets artifacts without executing them. `bump-version.py` now guards
-one file, so a bump is a single edited line.
+one file, so a bump is a single edited line. The release and validation
+process this serves is now recorded in
+[the release process note](../../implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md),
+including the owner's 2026-09-01 validation that the 0.2.8 client runs
+correctly against the v026 base for the surfaces that base already knew.
+
+Also on this branch, at the owner's direction on 2026-09-01: D-0008
+(known-good checkout configuration history) is decided and implemented.
+`project run` exiting zero records the checkout record and its generated
+resolution as a stamped generation under the XDG state home
+(`config-history/<creator>/<slug>/<UTC-stamp>/`), iff no existing
+generation holds identical content — success is the only writer, so every
+entry is safe to restore by hand-copy. A guided `config history`/
+`restore` command surface is recorded follow-on work in the decision.
 
 ## Next Resumable Task
 
@@ -184,12 +205,13 @@ ledger gates on.
 
 ## Open Threads
 
-- **Base rebuild** (coordination fact): the v026 base's embedded runtime
-  PEX predates the `vscode` adapter, so codium containers reject their plan
-  under the stock base. Until a base built from a revision including this
-  branch ships, launches need
-  `-- --volume <host-path-to-current-pex>:/opt/devcapsule/bin/devcapsule.pex:ro`.
-  This gates codium for adopters, not the PR.
+- **Base rebuild** (updated 2026-09-02): resolved for codium-only needs —
+  the v0.2.8 base is published, owner-smoked with codium, and pinned in
+  matrix `embedded-3`, so those locks launch with no override. Formations
+  combining codium with agents still resolve to v026 (the agents have no
+  v0.2.8 edges yet) and therefore still need the runtime-PEX override
+  volume; smoking the agents on v0.2.8 and adding their edges retires the
+  override entirely.
 - **PyCharm slot-path migration** (recorded follow-up): PyCharm still
   travels the launcher's named state fields; every other surface uses the
   generic plan-slot mounts. Migrating PyCharm onto the generic path (and
@@ -210,6 +232,27 @@ ledger gates on.
   devcapsule project (committed `.devcapsule/`) deliberately waits for the
   post-codium release that repins the base, so its lock never names a
   base whose runtime PEX rejects codium plans.
+
+- **Resolution-matrix redesign** (implemented 2026-09-01): the owner
+  accepted D-0006 and D-0007 and the implementation is on this branch.
+  `platforms.py` owns the `Platform` enum and the unified XDG derivation
+  (`platform_alias` and three duplicate derivations retired); the matrix
+  resolves through `MATRICES[platform].resolve(need)` over verified
+  edges/couplings, byte-identical to the pre-refactor generator (golden
+  fixtures under `tests/resources/golden_locks/`) and reconstituting the
+  dogfood formation from the repo's own `.devcapsule` (tested). Recorded
+  implementation decision: `devcapsule-base:v0.2.8` exists but is not
+  fully tested, so it has **no edges in the matrix yet** — resolution
+  keeps selecting v026; once the owner's smoke verifies v0.2.8
+  combinations, adding its edges (and advancing the matrix version) is a
+  data change, per the model. Fresh-checkout E2E evidence (2026-09-01):
+  a clean clone of branch revision `eb3fbe0` from GitHub (submodules
+  included) passed the full ladder from inside the dogfood capsule —
+  `nox -s build` producing a public v0.2.8 PEX from the branch, `nox -s
+  e2e` (4 Docker tests), and `nox -s recursive_dogfood_e2e` (preflight
+  all-pass, peer-capsule dry-run, contributor bootstrap, recursive local
+  clone). The checkout remains at `/home/devcapsule/e2e-fresh-devcapsule`
+  with its built artifacts for the owner's v0.2.8 smoke.
 
 ## External State And Risks
 
