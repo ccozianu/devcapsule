@@ -156,6 +156,27 @@ Repeatable options (`-v`, `--env`, `--mount`, …) pass through as
 before. Denylist and rationale live beside
 `reject_launcher_owned_docker_options` in the host launcher.
 
+## Substrate Ruling (2026-09-02, amends D-0007)
+
+The v0.2.9 base rebuild surfaced the edge model's granularity error: the
+owner tried `--authorize base-image …:v0.2.9` and the grammar could not
+express it, because edges keyed on the base mnemonic made every derived
+base release an unverified stranger. The owner ruled: compatibility is a
+fact about the *substrate* (the shared Ubuntu/toolchain generation), not
+about our derived base releases, which vary only our own layer — so
+edges now verify component-on-substrate and base pins declare their
+generation (`ubuntu-24.04-gen1` = v026; `-gen2` = v0.2.8 and later
+rebuilds with the vscode-capable runtime). A new base on a shared
+substrate inherits every edge; the substrate string bumps only on
+substantial base changes. Implemented on the branch (matrix
+`embedded-6`); the amendment is recorded in D-0007. Consequence: agent
+smokes (resume item 3) establish gen2 edges once, covering v0.2.9 and
+every later gen2 release. The v0.2.9 base pin awaits the owner's push
+of the image (a registry digest is needed to pin; the built image is
+local-only). Still open from the same episode: the `--authorize
+base-image` error message offers "the exact value" as if the value were
+choosable — consent and selection read as one verb.
+
 ## Coordination With `contained-display`
 
 `contained-display` is paused as of 2026-08-30 until this workstream shows
@@ -331,9 +352,11 @@ Resume with, in order:
 2. The two scoped v0.2.9 bugs: init/run answers persisted as
    authorizations, and the formation-identity/entrypoint-claim record
    (its enforcement half coordinates with `contained-display`).
-3. Agent smokes on the v0.2.8 base (claude-code, codex) to add their
-   edges and retire the runtime-PEX override for combined formations —
-   antigravity already carries its v0.2.8 edge.
+3. Agent smokes on a gen2 base (claude-code, codex) to add their
+   substrate edges and retire the runtime-PEX override for combined
+   formations — antigravity already carries its gen2 edge. One smoke
+   per component now covers every gen2 base release (see *Substrate
+   Ruling*).
 4. The `config need` checkout-local rebuild (open thread below).
 5. Small closers: the antigravity-state and shm records close on the
    owner's next clean relaunches; the submodule gitdir un-absorb

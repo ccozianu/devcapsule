@@ -259,13 +259,17 @@ def test_generation_is_deterministic() -> None:
 def _synthetic_matrix(
     edges: tuple[_VerifiedEdge, ...],
     couplings: tuple[_Coupling, ...] = (),
+    bases: tuple[_BasePin, ...] | None = None,
 ) -> ResolutionMatrix:
+    # The default bases sit on distinct substrates, so each is its own
+    # verification target; edges name the substrate ("s1"/"s2").
     return ResolutionMatrix(
         platform=Platform.LINUX_AMD64,
         matrix_version="test-1",
-        bases=(
-            _BasePin("v1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        bases=bases
+        or (
+            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
         components={
             "ide": (
@@ -285,8 +289,8 @@ def _synthetic_matrix(
 def test_resolution_prefers_the_newest_verified_combination() -> None:
     matrix = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("ide", "2.0", "v2", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "s2", "smoke"),
         )
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
@@ -295,13 +299,13 @@ def test_resolution_prefers_the_newest_verified_combination() -> None:
     assert lock["components"]["ide"]["version"] == "2.0"
 
 
-def test_a_base_without_verified_edges_is_not_selected() -> None:
-    # The v0.2.8 situation: a newer base is published but not yet tested.
-    # It earns no edges, so resolution keeps selecting the proven base;
-    # verifying the new base later is a data addition, not an interface
-    # change.
+def test_a_base_on_an_unproven_substrate_is_not_selected() -> None:
+    # A newer base on a *new substrate* has inherited nothing: it earns no
+    # edges until something is smoked on its generation, so resolution keeps
+    # selecting the proven base. Verifying the new generation later is a
+    # data addition, not an interface change.
     matrix = _synthetic_matrix(
-        edges=(_VerifiedEdge("ide", "2.0", "v1", "smoke"),)
+        edges=(_VerifiedEdge("ide", "2.0", "s1", "smoke"),)
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
 
@@ -309,9 +313,27 @@ def test_a_base_without_verified_edges_is_not_selected() -> None:
     assert lock["components"]["ide"]["version"] == "2.0"
 
 
+def test_a_new_base_on_a_shared_substrate_inherits_verified_edges() -> None:
+    # The ruling of 2026-09-02: what a smoke establishes is component-on-
+    # substrate, so a base release that changes nothing substantial (same
+    # generation) inherits its predecessor's edges and is selected as the
+    # newest pin — no re-smoke per release of our own base.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),),
+        bases=(
+            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s1", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        ),
+    )
+    lock = parse(matrix.resolve(["the-ide"]).render_lock())
+
+    assert lock["base"]["build-mnemonic"] == "v2"
+    assert lock["components"]["ide"]["version"] == "1.0"
+
+
 def test_an_unverified_newer_component_version_falls_back() -> None:
     matrix = _synthetic_matrix(
-        edges=(_VerifiedEdge("ide", "1.0", "v2", "smoke"),)
+        edges=(_VerifiedEdge("ide", "1.0", "s2", "smoke"),)
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
 
@@ -323,12 +345,12 @@ def test_verification_of_older_combinations_does_not_expire() -> None:
     # Adding a newer verified combination must not un-express the older one:
     # both remain resolvable facts; selection merely prefers the newest.
     sparse = _synthetic_matrix(
-        edges=(_VerifiedEdge("ide", "1.0", "v1", "smoke"),)
+        edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),)
     )
     grown = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("ide", "2.0", "v2", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "s2", "smoke"),
         )
     )
 
@@ -348,9 +370,9 @@ def test_no_verified_combination_is_a_complete_explanation() -> None:
 def test_an_unverified_coupling_refuses_the_composition() -> None:
     matrix = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("ide", "2.0", "v1", "smoke"),
-            _VerifiedEdge("agent", "0.5", "v1", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "s1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "s1", "smoke"),
         ),
         couplings=(
             _Coupling("agent", "ide", frozenset({("0.5", "1.0")}), "smoke"),
@@ -363,8 +385,8 @@ def test_an_unverified_coupling_refuses_the_composition() -> None:
 def test_a_verified_coupling_composes() -> None:
     matrix = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("agent", "0.5", "v1", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "s1", "smoke"),
         ),
         couplings=(
             _Coupling("agent", "ide", frozenset({("0.5", "1.0")}), "smoke"),

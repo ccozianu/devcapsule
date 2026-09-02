@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-5"
+_MATRIX_VERSION = "embedded-6"
 
 
 # --------------------------------------------------------------------------
@@ -73,8 +73,32 @@ class _BasePin:
     """One published base image and the capabilities it ships."""
 
     mnemonic: str
+    # The compatibility generation this base belongs to. Verified edges key
+    # on the substrate, not the mnemonic: what a smoke establishes is that a
+    # component runs on this OS/toolchain surface, and our own base releases
+    # on the same substrate (rebuilds varying only the embedded runtime PEX)
+    # inherit that verification instead of each demanding a fresh smoke.
+    # Ruled 2026-09-02 by the product owner (amending D-0007); bumping the
+    # substrate string is the deliberate act reserved for substantial base
+    # changes — a new OS release, a toolchain overhaul, or a runtime-plan
+    # vocabulary the older generation cannot execute.
+    substrate: str
     satisfies: frozenset[str]
     lock_table: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class _VerifiedEdge:
+    """A tested (component version, base substrate) pair, with its evidence.
+
+    The evidence string names the concrete base the smoke ran on; the edge
+    itself holds for every base pin sharing that substrate.
+    """
+
+    component_id: str
+    component_version: str
+    substrate: str
+    evidence: str
 
 
 @dataclass(frozen=True)
@@ -84,16 +108,6 @@ class _ComponentPin:
     component_id: str
     version: str
     lock_table: Mapping[str, Any]
-
-
-@dataclass(frozen=True)
-class _VerifiedEdge:
-    """A tested (component version, base version) pair, with its evidence."""
-
-    component_id: str
-    component_version: str
-    base_mnemonic: str
-    evidence: str
 
 
 @dataclass(frozen=True)
@@ -149,7 +163,7 @@ class ResolutionMatrix:
         self._bases = bases
         self._components = components
         self._verified = {
-            (edge.component_id, edge.component_version, edge.base_mnemonic): edge
+            (edge.component_id, edge.component_version, edge.substrate): edge
             for edge in edges
         }
         self._couplings = couplings
@@ -256,13 +270,14 @@ class ResolutionMatrix:
                 (
                     candidate
                     for candidate in reversed(self._components[component_id])
-                    if (component_id, candidate.version, base.mnemonic) in self._verified
+                    if (component_id, candidate.version, base.substrate) in self._verified
                 ),
                 None,
             )
             if pin is None:
                 return None, (
-                    f"no verified {component_id} version against base {base.mnemonic}"
+                    f"no verified {component_id} version against base {base.mnemonic} "
+                    f"(substrate {base.substrate})"
                 )
             chosen[component_id] = pin
         for coupling in self._couplings:
@@ -326,8 +341,16 @@ class ResolutionMatrix:
 # what verified each (component version, base version) pair; advancing the
 # generated formation advances _MATRIX_VERSION.
 
+# Substrate generations (owner ruling 2026-09-02, amending D-0007): edges
+# verify component-on-substrate, so base releases sharing a substrate share
+# edges. The gen1→gen2 boundary is the runtime-plan vocabulary: gen2 bases
+# embed a runtime that executes vscode-adapter plans, which gen1 predates.
+_SUBSTRATE_GEN1 = "ubuntu-24.04-gen1"
+_SUBSTRATE_GEN2 = "ubuntu-24.04-gen2"
+
 _V026_BASE = _BasePin(
     mnemonic="v026",
+    substrate=_SUBSTRATE_GEN1,
     # Recipe version 4 ships CPython, the Docker CLI suite, Node.js, and the
     # Temurin JDK plus Maven; these capabilities are therefore satisfied by
     # the base and never a lock entry.
@@ -342,10 +365,11 @@ _V026_BASE = _BasePin(
 )
 
 # The v0.2.8 base (recipe version 5, same shipped toolchain) embeds a runtime
-# PEX that understands the vscode adapter, which v026 predates; its verified
-# edges accumulate as smokes prove components against it.
+# PEX that understands the vscode adapter, which v026 predates — the gen2
+# substrate; later gen2 releases inherit its verified edges.
 _V0_2_8_BASE = _BasePin(
     mnemonic="v0.2.8",
+    substrate=_SUBSTRATE_GEN2,
     satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
     lock_table={
         "reference": (
@@ -498,27 +522,27 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
-        _VerifiedEdge("pycharm", "2026.2.0.1", "v026", _DOGFOOD_E2E),
+        _VerifiedEdge("pycharm", "2026.2.0.1", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(
             "codium",
             "1.126.04524",
-            "v026",
+            _SUBSTRATE_GEN1,
             "product-owner live smoke 2026-08-31 (current-tree runtime PEX override)",
         ),
         _VerifiedEdge(
             "codium",
             "1.126.04524",
-            "v0.2.8",
-            "product-owner smoke 2026-09-02: tictactoe sample "
-            "(config-history 20260902T075529Z)",
+            _SUBSTRATE_GEN2,
+            "product-owner smoke 2026-09-02: tictactoe sample on the v0.2.8 "
+            "base (config-history 20260902T075529Z)",
         ),
-        _VerifiedEdge("codex", "0.145.0", "v026", _DOGFOOD_E2E),
-        _VerifiedEdge("claude-code", "2.1.227", "v026", _DOGFOOD_E2E),
-        _VerifiedEdge("postgresql-client", "16", "v026", _DOGFOOD_E2E),
+        _VerifiedEdge("codex", "0.145.0", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
+        _VerifiedEdge("claude-code", "2.1.227", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
+        _VerifiedEdge("postgresql-client", "16", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(
             "antigravity-cli",
             "1.1.24",
-            "v0.2.8",
+            _SUBSTRATE_GEN2,
             "product-owner smoke 2026-09-02: antigravity working the "
             "tictactoe sample (codium surface, v0.2.8 base)",
         ),
