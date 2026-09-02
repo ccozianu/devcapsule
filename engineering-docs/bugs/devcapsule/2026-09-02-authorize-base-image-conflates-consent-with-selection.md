@@ -54,6 +54,22 @@ Three layers, all by design rather than defect in code:
    can recognize a *reference-shaped* value and explain exactly this
    instead of reciting its accepted inputs.
 
+## Provenance (owner asked 2026-09-02: designed or accidental?)
+
+Split down the middle. The *semantics* are designed: D-0004 (proposed
+2026-07-30) scopes authorization to "one immutable registry digest or
+one inspected local image ID", "never … a registry namespace,
+repository, tag, or future digest", and separates the lock's
+recommendation from the developer's trust record. The *surface* is
+accidental: D-0004 explicitly deferred the spelling ("remains an
+implementation task"; "the command grammar may still be refined before
+V1"), and the implementation (`5be7a34`, 2026-08-24) poured the consent
+answer into the config family's assignment-shaped `VERB NAME VALUE`
+grammar, whose validator message leaks its accepted inputs. Note:
+D-0004 is still `status: proposed` — the joint ruling asked for below
+is D-0004's own deferred refinement coming due and could settle its
+status at the same time.
+
 ## Expected
 
 An unsuspecting user who passes a base reference here learns, from the
