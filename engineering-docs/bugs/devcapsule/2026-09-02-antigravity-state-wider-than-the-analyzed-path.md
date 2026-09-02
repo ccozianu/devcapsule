@@ -54,12 +54,11 @@ slot. The runtime template change advances the component template
 digest, so the canonical image identity changes with it (expected
 pre-release).
 
-The general hazard stays worth guarding: a state slot declared more
-than one level beneath home will always leave a root-owned
-intermediate parent. Recorded follow-up for the owner to consider: the
-runtime-plan contract could reject such declarations at validation
-time (today only the `home_overlay` flag is checked), so the next
-component author hits a clear error instead of a runtime EACCES.
+The general hazard is now guarded (owner ruling, 2026-09-02, same
+day): contract validation rejects overlay slots deeper than one level
+beneath home and cross-component slot overlap, and the launcher
+pre-creates home-overlay mount points as the invoking user — see the
+[state-slots design note](../../design-notes/devcapsule/state-slots-home-overlay-and-ownership.md).
 
 ## Reproducibility
 

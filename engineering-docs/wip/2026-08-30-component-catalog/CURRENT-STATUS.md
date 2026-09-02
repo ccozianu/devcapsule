@@ -133,6 +133,20 @@ validated means unit tests pass plus a smoke test performed, for now, by hand
 by the product owner. Do not accumulate multiple finished components on the
 branch.
 
+## State-Slot Rulings (2026-09-02)
+
+Following the antigravity state bug, the owner ruled: the home overlay
+stays, and *everything under `$HOME` is owned by the user* no matter
+which mechanism (build, entrypoint, mount mechanics) touched it.
+Implemented on this branch, recorded in the
+[state-slots design note](../../design-notes/devcapsule/state-slots-home-overlay-and-ownership.md):
+contract validation holds overlay slots to direct children of home and
+rejects cross-component slot overlap; the launcher pre-creates every
+home-overlay mount point inside the persistent home source as the
+invoking user (and reports foreign-owned leftovers it cannot repair).
+The entrypoint-side verification of the invariant is a coordination
+item for `contained-display` (below).
+
 ## Coordination With `contained-display`
 
 `contained-display` is paused as of 2026-08-30 until this workstream shows
@@ -142,6 +156,12 @@ load-bearing for this workstream's components and to route any deliberate
 contract change through coordination rather than changing it inadvertently.
 Symmetrically: if this workstream finds the contract insufficient, it records
 the gap and coordinates; it does not reshape the supervisor.
+
+Open coordination item (2026-09-02): the entrypoint half of the $HOME
+ownership invariant — the runtime verifying at container start that
+`$HOME` and its first-level entries are user-owned, failing loudly
+otherwise — belongs to the supervisor `contained-display` owns; this
+workstream implemented only the client/launcher half.
 
 ## Current Task
 

@@ -195,6 +195,7 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
             else:
                 runtime_env[HOST_OPEN_SOCKET_ENV] = str(browser_socket)
             config = build_run_config(options, runtime_env)
+            prepare_home_mount_points(config)
             files = prepare_temp_runtime_files(config, runtime_env)
             try:
                 if config.enable_sudo:
@@ -590,6 +591,55 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ),
         libgl_dri3_disable=env.get("PYCHARM_LIBGL_DRI3_DISABLE", env.get("LIBGL_DRI3_DISABLE", "1")),
     )
+
+
+def prepare_home_mount_points(config: PycharmRunConfig) -> None:
+    """Pre-create home-overlay mount points inside the persistent home source.
+
+    The container runtime creates a missing bind-mount target as root, and a
+    root-owned directory in the developer's home source outlives the mount —
+    violating the ownership invariant the owner ruled on 2026-09-02:
+    everything under $HOME belongs to the user, whatever mechanism created
+    it. Creating the mount points here, as the invoking user, keeps the
+    daemon out of that business. An entry some earlier launch already left
+    behind with foreign ownership cannot be repaired without host privilege,
+    so it is reported instead of silently mounted over.
+    """
+
+    home = Path("/home/devcapsule")
+    destinations = [
+        destination
+        for _name, _source, destination in (
+            *config.interactive_state_mounts,
+            *config.additional_state_mounts,
+        )
+    ]
+    if not config.interactive_state_mounts and config.tool_cache is not None:
+        # The legacy named-field surface path mounts the tool cache at a
+        # fixed home-overlay destination (_surface_state_mount_args).
+        destinations.append("/home/devcapsule/.cache")
+    for destination in destinations:
+        path = Path(destination)
+        if home not in path.parents:
+            continue
+        # The runtime-plan contract holds overlay slots to direct children
+        # of home, so the parent here is the home source itself.
+        mount_point = config.persistent_home / path.relative_to(home)
+        try:
+            mount_point.mkdir(mode=0o700, exist_ok=True)
+            owner = mount_point.stat().st_uid
+        except OSError as exc:
+            raise PycharmRunError(
+                f"Cannot prepare home mount point {mount_point}: {exc}"
+            ) from exc
+        if owner != os.getuid():
+            print(
+                f"WARNING: {mount_point} is owned by uid {owner}, not you; an "
+                "earlier launch let the container runtime create it. The mount "
+                "will cover it, but restoring the home invariant needs it "
+                "removed with host privilege.",
+                file=sys.stderr,
+            )
 
 
 def _surface_state_mount_args(config: PycharmRunConfig) -> list[str]:
