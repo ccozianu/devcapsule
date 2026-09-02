@@ -189,12 +189,13 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
    - [the authorization grammar cannot express denial](../../bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
      (owner-triaged onto this list 2026-09-02, found during the
      antigravity smoke triage)
+   - [the codium setuid sandbox crashes under the development-sudo posture](../../bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
+     (the failure the antigravity smoke actually hit; diagnosis
+     A/B-confirmed by the owner 2026-09-02, fix awaits the owner's
+     ruling since it amends the 2026-08-31 sandbox decision)
 
 New bugs found on the way join the list by owner triage rather than
-automatically blocking the release. Pending its own record once the
-owner confirms the diagnosis: the codium surface crashes its setuid
-sandbox helper under the development-sudo posture (default Docker
-capabilities lack CAP_SYS_ADMIN), the failure the smoke actually hit.
+automatically blocking the release.
 
 ## Track 1 (integrated)
 
