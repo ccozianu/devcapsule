@@ -49,6 +49,7 @@ GOLDEN_NEEDS = {
         "postgresql-client",
     ],
     "codium-agents": ["node", "frontend-ide", "codex-agent", "claude-code-agent"],
+    "codium-antigravity": ["node", "frontend-ide", "antigravity-agent"],
 }
 
 
@@ -92,6 +93,7 @@ def test_matrices_is_total_over_platforms_and_read_only() -> None:
 
 def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
     assert MATRIX.capabilities() == (
+        "antigravity-agent",
         "claude-code-agent",
         "codex-agent",
         "docker-cli",

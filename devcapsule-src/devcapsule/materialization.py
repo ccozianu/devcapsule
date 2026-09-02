@@ -600,11 +600,20 @@ def _ancillary_environment(
     for declaration in declarations:
         for name, value in declaration.environment:
             previous = environment.get(name)
-            if previous is not None and previous != value:
-                raise CliError(
-                    f"Materialized components declare conflicting values for environment {name}."
-                )
-            environment[name] = value
+            if previous is None or previous == value:
+                environment[name] = value
+                continue
+            # PATH is the one variable several components legitimately share:
+            # each contributes a "<bin>:${PATH}" prefix, and Docker resolves
+            # the trailing ${PATH} against the base at build time. Chain the
+            # prefixes in declaration order; any other collision is a real
+            # contract conflict.
+            if name == "PATH" and previous.endswith(":${PATH}") and value.endswith(":${PATH}"):
+                environment[name] = previous.removesuffix("${PATH}") + value
+                continue
+            raise CliError(
+                f"Materialized components declare conflicting values for environment {name}."
+            )
     return tuple(sorted(environment.items()))
 
 

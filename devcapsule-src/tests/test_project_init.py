@@ -619,6 +619,134 @@ def test_claude_capability_requires_the_acquisition_answer(tmp_path: Path, capsy
         assert record["authorization"]["claude-code-download"]["value"] is True
 
 
+def test_antigravity_capability_requires_the_acquisition_answer(
+    tmp_path: Path, capsys
+) -> None:
+    """The generalized gate asks for every locked vendor acquisition."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    base_arguments = [
+        "project",
+        "--path",
+        str(project),
+        "init",
+        "--need",
+        "node",
+        "--need",
+        "frontend-ide",
+        "--need",
+        "antigravity-agent",
+        "--creator",
+        "https://github.com/example",
+        "--authorize",
+        "base-image",
+        "yes",
+    ]
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(base_arguments) == 2
+        assert "--authorize antigravity-download true" in capsys.readouterr().err
+        assert (
+            cli.main([*base_arguments, "--authorize", "antigravity-download", "true"]) == 0
+        )
+        config_root = tmp_path / "config" / "devcapsule" / "projects"
+        record = read_toml(next(config_root.rglob("devcapsule.checkout.toml")))
+        assert record["authorization"]["antigravity-download"]["value"] is True
+        lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
+        assert lock["components"]["antigravity-cli"]["version"] == "1.1.24"
+
+
+def test_noninteractive_need_without_an_agent_stays_explicit(tmp_path: Path) -> None:
+    """A noninteractive ``--need`` list is authored content; the default agent
+    joins only through its own flag or the interactive question."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "init",
+                    "--need",
+                    "node",
+                    "--need",
+                    "frontend-ide",
+                    "--creator",
+                    "https://github.com/example",
+                    "--authorize",
+                    "base-image",
+                    "yes",
+                ]
+            )
+            == 0
+        )
+    manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
+    assert manifest["capabilities"]["need"] == ["frontend-ide", "node"]
+
+
+def test_interactive_init_offers_the_default_agent(tmp_path: Path) -> None:
+    """Enter at the default-agent question selects antigravity and its gate."""
+
+    project = tmp_path / "interactive-project"
+    project.mkdir()
+    prompts = io.StringIO()
+    # creator; need; default agent (Enter = yes); four recommendations
+    # (Enter = none); base (Enter = yes); antigravity acquisition (Enter = yes).
+    answers = io.StringIO(
+        "https://github.com/example\nnode frontend-ide\n\n\n\n\n\n\n\n"
+    )
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        report = initialize_project(
+            InitializeRequest(directory=project, interactive=True),
+            input_stream=answers,
+            output_stream=prompts,
+        )
+    assert "default agent component (antigravity-agent)" in prompts.getvalue()
+    assert report.capabilities == ("antigravity-agent", "frontend-ide", "node")
+    assert "antigravity-download" in report.authorized
+    manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
+    assert manifest["capabilities"]["need"] == ["antigravity-agent", "frontend-ide", "node"]
+
+
+def test_interactive_default_agent_decline_keeps_the_need(tmp_path: Path) -> None:
+    project = tmp_path / "interactive-project"
+    project.mkdir()
+    prompts = io.StringIO()
+    # creator; need; default agent (no); four recommendations; base (Enter =
+    # yes) — and no acquisition question follows.
+    answers = io.StringIO("https://github.com/example\nnode frontend-ide\nno\n\n\n\n\n\n")
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        report = initialize_project(
+            InitializeRequest(directory=project, interactive=True),
+            input_stream=answers,
+            output_stream=prompts,
+        )
+    assert report.capabilities == ("frontend-ide", "node")
+    assert "antigravity-download" not in report.authorized
+    assert "antigravity" not in str(read_toml(project / ".devcapsule" / "devcapsule.toml"))
+
+
+def test_default_agent_is_not_offered_where_it_cannot_resolve(tmp_path: Path) -> None:
+    """python-ide has no verified antigravity combination yet: the question
+    must not appear, and the init must not fail on the default's account."""
+
+    project = tmp_path / "interactive-project"
+    project.mkdir()
+    prompts = io.StringIO()
+    answers = io.StringIO("https://github.com/example\npython python-ide\n\n\n\n\n\n")
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        report = initialize_project(
+            InitializeRequest(directory=project, interactive=True),
+            input_stream=answers,
+            output_stream=prompts,
+        )
+    assert "default agent" not in prompts.getvalue()
+    assert report.capabilities == ("python", "python-ide")
+
+
 def test_unknown_authorize_answer_is_reported_not_ignored(tmp_path: Path, capsys) -> None:
     project = tmp_path / "project"
     project.mkdir()

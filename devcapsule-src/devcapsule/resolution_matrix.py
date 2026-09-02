@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-3"
+_MATRIX_VERSION = "embedded-4"
 
 
 # --------------------------------------------------------------------------
@@ -437,6 +437,42 @@ _CLAUDE_CODE_2_1_227 = _ComponentPin(
     },
 )
 
+# The official Antigravity channel serves latest-only, but the artifacts are
+# versioned and immutable in GCS; this pin is a deliberate curation. The
+# sha256 was computed locally from the downloaded archive (2026-09-02, and
+# re-verified with the archive member name on the same date); upstream-sha512
+# is the checksum the vendor manifest published for the same bytes, recorded
+# as provenance. See the workstream's license and redistribution analysis.
+_ANTIGRAVITY_CLI_1_1_24 = _ComponentPin(
+    component_id="antigravity-cli",
+    version="1.1.24",
+    lock_table={
+        "version": "1.1.24",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "antigravity-download",
+        "license": "Proprietary",
+        "terms-url": "https://antigravity.google/terms/",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://storage.googleapis.com/antigravity-public/"
+                    "antigravity-cli/1.1.24-6130423206641664/linux-x64/"
+                    "cli_linux_x64.tar.gz"
+                ),
+                "sha256": (
+                    "cff1fb7ed735da72c35658645a4f916cf74f020d4cd30ab95ebe8c2a49a4d569"
+                ),
+                "archive-member": "antigravity",
+                "upstream-sha512": (
+                    "ed4df91ea7ced986aa14507a0ab8225d92985190f7d551010eba0c46c569587e"
+                    "602cb36af81c9cde7af0d6b380e8dd3a82131361806cd96012d44a3e47fb369a"
+                ),
+            }
+        },
+    },
+)
+
 _POSTGRESQL_CLIENT_16 = _ComponentPin(
     component_id="postgresql-client",
     version="16",
@@ -458,6 +494,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "codium": (_CODIUM_1_126_04524,),
         "codex": (_CODEX_0_145_0,),
         "claude-code": (_CLAUDE_CODE_2_1_227,),
+        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24,),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
@@ -478,6 +515,19 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         _VerifiedEdge("codex", "0.145.0", "v026", _DOGFOOD_E2E),
         _VerifiedEdge("claude-code", "2.1.227", "v026", _DOGFOOD_E2E),
         _VerifiedEdge("postgresql-client", "16", "v026", _DOGFOOD_E2E),
+        # PROVISIONAL, branch-only: this edge lets init resolve antigravity
+        # formations so the product owner can smoke them (codium precedent:
+        # the 2026-08-31 codium×v026 edge entered the tree the same way and
+        # its evidence was recorded when the smoke happened). The integration
+        # cadence — no PR before the owner's smoke — keeps an unsmoked edge
+        # off main; replace this evidence string with the smoke record before
+        # opening the v0.2.9 PR.
+        _VerifiedEdge(
+            "antigravity-cli",
+            "1.1.24",
+            "v0.2.8",
+            "PENDING product-owner smoke (v0.2.9 validation target)",
+        ),
     ),
     couplings=(
         _Coupling(
@@ -500,6 +550,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     ancillary_capabilities={
         "codex-agent": "codex",
         "claude-code-agent": "claude-code",
+        "antigravity-agent": "antigravity-cli",
         "postgresql-client": "postgresql-client",
     },
     # The materialization recipe follows the selected surface: each surface

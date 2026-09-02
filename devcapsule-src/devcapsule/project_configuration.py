@@ -16,13 +16,10 @@ from urllib.parse import quote
 from devcapsule.compat import CliError
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 from devcapsule.components.catalog import (
+    COMPONENTS,
     ComponentCatalogError,
     selected_component_definitions,
     selected_runtime_templates,
-)
-from devcapsule.components.claude_code import (
-    CLAUDE_CODE_AUTHORIZATION,
-    CLAUDE_CODE_TERMS_URL,
 )
 
 
@@ -128,6 +125,13 @@ class AuthorizationDeclaration:
     # False for workstation-capability defaults the project did not recommend;
     # bulk authorization of "everything recommended" must not include them.
     project_recommended: bool = True
+    # "acquisition" nodes gate a vendor download with per-user terms; init has
+    # no safe omission for them and asks each one. Everything else is "host".
+    kind: str = "host"
+    # For acquisition nodes: the capability whose removal from the need is the
+    # alternative to authorizing, and the vendor product name for messages.
+    capability: str | None = None
+    subject: str | None = None
 
 
 @dataclass(frozen=True)
@@ -479,34 +483,47 @@ def authorization_declarations(
     components = lock.get("components", {})
     if not isinstance(components, dict):
         raise ProjectConfigurationError("Platform lock components must be a table.")
-    claude_code = components.get("claude-code")
-    if claude_code is not None:
-        if not isinstance(claude_code, dict):
-            raise ProjectConfigurationError("components.claude-code must be a table.")
-        if claude_code.get("acquisition-authorization") != CLAUDE_CODE_AUTHORIZATION:
+    for component_id, metadata in components.items():
+        if component_id == "interactive-surface":
+            continue
+        definition = COMPONENTS.get(component_id) if isinstance(component_id, str) else None
+        if definition is None:
+            # Unknown ids fail later at catalog selection.
+            continue
+        contract = definition.acquisition()
+        if contract is None:
+            # Components without vendor terms need no acquisition authorization.
+            continue
+        if not isinstance(metadata, dict):
+            raise ProjectConfigurationError(f"components.{component_id} must be a table.")
+        if metadata.get("acquisition-authorization") != contract.authorization:
             raise ProjectConfigurationError(
-                "components.claude-code must declare acquisition-authorization = "
-                f"{CLAUDE_CODE_AUTHORIZATION!r}."
+                f"components.{component_id} must declare acquisition-authorization = "
+                f"{contract.authorization!r}."
             )
-        if claude_code.get("terms-url") != CLAUDE_CODE_TERMS_URL:
+        if metadata.get("terms-url") != contract.terms_url:
             raise ProjectConfigurationError(
-                f"components.claude-code terms-url must be {CLAUDE_CODE_TERMS_URL!r}."
+                f"components.{component_id} terms-url must be {contract.terms_url!r}."
             )
-        version = claude_code.get("version")
+        version = metadata.get("version")
         if not isinstance(version, str) or not version:
             raise ProjectConfigurationError(
-                "components.claude-code.version must be a non-empty string."
+                f"components.{component_id}.version must be a non-empty string."
             )
-        declarations[CLAUDE_CODE_AUTHORIZATION] = AuthorizationDeclaration(
-            name=CLAUDE_CODE_AUTHORIZATION,
+        declarations[contract.authorization] = AuthorizationDeclaration(
+            name=contract.authorization,
             recommended_value=True,
             recommendation_digest=canonical_digest(
-                {"name": CLAUDE_CODE_AUTHORIZATION, "component": claude_code}
+                {"name": contract.authorization, "component": metadata}
             ),
             description=(
-                f"Download checksum-pinned Claude Code {version} directly from Anthropic "
-                f"during local materialization, subject to {CLAUDE_CODE_TERMS_URL}."
+                f"Download checksum-pinned {contract.display_name} {version} directly "
+                f"from {contract.vendor} during local materialization, subject to "
+                f"{contract.terms_url}."
             ),
+            kind="acquisition",
+            capability=definition.capability,
+            subject=contract.display_name,
         )
 
     host = manifest.get("host", {})

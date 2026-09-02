@@ -29,6 +29,22 @@ class SecretInputDeclaration:
 
 
 @dataclass(frozen=True)
+class AcquisitionContract:
+    """A vendor acquisition the developer must authorize before materialization.
+
+    Declared by components whose artifacts are proprietary and licensed to the
+    downloading user only: acceptance travels with the download, so DevCapsule
+    puts this explicit authorization in front of it and never redistributes
+    the result.
+    """
+
+    authorization: str
+    terms_url: str
+    display_name: str
+    vendor: str
+
+
+@dataclass(frozen=True)
 class LockedArtifactDeclaration:
     """One lock-pinned artifact contribution to a local environment image."""
 
@@ -55,6 +71,16 @@ class ComponentDefinition(ABC):
     @abstractmethod
     def capability(self) -> str:
         """Project-facing capability implemented by this component."""
+
+    def acquisition(self) -> AcquisitionContract | None:
+        """The vendor acquisition this component requires, if any.
+
+        Freely redistributable components return None (the default); a
+        component whose artifact carries per-user vendor terms returns the
+        contract that gates its download behind an authorization node.
+        """
+
+        return None
 
     @abstractmethod
     def runtime_template(self) -> ComponentRuntimeTemplate:

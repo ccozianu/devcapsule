@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from devcapsule.components import ComponentDefinition
+from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
 from devcapsule.components.claude_code import DEFINITION as CLAUDE_CODE
 from devcapsule.components.codex import DEFINITION as CODEX
 from devcapsule.components.codium import DEFINITION as CODIUM
@@ -29,6 +30,7 @@ COMPONENTS: dict[str, ComponentDefinition] = {
     CODIUM.id: CODIUM,
     CODEX.id: CODEX,
     CLAUDE_CODE.id: CLAUDE_CODE,
+    ANTIGRAVITY_CLI.id: ANTIGRAVITY_CLI,
     POSTGRESQL_CLIENT.id: POSTGRESQL_CLIENT,
 }
 

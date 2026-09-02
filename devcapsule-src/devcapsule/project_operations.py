@@ -25,6 +25,7 @@ from devcapsule.configuration_nodes import (
     PROVIDER_HOST_DIRECTORY,
     build_node_registry,
 )
+from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.elicitation import AnswerKey, Elicitor
 from devcapsule.environment_realization import required_local_image
@@ -560,13 +561,69 @@ def _elicit_identity(
         existing=" ".join(str(item) for item in existing_need) if existing_need else None,
         validate=_normalize_need_string,
     )
+    capabilities = tuple(need.value.split()) if need else ()
+    capabilities = _with_default_agent(elicitor, capabilities, existing_need)
     return _ProjectIdentity(
         name=name.value if name else "",
         slug=slug.value,
         creator=creator.value if creator else "",
         mount=mount.value if mount else "",
-        capabilities=tuple(need.value.split()) if need else (),
+        capabilities=capabilities,
     )
+
+
+def _with_default_agent(
+    elicitor: Elicitor,
+    capabilities: tuple[str, ...],
+    existing_need: object,
+) -> tuple[str, ...]:
+    """Offer the default-selected agent when a fresh need does not name one.
+
+    Per the component-catalog delivery contract (2026-08-30), the Antigravity
+    CLI is default-selected: "available by default" without living in any
+    base. Concretely: an interactive init whose freshly authored need omits
+    ``antigravity-agent`` asks once, with Enter meaning yes; a noninteractive
+    init keeps its explicit ``--need`` list unchanged (the remedy *is* the
+    need flag), and a re-init of an existing manifest never grows an authored
+    need behind the owner's back.
+    """
+
+    default_capability = ANTIGRAVITY_CLI.capability
+    if not capabilities or existing_need or default_capability in capabilities:
+        return capabilities
+    grown = tuple(sorted((*capabilities, default_capability)))
+    try:
+        # Only offer a default that resolves: while the matrix lacks verified
+        # edges combining the agent with this need's surface or siblings, the
+        # default silently does not apply rather than failing the init.
+        _current_matrix().resolve(grown)
+    except ProjectConfigurationError:
+        return capabilities
+    answer = elicitor.seek(
+        "default-agent",
+        description=(
+            f"Select the default agent component ({default_capability})? (yes/no)"
+        ),
+        remedy=f"--need {default_capability}",
+        empty_answer="yes",
+        omitted_answer="no",
+        validate=_yes_no_validator("default-agent"),
+    )
+    if answer is not None and answer.value == "yes":
+        return grown
+    return capabilities
+
+
+def _yes_no_validator(name: str) -> Any:
+    def validate(value: str) -> str:
+        candidate = value.strip().lower()
+        if candidate in {"yes", "y"}:
+            return "yes"
+        if candidate in {"no", "n"}:
+            return "no"
+        raise ProjectConfigurationError(f"Question {name!r} accepts yes or no.")
+
+    return validate
 
 
 def _elicit_recommendations(
@@ -666,7 +723,7 @@ def _elicit_acquisitions(
     base = declarations.get("base-image")
     if base is None:
         # A legacy image-reference lock has no formation base to authorize.
-        return _elicit_claude_acquisition(elicitor, declarations, record, authorized)
+        return _elicit_component_acquisitions(elicitor, declarations, record, authorized)
     reference = str(base.recommended_value)
     existing_base = record.authorization.get("base-image")
     fresh = (
@@ -694,42 +751,53 @@ def _elicit_acquisitions(
             "lock-digest": base.recommendation_digest,
         }
         authorized.append("base-image")
-    return _elicit_claude_acquisition(elicitor, declarations, record, authorized)
+    return _elicit_component_acquisitions(elicitor, declarations, record, authorized)
 
 
-def _elicit_claude_acquisition(
+def _elicit_component_acquisitions(
     elicitor: Elicitor,
     declarations: Mapping[str, Any],
     record: CheckoutRecord,
     authorized: list[str],
 ) -> list[str]:
-    claude = declarations.get("claude-code-download")
-    if claude is not None:
-        existing_claude = record.authorization.get("claude-code-download")
-        claude_fresh = (
-            isinstance(existing_claude, dict)
-            and existing_claude.get("recommendation-digest") == claude.recommendation_digest
+    """Ask every component acquisition the lock's formation requires.
+
+    The declarations derive from the locked components' vendor contracts
+    (Claude Code, Antigravity CLI, …), one authorization node each; the
+    question wording and the persistence shape are uniform so a new curated
+    component never needs its own elicitation code.
+    """
+
+    for declaration in declarations.values():
+        if declaration.kind != "acquisition":
+            continue
+        existing = record.authorization.get(declaration.name)
+        fresh = (
+            isinstance(existing, dict)
+            and existing.get("recommendation-digest") == declaration.recommendation_digest
         )
         answer = elicitor.seek(
-            "claude-code-download",
-            description=f"{claude.description} Authorize? (yes/no)",
-            remedy="--authorize claude-code-download true",
-            existing="yes" if claude_fresh else None,
+            declaration.name,
+            description=f"{declaration.description} Authorize? (yes/no)",
+            remedy=f"--authorize {declaration.name} true",
+            existing="yes" if fresh else None,
             empty_answer="yes",
-            validate=_acquisition_validator("claude-code-download", "true"),
+            validate=_acquisition_validator(declaration.name, "true"),
         )
-        if answer is not None:
-            if answer.value == "no":
-                raise ProjectConfigurationError(
-                    "Initialization needs the Claude Code acquisition answered; declined. "
-                    "Remove 'claude-code-agent' from capabilities.need or authorize with "
-                    "'devcapsule project config authorize claude-code-download true'."
-                )
-            record.authorization["claude-code-download"] = {
-                "value": True,
-                "recommendation-digest": claude.recommendation_digest,
-            }
-            authorized.append("claude-code-download")
+        if answer is None:
+            continue
+        if answer.value == "no":
+            raise ProjectConfigurationError(
+                f"Initialization needs the {declaration.subject} acquisition answered; "
+                f"declined. Remove {declaration.capability!r} from capabilities.need or "
+                f"authorize with 'devcapsule project config authorize "
+                f"{declaration.name} true'."
+            )
+        record.authorization[declaration.name] = {
+            "value": True,
+            "recommendation-digest": declaration.recommendation_digest,
+        }
+        authorized.append(declaration.name)
     return authorized
 
 

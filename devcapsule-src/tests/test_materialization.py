@@ -503,3 +503,38 @@ def test_validate_base_rejects_wrong_identity() -> None:
     )
     with pytest.raises(CliError, match="identity mismatch"):
         validate_base_image(details, platform="linux-amd64", expected_identity="sha256:expected")
+
+
+def test_ancillary_environment_chains_path_prefixes_and_rejects_conflicts() -> None:
+    """Several components may each prepend a bin directory to PATH; any other
+    disagreement over one variable is a contract conflict."""
+
+    from devcapsule.materialization import _ancillary_environment
+
+    def declaration(component_id: str, environment: tuple[tuple[str, str], ...]):
+        return LockedArtifactDeclaration(
+            component_id=component_id,
+            version="1",
+            url="https://example.invalid/artifact",
+            sha256="a" * 64,
+            destination=f"/opt/{component_id}/bin/{component_id}",
+            environment=environment,
+        )
+
+    merged = dict(
+        _ancillary_environment(
+            (
+                declaration("claude-code", (("PATH", "/opt/claude/bin:${PATH}"),)),
+                declaration("antigravity-cli", (("PATH", "/opt/antigravity-cli/bin:${PATH}"),)),
+            )
+        )
+    )
+    assert merged["PATH"] == "/opt/claude/bin:/opt/antigravity-cli/bin:${PATH}"
+
+    with pytest.raises(CliError, match="conflicting values for environment DISABLE_UPDATES"):
+        _ancillary_environment(
+            (
+                declaration("claude-code", (("DISABLE_UPDATES", "1"),)),
+                declaration("other", (("DISABLE_UPDATES", "0"),)),
+            )
+        )
