@@ -156,7 +156,14 @@ component proceeds as `local-materialization` behind an
 `antigravity-download` acquisition authorization, pinned to the
 versioned GCS artifact (v1.1.24 verified: manifest sha512 matched,
 sha256 computed) with state at `~/.gemini/antigravity-cli` as a
-checkout-scoped slot. Next: implement the component per the contract.
+checkout-scoped slot.
+
+A `project config need CAPABILITY` verb also landed (`46cec03`), but its
+layering is **pending an owner ruling and a rebuild** — see *Open
+Threads*. As shipped it edits the committed manifest and rides
+`init --regenerate`; the owner ruled 2026-09-02 that the default must be
+a checkout-local *experiment* that commits nothing. Session paused
+2026-09-02 immediately after that ruling.
 
 ## Track 1 (integrated)
 
@@ -214,13 +221,24 @@ entry is safe to restore by hand-copy. A guided `config history`/
 
 ## Next Resumable Task
 
-Implement the Antigravity CLI component per the delivery contract and
-the analysis's consequences: catalog `ComponentDefinition`, matrix pin
-and `antigravity-agent` capability (default-selected per the contract),
-acquisition-authorization node, `/opt/antigravity-cli` materialization,
-checkout-scoped state slot, and inspection output. After that: the two
-open init/run authorization bugs, and agent smokes on the v0.2.8 base to
-retire the runtime-PEX override for combined formations.
+1. Settle the `config need` layering (the *checkout-local needs* open
+   thread below) and rebuild the verb accordingly: default =
+   checkout-local experimental need in the developer-owned record
+   (ancillary components only, pinned into `devcapsule.resolved.toml`,
+   verified-edge-checked against the locked base, droppable); the
+   shipped manifest-editing machinery becomes the explicit `--project`
+   promotion path.
+2. Implement the Antigravity CLI component per the delivery contract and
+   the analysis's consequences: catalog `ComponentDefinition`, matrix
+   pin (v1.1.24, verified checksums in the analysis doc),
+   `antigravity-agent` capability (default-selected per the contract),
+   `antigravity-download` authorization node, `/opt/antigravity-cli`
+   materialization, checkout-scoped state slot for
+   `~/.gemini/antigravity-cli`, and inspection output. The component is
+   the natural first user of the checkout-local need.
+3. Then: the two open init/run authorization bugs, and agent smokes on
+   the v0.2.8 base to retire the runtime-PEX override for combined
+   formations.
 
 ## Open Threads
 
@@ -272,6 +290,20 @@ retire the runtime-PEX override for combined formations.
   all-pass, peer-capsule dry-run, contributor bootstrap, recursive local
   clone). The checkout remains at `/home/devcapsule/e2e-fresh-devcapsule`
   with its built artifacts for the owner's v0.2.8 smoke.
+
+- **Checkout-local needs** (awaiting owner ruling, then rebuild): the
+  owner ruled that `config need` must default to an *experiment* — a
+  need recorded only in the developer-owned checkout record, committing
+  nothing. Proposed design, awaiting the owner's answer on two points:
+  (a) two-layer verb — `config need X` local by default, `--project`
+  promotes via the already-shipped manifest machinery; (b) strict
+  verified-edge checking against the locked base for local needs, or a
+  loudly-labeled `--unverified` escape hatch. Also proposed: local needs
+  are ancillary-only (surfaces are lock-level), pins for local
+  components recorded in `devcapsule.resolved.toml`, `--drop` for
+  removal, and distinct labeling in inspection and the run manifest.
+  Not preserved from the session: no code for the local layer exists
+  yet; only the manifest-editing verb (`46cec03`) is on the branch.
 
 ## External State And Risks
 
