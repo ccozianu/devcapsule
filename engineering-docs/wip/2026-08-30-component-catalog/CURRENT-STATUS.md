@@ -443,6 +443,23 @@ its ruling thread open):
 - **Component update mechanism** (owner-stated future work, 2026-08-31):
   warn developers when pinned components have newer releases, and advance
   matrix pins after tests. Belongs to project-wide planning; not started.
+- **Resolution-matrix sustainability cleanup** (owner-directed backlog
+  item, 2026-09-02): the owner judged `resolution_matrix.py` "an unholy
+  mess again" — acceptable as brute force to close bugs near-term,
+  unsustainable as the growth path. The evidence: 651 lines of
+  data-as-code (pin literals with embedded lock fragments, edge tuples,
+  substrate constants, evidence strings, rulings living in comments),
+  hand-edited 8 times in this workstream's first three days; every
+  change hand-bumps `_MATRIX_VERSION` and regenerates golden locks via
+  an ad-hoc script that is not even checked in. Each new base release,
+  component bump, edge, or model amendment (three model changes on
+  2026-09-02 alone: recipe-version per surface, substrate keying, the
+  v0.2.9 pin) lands in the same module and inflates it further. The
+  cleanup's shape is deliberately *not* designed here — it waits for
+  the owner's direction and should be planned together with the
+  component-update-mechanism thread above, which needs the same
+  data/model separation to exist. Minimum next step regardless of
+  design: a checked-in golden-lock regeneration tool.
 - **Launcher naming**: the generic project launcher still lives in
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
