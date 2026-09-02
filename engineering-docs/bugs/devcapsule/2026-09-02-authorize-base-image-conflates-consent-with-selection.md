@@ -1,0 +1,87 @@
+# Bug: `--authorize base-image` Conflates Consent With Selection And Explains Neither
+
+Date opened: 2026-09-02
+
+Status: open; confirmed by the product owner the same day ("the message
+is only intelligible to you, not even to me as product owner/designer,
+much less to an unsuspecting user")
+
+Requirements: R-PRODUCT-001, R-PRODUCT-002
+
+Related:
+[2026-09-02-authorization-grammar-cannot-express-denial](2026-09-02-authorization-grammar-cannot-express-denial.md)
+— the same grammar failing to say what it means, from the other side;
+the two should be ruled on together.
+
+## Symptom
+
+The product owner, twice on 2026-09-02, ran:
+
+```
+devcapsule-local.pex project init --need node --need frontend-ide \
+  --need antigravity-agent \
+  --authorize base-image docker.io/mycodespaceai/devcapsule-base:v0.2.9 \
+  --regenerate
+devcapsule: Authorization 'base-image' accepts yes, no, or the exact value
+'docker.io/mycodespaceai/devcapsule-base@sha256:ca9f7961…734232'
+```
+
+On the second attempt the demanded digest was the digest *of the very
+tag the owner typed* — the tool refused a value naming the same image
+it was asking consent for, with a message that explains nothing.
+
+## Mechanism
+
+Three layers, all by design rather than defect in code:
+
+1. **Grammar**: `--authorize base-image VALUE` reads as assignment —
+   every CLI convention says "use this base." It is actually *consent*:
+   the value-form exists so a noninteractive run proves it consents to
+   the exact reference resolution already selected
+   (`_acquisition_validator` in `project_operations.py`). Base
+   *selection* lives entirely in the resolution matrix; no init-level
+   lever chooses a base, and nothing tells the user so.
+2. **Message**: "accepts yes, no, or the exact value '…'" is the
+   validator's internals leaking out. It does not say what the
+   authorization is for, that the base was already chosen from
+   `capabilities.need`, why the value is a digest, or what to type
+   next. It even *invites* the mistake by presenting the value as
+   choosable.
+3. **The unrecognized near-miss**: init resolves offline, so it
+   genuinely cannot verify that a tag names the same image as the
+   pinned digest (tag→digest is a registry call, and tags are mutable —
+   consent correctly binds to the immutable digest). But the validator
+   can recognize a *reference-shaped* value and explain exactly this
+   instead of reciting its accepted inputs.
+
+## Expected
+
+An unsuspecting user who passes a base reference here learns, from the
+error alone: the base is selected by resolution from their needs, not by
+this flag; this flag consents to executing the selected base; consent
+binds to the immutable digest because tags are mutable; and the way
+forward is `yes` (or interactively, Enter).
+
+## Fix Scope (proposed; wording and semantics are the owner's ruling)
+
+1. Rewrite the rejection message to state role, selection source, and
+   remedy — minimum viable fix, no grammar change.
+2. Detect reference-shaped values and answer them specifically (the
+   tag-vs-digest explanation above), distinct from arbitrary garbage.
+3. Rule jointly with the denial-grammar bug whether the authorization
+   verb family gets an explicit shape that cannot be misread as
+   assignment (e.g. consent answers are only yes/no/digest-echo, and
+   the flag's help text says "consents to"), since both records show
+   the grammar failing to communicate its semantics.
+
+## Reproducibility
+
+Always: any `--authorize base-image VALUE` where VALUE is not `yes`,
+`no`, or the byte-exact resolved reference.
+
+## Verification Target
+
+- Automated: a test asserting the rejection message for a
+  reference-shaped value names the resolution matrix as the selector,
+  the consent role of the flag, and the yes/no remedy.
+- Manual: the owner rereads the message cold and finds it intelligible.

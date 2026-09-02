@@ -176,9 +176,11 @@ the owner pushed the image (digest `sha256:ca9f7961…734232`, read from
 the registry at pinning time; matrix `embedded-7`): codium-only and
 codium×antigravity formations now resolve to v0.2.9 with inherited gen2
 edges, while agent-carrying formations stay on v026 pending their gen1→
-gen2 smokes. Still open from the same episode: the `--authorize
-base-image` error message offers "the exact value" as if the value were
-choosable — consent and selection read as one verb.
+gen2 smokes. From the same episode, now a recorded bug (owner-confirmed
+2026-09-02, second occurrence hit even with the pin in place):
+[`--authorize base-image` conflates consent with selection and explains neither](../../bugs/devcapsule/2026-09-02-authorize-base-image-conflates-consent-with-selection.md)
+— to be ruled on jointly with the denial-grammar bug; whether it joins
+the v0.2.9 blocking list is the owner's triage.
 
 ## Coordination With `contained-display`
 
