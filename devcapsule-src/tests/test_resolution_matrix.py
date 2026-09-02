@@ -170,20 +170,21 @@ def test_frontend_need_generates_a_complete_codium_lock() -> None:
     assert codium["url"].endswith("VSCodium-linux-x64-1.126.04524.tar.gz")
     assert lock["materialization"]["recipe"] == "vscode-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "codium"}
-    # Codium's newest verified base is v0.2.8 (owner smoke 2026-09-02); v026
-    # predates the vscode adapter in its embedded runtime.
-    assert lock["base"]["build-mnemonic"] == "v0.2.8"
+    # Codium is verified on the gen2 substrate (owner smoke on v0.2.8,
+    # 2026-09-02), so the newest gen2 base wins; v026 (gen1) predates the
+    # vscode adapter in its embedded runtime.
+    assert lock["base"]["build-mnemonic"] == "v0.2.9"
 
 
 def test_base_selection_follows_each_needs_verified_edges() -> None:
     """The sparse matrix in action: newest verified base per capability set.
 
-    Codium alone is proven on v0.2.8; the agents are so far proven only on
-    v026, so compositions including them stay on the base where every
-    required edge is verified.
+    Codium is proven on the gen2 substrate, so it rides the newest gen2
+    base; the agents are so far proven only on gen1, so compositions
+    including them stay on the base where every required edge is verified.
     """
 
-    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.2.8"
+    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.2.9"
     assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v026"
     assert (
         parse(rendered(["node", "frontend-ide", "codex-agent"]))["base"]["build-mnemonic"]

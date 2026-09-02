@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-6"
+_MATRIX_VERSION = "embedded-7"
 
 
 # --------------------------------------------------------------------------
@@ -380,6 +380,23 @@ _V0_2_8_BASE = _BasePin(
     },
 )
 
+# The v0.2.9 base is a gen2 rebuild (recipe version 5, same toolchain)
+# embedding the 0.2.9 runtime; it inherits gen2's verified edges per the
+# 2026-09-02 substrate ruling. Pushed by the owner 2026-09-02; digest read
+# from the registry at pinning time.
+_V0_2_9_BASE = _BasePin(
+    mnemonic="v0.2.9",
+    substrate=_SUBSTRATE_GEN2,
+    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:ca9f79619fc0709a13e6a66de8959cda55dd47c23ec073fe0eb353de32734232"
+        ),
+        "build-mnemonic": "v0.2.9",
+    },
+)
+
 _PYCHARM_2026_2_0_1 = _ComponentPin(
     component_id="pycharm",
     version="2026.2.0.1",
@@ -512,7 +529,7 @@ _DOGFOOD_E2E = "recursive dogfood E2E (embedded-2 formation)"
 _LINUX_AMD64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_AMD64,
     matrix_version=_MATRIX_VERSION,
-    bases=(_V026_BASE, _V0_2_8_BASE),
+    bases=(_V026_BASE, _V0_2_8_BASE, _V0_2_9_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),

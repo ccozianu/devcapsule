@@ -171,9 +171,12 @@ substrate inherits every edge; the substrate string bumps only on
 substantial base changes. Implemented on the branch (matrix
 `embedded-6`); the amendment is recorded in D-0007. Consequence: agent
 smokes (resume item 3) establish gen2 edges once, covering v0.2.9 and
-every later gen2 release. The v0.2.9 base pin awaits the owner's push
-of the image (a registry digest is needed to pin; the built image is
-local-only). Still open from the same episode: the `--authorize
+every later gen2 release. The v0.2.9 base pin landed the same day after
+the owner pushed the image (digest `sha256:ca9f7961…734232`, read from
+the registry at pinning time; matrix `embedded-7`): codium-only and
+codium×antigravity formations now resolve to v0.2.9 with inherited gen2
+edges, while agent-carrying formations stay on v026 pending their gen1→
+gen2 smokes. Still open from the same episode: the `--authorize
 base-image` error message offers "the exact value" as if the value were
 choosable — consent and selection read as one verb.
 
