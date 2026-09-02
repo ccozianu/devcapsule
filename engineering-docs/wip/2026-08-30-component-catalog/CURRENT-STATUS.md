@@ -186,9 +186,15 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
    the recorded fix scopes, barring new discoveries:
    - [init/run answers not persisted as authorizations](../../bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
    - [formation identity claims an entrypoint the recipe never sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
+   - [the authorization grammar cannot express denial](../../bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
+     (owner-triaged onto this list 2026-09-02, found during the
+     antigravity smoke triage)
 
 New bugs found on the way join the list by owner triage rather than
-automatically blocking the release.
+automatically blocking the release. Pending its own record once the
+owner confirms the diagnosis: the codium surface crashes its setuid
+sandbox helper under the development-sudo posture (default Docker
+capabilities lack CAP_SYS_ADMIN), the failure the smoke actually hit.
 
 ## Track 1 (integrated)
 
