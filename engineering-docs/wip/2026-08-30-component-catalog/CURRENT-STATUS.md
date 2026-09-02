@@ -145,6 +145,21 @@ the gap and coordinates; it does not reshape the supervisor.
 
 ## Current Task
 
+Track 2, the Antigravity CLI component, began 2026-09-02 on branch
+`component-catalog/antigravity-cli` after track 1 merged to `main`
+(PR #50). The ledger-gated
+[license and redistribution analysis](antigravity-cli-license-and-redistribution-analysis.md)
+is done: proprietary binary, per-user acceptance by download, no
+redistribution grant, but a developer's own cached local image is not
+redistribution — the delivery contract stands unmodified and the
+component proceeds as `local-materialization` behind an
+`antigravity-download` acquisition authorization, pinned to the
+versioned GCS artifact (v1.1.24 verified: manifest sha512 matched,
+sha256 computed) with state at `~/.gemini/antigravity-cli` as a
+checkout-scoped slot. Next: implement the component per the contract.
+
+## Track 1 (integrated)
+
 Track 1 is implemented end-to-end as of 2026-08-31, on branch commits
 `f886872..7c496b2`, and live-verified from inside a capsule against the
 host daemon: `init --need node --need frontend-ide` derives a codium lock
@@ -199,9 +214,13 @@ entry is safe to restore by hand-copy. A guided `config history`/
 
 ## Next Resumable Task
 
-After the `codium` component integrates: track 2, the Antigravity CLI
-component, starting with the license and redistribution analysis the
-ledger gates on.
+Implement the Antigravity CLI component per the delivery contract and
+the analysis's consequences: catalog `ComponentDefinition`, matrix pin
+and `antigravity-agent` capability (default-selected per the contract),
+acquisition-authorization node, `/opt/antigravity-cli` materialization,
+checkout-scoped state slot, and inspection output. After that: the two
+open init/run authorization bugs, and agent smokes on the v0.2.8 base to
+retire the runtime-PEX override for combined formations.
 
 ## Open Threads
 
@@ -278,4 +297,5 @@ ledger gates on.
 
 ## Workstream Document Index
 
-None yet.
+- [Antigravity CLI: license and redistribution analysis](antigravity-cli-license-and-redistribution-analysis.md)
+  (2026-09-02, the ledger gate for track 2)
