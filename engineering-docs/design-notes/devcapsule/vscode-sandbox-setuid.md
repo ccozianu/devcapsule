@@ -1,12 +1,20 @@
 # The VS Code-Family Setuid Sandbox Helper
 
+**Superseded 2026-09-02** by the product owner's ruling in
+[renderer-sandboxing.md](renderer-sandboxing.md): shipped surfaces run
+`--no-sandbox` under full container hardening, and the narrow grant, the
+`setuid-helper` declaration, and the recipe's 4755 step described below
+are removed. The
+[2026-09-02 sudo-sandbox bug](../../bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
+falsified this note's development-sudo boundary paragraph and prompted
+the reversal. The analysis below is kept as the record of the 2026-08-31
+ruling and of what the setuid route entails if it ever returns.
+
 Ruled 2026-08-31 by the product owner during the `component-catalog`
 workstream, after a live launch surfaced the collision described below: the
 codium surface keeps Chromium's setuid renderer sandbox, and the host
 launcher narrows the capsule's hardening exactly enough to let the helper
-work. Referenced from the codium entry in `devcapsule/materialization.py`
-(`SURFACE_MATERIALIZATIONS`), the codium component declaration, and
-`SETUID_SANDBOX_CAPABILITIES` in the host launcher.
+work.
 
 ## The Problem
 

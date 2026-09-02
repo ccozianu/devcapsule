@@ -2,16 +2,27 @@
 
 Date opened: 2026-09-02
 
-Status: open; diagnosis confirmed by the product owner's A/B the same
-day (sudo posture crashes at surface start; the hand-forced no-sudo
-posture launches with the narrow-grant disclosure printed)
+Status: fixed on the branch 2026-09-02, by ruling rather than by either
+option in the fix scope below — the owner superseded the 2026-08-31
+sandbox ruling entirely: renderers run `--no-sandbox` under uniform full
+hardening for as long as we can, recorded in the
+[renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md).
+The setuid helper, the narrow grant, and the recipe's 4755 step are
+removed (codium recipe version 2, matrix `embedded-5`), so no posture
+exists in which the helper can crash. Regression test:
+`test_sudo_launches_grant_no_capabilities_beyond_dockers_default`.
+Closes on the owner's next sudo-enabled relaunch (the rebuild also
+first-exercises the widened `~/.gemini` slot from the antigravity-state
+record). Diagnosis had been confirmed by the product owner's A/B the
+same day (sudo posture crashes at surface start; the hand-forced
+no-sudo posture launches with the narrow-grant disclosure printed).
 
 Requirements: R-PRODUCT-001, R-PRODUCT-002
 
 Related: the
 [setuid sandbox design note](../../design-notes/devcapsule/vscode-sandbox-setuid.md)
 (this bug falsifies its development-sudo boundary paragraph);
-`2026-09-02-authorization-grammar-cannot-express-denial.md` (found
+`2026-09-02-authorization-grammar-cannot-expressF-denial.md` (found
 while trying to downgrade out of this crash — the owner ultimately had
 to hand-edit the generated resolution to express the no-sudo posture).
 
@@ -89,7 +100,13 @@ docker mode other than `dind`.
 
 ## Verification Target
 
-- Automated test: fix-scope item 3.
+(Updated for the 2026-09-02 ruling; the original target assumed a
+sandboxed-renderer fix.)
+
+- Automated test:
+  `test_sudo_launches_grant_no_capabilities_beyond_dockers_default` —
+  sudo launches compose Docker's default capability set plus the sudo
+  group, with no per-surface capability grants.
 - Manual validation: the failing smoke checkout, sudo re-enabled,
-  launches codium with renderers sandboxed (`chrome://sandbox` state or
-  simply a clean surface start where the zygote previously aborted).
+  launches codium cleanly where the zygote previously aborted; the
+  unsandboxed-renderer disclosure prints.

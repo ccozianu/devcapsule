@@ -504,7 +504,7 @@ def initialize_codium_project(project: Path) -> Path:
                 "",
                 "[materialization]",
                 'recipe = "vscode-local-materialization"',
-                'recipe-version = "1"',
+                'recipe-version = "2"',
                 "",
             ]
         ),

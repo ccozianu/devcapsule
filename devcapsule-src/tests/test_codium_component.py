@@ -47,7 +47,10 @@ def test_runtime_template_round_trips_through_the_contract() -> None:
 
     assert template.component.id == "codium"
     assert template.component.adapter == "vscode"
-    assert template.component.configuration["sandbox"] == "setuid-helper"
+    # Renderers run unsandboxed (product-owner ruling 2026-09-02); the flag
+    # is template data so the frozen v0.2.8 runtime appends it unchanged.
+    assert template.component.configuration["additional_arguments"] == ["--no-sandbox"]
+    assert "sandbox" not in template.component.configuration
     assert template.component.configuration["shared-memory-size"] == "640m"
     assert template.persistence.home == "required"
     assert template.persistence.xdg == "home-relative"
@@ -139,17 +142,21 @@ def test_vscode_adapter_reproduces_the_proven_foreground_command() -> None:
         "/opt/codium/codium",
         "--user-data-dir=/ide-user-data",
         "--extensions-dir=/ide-extensions",
+        "--no-sandbox",
         "/workspace/project",
     )
 
 
 def test_vscode_adapter_appends_validated_additional_arguments() -> None:
     document = component_runtime().to_mapping()
-    document["component"]["configuration"]["additional_arguments"] = ["--verbose"]  # type: ignore[index]
+    document["component"]["configuration"]["additional_arguments"] = [  # type: ignore[index]
+        "--no-sandbox",
+        "--verbose",
+    ]
 
     launch = plan_vscode(RuntimePlan.from_mapping(document))
 
-    assert launch.command[-2:] == ("--verbose", "/workspace/project")
+    assert launch.command[-3:] == ("--no-sandbox", "--verbose", "/workspace/project")
 
 
 @pytest.mark.parametrize(
@@ -176,8 +183,12 @@ def test_vscode_adapter_appends_validated_additional_arguments() -> None:
             "additional_arguments must be an array",
         ),
         (
-            lambda config: config.update(sandbox="no-sandbox"),
-            "sandbox must be 'setuid-helper'",
+            lambda config: config.update(sandbox="setuid-helper"),
+            "renderer sandboxing is retired",
+        ),
+        (
+            lambda config: config.update(additional_arguments=["--verbose"]),
+            "must include --no-sandbox",
         ),
     ],
 )

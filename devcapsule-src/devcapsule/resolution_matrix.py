@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-4"
+_MATRIX_VERSION = "embedded-5"
 
 
 # --------------------------------------------------------------------------
@@ -556,7 +556,10 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         },
         "codium": {
             "recipe": "vscode-local-materialization",
-            "recipe-version": "1",
+            # Version 2: the chrome-sandbox 4755 step is removed — renderers
+            # run --no-sandbox (product-owner ruling 2026-09-02; see the
+            # renderer-sandboxing design note).
+            "recipe-version": "2",
         },
     },
 )

@@ -221,9 +221,17 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
      (owner-triaged onto this list 2026-09-02, found during the
      antigravity smoke triage)
    - [the codium setuid sandbox crashes under the development-sudo posture](../../bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
-     (the failure the antigravity smoke actually hit; diagnosis
-     A/B-confirmed by the owner 2026-09-02, fix awaits the owner's
-     ruling since it amends the 2026-08-31 sandbox decision)
+     (the failure the antigravity smoke actually hit; **ruled and fixed
+     on the branch 2026-09-02**: the owner superseded the 2026-08-31
+     sandbox decision — renderers run `--no-sandbox` under uniform full
+     hardening for as long as we can, per the new
+     [renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md).
+     The narrow grant, the `setuid-helper` declaration, and the recipe's
+     chrome-sandbox 4755 step are removed; `--no-sandbox` travels as
+     template data so the frozen v0.2.8 runtime launches it unchanged;
+     codium recipe-version is 2 and the matrix advanced to `embedded-5`,
+     golden locks regenerated. Closes on the owner's next sudo-enabled
+     relaunch)
    - [antigravity's state is wider than the analyzed path](../../bugs/devcapsule/2026-09-02-antigravity-state-wider-than-the-analyzed-path.md)
      (`~/.gemini/config/projects` walled off by the nested slot's
      root-owned parent; **fix applied on the branch** — the slot now
@@ -254,6 +262,11 @@ surface keeps Chromium's setuid renderer sandbox under a narrow capability
 grant — see the
 [setuid sandbox design note](../../design-notes/devcapsule/vscode-sandbox-setuid.md)
 for the collision with default hardening that forced the ruling.
+(Superseded 2026-09-02: the sandbox ruling was reversed after the
+sudo-posture crash — renderers now run `--no-sandbox` under uniform full
+hardening; see the
+[renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md)
+and the sudo-sandbox entry under *Release Target: v0.2.9*.)
 
 The product owner's smoke sign-off arrived 2026-09-02: codium ran the
 tictactoe sample end-to-end on the **v0.2.8 base** (no runtime-PEX
@@ -304,10 +317,17 @@ clean.
 
 Resume with, in order:
 
-1. The two v0.2.9 bugs awaiting owner rulings: the codium sudo-sandbox
-   capability grant (amends the 2026-08-31 ruling; option 1 in its
-   record) and the authorization denial grammar (explicit deny vs
-   `unset` semantics).
+1. The two v0.2.9 bugs awaiting owner rulings — **one down 2026-09-02**:
+   the codium sudo-sandbox bug is ruled and fixed (`--no-sandbox` under
+   uniform hardening; see *Release Target* and the renderer-sandboxing
+   design note). Remaining: the authorization denial grammar (explicit
+   deny vs `unset` semantics). Note for the next rebuild-and-run: the
+   sandbox change advances the matrix to `embedded-5` and codium's
+   recipe to version 2, so existing codium locks (including the
+   tictactoe sample checkout's committed lock) fail loudly until
+   `init --regenerate`, and the canonical codium image rebuilds under a
+   new identity — the same relaunch that first-exercises the widened
+   `~/.gemini` slot.
 2. The two scoped v0.2.9 bugs: init/run answers persisted as
    authorizations, and the formation-identity/entrypoint-claim record
    (its enforcement half coordinates with `contained-display`).

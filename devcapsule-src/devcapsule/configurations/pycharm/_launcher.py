@@ -931,13 +931,19 @@ def append_docker_mode_args(args: list[str], config: PycharmRunConfig, host_user
         append_sudo_or_restrictions(args, config)
 
 
-def uses_setuid_sandbox_helper(config: PycharmRunConfig) -> bool:
-    """True when the plan's surface declares Chromium's setuid sandbox helper."""
+def launches_unsandboxed_renderers(config: PycharmRunConfig) -> bool:
+    """True when the plan's surface launches Chromium renderers unsandboxed.
 
-    return (
-        config.runtime_plan is not None
-        and config.runtime_plan.component.configuration.get("sandbox") == "setuid-helper"
-    )
+    Renderer sandboxing is retired (product-owner ruling 2026-09-02; see
+    engineering-docs/design-notes/devcapsule/renderer-sandboxing.md); the
+    surface carries --no-sandbox as template data and the launch disclosure
+    keys on it.
+    """
+
+    if config.runtime_plan is None:
+        return False
+    additional = config.runtime_plan.component.configuration.get("additional_arguments")
+    return isinstance(additional, list) and "--no-sandbox" in additional
 
 
 # Docker options the launcher composes exactly once per launch, with the
@@ -1005,21 +1011,13 @@ def declared_shared_memory_size(config: PycharmRunConfig) -> str | None:
     return value
 
 
-# The narrow grant Chromium's setuid helper needs: the setuid transition
-# itself (which no-new-privileges would veto), chroot, PID/network namespace
-# creation, and the drop back to the runtime user. Ruled 2026-08-31 by the
-# product owner over --no-sandbox; see
-# engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
-SETUID_SANDBOX_CAPABILITIES = ("SETUID", "SETGID", "SYS_ADMIN", "SYS_CHROOT")
-
-
 def append_sudo_or_restrictions(args: list[str], config: PycharmRunConfig) -> None:
+    # Hardening is uniform across surfaces: renderer sandboxing is retired
+    # (product-owner ruling 2026-09-02), so no surface narrows the capsule's
+    # posture; see
+    # engineering-docs/design-notes/devcapsule/renderer-sandboxing.md.
     if config.enable_sudo:
         args.extend(["--group-add", str(config.ide_sudo_gid)])
-    elif uses_setuid_sandbox_helper(config):
-        args.extend(["--cap-drop", "ALL"])
-        for capability in SETUID_SANDBOX_CAPABILITIES:
-            args.extend(["--cap-add", capability])
     else:
         args.extend(["--cap-drop", "ALL", "--security-opt", "no-new-privileges"])
 
@@ -1387,14 +1385,13 @@ Host browser integration:
             config.runtime_plan.component.id if config.runtime_plan is not None else "surface"
         )
         sandbox_disclosure = ""
-        if uses_setuid_sandbox_helper(config) and not config.enable_sudo:
+        if launches_unsandboxed_renderers(config):
             sandbox_disclosure = """
 
-Renderer sandbox capabilities:
-  The surface keeps Chromium's setuid renderer sandbox, so the capsule runs
-  without no-new-privileges and with the CAP_SETUID, CAP_SETGID,
-  CAP_SYS_ADMIN, and CAP_SYS_CHROOT bounding capabilities the helper needs.
-  Docker's outer isolation is unchanged."""
+Renderer security:
+  Chromium renderers run unsandboxed (--no-sandbox) and inherit the capsule
+  user's project, state, network, and any separately authorized Docker
+  access. Docker's outer isolation is unchanged."""
         slot_lines = "\n".join(
             f"  {logical_name}: {source}"
             for logical_name, source, _destination in config.interactive_state_mounts
