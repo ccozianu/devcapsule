@@ -515,18 +515,12 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         _VerifiedEdge("codex", "0.145.0", "v026", _DOGFOOD_E2E),
         _VerifiedEdge("claude-code", "2.1.227", "v026", _DOGFOOD_E2E),
         _VerifiedEdge("postgresql-client", "16", "v026", _DOGFOOD_E2E),
-        # PROVISIONAL, branch-only: this edge lets init resolve antigravity
-        # formations so the product owner can smoke them (codium precedent:
-        # the 2026-08-31 codium×v026 edge entered the tree the same way and
-        # its evidence was recorded when the smoke happened). The integration
-        # cadence — no PR before the owner's smoke — keeps an unsmoked edge
-        # off main; replace this evidence string with the smoke record before
-        # opening the v0.2.9 PR.
         _VerifiedEdge(
             "antigravity-cli",
             "1.1.24",
             "v0.2.8",
-            "PENDING product-owner smoke (v0.2.9 validation target)",
+            "product-owner smoke 2026-09-02: antigravity working the "
+            "tictactoe sample (codium surface, v0.2.8 base)",
         ),
     ),
     couplings=(

@@ -2,8 +2,13 @@
 
 Date opened: 2026-09-02
 
-Status: open; fix applied on the workstream branch the same day
-(slot widened to `~/.gemini`), awaiting the owner's re-smoke
+Status: open; fix applied on the workstream branch the same day (slot
+widened to `~/.gemini`, contract and launcher guards per the
+state-slots design note). The owner repaired the live checkout's
+ownership by hand (`chown`) and the CLI then worked through the
+2026-09-02 smoke; the widened slot and the launcher pre-creation get
+their first live exercise on the next rebuild-and-run, which closes
+this record
 
 Requirements: R-PRODUCT-001
 

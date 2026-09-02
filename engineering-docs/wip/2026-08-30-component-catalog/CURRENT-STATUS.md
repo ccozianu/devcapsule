@@ -200,8 +200,10 @@ canonical images accumulate with no lifecycle.
 
 Set by the product owner on 2026-09-02. v0.2.9 ships when:
 
-1. The Antigravity CLI component is implemented and owner-smoked, per
-   the delivery contract and the license analysis.
+1. ~~The Antigravity CLI component is implemented and owner-smoked, per
+   the delivery contract and the license analysis.~~ Done 2026-09-02:
+   smoke passed on the tictactoe sample (codium × antigravity,
+   v0.2.8 base).
 2. The open v0.2.8-validation bugs are fixed, "relatively" — meaning
    the recorded fix scopes, barring new discoveries:
    - [init/run answers not persisted as authorizations](../../bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
@@ -281,7 +283,18 @@ entry is safe to restore by hand-copy. A guided `config history`/
 Reordered 2026-09-02 at the owner's direction (antigravity first; the
 config-need rebuild keeps its ruling thread open):
 
-1. **Implemented 2026-09-02, awaiting the owner's smoke**: the
+1. **Validated 2026-09-02**: the owner's smoke passed the same day —
+   antigravity working the tictactoe sample on the codium surface and
+   the v0.2.8 base — after three launch-path bugs surfaced and were
+   triaged (sudo sandbox posture, denial grammar, state-slot
+   ownership; see *Release Target*). The provisional matrix edge now
+   carries the smoke as its evidence, so per the integration cadence
+   the component is PR-ready. Two open smoke observations remain for
+   a later pass: whether the CLI needs a do-not-self-update setting,
+   and whether the `agy` alias matters. Note the smoke ran with the
+   ownership repaired by hand (`chown`); the widened `~/.gemini` slot
+   and the launcher pre-creation get their first live exercise on the
+   next rebuild-and-run. Implementation, as delivered: the
    Antigravity CLI component per the delivery contract — catalog
    `ComponentDefinition` (`components/antigravity_cli.py`), matrix pin
    (v1.1.24; the sha256 and the archive's single `antigravity` member
@@ -302,10 +315,9 @@ config-need rebuild keeps its ruling thread open):
      (Enter = yes) asked only when the fresh need omits an agent *and*
      the grown need resolves; a noninteractive `--need` list stays
      authored-explicit, and re-inits never grow an existing need.
-   - The antigravity×v0.2.8 verified edge is **provisional, branch-only**
-     (evidence string says so): it exists so init can resolve smoke
-     formations, per the codium precedent; the smoke record replaces it
-     before any PR.
+   - The antigravity×v0.2.8 verified edge entered the branch
+     provisionally (codium precedent) and now records the owner's
+     2026-09-02 smoke as its evidence.
    - Two smoke-time questions: whether the CLI needs a
      do-not-self-update setting (the pin makes self-update unwanted),
      and whether the `agy` alias matters (the recipe has no symlink
