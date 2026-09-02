@@ -58,9 +58,11 @@ def test_antigravity_state_is_persistent_and_credential_sensitive() -> None:
     slot = template.persistence.state_slots[0]
 
     # No environment variable relocates the CLI's state; the slot pins the
-    # documented fixed path beneath the container home.
+    # whole ~/.gemini directory — a direct child of home, so the mount point
+    # is the user-owned state directory itself and the CLI can create its
+    # config/projects registry beside antigravity-cli/ (2026-09-02 bug).
     assert template.component.environment == {}
-    assert slot.container_path == ANTIGRAVITY_HOME == "/home/devcapsule/.gemini/antigravity-cli"
+    assert slot.container_path == ANTIGRAVITY_HOME == "/home/devcapsule/.gemini"
     assert slot.sensitivity == "credentials"
     assert slot.default_scope == "checkout"
     assert slot.home_overlay is True

@@ -23,10 +23,15 @@ from devcapsule.components import (
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
 
 
-# The CLI reads its settings and session state from this fixed path; no
-# documented environment variable relocates it, so the state slot pins the
-# path and declares no environment.
-ANTIGRAVITY_HOME = "/home/devcapsule/.gemini/antigravity-cli"
+# The CLI keeps settings and session state under ~/.gemini — the
+# antigravity-cli/ subdirectory the license analysis recorded, plus a
+# project registry at config/projects discovered in first use (see the
+# 2026-09-02 antigravity-state bug record). The slot covers the whole
+# directory: a slot nested deeper than one level beneath home would leave
+# Docker's root-owned intermediate parent walling off the siblings. No
+# documented environment variable relocates the path, so the slot pins it
+# and declares no environment.
+ANTIGRAVITY_HOME = "/home/devcapsule/.gemini"
 ANTIGRAVITY_PREFIX = "/opt/antigravity-cli"
 ANTIGRAVITY_BIN = f"{ANTIGRAVITY_PREFIX}/bin"
 ANTIGRAVITY_EXECUTABLE = f"{ANTIGRAVITY_BIN}/antigravity"
@@ -143,8 +148,9 @@ def _runtime_template_mapping() -> dict[str, Any]:
                         "permissions": "0700",
                         "reconstructable": False,
                         "deletion_effect": (
-                            "Removes Antigravity CLI settings and local session state; "
-                            "credentials live in the keyring or arrive per run."
+                            "Removes Antigravity CLI settings, its project registry, "
+                            "and local session state; credentials live in the keyring "
+                            "or arrive per run."
                         ),
                         "home_overlay": True,
                     }

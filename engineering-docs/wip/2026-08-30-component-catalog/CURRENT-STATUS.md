@@ -193,6 +193,11 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
      (the failure the antigravity smoke actually hit; diagnosis
      A/B-confirmed by the owner 2026-09-02, fix awaits the owner's
      ruling since it amends the 2026-08-31 sandbox decision)
+   - [antigravity's state is wider than the analyzed path](../../bugs/devcapsule/2026-09-02-antigravity-state-wider-than-the-analyzed-path.md)
+     (`~/.gemini/config/projects` walled off by the nested slot's
+     root-owned parent; **fix applied on the branch** — the slot now
+     covers `~/.gemini` whole, changing the template digest and so the
+     canonical image identity — awaiting the owner's re-smoke)
 
 New bugs found on the way join the list by owner triage rather than
 automatically blocking the release.

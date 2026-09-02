@@ -30,6 +30,11 @@ date; the artifact verification was performed hands-on.
   print-a-URL flow for headless sessions, or `GEMINI_API_KEY` in the
   environment with `modelProvider = gemini`. Installation alone
   authenticates nothing and grants no host access.
+  *Corrected 2026-09-02 during the owner's smoke*: the state footprint
+  is wider — the CLI also keeps a project registry at
+  `~/.gemini/config/projects` — so the component's state slot covers
+  `~/.gemini` whole; see the
+  [antigravity-state bug record](../../bugs/devcapsule/2026-09-02-antigravity-state-wider-than-the-analyzed-path.md).
 
 ## Terms Analysis
 
