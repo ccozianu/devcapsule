@@ -10,6 +10,7 @@ from ._launcher import (
     PycharmRunError,
     PycharmRunOptions,
     build_run_config,
+    reject_launcher_owned_docker_options,
     run_pycharm,
 )
 from .configuration import PycharmConfiguration
@@ -24,5 +25,6 @@ __all__ = [
     "PycharmRunError",
     "PycharmRunOptions",
     "build_run_config",
+    "reject_launcher_owned_docker_options",
     "run_pycharm",
 ]

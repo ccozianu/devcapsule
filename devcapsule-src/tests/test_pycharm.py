@@ -1028,3 +1028,23 @@ def test_persistent_home_defaults_to_checkout_scoped_xdg_data(tmp_path: Path) ->
     assert config.persistent_home == (
         tmp_path / "data" / "devcapsule" / "projects" / "by-path" / project_id / "home"
     ).resolve()
+
+
+def test_launcher_owned_docker_options_are_refused_in_passthrough() -> None:
+    """Docker keeps the last occurrence of a single-instance option, so a raw
+    passthrough repetition would silently override the resolved plan; ruled
+    2026-09-02: launcher-owned single-instance options are refused, repeatable
+    ones pass through."""
+
+    from devcapsule.configurations.pycharm import reject_launcher_owned_docker_options
+
+    for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always"):
+        with pytest.raises(PycharmRunError, match="composed by the launcher"):
+            reject_launcher_owned_docker_options(["-v", "/x:/y", option])
+
+    with pytest.raises(PycharmRunError, match="shared-memory-size in its runtime template"):
+        reject_launcher_owned_docker_options(["--shm-size", "1g"])
+
+    reject_launcher_owned_docker_options(
+        ["-v", "/x:/y", "--volume", "/a:/b", "--env", "FOO=bar", "--mount", "type=tmpfs,dst=/z", "--cap-add", "NET_ADMIN"]
+    )

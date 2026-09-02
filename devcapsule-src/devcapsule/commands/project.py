@@ -31,7 +31,12 @@ from devcapsule.commands.framework import (
 )
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.config_history import record_known_good_configuration
-from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
+from devcapsule.configurations.pycharm import (
+    DockerMode,
+    PycharmRunOptions,
+    reject_launcher_owned_docker_options,
+    run_pycharm,
+)
 from devcapsule.configuration_nodes import (
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
@@ -784,7 +789,9 @@ class ProjectRunCommand(Command):
         "Run the project from its platform lock and developer-owned resolution. "
         "Run-once answers use the config grammar (--authorize NAME VALUE, "
         "--set NAME VALUE) and are never persisted; everything after '--' is "
-        "handed verbatim to 'docker run'."
+        "handed verbatim to 'docker run', except single-instance options the "
+        "launcher composes (--network, --memory, --shm-size, ...), which are "
+        "refused with the sanctioned alternative named."
     )
     passthrough_dest = "docker_options"
     passthrough_metavar = "DOCKER-RUN-OPTIONS"
@@ -924,8 +931,12 @@ class ProjectRunCommand(Command):
                 )
         docker_options = list(arguments.docker_options)
         if docker_options:
-            # The user is deliberately stepping outside the resolved plan;
-            # show exactly what is being handed to docker, once, conspicuously.
+            # Single-instance options the launcher composes are refused —
+            # docker would keep the passthrough occurrence and silently
+            # override the resolved plan. Everything else is deliberate
+            # stepping outside the plan; show exactly what is being handed
+            # to docker, once, conspicuously.
+            reject_launcher_owned_docker_options(docker_options)
             print(
                 "WARNING: passing raw docker run options outside the resolved plan: "
                 + " ".join(docker_options),
@@ -1099,6 +1110,7 @@ class ProjectRunImageCommand(Command):
         )
         docker_options = list(arguments.docker_options)
         if docker_options:
+            reject_launcher_owned_docker_options(docker_options)
             print(
                 "WARNING: passing raw docker run options: " + " ".join(docker_options),
                 file=sys.stderr,

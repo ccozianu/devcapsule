@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from ...container_runtime.contract import RuntimePlan
 from ...host_daemon import (
@@ -938,6 +938,49 @@ def uses_setuid_sandbox_helper(config: PycharmRunConfig) -> bool:
         config.runtime_plan is not None
         and config.runtime_plan.component.configuration.get("sandbox") == "setuid-helper"
     )
+
+
+# Docker options the launcher composes exactly once per launch, with the
+# sanctioned lever (if any) a developer should use instead. Docker keeps the
+# last occurrence of a single-instance option, so a raw passthrough
+# repetition would silently override the resolved plan rather than error;
+# these are refused at the door instead. Repeatable options (--mount, --env,
+# --volume, --cap-add, ...) pass through untouched. The scan matches option
+# tokens only; a *value* that happens to spell one of these names is
+# conservatively refused too, which is acceptable for a deliberate escape
+# hatch.
+LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
+    "--rm": "the launcher owns the container lifecycle",
+    "--detach": "the launcher owns the container lifecycle",
+    "-d": "the launcher owns the container lifecycle",
+    "--interactive": "the launcher owns the container lifecycle",
+    "-i": "the launcher owns the container lifecycle",
+    "--name": "use 'devcapsule project run --name NAME'",
+    "--user": "the launcher derives the container identity from the host user",
+    "-u": "the launcher derives the container identity from the host user",
+    "--network": "authorize it: '--authorize network host' or the config family",
+    "--net": "authorize it: '--authorize network host' or the config family",
+    "--memory": "set the runtime.memory-limit configuration value",
+    "-m": "set the runtime.memory-limit configuration value",
+    "--shm-size": "the surface declares shared-memory-size in its runtime template",
+    "--ipc": "the launcher owns IPC isolation",
+    "--pids-limit": "the launcher owns the PID budget",
+    "--privileged": "privilege comes from the docker-daemon and development-sudo authorizations",
+    "--pull": "the launcher pins '--pull=never' to the materialized image",
+}
+
+
+def reject_launcher_owned_docker_options(options: Sequence[str]) -> None:
+    """Refuse raw docker options the launcher already composes exactly once."""
+
+    for option in options:
+        name = option.split("=", 1)[0]
+        remedy = LAUNCHER_OWNED_DOCKER_OPTIONS.get(name)
+        if remedy is not None:
+            raise PycharmRunError(
+                f"Raw docker option {name!r} is composed by the launcher and cannot "
+                f"pass through; {remedy}."
+            )
 
 
 def declared_shared_memory_size(config: PycharmRunConfig) -> str | None:

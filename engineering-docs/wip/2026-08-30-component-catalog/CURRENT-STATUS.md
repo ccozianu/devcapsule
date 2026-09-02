@@ -147,6 +147,15 @@ invoking user (and reports foreign-owned leftovers it cannot repair).
 The entrypoint-side verification of the invariant is a coordination
 item for `contained-display` (below).
 
+**Passthrough ruling (2026-09-02)**: raw docker passthrough refuses
+single-instance options the launcher composes (`--network`, `--memory`,
+`--shm-size`, `--user`, `--pull`, lifecycle flags, …) — docker keeps
+the last occurrence, so a passthrough repetition would silently
+override the resolved plan; each refusal names the sanctioned lever.
+Repeatable options (`-v`, `--env`, `--mount`, …) pass through as
+before. Denylist and rationale live beside
+`reject_launcher_owned_docker_options` in the host launcher.
+
 ## Coordination With `contained-display`
 
 `contained-display` is paused as of 2026-08-30 until this workstream shows

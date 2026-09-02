@@ -79,9 +79,10 @@ def _runtime_template() -> ComponentRuntimeTemplate:
                     # the launcher's forced llvmpipe software rendering the
                     # 64MB Docker default intermittently SIGTRAPs the first
                     # renderer after a relaunch. Owner-confirmed 2026-09-02:
-                    # at least 512m stops the crashes; 1g leaves headroom.
+                    # at least 512m stops the crashes; 640m adds headroom
+                    # while staying friendly to small-memory adopter laptops.
                     # See the 2026-09-02 relaunch-renderer-crash bug record.
-                    "shared-memory-size": "1g",
+                    "shared-memory-size": "640m",
                     "state_slot_mapping": {
                         "user-data": "user-data",
                         "extensions": "extensions",
