@@ -146,6 +146,136 @@ def test_repeated_init_without_answers_still_refuses(tmp_path: Path, capsys) -> 
         assert "already fully initialized" in capsys.readouterr().err
 
 
+def test_config_need_grows_the_project_and_preserves_authored_content(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "fresh-project"
+    project.mkdir()
+    manifest_path = project / ".devcapsule" / "devcapsule.toml"
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(full_init_command(project)) == 0
+        manifest_path.write_text(
+            manifest_path.read_text(encoding="utf-8") + "# authored comment\n",
+            encoding="utf-8",
+        )
+        capsys.readouterr()
+
+        # Growing the need regenerates the lock, which stales the base
+        # authorization by design; the carrier answers it in the same command.
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "need",
+                    "postgresql-client",
+                    "--authorize",
+                    "base-image",
+                    "yes",
+                ]
+            )
+            == 0
+        )
+        output = capsys.readouterr().out
+        assert "Project initialized; 'devcapsule project run' starts it." in output
+
+        manifest_text = manifest_path.read_text(encoding="utf-8")
+        assert 'need = ["postgresql-client", "python", "python-ide"]' in manifest_text
+        assert "# authored comment" in manifest_text
+        lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
+        assert lock["components"]["postgresql-client"]["delivery-policy"] == "base-image"
+
+        # Re-adding converges without new answers: nothing changed, the
+        # standing fresh authorization satisfies the gate.
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "need", "postgresql-client"]
+            )
+            == 0
+        )
+
+
+def test_config_need_rejects_unresolvable_growth_without_touching_the_manifest(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "fresh-project"
+    project.mkdir()
+    manifest_path = project / ".devcapsule" / "devcapsule.toml"
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(full_init_command(project)) == 0
+        before = manifest_path.read_text(encoding="utf-8")
+        capsys.readouterr()
+
+        # A second interactive surface can never resolve; authored content
+        # stays exactly as it was.
+        assert (
+            cli.main(["project", "--path", str(project), "config", "need", "frontend-ide"])
+            == 2
+        )
+        assert "exactly one interactive surface" in capsys.readouterr().err
+        assert manifest_path.read_text(encoding="utf-8") == before
+
+        assert (
+            cli.main(["project", "--path", str(project), "config", "need", "quantum-debugger"])
+            == 2
+        )
+        assert "does not know 'quantum-debugger'" in capsys.readouterr().err
+        assert manifest_path.read_text(encoding="utf-8") == before
+
+
+def test_config_need_elicits_new_acquisition_gates(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "fresh-project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(full_init_command(project)) == 0
+        capsys.readouterr()
+
+        # The added agent brings its own acquisition gate; noninteractively
+        # it batch-fails naming the exact carrier...
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "need",
+                    "claude-code-agent",
+                    "--authorize",
+                    "base-image",
+                    "yes",
+                ]
+            )
+            == 2
+        )
+        assert "--authorize claude-code-download" in capsys.readouterr().err
+
+        # ...and completes when the carrier answers it.
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "need",
+                    "claude-code-agent",
+                    "--authorize",
+                    "base-image",
+                    "yes",
+                    "--authorize",
+                    "claude-code-download",
+                    "true",
+                ]
+            )
+            == 0
+        )
+        lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
+        assert lock["components"]["claude-code"]["version"]
+
+
 def test_init_repairs_a_deleted_checkout_config_tree(tmp_path: Path, capsys) -> None:
     project = tmp_path / "fresh-project"
     project.mkdir()

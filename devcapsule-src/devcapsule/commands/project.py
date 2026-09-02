@@ -45,6 +45,7 @@ from devcapsule.project_operations import (
     CheckoutRecord,
     InitializeRequest,
     ProvidedAnswer,
+    add_capability_need,
     initialize_project,
     resolve_checkout,
 )
@@ -535,6 +536,44 @@ class ConfigAuthorizeCommand(Command):
         return 0
 
 
+class ConfigNeedCommand(Command):
+    name = "need"
+    help = (
+        "Add capabilities to the project's need; the lock regenerates, new "
+        "acquisition gates elicit (--authorize NAME VALUE answers them), and "
+        "the resolution refreshes so 'project run' works immediately."
+    )
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "capabilities",
+            nargs="+",
+            metavar="CAPABILITY",
+            help="Capability to add to capabilities.need; repeatable.",
+        )
+        add_carrier_options(parser, families=("authorize",))
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        answers = tuple(
+            ProvidedAnswer(
+                family=answer.family,
+                name=answer.name,
+                value=answer.value,
+                justification=answer.justification,
+            )
+            for answer in carrier_answers(arguments)
+        )
+        report = add_capability_need(
+            _project_context(context).target_path(),
+            arguments.capabilities,
+            answers,
+        )
+        print(report.render())
+        return 0
+
+
 class ConfigGroup(Group):
     name = "config"
     help = "Inspect and resolve layered project configuration."
@@ -544,6 +583,7 @@ class ConfigGroup(Group):
         return {
             ConfigListCommand.name: ConfigListCommand,
             ConfigResolveCommand.name: ConfigResolveCommand,
+            ConfigNeedCommand.name: ConfigNeedCommand,
             ConfigSetCommand.name: ConfigSetCommand,
             ConfigBindCommand.name: ConfigBindCommand,
             ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,

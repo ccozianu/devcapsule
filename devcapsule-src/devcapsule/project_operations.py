@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, TextIO
+import re
+from typing import Any, Mapping, Sequence, TextIO
 
 from devcapsule.configuration_nodes import (
     CARRIER_FAMILY_BIND,
@@ -72,6 +73,7 @@ __all__ = [
     "InitializeRequest",
     "ProvidedAnswer",
     "ResolveReport",
+    "add_capability_need",
     "initialize_project",
     "resolve_checkout",
 ]
@@ -779,6 +781,71 @@ def _apply_extra_answers(
                         f"{declaration.environment_variable!r}."
                     )
                 record.environment_bindings[answer.name] = value
+
+
+def add_capability_need(
+    root: Path,
+    names: Sequence[str],
+    answers: tuple[ProvidedAnswer, ...] = (),
+) -> InitializeReport:
+    """Grow the project's capability need; everything downstream re-derives.
+
+    The manifest gains the new names in its authored ``need`` line (a
+    surgical textual edit — authored content is never rewritten from its
+    parsed form), then the regenerate path rebuilds the lock from the
+    current matrix, elicits any acquisition gates the new components bring
+    (``--authorize`` carriers answer them noninteractively), and refreshes
+    the resolution — so ``project run`` works immediately afterward.
+    Adding an already-needed capability converges to the same state.
+    """
+
+    resolved_root = root.expanduser().resolve()
+    manifest_path = resolved_root / ".devcapsule" / "devcapsule.toml"
+    if not manifest_path.is_file():
+        raise ProjectConfigurationError(
+            f"{resolved_root} carries no project manifest; run 'devcapsule project init' first."
+        )
+    manifest = load_toml(manifest_path)
+    validate_manifest(manifest, manifest_path)
+    matrix = _current_matrix()
+    current = matrix.normalize(manifest.get("capabilities", {}).get("need", []))
+    requested = matrix.normalize([*current, *names])
+    if requested != current:
+        # Pre-flight the grown need before touching authored content: an
+        # unresolvable set (a second surface, no verified combination) must
+        # leave the manifest exactly as it was.
+        matrix.resolve(requested)
+        _rewrite_manifest_need(manifest_path, requested)
+    return initialize_project(
+        InitializeRequest(directory=resolved_root, answers=answers, regenerate=True)
+    )
+
+
+def _rewrite_manifest_need(manifest_path: Path, need: tuple[str, ...]) -> None:
+    """Replace the single authored ``need = […]`` line under ``[capabilities]``."""
+
+    text = manifest_path.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+    in_capabilities = False
+    replaced = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_capabilities = stripped == "[capabilities]"
+            continue
+        if in_capabilities and re.match(r"need\s*=\s*\[.*\]\s*$", stripped):
+            newline = "\n" if line.endswith("\n") else ""
+            lines[index] = (
+                "need = [" + ", ".join(quote_toml(name) for name in need) + "]" + newline
+            )
+            replaced = True
+            break
+    if not replaced:
+        raise ProjectConfigurationError(
+            f"{manifest_path} has no single-line 'need = [...]' under [capabilities]; "
+            "edit the manifest by hand and run 'devcapsule project init --regenerate'."
+        )
+    atomic_write(manifest_path, "".join(lines), mode=0o644)
 
 
 def _fully_initialized(root: Path, manifest: Mapping[str, Any]) -> bool:
