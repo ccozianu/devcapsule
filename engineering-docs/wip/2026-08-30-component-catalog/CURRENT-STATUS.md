@@ -162,8 +162,33 @@ A `project config need CAPABILITY` verb also landed (`46cec03`), but its
 layering is **pending an owner ruling and a rebuild** — see *Open
 Threads*. As shipped it edits the committed manifest and rides
 `init --regenerate`; the owner ruled 2026-09-02 that the default must be
-a checkout-local *experiment* that commits nothing. Session paused
-2026-09-02 immediately after that ruling.
+a checkout-local *experiment* that commits nothing.
+
+On resume later on 2026-09-02 the owner directed: implement the
+Antigravity CLI component now (ahead of the config-need rebuild, which
+stays an open thread), and give this workstream a release target — see
+*Release Target: v0.2.9*. The same session logged a third
+v0.2.8-validation bug found by running `project run` against this
+checkout itself:
+[2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
+— the formation identity churns on descriptor-only changes, records an
+entrypoint the recipe never enforces (tini is still PID 1 on v026
+formations, against `500909d`'s premise), and superseded multi-GB
+canonical images accumulate with no lifecycle.
+
+## Release Target: v0.2.9
+
+Set by the product owner on 2026-09-02. v0.2.9 ships when:
+
+1. The Antigravity CLI component is implemented and owner-smoked, per
+   the delivery contract and the license analysis.
+2. The open v0.2.8-validation bugs are fixed, "relatively" — meaning
+   the recorded fix scopes, barring new discoveries:
+   - [init/run answers not persisted as authorizations](../../bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
+   - [formation identity claims an entrypoint the recipe never sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
+
+New bugs found on the way join the list by owner triage rather than
+automatically blocking the release.
 
 ## Track 1 (integrated)
 
@@ -221,24 +246,52 @@ entry is safe to restore by hand-copy. A guided `config history`/
 
 ## Next Resumable Task
 
-1. Settle the `config need` layering (the *checkout-local needs* open
+Reordered 2026-09-02 at the owner's direction (antigravity first; the
+config-need rebuild keeps its ruling thread open):
+
+1. **Implemented 2026-09-02, awaiting the owner's smoke**: the
+   Antigravity CLI component per the delivery contract — catalog
+   `ComponentDefinition` (`components/antigravity_cli.py`), matrix pin
+   (v1.1.24; the sha256 and the archive's single `antigravity` member
+   re-verified hands-on 2026-09-02, artifact sha512 recorded as
+   upstream provenance), `antigravity-agent` capability,
+   `antigravity-download` authorization node, `/opt/antigravity-cli`
+   materialization with PATH chaining, checkout-scoped
+   `antigravity-cli/home` slot for `~/.gemini/antigravity-cli`, an
+   optional `gemini-api-key` secret input, and inspection output
+   (all verified live via `init` + `config list`). The matrix advanced
+   to `embedded-4`; golden locks regenerated. Implementation calls the
+   owner should review, made under recorded latitude:
+   - The acquisition gate is now *generic*: `authorization_declarations`
+     and init's acquisition elicitation derive every vendor gate from a
+     new `ComponentDefinition.acquisition()` contract instead of the
+     claude-code special case (wording and digests preserved).
+   - "Default-selected" is implemented as an interactive init question
+     (Enter = yes) asked only when the fresh need omits an agent *and*
+     the grown need resolves; a noninteractive `--need` list stays
+     authored-explicit, and re-inits never grow an existing need.
+   - The antigravity×v0.2.8 verified edge is **provisional, branch-only**
+     (evidence string says so): it exists so init can resolve smoke
+     formations, per the codium precedent; the smoke record replaces it
+     before any PR.
+   - Two smoke-time questions: whether the CLI needs a
+     do-not-self-update setting (the pin makes self-update unwanted),
+     and whether the `agy` alias matters (the recipe has no symlink
+     mechanism; the binary lands as `antigravity` on PATH).
+   Smoke path: `init --need node --need frontend-ide --need
+   antigravity-agent` then `run` — codium + antigravity on the v0.2.8
+   base needs no runtime-PEX override.
+2. The v0.2.9 bug list (see *Release Target: v0.2.9*), and agent
+   smokes on the v0.2.8 base to retire the runtime-PEX override for
+   combined formations.
+3. Settle the `config need` layering (the *checkout-local needs* open
    thread below) and rebuild the verb accordingly: default =
    checkout-local experimental need in the developer-owned record
    (ancillary components only, pinned into `devcapsule.resolved.toml`,
    verified-edge-checked against the locked base, droppable); the
    shipped manifest-editing machinery becomes the explicit `--project`
-   promotion path.
-2. Implement the Antigravity CLI component per the delivery contract and
-   the analysis's consequences: catalog `ComponentDefinition`, matrix
-   pin (v1.1.24, verified checksums in the analysis doc),
-   `antigravity-agent` capability (default-selected per the contract),
-   `antigravity-download` authorization node, `/opt/antigravity-cli`
-   materialization, checkout-scoped state slot for
-   `~/.gemini/antigravity-cli`, and inspection output. The component is
-   the natural first user of the checkout-local need.
-3. Then: the two open init/run authorization bugs, and agent smokes on
-   the v0.2.8 base to retire the runtime-PEX override for combined
-   formations.
+   promotion path. The antigravity component is the natural first user
+   of the checkout-local need once it exists.
 
 ## Open Threads
 
