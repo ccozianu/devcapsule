@@ -294,8 +294,37 @@ entry is safe to restore by hand-copy. A guided `config history`/
 
 ## Next Resumable Task
 
-Reordered 2026-09-02 at the owner's direction (antigravity first; the
-config-need rebuild keeps its ruling thread open):
+Session paused late 2026-09-02, everything committed and pushed
+(branch head `d8f833c`). The antigravity component is validated and
+PR-ready — the owner opens the PR per the integration cadence. The
+same day also executed, owner-ruled: the state-slot/home-ownership
+rulings, the codium `/dev/shm` fix (640m), and the passthrough
+denylist for launcher-owned docker options. Suite green (516), mypy
+clean.
+
+Resume with, in order:
+
+1. The two v0.2.9 bugs awaiting owner rulings: the codium sudo-sandbox
+   capability grant (amends the 2026-08-31 ruling; option 1 in its
+   record) and the authorization denial grammar (explicit deny vs
+   `unset` semantics).
+2. The two scoped v0.2.9 bugs: init/run answers persisted as
+   authorizations, and the formation-identity/entrypoint-claim record
+   (its enforcement half coordinates with `contained-display`).
+3. Agent smokes on the v0.2.8 base (claude-code, codex) to add their
+   edges and retire the runtime-PEX override for combined formations —
+   antigravity already carries its v0.2.8 edge.
+4. The `config need` checkout-local rebuild (open thread below).
+5. Small closers: the antigravity-state and shm records close on the
+   owner's next clean relaunches; the submodule gitdir un-absorb
+   (applied by hand to the tictactoe sample checkout 2026-09-02 so git
+   works inside the capsule) recurs on fresh `--recurse-submodules`
+   clones and gets a record if the owner wants one; the two smoke
+   observations (self-update setting, `agy` alias) stay open.
+
+Original task order for this stretch, recorded 2026-09-02 at the
+owner's direction (antigravity first; the config-need rebuild keeps
+its ruling thread open):
 
 1. **Validated 2026-09-02**: the owner's smoke passed the same day —
    antigravity working the tictactoe sample on the codium surface and
