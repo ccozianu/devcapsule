@@ -222,11 +222,12 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
      canonical image identity — awaiting the owner's re-smoke)
 
 New bugs found on the way join the list by owner triage rather than
-automatically blocking the release. Logged but not yet triaged onto
-the list:
+automatically blocking the release. Root-caused and fixed on the
+branch the same day it was logged:
 [codium relaunch intermittently crashes its first renderer](../../bugs/devcapsule/2026-09-02-codium-relaunch-renderer-crash-after-clean-exit.md)
-(severity nuisance — the restart succeeds; two candidate mechanisms
-recorded with cheap discriminating diagnostics).
+(owner-confirmed `/dev/shm` exhaustion; the surface now declares
+`shared-memory-size = "1g"` and the launcher sizes the container's
+shm accordingly).
 
 ## Track 1 (integrated)
 

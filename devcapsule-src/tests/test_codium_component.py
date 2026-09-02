@@ -48,9 +48,42 @@ def test_runtime_template_round_trips_through_the_contract() -> None:
     assert template.component.id == "codium"
     assert template.component.adapter == "vscode"
     assert template.component.configuration["sandbox"] == "setuid-helper"
+    assert template.component.configuration["shared-memory-size"] == "1g"
     assert template.persistence.home == "required"
     assert template.persistence.xdg == "home-relative"
     assert logical_state_slots() == ("codium/user-data", "codium/extensions", "codium/cache")
+
+
+def test_shared_memory_declaration_reaches_the_launcher() -> None:
+    """The declared /dev/shm size flows to --shm-size; Docker's 64MB default
+    intermittently SIGTRAPs Chromium renderers under software rendering
+    (owner-confirmed 2026-09-02; see the relaunch-renderer-crash bug record).
+    """
+
+    from dataclasses import dataclass
+
+    from devcapsule.configurations.pycharm._launcher import (
+        PycharmRunError,
+        declared_shared_memory_size,
+    )
+
+    @dataclass
+    class _Config:
+        runtime_plan: RuntimePlan | None
+
+    assert declared_shared_memory_size(_Config(component_runtime())) == "1g"  # type: ignore[arg-type]
+    assert declared_shared_memory_size(_Config(None)) is None  # type: ignore[arg-type]
+
+    mapping = runtime_template().to_mapping()
+    mapping["component"]["configuration"]["shared-memory-size"] = "lots"  # type: ignore[index]
+    malformed = RuntimePlan.for_component(
+        ComponentRuntimeTemplate.from_mapping(mapping),
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000),
+    )
+    with pytest.raises(PycharmRunError, match="shared-memory-size"):
+        declared_shared_memory_size(_Config(malformed))  # type: ignore[arg-type]
 
 
 def test_durable_editor_state_persists_outside_the_home_overlay() -> None:

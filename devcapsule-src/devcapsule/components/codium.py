@@ -75,6 +75,13 @@ def _runtime_template() -> ComponentRuntimeTemplate:
                     # the trade-off is analyzed in
                     # engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
                     "sandbox": "setuid-helper",
+                    # Chromium renderers push frames through /dev/shm — under
+                    # the launcher's forced llvmpipe software rendering the
+                    # 64MB Docker default intermittently SIGTRAPs the first
+                    # renderer after a relaunch. Owner-confirmed 2026-09-02:
+                    # at least 512m stops the crashes; 1g leaves headroom.
+                    # See the 2026-09-02 relaunch-renderer-crash bug record.
+                    "shared-memory-size": "1g",
                     "state_slot_mapping": {
                         "user-data": "user-data",
                         "extensions": "extensions",

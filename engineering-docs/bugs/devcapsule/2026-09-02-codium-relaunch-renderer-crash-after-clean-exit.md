@@ -2,9 +2,17 @@
 
 Date opened: 2026-09-02
 
-Status: open; severity nuisance — the offered restart has succeeded
-every time so far. Reported by the product owner during the v0.2.9
-antigravity smoke sessions.
+Status: root-caused and fixed on the branch, 2026-09-02. The owner ran
+the recorded discriminating diagnostic: raw-passthrough `--shm-size`
+of at least 512m stops the crashes entirely — candidate 1
+(`/dev/shm` exhaustion) confirmed, candidate 2 (stale caches) not
+implicated. The codium surface now declares
+`shared-memory-size = "1g"` in its runtime configuration and the
+launcher passes it through as `--shm-size` (validated, same
+declaration pattern as the setuid-sandbox grant). The template change
+advances the formation identity, so the next run re-materializes.
+Closes on the owner seeing a run of clean relaunches without the
+passthrough flag.
 
 Requirements: R-PRODUCT-001
 

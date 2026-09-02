@@ -5,6 +5,7 @@ from __future__ import annotations
 import grp
 import os
 import pwd
+import re
 import shutil
 import stat
 import subprocess
@@ -770,6 +771,11 @@ def build_docker_args(
         "/run:rw,nosuid,nodev,size=128m",
         "--tmpfs",
         "/var/tmp:rw,exec,nosuid,nodev,size=1g",
+        *(
+            ["--shm-size", shared_memory]
+            if (shared_memory := declared_shared_memory_size(config)) is not None
+            else []
+        ),
         "--ipc",
         "private",
         "--network",
@@ -932,6 +938,28 @@ def uses_setuid_sandbox_helper(config: PycharmRunConfig) -> bool:
         config.runtime_plan is not None
         and config.runtime_plan.component.configuration.get("sandbox") == "setuid-helper"
     )
+
+
+def declared_shared_memory_size(config: PycharmRunConfig) -> str | None:
+    """The surface's declared /dev/shm size, validated, or None.
+
+    Chromium-family surfaces outgrow Docker's 64MB default (renderers
+    SIGTRAP intermittently under software rendering — owner-confirmed
+    2026-09-02); the component declares what it needs and the launcher
+    passes it through as --shm-size.
+    """
+
+    if config.runtime_plan is None:
+        return None
+    value = config.runtime_plan.component.configuration.get("shared-memory-size")
+    if value is None:
+        return None
+    if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]*[mg]", value):
+        raise PycharmRunError(
+            "The surface's shared-memory-size must be a size like '512m' or '1g'; "
+            f"found {value!r}."
+        )
+    return value
 
 
 # The narrow grant Chromium's setuid helper needs: the setuid transition
