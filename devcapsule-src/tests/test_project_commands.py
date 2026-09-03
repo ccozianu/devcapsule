@@ -1042,6 +1042,64 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
         assert resolved["runtime"]["memory-limit-bytes"] == 8 * 1024**3
 
 
+def test_unset_refuses_mandatory_nodes_and_removes_optional_ones(
+    tmp_path: Path, capsys
+) -> None:
+    """Owner ruling 2026-09-03: unset removes the name from the tree, so it
+    must refuse a mandatory node instead of deferring the failure to
+    resolve time."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."editor.theme"]
+            type = "string"
+
+            [configuration.values."registry.token-name"]
+            type = "string"
+            required = true
+            """,
+        )
+        for name, value in (("editor.theme", "dark"), ("registry.token-name", "CI_TOKEN")):
+            assert (
+                cli.main(
+                    ["project", "--path", str(project), "config", "set", name, value]
+                )
+                == 0
+            )
+        capsys.readouterr()
+
+        # A declaration-required node refuses, naming the replacement verb;
+        # base-image travels the same node.required guard by construction.
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "unset", "registry.token-name"]
+            )
+            == 2
+        )
+        message = capsys.readouterr().err
+        assert "mandatory" in message
+        assert "config set registry.token-name" in message
+
+        # An optional node still unsets — the name is removed from the tree.
+        assert (
+            cli.main(["project", "--path", str(project), "config", "unset", "editor.theme"])
+            == 0
+        )
+        assert "Unset editor.theme" in capsys.readouterr().out
+        records = list(config_home.rglob("devcapsule.checkout.toml"))
+        with records[0].open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert "editor.theme" not in checkout.get("configuration", {}).get("values", {})
+
+
 def test_project_config_bind_uses_component_metadata_and_resolves_host_directories(
     tmp_path: Path, capsys
 ) -> None:

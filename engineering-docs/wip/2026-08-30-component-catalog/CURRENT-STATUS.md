@@ -184,7 +184,18 @@ gen2 smokes. From the same episode, recorded and then **ruled and fixed 2026-09-
 config-verb and realization layers already carried. A second ruling
 the same day retired `yes` as a base-image authorization value —
 authorizations are KV pairs; the reserved keyword `default` accepts
-the recommendation for a single key across the authorize family. The joint grammar
+the recommendation for a single key across the authorize family. A
+third made `default` input-only: the tree stores what it resolves to
+at decision time, uniformly across families (set-nodes accept the
+token but declare no default yet — whether `configuration.values.*`
+gains a `default` field is the owner's open follow-up). A fourth:
+`unset` removes the name from the tree and therefore refuses
+mandatory nodes (`node.required` — declaration-required values,
+required secret inputs, base-image) instead of deferring the failure
+to resolve time. **Awaiting the owner's design session**: no
+mechanism exists to mandate whole *subtrees*; node names are flat
+dotted/slashed identifiers, so a subtree mandate would be a
+name-prefix rule — the owner asked to be pinged to design that UX. The joint grammar
 ruling with the denial bug remains open, as does the larger
 base-as-config-node unification the owner asked about (it belongs with
 the checkout-local-needs rebuild — same resolution-time inversion).

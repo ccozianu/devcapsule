@@ -417,6 +417,23 @@ class ConfigUnsetCommand(Command):
         _lock_path, lock = lock_for(root, manifest)
         registry = build_node_registry(manifest, lock)
         node = registry.node(name)
+        if node.required:
+            # Owner ruling 2026-09-03: unset removes the name from the tree,
+            # and a mandatory node without an answer only defers the failure
+            # to resolve time — refuse it here, naming the replacement verb.
+            replacement = {
+                CARRIER_FAMILY_SET: f"'devcapsule project config set {name} VALUE'",
+                CARRIER_FAMILY_BIND: f"'devcapsule project config bind {name} PROVIDER:VALUE'",
+            }.get(
+                node.family,
+                f"'devcapsule project config authorize {name} VALUE'",
+            )
+            raise ProjectConfigurationError(
+                f"Configuration node {name!r} is mandatory: resolution fails while "
+                f"it is unanswered, so 'unset' would only trade the recorded answer "
+                f"for a failure at resolve time. Record a different answer with "
+                f"{replacement} instead."
+            )
         record = CheckoutRecord(manifest, root)
         if node.family == CARRIER_FAMILY_SET:
             removed = record.values.pop(name, None)
