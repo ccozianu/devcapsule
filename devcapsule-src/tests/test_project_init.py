@@ -848,6 +848,52 @@ def test_init_base_answer_none_is_refused_as_mandatory(tmp_path: Path, capsys) -
     assert "no deny state" in capsys.readouterr().err
 
 
+def test_init_unverified_resolves_past_the_matrix_with_a_gentle_warning(
+    tmp_path: Path, capsys
+) -> None:
+    """Owner ruling 2026-09-03: the matrix may be stale or wrong; --unverified
+    lets a sophisticated user through, warning gently and recording the
+    unverified combinations in the committed lock."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    need = [
+        "project",
+        "--path",
+        str(project),
+        "init",
+        "--need",
+        "python-ide",
+        "--need",
+        "antigravity-agent",
+        "--creator",
+        "https://github.com/example",
+        "--authorize",
+        "base-image",
+        "default",
+        "--authorize",
+        "antigravity-download",
+        "true",
+    ]
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        # PyCharm is verified only on gen1, antigravity only on gen2: no
+        # fully verified base exists, and the strict form refuses.
+        assert cli.main(need) == 2
+        assert "No verified combination" in capsys.readouterr().err
+
+        assert cli.main([*need, "--unverified"]) == 0
+        warning = capsys.readouterr().err
+        assert "no verification for" in warning
+        assert "pycharm" in warning
+
+    lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
+    assert "pycharm" in lock["unverified-combinations"]
+    lock_text = (project / ".devcapsule" / "devcapsule.linux-amd64.lock").read_text(
+        encoding="utf-8"
+    )
+    assert "# WARNING" in lock_text
+
+
 def test_init_refuses_a_published_non_recommended_digest(tmp_path: Path, capsys) -> None:
     project = tmp_path / "project"
     project.mkdir()

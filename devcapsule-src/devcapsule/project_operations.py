@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
+import sys
 from typing import Any, Mapping, Sequence, TextIO
 
 from devcapsule.configuration_nodes import (
@@ -328,6 +329,10 @@ class InitializeRequest:
     # Skip consent solicitations for explicitly supplied values (today: a
     # base-image selection); validation and recording are unchanged.
     less_pedantic: bool = False
+    # Let resolution fall back past missing verified edges with a gentle
+    # warning (owner ruling 2026-09-03: the matrix may be stale or wrong);
+    # the generated lock names every unverified combination.
+    allow_unverified: bool = False
     # None: decide from whether stdin is a terminal.
     interactive: bool | None = None
 
@@ -452,7 +457,18 @@ def initialize_project(
         lock_action = "Kept"
     else:
         lock_action = "Regenerated" if lock_path.is_file() else "Created"
-        generated = MATRICES[platform].resolve(list(identity.capabilities))
+        generated = MATRICES[platform].resolve(
+            list(identity.capabilities), allow_unverified=request.allow_unverified
+        )
+        if generated.unverified:
+            print(
+                "Warning: the resolution matrix has no verification for:\n"
+                + "".join(f"  {item}\n" for item in generated.unverified)
+                + "Proceeding at your request; the generated lock records these "
+                "combinations. If they work, they are candidates for verified "
+                "edges in the matrix.",
+                file=sys.stderr,
+            )
         # World-readable like any committed project file; the 0600 default is
         # for developer-owned records.
         atomic_write(lock_path, generated.render_lock(), mode=0o644)

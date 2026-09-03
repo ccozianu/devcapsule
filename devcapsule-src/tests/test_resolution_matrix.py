@@ -363,6 +363,75 @@ def test_verification_of_older_combinations_does_not_expire() -> None:
     assert parse(grown.resolve(["the-ide"]).render_lock())["base"]["build-mnemonic"] == "v2"
 
 
+def test_allow_unverified_resolves_past_missing_edges_with_names() -> None:
+    # Owner ruling 2026-09-03: the matrix may be stale or wrong, so the
+    # sophisticated user goes through with a gentle warning. The base picked
+    # minimizes unverified pairs; every one is named in the formation and
+    # the rendered lock.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "2.0", "s2", "smoke"),)
+    )
+    with pytest.raises(ResolutionError):
+        matrix.resolve(["the-ide", "the-agent"])
+
+    formation = matrix.resolve(["the-ide", "the-agent"], allow_unverified=True)
+
+    assert formation.unverified == (
+        "agent 0.5 on base v2 (substrate s2)",
+    )
+    lock = parse(formation.render_lock())
+    assert lock["base"]["build-mnemonic"] == "v2"
+    assert lock["unverified-combinations"] == "agent 0.5 on base v2 (substrate s2)"
+    assert "WARNING" in formation.render_lock().splitlines()[2]
+
+
+def test_allow_unverified_never_degrades_a_verified_resolution() -> None:
+    matrix = _synthetic_matrix(
+        edges=(
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "s1", "smoke"),
+        )
+    )
+
+    strict = matrix.resolve(["the-ide", "the-agent"]).render_lock()
+    relaxed = matrix.resolve(["the-ide", "the-agent"], allow_unverified=True).render_lock()
+
+    assert strict == relaxed
+    assert "unverified-combinations" not in strict
+
+
+def test_allow_unverified_prefers_the_base_with_fewer_unverified_pairs() -> None:
+    # v1 (s1) verifies both components; v2 (s2) verifies neither. With the
+    # ide edge only on s1, forcing the agent through picks v1 — one
+    # unverified pair beats two, even though v2 is newer.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),)
+    )
+
+    formation = matrix.resolve(["the-ide", "the-agent"], allow_unverified=True)
+
+    lock = parse(formation.render_lock())
+    assert lock["base"]["build-mnemonic"] == "v1"
+    assert formation.unverified == ("agent 0.5 on base v1 (substrate s1)",)
+
+
+def test_allow_unverified_keeps_base_capabilities_a_hard_constraint() -> None:
+    # A base that does not ship a needed toolchain cannot be forced: the
+    # newer capability-lacking base is skipped even though verification is
+    # relaxed everywhere.
+    matrix = _synthetic_matrix(
+        edges=(),
+        bases=(
+            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", frozenset(), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        ),
+    )
+
+    formation = matrix.resolve(["the-ide", "python"], allow_unverified=True)
+
+    assert parse(formation.render_lock())["base"]["build-mnemonic"] == "v1"
+
+
 def test_no_verified_combination_is_a_complete_explanation() -> None:
     matrix = _synthetic_matrix(edges=())
     with pytest.raises(ResolutionError) as failure:

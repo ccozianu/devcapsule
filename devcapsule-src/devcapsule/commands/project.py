@@ -182,6 +182,16 @@ class ProjectInitCommand(Command):
                 "consent."
             ),
         )
+        parser.add_argument(
+            "--unverified",
+            action="store_true",
+            dest="allow_unverified",
+            help=(
+                "If no fully verified combination satisfies the need, resolve past "
+                "the matrix with a gentle warning; the generated lock names every "
+                "unverified combination."
+            ),
+        )
         add_carrier_options(parser)
 
     @classmethod
@@ -206,6 +216,7 @@ class ProjectInitCommand(Command):
                 answers=answers,
                 regenerate=arguments.regenerate,
                 less_pedantic=arguments.less_pedantic,
+                allow_unverified=arguments.allow_unverified,
             )
         )
         print(report.render())

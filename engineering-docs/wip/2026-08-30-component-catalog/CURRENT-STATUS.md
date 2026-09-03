@@ -522,14 +522,18 @@ its ruling thread open):
   clone). The checkout remains at `/home/devcapsule/e2e-fresh-devcapsule`
   with its built artifacts for the owner's v0.2.8 smoke.
 
-- **Checkout-local needs** (awaiting owner ruling, then rebuild): the
-  owner ruled that `config need` must default to an *experiment* — a
-  need recorded only in the developer-owned checkout record, committing
-  nothing. Proposed design, awaiting the owner's answer on two points:
-  (a) two-layer verb — `config need X` local by default, `--project`
-  promotes via the already-shipped manifest machinery; (b) strict
-  verified-edge checking against the locked base for local needs, or a
-  loudly-labeled `--unverified` escape hatch. Also proposed: local needs
+- **Checkout-local needs** (awaiting owner ruling on point (a), then
+  rebuild): the owner ruled that `config need` must default to an
+  *experiment* — a need recorded only in the developer-owned checkout
+  record, committing nothing. Point (b) is now answered by the
+  2026-09-03 `--unverified` ruling: the escape hatch exists on `init` —
+  strict resolution is always tried first; only on refusal does
+  `--unverified` fall back to the base with the fewest unverified
+  combinations, warns gently, and names each one in the committed lock
+  (scalar `unverified-combinations` plus a header warning). The local
+  layer reuses the same semantics when built. Still awaiting (a):
+  two-layer verb — `config need X` local by default, `--project`
+  promotes via the already-shipped manifest machinery. Also proposed: local needs
   are ancillary-only (surfaces are lock-level), pins for local
   components recorded in `devcapsule.resolved.toml`, `--drop` for
   removal, and distinct labeling in inspection and the run manifest.

@@ -122,12 +122,20 @@ class _Coupling:
 
 @dataclass(frozen=True)
 class Formation:
-    """One resolved, verified formation, ready to be committed as a lock."""
+    """One resolved formation, ready to be committed as a lock.
+
+    ``unverified`` is empty for a fully verified formation; otherwise it
+    names the combinations the matrix has no evidence for — resolution
+    proceeded past them at the caller's explicit request (owner ruling
+    2026-09-03: the matrix may be stale or wrong, so a sophisticated user
+    goes through with a gentle warning, not a brutal refusal).
+    """
 
     capabilities: tuple[str, ...]
     provenance: str
-    _document: Mapping[str, Any] = field(repr=False)
-    _header: str = field(repr=False)
+    unverified: tuple[str, ...] = ()
+    _document: Mapping[str, Any] = field(repr=False, default_factory=dict)
+    _header: str = field(repr=False, default="")
 
     def render_lock(self) -> str:
         """The exact platform-lock bytes to write and commit."""
@@ -208,8 +216,15 @@ class ResolutionMatrix:
             )
         return tuple(sorted(names))
 
-    def resolve(self, need: object) -> Formation:
-        """Derive one complete verified formation from a capability set, offline."""
+    def resolve(self, need: object, *, allow_unverified: bool = False) -> Formation:
+        """Derive one complete formation from a capability set, offline.
+
+        Fully verified resolution is always tried first, so the escape hatch
+        never degrades a need the matrix can satisfy.  Only when that fails
+        and ``allow_unverified`` is set does resolution fall back to the base
+        with the fewest unverified combinations (newest on ties), naming each
+        one in the formation for the caller's gentle warning and the lock.
+        """
 
         capabilities = self.normalize(need)
         surface_id = self._selected_surface(capabilities)
@@ -238,6 +253,13 @@ class ResolutionMatrix:
             if chosen is None:
                 continue
             return self._formation(capabilities, surface_id, base, chosen)
+        if allow_unverified:
+            fallback = self._unverified_selection(required, base_needs)
+            if fallback is not None:
+                base, chosen, unverified = fallback
+                return self._formation(
+                    capabilities, surface_id, base, chosen, unverified=unverified
+                )
         raise ResolutionError(
             "No verified combination satisfies "
             + ", ".join(capabilities)
@@ -293,12 +315,67 @@ class ResolutionMatrix:
                     )
         return chosen, ""
 
+    def _unverified_selection(
+        self, required: list[str], base_needs: set[str]
+    ) -> tuple[_BasePin, dict[str, _ComponentPin], tuple[str, ...]] | None:
+        """The capability-satisfying base with the fewest unverified pairs.
+
+        Base capabilities stay a hard constraint — a base that does not ship
+        a needed toolchain cannot be forced.  Verification is the only rule
+        relaxed: components keep their newest verified pin where one exists
+        on the base's substrate and fall back to their newest pin otherwise,
+        with every such fallback (and every unverified coupling) named.
+        """
+
+        best: tuple[_BasePin, dict[str, _ComponentPin], tuple[str, ...]] | None = None
+        for base in reversed(self._bases):
+            if base_needs - base.satisfies:
+                continue
+            chosen: dict[str, _ComponentPin] = {}
+            unverified: list[str] = []
+            for component_id in required:
+                pins = self._components[component_id]
+                verified_pin = next(
+                    (
+                        candidate
+                        for candidate in reversed(pins)
+                        if (component_id, candidate.version, base.substrate)
+                        in self._verified
+                    ),
+                    None,
+                )
+                if verified_pin is not None:
+                    chosen[component_id] = verified_pin
+                    continue
+                newest = pins[-1]
+                chosen[component_id] = newest
+                unverified.append(
+                    f"{component_id} {newest.version} on base {base.mnemonic} "
+                    f"(substrate {base.substrate})"
+                )
+            for coupling in self._couplings:
+                if coupling.first_id in chosen and coupling.second_id in chosen:
+                    pair = (
+                        chosen[coupling.first_id].version,
+                        chosen[coupling.second_id].version,
+                    )
+                    if pair not in coupling.verified:
+                        unverified.append(
+                            f"{coupling.first_id} {pair[0]} with "
+                            f"{coupling.second_id} {pair[1]} (no jointly "
+                            "verified integration)"
+                        )
+            if best is None or len(unverified) < len(best[2]):
+                best = (base, chosen, tuple(unverified))
+        return best
+
     def _formation(
         self,
         capabilities: tuple[str, ...],
         surface_id: str,
         base: _BasePin,
         chosen: Mapping[str, _ComponentPin],
+        unverified: tuple[str, ...] = (),
     ) -> Formation:
         components: dict[str, Any] = {
             "interactive-surface": surface_id,
@@ -324,13 +401,23 @@ class ResolutionMatrix:
             f"matrix {self._matrix_version}.\n"
             "# Commit this file: it pins the exact environment collaborators receive.\n"
         )
-        surface = chosen[surface_id]
+        provenance = (
+            f"embedded resolution matrix {self._matrix_version}: "
+            f"{surface_id} {chosen[surface_id].version} on base {base.mnemonic}"
+        )
+        if unverified:
+            # The lock shape is scalars and tables, so the list travels as one
+            # scalar; collaborators regenerating the lock see the same warning.
+            document["unverified-combinations"] = "; ".join(unverified)
+            header += (
+                "# WARNING: generated past the verified matrix at the owner's "
+                "request; see unverified-combinations.\n"
+            )
+            provenance += f" (unverified: {'; '.join(unverified)})"
         return Formation(
             capabilities=capabilities,
-            provenance=(
-                f"embedded resolution matrix {self._matrix_version}: "
-                f"{surface_id} {surface.version} on base {base.mnemonic}"
-            ),
+            provenance=provenance,
+            unverified=unverified,
             _document=document,
             _header=header,
         )
