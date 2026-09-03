@@ -357,8 +357,15 @@ entry is safe to restore by hand-copy. A guided `config history`/
 
 ## Next Resumable Task
 
-Session paused late 2026-09-02, everything committed and pushed
-(branch head `d8f833c`). The antigravity component is validated and
+Session paused 2026-09-03, everything committed and pushed. The
+2026-09-02 pause state below is superseded by the day's entries above
+it; the standing owner actions at this pause: open the integration PR
+for the working branch (the antigravity component and the whole
+v0.2.9-validation stretch are owner-smoked), and merge
+`component-catalog/outbox` so the upgrade-experience intake reaches
+`project-management` on `main`.
+
+Previous pause, late 2026-09-02, branch head `d8f833c`: The antigravity component is validated and
 PR-ready — the owner opens the PR per the integration cadence. The
 same day also executed, owner-ruled: the state-slot/home-ownership
 rulings, the codium `/dev/shm` fix (640m), and the passthrough
@@ -380,9 +387,10 @@ Resume with, in order:
    record (widened `~/.gemini` exercised live, no hand repair), the shm
    record (clean relaunches on the declared 640m), and the
    denial-grammar record, and converts the two provisional agent gen2
-   edges into owner-smoked evidence. **Every v0.2.9 release-target bug
-   is now closed**; the runtime-PEX override is retired for all codium
-   compositions. Same day, at the owner's direction, claude-code
+   edges into owner-smoked evidence. The runtime-PEX override is
+   retired for all codium compositions. (Correction to an earlier
+   over-claim in this file's history: two release-target bugs remain
+   open — the two scoped ones in item 2 below.) Same day, at the owner's direction, claude-code
    advanced to 2.1.236 (the Fable 5.1 release; sha256 computed locally
    and matching the vendor manifest, binary executed hands-on) with
    provisional gen1/gen2 edges pending the next dogfood run and codium
@@ -395,9 +403,14 @@ Resume with, in order:
    (2026-09-03, via this workstream's first outbox delivery):
    upgrade-friendly messages, obsolescence warnings, and the project
    of upgrading, as an important V1 feature.
-2. The two scoped v0.2.9 bugs: init/run answers persisted as
-   authorizations, and the formation-identity/entrypoint-claim record
-   (its enforcement half coordinates with `contained-display`).
+2. **The next work when the session resumes**: the two scoped v0.2.9
+   bugs, the release's remaining gate. First init/run answers persisted
+   as authorizations (self-contained, and adjacent to the freshly
+   reworked authorization grammar); then the
+   formation-identity/entrypoint-claim record (its enforcement half
+   coordinates with `contained-display`, and its image-lifecycle half
+   is now also referenced by the upgrade-experience intake sent to
+   `project-management`).
 3. Agent smokes on a gen2 base (claude-code, codex) to add their
    substrate edges and retire the runtime-PEX override for combined
    formations — antigravity already carries its gen2 edge. One smoke
