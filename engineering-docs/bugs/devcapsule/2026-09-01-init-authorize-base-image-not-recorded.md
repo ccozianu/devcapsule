@@ -2,8 +2,15 @@
 
 Date opened: 2026-09-01
 
-Status: fix implemented 2026-09-01, awaiting the owner's validation in the
-tictactoe smoke
+Status: **closed 2026-09-03** — validated by the owner across the v0.2.9
+smokes: the 2026-09-02 tictactoe smoke, the 2026-09-03 five-way smoke, and
+the same-day hands-on check of base selection at init with the v0.2.9 CLI
+("thoroughly as expected and no trace of previous behavior"). The
+`--authorize base-image` carrier path itself was subsequently reworked
+into an informed-consent base *selection* — see the closures of
+`2026-09-02-authorize-base-image-conflates-consent-with-selection.md` and
+`2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md`.
+Fix implemented 2026-09-01.
 
 Requirements: R-PRODUCT-001
 
