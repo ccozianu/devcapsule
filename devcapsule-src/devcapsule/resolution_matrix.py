@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-10"
+_MATRIX_VERSION = "embedded-11"
 
 
 # --------------------------------------------------------------------------
@@ -521,8 +521,6 @@ _CODEX_0_145_0 = _ComponentPin(
     lock_table={
         "version": "0.145.0",
         "delivery-policy": "local-materialization",
-        "integration": "jetbrains-ai-assistant",
-        "acp-version": "1.1.9",
         "license": "Apache-2.0",
         "artifacts": {
             "linux-amd64": {
@@ -546,16 +544,16 @@ _CODEX_0_145_0 = _ComponentPin(
 # sha512 was verified against the npm registry integrity and the sha256
 # computed locally from the same download; the archive member set is
 # unchanged since 0.145.0 and the extracted binary was executed hands-on
-# (`codex-cli 0.153.0`). The acp-version is informational lock metadata
-# carried forward unchanged.
+# (`codex-cli 0.153.0`). The former integration/acp-version metadata is
+# gone with the coupling removal (see the couplings note below): codex is
+# a standalone CLI component, and locks no longer advertise a
+# jetbrains-ai-assistant integration DevCapsule does not deliver.
 _CODEX_0_153_0 = _ComponentPin(
     component_id="codex",
     version="0.153.0",
     lock_table={
         "version": "0.153.0",
         "delivery-policy": "local-materialization",
-        "integration": "jetbrains-ai-assistant",
-        "acp-version": "1.1.9",
         "license": "Apache-2.0",
         "artifacts": {
             "linux-amd64": {
@@ -762,20 +760,15 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             "tictactoe sample (codium surface, v0.2.8 base)",
         ),
     ),
-    couplings=(
-        # The (0.153.0, 2026.2.0.1) pair is provisional alongside the
-        # 0.153.0 substrate edges (owner-directed update 2026-09-03,
-        # pending the next dogfood run); without it, the newest-verified
-        # pin selection would strand every codex x pycharm formation.
-        _Coupling(
-            first_id="codex",
-            second_id="pycharm",
-            verified=frozenset(
-                {("0.145.0", "2026.2.0.1"), ("0.153.0", "2026.2.0.1")}
-            ),
-            evidence=_DOGFOOD_E2E,
-        ),
-    ),
+    # The codex x pycharm coupling is removed until further notice
+    # (product-owner ruling 2026-09-03): the jetbrains-ai-assistant
+    # integration it stood for is not a delivery we want — the IDE's AI
+    # plugin installs its own codex copy and routes usage through the
+    # developer's JetBrains-account quota on JetBrains backends, ignoring
+    # the logged-in codex already on PATH. DevCapsule ships codex as a
+    # standalone CLI component only; the coupling mechanism stays for
+    # future jointly-verified integrations.
+    couplings=(),
     # Each interactive capability selects exactly one surface component. A V1
     # platform lock holds exactly one interactive surface, so a capability set
     # must name exactly one of these: none has nothing to run, and two would

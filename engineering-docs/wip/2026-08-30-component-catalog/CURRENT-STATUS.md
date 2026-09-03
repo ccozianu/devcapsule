@@ -573,6 +573,20 @@ its ruling thread open):
     the newly checked-in `scripts/regenerate-golden-locks.py`, and both
     sample branches carry the bump as follow-on commits (`4fffeb1`,
     `2ba6e03`). Suite green (537), mypy clean.
+  - **Coupling removal ruling (2026-09-03, matrix `embedded-11`)**: the
+    owner ruled the codex×pycharm coupling removed until further notice.
+    The jetbrains-ai-assistant integration it stood for is not a
+    delivery we want: the IDE's AI plugin installs its *own* codex copy
+    and routes usage through the developer's JetBrains-account quota on
+    JetBrains backends, ignoring the logged-in codex already on PATH.
+    Code reading confirmed the coupling and the `integration`/
+    `acp-version` pin metadata had no consumer outside the matrix —
+    DevCapsule never wired codex into PyCharm; the lock merely
+    advertised an integration nothing delivered. Both are gone: codex is
+    a standalone CLI component, the coupling *mechanism* stays for
+    future jointly-verified integrations, and every lock regenerated
+    (goldens, dogfood, both sample branches — `1bea8e5`, `858dc5d`).
+    Suite green (537), mypy clean.
 
 - **Resolution-matrix redesign** (implemented 2026-09-01): the owner
   accepted D-0006 and D-0007 and the implementation is on this branch.
