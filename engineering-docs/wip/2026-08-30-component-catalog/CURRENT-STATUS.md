@@ -263,6 +263,13 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
 2. The open v0.2.8-validation bugs are fixed, "relatively" — meaning
    the recorded fix scopes, barring new discoveries:
    - [init/run answers not persisted as authorizations](../../bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
+     (**closed 2026-09-03**: the owner exercised a different-base
+     selection at init with the v0.2.9 CLI — daemon-inspected local
+     selection, informed consent, recorded against the image ID — and
+     signed off "thoroughly as expected, no trace of previous
+     behavior"; the launch path no longer prompts, so run-once answers
+     travel the config grammar under a declared never-persisted
+     contract)
    - [formation identity claims an entrypoint the recipe never sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
    - [the authorization grammar cannot express denial](../../bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
      (owner-triaged onto this list 2026-09-02; **ruled and fixed
@@ -389,8 +396,10 @@ Resume with, in order:
    denial-grammar record, and converts the two provisional agent gen2
    edges into owner-smoked evidence. The runtime-PEX override is
    retired for all codium compositions. (Correction to an earlier
-   over-claim in this file's history: two release-target bugs remain
-   open — the two scoped ones in item 2 below.) Same day, at the owner's direction, claude-code
+   over-claim in this file's history: two release-target bugs remained
+   open at that pause — the scoped ones in item 2 below; the init/run
+   authorizations record then closed later on 2026-09-03 on the
+   owner's hands-on base-selection check.) Same day, at the owner's direction, claude-code
    advanced to 2.1.236 (the Fable 5.1 release; sha256 computed locally
    and matching the vendor manifest, binary executed hands-on) with
    provisional gen1/gen2 edges pending the next dogfood run and codium
@@ -403,14 +412,18 @@ Resume with, in order:
    (2026-09-03, via this workstream's first outbox delivery):
    upgrade-friendly messages, obsolescence warnings, and the project
    of upgrading, as an important V1 feature.
-2. **The next work when the session resumes**: the two scoped v0.2.9
-   bugs, the release's remaining gate. First init/run answers persisted
-   as authorizations (self-contained, and adjacent to the freshly
-   reworked authorization grammar); then the
+2. **The next work when the session resumes**: the release's remaining
+   gate is now a single bug — the
    formation-identity/entrypoint-claim record (its enforcement half
    coordinates with `contained-display`, and its image-lifecycle half
    is now also referenced by the upgrade-experience intake sent to
-   `project-management`).
+   `project-management`). The init/run-authorizations record **closed
+   2026-09-03**: the owner picked up a different base at init with the
+   v0.2.9 CLI and signed off the UX as thoroughly as expected, no trace
+   of the previous behavior — the base-selection rework covers symptom
+   A, and the launch path no longer prompts (run-once answers travel
+   the config grammar under a declared never-persisted contract), which
+   removes symptom B's accept-and-drop prompt class by construction.
 3. Agent smokes on a gen2 base (claude-code, codex) to add their
    substrate edges and retire the runtime-PEX override for combined
    formations — antigravity already carries its gen2 edge. One smoke

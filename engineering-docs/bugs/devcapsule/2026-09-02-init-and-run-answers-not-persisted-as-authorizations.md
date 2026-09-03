@@ -2,9 +2,10 @@
 
 Date opened: 2026-09-02
 
-Status: open; reported by the product owner during the successful tictactoe
-codium smoke on the v0.2.8 base; fix scheduled after the current
-integration
+Status: **closed 2026-09-03** — the owner exercised base selection with the
+v0.2.9 CLI and signed off: "the UX is thoroughly as expected and no trace
+of previous behavior". Originally reported by the product owner during the
+successful tictactoe codium smoke on the v0.2.8 base. See *Closure* below.
 
 Requirements: R-PRODUCT-001
 
@@ -77,3 +78,39 @@ After the current integration:
    siblings) so every accepted answer is persisted through the
    config-family primitives, with regression tests in the pattern of the
    2026-09-01 fix.
+
+## Closure (2026-09-03)
+
+Both symptoms were resolved by the 2026-09-03 authorization-grammar
+rework on `component-catalog/antigravity-cli`, and the owner validated
+the base-selection path hands-on with the v0.2.9 CLI the same day.
+
+Symptom A — closed by the base-selection rework
+(`_base_answer_validator` / `_record_base_selection` in
+`devcapsule/project_operations.py`): `init --authorize base-image` now
+accepts the reserved keyword `default` (the matrix recommendation), a
+reference-shaped selection naming a **daemon-local** image (tag or image
+ID), or `no`. A local selection is inspected, its image ID, platform,
+and `devcapsule.*` labels are presented, and informed consent is
+solicited (`--less-pedantic` records the reviewed selection without the
+confirmation); the recorded authorization binds trust to the inspected
+image ID (D-0004), carrying `reference`, `lock-digest`, and `image-id`,
+and `run` requires the local image to still match that ID. Any
+unsatisfiable value fails init loudly, naming the accepted forms. This
+also answers fix-scope item 2: a non-matrix base is expressible at init
+as a daemon-local selection only — a *published* digest differing from
+the lock recommendation is refused by design, because a different
+published artifact requires its own project-reviewed metadata.
+
+Symptom B — closed by construction rather than by persisting prompt
+answers: the launch path no longer prompts at all. Run-once answers
+travel the config grammar carriers (`--authorize NAME VALUE`,
+`--set NAME VALUE`) under an explicitly declared never-persisted
+contract (`_RUN_ONCE_AUTHORIZATIONS` in
+`devcapsule/commands/project.py`), persistent recording belongs solely
+to the config family, and refusals name the config-family remedy. The
+misleading accept-and-drop prompt class no longer exists.
+
+Owner validation, 2026-09-03: picked up a different base at init with
+the current v0.2.9 CLI; the UX is thoroughly as expected with no trace
+of the previous behavior.
