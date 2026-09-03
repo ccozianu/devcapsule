@@ -39,6 +39,7 @@ from devcapsule.project_configuration import (
     authorization_declarations,
     authorized_base_selection,
     canonical_digest,
+    checkout_omitted_values,
     checkout_record_paths,
     immutable_registry_reference,
     load_toml,
@@ -124,8 +125,21 @@ class CheckoutRecord:
         self.host = dict(checkout.get("host", {}))
         self.authorization = dict(checkout.get("authorization", {}))
         self.values = _checkout_values(checkout)
+        self.omitted_values = set(checkout_omitted_values(checkout))
         self.directory_bindings = _checkout_host_directory_bindings(checkout)
         self.environment_bindings = _checkout_host_environment_bindings(checkout)
+
+    def omit_value(self, name: str) -> None:
+        """Record the explicit 'none' answer: keep the node absent at runtime."""
+
+        self.values.pop(name, None)
+        self.omitted_values.add(name)
+
+    def set_value(self, name: str, value: Any) -> None:
+        """Record a value answer, clearing any standing omission."""
+
+        self.omitted_values.discard(name)
+        self.values[name] = value
 
     def write(self) -> None:
         atomic_write(
@@ -139,6 +153,7 @@ class CheckoutRecord:
                 self.values,
                 self.directory_bindings,
                 self.environment_bindings,
+                omitted_values=sorted(self.omitted_values),
             ),
         )
 
@@ -212,6 +227,11 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
     )
     if image:
         lines.append(f"image = {quote_toml(str(image))}")
+    omitted = checkout_omitted_values(checkout)
+    if omitted:
+        # Explicit omissions are inspectable decisions, not silent gaps.
+        rendered_names = ", ".join(quote_toml(name) for name in omitted)
+        lines.extend(["", "[configuration]", f"omitted-values = [{rendered_names}]"])
     if values:
         lines.extend(["", "[configuration.values]"])
         lines.extend(
@@ -843,7 +863,9 @@ def _acquisition_validator(name: str, accepted_value: str) -> Any:
         candidate = value.strip().lower()
         if candidate in {"yes", "y", "default", accepted_value.lower()}:
             return "yes"
-        if candidate in {"no", "n"}:
+        if candidate in {"no", "n", "none"}:
+            # 'none' is the deny keyword; for a consent question denying is
+            # declining.
             return "no"
         raise ProjectConfigurationError(
             f"Authorization {name!r} accepts yes, no, 'default', or the exact value "
@@ -874,6 +896,12 @@ def _base_answer_validator(name: str, recommended: str) -> Any:
         candidate = value.strip()
         if candidate.lower() == "default" or candidate == recommended:
             return "default"
+        if candidate.lower() == "none":
+            raise ProjectConfigurationError(
+                f"Authorization {name!r} is mandatory and has no deny state; 'none' "
+                "cannot apply. Accept the recommendation with 'default' (Enter) or "
+                "name a locally built/pulled image to select instead."
+            )
         if candidate.lower() in {"no", "n"}:
             return "no"
         if _looks_like_image_reference(candidate):
@@ -976,9 +1004,21 @@ def _apply_extra_answers(
     for answer in answers:
         if answer.family == CARRIER_FAMILY_SET:
             registry.answerable(answer.name, CARRIER_FAMILY_SET)
-            record.values[answer.name] = normalize_configuration_value(
-                manifest, answer.name, answer.value
-            )
+            if answer.value.strip().lower() == "none":
+                # The explicit-absence answer (owner ruling 2026-09-03): a
+                # recorded decision to keep the node out of the runtime
+                # config. A mandatory node has no absent state to choose.
+                if registry.node(answer.name).required:
+                    raise ProjectConfigurationError(
+                        f"Configuration value {answer.name!r} is mandatory and cannot "
+                        "be 'none'; record a value instead."
+                    )
+                record.omit_value(answer.name)
+            else:
+                record.set_value(
+                    answer.name,
+                    normalize_configuration_value(manifest, answer.name, answer.value),
+                )
         elif answer.family == CARRIER_FAMILY_BIND:
             provider, value = registry.split_bind_value(answer.name, answer.value)
             if provider == PROVIDER_HOST_DIRECTORY:

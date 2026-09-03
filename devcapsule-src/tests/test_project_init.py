@@ -823,6 +823,31 @@ def test_config_authorize_accepts_the_default_keyword(tmp_path: Path, capsys) ->
         assert "image-id" not in authorization
 
 
+def test_init_base_answer_none_is_refused_as_mandatory(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "init",
+                    "--need",
+                    "python-ide",
+                    "--creator",
+                    "https://github.com/example",
+                    "--authorize",
+                    "base-image",
+                    "none",
+                ]
+            )
+            == 2
+        )
+    assert "no deny state" in capsys.readouterr().err
+
+
 def test_init_refuses_a_published_non_recommended_digest(tmp_path: Path, capsys) -> None:
     project = tmp_path / "project"
     project.mkdir()

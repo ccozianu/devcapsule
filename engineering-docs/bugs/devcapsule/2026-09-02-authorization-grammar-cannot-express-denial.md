@@ -2,8 +2,23 @@
 
 Date opened: 2026-09-02
 
-Status: open; reported by the product owner during v0.2.9 smoke
-triage, while trying to downgrade a checkout to the no-sudo posture
+Status: ruled and fixed on the branch 2026-09-03, by the owner's
+`none`-keyword ruling (recorded across the base-image grammar records):
+**denial is a value**. `config authorize NAME false` (bool nodes) and
+the string nodes' deny spellings (`network bridge`,
+`docker-daemon none`) now record persistent denials the resolver
+honors, and the reserved keyword `none` resolves to the node's deny
+value at decision time and stores it — so a checkout's recorded denial
+outranks a workstation-level allow, which is exactly why denial is
+stored as a value rather than as absence. `run --authorize NAME false`
+(or `none`) downgrades one launch through the same normalizer.
+Explicit denial and `unset` (absence/silence) are distinct states, per
+the Expected item below that asked for that design decision.
+`base-image` has no deny state and refuses `none` as mandatory. Both
+aggravations are fixed: the refusal message is source-neutral (no more
+"Project recommendation" for workstation defaults) and names the
+accepted vocabulary including the deny value. Closes on the owner's
+next `config authorize development-sudo false` + hardened relaunch.
 
 Requirements: R-PRODUCT-002 (explicit host boundaries), R-PRODUCT-001
 

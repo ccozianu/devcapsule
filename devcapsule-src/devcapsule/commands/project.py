@@ -323,12 +323,33 @@ class ConfigSetCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = arguments.node_name
         root, manifest = manifest_for(_project_context(context).start_path())
-        normalized = normalize_configuration_value(manifest, arguments.node_name, arguments.value)
         record = CheckoutRecord(manifest, root)
-        record.values[arguments.node_name] = normalized
-        record.write()
-        print(f"Set {arguments.node_name} = {render_toml_scalar(normalized)}")
+        if arguments.value.strip().lower() == "none":
+            # The explicit-absence answer (owner ruling 2026-09-03): recorded
+            # as a decision, the node stays absent from the runtime config
+            # unless overridden on the 'project run' command line.
+            _lock_path, lock = lock_for(root, manifest)
+            node = build_node_registry(manifest, lock).node(name)
+            if node.family != CARRIER_FAMILY_SET:
+                raise ProjectConfigurationError(
+                    f"Configuration node {name!r} is a {node.family} node; "
+                    f"answer it through 'config {node.family}'."
+                )
+            if node.required:
+                raise ProjectConfigurationError(
+                    f"Configuration value {name!r} is mandatory and cannot be "
+                    "'none'; record a value instead."
+                )
+            record.omit_value(name)
+            record.write()
+            print(f"Set {name} = none (explicitly absent from the runtime configuration)")
+        else:
+            normalized = normalize_configuration_value(manifest, name, arguments.value)
+            record.set_value(name, normalized)
+            record.write()
+            print(f"Set {name} = {render_toml_scalar(normalized)}")
         print(f"Checkout input: {record.input_path}")
         print("Run 'devcapsule project config resolve' before launch.")
         return 0
@@ -437,6 +458,10 @@ class ConfigUnsetCommand(Command):
         record = CheckoutRecord(manifest, root)
         if node.family == CARRIER_FAMILY_SET:
             removed = record.values.pop(name, None)
+            if removed is None and name in record.omitted_values:
+                # Unsetting an explicit omission returns the node to silence.
+                record.omitted_values.discard(name)
+                removed = "none"
         elif node.family == CARRIER_FAMILY_BIND:
             removed = (
                 record.directory_bindings.pop(name, None)
@@ -509,7 +534,7 @@ class ConfigAuthorizeCommand(Command):
         local_base_identity: str | None = None
         local_base_value = (
             name == "base-image"
-            and value.strip().lower() != "default"
+            and value.strip().lower() not in {"default", "none"}
             and value != declaration.recommended_value
         )
         if local_base_value:

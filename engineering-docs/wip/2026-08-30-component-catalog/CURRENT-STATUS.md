@@ -265,8 +265,13 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
    - [init/run answers not persisted as authorizations](../../bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
    - [formation identity claims an entrypoint the recipe never sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
    - [the authorization grammar cannot express denial](../../bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
-     (owner-triaged onto this list 2026-09-02, found during the
-     antigravity smoke triage)
+     (owner-triaged onto this list 2026-09-02; **ruled and fixed
+     2026-09-03** by the `none` ruling — denial is a value: bool nodes
+     take `false`, string nodes their deny spelling, and `none`
+     resolves to the deny value at decision time. The set-family half
+     of the same ruling records explicit omissions in
+     `omitted-values`, absent from the runtime config, overridable at
+     `project run`. Closes on the owner's hardened relaunch)
    - [the codium setuid sandbox crashes under the development-sudo posture](../../bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
      (the failure the antigravity smoke actually hit; **ruled and fixed
      on the branch 2026-09-02**: the owner superseded the 2026-08-31
