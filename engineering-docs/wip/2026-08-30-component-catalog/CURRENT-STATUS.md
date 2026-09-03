@@ -520,16 +520,16 @@ its ruling thread open):
   data-as-code (pin literals with embedded lock fragments, edge tuples,
   substrate constants, evidence strings, rulings living in comments),
   hand-edited 8 times in this workstream's first three days; every
-  change hand-bumps `_MATRIX_VERSION` and regenerates golden locks via
-  an ad-hoc script that is not even checked in. Each new base release,
+  change hand-bumps `_MATRIX_VERSION` and regenerates golden locks. Each new base release,
   component bump, edge, or model amendment (three model changes on
   2026-09-02 alone: recipe-version per surface, substrate keying, the
   v0.2.9 pin) lands in the same module and inflates it further. The
   cleanup's shape is deliberately *not* designed here — it waits for
   the owner's direction and should be planned together with the
   component-update-mechanism thread above, which needs the same
-  data/model separation to exist. Minimum next step regardless of
-  design: a checked-in golden-lock regeneration tool.
+  data/model separation to exist. The minimum step is done (2026-09-03):
+  `scripts/regenerate-golden-locks.py` is checked in and imports the
+  fixture needs from the test module, so the two cannot drift.
 - **Launcher naming**: the generic project launcher still lives in
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
@@ -558,6 +558,21 @@ its ruling thread open):
     (the reworked grammar behaving as designed). Owner actions: spin
     each project (`init` then `run` on a checkout of the branch), merge
     the sample branches, then the monorepo submodule pins advance.
+  - Before the spins, the owner relayed codex's own update notice and
+    directed the pin advance to **codex 0.153.0** (matrix
+    `embedded-10`): tarball sha512 verified against the npm registry
+    integrity, sha256 computed from the same download, member set
+    unchanged since 0.145.0, extracted binary executed hands-on
+    (`codex-cli 0.153.0`); acp-version metadata carried forward
+    unchanged. Three provisional entries pending the spins/next dogfood
+    run: gen1 and gen2 edges plus the codex×pycharm coupling pair
+    (0.153.0, 2026.2.0.1) — without the coupling pair, newest-verified
+    selection would strand every codex×pycharm formation. The repo's
+    dogfood lock regenerated onto embedded-10 (retiring the last
+    hand-authored `dogfood-v1` lock), golden fixtures regenerated via
+    the newly checked-in `scripts/regenerate-golden-locks.py`, and both
+    sample branches carry the bump as follow-on commits (`4fffeb1`,
+    `2ba6e03`). Suite green (537), mypy clean.
 
 - **Resolution-matrix redesign** (implemented 2026-09-01): the owner
   accepted D-0006 and D-0007 and the implementation is on this branch.

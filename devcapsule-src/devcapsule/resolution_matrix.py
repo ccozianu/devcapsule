@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-9"
+_MATRIX_VERSION = "embedded-10"
 
 
 # --------------------------------------------------------------------------
@@ -541,6 +541,39 @@ _CODEX_0_145_0 = _ComponentPin(
     },
 )
 
+# 0.153.0 advances the pin at the owner's direction 2026-09-03 (the CLI's
+# own update notice during the demo-project conversions). The tarball's
+# sha512 was verified against the npm registry integrity and the sha256
+# computed locally from the same download; the archive member set is
+# unchanged since 0.145.0 and the extracted binary was executed hands-on
+# (`codex-cli 0.153.0`). The acp-version is informational lock metadata
+# carried forward unchanged.
+_CODEX_0_153_0 = _ComponentPin(
+    component_id="codex",
+    version="0.153.0",
+    lock_table={
+        "version": "0.153.0",
+        "delivery-policy": "local-materialization",
+        "integration": "jetbrains-ai-assistant",
+        "acp-version": "1.1.9",
+        "license": "Apache-2.0",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://registry.npmjs.org/@openai/codex/-/"
+                    "codex-0.153.0-linux-x64.tgz"
+                ),
+                "sha256": (
+                    "856f408ea61b44a381b7d6fb7c82365dfcef649ae2a340fc01282cf63c30cd8a"
+                ),
+                "archive-member": (
+                    "package/vendor/x86_64-unknown-linux-musl/bin/codex"
+                ),
+            }
+        },
+    },
+)
+
 _CLAUDE_CODE_2_1_227 = _ComponentPin(
     component_id="claude-code",
     version="2.1.227",
@@ -648,7 +681,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),
-        "codex": (_CODEX_0_145_0,),
+        "codex": (_CODEX_0_145_0, _CODEX_0_153_0),
         "claude-code": (_CLAUDE_CODE_2_1_227, _CLAUDE_CODE_2_1_236),
         "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24,),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
@@ -675,6 +708,24 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             _SUBSTRATE_GEN2,
             "product-owner smoke 2026-09-03: five-way formation (codium x "
             "antigravity x claude-code x codex) on the v0.2.9 base",
+        ),
+        # 0.153.0 advances the pin at the owner's direction 2026-09-03; both
+        # substrate edges are provisional pending the next dogfood run (gen1)
+        # and the demo-project spins (gen2), per the provisional-edge
+        # precedent.
+        _VerifiedEdge(
+            "codex",
+            "0.153.0",
+            _SUBSTRATE_GEN1,
+            "provisional: owner-directed CLI update 2026-09-03, pending the "
+            "next dogfood run",
+        ),
+        _VerifiedEdge(
+            "codex",
+            "0.153.0",
+            _SUBSTRATE_GEN2,
+            "provisional: owner-directed CLI update 2026-09-03, pending the "
+            "demo-project three-provider spins",
         ),
         _VerifiedEdge("claude-code", "2.1.227", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(
@@ -712,10 +763,16 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         ),
     ),
     couplings=(
+        # The (0.153.0, 2026.2.0.1) pair is provisional alongside the
+        # 0.153.0 substrate edges (owner-directed update 2026-09-03,
+        # pending the next dogfood run); without it, the newest-verified
+        # pin selection would strand every codex x pycharm formation.
         _Coupling(
             first_id="codex",
             second_id="pycharm",
-            verified=frozenset({("0.145.0", "2026.2.0.1")}),
+            verified=frozenset(
+                {("0.145.0", "2026.2.0.1"), ("0.153.0", "2026.2.0.1")}
+            ),
             evidence=_DOGFOOD_E2E,
         ),
     ),
