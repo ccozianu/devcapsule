@@ -587,6 +587,14 @@ its ruling thread open):
     future jointly-verified integrations, and every lock regenerated
     (goldens, dogfood, both sample branches — `1bea8e5`, `858dc5d`).
     Suite green (537), mypy clean.
+  - Logged from the owner's first spin attempt (pycharm × three
+    agents, strict refusal), awaiting owner triage onto a release
+    list:
+    [the resolution refusal names only the last base tried and no remedy](../../bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
+    — the message reports the oldest base's gap, hides that v0.2.9 is
+    one pycharm edge short, and never names `--unverified`; the
+    recorded fix scope is message-only in `resolve()`. The unblock
+    itself is `--unverified` on the same command.
 
 - **Resolution-matrix redesign** (implemented 2026-09-01): the owner
   accepted D-0006 and D-0007 and the implementation is on this branch.
