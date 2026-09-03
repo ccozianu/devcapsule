@@ -64,7 +64,7 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
                     "https://github.com/example",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -113,7 +113,7 @@ def full_init_command(project: Path) -> list[str]:
         "https://github.com/example",
         "--authorize",
         "base-image",
-        "yes",
+        "default",
     ]
 
 
@@ -173,7 +173,7 @@ def test_config_need_grows_the_project_and_preserves_authored_content(
                     "postgresql-client",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -245,7 +245,7 @@ def test_config_need_elicits_new_acquisition_gates(tmp_path: Path, capsys) -> No
                     "claude-code-agent",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 2
@@ -264,7 +264,7 @@ def test_config_need_elicits_new_acquisition_gates(tmp_path: Path, capsys) -> No
                     "claude-code-agent",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                     "--authorize",
                     "claude-code-download",
                     "true",
@@ -357,7 +357,7 @@ def test_email_creator_is_normalized_to_mailto(tmp_path: Path) -> None:
                     "dev@example.test",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -389,7 +389,7 @@ def test_recommendation_answer_authors_manifest_and_owner_authorization(
                     "Required to run peer capsules in the test suite.",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -466,7 +466,7 @@ def test_repair_completes_a_hand_authored_manifest(tmp_path: Path, capsys) -> No
                     "init",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -495,7 +495,7 @@ def test_fully_initialized_project_fails_loudly_naming_regenerate(
         "https://github.com/example",
         "--authorize",
         "base-image",
-        "yes",
+        "default",
     ]
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         assert cli.main(arguments) == 0
@@ -528,7 +528,7 @@ def test_conflicting_recommendation_answer_is_rejected(tmp_path: Path, capsys) -
                     "Reach host-bound services.",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -570,7 +570,7 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
     assert "Project creator" in transcript
     assert "Capabilities the project needs" in transcript
     assert "[none]" in transcript
-    assert "[yes]" in transcript
+    assert "[default]" in transcript
     manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
     assert "host" not in manifest
     assert report.authorized == ("base-image",)
@@ -763,7 +763,64 @@ def test_init_base_answer_that_is_neither_answer_nor_reference_is_explained(
     message = capsys.readouterr().err
     assert "resolution matrix selected" in message
     assert "locally built or pulled image" in message
-    assert "neither an answer nor an image reference" in message
+    assert "neither a value nor an image reference" in message
+
+
+def test_yes_is_not_an_authorization_value(tmp_path: Path, capsys) -> None:
+    """Owner ruling 2026-09-03: authorizations are KV pairs; a digest is a
+    value, a tag points at one, 'default' accepts the recommendation —
+    'yes' is none of those."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "init",
+                    "--need",
+                    "python-ide",
+                    "--creator",
+                    "https://github.com/example",
+                    "--authorize",
+                    "base-image",
+                    "yes",
+                ]
+            )
+            == 2
+        )
+    message = capsys.readouterr().err
+    assert "takes a value" in message
+    assert "'default'" in message
+
+
+def test_config_authorize_accepts_the_default_keyword(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert cli.main(full_init_command(project)) == 0
+        capsys.readouterr()
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "base-image",
+                    "default",
+                ]
+            )
+            == 0
+        )
+        records = list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+        authorization = read_toml(records[0])["authorization"]["base-image"]
+        assert authorization["reference"] == matrix_base_reference()
+        assert "image-id" not in authorization
 
 
 def test_init_refuses_a_published_non_recommended_digest(tmp_path: Path, capsys) -> None:
@@ -822,7 +879,7 @@ def test_claude_capability_requires_the_acquisition_answer(tmp_path: Path, capsy
         "https://github.com/example",
         "--authorize",
         "base-image",
-        "yes",
+        "default",
     ]
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         assert cli.main(base_arguments) == 2
@@ -857,7 +914,7 @@ def test_antigravity_capability_requires_the_acquisition_answer(
         "https://github.com/example",
         "--authorize",
         "base-image",
-        "yes",
+        "default",
     ]
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         assert cli.main(base_arguments) == 2
@@ -894,7 +951,7 @@ def test_noninteractive_need_without_an_agent_stays_explicit(tmp_path: Path) -> 
                     "https://github.com/example",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -980,7 +1037,7 @@ def test_unknown_authorize_answer_is_reported_not_ignored(tmp_path: Path, capsys
                     "https://github.com/example",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                     "--authorize",
                     "quantum-tunnel",
                     "open",
@@ -1004,7 +1061,7 @@ def test_set_and_bind_extras_are_applied_through_the_registry(tmp_path: Path) ->
                 need=("python-ide",),
                 creator="https://github.com/example",
                 answers=(
-                    ProvidedAnswer("authorize", "base-image", "yes"),
+                    ProvidedAnswer("authorize", "base-image", "default"),
                     manifest_extra,
                 ),
                 interactive=False,

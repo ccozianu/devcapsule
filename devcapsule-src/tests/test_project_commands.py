@@ -540,7 +540,7 @@ def test_project_run_starts_immediately_after_init(tmp_path: Path, capsys) -> No
                     "https://github.com/example",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0

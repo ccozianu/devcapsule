@@ -752,10 +752,13 @@ def _elicit_acquisitions(
     )
     answer = elicitor.seek(
         "base-image",
-        description=f"Authorize this checkout to execute {base.display_value or reference}? (yes/no)",
+        description=(
+            f"Authorize this checkout to execute {base.display_value or reference}? "
+            "(Enter accepts; 'no' declines; or name a locally built/pulled image)"
+        ),
         remedy=f"--authorize base-image {reference}",
-        existing="yes" if fresh else None,
-        empty_answer="yes",
+        existing="default" if fresh else None,
+        empty_answer="default",
         validate=_base_answer_validator("base-image", reference),
     )
     if answer is not None:
@@ -765,7 +768,7 @@ def _elicit_acquisitions(
                 "declined. Authorize later with 'devcapsule project config authorize "
                 f"base-image {reference}' and run 'devcapsule project config resolve'."
             )
-        if answer.value != "yes":
+        if answer.value != "default":
             _record_base_selection(
                 elicitor,
                 record,
@@ -833,14 +836,18 @@ def _elicit_component_acquisitions(
 
 
 def _acquisition_validator(name: str, accepted_value: str) -> Any:
+    # Boolean consent questions: yes/no is prompt vocabulary, the stored
+    # value is the accepted one; 'default' accepts the recommendation like
+    # everywhere else (owner ruling 2026-09-03).
     def validate(value: str) -> str:
         candidate = value.strip().lower()
-        if candidate in {"yes", "y", accepted_value.lower()}:
+        if candidate in {"yes", "y", "default", accepted_value.lower()}:
             return "yes"
         if candidate in {"no", "n"}:
             return "no"
         raise ProjectConfigurationError(
-            f"Authorization {name!r} accepts yes, no, or the exact value {accepted_value!r}."
+            f"Authorization {name!r} accepts yes, no, 'default', or the exact value "
+            f"{accepted_value!r}."
         )
 
     return validate
@@ -858,25 +865,28 @@ def _looks_like_image_reference(value: str) -> bool:
 
 
 def _base_answer_validator(name: str, recommended: str) -> Any:
-    """Like ``_acquisition_validator``, but a reference-shaped answer is a
-    developer base selection rather than garbage (owner ruling 2026-09-03)."""
+    """Authorization values are values (owner ruling 2026-09-03): the exact
+    recommended digest, the reserved keyword ``default`` accepting it, or a
+    reference-shaped developer base selection.  ``no`` declines; ``yes`` is
+    not a value and was retired the same day it stopped making sense."""
 
     def validate(value: str) -> str:
         candidate = value.strip()
-        if candidate.lower() in {"yes", "y"} or candidate == recommended:
-            return "yes"
+        if candidate.lower() == "default" or candidate == recommended:
+            return "default"
         if candidate.lower() in {"no", "n"}:
             return "no"
         if _looks_like_image_reference(candidate):
             return candidate
         raise ProjectConfigurationError(
-            f"Authorization {name!r} answers one question: execute the base the "
-            f"resolution matrix selected from capabilities.need ({recommended})? "
-            "Answer yes or no. To run a different base on this checkout, name a "
-            "locally built or pulled image instead (tag or image ID) — DevCapsule "
-            "reads its digest and metadata and asks you to confirm the selection "
-            f"('--less-pedantic' skips the confirmation). {value!r} is neither an "
-            "answer nor an image reference."
+            f"Authorization {name!r} takes a value: the base the resolution "
+            f"matrix selected from capabilities.need ({recommended}), accepted "
+            "as-is with the reserved keyword 'default' (interactively, Enter), "
+            "or a locally built or pulled image (tag or image ID) to run on "
+            "this checkout instead — DevCapsule reads its digest and metadata "
+            "and asks you to confirm the selection ('--less-pedantic' skips "
+            f"the confirmation). 'no' declines. {value!r} is neither a value "
+            "nor an image reference."
         )
 
     return validate

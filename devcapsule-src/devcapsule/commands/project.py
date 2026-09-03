@@ -490,7 +490,11 @@ class ConfigAuthorizeCommand(Command):
                 f"declared authorizations: {available}."
             )
         local_base_identity: str | None = None
-        local_base_value = name == "base-image" and value != declaration.recommended_value
+        local_base_value = (
+            name == "base-image"
+            and value.strip().lower() != "default"
+            and value != declaration.recommended_value
+        )
         if local_base_value:
             try:
                 immutable_registry_reference(value)

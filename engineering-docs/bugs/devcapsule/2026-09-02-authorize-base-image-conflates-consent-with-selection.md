@@ -18,7 +18,19 @@ still requires project-reviewed metadata. Fix-scope items 1 and 2 below
 are thereby delivered (item 2 exceeded: reference-shaped values are not
 just explained but accepted); item 3 — the joint grammar ruling with
 the denial bug — remains open. Closes on the owner's next init against
-their built base. Originally confirmed by the product owner 2026-09-02
+their built base.
+
+Extended the same day by a second owner ruling: `--authorize base-image
+yes` "never made sense to begin with" — authorizations are KV pairs, a
+digest is a value, a tag points at one, and `yes` is neither. `yes` is
+retired as a base-image value; the reserved keyword `default` accepts
+the recommendation for a single key (`init --authorize base-image
+default`, `config authorize NAME default` — any authorize node), with
+`--all-recommended` remaining the bulk form and Enter remaining the
+interactive acceptance. `no` survives as decline flow, not as a value;
+whether a *recorded* denial exists is exactly the open denial-grammar
+bug. Boolean consent prompts (vendor acquisitions) keep yes/no as
+prompt vocabulary since their stored value is the boolean itself. Originally confirmed by the product owner 2026-09-02
 ("the message is only intelligible to you, not even to me as product
 owner/designer, much less to an unsuspecting user").
 

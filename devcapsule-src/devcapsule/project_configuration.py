@@ -581,6 +581,10 @@ def normalize_authorization_value(
     declaration: AuthorizationDeclaration, value: object
 ) -> AuthorizationScalar:
     expected = declaration.recommended_value
+    if isinstance(value, str) and value.strip().lower() == "default":
+        # The reserved keyword accepting the recommendation for one key
+        # (owner ruling 2026-09-03); the bulk counterpart is --all-recommended.
+        return expected
     if isinstance(expected, bool):
         if isinstance(value, str) and value.lower() in {"true", "false"}:
             normalized: AuthorizationScalar = value.lower() == "true"

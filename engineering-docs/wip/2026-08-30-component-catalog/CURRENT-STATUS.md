@@ -181,7 +181,10 @@ gen2 smokes. From the same episode, recorded and then **ruled and fixed 2026-09-
 — init now accepts a base reference as a checkout-level selection
 (daemon-inspected, metadata presented, informed consent solicited;
 `--less-pedantic` skips the solicitation), completing the path the
-config-verb and realization layers already carried. The joint grammar
+config-verb and realization layers already carried. A second ruling
+the same day retired `yes` as a base-image authorization value —
+authorizations are KV pairs; the reserved keyword `default` accepts
+the recommendation for a single key across the authorize family. The joint grammar
 ruling with the denial bug remains open, as does the larger
 base-as-config-node unification the owner asked about (it belongs with
 the checkout-local-needs rebuild — same resolution-time inversion).
