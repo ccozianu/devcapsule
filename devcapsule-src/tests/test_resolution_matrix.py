@@ -179,15 +179,19 @@ def test_frontend_need_generates_a_complete_codium_lock() -> None:
 def test_base_selection_follows_each_needs_verified_edges() -> None:
     """The sparse matrix in action: newest verified base per capability set.
 
-    Codium is proven on the gen2 substrate, so it rides the newest gen2
-    base; the agents are so far proven only on gen1, so compositions
-    including them stay on the base where every required edge is verified.
+    Codium and the agents carry gen2 edges (the agents' provisional,
+    2026-09-03), so their compositions ride the newest gen2 base; PyCharm
+    is still proven only on gen1 and keeps its compositions on v026.
     """
 
     assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.2.9"
     assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v026"
     assert (
         parse(rendered(["node", "frontend-ide", "codex-agent"]))["base"]["build-mnemonic"]
+        == "v0.2.9"
+    )
+    assert (
+        parse(rendered(["python", "python-ide", "codex-agent"]))["base"]["build-mnemonic"]
         == "v026"
     )
 

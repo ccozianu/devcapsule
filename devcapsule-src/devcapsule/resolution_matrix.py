@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-7"
+_MATRIX_VERSION = "embedded-8"
 
 
 # --------------------------------------------------------------------------
@@ -554,7 +554,26 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             "base (config-history 20260902T075529Z)",
         ),
         _VerifiedEdge("codex", "0.145.0", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
+        # The two gen2 agent edges entered provisionally 2026-09-03 (the
+        # codium/antigravity precedent) when the owner's combined formation
+        # — codium × antigravity × claude-code × codex on v0.2.9 — could not
+        # resolve without them; that smoke is their pending evidence and
+        # retires the runtime-PEX override for combined formations.
+        _VerifiedEdge(
+            "codex",
+            "0.145.0",
+            _SUBSTRATE_GEN2,
+            "provisional: the owner's combined-formation smoke on the "
+            "v0.2.9 base (2026-09-03)",
+        ),
         _VerifiedEdge("claude-code", "2.1.227", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.227",
+            _SUBSTRATE_GEN2,
+            "provisional: the owner's combined-formation smoke on the "
+            "v0.2.9 base (2026-09-03)",
+        ),
         _VerifiedEdge("postgresql-client", "16", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(
             "antigravity-cli",

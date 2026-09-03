@@ -455,13 +455,14 @@ its ruling thread open):
 
 ## Open Threads
 
-- **Base rebuild** (updated 2026-09-02): resolved for codium-only needs —
-  the v0.2.8 base is published, owner-smoked with codium, and pinned in
-  matrix `embedded-3`, so those locks launch with no override. Formations
-  combining codium with agents still resolve to v026 (the agents have no
-  v0.2.8 edges yet) and therefore still need the runtime-PEX override
-  volume; smoking the agents on v0.2.8 and adding their edges retires the
-  override entirely.
+- **Base rebuild** (updated 2026-09-03): the codex and claude-code gen2
+  edges entered provisionally (matrix `embedded-8`) when the owner's
+  five-way formation — codium × antigravity × claude-code × codex —
+  could not resolve without them; the owner's smoke of that formation
+  on v0.2.9 is their pending evidence. Once it passes, every
+  codium-composition resolves to v0.2.9 with no runtime-PEX override;
+  only PyCharm compositions remain on v026 pending their own gen2
+  smoke (see the PyCharm slot-path migration thread).
 - **PyCharm slot-path migration** (recorded follow-up): PyCharm still
   travels the launcher's named state fields; every other surface uses the
   generic plan-slot mounts. Migrating PyCharm onto the generic path (and
