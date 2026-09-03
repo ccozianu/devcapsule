@@ -2,13 +2,13 @@
 
 Date opened: 2026-09-02
 
-Status: open; fix applied on the workstream branch the same day (slot
-widened to `~/.gemini`, contract and launcher guards per the
-state-slots design note). The owner repaired the live checkout's
-ownership by hand (`chown`) and the CLI then worked through the
-2026-09-02 smoke; the widened slot and the launcher pre-creation get
-their first live exercise on the next rebuild-and-run, which closes
-this record
+Status: **closed 2026-09-03** — the owner's v0.2.9 smoke
+(rebuild-and-run of the five-way formation) exercised the widened
+`~/.gemini` slot and the launcher pre-creation live, with no hand
+repair, and confirmed everything working. Fix had been applied on the
+workstream branch 2026-09-02 (slot widened to `~/.gemini`, contract
+and launcher guards per the state-slots design note); the 2026-09-02
+smoke had run with the ownership repaired by hand (`chown`)
 
 Requirements: R-PRODUCT-001
 

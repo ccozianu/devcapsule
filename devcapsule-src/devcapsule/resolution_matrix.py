@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-8"
+_MATRIX_VERSION = "embedded-9"
 
 
 # --------------------------------------------------------------------------
@@ -565,6 +565,34 @@ _CLAUDE_CODE_2_1_227 = _ComponentPin(
     },
 )
 
+# 2.1.236 is the stable channel as of 2026-09-03 (the Fable 5.1 release the
+# owner directed the update for). The sha256 was computed locally from the
+# downloaded binary the same day and matches the vendor manifest's linux-x64
+# checksum; the binary was executed hands-on ("2.1.236 (Claude Code)").
+_CLAUDE_CODE_2_1_236 = _ComponentPin(
+    component_id="claude-code",
+    version="2.1.236",
+    lock_table={
+        "version": "2.1.236",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "claude-code-download",
+        "license": "Proprietary",
+        "terms-url": "https://www.anthropic.com/legal/commercial-terms",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://downloads.claude.ai/claude-code-releases/"
+                    "2.1.236/linux-x64/claude"
+                ),
+                "sha256": (
+                    "6c8818fa22187aa555c242be4abbacc44d6b71a32ac9631ee7b2b5d12f51f752"
+                ),
+            }
+        },
+    },
+)
+
 # The official Antigravity channel serves latest-only, but the artifacts are
 # versioned and immutable in GCS; this pin is a deliberate curation. The
 # sha256 was computed locally from the downloaded archive (2026-09-02, and
@@ -621,7 +649,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),
         "codex": (_CODEX_0_145_0,),
-        "claude-code": (_CLAUDE_CODE_2_1_227,),
+        "claude-code": (_CLAUDE_CODE_2_1_227, _CLAUDE_CODE_2_1_236),
         "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24,),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
@@ -641,25 +669,38 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             "base (config-history 20260902T075529Z)",
         ),
         _VerifiedEdge("codex", "0.145.0", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
-        # The two gen2 agent edges entered provisionally 2026-09-03 (the
-        # codium/antigravity precedent) when the owner's combined formation
-        # — codium × antigravity × claude-code × codex on v0.2.9 — could not
-        # resolve without them; that smoke is their pending evidence and
-        # retires the runtime-PEX override for combined formations.
         _VerifiedEdge(
             "codex",
             "0.145.0",
             _SUBSTRATE_GEN2,
-            "provisional: the owner's combined-formation smoke on the "
-            "v0.2.9 base (2026-09-03)",
+            "product-owner smoke 2026-09-03: five-way formation (codium x "
+            "antigravity x claude-code x codex) on the v0.2.9 base",
         ),
         _VerifiedEdge("claude-code", "2.1.227", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(
             "claude-code",
             "2.1.227",
             _SUBSTRATE_GEN2,
-            "provisional: the owner's combined-formation smoke on the "
-            "v0.2.9 base (2026-09-03)",
+            "product-owner smoke 2026-09-03: five-way formation (codium x "
+            "antigravity x claude-code x codex) on the v0.2.9 base",
+        ),
+        # 2.1.236 advances the pin at the owner's direction 2026-09-03 (the
+        # Fable 5.1 update for us and adopters); both substrate edges are
+        # provisional pending the next dogfood run (gen1) and codium smoke
+        # (gen2), per the provisional-edge precedent.
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.236",
+            _SUBSTRATE_GEN1,
+            "provisional: owner-directed CLI update 2026-09-03, pending the "
+            "next dogfood run",
+        ),
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.236",
+            _SUBSTRATE_GEN2,
+            "provisional: owner-directed CLI update 2026-09-03, pending the "
+            "next codium-formation smoke",
         ),
         _VerifiedEdge("postgresql-client", "16", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(

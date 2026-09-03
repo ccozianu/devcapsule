@@ -374,11 +374,20 @@ Resume with, in order:
    value). The 2026-09-03 smoke on the v0.2.9 base also first-exercised
    the regenerated lock chain (`embedded-7`, codium recipe 2, new
    canonical identity) and the whole authorization grammar rework
-   end-to-end. Still to confirm from the same checkout, next relaunches:
-   the `~/.gemini` slot arriving user-owned with no hand-chown (closes
-   the antigravity-state record), a couple of clean relaunches (closes
-   the shm record), and optionally the live denial downgrade
-   (`config authorize development-sudo false` → hardened launch).
+   end-to-end. The 2026-09-03 five-way smoke (codium × antigravity ×
+   claude-code × codex on the v0.2.9 base) then confirmed **everything
+   working** — the owner's blanket sign-off closes the antigravity-state
+   record (widened `~/.gemini` exercised live, no hand repair), the shm
+   record (clean relaunches on the declared 640m), and the
+   denial-grammar record, and converts the two provisional agent gen2
+   edges into owner-smoked evidence. **Every v0.2.9 release-target bug
+   is now closed**; the runtime-PEX override is retired for all codium
+   compositions. Same day, at the owner's direction, claude-code
+   advanced to 2.1.236 (the Fable 5.1 release; sha256 computed locally
+   and matching the vendor manifest, binary executed hands-on) with
+   provisional gen1/gen2 edges pending the next dogfood run and codium
+   smoke — the repo's own dogfood lock is updated so this workstream's
+   capsules get it too (matrix `embedded-9`).
 2. The two scoped v0.2.9 bugs: init/run answers persisted as
    authorizations, and the formation-identity/entrypoint-claim record
    (its enforcement half coordinates with `contained-display`).

@@ -2,8 +2,10 @@
 
 Date opened: 2026-09-02
 
-Status: ruled and fixed on the branch 2026-09-03, by the owner's
-`none`-keyword ruling (recorded across the base-image grammar records):
+Status: **closed 2026-09-03** — the owner's smoke confirmed everything
+working, including the reworked authorization grammar live. Ruled and
+fixed the same day by the owner's `none`-keyword ruling (recorded
+across the base-image grammar records):
 **denial is a value**. `config authorize NAME false` (bool nodes) and
 the string nodes' deny spellings (`network bridge`,
 `docker-daemon none`) now record persistent denials the resolver

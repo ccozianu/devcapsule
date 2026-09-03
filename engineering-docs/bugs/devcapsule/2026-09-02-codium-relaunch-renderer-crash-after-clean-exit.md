@@ -2,7 +2,10 @@
 
 Date opened: 2026-09-02
 
-Status: root-caused and fixed on the branch, 2026-09-02. The owner ran
+Status: **closed 2026-09-03** — the owner's v0.2.9 smoke confirmed
+clean codium launches and relaunches with no passthrough flag, the
+declared shm size (640m) doing the work. Root-caused and fixed on the
+branch, 2026-09-02. The owner ran
 the recorded discriminating diagnostic: raw-passthrough `--shm-size`
 of at least 512m stops the crashes entirely — candidate 1
 (`/dev/shm` exhaustion) confirmed, candidate 2 (stale caches) not
