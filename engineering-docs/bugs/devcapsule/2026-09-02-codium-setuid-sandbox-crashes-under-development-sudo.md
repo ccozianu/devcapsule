@@ -2,8 +2,11 @@
 
 Date opened: 2026-09-02
 
-Status: fixed on the branch 2026-09-02, by ruling rather than by either
-option in the fix scope below — the owner superseded the 2026-08-31
+Status: **closed 2026-09-03** — the owner's smoke on the v0.2.9 base
+confirmed codium (Electron) launching cleanly with development sudo
+enabled inside the container, the exact posture whose zygote abort
+opened this record. Fixed on the branch 2026-09-02, by ruling rather
+than by either option in the fix scope below — the owner superseded the 2026-08-31
 sandbox ruling entirely: renderers run `--no-sandbox` under uniform full
 hardening for as long as we can, recorded in the
 [renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md).

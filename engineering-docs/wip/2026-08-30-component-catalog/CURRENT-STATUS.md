@@ -273,17 +273,15 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
      `omitted-values`, absent from the runtime config, overridable at
      `project run`. Closes on the owner's hardened relaunch)
    - [the codium setuid sandbox crashes under the development-sudo posture](../../bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
-     (the failure the antigravity smoke actually hit; **ruled and fixed
-     on the branch 2026-09-02**: the owner superseded the 2026-08-31
-     sandbox decision — renderers run `--no-sandbox` under uniform full
-     hardening for as long as we can, per the new
-     [renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md).
-     The narrow grant, the `setuid-helper` declaration, and the recipe's
-     chrome-sandbox 4755 step are removed; `--no-sandbox` travels as
-     template data so the frozen v0.2.8 runtime launches it unchanged;
-     codium recipe-version is 2 and the matrix advanced to `embedded-5`,
-     golden locks regenerated. Closes on the owner's next sudo-enabled
-     relaunch)
+     (**closed 2026-09-03**: the owner's smoke on the v0.2.9 base
+     confirmed codium launching cleanly with development sudo enabled —
+     the exact posture that aborted. Fixed 2026-09-02 by superseding
+     the 2026-08-31 sandbox decision — renderers run `--no-sandbox`
+     under uniform full hardening for as long as we can, per the
+     [renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md);
+     the narrow grant, the `setuid-helper` declaration, and the
+     recipe's chrome-sandbox 4755 step are removed, `--no-sandbox`
+     travels as template data, codium recipe-version 2)
    - [antigravity's state is wider than the analyzed path](../../bugs/devcapsule/2026-09-02-antigravity-state-wider-than-the-analyzed-path.md)
      (`~/.gemini/config/projects` walled off by the nested slot's
      root-owned parent; **fix applied on the branch** — the slot now
@@ -369,17 +367,18 @@ clean.
 
 Resume with, in order:
 
-1. The two v0.2.9 bugs awaiting owner rulings — **one down 2026-09-02**:
-   the codium sudo-sandbox bug is ruled and fixed (`--no-sandbox` under
-   uniform hardening; see *Release Target* and the renderer-sandboxing
-   design note). Remaining: the authorization denial grammar (explicit
-   deny vs `unset` semantics). Note for the next rebuild-and-run: the
-   sandbox change advances the matrix to `embedded-5` and codium's
-   recipe to version 2, so existing codium locks (including the
-   tictactoe sample checkout's committed lock) fail loudly until
-   `init --regenerate`, and the canonical codium image rebuilds under a
-   new identity — the same relaunch that first-exercises the widened
-   `~/.gemini` slot.
+1. ~~The two v0.2.9 bugs awaiting owner rulings~~ **Both ruled, fixed,
+   and smoke-verified by 2026-09-03**: the codium sudo-sandbox bug
+   (closed by the owner's v0.2.9 smoke — codium runs with sudo enabled)
+   and the denial grammar (closed by the `none` ruling — denial is a
+   value). The 2026-09-03 smoke on the v0.2.9 base also first-exercised
+   the regenerated lock chain (`embedded-7`, codium recipe 2, new
+   canonical identity) and the whole authorization grammar rework
+   end-to-end. Still to confirm from the same checkout, next relaunches:
+   the `~/.gemini` slot arriving user-owned with no hand-chown (closes
+   the antigravity-state record), a couple of clean relaunches (closes
+   the shm record), and optionally the live denial downgrade
+   (`config authorize development-sudo false` → hardened launch).
 2. The two scoped v0.2.9 bugs: init/run answers persisted as
    authorizations, and the formation-identity/entrypoint-claim record
    (its enforcement half coordinates with `contained-display`).
