@@ -387,7 +387,14 @@ Resume with, in order:
    and matching the vendor manifest, binary executed hands-on) with
    provisional gen1/gen2 edges pending the next dogfood run and codium
    smoke — the repo's own dogfood lock is updated so this workstream's
-   capsules get it too (matrix `embedded-9`).
+   capsules get it too (matrix `embedded-9`). The owner confirmed the
+   upgraded CLI working the same day ("as well as expected"); the
+   provisional 2.1.236 edges convert when a recorded formation run
+   names its base. The upgrade experience itself went to
+   `project-management` as an intake item at the owner's direction
+   (2026-09-03, via this workstream's first outbox delivery):
+   upgrade-friendly messages, obsolescence warnings, and the project
+   of upgrading, as an important V1 feature.
 2. The two scoped v0.2.9 bugs: init/run answers persisted as
    authorizations, and the formation-identity/entrypoint-claim record
    (its enforcement half coordinates with `contained-display`).
