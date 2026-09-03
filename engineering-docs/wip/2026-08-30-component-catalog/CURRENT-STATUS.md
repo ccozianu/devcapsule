@@ -192,10 +192,13 @@ gains a `default` field is the owner's open follow-up). A fourth:
 `unset` removes the name from the tree and therefore refuses
 mandatory nodes (`node.required` — declaration-required values,
 required secret inputs, base-image) instead of deferring the failure
-to resolve time. **Awaiting the owner's design session**: no
-mechanism exists to mandate whole *subtrees*; node names are flat
-dotted/slashed identifiers, so a subtree mandate would be a
-name-prefix rule — the owner asked to be pinged to design that UX. The joint grammar
+to resolve time. A fifth ruling closed the subtree question the owner had opened: the
+node namespace *stays flat*, with the `.` dot convention as the poor
+man's tree — no structural subtrees, no prefix-mandate mechanism;
+node-level `required` is the whole mandate story. One naming
+observation stays on record: component state slots spell their grouping
+with `/` (`pycharm/system`, `codium/user-data`) where the convention
+is `.` — cosmetic, and any convergence is its own decision. The joint grammar
 ruling with the denial bug remains open, as does the larger
 base-as-config-node unification the owner asked about (it belongs with
 the checkout-local-needs rebuild — same resolution-time inversion).
