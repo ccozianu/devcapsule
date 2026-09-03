@@ -2,9 +2,25 @@
 
 Date opened: 2026-09-02
 
-Status: open; confirmed by the product owner the same day ("the message
-is only intelligible to you, not even to me as product owner/designer,
-much less to an unsuspecting user")
+Status: ruled and fixed on the branch 2026-09-03. The owner ruled the
+UX directly: init accepts the reference the user typed — DevCapsule
+reads the image from the local daemon (digest, platform, base labels),
+presents the metadata, and solicits informed consent that this is the
+selection meant; a new `--less-pedantic` init flag records the
+validated selection without the solicitation ("I am the project
+maintainer and I just built v0.2.9 with my bare hands"). Noninteractive
+runs without the flag batch-fail naming it as the remedy. The
+unintelligible rejection is rewritten to state the flag's consent role,
+the matrix's selection role, and the reference path. D-0004's trust
+constraints survive intact: trust binds to the daemon-inspected image
+ID, never to the mutable tag, and a *published* non-recommended digest
+still requires project-reviewed metadata. Fix-scope items 1 and 2 below
+are thereby delivered (item 2 exceeded: reference-shaped values are not
+just explained but accepted); item 3 — the joint grammar ruling with
+the denial bug — remains open. Closes on the owner's next init against
+their built base. Originally confirmed by the product owner 2026-09-02
+("the message is only intelligible to you, not even to me as product
+owner/designer, much less to an unsuspecting user").
 
 Requirements: R-PRODUCT-001, R-PRODUCT-002
 

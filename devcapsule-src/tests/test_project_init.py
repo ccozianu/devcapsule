@@ -577,6 +577,222 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
     assert report.capabilities == ("python", "python-ide")
 
 
+def local_base_details(reference: str, identity: str):
+    from devcapsule.materialization import ImageDetails
+
+    return ImageDetails(
+        reference=reference,
+        identity=identity,
+        labels={
+            "devcapsule.image.managed": "true",
+            "devcapsule.metadata.version": "1",
+            "devcapsule.image.kind": "base",
+            "devcapsule.base.recipe-version": "5",
+        },
+        operating_system="linux",
+        architecture="amd64",
+    )
+
+
+def test_init_records_a_local_base_selection_with_less_pedantic(
+    tmp_path: Path, capsys
+) -> None:
+    """The 2026-09-03 ruling: a maintainer names their just-built base by tag;
+    --less-pedantic records the daemon-inspected selection without the
+    consent solicitation."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
+    identity = f"sha256:{'d' * 64}"
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with patch(
+            "devcapsule.project_operations.required_local_image",
+            return_value=local_base_details(selection, identity),
+        ) as inspect_local:
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "init",
+                        "--need",
+                        "python-ide",
+                        "--creator",
+                        "https://github.com/example",
+                        "--authorize",
+                        "base-image",
+                        selection,
+                        "--less-pedantic",
+                    ]
+                )
+                == 0
+            )
+        assert inspect_local.call_args_list[0].args == (selection,)
+        records = list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+        assert len(records) == 1
+        authorization = read_toml(records[0])["authorization"]["base-image"]
+        assert authorization["reference"] == selection
+        assert authorization["image-id"] == identity
+
+
+def test_init_base_selection_without_less_pedantic_batch_fails(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with patch(
+            "devcapsule.project_operations.required_local_image",
+            return_value=local_base_details(selection, f"sha256:{'d' * 64}"),
+        ):
+            assert (
+                cli.main(
+                    [
+                        "project",
+                        "--path",
+                        str(project),
+                        "init",
+                        "--need",
+                        "python-ide",
+                        "--creator",
+                        "https://github.com/example",
+                        "--authorize",
+                        "base-image",
+                        selection,
+                    ]
+                )
+                == 2
+            )
+    message = capsys.readouterr().err
+    assert "base-image (confirmation)" in message
+    assert "--less-pedantic" in message
+
+
+def test_init_base_selection_solicits_informed_consent_interactively(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
+    identity = f"sha256:{'d' * 64}"
+    prompts = io.StringIO()
+    # creator; need; four recommendations (Enter = none); consent (Enter = yes).
+    answers = io.StringIO("https://github.com/example\npython-ide\n\n\n\n\n\n")
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with patch(
+            "devcapsule.project_operations.required_local_image",
+            return_value=local_base_details(selection, identity),
+        ):
+            initialize_project(
+                InitializeRequest(
+                    directory=project,
+                    interactive=True,
+                    answers=(
+                        ProvidedAnswer(family="authorize", name="base-image", value=selection),
+                    ),
+                ),
+                input_stream=answers,
+                output_stream=prompts,
+            )
+    transcript = prompts.getvalue()
+    assert f"Image ID: {identity}" in transcript
+    assert "devcapsule.base.recipe-version = 5" in transcript
+    assert "overrides the recommendation for this checkout only" in transcript
+    records = list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+    authorization = read_toml(records[0])["authorization"]["base-image"]
+    assert authorization == {
+        "reference": selection,
+        "lock-digest": authorization["lock-digest"],
+        "image-id": identity,
+    }
+
+
+def test_init_base_selection_consent_can_be_declined(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
+    answers = io.StringIO("https://github.com/example\npython-ide\n\n\n\n\nno\n")
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with patch(
+            "devcapsule.project_operations.required_local_image",
+            return_value=local_base_details(selection, f"sha256:{'d' * 64}"),
+        ):
+            with pytest.raises(ProjectConfigurationError, match="declined"):
+                initialize_project(
+                    InitializeRequest(
+                        directory=project,
+                        interactive=True,
+                        answers=(
+                            ProvidedAnswer(
+                                family="authorize", name="base-image", value=selection
+                            ),
+                        ),
+                    ),
+                    input_stream=answers,
+                    output_stream=io.StringIO(),
+                )
+
+
+def test_init_base_answer_that_is_neither_answer_nor_reference_is_explained(
+    tmp_path: Path, capsys
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "init",
+                    "--need",
+                    "python-ide",
+                    "--creator",
+                    "https://github.com/example",
+                    "--authorize",
+                    "base-image",
+                    "maybe",
+                ]
+            )
+            == 2
+        )
+    message = capsys.readouterr().err
+    assert "resolution matrix selected" in message
+    assert "locally built or pulled image" in message
+    assert "neither an answer nor an image reference" in message
+
+
+def test_init_refuses_a_published_non_recommended_digest(tmp_path: Path, capsys) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    foreign = f"docker.io/other/devcapsule-base@sha256:{'e' * 64}"
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "init",
+                    "--need",
+                    "python-ide",
+                    "--creator",
+                    "https://github.com/example",
+                    "--authorize",
+                    "base-image",
+                    foreign,
+                    "--less-pedantic",
+                ]
+            )
+            == 2
+        )
+    assert "project-reviewed metadata" in capsys.readouterr().err
+
+
 def test_interactive_decline_of_the_base_is_a_clean_failure(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()

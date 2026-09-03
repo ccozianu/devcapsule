@@ -40,6 +40,7 @@ from devcapsule.project_configuration import (
     authorized_base_selection,
     canonical_digest,
     checkout_record_paths,
+    immutable_registry_reference,
     load_toml,
     lock_for,
     manifest_for,
@@ -304,6 +305,9 @@ class InitializeRequest:
     project_mount: str | None = None
     answers: tuple[ProvidedAnswer, ...] = ()
     regenerate: bool = False
+    # Skip consent solicitations for explicitly supplied values (today: a
+    # base-image selection); validation and recording are unchanged.
+    less_pedantic: bool = False
     # None: decide from whether stdin is a terminal.
     interactive: bool | None = None
 
@@ -436,7 +440,13 @@ def initialize_project(
 
     declarations = authorization_declarations(manifest, lock)
     record = CheckoutRecord(manifest, root)
-    authorized = _elicit_acquisitions(elicitor, declarations, record)
+    authorized = _elicit_acquisitions(
+        elicitor,
+        declarations,
+        record,
+        platform=str(platform),
+        less_pedantic=request.less_pedantic,
+    )
     elicitor.finish()
 
     for name, _value in recommendations:
@@ -709,6 +719,9 @@ def _elicit_acquisitions(
     elicitor: Elicitor,
     declarations: Mapping[str, Any],
     record: CheckoutRecord,
+    *,
+    platform: str,
+    less_pedantic: bool = False,
 ) -> list[str]:
     """Elicit the owner's own executable and vendor-terms authorizations.
 
@@ -717,6 +730,12 @@ def _elicit_acquisitions(
     flags batch-fails rather than inferring authorization.  Interactively
     each is asked with Enter meaning yes, because the owner just chose the
     inputs that derived them.
+
+    The base-image answer additionally accepts an image reference — a
+    developer-owned base selection for this checkout (product-owner ruling
+    2026-09-03): the image is read from the local daemon, its identity and
+    metadata are presented, and consent is solicited; ``less_pedantic``
+    records the selection without the solicitation.
     """
 
     authorized: list[str] = []
@@ -737,7 +756,7 @@ def _elicit_acquisitions(
         remedy=f"--authorize base-image {reference}",
         existing="yes" if fresh else None,
         empty_answer="yes",
-        validate=_acquisition_validator("base-image", reference),
+        validate=_base_answer_validator("base-image", reference),
     )
     if answer is not None:
         if answer.value == "no":
@@ -746,6 +765,18 @@ def _elicit_acquisitions(
                 "declined. Authorize later with 'devcapsule project config authorize "
                 f"base-image {reference}' and run 'devcapsule project config resolve'."
             )
+        if answer.value != "yes":
+            _record_base_selection(
+                elicitor,
+                record,
+                base,
+                selection=answer.value,
+                recommended=reference,
+                platform=platform,
+                less_pedantic=less_pedantic,
+            )
+            authorized.append("base-image")
+            return _elicit_component_acquisitions(elicitor, declarations, record, authorized)
         record.authorization["base-image"] = {
             "reference": reference,
             "lock-digest": base.recommendation_digest,
@@ -813,6 +844,112 @@ def _acquisition_validator(name: str, accepted_value: str) -> Any:
         )
 
     return validate
+
+
+def _looks_like_image_reference(value: str) -> bool:
+    """A candidate the daemon could plausibly resolve: a tag/digest reference
+    or a bare image ID — anything the developer might name a base by."""
+
+    if not value or any(character.isspace() for character in value):
+        return False
+    if re.fullmatch(r"(sha256:)?[0-9a-f]{12,64}", value):
+        return True
+    return "/" in value or ":" in value or "@" in value
+
+
+def _base_answer_validator(name: str, recommended: str) -> Any:
+    """Like ``_acquisition_validator``, but a reference-shaped answer is a
+    developer base selection rather than garbage (owner ruling 2026-09-03)."""
+
+    def validate(value: str) -> str:
+        candidate = value.strip()
+        if candidate.lower() in {"yes", "y"} or candidate == recommended:
+            return "yes"
+        if candidate.lower() in {"no", "n"}:
+            return "no"
+        if _looks_like_image_reference(candidate):
+            return candidate
+        raise ProjectConfigurationError(
+            f"Authorization {name!r} answers one question: execute the base the "
+            f"resolution matrix selected from capabilities.need ({recommended})? "
+            "Answer yes or no. To run a different base on this checkout, name a "
+            "locally built or pulled image instead (tag or image ID) — DevCapsule "
+            "reads its digest and metadata and asks you to confirm the selection "
+            f"('--less-pedantic' skips the confirmation). {value!r} is neither an "
+            "answer nor an image reference."
+        )
+
+    return validate
+
+
+def _record_base_selection(
+    elicitor: Elicitor,
+    record: CheckoutRecord,
+    declaration: Any,
+    *,
+    selection: str,
+    recommended: str,
+    platform: str,
+    less_pedantic: bool,
+) -> None:
+    """Record a developer-owned base selection with informed consent.
+
+    The selection must be daemon-local: trust binds to the inspected image
+    ID (D-0004 — never to a mutable tag), and init resolves offline, so a
+    reference the daemon cannot produce is refused with the pull remedy.
+    """
+
+    try:
+        immutable_registry_reference(selection)
+    except ProjectConfigurationError:
+        pass
+    else:
+        # D-0004: a different *published* digest needs its own
+        # project-reviewed metadata; only a daemon-local selection is exempt.
+        raise ProjectConfigurationError(
+            f"Published base {selection!r} is not the lock-recommended digest; "
+            "a different published artifact requires distinct project-reviewed "
+            "metadata. A locally built or pulled image (named by tag or image "
+            "ID) can be selected for this checkout instead."
+        )
+    local_base = required_local_image(selection)
+    validate_base_image(local_base, platform=platform, expected_identity=None)
+    if not less_pedantic:
+        base_labels = "\n".join(
+            f"  {key} = {value}"
+            for key, value in sorted(local_base.labels.items())
+            if key.startswith("devcapsule.")
+        )
+        presentation = (
+            f"The lock recommends base {recommended}.\n"
+            f"You selected local base {selection}:\n"
+            f"  Image ID: {local_base.identity}\n"
+            f"  Platform: {local_base.operating_system}/{local_base.architecture}\n"
+            + (f"{base_labels}\n" if base_labels else "")
+            + "This developer-owned selection overrides the recommendation for "
+            "this checkout only; trust binds to the image ID above.\n"
+            f"Authorize {selection}? (yes/no)"
+        )
+        consent = elicitor.seek(
+            "base-image",
+            facet="confirmation",
+            description=presentation,
+            remedy="--less-pedantic (records the reviewed selection without this confirmation)",
+            empty_answer="yes",
+            validate=_acquisition_validator("base-image (confirmation)", "yes"),
+        )
+        if consent is None:
+            return
+        if consent.value == "no":
+            raise ProjectConfigurationError(
+                f"Base selection {selection!r} declined; re-run with the "
+                "recommended base or a different selection."
+            )
+    record.authorization["base-image"] = {
+        "reference": selection,
+        "lock-digest": declaration.recommendation_digest,
+        "image-id": local_base.identity,
+    }
 
 
 def _apply_extra_answers(
@@ -965,7 +1102,13 @@ def _apply_answers_to_standing_checkout(
         if answer.family == "authorize"
     }
     elicitor = Elicitor(authorize_answers, interactive=False)
-    authorized = _elicit_acquisitions(elicitor, declarations, record)
+    authorized = _elicit_acquisitions(
+        elicitor,
+        declarations,
+        record,
+        platform=str(platform),
+        less_pedantic=request.less_pedantic,
+    )
     elicitor.finish()
     _apply_extra_answers(request.answers, manifest, lock, record)
     record.write()

@@ -173,6 +173,15 @@ class ProjectInitCommand(Command):
             action="store_true",
             help="Rewrite the derived platform lock from the current embedded matrix; keep the authored manifest.",
         )
+        parser.add_argument(
+            "--less-pedantic",
+            action="store_true",
+            help=(
+                "Skip confirmation prompts for values supplied explicitly — e.g. a "
+                "base-image selection is validated and recorded without soliciting "
+                "consent."
+            ),
+        )
         add_carrier_options(parser)
 
     @classmethod
@@ -196,6 +205,7 @@ class ProjectInitCommand(Command):
                 project_mount=arguments.project_mount,
                 answers=answers,
                 regenerate=arguments.regenerate,
+                less_pedantic=arguments.less_pedantic,
             )
         )
         print(report.render())
