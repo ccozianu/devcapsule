@@ -998,7 +998,20 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
             )
             == 2
         )
+
         assert "is not declared" in capsys.readouterr().err
+
+        # 'default' is an input artifact that resolves at decision time
+        # (owner ruling 2026-09-03); value declarations carry no default
+        # field, so there is nothing for it to resolve to — including for a
+        # string-typed node where the literal is now reserved.
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "set", "editor.theme", "default"]
+            )
+            == 2
+        )
+        assert "declares no default" in capsys.readouterr().err
         assert (
             cli.main(
                 [

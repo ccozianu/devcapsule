@@ -30,7 +30,22 @@ default`, `config authorize NAME default` — any authorize node), with
 interactive acceptance. `no` survives as decline flow, not as a value;
 whether a *recorded* denial exists is exactly the open denial-grammar
 bug. Boolean consent prompts (vendor acquisitions) keep yes/no as
-prompt vocabulary since their stored value is the boolean itself. Originally confirmed by the product owner 2026-09-02
+prompt vocabulary since their stored value is the boolean itself.
+
+Third ruling, 2026-09-03: `default` is an **input artifact only** —
+never stored. The config tree stores what `default` resolves to at the
+moment the decision is made, uniformly across node families. The
+authorize family already complied (records hold the resolved reference
+or boolean, never the token). The set family now accepts the token
+uniformly but has nothing to resolve it to — value declarations carry
+no default field — so it fails saying exactly that, and the literal
+string `default` is reserved tree-wide. `unset` remains the distinct
+state that *follows* a drifting default rather than pinning today's.
+Open follow-up for the owner: whether `configuration.values.*`
+declarations gain a `default` field (which would also raise
+resolution-time fallback semantics for unset values).
+
+Originally confirmed by the product owner 2026-09-02
 ("the message is only intelligible to you, not even to me as product
 owner/designer, much less to an unsuspecting user").
 

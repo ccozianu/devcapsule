@@ -250,6 +250,17 @@ def normalize_configuration_value(
         raise ProjectConfigurationError(
             f"Configuration value {name!r} is not declared by this project; declared values: {available}."
         )
+    if isinstance(value, str) and value.strip().lower() == "default":
+        # 'default' is an input artifact, never a stored value: it resolves
+        # to the node's declared default at the moment the decision is made
+        # (owner ruling 2026-09-03, uniform across node families).  Value
+        # declarations carry no default field today, so there is nothing for
+        # it to resolve to here.
+        raise ProjectConfigurationError(
+            f"Configuration value {name!r} declares no default for 'default' to "
+            "resolve to; set an explicit value, or use 'unset' to leave the "
+            "value absent."
+        )
     value_type = str(declaration["type"])
     field = f"configuration value {name!r}"
     if value_type == "string":
