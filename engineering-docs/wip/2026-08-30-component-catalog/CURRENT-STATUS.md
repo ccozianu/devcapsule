@@ -534,14 +534,30 @@ its ruling thread open):
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
   touches the same code.
-- **Tictactoe devcapsule conversion** (sequenced): on 2026-08-31 the
-  `typescript_tictactoe_5inrow` sample became a submodule like its sibling
-  samples, at `git@github.com:ccozianu/devcapsule-sample-typescript-tictactoe.git`;
-  the owner created the repository and the pinned import commit is pushed,
-  so the submodule stands complete. Converting the sample into a
-  devcapsule project (committed `.devcapsule/`) deliberately waits for the
-  post-codium release that repins the base, so its lock never names a
-  base whose runtime PEX rejects codium plans.
+- **Demo-project three-provider conversion** (executed 2026-09-03,
+  awaiting the owner's spin and merges): at the owner's direction, both
+  major demo projects now author formations carrying all three curated
+  agent providers (claude-code, codex, antigravity), committed on a
+  `three-provider-formation` branch in each sample repository.
+  - *Tictactoe* (`22afd34`): the sequenced conversion is done — the
+    committed `.devcapsule/` authors `frontend-ide, node` plus the three
+    agents, and the regenerated lock (embedded-9, v0.2.9 base,
+    claude-code 2.1.236) is byte-identical to the owner's five-way smoke
+    lock, so the spin re-exercises a verified formation. The sequencing
+    condition (a base whose runtime accepts codium plans) was met by
+    v0.2.9.
+  - *Trading-research* (`6ee2ccb`): `antigravity-agent` joins the need;
+    the lock advances from the ancient `dogfood-v1`/v026 lock to
+    embedded-9 on v0.2.9 via `--unverified` (the flag's first real
+    outing), with exactly one named unverified combination — pycharm
+    2026.2.0.1 on the gen2 substrate. The owner's spin of this formation
+    is the pending evidence for the pycharm gen2 edge; if it passes,
+    that edge enters the matrix and every surface family is on v0.2.9.
+  - Both regenerations ran non-interactively from the capsule; init's
+    loud missing-answer refusal named the exact `--authorize` remedies
+    (the reworked grammar behaving as designed). Owner actions: spin
+    each project (`init` then `run` on a checkout of the branch), merge
+    the sample branches, then the monorepo submodule pins advance.
 
 - **Resolution-matrix redesign** (implemented 2026-09-01): the owner
   accepted D-0006 and D-0007 and the implementation is on this branch.
