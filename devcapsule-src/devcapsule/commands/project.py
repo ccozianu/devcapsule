@@ -31,7 +31,12 @@ from devcapsule.commands.framework import (
 )
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.config_history import record_known_good_configuration
-from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, run_pycharm
+from devcapsule.configurations.pycharm import (
+    DockerMode,
+    PycharmRunOptions,
+    reject_launcher_owned_docker_options,
+    run_pycharm,
+)
 from devcapsule.configuration_nodes import (
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
@@ -45,6 +50,7 @@ from devcapsule.project_operations import (
     CheckoutRecord,
     InitializeRequest,
     ProvidedAnswer,
+    add_capability_need,
     initialize_project,
     resolve_checkout,
 )
@@ -167,6 +173,25 @@ class ProjectInitCommand(Command):
             action="store_true",
             help="Rewrite the derived platform lock from the current embedded matrix; keep the authored manifest.",
         )
+        parser.add_argument(
+            "--less-pedantic",
+            action="store_true",
+            help=(
+                "Skip confirmation prompts for values supplied explicitly — e.g. a "
+                "base-image selection is validated and recorded without soliciting "
+                "consent."
+            ),
+        )
+        parser.add_argument(
+            "--unverified",
+            action="store_true",
+            dest="allow_unverified",
+            help=(
+                "If no fully verified combination satisfies the need, resolve past "
+                "the matrix with a gentle warning; the generated lock names every "
+                "unverified combination."
+            ),
+        )
         add_carrier_options(parser)
 
     @classmethod
@@ -190,6 +215,8 @@ class ProjectInitCommand(Command):
                 project_mount=arguments.project_mount,
                 answers=answers,
                 regenerate=arguments.regenerate,
+                less_pedantic=arguments.less_pedantic,
+                allow_unverified=arguments.allow_unverified,
             )
         )
         print(report.render())
@@ -307,12 +334,33 @@ class ConfigSetCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = arguments.node_name
         root, manifest = manifest_for(_project_context(context).start_path())
-        normalized = normalize_configuration_value(manifest, arguments.node_name, arguments.value)
         record = CheckoutRecord(manifest, root)
-        record.values[arguments.node_name] = normalized
-        record.write()
-        print(f"Set {arguments.node_name} = {render_toml_scalar(normalized)}")
+        if arguments.value.strip().lower() == "none":
+            # The explicit-absence answer (owner ruling 2026-09-03): recorded
+            # as a decision, the node stays absent from the runtime config
+            # unless overridden on the 'project run' command line.
+            _lock_path, lock = lock_for(root, manifest)
+            node = build_node_registry(manifest, lock).node(name)
+            if node.family != CARRIER_FAMILY_SET:
+                raise ProjectConfigurationError(
+                    f"Configuration node {name!r} is a {node.family} node; "
+                    f"answer it through 'config {node.family}'."
+                )
+            if node.required:
+                raise ProjectConfigurationError(
+                    f"Configuration value {name!r} is mandatory and cannot be "
+                    "'none'; record a value instead."
+                )
+            record.omit_value(name)
+            record.write()
+            print(f"Set {name} = none (explicitly absent from the runtime configuration)")
+        else:
+            normalized = normalize_configuration_value(manifest, name, arguments.value)
+            record.set_value(name, normalized)
+            record.write()
+            print(f"Set {name} = {render_toml_scalar(normalized)}")
         print(f"Checkout input: {record.input_path}")
         print("Run 'devcapsule project config resolve' before launch.")
         return 0
@@ -401,9 +449,30 @@ class ConfigUnsetCommand(Command):
         _lock_path, lock = lock_for(root, manifest)
         registry = build_node_registry(manifest, lock)
         node = registry.node(name)
+        if node.required:
+            # Owner ruling 2026-09-03: unset removes the name from the tree,
+            # and a mandatory node without an answer only defers the failure
+            # to resolve time — refuse it here, naming the replacement verb.
+            replacement = {
+                CARRIER_FAMILY_SET: f"'devcapsule project config set {name} VALUE'",
+                CARRIER_FAMILY_BIND: f"'devcapsule project config bind {name} PROVIDER:VALUE'",
+            }.get(
+                node.family,
+                f"'devcapsule project config authorize {name} VALUE'",
+            )
+            raise ProjectConfigurationError(
+                f"Configuration node {name!r} is mandatory: resolution fails while "
+                f"it is unanswered, so 'unset' would only trade the recorded answer "
+                f"for a failure at resolve time. Record a different answer with "
+                f"{replacement} instead."
+            )
         record = CheckoutRecord(manifest, root)
         if node.family == CARRIER_FAMILY_SET:
             removed = record.values.pop(name, None)
+            if removed is None and name in record.omitted_values:
+                # Unsetting an explicit omission returns the node to silence.
+                record.omitted_values.discard(name)
+                removed = "none"
         elif node.family == CARRIER_FAMILY_BIND:
             removed = (
                 record.directory_bindings.pop(name, None)
@@ -474,7 +543,11 @@ class ConfigAuthorizeCommand(Command):
                 f"declared authorizations: {available}."
             )
         local_base_identity: str | None = None
-        local_base_value = name == "base-image" and value != declaration.recommended_value
+        local_base_value = (
+            name == "base-image"
+            and value.strip().lower() not in {"default", "none"}
+            and value != declaration.recommended_value
+        )
         if local_base_value:
             try:
                 immutable_registry_reference(value)
@@ -535,6 +608,44 @@ class ConfigAuthorizeCommand(Command):
         return 0
 
 
+class ConfigNeedCommand(Command):
+    name = "need"
+    help = (
+        "Add capabilities to the project's need; the lock regenerates, new "
+        "acquisition gates elicit (--authorize NAME VALUE answers them), and "
+        "the resolution refreshes so 'project run' works immediately."
+    )
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "capabilities",
+            nargs="+",
+            metavar="CAPABILITY",
+            help="Capability to add to capabilities.need; repeatable.",
+        )
+        add_carrier_options(parser, families=("authorize",))
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        answers = tuple(
+            ProvidedAnswer(
+                family=answer.family,
+                name=answer.name,
+                value=answer.value,
+                justification=answer.justification,
+            )
+            for answer in carrier_answers(arguments)
+        )
+        report = add_capability_need(
+            _project_context(context).target_path(),
+            arguments.capabilities,
+            answers,
+        )
+        print(report.render())
+        return 0
+
+
 class ConfigGroup(Group):
     name = "config"
     help = "Inspect and resolve layered project configuration."
@@ -544,6 +655,7 @@ class ConfigGroup(Group):
         return {
             ConfigListCommand.name: ConfigListCommand,
             ConfigResolveCommand.name: ConfigResolveCommand,
+            ConfigNeedCommand.name: ConfigNeedCommand,
             ConfigSetCommand.name: ConfigSetCommand,
             ConfigBindCommand.name: ConfigBindCommand,
             ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
@@ -744,7 +856,9 @@ class ProjectRunCommand(Command):
         "Run the project from its platform lock and developer-owned resolution. "
         "Run-once answers use the config grammar (--authorize NAME VALUE, "
         "--set NAME VALUE) and are never persisted; everything after '--' is "
-        "handed verbatim to 'docker run'."
+        "handed verbatim to 'docker run', except single-instance options the "
+        "launcher composes (--network, --memory, --shm-size, ...), which are "
+        "refused with the sanctioned alternative named."
     )
     passthrough_dest = "docker_options"
     passthrough_metavar = "DOCKER-RUN-OPTIONS"
@@ -884,8 +998,12 @@ class ProjectRunCommand(Command):
                 )
         docker_options = list(arguments.docker_options)
         if docker_options:
-            # The user is deliberately stepping outside the resolved plan;
-            # show exactly what is being handed to docker, once, conspicuously.
+            # Single-instance options the launcher composes are refused —
+            # docker would keep the passthrough occurrence and silently
+            # override the resolved plan. Everything else is deliberate
+            # stepping outside the plan; show exactly what is being handed
+            # to docker, once, conspicuously.
+            reject_launcher_owned_docker_options(docker_options)
             print(
                 "WARNING: passing raw docker run options outside the resolved plan: "
                 + " ".join(docker_options),
@@ -1059,6 +1177,7 @@ class ProjectRunImageCommand(Command):
         )
         docker_options = list(arguments.docker_options)
         if docker_options:
+            reject_launcher_owned_docker_options(docker_options)
             print(
                 "WARNING: passing raw docker run options: " + " ".join(docker_options),
                 file=sys.stderr,

@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-3"
+_MATRIX_VERSION = "embedded-9"
 
 
 # --------------------------------------------------------------------------
@@ -73,8 +73,32 @@ class _BasePin:
     """One published base image and the capabilities it ships."""
 
     mnemonic: str
+    # The compatibility generation this base belongs to. Verified edges key
+    # on the substrate, not the mnemonic: what a smoke establishes is that a
+    # component runs on this OS/toolchain surface, and our own base releases
+    # on the same substrate (rebuilds varying only the embedded runtime PEX)
+    # inherit that verification instead of each demanding a fresh smoke.
+    # Ruled 2026-09-02 by the product owner (amending D-0007); bumping the
+    # substrate string is the deliberate act reserved for substantial base
+    # changes — a new OS release, a toolchain overhaul, or a runtime-plan
+    # vocabulary the older generation cannot execute.
+    substrate: str
     satisfies: frozenset[str]
     lock_table: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class _VerifiedEdge:
+    """A tested (component version, base substrate) pair, with its evidence.
+
+    The evidence string names the concrete base the smoke ran on; the edge
+    itself holds for every base pin sharing that substrate.
+    """
+
+    component_id: str
+    component_version: str
+    substrate: str
+    evidence: str
 
 
 @dataclass(frozen=True)
@@ -84,16 +108,6 @@ class _ComponentPin:
     component_id: str
     version: str
     lock_table: Mapping[str, Any]
-
-
-@dataclass(frozen=True)
-class _VerifiedEdge:
-    """A tested (component version, base version) pair, with its evidence."""
-
-    component_id: str
-    component_version: str
-    base_mnemonic: str
-    evidence: str
 
 
 @dataclass(frozen=True)
@@ -108,12 +122,20 @@ class _Coupling:
 
 @dataclass(frozen=True)
 class Formation:
-    """One resolved, verified formation, ready to be committed as a lock."""
+    """One resolved formation, ready to be committed as a lock.
+
+    ``unverified`` is empty for a fully verified formation; otherwise it
+    names the combinations the matrix has no evidence for — resolution
+    proceeded past them at the caller's explicit request (owner ruling
+    2026-09-03: the matrix may be stale or wrong, so a sophisticated user
+    goes through with a gentle warning, not a brutal refusal).
+    """
 
     capabilities: tuple[str, ...]
     provenance: str
-    _document: Mapping[str, Any] = field(repr=False)
-    _header: str = field(repr=False)
+    unverified: tuple[str, ...] = ()
+    _document: Mapping[str, Any] = field(repr=False, default_factory=dict)
+    _header: str = field(repr=False, default="")
 
     def render_lock(self) -> str:
         """The exact platform-lock bytes to write and commit."""
@@ -149,7 +171,7 @@ class ResolutionMatrix:
         self._bases = bases
         self._components = components
         self._verified = {
-            (edge.component_id, edge.component_version, edge.base_mnemonic): edge
+            (edge.component_id, edge.component_version, edge.substrate): edge
             for edge in edges
         }
         self._couplings = couplings
@@ -194,8 +216,15 @@ class ResolutionMatrix:
             )
         return tuple(sorted(names))
 
-    def resolve(self, need: object) -> Formation:
-        """Derive one complete verified formation from a capability set, offline."""
+    def resolve(self, need: object, *, allow_unverified: bool = False) -> Formation:
+        """Derive one complete formation from a capability set, offline.
+
+        Fully verified resolution is always tried first, so the escape hatch
+        never degrades a need the matrix can satisfy.  Only when that fails
+        and ``allow_unverified`` is set does resolution fall back to the base
+        with the fewest unverified combinations (newest on ties), naming each
+        one in the formation for the caller's gentle warning and the lock.
+        """
 
         capabilities = self.normalize(need)
         surface_id = self._selected_surface(capabilities)
@@ -224,6 +253,13 @@ class ResolutionMatrix:
             if chosen is None:
                 continue
             return self._formation(capabilities, surface_id, base, chosen)
+        if allow_unverified:
+            fallback = self._unverified_selection(required, base_needs)
+            if fallback is not None:
+                base, chosen, unverified = fallback
+                return self._formation(
+                    capabilities, surface_id, base, chosen, unverified=unverified
+                )
         raise ResolutionError(
             "No verified combination satisfies "
             + ", ".join(capabilities)
@@ -256,13 +292,14 @@ class ResolutionMatrix:
                 (
                     candidate
                     for candidate in reversed(self._components[component_id])
-                    if (component_id, candidate.version, base.mnemonic) in self._verified
+                    if (component_id, candidate.version, base.substrate) in self._verified
                 ),
                 None,
             )
             if pin is None:
                 return None, (
-                    f"no verified {component_id} version against base {base.mnemonic}"
+                    f"no verified {component_id} version against base {base.mnemonic} "
+                    f"(substrate {base.substrate})"
                 )
             chosen[component_id] = pin
         for coupling in self._couplings:
@@ -278,12 +315,67 @@ class ResolutionMatrix:
                     )
         return chosen, ""
 
+    def _unverified_selection(
+        self, required: list[str], base_needs: set[str]
+    ) -> tuple[_BasePin, dict[str, _ComponentPin], tuple[str, ...]] | None:
+        """The capability-satisfying base with the fewest unverified pairs.
+
+        Base capabilities stay a hard constraint — a base that does not ship
+        a needed toolchain cannot be forced.  Verification is the only rule
+        relaxed: components keep their newest verified pin where one exists
+        on the base's substrate and fall back to their newest pin otherwise,
+        with every such fallback (and every unverified coupling) named.
+        """
+
+        best: tuple[_BasePin, dict[str, _ComponentPin], tuple[str, ...]] | None = None
+        for base in reversed(self._bases):
+            if base_needs - base.satisfies:
+                continue
+            chosen: dict[str, _ComponentPin] = {}
+            unverified: list[str] = []
+            for component_id in required:
+                pins = self._components[component_id]
+                verified_pin = next(
+                    (
+                        candidate
+                        for candidate in reversed(pins)
+                        if (component_id, candidate.version, base.substrate)
+                        in self._verified
+                    ),
+                    None,
+                )
+                if verified_pin is not None:
+                    chosen[component_id] = verified_pin
+                    continue
+                newest = pins[-1]
+                chosen[component_id] = newest
+                unverified.append(
+                    f"{component_id} {newest.version} on base {base.mnemonic} "
+                    f"(substrate {base.substrate})"
+                )
+            for coupling in self._couplings:
+                if coupling.first_id in chosen and coupling.second_id in chosen:
+                    pair = (
+                        chosen[coupling.first_id].version,
+                        chosen[coupling.second_id].version,
+                    )
+                    if pair not in coupling.verified:
+                        unverified.append(
+                            f"{coupling.first_id} {pair[0]} with "
+                            f"{coupling.second_id} {pair[1]} (no jointly "
+                            "verified integration)"
+                        )
+            if best is None or len(unverified) < len(best[2]):
+                best = (base, chosen, tuple(unverified))
+        return best
+
     def _formation(
         self,
         capabilities: tuple[str, ...],
         surface_id: str,
         base: _BasePin,
         chosen: Mapping[str, _ComponentPin],
+        unverified: tuple[str, ...] = (),
     ) -> Formation:
         components: dict[str, Any] = {
             "interactive-surface": surface_id,
@@ -309,13 +401,23 @@ class ResolutionMatrix:
             f"matrix {self._matrix_version}.\n"
             "# Commit this file: it pins the exact environment collaborators receive.\n"
         )
-        surface = chosen[surface_id]
+        provenance = (
+            f"embedded resolution matrix {self._matrix_version}: "
+            f"{surface_id} {chosen[surface_id].version} on base {base.mnemonic}"
+        )
+        if unverified:
+            # The lock shape is scalars and tables, so the list travels as one
+            # scalar; collaborators regenerating the lock see the same warning.
+            document["unverified-combinations"] = "; ".join(unverified)
+            header += (
+                "# WARNING: generated past the verified matrix at the owner's "
+                "request; see unverified-combinations.\n"
+            )
+            provenance += f" (unverified: {'; '.join(unverified)})"
         return Formation(
             capabilities=capabilities,
-            provenance=(
-                f"embedded resolution matrix {self._matrix_version}: "
-                f"{surface_id} {surface.version} on base {base.mnemonic}"
-            ),
+            provenance=provenance,
+            unverified=unverified,
             _document=document,
             _header=header,
         )
@@ -326,8 +428,16 @@ class ResolutionMatrix:
 # what verified each (component version, base version) pair; advancing the
 # generated formation advances _MATRIX_VERSION.
 
+# Substrate generations (owner ruling 2026-09-02, amending D-0007): edges
+# verify component-on-substrate, so base releases sharing a substrate share
+# edges. The gen1→gen2 boundary is the runtime-plan vocabulary: gen2 bases
+# embed a runtime that executes vscode-adapter plans, which gen1 predates.
+_SUBSTRATE_GEN1 = "ubuntu-24.04-gen1"
+_SUBSTRATE_GEN2 = "ubuntu-24.04-gen2"
+
 _V026_BASE = _BasePin(
     mnemonic="v026",
+    substrate=_SUBSTRATE_GEN1,
     # Recipe version 4 ships CPython, the Docker CLI suite, Node.js, and the
     # Temurin JDK plus Maven; these capabilities are therefore satisfied by
     # the base and never a lock entry.
@@ -342,10 +452,11 @@ _V026_BASE = _BasePin(
 )
 
 # The v0.2.8 base (recipe version 5, same shipped toolchain) embeds a runtime
-# PEX that understands the vscode adapter, which v026 predates; its verified
-# edges accumulate as smokes prove components against it.
+# PEX that understands the vscode adapter, which v026 predates — the gen2
+# substrate; later gen2 releases inherit its verified edges.
 _V0_2_8_BASE = _BasePin(
     mnemonic="v0.2.8",
+    substrate=_SUBSTRATE_GEN2,
     satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
     lock_table={
         "reference": (
@@ -353,6 +464,23 @@ _V0_2_8_BASE = _BasePin(
             "@sha256:8be27a7773bdb58e8d4d2f05283752736d12c2062e4c566d33d7f2e71ef336db"
         ),
         "build-mnemonic": "v0.2.8",
+    },
+)
+
+# The v0.2.9 base is a gen2 rebuild (recipe version 5, same toolchain)
+# embedding the 0.2.9 runtime; it inherits gen2's verified edges per the
+# 2026-09-02 substrate ruling. Pushed by the owner 2026-09-02; digest read
+# from the registry at pinning time.
+_V0_2_9_BASE = _BasePin(
+    mnemonic="v0.2.9",
+    substrate=_SUBSTRATE_GEN2,
+    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:ca9f79619fc0709a13e6a66de8959cda55dd47c23ec073fe0eb353de32734232"
+        ),
+        "build-mnemonic": "v0.2.9",
     },
 )
 
@@ -437,6 +565,70 @@ _CLAUDE_CODE_2_1_227 = _ComponentPin(
     },
 )
 
+# 2.1.236 is the stable channel as of 2026-09-03 (the Fable 5.1 release the
+# owner directed the update for). The sha256 was computed locally from the
+# downloaded binary the same day and matches the vendor manifest's linux-x64
+# checksum; the binary was executed hands-on ("2.1.236 (Claude Code)").
+_CLAUDE_CODE_2_1_236 = _ComponentPin(
+    component_id="claude-code",
+    version="2.1.236",
+    lock_table={
+        "version": "2.1.236",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "claude-code-download",
+        "license": "Proprietary",
+        "terms-url": "https://www.anthropic.com/legal/commercial-terms",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://downloads.claude.ai/claude-code-releases/"
+                    "2.1.236/linux-x64/claude"
+                ),
+                "sha256": (
+                    "6c8818fa22187aa555c242be4abbacc44d6b71a32ac9631ee7b2b5d12f51f752"
+                ),
+            }
+        },
+    },
+)
+
+# The official Antigravity channel serves latest-only, but the artifacts are
+# versioned and immutable in GCS; this pin is a deliberate curation. The
+# sha256 was computed locally from the downloaded archive (2026-09-02, and
+# re-verified with the archive member name on the same date); upstream-sha512
+# is the checksum the vendor manifest published for the same bytes, recorded
+# as provenance. See the workstream's license and redistribution analysis.
+_ANTIGRAVITY_CLI_1_1_24 = _ComponentPin(
+    component_id="antigravity-cli",
+    version="1.1.24",
+    lock_table={
+        "version": "1.1.24",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "antigravity-download",
+        "license": "Proprietary",
+        "terms-url": "https://antigravity.google/terms/",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://storage.googleapis.com/antigravity-public/"
+                    "antigravity-cli/1.1.24-6130423206641664/linux-x64/"
+                    "cli_linux_x64.tar.gz"
+                ),
+                "sha256": (
+                    "cff1fb7ed735da72c35658645a4f916cf74f020d4cd30ab95ebe8c2a49a4d569"
+                ),
+                "archive-member": "antigravity",
+                "upstream-sha512": (
+                    "ed4df91ea7ced986aa14507a0ab8225d92985190f7d551010eba0c46c569587e"
+                    "602cb36af81c9cde7af0d6b380e8dd3a82131361806cd96012d44a3e47fb369a"
+                ),
+            }
+        },
+    },
+)
+
 _POSTGRESQL_CLIENT_16 = _ComponentPin(
     component_id="postgresql-client",
     version="16",
@@ -452,32 +644,72 @@ _DOGFOOD_E2E = "recursive dogfood E2E (embedded-2 formation)"
 _LINUX_AMD64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_AMD64,
     matrix_version=_MATRIX_VERSION,
-    bases=(_V026_BASE, _V0_2_8_BASE),
+    bases=(_V026_BASE, _V0_2_8_BASE, _V0_2_9_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),
         "codex": (_CODEX_0_145_0,),
-        "claude-code": (_CLAUDE_CODE_2_1_227,),
+        "claude-code": (_CLAUDE_CODE_2_1_227, _CLAUDE_CODE_2_1_236),
+        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24,),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
-        _VerifiedEdge("pycharm", "2026.2.0.1", "v026", _DOGFOOD_E2E),
+        _VerifiedEdge("pycharm", "2026.2.0.1", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(
             "codium",
             "1.126.04524",
-            "v026",
+            _SUBSTRATE_GEN1,
             "product-owner live smoke 2026-08-31 (current-tree runtime PEX override)",
         ),
         _VerifiedEdge(
             "codium",
             "1.126.04524",
-            "v0.2.8",
-            "product-owner smoke 2026-09-02: tictactoe sample "
-            "(config-history 20260902T075529Z)",
+            _SUBSTRATE_GEN2,
+            "product-owner smoke 2026-09-02: tictactoe sample on the v0.2.8 "
+            "base (config-history 20260902T075529Z)",
         ),
-        _VerifiedEdge("codex", "0.145.0", "v026", _DOGFOOD_E2E),
-        _VerifiedEdge("claude-code", "2.1.227", "v026", _DOGFOOD_E2E),
-        _VerifiedEdge("postgresql-client", "16", "v026", _DOGFOOD_E2E),
+        _VerifiedEdge("codex", "0.145.0", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
+        _VerifiedEdge(
+            "codex",
+            "0.145.0",
+            _SUBSTRATE_GEN2,
+            "product-owner smoke 2026-09-03: five-way formation (codium x "
+            "antigravity x claude-code x codex) on the v0.2.9 base",
+        ),
+        _VerifiedEdge("claude-code", "2.1.227", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.227",
+            _SUBSTRATE_GEN2,
+            "product-owner smoke 2026-09-03: five-way formation (codium x "
+            "antigravity x claude-code x codex) on the v0.2.9 base",
+        ),
+        # 2.1.236 advances the pin at the owner's direction 2026-09-03 (the
+        # Fable 5.1 update for us and adopters); both substrate edges are
+        # provisional pending the next dogfood run (gen1) and codium smoke
+        # (gen2), per the provisional-edge precedent.
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.236",
+            _SUBSTRATE_GEN1,
+            "provisional: owner-directed CLI update 2026-09-03, pending the "
+            "next dogfood run",
+        ),
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.236",
+            _SUBSTRATE_GEN2,
+            "provisional: owner-directed CLI update 2026-09-03, pending the "
+            "next codium-formation smoke",
+        ),
+        _VerifiedEdge("postgresql-client", "16", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
+        _VerifiedEdge(
+            "antigravity-cli",
+            "1.1.24",
+            _SUBSTRATE_GEN2,
+            "product-owner smoke 2026-09-02: antigravity working the "
+            "tictactoe sample (codium surface, v0.2.8 base)",
+        ),
     ),
     couplings=(
         _Coupling(
@@ -500,6 +732,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     ancillary_capabilities={
         "codex-agent": "codex",
         "claude-code-agent": "claude-code",
+        "antigravity-agent": "antigravity-cli",
         "postgresql-client": "postgresql-client",
     },
     # The materialization recipe follows the selected surface: each surface
@@ -511,7 +744,10 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         },
         "codium": {
             "recipe": "vscode-local-materialization",
-            "recipe-version": "1",
+            # Version 2: the chrome-sandbox 4755 step is removed — renderers
+            # run --no-sandbox (product-owner ruling 2026-09-02; see the
+            # renderer-sandboxing design note).
+            "recipe-version": "2",
         },
     },
 )

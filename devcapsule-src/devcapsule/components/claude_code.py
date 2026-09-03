@@ -7,6 +7,7 @@ from typing import Any
 
 from devcapsule.compat import CliError
 from devcapsule.components import (
+    AcquisitionContract,
     ComponentDefinition,
     LockedArtifactDeclaration,
     SecretInputDeclaration,
@@ -34,6 +35,14 @@ class ClaudeCodeComponent(ComponentDefinition):
     @property
     def capability(self) -> str:
         return "claude-code-agent"
+
+    def acquisition(self) -> AcquisitionContract:
+        return AcquisitionContract(
+            authorization=CLAUDE_CODE_AUTHORIZATION,
+            terms_url=CLAUDE_CODE_TERMS_URL,
+            display_name="Claude Code",
+            vendor="Anthropic",
+        )
 
     def state_environment(self) -> tuple[StateEnvironmentDeclaration, ...]:
         return (StateEnvironmentDeclaration("CLAUDE_CONFIG_DIR", "home"),)

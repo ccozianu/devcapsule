@@ -219,13 +219,27 @@ class ComponentRuntimeTemplate:
             if slot.name in names:
                 raise RuntimePlanError(f"duplicate component state slot: {slot.name}")
             names.add(slot.name)
+        home = Path("/home/devcapsule")
         for index, slot in enumerate(slots):
             path = Path(slot.container_path)
-            home = Path("/home/devcapsule")
-            if path != home and home in path.parents and not slot.home_overlay:
+            if path == home:
                 raise RuntimePlanError(
-                    f"component state slot {slot.name!r} is beneath persistent home and must declare home_overlay"
+                    f"component state slot {slot.name!r} may not claim the home directory itself"
                 )
+            if home in path.parents:
+                if not slot.home_overlay:
+                    raise RuntimePlanError(
+                        f"component state slot {slot.name!r} is beneath persistent home and must declare home_overlay"
+                    )
+                # Ruled 2026-09-02: overlay slots are direct children of home.
+                # A deeper mount makes the runtime create the intermediate
+                # parent root-owned, walling off its siblings (see the
+                # antigravity ~/.gemini/config bug record).
+                if path.parent != home:
+                    raise RuntimePlanError(
+                        f"component state slot {slot.name!r} must be a direct child of home; "
+                        "a deeper mount leaves a runtime-created root-owned parent"
+                    )
             for other in slots[index + 1 :]:
                 other_path = Path(other.container_path)
                 if path == other_path or path in other_path.parents or other_path in path.parents:
@@ -279,6 +293,7 @@ class RuntimePlan:
     ) -> RuntimePlan:
         templates = (template, *ancillary_templates)
         cls._validate_components(tuple(item.component for item in templates))
+        cls._validate_formation_slots(templates)
         return cls(
             version=1,
             project_path=_absolute_path(project_path, "project_path"),
@@ -292,6 +307,31 @@ class RuntimePlan:
             component=template.component,
             ancillary_components=tuple(item.component for item in ancillary_templates),
         )
+
+    @staticmethod
+    def _validate_formation_slots(templates: tuple[ComponentRuntimeTemplate, ...]) -> None:
+        """No two components in one formation may claim overlapping state paths.
+
+        Each template validates its own slots; only here does the whole
+        formation meet, so slot-inside-another-component's-slot and duplicate
+        container paths are rejected here (ruled 2026-09-02: a slot never
+        mounts inside another component's slot).
+        """
+
+        claimed: list[tuple[str, str, Path]] = [
+            (item.component.id, slot.name, Path(slot.container_path))
+            for item in templates
+            for slot in item.persistence.state_slots
+        ]
+        for index, (component_id, name, path) in enumerate(claimed):
+            for other_id, other_name, other_path in claimed[index + 1 :]:
+                if component_id == other_id:
+                    continue
+                if path == other_path or path in other_path.parents or other_path in path.parents:
+                    raise RuntimePlanError(
+                        f"component state slots {component_id}/{name} and "
+                        f"{other_id}/{other_name} claim overlapping container paths"
+                    )
 
     @classmethod
     def from_json(cls, value: str) -> RuntimePlan:

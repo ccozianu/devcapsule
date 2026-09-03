@@ -160,12 +160,11 @@ def test_plan_driven_surface_mounts_declared_slots_instead_of_pycharm_paths(
     assert not any("dst=/ide-config" in value for value in args)
     assert not any("dst=/ide-plugins" in value for value in args)
     assert not any("dst=/ide-project-state" in value for value in args)
-    # The declared setuid sandbox helper narrows the hardening: the four
-    # capabilities it needs, and no no-new-privileges veto.
-    assert "no-new-privileges" not in args
+    # Renderer sandboxing is retired (product-owner ruling 2026-09-02):
+    # codium runs --no-sandbox and keeps the uniform full hardening.
+    assert "no-new-privileges" in args
     assert ["--cap-drop", "ALL"] == args[args.index("--cap-drop") : args.index("--cap-drop") + 2]
-    for capability in ("SETUID", "SETGID", "SYS_ADMIN", "SYS_CHROOT"):
-        assert capability in args
+    assert "--cap-add" not in args
     # No PyCharm state directories are invented on the host for this surface.
     data_namespace = Path(env["XDG_DATA_HOME"]) / "devcapsule" / "projects" / "by-path"
     assert not list(data_namespace.glob("*/components/pycharm"))
@@ -207,9 +206,50 @@ def test_interactive_state_mounts_must_belong_to_the_plan_component(tmp_path: Pa
         )
 
 
-def test_surfaces_without_the_sandbox_declaration_keep_full_hardening(
+def test_no_sudo_launches_keep_full_hardening_on_every_surface(
     tmp_path: Path,
 ) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    for plan in (external_runtime_plan(), codium_external_runtime_plan()):
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="bridge",
+                runtime_plan=plan,
+                use_image_process=True,
+                interactive_state_mounts=(
+                    codium_interactive_state_mounts(tmp_path)
+                    if plan.component.id == "codium"
+                    else {}
+                ),
+            ),
+            env,
+        )
+        files = TempRuntimeFiles(
+            xauth_file=tmp_path / "xauth",
+            passwd_file=tmp_path / "passwd",
+            group_file=tmp_path / "group",
+            runtime_plan_file=tmp_path / "runtime-plan",
+        )
+
+        args = build_docker_args(config, files, env)
+
+        assert "no-new-privileges" in args
+        assert "SYS_ADMIN" not in args
+
+
+def test_sudo_launches_grant_no_capabilities_beyond_dockers_default(
+    tmp_path: Path,
+) -> None:
+    """Regression for the 2026-09-02 sudo-sandbox bug: the sudo posture is
+    Docker's default capability set plus the sudo group — no per-surface
+    capability grants, and no setuid-helper posture left to crash the zygote.
+    """
+
     project = tmp_path / "project"
     project.mkdir()
     env = base_env(tmp_path)
@@ -219,8 +259,10 @@ def test_surfaces_without_the_sandbox_declaration_keep_full_hardening(
             project_mount="/workspace/project",
             docker_mode=DockerMode.none,
             network_mode="bridge",
-            runtime_plan=external_runtime_plan(),
+            runtime_plan=codium_external_runtime_plan(),
             use_image_process=True,
+            interactive_state_mounts=codium_interactive_state_mounts(tmp_path),
+            enable_sudo=True,
         ),
         env,
     )
@@ -229,12 +271,16 @@ def test_surfaces_without_the_sandbox_declaration_keep_full_hardening(
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
         runtime_plan_file=tmp_path / "runtime-plan",
+        shadow_file=tmp_path / "shadow",
+        sudoers_file=tmp_path / "sudoers",
     )
 
     args = build_docker_args(config, files, env)
 
-    assert "no-new-privileges" in args
-    assert "SYS_ADMIN" not in args
+    assert "--group-add" in args
+    assert "--cap-add" not in args
+    assert "--cap-drop" not in args
+    assert "no-new-privileges" not in args
 
 
 def test_plan_driven_storage_summary_names_the_surface_and_its_slots(
@@ -261,6 +307,10 @@ def test_plan_driven_storage_summary_names_the_surface_and_its_slots(
     assert "codium storage:" in output
     assert "codium/user-data" in output
     assert "PyCharm config" not in output
+    # The unsandboxed-renderer disclosure (product-owner ruling 2026-09-02)
+    # keys on the --no-sandbox flag the template carries.
+    assert "Chromium renderers run unsandboxed" in output
+    assert "Docker's outer isolation is unchanged" in output
 
 
 def test_detached_lifecycle_changes_only_the_docker_process_flags(tmp_path: Path) -> None:
@@ -1028,3 +1078,23 @@ def test_persistent_home_defaults_to_checkout_scoped_xdg_data(tmp_path: Path) ->
     assert config.persistent_home == (
         tmp_path / "data" / "devcapsule" / "projects" / "by-path" / project_id / "home"
     ).resolve()
+
+
+def test_launcher_owned_docker_options_are_refused_in_passthrough() -> None:
+    """Docker keeps the last occurrence of a single-instance option, so a raw
+    passthrough repetition would silently override the resolved plan; ruled
+    2026-09-02: launcher-owned single-instance options are refused, repeatable
+    ones pass through."""
+
+    from devcapsule.configurations.pycharm import reject_launcher_owned_docker_options
+
+    for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always"):
+        with pytest.raises(PycharmRunError, match="composed by the launcher"):
+            reject_launcher_owned_docker_options(["-v", "/x:/y", option])
+
+    with pytest.raises(PycharmRunError, match="shared-memory-size in its runtime template"):
+        reject_launcher_owned_docker_options(["--shm-size", "1g"])
+
+    reject_launcher_owned_docker_options(
+        ["-v", "/x:/y", "--volume", "/a:/b", "--env", "FOO=bar", "--mount", "type=tmpfs,dst=/z", "--cap-add", "NET_ADMIN"]
+    )

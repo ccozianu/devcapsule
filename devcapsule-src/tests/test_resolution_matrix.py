@@ -49,6 +49,7 @@ GOLDEN_NEEDS = {
         "postgresql-client",
     ],
     "codium-agents": ["node", "frontend-ide", "codex-agent", "claude-code-agent"],
+    "codium-antigravity": ["node", "frontend-ide", "antigravity-agent"],
 }
 
 
@@ -92,6 +93,7 @@ def test_matrices_is_total_over_platforms_and_read_only() -> None:
 
 def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
     assert MATRIX.capabilities() == (
+        "antigravity-agent",
         "claude-code-agent",
         "codex-agent",
         "docker-cli",
@@ -168,23 +170,28 @@ def test_frontend_need_generates_a_complete_codium_lock() -> None:
     assert codium["url"].endswith("VSCodium-linux-x64-1.126.04524.tar.gz")
     assert lock["materialization"]["recipe"] == "vscode-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "codium"}
-    # Codium's newest verified base is v0.2.8 (owner smoke 2026-09-02); v026
-    # predates the vscode adapter in its embedded runtime.
-    assert lock["base"]["build-mnemonic"] == "v0.2.8"
+    # Codium is verified on the gen2 substrate (owner smoke on v0.2.8,
+    # 2026-09-02), so the newest gen2 base wins; v026 (gen1) predates the
+    # vscode adapter in its embedded runtime.
+    assert lock["base"]["build-mnemonic"] == "v0.2.9"
 
 
 def test_base_selection_follows_each_needs_verified_edges() -> None:
     """The sparse matrix in action: newest verified base per capability set.
 
-    Codium alone is proven on v0.2.8; the agents are so far proven only on
-    v026, so compositions including them stay on the base where every
-    required edge is verified.
+    Codium and the agents carry gen2 edges (the agents' provisional,
+    2026-09-03), so their compositions ride the newest gen2 base; PyCharm
+    is still proven only on gen1 and keeps its compositions on v026.
     """
 
-    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.2.8"
+    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.2.9"
     assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v026"
     assert (
         parse(rendered(["node", "frontend-ide", "codex-agent"]))["base"]["build-mnemonic"]
+        == "v0.2.9"
+    )
+    assert (
+        parse(rendered(["python", "python-ide", "codex-agent"]))["base"]["build-mnemonic"]
         == "v026"
     )
 
@@ -257,13 +264,17 @@ def test_generation_is_deterministic() -> None:
 def _synthetic_matrix(
     edges: tuple[_VerifiedEdge, ...],
     couplings: tuple[_Coupling, ...] = (),
+    bases: tuple[_BasePin, ...] | None = None,
 ) -> ResolutionMatrix:
+    # The default bases sit on distinct substrates, so each is its own
+    # verification target; edges name the substrate ("s1"/"s2").
     return ResolutionMatrix(
         platform=Platform.LINUX_AMD64,
         matrix_version="test-1",
-        bases=(
-            _BasePin("v1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        bases=bases
+        or (
+            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
         components={
             "ide": (
@@ -283,8 +294,8 @@ def _synthetic_matrix(
 def test_resolution_prefers_the_newest_verified_combination() -> None:
     matrix = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("ide", "2.0", "v2", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "s2", "smoke"),
         )
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
@@ -293,13 +304,13 @@ def test_resolution_prefers_the_newest_verified_combination() -> None:
     assert lock["components"]["ide"]["version"] == "2.0"
 
 
-def test_a_base_without_verified_edges_is_not_selected() -> None:
-    # The v0.2.8 situation: a newer base is published but not yet tested.
-    # It earns no edges, so resolution keeps selecting the proven base;
-    # verifying the new base later is a data addition, not an interface
-    # change.
+def test_a_base_on_an_unproven_substrate_is_not_selected() -> None:
+    # A newer base on a *new substrate* has inherited nothing: it earns no
+    # edges until something is smoked on its generation, so resolution keeps
+    # selecting the proven base. Verifying the new generation later is a
+    # data addition, not an interface change.
     matrix = _synthetic_matrix(
-        edges=(_VerifiedEdge("ide", "2.0", "v1", "smoke"),)
+        edges=(_VerifiedEdge("ide", "2.0", "s1", "smoke"),)
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
 
@@ -307,9 +318,27 @@ def test_a_base_without_verified_edges_is_not_selected() -> None:
     assert lock["components"]["ide"]["version"] == "2.0"
 
 
+def test_a_new_base_on_a_shared_substrate_inherits_verified_edges() -> None:
+    # The ruling of 2026-09-02: what a smoke establishes is component-on-
+    # substrate, so a base release that changes nothing substantial (same
+    # generation) inherits its predecessor's edges and is selected as the
+    # newest pin — no re-smoke per release of our own base.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),),
+        bases=(
+            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s1", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        ),
+    )
+    lock = parse(matrix.resolve(["the-ide"]).render_lock())
+
+    assert lock["base"]["build-mnemonic"] == "v2"
+    assert lock["components"]["ide"]["version"] == "1.0"
+
+
 def test_an_unverified_newer_component_version_falls_back() -> None:
     matrix = _synthetic_matrix(
-        edges=(_VerifiedEdge("ide", "1.0", "v2", "smoke"),)
+        edges=(_VerifiedEdge("ide", "1.0", "s2", "smoke"),)
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
 
@@ -321,17 +350,86 @@ def test_verification_of_older_combinations_does_not_expire() -> None:
     # Adding a newer verified combination must not un-express the older one:
     # both remain resolvable facts; selection merely prefers the newest.
     sparse = _synthetic_matrix(
-        edges=(_VerifiedEdge("ide", "1.0", "v1", "smoke"),)
+        edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),)
     )
     grown = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("ide", "2.0", "v2", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "s2", "smoke"),
         )
     )
 
     assert parse(sparse.resolve(["the-ide"]).render_lock())["base"]["build-mnemonic"] == "v1"
     assert parse(grown.resolve(["the-ide"]).render_lock())["base"]["build-mnemonic"] == "v2"
+
+
+def test_allow_unverified_resolves_past_missing_edges_with_names() -> None:
+    # Owner ruling 2026-09-03: the matrix may be stale or wrong, so the
+    # sophisticated user goes through with a gentle warning. The base picked
+    # minimizes unverified pairs; every one is named in the formation and
+    # the rendered lock.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "2.0", "s2", "smoke"),)
+    )
+    with pytest.raises(ResolutionError):
+        matrix.resolve(["the-ide", "the-agent"])
+
+    formation = matrix.resolve(["the-ide", "the-agent"], allow_unverified=True)
+
+    assert formation.unverified == (
+        "agent 0.5 on base v2 (substrate s2)",
+    )
+    lock = parse(formation.render_lock())
+    assert lock["base"]["build-mnemonic"] == "v2"
+    assert lock["unverified-combinations"] == "agent 0.5 on base v2 (substrate s2)"
+    assert "WARNING" in formation.render_lock().splitlines()[2]
+
+
+def test_allow_unverified_never_degrades_a_verified_resolution() -> None:
+    matrix = _synthetic_matrix(
+        edges=(
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "s1", "smoke"),
+        )
+    )
+
+    strict = matrix.resolve(["the-ide", "the-agent"]).render_lock()
+    relaxed = matrix.resolve(["the-ide", "the-agent"], allow_unverified=True).render_lock()
+
+    assert strict == relaxed
+    assert "unverified-combinations" not in strict
+
+
+def test_allow_unverified_prefers_the_base_with_fewer_unverified_pairs() -> None:
+    # v1 (s1) verifies both components; v2 (s2) verifies neither. With the
+    # ide edge only on s1, forcing the agent through picks v1 — one
+    # unverified pair beats two, even though v2 is newer.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),)
+    )
+
+    formation = matrix.resolve(["the-ide", "the-agent"], allow_unverified=True)
+
+    lock = parse(formation.render_lock())
+    assert lock["base"]["build-mnemonic"] == "v1"
+    assert formation.unverified == ("agent 0.5 on base v1 (substrate s1)",)
+
+
+def test_allow_unverified_keeps_base_capabilities_a_hard_constraint() -> None:
+    # A base that does not ship a needed toolchain cannot be forced: the
+    # newer capability-lacking base is skipped even though verification is
+    # relaxed everywhere.
+    matrix = _synthetic_matrix(
+        edges=(),
+        bases=(
+            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", frozenset(), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        ),
+    )
+
+    formation = matrix.resolve(["the-ide", "python"], allow_unverified=True)
+
+    assert parse(formation.render_lock())["base"]["build-mnemonic"] == "v1"
 
 
 def test_no_verified_combination_is_a_complete_explanation() -> None:
@@ -346,9 +444,9 @@ def test_no_verified_combination_is_a_complete_explanation() -> None:
 def test_an_unverified_coupling_refuses_the_composition() -> None:
     matrix = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("ide", "2.0", "v1", "smoke"),
-            _VerifiedEdge("agent", "0.5", "v1", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("ide", "2.0", "s1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "s1", "smoke"),
         ),
         couplings=(
             _Coupling("agent", "ide", frozenset({("0.5", "1.0")}), "smoke"),
@@ -361,8 +459,8 @@ def test_an_unverified_coupling_refuses_the_composition() -> None:
 def test_a_verified_coupling_composes() -> None:
     matrix = _synthetic_matrix(
         edges=(
-            _VerifiedEdge("ide", "1.0", "v1", "smoke"),
-            _VerifiedEdge("agent", "0.5", "v1", "smoke"),
+            _VerifiedEdge("ide", "1.0", "s1", "smoke"),
+            _VerifiedEdge("agent", "0.5", "s1", "smoke"),
         ),
         couplings=(
             _Coupling("agent", "ide", frozenset({("0.5", "1.0")}), "smoke"),

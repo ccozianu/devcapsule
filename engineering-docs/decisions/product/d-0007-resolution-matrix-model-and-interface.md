@@ -165,3 +165,31 @@ was chosen on there being exactly one), or undeclared-interference bugs
 recur across component families — evidence that orthogonality is the
 wrong default and formation-level verification (Option B) is the honest
 unit after all.
+
+## Amendment 2026-09-02: Edges Key On The Base Substrate
+
+Decided by the product owner after the v0.2.9 base rebuild hit the
+model's granularity: decision point 1 keyed edges on
+(component@version, **base@version**, platform), which made every
+release of *our own derived base* a fresh verification target with zero
+edges — a full re-smoke of every component per release, even when the
+release changed nothing but the embedded runtime PEX, whose correctness
+the test suite and the release E2E ladder already own.
+
+What a smoke actually establishes is component-on-**substrate**: the
+component runs on this OS/toolchain surface. Base pins therefore declare
+a substrate (a compatibility generation, e.g. `ubuntu-24.04-gen2`), and
+edges verify against the substrate, not the pin. Base releases sharing a
+substrate share edges; resolution still prefers the newest pin. Bumping
+the substrate string is the deliberate act reserved for substantial base
+changes — a new OS release, a toolchain overhaul, or a runtime-plan
+vocabulary the older generation cannot execute (the gen1→gen2 boundary:
+gen2 bases embed a runtime that executes vscode-adapter plans, which
+v026 predates).
+
+Accepted risk, stated at the ruling: derived bases carry the capability
+toolchain (node, python, docker-cli, …), so a rebuild that bumps a
+toolchain package could break a component without touching the substrate
+string. The release E2E ladder covers that class; if it recurs in
+practice, the substrate granularity is the thing to revisit. Evidence
+strings on edges keep naming the concrete base that was smoked.

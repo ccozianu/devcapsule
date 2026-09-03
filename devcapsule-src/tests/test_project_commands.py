@@ -504,7 +504,7 @@ def initialize_codium_project(project: Path) -> Path:
                 "",
                 "[materialization]",
                 'recipe = "vscode-local-materialization"',
-                'recipe-version = "1"',
+                'recipe-version = "2"',
                 "",
             ]
         ),
@@ -540,7 +540,7 @@ def test_project_run_starts_immediately_after_init(tmp_path: Path, capsys) -> No
                     "https://github.com/example",
                     "--authorize",
                     "base-image",
-                    "yes",
+                    "default",
                 ]
             )
             == 0
@@ -998,7 +998,20 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
             )
             == 2
         )
+
         assert "is not declared" in capsys.readouterr().err
+
+        # 'default' is an input artifact that resolves at decision time
+        # (owner ruling 2026-09-03); value declarations carry no default
+        # field, so there is nothing for it to resolve to — including for a
+        # string-typed node where the literal is now reserved.
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "set", "editor.theme", "default"]
+            )
+            == 2
+        )
+        assert "declares no default" in capsys.readouterr().err
         assert (
             cli.main(
                 [
@@ -1027,6 +1040,227 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
             resolved = tomllib.load(stream)
         assert resolved["configuration"]["values"] == checkout["configuration"]["values"]
         assert resolved["runtime"]["memory-limit-bytes"] == 8 * 1024**3
+
+
+def test_authorize_records_denial_as_a_value(tmp_path: Path, capsys) -> None:
+    """The 2026-09-02 denial-grammar bug, closed by the 2026-09-03 'none'
+    ruling: denial is a value (bool false, or the string node's deny
+    spelling), so a checkout's recorded denial outranks a workstation-level
+    allow; 'none' resolves to the deny value at decision time."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "development-sudo",
+                    "false",
+                ]
+            )
+            == 0
+        )
+        records = list(config_home.rglob("devcapsule.checkout.toml"))
+        with records[0].open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["authorization"]["development-sudo"]["value"] is False
+
+        # 'none' resolves to the same deny value and stores the resolution.
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "docker-daemon",
+                    "none",
+                ]
+            )
+            == 0
+        )
+        with records[0].open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["authorization"]["docker-daemon"]["value"] == "none"
+
+        # The denials survive resolution: the resolver honors them as values.
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        with records[0].with_name("devcapsule.resolved.toml").open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert resolved["authorization"]["development-sudo"] is False
+        assert resolved["authorization"]["docker-daemon"] == "none"
+
+
+def test_set_none_records_an_explicit_omission(tmp_path: Path, capsys) -> None:
+    """The 2026-09-03 ruling: 'none' stores a recorded decision and the key
+    is absent from the runtime configuration."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."editor.theme"]
+            type = "string"
+
+            [configuration.values."registry.token-name"]
+            type = "string"
+            required = true
+            """,
+        )
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "set", "editor.theme", "dark"]
+            )
+            == 0
+        )
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "set",
+                    "registry.token-name",
+                    "CI_TOKEN",
+                ]
+            )
+            == 0
+        )
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "set", "editor.theme", "none"]
+            )
+            == 0
+        )
+        assert "explicitly absent" in capsys.readouterr().out
+
+        records = list(config_home.rglob("devcapsule.checkout.toml"))
+        with records[0].open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["configuration"]["omitted-values"] == ["editor.theme"]
+        assert "editor.theme" not in checkout["configuration"].get("values", {})
+
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        with records[0].with_name("devcapsule.resolved.toml").open("rb") as stream:
+            resolved = tomllib.load(stream)
+        assert "editor.theme" not in resolved.get("configuration", {}).get("values", {})
+        assert resolved["configuration"]["omitted-values"] == ["editor.theme"]
+
+        # A mandatory value has no absent state to choose.
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "set",
+                    "registry.token-name",
+                    "none",
+                ]
+            )
+            == 2
+        )
+        assert "mandatory" in capsys.readouterr().err
+
+        # A later value answer clears the omission; unset returns to silence.
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "set", "editor.theme", "light"]
+            )
+            == 0
+        )
+        with records[0].open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert "omitted-values" not in checkout.get("configuration", {})
+        assert checkout["configuration"]["values"]["editor.theme"] == "light"
+        assert (
+            cli.main(["project", "--path", str(project), "config", "set", "editor.theme", "none"])
+            == 0
+        )
+        assert (
+            cli.main(["project", "--path", str(project), "config", "unset", "editor.theme"])
+            == 0
+        )
+        with records[0].open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert "omitted-values" not in checkout.get("configuration", {})
+
+
+def test_unset_refuses_mandatory_nodes_and_removes_optional_ones(
+    tmp_path: Path, capsys
+) -> None:
+    """Owner ruling 2026-09-03: unset removes the name from the tree, so it
+    must refuse a mandatory node instead of deferring the failure to
+    resolve time."""
+
+    project = tmp_path / "project"
+    project.mkdir()
+    config_home = tmp_path / "config"
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(config_home)}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."editor.theme"]
+            type = "string"
+
+            [configuration.values."registry.token-name"]
+            type = "string"
+            required = true
+            """,
+        )
+        for name, value in (("editor.theme", "dark"), ("registry.token-name", "CI_TOKEN")):
+            assert (
+                cli.main(
+                    ["project", "--path", str(project), "config", "set", name, value]
+                )
+                == 0
+            )
+        capsys.readouterr()
+
+        # A declaration-required node refuses, naming the replacement verb;
+        # base-image travels the same node.required guard by construction.
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "unset", "registry.token-name"]
+            )
+            == 2
+        )
+        message = capsys.readouterr().err
+        assert "mandatory" in message
+        assert "config set registry.token-name" in message
+
+        # An optional node still unsets — the name is removed from the tree.
+        assert (
+            cli.main(["project", "--path", str(project), "config", "unset", "editor.theme"])
+            == 0
+        )
+        assert "Unset editor.theme" in capsys.readouterr().out
+        records = list(config_home.rglob("devcapsule.checkout.toml"))
+        with records[0].open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert "editor.theme" not in checkout.get("configuration", {}).get("values", {})
 
 
 def test_project_config_bind_uses_component_metadata_and_resolves_host_directories(
@@ -1181,6 +1415,10 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
             == 0
         )
 
+        # 'bridge' is the network node's deny value — recording it is the
+        # developer's reduce-privilege decision and needs no reviewed
+        # metadata (2026-09-03 ruling closing the denial-grammar bug). A
+        # value beyond recommendation-or-deny still refuses.
         assert (
             cli.main(
                 [
@@ -1193,9 +1431,34 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
                     "bridge",
                 ]
             )
+            == 0
+        )
+        assert "Authorized network for this checkout" in capsys.readouterr().out
+        assert (
+            cli.main(
+                [
+                    "project",
+                    "--path",
+                    str(project),
+                    "config",
+                    "authorize",
+                    "network",
+                    "vpn0",
+                ]
+            )
             == 2
         )
-        assert "exactly 'host'" in capsys.readouterr().err
+        message = capsys.readouterr().err
+        assert "deny value 'bridge'" in message
+        assert "Project recommendation" not in message
+        # Restore the recommended posture for the run assertions below.
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "authorize", "network", "host"]
+            )
+            == 0
+        )
+        capsys.readouterr()
         assert (
             cli.main(
                 [
@@ -1513,7 +1776,9 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             )
             == 2
         )
-        assert "Project recommendation 'base-image' is exactly" in capsys.readouterr().err
+        message = capsys.readouterr().err
+        assert "Authorization 'base-image' accepts its recommended value" in message
+        assert "reviewed metadata" in message
 
         assert (
             cli.main(

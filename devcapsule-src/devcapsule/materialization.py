@@ -94,6 +94,10 @@ class SurfaceMaterialization:
     component_id: str
     family: str
     recipe_id: str
+    # Versions advance per recipe when a recipe's steps change; a lock made
+    # against an older recipe fails loudly instead of building an image the
+    # recorded version no longer describes.
+    recipe_version: str
     installation_path: str
     # Relative paths that must exist in the unpacked archive before it is
     # trusted as this surface's installation.
@@ -109,6 +113,7 @@ SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
         component_id="pycharm",
         family="jetbrains",
         recipe_id=MATERIALIZATION_RECIPE_ID,
+        recipe_version=MATERIALIZATION_RECIPE_VERSION,
         installation_path="/opt/jetbrains/pycharm",
         archive_probes=("bin/pycharm.sh",),
         requires_variant=True,
@@ -118,24 +123,15 @@ SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
         component_id="codium",
         family="vscode",
         recipe_id="vscode-local-materialization",
+        # Version 2 (product-owner ruling 2026-09-02): the version-1 step
+        # marking chrome-sandbox root-owned mode 4755 is removed — renderers
+        # run --no-sandbox, so canonical images carry no setuid-root binary;
+        # see engineering-docs/design-notes/devcapsule/renderer-sandboxing.md.
+        recipe_version="2",
         installation_path="/opt/codium",
         archive_probes=("codium", "bin/codium", "chrome-sandbox"),
         requires_variant=False,
-        # Electron's setuid sandbox helper must be root-owned mode 4755 to
-        # sandbox renderers without --no-sandbox; the trade-off is analyzed in
-        # engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
-        post_install=(
-            ExecComponent(
-                (
-                    "bash",
-                    "-euo",
-                    "pipefail",
-                    "-c",
-                    "chown root:root /opt/codium/chrome-sandbox"
-                    " && chmod 4755 /opt/codium/chrome-sandbox",
-                )
-            ),
-        ),
+        post_install=(),
     ),
 }
 COMPONENT_TEMPLATE_PATH = "/etc/devcapsule/component-runtime-template.json"
@@ -345,11 +341,11 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
             ancillary_artifacts.append(locked_artifact)
     recipe_id = _required_string(materialization, "recipe", "materialization")
     recipe_version = _required_string(materialization, "recipe-version", "materialization")
-    if recipe_id != profile.recipe_id or recipe_version != MATERIALIZATION_RECIPE_VERSION:
+    if recipe_id != profile.recipe_id or recipe_version != profile.recipe_version:
         raise CliError(
             f"Unsupported materialization recipe {recipe_id!r}@{recipe_version}; "
             f"the {component_id} surface expects "
-            f"{profile.recipe_id!r}@{MATERIALIZATION_RECIPE_VERSION}."
+            f"{profile.recipe_id!r}@{profile.recipe_version}."
         )
     identity_value = base.get("identity")
     if identity_value is not None and not isinstance(identity_value, str):
@@ -600,11 +596,20 @@ def _ancillary_environment(
     for declaration in declarations:
         for name, value in declaration.environment:
             previous = environment.get(name)
-            if previous is not None and previous != value:
-                raise CliError(
-                    f"Materialized components declare conflicting values for environment {name}."
-                )
-            environment[name] = value
+            if previous is None or previous == value:
+                environment[name] = value
+                continue
+            # PATH is the one variable several components legitimately share:
+            # each contributes a "<bin>:${PATH}" prefix, and Docker resolves
+            # the trailing ${PATH} against the base at build time. Chain the
+            # prefixes in declaration order; any other collision is a real
+            # contract conflict.
+            if name == "PATH" and previous.endswith(":${PATH}") and value.endswith(":${PATH}"):
+                environment[name] = previous.removesuffix("${PATH}") + value
+                continue
+            raise CliError(
+                f"Materialized components declare conflicting values for environment {name}."
+            )
     return tuple(sorted(environment.items()))
 
 

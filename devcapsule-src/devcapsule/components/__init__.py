@@ -1,6 +1,7 @@
 """Public contracts for curated DevCapsule components."""
 
 from devcapsule.components.interface import (
+    AcquisitionContract,
     ComponentDefinition,
     LockedArtifactDeclaration,
     SecretInputDeclaration,
@@ -8,6 +9,7 @@ from devcapsule.components.interface import (
 )
 
 __all__ = (
+    "AcquisitionContract",
     "ComponentDefinition",
     "LockedArtifactDeclaration",
     "SecretInputDeclaration",

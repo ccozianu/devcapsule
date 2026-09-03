@@ -69,12 +69,23 @@ def _runtime_template() -> ComponentRuntimeTemplate:
                     # is the retired launcher's proven codium-foreground
                     # behavior.
                     "launcher": "codium",
-                    # Ruled 2026-08-31 by the product owner: the renderer
-                    # sandbox stays on, so the host launcher grants the
-                    # narrow capability set Chromium's setuid helper needs;
-                    # the trade-off is analyzed in
-                    # engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
-                    "sandbox": "setuid-helper",
+                    # Ruled 2026-09-02 by the product owner, superseding the
+                    # 2026-08-31 setuid ruling: renderers run unsandboxed
+                    # under full container hardening; see
+                    # engineering-docs/design-notes/devcapsule/renderer-sandboxing.md.
+                    # The flag is template data rather than adapter logic so
+                    # the frozen v0.2.8 runtime, which appends
+                    # additional_arguments verbatim, launches this posture
+                    # unchanged.
+                    "additional_arguments": ["--no-sandbox"],
+                    # Chromium renderers push frames through /dev/shm — under
+                    # the launcher's forced llvmpipe software rendering the
+                    # 64MB Docker default intermittently SIGTRAPs the first
+                    # renderer after a relaunch. Owner-confirmed 2026-09-02:
+                    # at least 512m stops the crashes; 640m adds headroom
+                    # while staying friendly to small-memory adopter laptops.
+                    # See the 2026-09-02 relaunch-renderer-crash bug record.
+                    "shared-memory-size": "640m",
                     "state_slot_mapping": {
                         "user-data": "user-data",
                         "extensions": "extensions",

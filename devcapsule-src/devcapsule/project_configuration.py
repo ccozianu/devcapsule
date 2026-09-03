@@ -9,20 +9,17 @@ import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from urllib.parse import quote
 
 
 from devcapsule.compat import CliError
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 from devcapsule.components.catalog import (
+    COMPONENTS,
     ComponentCatalogError,
     selected_component_definitions,
     selected_runtime_templates,
-)
-from devcapsule.components.claude_code import (
-    CLAUDE_CODE_AUTHORIZATION,
-    CLAUDE_CODE_TERMS_URL,
 )
 
 
@@ -83,6 +80,24 @@ WORKSTATION_CAPABILITY_DEFAULTS: dict[str, tuple[AuthorizationScalar, str]] = {
     ),
 }
 
+# Each string-valued authorization node's deny spelling — the value the run
+# path falls back to when nothing grants the capability. Recording it is the
+# developer's reduce-privilege decision (owner rulings 2026-09-03: denial is a
+# *value*, so a checkout's recorded denial outranks a workstation-level
+# allow); bool nodes deny with plain ``false`` and need no entry here.
+AUTHORIZATION_DENY_VALUES: dict[str, str] = {
+    "docker-daemon": "none",
+    "network": "bridge",
+}
+
+
+def authorization_deny_value(declaration: "AuthorizationDeclaration") -> AuthorizationScalar | None:
+    """The node's deny value, or None for nodes with no deny state (base-image)."""
+
+    if isinstance(declaration.recommended_value, bool):
+        return False
+    return AUTHORIZATION_DENY_VALUES.get(declaration.name)
+
 
 @dataclass(frozen=True)
 class RegisteredCheckout:
@@ -128,6 +143,13 @@ class AuthorizationDeclaration:
     # False for workstation-capability defaults the project did not recommend;
     # bulk authorization of "everything recommended" must not include them.
     project_recommended: bool = True
+    # "acquisition" nodes gate a vendor download with per-user terms; init has
+    # no safe omission for them and asks each one. Everything else is "host".
+    kind: str = "host"
+    # For acquisition nodes: the capability whose removal from the need is the
+    # alternative to authorizing, and the vendor product name for messages.
+    capability: str | None = None
+    subject: str | None = None
 
 
 @dataclass(frozen=True)
@@ -246,6 +268,26 @@ def normalize_configuration_value(
         raise ProjectConfigurationError(
             f"Configuration value {name!r} is not declared by this project; declared values: {available}."
         )
+    if isinstance(value, str) and value.strip().lower() == "default":
+        # 'default' is an input artifact, never a stored value: it resolves
+        # to the node's declared default at the moment the decision is made
+        # (owner ruling 2026-09-03, uniform across node families).  Value
+        # declarations carry no default field today, so there is nothing for
+        # it to resolve to here.
+        raise ProjectConfigurationError(
+            f"Configuration value {name!r} declares no default for 'default' to "
+            "resolve to; set an explicit value, or use 'unset' to leave the "
+            "value absent."
+        )
+    if isinstance(value, str) and value.strip().lower() == "none":
+        # Reserved alongside 'default' (owner ruling 2026-09-03): the
+        # explicit-absence answer is recorded by the carriers as an omission,
+        # never stored as a literal — a "none" reaching normalization is a
+        # carrier that failed to intercept it.
+        raise ProjectConfigurationError(
+            f"Configuration value {name!r} cannot hold the reserved literal 'none'; "
+            "the 'none' answer records an explicit omission."
+        )
     value_type = str(declaration["type"])
     field = f"configuration value {name!r}"
     if value_type == "string":
@@ -273,6 +315,20 @@ def normalize_configuration_value(
     return value
 
 
+def checkout_omitted_values(checkout: Mapping[str, Any]) -> tuple[str, ...]:
+    """The names a checkout explicitly keeps absent from the runtime config."""
+
+    configuration = checkout.get("configuration", {})
+    if not isinstance(configuration, dict):
+        raise ProjectConfigurationError("Checkout configuration must be a table.")
+    omitted = configuration.get("omitted-values", [])
+    if not isinstance(omitted, list) or not all(isinstance(name, str) for name in omitted):
+        raise ProjectConfigurationError(
+            "Checkout configuration omitted-values must be an array of node names."
+        )
+    return tuple(sorted(set(omitted)))
+
+
 def resolve_configuration_values(
     manifest: Mapping[str, Any], checkout: Mapping[str, Any]
 ) -> tuple[dict[str, ConfigurationScalar], dict[str, int]]:
@@ -285,6 +341,23 @@ def resolve_configuration_values(
     raw_values = configuration.get("values", {})
     if not isinstance(raw_values, dict):
         raise ProjectConfigurationError("Checkout configuration.values must be a table.")
+
+    omitted = checkout_omitted_values(checkout)
+    for name in omitted:
+        if name not in declarations:
+            raise ProjectConfigurationError(
+                f"Checkout omits undeclared configuration value {name!r}."
+            )
+        if declarations[name].get("required", False):
+            raise ProjectConfigurationError(
+                f"Configuration value {name!r} is mandatory and cannot be omitted; "
+                f"record a value with 'devcapsule project config set {name} VALUE'."
+            )
+        if name in raw_values:
+            raise ProjectConfigurationError(
+                f"Configuration value {name!r} is both recorded and omitted; "
+                "re-answer it with 'devcapsule project config set' or 'unset'."
+            )
 
     normalized: dict[str, ConfigurationScalar] = {}
     effects: dict[str, int] = {}
@@ -479,34 +552,47 @@ def authorization_declarations(
     components = lock.get("components", {})
     if not isinstance(components, dict):
         raise ProjectConfigurationError("Platform lock components must be a table.")
-    claude_code = components.get("claude-code")
-    if claude_code is not None:
-        if not isinstance(claude_code, dict):
-            raise ProjectConfigurationError("components.claude-code must be a table.")
-        if claude_code.get("acquisition-authorization") != CLAUDE_CODE_AUTHORIZATION:
+    for component_id, metadata in components.items():
+        if component_id == "interactive-surface":
+            continue
+        definition = COMPONENTS.get(component_id) if isinstance(component_id, str) else None
+        if definition is None:
+            # Unknown ids fail later at catalog selection.
+            continue
+        contract = definition.acquisition()
+        if contract is None:
+            # Components without vendor terms need no acquisition authorization.
+            continue
+        if not isinstance(metadata, dict):
+            raise ProjectConfigurationError(f"components.{component_id} must be a table.")
+        if metadata.get("acquisition-authorization") != contract.authorization:
             raise ProjectConfigurationError(
-                "components.claude-code must declare acquisition-authorization = "
-                f"{CLAUDE_CODE_AUTHORIZATION!r}."
+                f"components.{component_id} must declare acquisition-authorization = "
+                f"{contract.authorization!r}."
             )
-        if claude_code.get("terms-url") != CLAUDE_CODE_TERMS_URL:
+        if metadata.get("terms-url") != contract.terms_url:
             raise ProjectConfigurationError(
-                f"components.claude-code terms-url must be {CLAUDE_CODE_TERMS_URL!r}."
+                f"components.{component_id} terms-url must be {contract.terms_url!r}."
             )
-        version = claude_code.get("version")
+        version = metadata.get("version")
         if not isinstance(version, str) or not version:
             raise ProjectConfigurationError(
-                "components.claude-code.version must be a non-empty string."
+                f"components.{component_id}.version must be a non-empty string."
             )
-        declarations[CLAUDE_CODE_AUTHORIZATION] = AuthorizationDeclaration(
-            name=CLAUDE_CODE_AUTHORIZATION,
+        declarations[contract.authorization] = AuthorizationDeclaration(
+            name=contract.authorization,
             recommended_value=True,
             recommendation_digest=canonical_digest(
-                {"name": CLAUDE_CODE_AUTHORIZATION, "component": claude_code}
+                {"name": contract.authorization, "component": metadata}
             ),
             description=(
-                f"Download checksum-pinned Claude Code {version} directly from Anthropic "
-                f"during local materialization, subject to {CLAUDE_CODE_TERMS_URL}."
+                f"Download checksum-pinned {contract.display_name} {version} directly "
+                f"from {contract.vendor} during local materialization, subject to "
+                f"{contract.terms_url}."
             ),
+            kind="acquisition",
+            capability=definition.capability,
+            subject=contract.display_name,
         )
 
     host = manifest.get("host", {})
@@ -564,6 +650,26 @@ def normalize_authorization_value(
     declaration: AuthorizationDeclaration, value: object
 ) -> AuthorizationScalar:
     expected = declaration.recommended_value
+    deny = authorization_deny_value(declaration)
+    if isinstance(value, str):
+        keyword = value.strip().lower()
+        if keyword == "default":
+            # The reserved keyword accepting the recommendation for one key
+            # (owner ruling 2026-09-03); the bulk counterpart is
+            # --all-recommended. Input artifact only: the resolved value is
+            # what gets stored.
+            return expected
+        if keyword == "none":
+            # The reserved denial keyword (owner ruling 2026-09-03): resolves
+            # to the node's deny value at decision time and stores it, so a
+            # checkout's recorded denial outranks a workstation-level allow.
+            if deny is None:
+                raise ProjectConfigurationError(
+                    f"Authorization {declaration.name!r} is mandatory and has no deny "
+                    "state; 'none' cannot apply. Accept the recommendation with "
+                    "'default' or record a different selection."
+                )
+            return deny
     if isinstance(expected, bool):
         if isinstance(value, str) and value.lower() in {"true", "false"}:
             normalized: AuthorizationScalar = value.lower() == "true"
@@ -574,17 +680,21 @@ def normalize_authorization_value(
                 f"Authorization {declaration.name!r} requires true or false."
             )
     elif isinstance(value, str):
-        if not isinstance(value, str):
-            raise ProjectConfigurationError(
-                f"Authorization {declaration.name!r} requires value {expected!r}."
-            )
         normalized = value
     else:  # pragma: no cover - AuthorizationScalar makes this defensive only.
         raise ProjectConfigurationError(f"Unsupported authorization metadata for {declaration.name!r}.")
-    if normalized != expected:
+    if normalized != expected and (deny is None or normalized != deny):
+        # Deliberately source-neutral: the recommendation may be a project's
+        # or a workstation default, and denial is always the developer's to
+        # record — only values *beyond* recommendation-or-deny need reviewed
+        # metadata (2026-09-02 denial-grammar bug, aggravations 1 and 2).
+        accepted = f"its recommended value {render_authorization_value(expected)!r}"
+        if deny is not None:
+            accepted += f", its deny value {render_authorization_value(deny)!r}"
         raise ProjectConfigurationError(
-            f"Project recommendation {declaration.name!r} is exactly {expected!r}, not {normalized!r}. "
-            "Authorizing a different value requires distinct reviewed metadata."
+            f"Authorization {declaration.name!r} accepts {accepted}, or the keywords "
+            f"'default'/'none'; got {normalized!r}. Any other value requires distinct "
+            "reviewed metadata."
         )
     return normalized
 
@@ -1075,6 +1185,7 @@ def render_checkout(
     values: Mapping[str, ConfigurationScalar] | None = None,
     host_directory_bindings: Mapping[str, str] | None = None,
     host_environment_bindings: Mapping[str, str] | None = None,
+    omitted_values: Sequence[str] | None = None,
 ) -> str:
     identity = manifest["project"]
     lines = [
@@ -1095,6 +1206,12 @@ def render_checkout(
         for key, value in sorted(host.items()):
             rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
             lines.append(f"{key} = {rendered}")
+    if omitted_values:
+        # An explicit 'none' answer (owner ruling 2026-09-03): the name is a
+        # recorded decision to keep the node absent from the runtime config —
+        # distinct from silence, which follows the project's default.
+        rendered_names = ", ".join(quote_toml(name) for name in sorted(set(omitted_values)))
+        lines.extend(["", "[configuration]", f"omitted-values = [{rendered_names}]"])
     if values:
         lines.extend(["", "[configuration.values]"])
         lines.extend(

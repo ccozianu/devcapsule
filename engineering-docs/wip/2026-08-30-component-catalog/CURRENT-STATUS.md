@@ -133,6 +133,76 @@ validated means unit tests pass plus a smoke test performed, for now, by hand
 by the product owner. Do not accumulate multiple finished components on the
 branch.
 
+## State-Slot Rulings (2026-09-02)
+
+Following the antigravity state bug, the owner ruled: the home overlay
+stays, and *everything under `$HOME` is owned by the user* no matter
+which mechanism (build, entrypoint, mount mechanics) touched it.
+Implemented on this branch, recorded in the
+[state-slots design note](../../design-notes/devcapsule/state-slots-home-overlay-and-ownership.md):
+contract validation holds overlay slots to direct children of home and
+rejects cross-component slot overlap; the launcher pre-creates every
+home-overlay mount point inside the persistent home source as the
+invoking user (and reports foreign-owned leftovers it cannot repair).
+The entrypoint-side verification of the invariant is a coordination
+item for `contained-display` (below).
+
+**Passthrough ruling (2026-09-02)**: raw docker passthrough refuses
+single-instance options the launcher composes (`--network`, `--memory`,
+`--shm-size`, `--user`, `--pull`, lifecycle flags, …) — docker keeps
+the last occurrence, so a passthrough repetition would silently
+override the resolved plan; each refusal names the sanctioned lever.
+Repeatable options (`-v`, `--env`, `--mount`, …) pass through as
+before. Denylist and rationale live beside
+`reject_launcher_owned_docker_options` in the host launcher.
+
+## Substrate Ruling (2026-09-02, amends D-0007)
+
+The v0.2.9 base rebuild surfaced the edge model's granularity error: the
+owner tried `--authorize base-image …:v0.2.9` and the grammar could not
+express it, because edges keyed on the base mnemonic made every derived
+base release an unverified stranger. The owner ruled: compatibility is a
+fact about the *substrate* (the shared Ubuntu/toolchain generation), not
+about our derived base releases, which vary only our own layer — so
+edges now verify component-on-substrate and base pins declare their
+generation (`ubuntu-24.04-gen1` = v026; `-gen2` = v0.2.8 and later
+rebuilds with the vscode-capable runtime). A new base on a shared
+substrate inherits every edge; the substrate string bumps only on
+substantial base changes. Implemented on the branch (matrix
+`embedded-6`); the amendment is recorded in D-0007. Consequence: agent
+smokes (resume item 3) establish gen2 edges once, covering v0.2.9 and
+every later gen2 release. The v0.2.9 base pin landed the same day after
+the owner pushed the image (digest `sha256:ca9f7961…734232`, read from
+the registry at pinning time; matrix `embedded-7`): codium-only and
+codium×antigravity formations now resolve to v0.2.9 with inherited gen2
+edges, while agent-carrying formations stay on v026 pending their gen1→
+gen2 smokes. From the same episode, recorded and then **ruled and fixed 2026-09-03**:
+[`--authorize base-image` conflates consent with selection and explains neither](../../bugs/devcapsule/2026-09-02-authorize-base-image-conflates-consent-with-selection.md)
+— init now accepts a base reference as a checkout-level selection
+(daemon-inspected, metadata presented, informed consent solicited;
+`--less-pedantic` skips the solicitation), completing the path the
+config-verb and realization layers already carried. A second ruling
+the same day retired `yes` as a base-image authorization value —
+authorizations are KV pairs; the reserved keyword `default` accepts
+the recommendation for a single key across the authorize family. A
+third made `default` input-only: the tree stores what it resolves to
+at decision time, uniformly across families (set-nodes accept the
+token but declare no default yet — whether `configuration.values.*`
+gains a `default` field is the owner's open follow-up). A fourth:
+`unset` removes the name from the tree and therefore refuses
+mandatory nodes (`node.required` — declaration-required values,
+required secret inputs, base-image) instead of deferring the failure
+to resolve time. A fifth ruling closed the subtree question the owner had opened: the
+node namespace *stays flat*, with the `.` dot convention as the poor
+man's tree — no structural subtrees, no prefix-mandate mechanism;
+node-level `required` is the whole mandate story. One naming
+observation stays on record: component state slots spell their grouping
+with `/` (`pycharm/system`, `codium/user-data`) where the convention
+is `.` — cosmetic, and any convergence is its own decision. The joint grammar
+ruling with the denial bug remains open, as does the larger
+base-as-config-node unification the owner asked about (it belongs with
+the checkout-local-needs rebuild — same resolution-time inversion).
+
 ## Coordination With `contained-display`
 
 `contained-display` is paused as of 2026-08-30 until this workstream shows
@@ -143,7 +213,90 @@ contract change through coordination rather than changing it inadvertently.
 Symmetrically: if this workstream finds the contract insufficient, it records
 the gap and coordinates; it does not reshape the supervisor.
 
+Open coordination item (2026-09-02): the entrypoint half of the $HOME
+ownership invariant — the runtime verifying at container start that
+`$HOME` and its first-level entries are user-owned, failing loudly
+otherwise — belongs to the supervisor `contained-display` owns; this
+workstream implemented only the client/launcher half.
+
 ## Current Task
+
+Track 2, the Antigravity CLI component, began 2026-09-02 on branch
+`component-catalog/antigravity-cli` after track 1 merged to `main`
+(PR #50). The ledger-gated
+[license and redistribution analysis](antigravity-cli-license-and-redistribution-analysis.md)
+is done: proprietary binary, per-user acceptance by download, no
+redistribution grant, but a developer's own cached local image is not
+redistribution — the delivery contract stands unmodified and the
+component proceeds as `local-materialization` behind an
+`antigravity-download` acquisition authorization, pinned to the
+versioned GCS artifact (v1.1.24 verified: manifest sha512 matched,
+sha256 computed) with state at `~/.gemini/antigravity-cli` as a
+checkout-scoped slot.
+
+A `project config need CAPABILITY` verb also landed (`46cec03`), but its
+layering is **pending an owner ruling and a rebuild** — see *Open
+Threads*. As shipped it edits the committed manifest and rides
+`init --regenerate`; the owner ruled 2026-09-02 that the default must be
+a checkout-local *experiment* that commits nothing.
+
+On resume later on 2026-09-02 the owner directed: implement the
+Antigravity CLI component now (ahead of the config-need rebuild, which
+stays an open thread), and give this workstream a release target — see
+*Release Target: v0.2.9*. The same session logged a third
+v0.2.8-validation bug found by running `project run` against this
+checkout itself:
+[2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
+— the formation identity churns on descriptor-only changes, records an
+entrypoint the recipe never enforces (tini is still PID 1 on v026
+formations, against `500909d`'s premise), and superseded multi-GB
+canonical images accumulate with no lifecycle.
+
+## Release Target: v0.2.9
+
+Set by the product owner on 2026-09-02. v0.2.9 ships when:
+
+1. ~~The Antigravity CLI component is implemented and owner-smoked, per
+   the delivery contract and the license analysis.~~ Done 2026-09-02:
+   smoke passed on the tictactoe sample (codium × antigravity,
+   v0.2.8 base).
+2. The open v0.2.8-validation bugs are fixed, "relatively" — meaning
+   the recorded fix scopes, barring new discoveries:
+   - [init/run answers not persisted as authorizations](../../bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
+   - [formation identity claims an entrypoint the recipe never sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
+   - [the authorization grammar cannot express denial](../../bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
+     (owner-triaged onto this list 2026-09-02; **ruled and fixed
+     2026-09-03** by the `none` ruling — denial is a value: bool nodes
+     take `false`, string nodes their deny spelling, and `none`
+     resolves to the deny value at decision time. The set-family half
+     of the same ruling records explicit omissions in
+     `omitted-values`, absent from the runtime config, overridable at
+     `project run`. Closes on the owner's hardened relaunch)
+   - [the codium setuid sandbox crashes under the development-sudo posture](../../bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
+     (**closed 2026-09-03**: the owner's smoke on the v0.2.9 base
+     confirmed codium launching cleanly with development sudo enabled —
+     the exact posture that aborted. Fixed 2026-09-02 by superseding
+     the 2026-08-31 sandbox decision — renderers run `--no-sandbox`
+     under uniform full hardening for as long as we can, per the
+     [renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md);
+     the narrow grant, the `setuid-helper` declaration, and the
+     recipe's chrome-sandbox 4755 step are removed, `--no-sandbox`
+     travels as template data, codium recipe-version 2)
+   - [antigravity's state is wider than the analyzed path](../../bugs/devcapsule/2026-09-02-antigravity-state-wider-than-the-analyzed-path.md)
+     (`~/.gemini/config/projects` walled off by the nested slot's
+     root-owned parent; **fix applied on the branch** — the slot now
+     covers `~/.gemini` whole, changing the template digest and so the
+     canonical image identity — awaiting the owner's re-smoke)
+
+New bugs found on the way join the list by owner triage rather than
+automatically blocking the release. Root-caused and fixed on the
+branch the same day it was logged:
+[codium relaunch intermittently crashes its first renderer](../../bugs/devcapsule/2026-09-02-codium-relaunch-renderer-crash-after-clean-exit.md)
+(owner-confirmed `/dev/shm` exhaustion; the surface now declares
+`shared-memory-size = "1g"` and the launcher sizes the container's
+shm accordingly).
+
+## Track 1 (integrated)
 
 Track 1 is implemented end-to-end as of 2026-08-31, on branch commits
 `f886872..7c496b2`, and live-verified from inside a capsule against the
@@ -159,6 +312,11 @@ surface keeps Chromium's setuid renderer sandbox under a narrow capability
 grant — see the
 [setuid sandbox design note](../../design-notes/devcapsule/vscode-sandbox-setuid.md)
 for the collision with default hardening that forced the ruling.
+(Superseded 2026-09-02: the sandbox ruling was reversed after the
+sudo-posture crash — renderers now run `--no-sandbox` under uniform full
+hardening; see the
+[renderer-sandboxing design note](../../design-notes/devcapsule/renderer-sandboxing.md)
+and the sudo-sandbox entry under *Release Target: v0.2.9*.)
 
 The product owner's smoke sign-off arrived 2026-09-02: codium ran the
 tictactoe sample end-to-end on the **v0.2.8 base** (no runtime-PEX
@@ -199,19 +357,141 @@ entry is safe to restore by hand-copy. A guided `config history`/
 
 ## Next Resumable Task
 
-After the `codium` component integrates: track 2, the Antigravity CLI
-component, starting with the license and redistribution analysis the
-ledger gates on.
+Session paused 2026-09-03, everything committed and pushed. The
+2026-09-02 pause state below is superseded by the day's entries above
+it; the standing owner actions at this pause: open the integration PR
+for the working branch (the antigravity component and the whole
+v0.2.9-validation stretch are owner-smoked), and merge
+`component-catalog/outbox` so the upgrade-experience intake reaches
+`project-management` on `main`.
+
+Previous pause, late 2026-09-02, branch head `d8f833c`: The antigravity component is validated and
+PR-ready — the owner opens the PR per the integration cadence. The
+same day also executed, owner-ruled: the state-slot/home-ownership
+rulings, the codium `/dev/shm` fix (640m), and the passthrough
+denylist for launcher-owned docker options. Suite green (516), mypy
+clean.
+
+Resume with, in order:
+
+1. ~~The two v0.2.9 bugs awaiting owner rulings~~ **Both ruled, fixed,
+   and smoke-verified by 2026-09-03**: the codium sudo-sandbox bug
+   (closed by the owner's v0.2.9 smoke — codium runs with sudo enabled)
+   and the denial grammar (closed by the `none` ruling — denial is a
+   value). The 2026-09-03 smoke on the v0.2.9 base also first-exercised
+   the regenerated lock chain (`embedded-7`, codium recipe 2, new
+   canonical identity) and the whole authorization grammar rework
+   end-to-end. The 2026-09-03 five-way smoke (codium × antigravity ×
+   claude-code × codex on the v0.2.9 base) then confirmed **everything
+   working** — the owner's blanket sign-off closes the antigravity-state
+   record (widened `~/.gemini` exercised live, no hand repair), the shm
+   record (clean relaunches on the declared 640m), and the
+   denial-grammar record, and converts the two provisional agent gen2
+   edges into owner-smoked evidence. The runtime-PEX override is
+   retired for all codium compositions. (Correction to an earlier
+   over-claim in this file's history: two release-target bugs remain
+   open — the two scoped ones in item 2 below.) Same day, at the owner's direction, claude-code
+   advanced to 2.1.236 (the Fable 5.1 release; sha256 computed locally
+   and matching the vendor manifest, binary executed hands-on) with
+   provisional gen1/gen2 edges pending the next dogfood run and codium
+   smoke — the repo's own dogfood lock is updated so this workstream's
+   capsules get it too (matrix `embedded-9`). The owner confirmed the
+   upgraded CLI working the same day ("as well as expected"); the
+   provisional 2.1.236 edges convert when a recorded formation run
+   names its base. The upgrade experience itself went to
+   `project-management` as an intake item at the owner's direction
+   (2026-09-03, via this workstream's first outbox delivery):
+   upgrade-friendly messages, obsolescence warnings, and the project
+   of upgrading, as an important V1 feature.
+2. **The next work when the session resumes**: the two scoped v0.2.9
+   bugs, the release's remaining gate. First init/run answers persisted
+   as authorizations (self-contained, and adjacent to the freshly
+   reworked authorization grammar); then the
+   formation-identity/entrypoint-claim record (its enforcement half
+   coordinates with `contained-display`, and its image-lifecycle half
+   is now also referenced by the upgrade-experience intake sent to
+   `project-management`).
+3. Agent smokes on a gen2 base (claude-code, codex) to add their
+   substrate edges and retire the runtime-PEX override for combined
+   formations — antigravity already carries its gen2 edge. One smoke
+   per component now covers every gen2 base release (see *Substrate
+   Ruling*).
+4. The `config need` checkout-local rebuild (open thread below).
+5. Small closers: the antigravity-state and shm records close on the
+   owner's next clean relaunches; the submodule gitdir un-absorb
+   (applied by hand to the tictactoe sample checkout 2026-09-02 so git
+   works inside the capsule) recurs on fresh `--recurse-submodules`
+   clones and gets a record if the owner wants one; the two smoke
+   observations (self-update setting, `agy` alias) stay open.
+
+Original task order for this stretch, recorded 2026-09-02 at the
+owner's direction (antigravity first; the config-need rebuild keeps
+its ruling thread open):
+
+1. **Validated 2026-09-02**: the owner's smoke passed the same day —
+   antigravity working the tictactoe sample on the codium surface and
+   the v0.2.8 base — after three launch-path bugs surfaced and were
+   triaged (sudo sandbox posture, denial grammar, state-slot
+   ownership; see *Release Target*). The provisional matrix edge now
+   carries the smoke as its evidence, so per the integration cadence
+   the component is PR-ready. Two open smoke observations remain for
+   a later pass: whether the CLI needs a do-not-self-update setting,
+   and whether the `agy` alias matters. Note the smoke ran with the
+   ownership repaired by hand (`chown`); the widened `~/.gemini` slot
+   and the launcher pre-creation get their first live exercise on the
+   next rebuild-and-run. Implementation, as delivered: the
+   Antigravity CLI component per the delivery contract — catalog
+   `ComponentDefinition` (`components/antigravity_cli.py`), matrix pin
+   (v1.1.24; the sha256 and the archive's single `antigravity` member
+   re-verified hands-on 2026-09-02, artifact sha512 recorded as
+   upstream provenance), `antigravity-agent` capability,
+   `antigravity-download` authorization node, `/opt/antigravity-cli`
+   materialization with PATH chaining, checkout-scoped
+   `antigravity-cli/home` slot for `~/.gemini/antigravity-cli`, an
+   optional `gemini-api-key` secret input, and inspection output
+   (all verified live via `init` + `config list`). The matrix advanced
+   to `embedded-4`; golden locks regenerated. Implementation calls the
+   owner should review, made under recorded latitude:
+   - The acquisition gate is now *generic*: `authorization_declarations`
+     and init's acquisition elicitation derive every vendor gate from a
+     new `ComponentDefinition.acquisition()` contract instead of the
+     claude-code special case (wording and digests preserved).
+   - "Default-selected" is implemented as an interactive init question
+     (Enter = yes) asked only when the fresh need omits an agent *and*
+     the grown need resolves; a noninteractive `--need` list stays
+     authored-explicit, and re-inits never grow an existing need.
+   - The antigravity×v0.2.8 verified edge entered the branch
+     provisionally (codium precedent) and now records the owner's
+     2026-09-02 smoke as its evidence.
+   - Two smoke-time questions: whether the CLI needs a
+     do-not-self-update setting (the pin makes self-update unwanted),
+     and whether the `agy` alias matters (the recipe has no symlink
+     mechanism; the binary lands as `antigravity` on PATH).
+   Smoke path: `init --need node --need frontend-ide --need
+   antigravity-agent` then `run` — codium + antigravity on the v0.2.8
+   base needs no runtime-PEX override.
+2. The v0.2.9 bug list (see *Release Target: v0.2.9*), and agent
+   smokes on the v0.2.8 base to retire the runtime-PEX override for
+   combined formations.
+3. Settle the `config need` layering (the *checkout-local needs* open
+   thread below) and rebuild the verb accordingly: default =
+   checkout-local experimental need in the developer-owned record
+   (ancillary components only, pinned into `devcapsule.resolved.toml`,
+   verified-edge-checked against the locked base, droppable); the
+   shipped manifest-editing machinery becomes the explicit `--project`
+   promotion path. The antigravity component is the natural first user
+   of the checkout-local need once it exists.
 
 ## Open Threads
 
-- **Base rebuild** (updated 2026-09-02): resolved for codium-only needs —
-  the v0.2.8 base is published, owner-smoked with codium, and pinned in
-  matrix `embedded-3`, so those locks launch with no override. Formations
-  combining codium with agents still resolve to v026 (the agents have no
-  v0.2.8 edges yet) and therefore still need the runtime-PEX override
-  volume; smoking the agents on v0.2.8 and adding their edges retires the
-  override entirely.
+- **Base rebuild** (updated 2026-09-03): the codex and claude-code gen2
+  edges entered provisionally (matrix `embedded-8`) when the owner's
+  five-way formation — codium × antigravity × claude-code × codex —
+  could not resolve without them; the owner's smoke of that formation
+  on v0.2.9 is their pending evidence. Once it passes, every
+  codium-composition resolves to v0.2.9 with no runtime-PEX override;
+  only PyCharm compositions remain on v026 pending their own gen2
+  smoke (see the PyCharm slot-path migration thread).
 - **PyCharm slot-path migration** (recorded follow-up): PyCharm still
   travels the launcher's named state fields; every other surface uses the
   generic plan-slot mounts. Migrating PyCharm onto the generic path (and
@@ -220,6 +500,23 @@ ledger gates on.
 - **Component update mechanism** (owner-stated future work, 2026-08-31):
   warn developers when pinned components have newer releases, and advance
   matrix pins after tests. Belongs to project-wide planning; not started.
+- **Resolution-matrix sustainability cleanup** (owner-directed backlog
+  item, 2026-09-02): the owner judged `resolution_matrix.py` "an unholy
+  mess again" — acceptable as brute force to close bugs near-term,
+  unsustainable as the growth path. The evidence: 651 lines of
+  data-as-code (pin literals with embedded lock fragments, edge tuples,
+  substrate constants, evidence strings, rulings living in comments),
+  hand-edited 8 times in this workstream's first three days; every
+  change hand-bumps `_MATRIX_VERSION` and regenerates golden locks via
+  an ad-hoc script that is not even checked in. Each new base release,
+  component bump, edge, or model amendment (three model changes on
+  2026-09-02 alone: recipe-version per surface, substrate keying, the
+  v0.2.9 pin) lands in the same module and inflates it further. The
+  cleanup's shape is deliberately *not* designed here — it waits for
+  the owner's direction and should be planned together with the
+  component-update-mechanism thread above, which needs the same
+  data/model separation to exist. Minimum next step regardless of
+  design: a checked-in golden-lock regeneration tool.
 - **Launcher naming**: the generic project launcher still lives in
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
@@ -254,6 +551,24 @@ ledger gates on.
   clone). The checkout remains at `/home/devcapsule/e2e-fresh-devcapsule`
   with its built artifacts for the owner's v0.2.8 smoke.
 
+- **Checkout-local needs** (awaiting owner ruling on point (a), then
+  rebuild): the owner ruled that `config need` must default to an
+  *experiment* — a need recorded only in the developer-owned checkout
+  record, committing nothing. Point (b) is now answered by the
+  2026-09-03 `--unverified` ruling: the escape hatch exists on `init` —
+  strict resolution is always tried first; only on refusal does
+  `--unverified` fall back to the base with the fewest unverified
+  combinations, warns gently, and names each one in the committed lock
+  (scalar `unverified-combinations` plus a header warning). The local
+  layer reuses the same semantics when built. Still awaiting (a):
+  two-layer verb — `config need X` local by default, `--project`
+  promotes via the already-shipped manifest machinery. Also proposed: local needs
+  are ancillary-only (surfaces are lock-level), pins for local
+  components recorded in `devcapsule.resolved.toml`, `--drop` for
+  removal, and distinct labeling in inspection and the run manifest.
+  Not preserved from the session: no code for the local layer exists
+  yet; only the manifest-editing verb (`46cec03`) is on the branch.
+
 ## External State And Risks
 
 - The Antigravity license and redistribution analysis is a gate, not a
@@ -278,4 +593,5 @@ ledger gates on.
 
 ## Workstream Document Index
 
-None yet.
+- [Antigravity CLI: license and redistribution analysis](antigravity-cli-license-and-redistribution-analysis.md)
+  (2026-09-02, the ledger gate for track 2)

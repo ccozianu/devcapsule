@@ -36,9 +36,16 @@ def plan(runtime: RuntimePlan) -> VscodeLaunch:
         if slot_name not in slots:
             raise RuntimePlanError(f"VS Code-family {option} mapping must name a declared state slot")
         directories[option] = slots[slot_name]
-    sandbox = config.get("sandbox")
-    if sandbox is not None and sandbox != "setuid-helper":
-        raise RuntimePlanError("VS Code-family sandbox must be 'setuid-helper' when declared")
+    # Renderer sandboxing is retired (product-owner ruling 2026-09-02; see
+    # engineering-docs/design-notes/devcapsule/renderer-sandboxing.md). A
+    # template that still declares a sandbox, or omits --no-sandbox, would
+    # not fail here but as a cryptic zygote abort at surface start — refuse
+    # it at plan time instead.
+    if config.get("sandbox") is not None:
+        raise RuntimePlanError(
+            "VS Code-family renderer sandboxing is retired; remove the sandbox "
+            "declaration (see the renderer-sandboxing design note)"
+        )
     additional = config.get("additional_arguments", [])
     if not isinstance(additional, list):
         raise RuntimePlanError("VS Code-family additional_arguments must be an array")
@@ -47,6 +54,12 @@ def plan(runtime: RuntimePlan) -> VscodeLaunch:
             character in argument for character in "\x00\r\n"
         ):
             raise RuntimePlanError("VS Code-family additional arguments must be one-line strings")
+    if "--no-sandbox" not in additional:
+        raise RuntimePlanError(
+            "VS Code-family additional_arguments must include --no-sandbox; "
+            "without it Chromium aborts at surface start under capsule "
+            "hardening (see the renderer-sandboxing design note)"
+        )
     installation_path = Path(_string(config, "installation_path"))
     launcher = _string(config, "launcher")
     if Path(launcher).is_absolute() or ".." in Path(launcher).parts:

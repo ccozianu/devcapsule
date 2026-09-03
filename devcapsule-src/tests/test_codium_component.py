@@ -47,10 +47,46 @@ def test_runtime_template_round_trips_through_the_contract() -> None:
 
     assert template.component.id == "codium"
     assert template.component.adapter == "vscode"
-    assert template.component.configuration["sandbox"] == "setuid-helper"
+    # Renderers run unsandboxed (product-owner ruling 2026-09-02); the flag
+    # is template data so the frozen v0.2.8 runtime appends it unchanged.
+    assert template.component.configuration["additional_arguments"] == ["--no-sandbox"]
+    assert "sandbox" not in template.component.configuration
+    assert template.component.configuration["shared-memory-size"] == "640m"
     assert template.persistence.home == "required"
     assert template.persistence.xdg == "home-relative"
     assert logical_state_slots() == ("codium/user-data", "codium/extensions", "codium/cache")
+
+
+def test_shared_memory_declaration_reaches_the_launcher() -> None:
+    """The declared /dev/shm size flows to --shm-size; Docker's 64MB default
+    intermittently SIGTRAPs Chromium renderers under software rendering
+    (owner-confirmed 2026-09-02; see the relaunch-renderer-crash bug record).
+    """
+
+    from dataclasses import dataclass
+
+    from devcapsule.configurations.pycharm._launcher import (
+        PycharmRunError,
+        declared_shared_memory_size,
+    )
+
+    @dataclass
+    class _Config:
+        runtime_plan: RuntimePlan | None
+
+    assert declared_shared_memory_size(_Config(component_runtime())) == "640m"  # type: ignore[arg-type]
+    assert declared_shared_memory_size(_Config(None)) is None  # type: ignore[arg-type]
+
+    mapping = runtime_template().to_mapping()
+    mapping["component"]["configuration"]["shared-memory-size"] = "lots"  # type: ignore[index]
+    malformed = RuntimePlan.for_component(
+        ComponentRuntimeTemplate.from_mapping(mapping),
+        project_path="/workspace/project",
+        home="/home/devcapsule",
+        identity=Identity(1000, 1000),
+    )
+    with pytest.raises(PycharmRunError, match="shared-memory-size"):
+        declared_shared_memory_size(_Config(malformed))  # type: ignore[arg-type]
 
 
 def test_durable_editor_state_persists_outside_the_home_overlay() -> None:
@@ -106,17 +142,21 @@ def test_vscode_adapter_reproduces_the_proven_foreground_command() -> None:
         "/opt/codium/codium",
         "--user-data-dir=/ide-user-data",
         "--extensions-dir=/ide-extensions",
+        "--no-sandbox",
         "/workspace/project",
     )
 
 
 def test_vscode_adapter_appends_validated_additional_arguments() -> None:
     document = component_runtime().to_mapping()
-    document["component"]["configuration"]["additional_arguments"] = ["--verbose"]  # type: ignore[index]
+    document["component"]["configuration"]["additional_arguments"] = [  # type: ignore[index]
+        "--no-sandbox",
+        "--verbose",
+    ]
 
     launch = plan_vscode(RuntimePlan.from_mapping(document))
 
-    assert launch.command[-2:] == ("--verbose", "/workspace/project")
+    assert launch.command[-3:] == ("--no-sandbox", "--verbose", "/workspace/project")
 
 
 @pytest.mark.parametrize(
@@ -143,8 +183,12 @@ def test_vscode_adapter_appends_validated_additional_arguments() -> None:
             "additional_arguments must be an array",
         ),
         (
-            lambda config: config.update(sandbox="no-sandbox"),
-            "sandbox must be 'setuid-helper'",
+            lambda config: config.update(sandbox="setuid-helper"),
+            "renderer sandboxing is retired",
+        ),
+        (
+            lambda config: config.update(additional_arguments=["--verbose"]),
+            "must include --no-sandbox",
         ),
     ],
 )

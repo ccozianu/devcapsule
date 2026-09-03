@@ -266,6 +266,7 @@ def test_entrypoint_dispatches_vscode_adapter_components(
                 "configuration": {
                     "installation_path": "/opt/codium",
                     "launcher": "codium",
+                    "additional_arguments": ["--no-sandbox"],
                     "state_slot_mapping": {
                         "user-data": "user-data",
                         "extensions": "extensions",
@@ -285,6 +286,7 @@ def test_entrypoint_dispatches_vscode_adapter_components(
         "/opt/codium/codium",
         f"--user-data-dir={tmp_path / 'user-data'}",
         f"--extensions-dir={tmp_path / 'extensions'}",
+        "--no-sandbox",
         "/workspace/project",
     )
 

@@ -163,7 +163,10 @@ def test_codium_formation_descriptor_has_no_variant_and_its_own_recipe(tmp_path:
     assert descriptor["recipe"]["parameters"] == {"installation-path": "/opt/codium"}
 
 
-def test_codium_materialization_builds_a_setuid_sandbox_image(tmp_path: Path) -> None:
+def test_codium_materialization_builds_an_image_with_no_setuid_binary(tmp_path: Path) -> None:
+    # Recipe version 2 (product-owner ruling 2026-09-02): renderers run
+    # --no-sandbox, so no step marks chrome-sandbox setuid-root; see the
+    # renderer-sandboxing design note.
     source = tmp_path / "codium.tar.gz"
     payload = codium_fixture_archive(source)
     spec = codium_artifact(source, hashlib.sha256(payload).hexdigest())
@@ -172,14 +175,11 @@ def test_codium_materialization_builds_a_setuid_sandbox_image(tmp_path: Path) ->
     def build(build_spec) -> None:
         plan = build_spec.build_plan()
         assert any(copy.destination == "/opt/codium" for copy in plan.directories)
-        sandbox_steps = [
-            step for step in plan.exec_steps if "chrome-sandbox" in " ".join(step.args)
-        ]
-        assert len(sandbox_steps) == 1
-        assert "chmod 4755 /opt/codium/chrome-sandbox" in sandbox_steps[0].args[-1]
+        assert plan.exec_steps == ()
         labels = dict(plan.labels)
         assert labels["devcapsule.component.id"] == "codium"
         assert labels["devcapsule.component.vscode.version"] == "1.126.04524"
+        assert labels["devcapsule.materialization.recipe-version"] == "2"
         assert "devcapsule.component.variant" not in labels
         built[plan.image] = image_details(plan.image, labels)
 
@@ -192,6 +192,7 @@ def test_codium_materialization_builds_a_setuid_sandbox_image(tmp_path: Path) ->
         inspect_image=lambda reference: built.get(reference),
         build=build,
         recipe_id="vscode-local-materialization",
+        recipe_version="2",
         component_id="codium",
     )
 
@@ -234,7 +235,7 @@ def test_codium_lock_parses_without_variant(tmp_path: Path) -> None:
             },
             "materialization": {
                 "recipe": "vscode-local-materialization",
-                "recipe-version": "1",
+                "recipe-version": "2",
             },
         }
     )
@@ -261,6 +262,32 @@ def test_codium_lock_rejects_the_jetbrains_recipe() -> None:
                 },
                 "materialization": {
                     "recipe": "jetbrains-local-materialization",
+                    "recipe-version": "1",
+                },
+            }
+        )
+
+
+def test_codium_lock_from_the_setuid_recipe_era_is_rejected() -> None:
+    # A version-1 codium lock predates the --no-sandbox posture; building it
+    # with the version-2 recipe would produce an image its recorded recipe no
+    # longer describes, so it must fail loudly toward re-init.
+    with pytest.raises(CliError, match="'vscode-local-materialization'@2"):
+        parse_locked_environment(
+            {
+                "platform": "linux-amd64",
+                "base": {"reference": "docker.io/example/base@sha256:abc"},
+                "components": {
+                    "interactive-surface": "codium",
+                    "codium": {
+                        "version": "1.126.04524",
+                        "delivery-policy": "local-materialization",
+                        "url": "https://example.invalid/codium.tar.gz",
+                        "sha256": "b" * 64,
+                    },
+                },
+                "materialization": {
+                    "recipe": "vscode-local-materialization",
                     "recipe-version": "1",
                 },
             }
@@ -503,3 +530,38 @@ def test_validate_base_rejects_wrong_identity() -> None:
     )
     with pytest.raises(CliError, match="identity mismatch"):
         validate_base_image(details, platform="linux-amd64", expected_identity="sha256:expected")
+
+
+def test_ancillary_environment_chains_path_prefixes_and_rejects_conflicts() -> None:
+    """Several components may each prepend a bin directory to PATH; any other
+    disagreement over one variable is a contract conflict."""
+
+    from devcapsule.materialization import _ancillary_environment
+
+    def declaration(component_id: str, environment: tuple[tuple[str, str], ...]):
+        return LockedArtifactDeclaration(
+            component_id=component_id,
+            version="1",
+            url="https://example.invalid/artifact",
+            sha256="a" * 64,
+            destination=f"/opt/{component_id}/bin/{component_id}",
+            environment=environment,
+        )
+
+    merged = dict(
+        _ancillary_environment(
+            (
+                declaration("claude-code", (("PATH", "/opt/claude/bin:${PATH}"),)),
+                declaration("antigravity-cli", (("PATH", "/opt/antigravity-cli/bin:${PATH}"),)),
+            )
+        )
+    )
+    assert merged["PATH"] == "/opt/claude/bin:/opt/antigravity-cli/bin:${PATH}"
+
+    with pytest.raises(CliError, match="conflicting values for environment DISABLE_UPDATES"):
+        _ancillary_environment(
+            (
+                declaration("claude-code", (("DISABLE_UPDATES", "1"),)),
+                declaration("other", (("DISABLE_UPDATES", "0"),)),
+            )
+        )

@@ -5,6 +5,7 @@ from __future__ import annotations
 import grp
 import os
 import pwd
+import re
 import shutil
 import stat
 import subprocess
@@ -14,7 +15,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from ...container_runtime.contract import RuntimePlan
 from ...host_daemon import (
@@ -195,6 +196,7 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
             else:
                 runtime_env[HOST_OPEN_SOCKET_ENV] = str(browser_socket)
             config = build_run_config(options, runtime_env)
+            prepare_home_mount_points(config)
             files = prepare_temp_runtime_files(config, runtime_env)
             try:
                 if config.enable_sudo:
@@ -592,6 +594,55 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
     )
 
 
+def prepare_home_mount_points(config: PycharmRunConfig) -> None:
+    """Pre-create home-overlay mount points inside the persistent home source.
+
+    The container runtime creates a missing bind-mount target as root, and a
+    root-owned directory in the developer's home source outlives the mount —
+    violating the ownership invariant the owner ruled on 2026-09-02:
+    everything under $HOME belongs to the user, whatever mechanism created
+    it. Creating the mount points here, as the invoking user, keeps the
+    daemon out of that business. An entry some earlier launch already left
+    behind with foreign ownership cannot be repaired without host privilege,
+    so it is reported instead of silently mounted over.
+    """
+
+    home = Path("/home/devcapsule")
+    destinations = [
+        destination
+        for _name, _source, destination in (
+            *config.interactive_state_mounts,
+            *config.additional_state_mounts,
+        )
+    ]
+    if not config.interactive_state_mounts and config.tool_cache is not None:
+        # The legacy named-field surface path mounts the tool cache at a
+        # fixed home-overlay destination (_surface_state_mount_args).
+        destinations.append("/home/devcapsule/.cache")
+    for destination in destinations:
+        path = Path(destination)
+        if home not in path.parents:
+            continue
+        # The runtime-plan contract holds overlay slots to direct children
+        # of home, so the parent here is the home source itself.
+        mount_point = config.persistent_home / path.relative_to(home)
+        try:
+            mount_point.mkdir(mode=0o700, exist_ok=True)
+            owner = mount_point.stat().st_uid
+        except OSError as exc:
+            raise PycharmRunError(
+                f"Cannot prepare home mount point {mount_point}: {exc}"
+            ) from exc
+        if owner != os.getuid():
+            print(
+                f"WARNING: {mount_point} is owned by uid {owner}, not you; an "
+                "earlier launch let the container runtime create it. The mount "
+                "will cover it, but restoring the home invariant needs it "
+                "removed with host privilege.",
+                file=sys.stderr,
+            )
+
+
 def _surface_state_mount_args(config: PycharmRunConfig) -> list[str]:
     """Mount the interactive surface's state: plan-declared slots, or the
     named PyCharm locations when no plan-driven mounts were provided."""
@@ -720,6 +771,11 @@ def build_docker_args(
         "/run:rw,nosuid,nodev,size=128m",
         "--tmpfs",
         "/var/tmp:rw,exec,nosuid,nodev,size=1g",
+        *(
+            ["--shm-size", shared_memory]
+            if (shared_memory := declared_shared_memory_size(config)) is not None
+            else []
+        ),
         "--ipc",
         "private",
         "--network",
@@ -875,30 +931,93 @@ def append_docker_mode_args(args: list[str], config: PycharmRunConfig, host_user
         append_sudo_or_restrictions(args, config)
 
 
-def uses_setuid_sandbox_helper(config: PycharmRunConfig) -> bool:
-    """True when the plan's surface declares Chromium's setuid sandbox helper."""
+def launches_unsandboxed_renderers(config: PycharmRunConfig) -> bool:
+    """True when the plan's surface launches Chromium renderers unsandboxed.
 
-    return (
-        config.runtime_plan is not None
-        and config.runtime_plan.component.configuration.get("sandbox") == "setuid-helper"
-    )
+    Renderer sandboxing is retired (product-owner ruling 2026-09-02; see
+    engineering-docs/design-notes/devcapsule/renderer-sandboxing.md); the
+    surface carries --no-sandbox as template data and the launch disclosure
+    keys on it.
+    """
+
+    if config.runtime_plan is None:
+        return False
+    additional = config.runtime_plan.component.configuration.get("additional_arguments")
+    return isinstance(additional, list) and "--no-sandbox" in additional
 
 
-# The narrow grant Chromium's setuid helper needs: the setuid transition
-# itself (which no-new-privileges would veto), chroot, PID/network namespace
-# creation, and the drop back to the runtime user. Ruled 2026-08-31 by the
-# product owner over --no-sandbox; see
-# engineering-docs/design-notes/devcapsule/vscode-sandbox-setuid.md.
-SETUID_SANDBOX_CAPABILITIES = ("SETUID", "SETGID", "SYS_ADMIN", "SYS_CHROOT")
+# Docker options the launcher composes exactly once per launch, with the
+# sanctioned lever (if any) a developer should use instead. Docker keeps the
+# last occurrence of a single-instance option, so a raw passthrough
+# repetition would silently override the resolved plan rather than error;
+# these are refused at the door instead. Repeatable options (--mount, --env,
+# --volume, --cap-add, ...) pass through untouched. The scan matches option
+# tokens only; a *value* that happens to spell one of these names is
+# conservatively refused too, which is acceptable for a deliberate escape
+# hatch.
+LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
+    "--rm": "the launcher owns the container lifecycle",
+    "--detach": "the launcher owns the container lifecycle",
+    "-d": "the launcher owns the container lifecycle",
+    "--interactive": "the launcher owns the container lifecycle",
+    "-i": "the launcher owns the container lifecycle",
+    "--name": "use 'devcapsule project run --name NAME'",
+    "--user": "the launcher derives the container identity from the host user",
+    "-u": "the launcher derives the container identity from the host user",
+    "--network": "authorize it: '--authorize network host' or the config family",
+    "--net": "authorize it: '--authorize network host' or the config family",
+    "--memory": "set the runtime.memory-limit configuration value",
+    "-m": "set the runtime.memory-limit configuration value",
+    "--shm-size": "the surface declares shared-memory-size in its runtime template",
+    "--ipc": "the launcher owns IPC isolation",
+    "--pids-limit": "the launcher owns the PID budget",
+    "--privileged": "privilege comes from the docker-daemon and development-sudo authorizations",
+    "--pull": "the launcher pins '--pull=never' to the materialized image",
+}
+
+
+def reject_launcher_owned_docker_options(options: Sequence[str]) -> None:
+    """Refuse raw docker options the launcher already composes exactly once."""
+
+    for option in options:
+        name = option.split("=", 1)[0]
+        remedy = LAUNCHER_OWNED_DOCKER_OPTIONS.get(name)
+        if remedy is not None:
+            raise PycharmRunError(
+                f"Raw docker option {name!r} is composed by the launcher and cannot "
+                f"pass through; {remedy}."
+            )
+
+
+def declared_shared_memory_size(config: PycharmRunConfig) -> str | None:
+    """The surface's declared /dev/shm size, validated, or None.
+
+    Chromium-family surfaces outgrow Docker's 64MB default (renderers
+    SIGTRAP intermittently under software rendering — owner-confirmed
+    2026-09-02); the component declares what it needs and the launcher
+    passes it through as --shm-size.
+    """
+
+    if config.runtime_plan is None:
+        return None
+    value = config.runtime_plan.component.configuration.get("shared-memory-size")
+    if value is None:
+        return None
+    if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]*[mg]", value):
+        raise PycharmRunError(
+            "The surface's shared-memory-size must be a size like '512m' or '1g'; "
+            f"found {value!r}."
+        )
+    return value
 
 
 def append_sudo_or_restrictions(args: list[str], config: PycharmRunConfig) -> None:
+    # Hardening is uniform across surfaces: renderer sandboxing is retired
+    # (product-owner ruling 2026-09-02), so no surface narrows the capsule's
+    # posture; see
+    # engineering-docs/design-notes/devcapsule/renderer-sandboxing.md.
     if config.enable_sudo:
         args.extend(["--group-add", str(config.ide_sudo_gid)])
-    elif uses_setuid_sandbox_helper(config):
-        args.extend(["--cap-drop", "ALL"])
-        for capability in SETUID_SANDBOX_CAPABILITIES:
-            args.extend(["--cap-add", capability])
     else:
         args.extend(["--cap-drop", "ALL", "--security-opt", "no-new-privileges"])
 
@@ -1266,14 +1385,13 @@ Host browser integration:
             config.runtime_plan.component.id if config.runtime_plan is not None else "surface"
         )
         sandbox_disclosure = ""
-        if uses_setuid_sandbox_helper(config) and not config.enable_sudo:
+        if launches_unsandboxed_renderers(config):
             sandbox_disclosure = """
 
-Renderer sandbox capabilities:
-  The surface keeps Chromium's setuid renderer sandbox, so the capsule runs
-  without no-new-privileges and with the CAP_SETUID, CAP_SETGID,
-  CAP_SYS_ADMIN, and CAP_SYS_CHROOT bounding capabilities the helper needs.
-  Docker's outer isolation is unchanged."""
+Renderer security:
+  Chromium renderers run unsandboxed (--no-sandbox) and inherit the capsule
+  user's project, state, network, and any separately authorized Docker
+  access. Docker's outer isolation is unchanged."""
         slot_lines = "\n".join(
             f"  {logical_name}: {source}"
             for logical_name, source, _destination in config.interactive_state_mounts
