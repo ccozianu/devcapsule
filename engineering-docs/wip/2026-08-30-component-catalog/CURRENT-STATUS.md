@@ -369,8 +369,19 @@ Session paused 2026-09-03, everything committed and pushed. The
 it; the standing owner actions at this pause: open the integration PR
 for the working branch (the antigravity component and the whole
 v0.2.9-validation stretch are owner-smoked), and merge
-`component-catalog/outbox` so the upgrade-experience intake reaches
-`project-management` on `main`.
+`component-catalog/outbox` so its two intake items reach
+`project-management` on `main`: the upgrade-experience feature
+(2026-09-03) and, at the owner's direction on 2026-09-04, the brief
+research/design on automated per-component version validation
+(`7421a22`) — whether automated tests can stand as the verification
+evidence behind matrix edges when versions advance, folded into the
+upgrade story's "who verifies, what evidence gates the advance"
+strand; the owner framed timely advances as a V1 concern because
+running obsolete or potentially CVE-marred versions is a poor user
+experience. The evidence behind it: all three agent CLIs drifted
+within the two days 2026-09-03/04 (claude-code 2.1.236 stable vs
+2.1.260 latest; codex 0.153.0 → 0.153.2; antigravity 1.1.24 → 1.1.26
+on a latest-only channel).
 
 Previous pause, late 2026-09-02, branch head `d8f833c`: The antigravity component is validated and
 PR-ready — the owner opens the PR per the integration cadence. The
