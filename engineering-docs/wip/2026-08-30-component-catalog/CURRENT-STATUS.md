@@ -598,6 +598,17 @@ its ruling thread open):
     future jointly-verified integrations, and every lock regenerated
     (goldens, dogfood, both sample branches — `1bea8e5`, `858dc5d`).
     Suite green (537), mypy clean.
+  - **claude-code 2.1.261 (2026-09-04, matrix `embedded-12`)**: the
+    owner directed the advance to the vendor's latest (2.1.236, though
+    still the vendor's `stable` tag, stays as a prior pin). The
+    linux-x64 binary's sha256 and size match the vendor manifest and
+    the binary ran hands-on ("2.1.261 (Claude Code)"). Provisional
+    gen1/gen2 edges per precedent, converting on the next dogfood run
+    and the demo spins; goldens, the dogfood lock, and both sample
+    branches regenerated (`e39f04d`, `e3dd3f0`). Codex 0.153.2 and
+    antigravity 1.1.26 remain available upstream, awaiting the owner's
+    call on advancing before or after the spins. Suite green (537),
+    mypy clean.
   - Logged from the owner's first spin attempt (pycharm × three
     agents, strict refusal), awaiting owner triage onto a release
     list:
