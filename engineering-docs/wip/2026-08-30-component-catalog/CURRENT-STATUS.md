@@ -263,6 +263,13 @@ Set by the product owner on 2026-09-02. v0.2.9 ships when:
 2. The open v0.2.8-validation bugs are fixed, "relatively" — meaning
    the recorded fix scopes, barring new discoveries:
    - [init/run answers not persisted as authorizations](../../bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
+     (**closed 2026-09-03**: the owner exercised a different-base
+     selection at init with the v0.2.9 CLI — daemon-inspected local
+     selection, informed consent, recorded against the image ID — and
+     signed off "thoroughly as expected, no trace of previous
+     behavior"; the launch path no longer prompts, so run-once answers
+     travel the config grammar under a declared never-persisted
+     contract)
    - [formation identity claims an entrypoint the recipe never sets](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
    - [the authorization grammar cannot express denial](../../bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
      (owner-triaged onto this list 2026-09-02; **ruled and fixed
@@ -362,8 +369,19 @@ Session paused 2026-09-03, everything committed and pushed. The
 it; the standing owner actions at this pause: open the integration PR
 for the working branch (the antigravity component and the whole
 v0.2.9-validation stretch are owner-smoked), and merge
-`component-catalog/outbox` so the upgrade-experience intake reaches
-`project-management` on `main`.
+`component-catalog/outbox` so its two intake items reach
+`project-management` on `main`: the upgrade-experience feature
+(2026-09-03) and, at the owner's direction on 2026-09-04, the brief
+research/design on automated per-component version validation
+(`7421a22`) — whether automated tests can stand as the verification
+evidence behind matrix edges when versions advance, folded into the
+upgrade story's "who verifies, what evidence gates the advance"
+strand; the owner framed timely advances as a V1 concern because
+running obsolete or potentially CVE-marred versions is a poor user
+experience. The evidence behind it: all three agent CLIs drifted
+within the two days 2026-09-03/04 (claude-code 2.1.236 stable vs
+2.1.260 latest; codex 0.153.0 → 0.153.2; antigravity 1.1.24 → 1.1.26
+on a latest-only channel).
 
 Previous pause, late 2026-09-02, branch head `d8f833c`: The antigravity component is validated and
 PR-ready — the owner opens the PR per the integration cadence. The
@@ -389,8 +407,10 @@ Resume with, in order:
    denial-grammar record, and converts the two provisional agent gen2
    edges into owner-smoked evidence. The runtime-PEX override is
    retired for all codium compositions. (Correction to an earlier
-   over-claim in this file's history: two release-target bugs remain
-   open — the two scoped ones in item 2 below.) Same day, at the owner's direction, claude-code
+   over-claim in this file's history: two release-target bugs remained
+   open at that pause — the scoped ones in item 2 below; the init/run
+   authorizations record then closed later on 2026-09-03 on the
+   owner's hands-on base-selection check.) Same day, at the owner's direction, claude-code
    advanced to 2.1.236 (the Fable 5.1 release; sha256 computed locally
    and matching the vendor manifest, binary executed hands-on) with
    provisional gen1/gen2 edges pending the next dogfood run and codium
@@ -403,14 +423,18 @@ Resume with, in order:
    (2026-09-03, via this workstream's first outbox delivery):
    upgrade-friendly messages, obsolescence warnings, and the project
    of upgrading, as an important V1 feature.
-2. **The next work when the session resumes**: the two scoped v0.2.9
-   bugs, the release's remaining gate. First init/run answers persisted
-   as authorizations (self-contained, and adjacent to the freshly
-   reworked authorization grammar); then the
+2. **The next work when the session resumes**: the release's remaining
+   gate is now a single bug — the
    formation-identity/entrypoint-claim record (its enforcement half
    coordinates with `contained-display`, and its image-lifecycle half
    is now also referenced by the upgrade-experience intake sent to
-   `project-management`).
+   `project-management`). The init/run-authorizations record **closed
+   2026-09-03**: the owner picked up a different base at init with the
+   v0.2.9 CLI and signed off the UX as thoroughly as expected, no trace
+   of the previous behavior — the base-selection rework covers symptom
+   A, and the launch path no longer prompts (run-once answers travel
+   the config grammar under a declared never-persisted contract), which
+   removes symptom B's accept-and-drop prompt class by construction.
 3. Agent smokes on a gen2 base (claude-code, codex) to add their
    substrate edges and retire the runtime-PEX override for combined
    formations — antigravity already carries its gen2 edge. One smoke
@@ -507,28 +531,81 @@ its ruling thread open):
   data-as-code (pin literals with embedded lock fragments, edge tuples,
   substrate constants, evidence strings, rulings living in comments),
   hand-edited 8 times in this workstream's first three days; every
-  change hand-bumps `_MATRIX_VERSION` and regenerates golden locks via
-  an ad-hoc script that is not even checked in. Each new base release,
+  change hand-bumps `_MATRIX_VERSION` and regenerates golden locks. Each new base release,
   component bump, edge, or model amendment (three model changes on
   2026-09-02 alone: recipe-version per surface, substrate keying, the
   v0.2.9 pin) lands in the same module and inflates it further. The
   cleanup's shape is deliberately *not* designed here — it waits for
   the owner's direction and should be planned together with the
   component-update-mechanism thread above, which needs the same
-  data/model separation to exist. Minimum next step regardless of
-  design: a checked-in golden-lock regeneration tool.
+  data/model separation to exist. The minimum step is done (2026-09-03):
+  `scripts/regenerate-golden-locks.py` is checked in and imports the
+  fixture needs from the test module, so the two cannot drift.
 - **Launcher naming**: the generic project launcher still lives in
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
   touches the same code.
-- **Tictactoe devcapsule conversion** (sequenced): on 2026-08-31 the
-  `typescript_tictactoe_5inrow` sample became a submodule like its sibling
-  samples, at `git@github.com:ccozianu/devcapsule-sample-typescript-tictactoe.git`;
-  the owner created the repository and the pinned import commit is pushed,
-  so the submodule stands complete. Converting the sample into a
-  devcapsule project (committed `.devcapsule/`) deliberately waits for the
-  post-codium release that repins the base, so its lock never names a
-  base whose runtime PEX rejects codium plans.
+- **Demo-project three-provider conversion** (executed 2026-09-03,
+  awaiting the owner's spin and merges): at the owner's direction, both
+  major demo projects now author formations carrying all three curated
+  agent providers (claude-code, codex, antigravity), committed on a
+  `three-provider-formation` branch in each sample repository.
+  - *Tictactoe* (`22afd34`): the sequenced conversion is done — the
+    committed `.devcapsule/` authors `frontend-ide, node` plus the three
+    agents, and the regenerated lock (embedded-9, v0.2.9 base,
+    claude-code 2.1.236) is byte-identical to the owner's five-way smoke
+    lock, so the spin re-exercises a verified formation. The sequencing
+    condition (a base whose runtime accepts codium plans) was met by
+    v0.2.9.
+  - *Trading-research* (`6ee2ccb`): `antigravity-agent` joins the need;
+    the lock advances from the ancient `dogfood-v1`/v026 lock to
+    embedded-9 on v0.2.9 via `--unverified` (the flag's first real
+    outing), with exactly one named unverified combination — pycharm
+    2026.2.0.1 on the gen2 substrate. The owner's spin of this formation
+    is the pending evidence for the pycharm gen2 edge; if it passes,
+    that edge enters the matrix and every surface family is on v0.2.9.
+  - Both regenerations ran non-interactively from the capsule; init's
+    loud missing-answer refusal named the exact `--authorize` remedies
+    (the reworked grammar behaving as designed). Owner actions: spin
+    each project (`init` then `run` on a checkout of the branch), merge
+    the sample branches, then the monorepo submodule pins advance.
+  - Before the spins, the owner relayed codex's own update notice and
+    directed the pin advance to **codex 0.153.0** (matrix
+    `embedded-10`): tarball sha512 verified against the npm registry
+    integrity, sha256 computed from the same download, member set
+    unchanged since 0.145.0, extracted binary executed hands-on
+    (`codex-cli 0.153.0`); acp-version metadata carried forward
+    unchanged. Three provisional entries pending the spins/next dogfood
+    run: gen1 and gen2 edges plus the codex×pycharm coupling pair
+    (0.153.0, 2026.2.0.1) — without the coupling pair, newest-verified
+    selection would strand every codex×pycharm formation. The repo's
+    dogfood lock regenerated onto embedded-10 (retiring the last
+    hand-authored `dogfood-v1` lock), golden fixtures regenerated via
+    the newly checked-in `scripts/regenerate-golden-locks.py`, and both
+    sample branches carry the bump as follow-on commits (`4fffeb1`,
+    `2ba6e03`). Suite green (537), mypy clean.
+  - **Coupling removal ruling (2026-09-03, matrix `embedded-11`)**: the
+    owner ruled the codex×pycharm coupling removed until further notice.
+    The jetbrains-ai-assistant integration it stood for is not a
+    delivery we want: the IDE's AI plugin installs its *own* codex copy
+    and routes usage through the developer's JetBrains-account quota on
+    JetBrains backends, ignoring the logged-in codex already on PATH.
+    Code reading confirmed the coupling and the `integration`/
+    `acp-version` pin metadata had no consumer outside the matrix —
+    DevCapsule never wired codex into PyCharm; the lock merely
+    advertised an integration nothing delivered. Both are gone: codex is
+    a standalone CLI component, the coupling *mechanism* stays for
+    future jointly-verified integrations, and every lock regenerated
+    (goldens, dogfood, both sample branches — `1bea8e5`, `858dc5d`).
+    Suite green (537), mypy clean.
+  - Logged from the owner's first spin attempt (pycharm × three
+    agents, strict refusal), awaiting owner triage onto a release
+    list:
+    [the resolution refusal names only the last base tried and no remedy](../../bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
+    — the message reports the oldest base's gap, hides that v0.2.9 is
+    one pycharm edge short, and never names `--unverified`; the
+    recorded fix scope is message-only in `resolve()`. The unblock
+    itself is `--unverified` on the same command.
 
 - **Resolution-matrix redesign** (implemented 2026-09-01): the owner
   accepted D-0006 and D-0007 and the implementation is on this branch.
