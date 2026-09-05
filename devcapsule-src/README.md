@@ -552,10 +552,16 @@ state slot mounted at `/home/devcapsule/.codex`, and its Python component
 interface derives `CODEX_HOME` from that slot for the IDE process. Projects
 that do not select Codex receive none of these contributions.
 
-Codex's default Linux sandbox needs unprivileged user namespaces, which the
-capsule's hardening denies; its Landlock sandbox works there. Until the
-component delivers that setting, put `use_legacy_landlock = true` in
-`$CODEX_HOME/config.toml` or pass `-c use_legacy_landlock=true`.
+The capsule is the sandbox. When a checkout's `codex/home` slot is created,
+the component seeds `~/.codex/config.toml` with approvals off
+(`approval_policy = "never"`), no inner sandbox
+(`sandbox_mode = "danger-full-access"`), and `use_legacy_landlock = true` so a
+sandboxed mode still works if you switch one on: codex's default bubblewrap
+sandbox needs unprivileged user namespaces, which capsule hardening denies. The
+seed is written once, as you, only when the file is absent; edit or delete it
+freely. Keep any keys you add above the first `[table]` header, because codex
+appends tables such as `[tui.model_availability_nux]` to the same file, and a
+key placed after a header belongs to that table.
 
 Authenticate naturally from a terminal inside the running capsule:
 

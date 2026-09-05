@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-13"
+_MATRIX_VERSION = "embedded-14"
 
 
 # --------------------------------------------------------------------------
@@ -606,6 +606,38 @@ _CODEX_0_153_0 = _ComponentPin(
     },
 )
 
+# 0.153.4 advances the pin at the owner's direction 2026-09-05, together
+# with the npm delivery and the seeded configuration: the registry's
+# `latest` tag on that day (published 2026-09-04). Both tarballs' sha512
+# matched the registry integrity fields, the sha256 values were computed
+# from the same downloads, the platform archive's member set is unchanged
+# from 0.153.0, and the extracted binary was executed hands-on
+# (`codex-cli 0.153.4`) including loading the seeded config.toml.
+_CODEX_0_153_4 = _ComponentPin(
+    component_id="codex",
+    version="0.153.4",
+    lock_table={
+        "version": "0.153.4",
+        "delivery-policy": "local-materialization",
+        "license": "Apache-2.0",
+        "npm-package": "@openai/codex",
+        "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.153.4.tgz",
+        "sha256": "fd04263c1adfa1d285c6c0ad86a97cab508d3012ee9eab80a99f773cc4b2fb3a",
+        "artifacts": {
+            "linux-amd64": {
+                "npm-package": "@openai/codex-linux-x64",
+                "url": (
+                    "https://registry.npmjs.org/@openai/codex/-/"
+                    "codex-0.153.4-linux-x64.tgz"
+                ),
+                "sha256": (
+                    "54818cb9fce3360cc6e44cfc5a96952cd5c1243efb43cbe488e11dda84663e08"
+                ),
+            }
+        },
+    },
+)
+
 _CLAUDE_CODE_2_1_227 = _ComponentPin(
     component_id="claude-code",
     version="2.1.227",
@@ -741,7 +773,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),
-        "codex": (_CODEX_0_145_0, _CODEX_0_153_0),
+        "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4),
         "claude-code": (
             _CLAUDE_CODE_2_1_227,
             _CLAUDE_CODE_2_1_236,
@@ -790,6 +822,25 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             _SUBSTRATE_GEN2,
             "provisional: owner-directed CLI update 2026-09-03, pending the "
             "demo-project three-provider spins",
+        ),
+        # 0.153.4 advances the pin with the npm delivery rebuild at the
+        # owner's direction 2026-09-05; both substrate edges are provisional
+        # pending the owner's smoke of a codex-carrying formation with the
+        # npm layout and the seeded configuration, per the provisional-edge
+        # precedent.
+        _VerifiedEdge(
+            "codex",
+            "0.153.4",
+            _SUBSTRATE_GEN1,
+            "provisional: owner-directed CLI update 2026-09-05, pending the "
+            "next dogfood run on the npm layout",
+        ),
+        _VerifiedEdge(
+            "codex",
+            "0.153.4",
+            _SUBSTRATE_GEN2,
+            "provisional: owner-directed CLI update 2026-09-05, pending the "
+            "owner's codium formation smoke on the npm layout",
         ),
         _VerifiedEdge("claude-code", "2.1.227", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(

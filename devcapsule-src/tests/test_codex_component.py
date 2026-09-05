@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import inspect
+import tomllib
 
 import pytest
 
 from devcapsule.components import ComponentDefinition
 from devcapsule.compat import CliError
 from devcapsule.components.codex import (
+    CODEX_CONFIG_SEED,
     CODEX_PACKAGE,
     DEFINITION,
     CodexComponent,
@@ -85,6 +87,28 @@ def test_codex_implements_component_contract_and_declares_the_npm_packages() -> 
     assert platform.url == "https://example.test/codex-0.145.0-linux-x64.tgz"
     assert platform.sha256 == "c" * 64
     assert platform.environment == ()
+
+
+def test_codex_seeds_a_yolo_configuration_into_a_fresh_home_slot() -> None:
+    (seed,) = DEFINITION.state_seeds()
+
+    assert seed.slot == "home"
+    assert seed.relative_path == "config.toml"
+    assert seed.content == CODEX_CONFIG_SEED
+    # Owner ruling 2026-09-05: the capsule is the sandbox. The seed is a
+    # complete, valid TOML document whose keys are all top-level, so the
+    # tables codex appends later cannot capture them.
+    parsed = tomllib.loads(seed.content)
+    assert parsed == {
+        "approval_policy": "never",
+        "sandbox_mode": "danger-full-access",
+        "use_legacy_landlock": True,
+    }
+    first_key_line = next(
+        line for line in seed.content.splitlines() if line and not line.startswith("#")
+    )
+    assert first_key_line.startswith("approval_policy")
+    assert "[" not in seed.content.replace("[table]", "")
 
 
 def test_codex_lock_metadata_must_name_the_meta_package_and_platform_alias() -> None:

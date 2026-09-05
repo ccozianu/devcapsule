@@ -276,8 +276,14 @@ the owner should know: the tarballs stay beside the manifest (about
 135 MB per codex-carrying formation, so the recorded `package-lock.json`
 describes an install npm could repeat), and node is now a runtime
 dependency of codex — assumed shipped by every base for now, per the
-owner ("we'll resolve dependencies later"). See *Open Threads* for
-the sandbox-configuration half.
+owner ("we'll resolve dependencies later"). The same day the owner
+ruled the sandbox half (*the capsule is the sandbox*) and directed the
+pin to 0.153.4: see the *Codex sandbox configuration* open thread for
+the seeded `config.toml` and the new `state_seeds` contract. The
+in-capsule smoke of the npm layout ran on the scratch tictactoe
+checkout (codium × codex 0.153.0 on v0.2.9): build clean, launcher on
+PATH, all helpers present, known-good generation `20260905T135119Z`
+recorded.
 
 ## Release Target: v0.2.9
 
@@ -535,22 +541,26 @@ its ruling thread open):
 
 ## Open Threads
 
-- **Codex sandbox configuration** (opened 2026-09-05, owner decision
-  needed): with the npm layout in place, codex's default bubblewrap
-  sandbox fails under capsule hardening for a different reason —
-  unprivileged user namespaces are denied by the seccomp filter and the
-  empty capability set (tested inside this capsule: `unshare -Ur` and the
-  bundled `bwrap` both refuse). Codex's Landlock sandbox
-  (`use_legacy_landlock = true`) works under the same hardening, as root
-  and as uid 1000 with all capabilities dropped. The setting lives in
-  `~/.codex/config.toml`, inside the user-owned `codex/home` slot, so
-  the component cannot bake it into the image; candidates are a
-  component-declared default the launcher seeds into an empty slot, a
-  documented adopter step (the README now documents the manual form),
-  or relaxing the hardening (not recommended). Also note for the matrix:
-  the codex edges' evidence predates the npm layout; the owner's next
-  smoke of a codex-carrying formation is the evidence for the new
-  installation shape.
+- **Codex sandbox configuration** (opened and ruled 2026-09-05): with
+  the npm layout in place, codex's default bubblewrap sandbox failed
+  under capsule hardening for a different reason — unprivileged user
+  namespaces are denied by the seccomp filter and the empty capability
+  set (tested inside this capsule: `unshare -Ur` and the bundled `bwrap`
+  both refuse); Landlock worked but keeps the `sandbox` subcommand's
+  workspace read-only and is deprecated in codex 0.153. The owner ruled
+  *the capsule is the sandbox* and chose the seeded posture: a new
+  `ComponentDefinition.state_seeds` contract lets a component declare
+  default files for its slots; the host launcher writes them into a
+  freshly created managed slot as the invoking user, only when absent,
+  never into adopted directories. Codex seeds `approval_policy =
+  "never"`, `sandbox_mode = "danger-full-access"`, `use_legacy_landlock
+  = true` (validated against the 0.153.0 and 0.153.4 binaries; the owner
+  validated the pair by hand in the dogfood capsule). The pin advanced to
+  0.153.4 (matrix `embedded-14`, provisional edges). Still open: the
+  codex edges' evidence predates the npm layout and the seed; the owner's
+  next smoke of a codex-carrying formation on a fresh slot is the
+  evidence, and `use_legacy_landlock`'s deprecation means the sandboxed
+  fallback needs re-checking at the next codex advance.
 - **Base rebuild** (updated 2026-09-03): the codex and claude-code gen2
   edges entered provisionally (matrix `embedded-8`) when the owner's
   five-way formation — codium × antigravity × claude-code × codex —

@@ -29,7 +29,7 @@ from devcapsule.commands.framework import (
     add_carrier_options,
     carrier_answers,
 )
-from devcapsule.components.catalog import INTERACTIVE_SURFACES
+from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
 from devcapsule.config_history import record_known_good_configuration
 from devcapsule.configurations.pycharm import (
     DockerMode,
@@ -1542,8 +1542,31 @@ def _component_state_mounts(
         source.mkdir(parents=True, exist_ok=True, mode=0o700)
         if configured is None:
             source.chmod(0o700)
+            _seed_component_state(source, declaration)
         mounts[name] = (source, declaration.container_path)
     return mounts
+
+
+def _seed_component_state(source: Path, declaration: Any) -> None:
+    """Place a component's declared default files into its managed slot.
+
+    Written as the invoking user, before the daemon mounts the slot, and
+    only when the file is absent: the slot is developer-owned state, so an
+    existing file — however it got there — is never rewritten. Adopted
+    directories never reach here (see the caller).
+    """
+
+    definition = COMPONENTS.get(str(declaration.component_id))
+    if definition is None:
+        return
+    for seed in definition.state_seeds():
+        if seed.slot != declaration.slot_name:
+            continue
+        target = source / seed.relative_path
+        if target.exists():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        atomic_write(target, seed.content)
 
 
 def _managed_binding_path(root: Path, declaration: Any) -> Path:

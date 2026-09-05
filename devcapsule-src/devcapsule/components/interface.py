@@ -29,6 +29,23 @@ class SecretInputDeclaration:
 
 
 @dataclass(frozen=True)
+class StateSeedDeclaration:
+    """A default file a component wants present in one of its state slots.
+
+    The slot is developer-owned, checkout-scoped state, so the host launcher
+    writes the seed as the invoking user and only when the file is absent:
+    a seed is a starting point the developer may edit or delete, never a
+    setting the component re-imposes.  Adopted directories (``project state
+    adopt``) are the developer's own and are never seeded.
+    """
+
+    slot: str
+    relative_path: str
+    content: str
+    description: str
+
+
+@dataclass(frozen=True)
 class AcquisitionContract:
     """A vendor acquisition the developer must authorize before materialization.
 
@@ -108,6 +125,17 @@ class ComponentDefinition(ABC):
     @abstractmethod
     def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
         """Declare secret inputs that a developer may explicitly bind."""
+
+    def state_seeds(self) -> tuple[StateSeedDeclaration, ...]:
+        """Default files to place in this component's state slots when absent.
+
+        Most components need none (the default).  A component whose tool
+        reads its configuration from a checkout-scoped slot, and whose
+        DevCapsule-appropriate defaults differ from the tool's own, declares
+        them here so a fresh checkout starts configured.
+        """
+
+        return ()
 
     @abstractmethod
     def locked_artifacts(

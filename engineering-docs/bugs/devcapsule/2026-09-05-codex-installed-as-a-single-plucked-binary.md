@@ -91,16 +91,39 @@ launcher to the platform binary, all six archive members are present
 beside it, and a sandboxed command succeeds under Landlock both as root
 and as uid 1000 with every capability dropped.
 
-## What The Fix Does Not Cover
+## The Sandbox Half (ruled and delivered 2026-09-05)
 
 Codex's default sandbox is bubblewrap, which needs unprivileged user
 namespaces. The capsule's hardening (seccomp filter, empty capability
-set) denies them, so the bundled bwrap now fails with "no permissions
-to create a new namespace" instead of "not found". Codex's Landlock
-sandbox (`use_legacy_landlock = true`) works under that hardening. How
-the component delivers that default — it lives in the user-owned
-`~/.codex` state slot — is an open thread for the owner; relaxing the
-hardening is the alternative and is not recommended.
+set) denies them, so with the layout fixed the bundled bwrap fails with
+"no permissions to create a new namespace" instead of "not found".
+Codex's Landlock sandbox (`use_legacy_landlock = true`) works under that
+hardening but keeps the workspace read-only in the `sandbox` subcommand
+and is marked deprecated by codex 0.153.
+
+The owner ruled: **the capsule is the sandbox.** The component now
+declares a state seed (`ComponentDefinition.state_seeds`) that the host
+launcher writes into a freshly created `codex/home` slot, as the
+invoking user and only when `config.toml` is absent:
+
+```toml
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+use_legacy_landlock = true
+```
+
+Under full access codex invokes no sandbox helper at all, so bubblewrap
+never comes up; the Landlock flag keeps a sandboxed mode functional if a
+developer switches one on. The owner validated the pair by hand in the
+dogfood capsule the same day ("codex does run"). One pitfall found on
+the way and reproduced against the binary: codex appends tables such as
+`[tui.model_availability_nux]` to its own config file, so a key appended
+after them is misparsed as a member of that table ("expected u32"); the
+seed is a complete file with its keys first, and the README says where
+later keys go.
+
+The pin also advanced to 0.153.4 (registry `latest`, published
+2026-09-04) at the owner's direction, with provisional substrate edges.
 
 ## Reproducibility
 
@@ -116,6 +139,7 @@ hardening: bwrap's user-namespace refusal. With
 
 ## Verification Target
 
-The owner rebuilds a codex-carrying formation with the fixed client and
-runs an agent turn that executes a shell command, with
-`use_legacy_landlock = true` in the checkout's `~/.codex/config.toml`.
+The owner rebuilds a codex-carrying formation with the fixed client on a
+checkout whose `codex/home` slot is new (or whose `config.toml` is
+absent), sees the seeded configuration in place, and runs an agent turn
+that executes a shell command without an approval prompt.

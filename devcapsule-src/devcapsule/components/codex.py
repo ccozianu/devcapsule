@@ -13,7 +13,7 @@ from devcapsule.components import (
     SecretInputDeclaration,
     StateEnvironmentDeclaration,
 )
-from devcapsule.components.interface import resolved_state_environment
+from devcapsule.components.interface import StateSeedDeclaration, resolved_state_environment
 
 
 CODEX_HOME = "/home/devcapsule/.codex"
@@ -40,6 +40,32 @@ def codex_bin(version: str) -> str:
     return f"{codex_installation(version)}/node_modules/.bin"
 
 
+# The configuration a fresh checkout's ~/.codex starts with (product-owner
+# ruling 2026-09-05). The capsule is the sandbox: Docker's isolation is the
+# boundary DevCapsule enforces, so inside it codex runs with approvals off
+# and no inner sandbox — the posture codex itself describes as "intended
+# solely for running in environments that are externally sandboxed". The
+# inner sandbox could not work anyway: codex's bubblewrap needs unprivileged
+# user namespaces, which capsule hardening denies. use_legacy_landlock keeps
+# a sandboxed mode functional should the developer switch one on; codex
+# 0.153 lists the flag as deprecated, so it may need revisiting.
+#
+# Top-level keys must precede any table, and codex appends tables such as
+# [tui.model_availability_nux] to this file on its own, so the seed is the
+# whole initial file and a developer adding keys later must add them above
+# the first table header.
+CODEX_CONFIG_SEED = """\
+# Seeded by DevCapsule when this checkout's codex state was created; edit or
+# delete freely, DevCapsule never rewrites it. The capsule is the sandbox:
+# codex runs here with approvals off and without its inner sandbox, which
+# needs user namespaces the capsule denies. Top-level keys stay above the
+# first [table]; codex appends tables below on its own.
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+use_legacy_landlock = true
+"""
+
+
 class CodexComponent(ComponentDefinition):
     """Trusted Codex component implementation."""
 
@@ -53,6 +79,19 @@ class CodexComponent(ComponentDefinition):
 
     def state_environment(self) -> tuple[StateEnvironmentDeclaration, ...]:
         return (StateEnvironmentDeclaration("CODEX_HOME", "home"),)
+
+    def state_seeds(self) -> tuple[StateSeedDeclaration, ...]:
+        return (
+            StateSeedDeclaration(
+                slot="home",
+                relative_path="config.toml",
+                content=CODEX_CONFIG_SEED,
+                description=(
+                    "Codex configuration: approvals off and no inner sandbox, because "
+                    "the capsule is the sandbox."
+                ),
+            ),
+        )
 
     def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
         return (
