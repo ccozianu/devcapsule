@@ -502,3 +502,45 @@ def test_generated_lock_passes_the_real_loaders(tmp_path: Path) -> None:
     assert registry.node("claude-code-download").family == "authorize"
     assert registry.node("codex/openai-api-key").providers == ("host-environment",)
     assert registry.node("pycharm/system").family == "bind"
+
+
+# ---------------------------------------------------------------------------
+# The refusal message (2026-09-03 bug record; owner rulings 2026-09-05):
+# every base's gap is named, newest first, and every refusal names
+# --unverified so adopters can try new combinations and report back.
+
+
+def test_refusal_names_every_base_gap_newest_first_and_the_unverified_remedy() -> None:
+    # ide is verified only on the newer base, the agent only on the older:
+    # each base fails for its own distinct reason.
+    matrix = _synthetic_matrix(
+        edges=(
+            _VerifiedEdge("ide", "2.0", "s2", "smoke"),
+            _VerifiedEdge("agent", "0.5", "s1", "smoke"),
+        )
+    )
+    with pytest.raises(ResolutionError) as refusal:
+        matrix.resolve(["the-ide", "the-agent"])
+    message = str(refusal.value)
+    # Newest base first, each with its own gap on its own line.
+    assert message.index("v2: no verified agent") < message.index("v1: no verified ide")
+    assert "Pass --unverified" in message
+
+
+def test_exhausted_unverified_refusal_does_not_recommend_the_flag_again() -> None:
+    # java and node are each shipped by one base but by no single base, so
+    # even the unverified fallback has nothing to offer.
+    matrix = _synthetic_matrix(
+        edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),),
+        bases=(
+            _BasePin("v1", "s1", frozenset({"python", "java"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", frozenset({"python", "node"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+        ),
+    )
+    with pytest.raises(ResolutionError) as refusal:
+        matrix.resolve(["the-ide", "java", "node"], allow_unverified=True)
+    message = str(refusal.value)
+    assert "v2: does not ship java" in message
+    assert "v1: does not ship node" in message
+    assert "Pass --unverified" not in message
+    assert "--unverified cannot help here" in message

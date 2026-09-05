@@ -541,6 +541,14 @@ its ruling thread open):
   data/model separation to exist. The minimum step is done (2026-09-03):
   `scripts/regenerate-golden-locks.py` is checked in and imports the
   fixture needs from the test module, so the two cannot drift.
+- **Per-component layer caching** (owner-stated future work,
+  2026-09-05, stated with the entrypoint ruling): optimize the
+  materialization build so component contributions are cached in
+  layers that provide the parts — an `npm install` or `curl … | sh`
+  should run once on an adopter's machine, not once per formation
+  rebuild. Dovetails with the upgrade-experience intake (cheap
+  rebuilds make pin advances cheap) and the formation-identity fix's
+  thin-derivative build.
 - **Launcher naming**: the generic project launcher still lives in
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
@@ -598,14 +606,40 @@ its ruling thread open):
     future jointly-verified integrations, and every lock regenerated
     (goldens, dogfood, both sample branches — `1bea8e5`, `858dc5d`).
     Suite green (537), mypy clean.
-  - Logged from the owner's first spin attempt (pycharm × three
-    agents, strict refusal), awaiting owner triage onto a release
-    list:
-    [the resolution refusal names only the last base tried and no remedy](../../bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
-    — the message reports the oldest base's gap, hides that v0.2.9 is
-    one pycharm edge short, and never names `--unverified`; the
-    recorded fix scope is message-only in `resolve()`. The unblock
-    itself is `--unverified` on the same command.
+  - **claude-code 2.1.261 (2026-09-04, matrix `embedded-12`)**: the
+    owner directed the advance to the vendor's latest (2.1.236, though
+    still the vendor's `stable` tag, stays as a prior pin). The
+    linux-x64 binary's sha256 and size match the vendor manifest and
+    the binary ran hands-on ("2.1.261 (Claude Code)"). Provisional
+    gen1/gen2 edges per precedent, converting on the next dogfood run
+    and the demo spins; goldens, the dogfood lock, and both sample
+    branches regenerated (`e39f04d`, `e3dd3f0`). Codex 0.153.2 and
+    antigravity 1.1.26 remain available upstream, awaiting the owner's
+    call on advancing before or after the spins. Suite green (537),
+    mypy clean.
+  - **Formation-identity fix, entrypoint half (2026-09-05)**: ruled by
+    the owner ("base carries no real entrypoint; the launcher sets it
+    in the derived image; an entrypoint-only rebuild is almost a
+    no-op") and implemented the same day: the materialization recipe
+    now emits `ENTRYPOINT`/`CMD` from the descriptor, verification
+    compares the claim to the image's actual boot configuration,
+    pre-enforcement images self-heal via a configuration-only rebuild
+    onto the same tag (live-smoked: 0.92 s on a 7.58 GB formation),
+    materialization explains *why* it runs (first formation, or the
+    descriptor fields differing from the nearest existing one), and
+    prior formation images are reported with sizes rather than
+    silently accumulating. Reap-vs-cleanup-verb remains the bug's open
+    owner decision; base-without-entrypoint lands with the next base
+    release. Awaiting the owner's smoke. Suite green (542), mypy
+    clean.
+  - [The resolution refusal names only the last base tried and no remedy](../../bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
+    — logged from the owner's first spin attempt, then **ruled and
+    fixed 2026-09-05** at the owner's direction: every refusal now
+    lists each base's gap newest-first and names `--unverified`
+    (adopters must be able to try new combinations and report back);
+    an already-`--unverified` refusal says the flag cannot help
+    instead of recommending it again. Closes on the owner seeing the
+    new message in practice.
 
 - **Resolution-matrix redesign** (implemented 2026-09-01): the owner
   accepted D-0006 and D-0007 and the implementation is on this branch.

@@ -220,7 +220,7 @@ COMMAND = ImagesCommand
 
 def _build_environment(*, project: Path | None, base_override: str | None, alias: str | None) -> int:
     selected = fresh_resolved_project(project or Path("."))
-    realized = realize_environment(selected, base_override=base_override)
+    realized = realize_environment(selected, base_override=base_override, report=print)
     locked = realized.locked
     canonical_details = realized.image
     if alias is not None:

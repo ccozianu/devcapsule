@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-11"
+_MATRIX_VERSION = "embedded-12"
 
 
 # --------------------------------------------------------------------------
@@ -240,17 +240,21 @@ class ResolutionMatrix:
             and capability not in self._ancillary_capabilities
         }
 
-        failure = ""
+        # Every base's failure is kept and reported newest-first: the newest
+        # base's gap is usually the interesting one (often a single missing
+        # edge), and a message naming only the oldest base's problem sent the
+        # owner down the wrong path (2026-09-03 bug record).
+        failures: list[str] = []
         for base in reversed(self._bases):
             missing_from_base = sorted(base_needs - base.satisfies)
             if missing_from_base:
-                failure = (
-                    f"base {base.mnemonic} does not ship "
-                    + ", ".join(missing_from_base)
+                failures.append(
+                    f"{base.mnemonic}: does not ship " + ", ".join(missing_from_base)
                 )
                 continue
             chosen, failure = self._verified_selection(required, base)
             if chosen is None:
+                failures.append(f"{base.mnemonic}: {failure}")
                 continue
             return self._formation(capabilities, surface_id, base, chosen)
         if allow_unverified:
@@ -260,10 +264,29 @@ class ResolutionMatrix:
                 return self._formation(
                     capabilities, surface_id, base, chosen, unverified=unverified
                 )
+        # Every refusal names --unverified (owner ruling 2026-09-05):
+        # adopters must be able to try new components and bases ahead of the
+        # matrix and report back. Base capabilities stay hard constraints —
+        # the wording says what the flag does and does not bypass.
+        if allow_unverified:
+            remedy = (
+                "--unverified cannot help here: a base that does not ship a "
+                "needed toolchain is a hard refusal."
+            )
+        else:
+            remedy = (
+                "Pass --unverified to resolve past missing verification with "
+                "a gentle warning; the generated lock names every unverified "
+                "combination. A base that does not ship a needed toolchain "
+                "remains a hard refusal."
+            )
         raise ResolutionError(
             "No verified combination satisfies "
             + ", ".join(capabilities)
-            + f" on {self._platform}: {failure}"
+            + f" on {self._platform}:\n  "
+            + "\n  ".join(failures)
+            + "\n"
+            + remedy
         )
 
     def _selected_surface(self, capabilities: tuple[str, ...]) -> str:
@@ -624,6 +647,34 @@ _CLAUDE_CODE_2_1_236 = _ComponentPin(
     },
 )
 
+# 2.1.261 advances the pin at the owner's direction 2026-09-04 (the vendor's
+# latest, built the same day). The linux-x64 binary's sha256 and size match
+# the vendor manifest, and the binary was executed hands-on
+# ("2.1.261 (Claude Code)").
+_CLAUDE_CODE_2_1_261 = _ComponentPin(
+    component_id="claude-code",
+    version="2.1.261",
+    lock_table={
+        "version": "2.1.261",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "claude-code-download",
+        "license": "Proprietary",
+        "terms-url": "https://www.anthropic.com/legal/commercial-terms",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": (
+                    "https://downloads.claude.ai/claude-code-releases/"
+                    "2.1.261/linux-x64/claude"
+                ),
+                "sha256": (
+                    "4ae40dd1784e85753e742e09f267d29ecbb82890361ad3817d27560866d364a6"
+                ),
+            }
+        },
+    },
+)
+
 # The official Antigravity channel serves latest-only, but the artifacts are
 # versioned and immutable in GCS; this pin is a deliberate curation. The
 # sha256 was computed locally from the downloaded archive (2026-09-02, and
@@ -680,7 +731,11 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),
         "codex": (_CODEX_0_145_0, _CODEX_0_153_0),
-        "claude-code": (_CLAUDE_CODE_2_1_227, _CLAUDE_CODE_2_1_236),
+        "claude-code": (
+            _CLAUDE_CODE_2_1_227,
+            _CLAUDE_CODE_2_1_236,
+            _CLAUDE_CODE_2_1_261,
+        ),
         "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24,),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
@@ -750,6 +805,24 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             _SUBSTRATE_GEN2,
             "provisional: owner-directed CLI update 2026-09-03, pending the "
             "next codium-formation smoke",
+        ),
+        # 2.1.261 advances the pin at the owner's direction 2026-09-04; both
+        # substrate edges are provisional pending the next dogfood run (gen1)
+        # and the demo-project spins (gen2), per the provisional-edge
+        # precedent.
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.261",
+            _SUBSTRATE_GEN1,
+            "provisional: owner-directed CLI update 2026-09-04, pending the "
+            "next dogfood run",
+        ),
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.261",
+            _SUBSTRATE_GEN2,
+            "provisional: owner-directed CLI update 2026-09-04, pending the "
+            "demo-project three-provider spins",
         ),
         _VerifiedEdge("postgresql-client", "16", _SUBSTRATE_GEN1, _DOGFOOD_E2E),
         _VerifiedEdge(

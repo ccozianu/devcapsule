@@ -24,7 +24,9 @@ from devcapsule.components.catalog import (
 from devcapsule.components import LockedArtifactDeclaration
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.image_build import (
+    CommandComponent,
     DirectoryComponent,
+    EntrypointComponent,
     EnvComponent,
     ExecComponent,
     FileComponent,
@@ -67,6 +69,12 @@ class ImageDetails:
     labels: Mapping[str, str]
     operating_system: str
     architecture: str
+    # The image's actual boot configuration and size; () / 0 when the caller
+    # has no daemon answer (e.g. synthetic details in tests). Verification
+    # compares the boot configuration against the descriptor's claim.
+    entrypoint: tuple[str, ...] = ()
+    command: tuple[str, ...] = ()
+    size_bytes: int = 0
 
 
 @dataclass(frozen=True)
@@ -448,6 +456,38 @@ def surface_materialization_spec(
                     (f"devcapsule.component.{profile.family}.sha256", artifact.sha256.lower()),
                 )
             ),
+            # The recipe enforces the descriptor's boot contract (owner ruling
+            # 2026-09-05): a derived image's ENTRYPOINT/CMD override the
+            # base's, so the claim is true on every base, tini-wrapped v026
+            # included.
+            EntrypointComponent(tuple(descriptor["runtime"]["entrypoint"])),
+            CommandComponent(tuple(descriptor["runtime"]["command"])),
+        ),
+    )
+
+
+def runtime_enforcement_spec(
+    *,
+    image: str,
+    source_reference: str,
+    descriptor: Mapping[str, Any],
+) -> ImageBuildSpec:
+    """A boot-configuration-only rebuild of an existing formation image.
+
+    Building FROM the source with no other components reuses every layer and
+    touches only the image configuration — the owner's 2026-09-05 ruling that
+    an entrypoint-only rebuild must be almost a no-op. The source is a tag
+    (BuildKit cannot address a local image by ID); callers must hold a lock
+    that keeps the tag from moving between inspection and this rebuild.
+    """
+
+    runtime = descriptor["runtime"]
+    return ImageBuildSpec(
+        image=image,
+        base_image=source_reference,
+        components=(
+            EntrypointComponent(tuple(runtime["entrypoint"])),
+            CommandComponent(tuple(runtime["command"])),
         ),
     )
 
@@ -465,6 +505,8 @@ def ensure_materialized_surface(
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",
+    report: Callable[[str], None] | None = None,
+    list_formations: Callable[[], tuple[ImageDetails, ...]] | None = None,
 ) -> tuple[str, bool]:
     profile = surface_profile(component_id)
     descriptor = formation_descriptor(
@@ -478,12 +520,39 @@ def ensure_materialized_surface(
     )
     image = canonical_image_name(descriptor, component_id)
     identity = formation_identity(descriptor)
+    say = report or (lambda _message: None)
     with _exclusive_lock(cache_root / "locks" / "materializations" / f"{identity}.lock"):
         existing = inspect_image(image)
         if existing is not None:
-            verify_materialized_image(existing, descriptor=descriptor, canonical_name=image)
+            _verify_materialized_labels(existing, descriptor=descriptor, canonical_name=image)
+            drift = runtime_config_drift(existing, descriptor)
+            if not drift:
+                return image, False
+            # The record is right and the image content is right; only the
+            # boot configuration predates enforcement. Repair in place with a
+            # configuration-only build (owner ruling 2026-09-05) instead of
+            # refusing or rebuilding gigabytes.
+            say(
+                "Enforcing the recorded boot contract on the existing formation "
+                f"(configuration-only rebuild): {'; '.join(drift)}"
+            )
+            # FROM the canonical tag: the materialization lock held here
+            # keeps it from moving between the inspection above and this
+            # rebuild, and the rebuild then re-tags it.
+            build(
+                runtime_enforcement_spec(
+                    image=image, source_reference=image, descriptor=descriptor
+                )
+            )
+            repaired = inspect_image(image)
+            if repaired is None:
+                raise CliError(
+                    f"Boot-contract enforcement did not produce canonical image {image!r}."
+                )
+            verify_materialized_image(repaired, descriptor=descriptor, canonical_name=image)
             return image, False
 
+        _explain_materialization(say, descriptor, image, component_id, list_formations)
         acquisition = acquire_artifact(artifact, cache_root)
         ancillary_acquisitions = tuple(
             (
@@ -544,7 +613,74 @@ def ensure_materialized_surface(
         if completed is None:
             raise CliError(f"Docker build completed without creating canonical image {image!r}.")
         verify_materialized_image(completed, descriptor=descriptor, canonical_name=image)
+        _report_prior_formations(say, image, component_id, list_formations)
         return image, True
+
+
+def _stored_descriptor(details: ImageDetails) -> Mapping[str, Any] | None:
+    try:
+        parsed = json.loads(details.labels.get("devcapsule.materialization.descriptor", ""))
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _explain_materialization(
+    say: Callable[[str], None],
+    descriptor: Mapping[str, Any],
+    image: str,
+    component_id: str,
+    list_formations: Callable[[], tuple[ImageDetails, ...]] | None,
+) -> None:
+    """Say why materialization is about to run: first formation, or which
+    descriptor fields differ from the nearest existing one — so identity
+    churn is visible the day it ships, not months later."""
+
+    if list_formations is None:
+        return
+    nearest: tuple[int, str, tuple[str, ...]] | None = None
+    for candidate in list_formations():
+        stored = _stored_descriptor(candidate)
+        if stored is None:
+            continue
+        differences = descriptor_differences(descriptor, stored)
+        if nearest is None or len(differences) < nearest[0]:
+            nearest = (len(differences), candidate.reference, differences)
+    if nearest is None:
+        say(f"Materializing {image}: first {component_id} formation on this host.")
+        return
+    _count, reference, differences = nearest
+    named = ", ".join(differences[:6]) + (" …" if len(differences) > 6 else "")
+    say(f"Materializing {image}: differs from {reference} in {named}.")
+
+
+def _report_prior_formations(
+    say: Callable[[str], None],
+    image: str,
+    component_id: str,
+    list_formations: Callable[[], tuple[ImageDetails, ...]] | None,
+) -> None:
+    """Name the prior formation images that remain after a build.
+
+    Reporting is the ruled minimum for the superseded-image lifecycle (the
+    2026-09-02 formation-identity record); whether they are reaped or get a
+    cleanup verb is an open owner decision. A prior formation may still be
+    current for another checkout sharing the surface, so this names rather
+    than judges.
+    """
+
+    if list_formations is None:
+        return
+    prior = [details for details in list_formations() if details.reference != image]
+    if not prior:
+        return
+    total = sum(details.size_bytes for details in prior)
+    names = ", ".join(sorted(details.reference for details in prior))
+    size_note = f" ({total / 1e9:.1f} GB total)" if total else ""
+    say(
+        f"Prior {component_id} formation images remain{size_note}: {names}. "
+        "DevCapsule does not reap superseded canonical images yet."
+    )
 
 
 def _extract_archive_member(archive: Path, member_name: str, destination: Path) -> Path:
@@ -613,7 +749,72 @@ def _ancillary_environment(
     return tuple(sorted(environment.items()))
 
 
+def runtime_config_drift(
+    details: ImageDetails, descriptor: Mapping[str, Any]
+) -> tuple[str, ...]:
+    """Differences between the image's actual boot configuration and the
+    descriptor's claim. Empty when the claim is true (or when the caller
+    supplied no boot configuration to compare)."""
+
+    if not details.entrypoint and not details.command:
+        return ()
+    runtime = descriptor["runtime"]
+    drift: list[str] = []
+    if tuple(details.entrypoint) != tuple(runtime["entrypoint"]):
+        drift.append(
+            f"entrypoint is {list(details.entrypoint)}, "
+            f"descriptor claims {runtime['entrypoint']}"
+        )
+    if tuple(details.command) != tuple(runtime["command"]):
+        drift.append(
+            f"command is {list(details.command)}, descriptor claims {runtime['command']}"
+        )
+    return tuple(drift)
+
+
+def descriptor_differences(
+    expected: Any, actual: Any, prefix: str = ""
+) -> tuple[str, ...]:
+    """Leaf paths on which two JSON-native descriptors differ."""
+
+    if isinstance(expected, Mapping) and isinstance(actual, Mapping):
+        paths: list[str] = []
+        for key in sorted(set(expected) | set(actual)):
+            child = f"{prefix}.{key}" if prefix else str(key)
+            paths.extend(descriptor_differences(expected.get(key), actual.get(key), child))
+        return tuple(paths)
+    if (
+        isinstance(expected, list)
+        and isinstance(actual, list)
+        and len(expected) == len(actual)
+        and not all(isinstance(item, (str, int, float, bool)) for item in expected + actual)
+    ):
+        paths = []
+        for index, (left, right) in enumerate(zip(expected, actual)):
+            paths.extend(descriptor_differences(left, right, f"{prefix}[{index}]"))
+        return tuple(paths)
+    if expected != actual:
+        return (prefix or "<root>",)
+    return ()
+
+
 def verify_materialized_image(
+    details: ImageDetails,
+    *,
+    descriptor: Mapping[str, Any],
+    canonical_name: str,
+) -> None:
+    _verify_materialized_labels(details, descriptor=descriptor, canonical_name=canonical_name)
+    drift = runtime_config_drift(details, descriptor)
+    if drift:
+        raise CliError(
+            f"Canonical image {canonical_name!r} boots differently than its formation "
+            f"descriptor records: {'; '.join(drift)}. The record cannot be trusted; "
+            "inspect and remove or retag the image before retrying."
+        )
+
+
+def _verify_materialized_labels(
     details: ImageDetails,
     *,
     descriptor: Mapping[str, Any],

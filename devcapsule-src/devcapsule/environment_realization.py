@@ -57,6 +57,7 @@ def realize_environment(
     require_image: ImageRequirement | None = None,
     build: ImageBuild | None = None,
     materialize: Materialize | None = None,
+    report: Callable[[str], None] | None = None,
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
@@ -116,6 +117,16 @@ def realize_environment(
         builder = BuildxImageBuilder(temporary_root=selected_cache / "build-contexts")
         build = lambda spec: builder.build(spec, network="none")
     materialize_environment = materialize or ensure_materialized_surface
+    # Explanation/reporting hooks ride only the real materializer; injected
+    # test materializers keep their narrower signature.
+    narration: dict[str, Any] = (
+        {}
+        if materialize is not None
+        else {
+            "report": report,
+            "list_formations": lambda: component_formations(locked.component_id),
+        }
+    )
     canonical, created = materialize_environment(
         base_reference=base_reference,
         base_identity=base.identity,
@@ -128,6 +139,7 @@ def realize_environment(
         recipe_id=locked.recipe_id,
         recipe_version=locked.recipe_version,
         component_id=locked.component_id,
+        **narration,
     )
     image = require(canonical)
     return RealizedEnvironment(
@@ -171,4 +183,27 @@ def image_details(reference: str, image: Any) -> ImageDetails:
         labels=dict(image.config.labels or {}),
         operating_system=str(image.os),
         architecture=str(image.architecture),
+        entrypoint=tuple(image.config.entrypoint or ()),
+        command=tuple(image.config.cmd or ()),
+        size_bytes=int(image.size or 0),
     )
+
+
+def component_formations(component_id: str) -> tuple[ImageDetails, ...]:
+    """Every local canonical formation image for one surface component.
+
+    Best-effort by design: this feeds explanation and reporting, which must
+    never be the reason a realization fails.
+    """
+
+    repository = f"devcapsule-local-{component_id}"
+    try:
+        images = docker.image.list(filters={"reference": repository})
+    except DockerException:
+        return ()
+    details = []
+    for image in images:
+        for tag in image.repo_tags:
+            if tag.startswith(f"{repository}:"):
+                details.append(image_details(tag, image))
+    return tuple(details)

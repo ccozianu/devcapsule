@@ -663,7 +663,7 @@ def test_images_build_environment_uses_fresh_project_lock_and_verified_base(tmp_
 
     assert result == 0
     fresh.assert_called_once_with(tmp_path / "project")
-    realize.assert_called_once_with(project, base_override=None)
+    realize.assert_called_once_with(project, base_override=None, report=print)
     add_alias.assert_called_once_with(completed, "devcapsule-local-pycharm:debug-v019")
     output = capsys.readouterr().out
     assert "Built DevCapsule environment image" in output
@@ -796,7 +796,7 @@ def test_images_build_environment_allows_explicit_local_base_override(tmp_path: 
         )
 
     assert result == 0
-    realize.assert_called_once_with(project, base_override="local/devcapsule-base:test")
+    realize.assert_called_once_with(project, base_override="local/devcapsule-base:test", report=print)
     assert "Base selection: explicit developer override" in capsys.readouterr().err
 
 
