@@ -97,6 +97,34 @@ the true source revision. Building and pushing the base is manual as of
 this writing; automating it as a `workflow_dispatch` job with a Docker
 Hub credential was assessed and deferred.
 
+## Base Image Naming (convention recorded 2026-09-05, product-owner
+prompted)
+
+The registry history carries two schemes — `ubuntu-24.04-v019` through
+`ubuntu-24.04-v026`, then `v0.2.7`/`v0.2.8`/`v0.2.9` — because the
+naming silently migrated when bases started embedding the client's
+runtime PEX. The convention going forward:
+
+- **Repository**: `docker.io/mycodespaceai/devcapsule-base`.
+- **Tag**: `v<client-version>` — the DevCapsule release whose runtime
+  PEX the base embeds (`v0.2.8`, `v0.2.9`). A base-only revision
+  between client releases (recipe hygiene, package refresh — anything
+  that re-embeds the *same* runtime) appends a fourth segment:
+  `v0.2.9.1`, `v0.2.9.2`.
+- **Tags are immutable releases.** Never rebuild or retag an existing
+  tag: a rebuild under a published name would orphan the matrix pin,
+  whose digest no longer matches what the tag serves. Any rebuild is a
+  new tag. Trust and the matrix pin bind to the registry digest; the
+  tag exists for human addressing.
+- **The substrate string stays out of the tag.** `ubuntu-24.04-genN`
+  names a compatibility generation and lives in the resolution matrix
+  (D-0007 as amended 2026-09-02); the tag names a release. The two
+  vocabularies advance independently — most new tags share the
+  incumbent substrate and inherit its verified edges.
+- **Legacy tags** (`ubuntu-24.04-v019` … `-v026`) predate the
+  convention and stay exactly as published; the matrix addresses them
+  by mnemonic and digest like any other pin.
+
 ## Compatibility Bounds
 
 - The matrix version is informational (`R-COMPAT-001`): a newer client's
