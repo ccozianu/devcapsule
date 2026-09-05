@@ -632,14 +632,14 @@ its ruling thread open):
     owner decision; base-without-entrypoint lands with the next base
     release. Awaiting the owner's smoke. Suite green (542), mypy
     clean.
-  - Logged from the owner's first spin attempt (pycharm × three
-    agents, strict refusal), awaiting owner triage onto a release
-    list:
-    [the resolution refusal names only the last base tried and no remedy](../../bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
-    — the message reports the oldest base's gap, hides that v0.2.9 is
-    one pycharm edge short, and never names `--unverified`; the
-    recorded fix scope is message-only in `resolve()`. The unblock
-    itself is `--unverified` on the same command.
+  - [The resolution refusal names only the last base tried and no remedy](../../bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
+    — logged from the owner's first spin attempt, then **ruled and
+    fixed 2026-09-05** at the owner's direction: every refusal now
+    lists each base's gap newest-first and names `--unverified`
+    (adopters must be able to try new combinations and report back);
+    an already-`--unverified` refusal says the flag cannot help
+    instead of recommending it again. Closes on the owner seeing the
+    new message in practice.
 
 - **Resolution-matrix redesign** (implemented 2026-09-01): the owner
   accepted D-0006 and D-0007 and the implementation is on this branch.

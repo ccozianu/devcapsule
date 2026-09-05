@@ -240,17 +240,21 @@ class ResolutionMatrix:
             and capability not in self._ancillary_capabilities
         }
 
-        failure = ""
+        # Every base's failure is kept and reported newest-first: the newest
+        # base's gap is usually the interesting one (often a single missing
+        # edge), and a message naming only the oldest base's problem sent the
+        # owner down the wrong path (2026-09-03 bug record).
+        failures: list[str] = []
         for base in reversed(self._bases):
             missing_from_base = sorted(base_needs - base.satisfies)
             if missing_from_base:
-                failure = (
-                    f"base {base.mnemonic} does not ship "
-                    + ", ".join(missing_from_base)
+                failures.append(
+                    f"{base.mnemonic}: does not ship " + ", ".join(missing_from_base)
                 )
                 continue
             chosen, failure = self._verified_selection(required, base)
             if chosen is None:
+                failures.append(f"{base.mnemonic}: {failure}")
                 continue
             return self._formation(capabilities, surface_id, base, chosen)
         if allow_unverified:
@@ -260,10 +264,29 @@ class ResolutionMatrix:
                 return self._formation(
                     capabilities, surface_id, base, chosen, unverified=unverified
                 )
+        # Every refusal names --unverified (owner ruling 2026-09-05):
+        # adopters must be able to try new components and bases ahead of the
+        # matrix and report back. Base capabilities stay hard constraints —
+        # the wording says what the flag does and does not bypass.
+        if allow_unverified:
+            remedy = (
+                "--unverified cannot help here: a base that does not ship a "
+                "needed toolchain is a hard refusal."
+            )
+        else:
+            remedy = (
+                "Pass --unverified to resolve past missing verification with "
+                "a gentle warning; the generated lock names every unverified "
+                "combination. A base that does not ship a needed toolchain "
+                "remains a hard refusal."
+            )
         raise ResolutionError(
             "No verified combination satisfies "
             + ", ".join(capabilities)
-            + f" on {self._platform}: {failure}"
+            + f" on {self._platform}:\n  "
+            + "\n  ".join(failures)
+            + "\n"
+            + remedy
         )
 
     def _selected_surface(self, capabilities: tuple[str, ...]) -> str:
