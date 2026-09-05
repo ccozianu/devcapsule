@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-12"
+_MATRIX_VERSION = "embedded-13"
 
 
 # --------------------------------------------------------------------------
@@ -538,6 +538,15 @@ _CODIUM_1_126_04524 = _ComponentPin(
     },
 )
 
+# Codex is pinned as npm publishes it (owner direction 2026-09-05, replacing
+# the single-binary extraction that dropped the bundled bubblewrap, ripgrep,
+# zsh and code-mode host — see the 2026-09-05 bug record): the meta package
+# `@openai/codex` at the component level carries the node launcher, and the
+# per-platform artifact is the package the meta's optionalDependencies alias
+# for that platform. Both tarballs are the exact npm registry artifacts; the
+# sha256 values were computed locally from downloads whose sha512 matched
+# the registry's integrity fields. The artifact digests below are unchanged
+# from the extraction era; only the meta package is new.
 _CODEX_0_145_0 = _ComponentPin(
     component_id="codex",
     version="0.145.0",
@@ -545,8 +554,12 @@ _CODEX_0_145_0 = _ComponentPin(
         "version": "0.145.0",
         "delivery-policy": "local-materialization",
         "license": "Apache-2.0",
+        "npm-package": "@openai/codex",
+        "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.145.0.tgz",
+        "sha256": "416399796cac371d1a033b17f34b08ba9b25c8f298a5b9d00e10f72c3b128c8d",
         "artifacts": {
             "linux-amd64": {
+                "npm-package": "@openai/codex-linux-x64",
                 "url": (
                     "https://registry.npmjs.org/@openai/codex/-/"
                     "codex-0.145.0-linux-x64.tgz"
@@ -554,23 +567,20 @@ _CODEX_0_145_0 = _ComponentPin(
                 "sha256": (
                     "11239480f8e3efd1430f23bbe91c1a397856b8bbe6185ccbaee2382d25e03df2"
                 ),
-                "archive-member": (
-                    "package/vendor/x86_64-unknown-linux-musl/bin/codex"
-                ),
             }
         },
     },
 )
 
 # 0.153.0 advances the pin at the owner's direction 2026-09-03 (the CLI's
-# own update notice during the demo-project conversions). The tarball's
-# sha512 was verified against the npm registry integrity and the sha256
-# computed locally from the same download; the archive member set is
-# unchanged since 0.145.0 and the extracted binary was executed hands-on
-# (`codex-cli 0.153.0`). The former integration/acp-version metadata is
-# gone with the coupling removal (see the couplings note below): codex is
-# a standalone CLI component, and locks no longer advertise a
-# jetbrains-ai-assistant integration DevCapsule does not deliver.
+# own update notice during the demo-project conversions). The platform
+# tarball's sha512 was verified against the npm registry integrity and the
+# sha256 computed locally from the same download; the binary was executed
+# hands-on (`codex-cli 0.153.0`). The former integration/acp-version
+# metadata is gone with the coupling removal (see the couplings note
+# below): codex is a standalone CLI component, and locks no longer
+# advertise a jetbrains-ai-assistant integration DevCapsule does not
+# deliver.
 _CODEX_0_153_0 = _ComponentPin(
     component_id="codex",
     version="0.153.0",
@@ -578,17 +588,18 @@ _CODEX_0_153_0 = _ComponentPin(
         "version": "0.153.0",
         "delivery-policy": "local-materialization",
         "license": "Apache-2.0",
+        "npm-package": "@openai/codex",
+        "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.153.0.tgz",
+        "sha256": "0dc1968cc6075929d70d7ab1421122743a9f8237a8cc9ac69e2e8f2768798fef",
         "artifacts": {
             "linux-amd64": {
+                "npm-package": "@openai/codex-linux-x64",
                 "url": (
                     "https://registry.npmjs.org/@openai/codex/-/"
                     "codex-0.153.0-linux-x64.tgz"
                 ),
                 "sha256": (
                     "856f408ea61b44a381b7d6fb7c82365dfcef649ae2a340fc01282cf63c30cd8a"
-                ),
-                "archive-member": (
-                    "package/vendor/x86_64-unknown-linux-musl/bin/codex"
                 ),
             }
         },

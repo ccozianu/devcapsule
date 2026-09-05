@@ -8,11 +8,13 @@ import fcntl
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import tempfile
 import tarfile
 from typing import Any, Callable, Iterator, Mapping
 from urllib.error import URLError
+from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from devcapsule.compat import CliError
@@ -33,6 +35,7 @@ from devcapsule.image_build import (
     ImageBuildSpec,
     LabelComponent,
     normalize_archive_directory,
+    shell_quote,
 )
 from devcapsule.image_metadata import (
     BASE_KIND,
@@ -267,6 +270,11 @@ def formation_descriptor(
                             if item.archive_member is not None
                             else {}
                         ),
+                        **(
+                            {"npm-package": item.npm_package}
+                            if item.npm_package is not None
+                            else {}
+                        ),
                     },
                 }
                 for item in ancillary_artifacts
@@ -329,10 +337,11 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
                 locked_artifact.sha256,
                 f"Locked {locked_artifact.component_id} artifact SHA-256",
             )
-            if locked_artifact.artifact_format not in {"file", "tar-gz-member"}:
+            if locked_artifact.artifact_format not in ARTIFACT_FORMATS:
                 raise CliError(
-                    f"Locked {locked_artifact.component_id} artifact format must be "
-                    "'file' or 'tar-gz-member'."
+                    f"Locked {locked_artifact.component_id} artifact format must be one of "
+                    + ", ".join(repr(name) for name in ARTIFACT_FORMATS)
+                    + "."
                 )
             if (
                 locked_artifact.artifact_format == "tar-gz-member"
@@ -342,6 +351,15 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
                     f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
                     "an archive member."
                 )
+            if locked_artifact.artifact_format == "npm-package":
+                if not locked_artifact.npm_package:
+                    raise CliError(
+                        f"Locked {locked_artifact.component_id} npm-package artifact must "
+                        "name its npm package."
+                    )
+                # Fail at lock-reading time, not mid-build, when the URL
+                # cannot name the tarball inside the image.
+                _npm_tarball_name(locked_artifact)
             if not Path(locked_artifact.destination).is_absolute():
                 raise CliError(
                     f"Locked {locked_artifact.component_id} destination must be absolute."
@@ -406,6 +424,7 @@ def surface_materialization_spec(
     component_template: Path,
     artifact: ArtifactSpec,
     ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...] = (),
+    npm_projects: tuple[NpmProject, ...] = (),
     platform: str,
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
@@ -433,8 +452,22 @@ def surface_materialization_spec(
             *profile.post_install,
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
             *(
-                FileComponent(path, declaration.destination, permissions=declaration.permissions)
+                FileComponent(
+                    path, _artifact_image_path(declaration), permissions=declaration.permissions
+                )
                 for path, declaration in ancillary_files
+            ),
+            # Each npm project: its manifest beside the copied tarballs, then
+            # the offline install. The plan renders every file copy before
+            # any exec step, so the install always sees its inputs.
+            *(
+                FileComponent(
+                    project.package_json, f"{project.destination}/package.json", permissions=0o644
+                )
+                for project in npm_projects
+            ),
+            *(
+                ExecComponent(npm_install_step(project.destination)) for project in npm_projects
             ),
             *( (EnvComponent(environment),) if environment else () ),
             LabelComponent(
@@ -594,6 +627,7 @@ def ensure_materialized_surface(
                 )
                 for index, (acquired, declaration) in enumerate(ancillary_acquisitions)
             )
+            npm_projects = _npm_projects(ancillary_files, temporary)
             build(
                 surface_materialization_spec(
                     base_reference=base_reference,
@@ -603,6 +637,7 @@ def ensure_materialized_surface(
                     component_template=template_path,
                     artifact=artifact,
                     ancillary_files=ancillary_files,
+                    npm_projects=npm_projects,
                     platform=platform,
                     recipe_id=recipe_id,
                     recipe_version=recipe_version,
@@ -719,10 +754,137 @@ def _prepare_locked_artifact(
         return destination
     if declaration.artifact_format == "tar-gz-member" and declaration.archive_member is not None:
         return _extract_archive_member(acquired, declaration.archive_member, destination)
+    if declaration.artifact_format == "npm-package":
+        # The verified tarball travels whole; npm unpacks it inside the build.
+        shutil.copyfile(acquired, destination)
+        destination.chmod(0o600)
+        return destination
     raise CliError(
         f"Unsupported locked artifact format {declaration.artifact_format!r} for "
         f"{declaration.component_id}."
     )
+
+
+# --------------------------------------------------------------------------
+# npm-delivered components. The verified tarballs are copied into the
+# destination directory next to a generated package.json that names each one
+# as a `file:` dependency, and one offline `npm install` lays the tree out
+# exactly as the vendor's own npm distribution does — launcher, platform
+# package, and the helpers the binary resolves beside itself. Nothing is
+# fetched during the build; npm only verifies and unpacks what the host
+# already checksummed. The tarballs stay beside the manifest so the recorded
+# package-lock.json keeps describing an install npm could repeat.
+
+ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package")
+# Root-run inside the build; node and npm come from the base image. The cache
+# is pointed at a scratch path and removed in the same step and log files
+# are disabled, so no layer carries npm's working state; scripts are refused
+# because the lock verifies tarballs, not code they might run at install
+# time.
+NPM_CACHE_PATH = "/tmp/devcapsule-npm-cache"
+NPM_INSTALL_OPTIONS = (
+    "install",
+    "--offline",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--no-update-notifier",
+    "--loglevel=error",
+    "--logs-max=0",
+)
+_NPM_TARBALL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.(tgz|tar\.gz)")
+
+
+@dataclass(frozen=True)
+class NpmProject:
+    """One npm install directory inside the image and its generated manifest."""
+
+    component_id: str
+    destination: str
+    package_json: Path
+
+
+def npm_install_step(destination: str) -> tuple[str, ...]:
+    """The exact build step that installs one npm project offline."""
+
+    command = " ".join(
+        [
+            f"npm_config_cache={NPM_CACHE_PATH}",
+            "npm",
+            "--prefix",
+            shell_quote(destination),
+            *NPM_INSTALL_OPTIONS,
+            "&&",
+            "rm",
+            "-rf",
+            NPM_CACHE_PATH,
+        ]
+    )
+    return ("sh", "-c", command)
+
+
+def _npm_tarball_name(declaration: LockedArtifactDeclaration) -> str:
+    """The file name the tarball keeps inside the image: its URL's last segment."""
+
+    name = urlsplit(declaration.url).path.rsplit("/", 1)[-1]
+    if not _NPM_TARBALL_NAME.fullmatch(name):
+        raise CliError(
+            f"Locked {declaration.component_id} npm-package URL must end in a tarball "
+            f"file name (.tgz or .tar.gz); got {name!r} from {declaration.url!r}."
+        )
+    return name
+
+
+def _artifact_image_path(declaration: LockedArtifactDeclaration) -> str:
+    """Where the prepared artifact file lands in the image.
+
+    File-shaped formats name the executable itself; an npm-package
+    destination is the project directory and the tarball keeps its name.
+    """
+
+    if declaration.artifact_format == "npm-package":
+        return f"{declaration.destination}/{_npm_tarball_name(declaration)}"
+    return declaration.destination
+
+
+def _npm_projects(
+    ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...],
+    work: Path,
+) -> tuple[NpmProject, ...]:
+    """Group npm-package artifacts by destination and write each manifest."""
+
+    grouped: dict[str, list[LockedArtifactDeclaration]] = {}
+    for _path, declaration in ancillary_files:
+        if declaration.artifact_format == "npm-package":
+            grouped.setdefault(declaration.destination, []).append(declaration)
+    projects: list[NpmProject] = []
+    for index, (destination, declarations) in enumerate(grouped.items()):
+        component_ids = sorted({item.component_id for item in declarations})
+        if len(component_ids) != 1:
+            raise CliError(
+                f"npm project {destination} is claimed by several components: "
+                + ", ".join(component_ids)
+                + "."
+            )
+        dependencies: dict[str, str] = {}
+        for item in declarations:
+            assert item.npm_package is not None  # validated when the lock was read
+            if item.npm_package in dependencies:
+                raise CliError(
+                    f"Locked {item.component_id} declares npm package {item.npm_package!r} "
+                    "twice."
+                )
+            dependencies[item.npm_package] = f"file:./{_npm_tarball_name(item)}"
+        manifest = {
+            "name": f"devcapsule-{component_ids[0]}",
+            "version": "0.0.0",
+            "private": True,
+            "dependencies": dependencies,
+        }
+        package_json = work / f"npm-project-{index}.json"
+        package_json.write_text(canonical_json(manifest) + "\n", encoding="utf-8")
+        projects.append(NpmProject(component_ids[0], destination, package_json))
+    return tuple(projects)
 
 
 def _ancillary_environment(

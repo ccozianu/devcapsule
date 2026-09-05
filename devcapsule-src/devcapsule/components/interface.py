@@ -46,7 +46,21 @@ class AcquisitionContract:
 
 @dataclass(frozen=True)
 class LockedArtifactDeclaration:
-    """One lock-pinned artifact contribution to a local environment image."""
+    """One lock-pinned artifact contribution to a local environment image.
+
+    ``artifact_format`` says how the verified download becomes image content:
+
+    - ``file``: the download is the executable; it is copied to ``destination``.
+    - ``tar-gz-member``: exactly one regular file, ``archive_member``, is
+      extracted from the tarball and copied to ``destination``.
+    - ``npm-package``: the download is an npm tarball, installed with npm's
+      own layout into the ``destination`` directory under the dependency
+      name ``npm_package``.  Every ``npm-package`` artifact sharing a
+      destination is one npm project: the vendor's tested package tree,
+      launcher included, ends up under ``destination/node_modules`` and
+      nothing is plucked out of it.  Components whose vendor publishes a
+      meta package plus per-platform packages declare one artifact each.
+    """
 
     component_id: str
     version: str
@@ -55,6 +69,7 @@ class LockedArtifactDeclaration:
     destination: str
     artifact_format: str = "tar-gz-member"
     archive_member: str | None = None
+    npm_package: str | None = None
     permissions: int = 0o755
     environment: tuple[tuple[str, str], ...] = ()
 

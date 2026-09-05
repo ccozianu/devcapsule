@@ -114,11 +114,14 @@ def select_codex_component(project: Path) -> None:
 [components.codex]
 version = "0.145.0"
 delivery-policy = "local-materialization"
+npm-package = "@openai/codex"
+url = "https://example.test/codex-0.145.0.tgz"
+sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 [components.codex.artifacts.linux-amd64]
-url = "https://example.test/codex.tgz"
+npm-package = "@openai/codex-linux-x64"
+url = "https://example.test/codex-0.145.0-linux-x64.tgz"
 sha256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-archive-member = "package/vendor/x86_64-unknown-linux-musl/bin/codex"
 """
         )
 

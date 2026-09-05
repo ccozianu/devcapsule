@@ -145,6 +145,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Codex was installed as a single plucked binary, so every sandboxed command failed](engineering-docs/bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md)
 - [Init and run answers are not persisted as the authorizations they express](engineering-docs/bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
 - [init --authorize base-image left the checkout unauthorized](engineering-docs/bugs/devcapsule/2026-09-01-init-authorize-base-image-not-recorded.md)
 - [X11 passthrough grants the container a full host session credential](engineering-docs/bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)

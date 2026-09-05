@@ -17,7 +17,27 @@ from devcapsule.components.interface import resolved_state_environment
 
 
 CODEX_HOME = "/home/devcapsule/.codex"
-CODEX_EXECUTABLE = "/usr/local/bin/codex"
+# Codex is delivered the way its vendor tests it: as the npm package, installed
+# by npm into a versioned prefix (product-owner direction 2026-09-05). The
+# meta package @openai/codex carries the node launcher; the per-platform
+# package carries the binary beside the helpers it resolves relative to
+# itself (bundled bubblewrap, ripgrep, zsh, the code-mode host). Extracting
+# the binary alone left every sandboxed command failing — see the 2026-09-05
+# bug record.
+CODEX_PREFIX = "/opt/codex"
+CODEX_PACKAGE = "@openai/codex"
+
+
+def codex_installation(version: str) -> str:
+    """The npm project directory holding one Codex version."""
+
+    return f"{CODEX_PREFIX}/{version}"
+
+
+def codex_bin(version: str) -> str:
+    """The directory npm links `codex` into; it goes on the image PATH."""
+
+    return f"{codex_installation(version)}/node_modules/.bin"
 
 
 class CodexComponent(ComponentDefinition):
@@ -52,24 +72,41 @@ class CodexComponent(ComponentDefinition):
     ) -> tuple[LockedArtifactDeclaration, ...]:
         if metadata.get("delivery-policy") != "local-materialization":
             raise CliError("components.codex.delivery-policy must be 'local-materialization'.")
+        if metadata.get("npm-package") != CODEX_PACKAGE:
+            raise CliError(f"components.codex.npm-package must be {CODEX_PACKAGE!r}.")
         artifacts = metadata.get("artifacts")
         artifact = artifacts.get(platform) if isinstance(artifacts, Mapping) else None
         if not isinstance(artifact, Mapping):
             raise CliError(f"components.codex has no artifact for {platform!r}.")
         version = _string(metadata.get("version"), "components.codex.version")
+        installation = codex_installation(version)
+        platform_field = f"components.codex.artifacts.{platform}"
         return (
+            # The meta package: the `codex` launcher npm links into
+            # node_modules/.bin, which resolves the platform package below.
             LockedArtifactDeclaration(
                 component_id=self.id,
                 version=version,
-                url=_string(artifact.get("url"), f"components.codex.artifacts.{platform}.url"),
-                sha256=_string(
-                    artifact.get("sha256"), f"components.codex.artifacts.{platform}.sha256"
-                ),
-                archive_member=_string(
-                    artifact.get("archive-member"),
-                    f"components.codex.artifacts.{platform}.archive-member",
-                ),
-                destination=CODEX_EXECUTABLE,
+                url=_string(metadata.get("url"), "components.codex.url"),
+                sha256=_string(metadata.get("sha256"), "components.codex.sha256"),
+                destination=installation,
+                artifact_format="npm-package",
+                npm_package=CODEX_PACKAGE,
+                permissions=0o644,
+                environment=(("PATH", f"{codex_bin(version)}:${{PATH}}"),),
+            ),
+            # The platform package, installed under the alias the meta
+            # package's optionalDependencies name for this platform; the lock
+            # records that alias rather than deriving it from the platform.
+            LockedArtifactDeclaration(
+                component_id=self.id,
+                version=version,
+                url=_string(artifact.get("url"), f"{platform_field}.url"),
+                sha256=_string(artifact.get("sha256"), f"{platform_field}.sha256"),
+                destination=installation,
+                artifact_format="npm-package",
+                npm_package=_string(artifact.get("npm-package"), f"{platform_field}.npm-package"),
+                permissions=0o644,
             ),
         )
 

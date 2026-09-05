@@ -252,6 +252,33 @@ entrypoint the recipe never enforces (tini is still PID 1 on v026
 formations, against `500909d`'s premise), and superseded multi-GB
 canonical images accumulate with no lifecycle.
 
+**2026-09-05, codex delivery rebuilt at the owner's direction.** The
+owner's "upgrading codex left it in an incomplete state" after the
+v0.2.9 rebuild root-caused to the single-member extraction: codex was
+one plucked binary, missing the bundled bubblewrap, ripgrep, zsh and
+code-mode host it resolves beside itself, so every sandboxed command
+panicked (never a regression of the upgrade; 0.145.0 formations fail
+the same way). Recorded in
+[2026-09-05-codex-installed-as-a-single-plucked-binary](../../bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md).
+The owner directed the vendor's own method — a plain local `npm install`
+with `node_modules/.bin` on `PATH` — under the `/opt` convention:
+`LockedArtifactDeclaration` gains the `npm-package` format, codex pins
+both npm tarballs (meta package new at the component level; platform
+package under its alias), materialization copies the host-verified
+tarballs into `/opt/codex/<version>` and runs one offline
+`npm install --ignore-scripts` with the base's node inside the build
+(matrix `embedded-13`; golden locks and the dogfood lock regenerated,
+so the checkout's base-image authorization goes stale by design and
+re-asks at the next resolve). Verified on a scratch image built from
+the rendered steps on the v0.2.9 base: launcher, binary, all helpers,
+and a Landlock-sandboxed command as an unprivileged user. Two things
+the owner should know: the tarballs stay beside the manifest (about
+135 MB per codex-carrying formation, so the recorded `package-lock.json`
+describes an install npm could repeat), and node is now a runtime
+dependency of codex — assumed shipped by every base for now, per the
+owner ("we'll resolve dependencies later"). See *Open Threads* for
+the sandbox-configuration half.
+
 ## Release Target: v0.2.9
 
 Set by the product owner on 2026-09-02. v0.2.9 ships when:
@@ -508,6 +535,22 @@ its ruling thread open):
 
 ## Open Threads
 
+- **Codex sandbox configuration** (opened 2026-09-05, owner decision
+  needed): with the npm layout in place, codex's default bubblewrap
+  sandbox fails under capsule hardening for a different reason —
+  unprivileged user namespaces are denied by the seccomp filter and the
+  empty capability set (tested inside this capsule: `unshare -Ur` and the
+  bundled `bwrap` both refuse). Codex's Landlock sandbox
+  (`use_legacy_landlock = true`) works under the same hardening, as root
+  and as uid 1000 with all capabilities dropped. The setting lives in
+  `~/.codex/config.toml`, inside the user-owned `codex/home` slot, so
+  the component cannot bake it into the image; candidates are a
+  component-declared default the launcher seeds into an empty slot, a
+  documented adopter step (the README now documents the manual form),
+  or relaxing the hardening (not recommended). Also note for the matrix:
+  the codex edges' evidence predates the npm layout; the owner's next
+  smoke of a codex-carrying formation is the evidence for the new
+  installation shape.
 - **Base rebuild** (updated 2026-09-03): the codex and claude-code gen2
   edges entered provisionally (matrix `embedded-8`) when the owner's
   five-way formation — codium × antigravity × claude-code × codex —

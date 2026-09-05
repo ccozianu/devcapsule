@@ -537,13 +537,25 @@ environment-variable name, never its value. Host-file, socket, and
 alternative-storage providers are not part of this initial contract.
 
 This repository's dogfood declaration explicitly requests the optional
-`codex-agent` capability. Its lock pins the Codex CLI artifact and JetBrains
-ACP integration metadata. Local environment materialization verifies and
-installs the CLI as `/usr/local/bin/codex`; no agent is added to the shared
-base. The component declares a namespaced `codex/home` state slot mounted at
-`/home/devcapsule/.codex`, and its Python component interface derives
-`CODEX_HOME` from that slot for the IDE process. Projects that do not select
-Codex receive none of these contributions.
+`codex-agent` capability. Its lock pins Codex as npm publishes it: the
+`@openai/codex` meta package, which carries the `codex` launcher, and the
+per-platform package the meta package's optional dependencies name for the
+lock's platform, both by URL and SHA-256. Local environment materialization
+downloads and verifies both tarballs on the host, copies them into
+`/opt/codex/<version>` beside a generated `package.json` that names each as a
+`file:` dependency, and runs one offline `npm install --ignore-scripts` with
+the base's node during the image build, so the image holds the vendor's tested
+package tree — the binary beside the bundled helpers it resolves relative to
+itself — and `/opt/codex/<version>/node_modules/.bin` joins `PATH`. No agent
+is added to the shared base. The component declares a namespaced `codex/home`
+state slot mounted at `/home/devcapsule/.codex`, and its Python component
+interface derives `CODEX_HOME` from that slot for the IDE process. Projects
+that do not select Codex receive none of these contributions.
+
+Codex's default Linux sandbox needs unprivileged user namespaces, which the
+capsule's hardening denies; its Landlock sandbox works there. Until the
+component delivers that setting, put `use_legacy_landlock = true` in
+`$CODEX_HOME/config.toml` or pass `-c use_legacy_landlock=true`.
 
 Authenticate naturally from a terminal inside the running capsule:
 
