@@ -159,11 +159,14 @@ def test_project_runtime_plan_includes_locked_codex_component(tmp_path: Path) ->
     selected.lock["components"]["codex"] = {
         "version": "0.145.0",
         "delivery-policy": "local-materialization",
+        "npm-package": "@openai/codex",
+        "url": "https://example.test/codex-0.145.0.tgz",
+        "sha256": "b" * 64,
         "artifacts": {
             "linux-amd64": {
-                "url": "https://example.test/codex.tgz",
+                "npm-package": "@openai/codex-linux-x64",
+                "url": "https://example.test/codex-0.145.0-linux-x64.tgz",
                 "sha256": "c" * 64,
-                "archive-member": "package/vendor/x86_64-unknown-linux-musl/bin/codex",
             }
         },
     }

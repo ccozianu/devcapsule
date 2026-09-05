@@ -537,13 +537,31 @@ environment-variable name, never its value. Host-file, socket, and
 alternative-storage providers are not part of this initial contract.
 
 This repository's dogfood declaration explicitly requests the optional
-`codex-agent` capability. Its lock pins the Codex CLI artifact and JetBrains
-ACP integration metadata. Local environment materialization verifies and
-installs the CLI as `/usr/local/bin/codex`; no agent is added to the shared
-base. The component declares a namespaced `codex/home` state slot mounted at
-`/home/devcapsule/.codex`, and its Python component interface derives
-`CODEX_HOME` from that slot for the IDE process. Projects that do not select
-Codex receive none of these contributions.
+`codex-agent` capability. Its lock pins Codex as npm publishes it: the
+`@openai/codex` meta package, which carries the `codex` launcher, and the
+per-platform package the meta package's optional dependencies name for the
+lock's platform, both by URL and SHA-256. Local environment materialization
+downloads and verifies both tarballs on the host, copies them into
+`/opt/codex/<version>` beside a generated `package.json` that names each as a
+`file:` dependency, and runs one offline `npm install --ignore-scripts` with
+the base's node during the image build, so the image holds the vendor's tested
+package tree — the binary beside the bundled helpers it resolves relative to
+itself — and `/opt/codex/<version>/node_modules/.bin` joins `PATH`. No agent
+is added to the shared base. The component declares a namespaced `codex/home`
+state slot mounted at `/home/devcapsule/.codex`, and its Python component
+interface derives `CODEX_HOME` from that slot for the IDE process. Projects
+that do not select Codex receive none of these contributions.
+
+The capsule is the sandbox. When a checkout's `codex/home` slot is created,
+the component seeds `~/.codex/config.toml` with approvals off
+(`approval_policy = "never"`), no inner sandbox
+(`sandbox_mode = "danger-full-access"`), and `use_legacy_landlock = true` so a
+sandboxed mode still works if you switch one on: codex's default bubblewrap
+sandbox needs unprivileged user namespaces, which capsule hardening denies. The
+seed is written once, as you, only when the file is absent; edit or delete it
+freely. Keep any keys you add above the first `[table]` header, because codex
+appends tables such as `[tui.model_availability_nux]` to the same file, and a
+key placed after a header belongs to that table.
 
 Authenticate naturally from a terminal inside the running capsule:
 

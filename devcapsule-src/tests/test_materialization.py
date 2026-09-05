@@ -10,6 +10,7 @@ import pytest
 
 from devcapsule.compat import CliError
 from devcapsule.components import LockedArtifactDeclaration
+from devcapsule.image_build import ExecStep
 from devcapsule.materialization import (
     ENTRYPOINT_CONTRACT,
     RUNTIME_PLAN_PATH,
@@ -23,6 +24,7 @@ from devcapsule.materialization import (
     ensure_materialized_surface,
     formation_descriptor,
     formation_identity,
+    npm_install_step,
     parse_locked_environment,
     surface_materialization_spec,
     validate_base_image,
@@ -40,8 +42,8 @@ def fixture_archive(path: Path) -> bytes:
     return path.read_bytes()
 
 
-def codex_archive(path: Path, member: str) -> bytes:
-    content = b"codex-binary-fixture"
+def member_archive(path: Path, member: str) -> bytes:
+    content = b"tool-binary-fixture"
     with tarfile.open(path, "w:gz") as archive:
         info = tarfile.TarInfo(member)
         info.mode = 0o755
@@ -362,28 +364,31 @@ def test_materialization_builds_from_verified_archive_and_rechecks_result(tmp_pa
     assert (tmp_path / "cache" / "locks" / "materializations").is_dir()
 
 
-def test_materialization_installs_locked_codex_executable(tmp_path: Path) -> None:
+def test_materialization_extracts_a_locked_archive_member(tmp_path: Path) -> None:
     pycharm_source = tmp_path / "pycharm.tar.gz"
     pycharm_payload = fixture_archive(pycharm_source)
     pycharm_spec = artifact(pycharm_source, hashlib.sha256(pycharm_payload).hexdigest())
-    member = "package/vendor/x86_64-unknown-linux-musl/bin/codex"
-    codex_source = tmp_path / "codex.tgz"
-    codex_payload = codex_archive(codex_source, member)
-    codex = LockedArtifactDeclaration(
-        component_id="codex",
-        version="0.145.0",
-        url=codex_source.as_uri(),
-        sha256=hashlib.sha256(codex_payload).hexdigest(),
+    member = "antigravity"
+    tool_source = tmp_path / "antigravity.tar.gz"
+    tool_payload = member_archive(tool_source, member)
+    tool = LockedArtifactDeclaration(
+        component_id="antigravity-cli",
+        version="1.1.24",
+        url=tool_source.as_uri(),
+        sha256=hashlib.sha256(tool_payload).hexdigest(),
         archive_member=member,
-        destination="/usr/local/bin/codex",
+        destination="/opt/antigravity-cli/bin/antigravity",
     )
     built: dict[str, ImageDetails] = {}
 
     def build(build_spec) -> None:
         plan = build_spec.build_plan()
-        codex_copy = next(copy for copy in plan.files if copy.destination == "/usr/local/bin/codex")
-        assert codex_copy.source.read_bytes() == b"codex-binary-fixture"
-        assert codex_copy.permissions == 0o755
+        copied = next(
+            copy for copy in plan.files if copy.destination == "/opt/antigravity-cli/bin/antigravity"
+        )
+        assert copied.source.read_bytes() == b"tool-binary-fixture"
+        assert copied.permissions == 0o755
+        assert plan.exec_steps == ()
         labels = dict(plan.labels)
         built[plan.image] = image_details(plan.image, labels)
 
@@ -392,7 +397,7 @@ def test_materialization_installs_locked_codex_executable(tmp_path: Path) -> Non
         base_identity="sha256:base",
         platform="linux-amd64",
         artifact=pycharm_spec,
-        ancillary_artifacts=(codex,),
+        ancillary_artifacts=(tool,),
         cache_root=tmp_path / "cache",
         inspect_image=lambda reference: built.get(reference),
         build=build,
@@ -400,8 +405,185 @@ def test_materialization_installs_locked_codex_executable(tmp_path: Path) -> Non
 
     assert created is True
     descriptor = json.loads(built[image].labels["devcapsule.materialization.descriptor"])
-    assert descriptor["components"][1]["id"] == "codex"
-    assert descriptor["components"][1]["artifact"]["sha256"] == codex.sha256
+    assert descriptor["components"][1]["id"] == "antigravity-cli"
+    assert descriptor["components"][1]["artifact"]["sha256"] == tool.sha256
+    assert descriptor["components"][1]["installation"] == {
+        "archive-member": member,
+        "destination": "/opt/antigravity-cli/bin/antigravity",
+        "format": "tar-gz-member",
+    }
+
+
+def codex_npm_declarations(tmp_path: Path) -> tuple[LockedArtifactDeclaration, ...]:
+    """Two verified npm tarballs, the shape the codex component declares."""
+
+    meta_source = tmp_path / "codex-0.153.0.tgz"
+    meta_source.write_bytes(b"meta-package-tarball")
+    platform_source = tmp_path / "codex-0.153.0-linux-x64.tgz"
+    platform_source.write_bytes(b"platform-package-tarball")
+    return (
+        LockedArtifactDeclaration(
+            component_id="codex",
+            version="0.153.0",
+            url=meta_source.as_uri(),
+            sha256=hashlib.sha256(meta_source.read_bytes()).hexdigest(),
+            destination="/opt/codex/0.153.0",
+            artifact_format="npm-package",
+            npm_package="@openai/codex",
+            permissions=0o644,
+            environment=(("PATH", "/opt/codex/0.153.0/node_modules/.bin:${PATH}"),),
+        ),
+        LockedArtifactDeclaration(
+            component_id="codex",
+            version="0.153.0",
+            url=platform_source.as_uri(),
+            sha256=hashlib.sha256(platform_source.read_bytes()).hexdigest(),
+            destination="/opt/codex/0.153.0",
+            artifact_format="npm-package",
+            npm_package="@openai/codex-linux-x64",
+            permissions=0o644,
+        ),
+    )
+
+
+def test_materialization_installs_npm_packages_with_npm_offline(tmp_path: Path) -> None:
+    pycharm_source = tmp_path / "pycharm.tar.gz"
+    pycharm_payload = fixture_archive(pycharm_source)
+    pycharm_spec = artifact(pycharm_source, hashlib.sha256(pycharm_payload).hexdigest())
+    meta, platform = codex_npm_declarations(tmp_path)
+    built: dict[str, ImageDetails] = {}
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        copies = {copy.destination: copy for copy in plan.files}
+        # The verified tarballs travel whole, named as npm published them,
+        # beside a manifest that declares each as a file: dependency.
+        assert copies["/opt/codex/0.153.0/codex-0.153.0.tgz"].source.read_bytes() == (
+            b"meta-package-tarball"
+        )
+        assert copies["/opt/codex/0.153.0/codex-0.153.0-linux-x64.tgz"].source.read_bytes() == (
+            b"platform-package-tarball"
+        )
+        assert copies["/opt/codex/0.153.0/codex-0.153.0.tgz"].permissions == 0o644
+        manifest = json.loads(copies["/opt/codex/0.153.0/package.json"].source.read_text())
+        assert manifest == {
+            "name": "devcapsule-codex",
+            "version": "0.0.0",
+            "private": True,
+            "dependencies": {
+                "@openai/codex": "file:./codex-0.153.0.tgz",
+                "@openai/codex-linux-x64": "file:./codex-0.153.0-linux-x64.tgz",
+            },
+        }
+        # One offline install per project, after every copy, with the cache
+        # scrubbed in the same step; the launcher directory joins PATH.
+        assert plan.exec_steps == (ExecStep(npm_install_step("/opt/codex/0.153.0")),)
+        assert npm_install_step("/opt/codex/0.153.0") == (
+            "sh",
+            "-c",
+            "npm_config_cache=/tmp/devcapsule-npm-cache npm --prefix '/opt/codex/0.153.0' "
+            "install --offline --ignore-scripts --no-audit --no-fund --no-update-notifier "
+            "--loglevel=error --logs-max=0 && rm -rf /tmp/devcapsule-npm-cache",
+        )
+        assert ("PATH", "/opt/codex/0.153.0/node_modules/.bin:${PATH}") in plan.env
+        built[plan.image] = image_details(plan.image, dict(plan.labels))
+
+    image, created = ensure_materialized_surface(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=pycharm_spec,
+        ancillary_artifacts=(meta, platform),
+        cache_root=tmp_path / "cache",
+        inspect_image=lambda reference: built.get(reference),
+        build=build,
+    )
+
+    assert created is True
+    descriptor = json.loads(built[image].labels["devcapsule.materialization.descriptor"])
+    assert [item["id"] for item in descriptor["components"]] == ["pycharm", "codex", "codex"]
+    assert descriptor["components"][1]["installation"] == {
+        "destination": "/opt/codex/0.153.0",
+        "format": "npm-package",
+        "npm-package": "@openai/codex",
+    }
+    assert descriptor["components"][2]["installation"] == {
+        "destination": "/opt/codex/0.153.0",
+        "format": "npm-package",
+        "npm-package": "@openai/codex-linux-x64",
+    }
+
+
+def test_npm_package_artifacts_are_validated_when_the_lock_is_read() -> None:
+    def lock(**codex: object) -> dict:
+        return {
+            "platform": "linux-amd64",
+            "base": {"reference": "base@sha256:manifest"},
+            "components": {
+                "interactive-surface": "pycharm",
+                "pycharm": {
+                    "version": "2026.2.0.1",
+                    "variant": "professional",
+                    "delivery-policy": "local-materialization",
+                    "url": "https://example.test/pycharm.tar.gz",
+                    "sha256": "a" * 64,
+                },
+                "codex": {
+                    "version": "0.153.0",
+                    "delivery-policy": "local-materialization",
+                    "npm-package": "@openai/codex",
+                    "url": "https://example.test/codex-0.153.0.tgz",
+                    "sha256": "b" * 64,
+                    "artifacts": {
+                        "linux-amd64": {
+                            "npm-package": "@openai/codex-linux-x64",
+                            "url": "https://example.test/codex-0.153.0-linux-x64.tgz",
+                            "sha256": "c" * 64,
+                        }
+                    },
+                    **codex,
+                },
+            },
+            "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
+        }
+
+    locked = parse_locked_environment(lock())
+    assert [item.npm_package for item in locked.ancillary_artifacts] == [
+        "@openai/codex",
+        "@openai/codex-linux-x64",
+    ]
+
+    with pytest.raises(CliError, match="must end in a tarball file name"):
+        parse_locked_environment(lock(url="https://example.test/codex/"))
+
+
+def test_npm_projects_refuse_a_directory_shared_by_two_components(tmp_path: Path) -> None:
+    from devcapsule.materialization import _npm_projects
+
+    meta, platform = codex_npm_declarations(tmp_path)
+    other = LockedArtifactDeclaration(
+        component_id="other-agent",
+        version="1",
+        url="https://example.test/other-1.tgz",
+        sha256="d" * 64,
+        destination="/opt/codex/0.153.0",
+        artifact_format="npm-package",
+        npm_package="@example/other",
+    )
+    with pytest.raises(CliError, match="claimed by several components: codex, other-agent"):
+        _npm_projects(((tmp_path, meta), (tmp_path, platform), (tmp_path, other)), tmp_path)
+
+    duplicate = LockedArtifactDeclaration(
+        component_id="codex",
+        version="0.153.0",
+        url="https://example.test/codex-again.tgz",
+        sha256="d" * 64,
+        destination="/opt/codex/0.153.0",
+        artifact_format="npm-package",
+        npm_package="@openai/codex",
+    )
+    with pytest.raises(CliError, match="declares npm package '@openai/codex' twice"):
+        _npm_projects(((tmp_path, meta), (tmp_path, duplicate)), tmp_path)
 
 
 def test_materialization_installs_locked_raw_executable_and_image_environment(

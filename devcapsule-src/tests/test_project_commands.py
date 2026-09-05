@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from devcapsule import cli
+from devcapsule.components.codex import CODEX_CONFIG_SEED
 from devcapsule.configurations.pycharm import DockerMode
 from devcapsule.materialization import ImageDetails, parse_locked_environment
 from devcapsule.project_configuration import (
@@ -114,11 +115,14 @@ def select_codex_component(project: Path) -> None:
 [components.codex]
 version = "0.145.0"
 delivery-policy = "local-materialization"
+npm-package = "@openai/codex"
+url = "https://example.test/codex-0.145.0.tgz"
+sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 [components.codex.artifacts.linux-amd64]
-url = "https://example.test/codex.tgz"
+npm-package = "@openai/codex-linux-x64"
+url = "https://example.test/codex-0.145.0-linux-x64.tgz"
 sha256 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-archive-member = "package/vendor/x86_64-unknown-linux-musl/bin/codex"
 """
         )
 
@@ -800,6 +804,11 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
             / "home"
         ).resolve()
         assert codex_destination == "/home/devcapsule/.codex"
+        # The fresh managed slot starts with the component's seeded
+        # configuration, written as the invoking user before the launch.
+        seeded = codex_state / "config.toml"
+        assert seeded.read_text(encoding="utf-8") == CODEX_CONFIG_SEED
+        assert oct(seeded.stat().st_mode & 0o777) == "0o600"
         assert options.runtime_plan.component_environment() == {
             "CODEX_HOME": "/home/devcapsule/.codex",
             "JAVA_TOOL_OPTIONS": "-Dide.browser.jcef.sandbox.enable=false",
@@ -1905,3 +1914,31 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
         capsys.readouterr()
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         assert "stale" not in capsys.readouterr().out
+
+
+def test_component_state_seed_is_written_once_and_never_overwrites(tmp_path: Path) -> None:
+    from devcapsule.commands.project import _seed_component_state
+
+    declaration = SimpleNamespace(component_id="codex", slot_name="home")
+    slot = tmp_path / "codex-home"
+    slot.mkdir()
+
+    _seed_component_state(slot, declaration)
+    seeded = slot / "config.toml"
+    assert seeded.read_text(encoding="utf-8") == CODEX_CONFIG_SEED
+    assert oct(seeded.stat().st_mode & 0o777) == "0o600"
+
+    # A developer's edit — or codex's own appended tables — must survive
+    # every later launch untouched.
+    seeded.write_text('model = "gpt-6-astra"\n', encoding="utf-8")
+    _seed_component_state(slot, declaration)
+    assert seeded.read_text(encoding="utf-8") == 'model = "gpt-6-astra"\n'
+
+    # Slots of components without seeds, and slots the component does not
+    # seed, are left empty.
+    other = tmp_path / "other"
+    other.mkdir()
+    _seed_component_state(other, SimpleNamespace(component_id="claude-code", slot_name="home"))
+    _seed_component_state(other, SimpleNamespace(component_id="codex", slot_name="cache"))
+    _seed_component_state(other, SimpleNamespace(component_id="unknown", slot_name="home"))
+    assert list(other.iterdir()) == []

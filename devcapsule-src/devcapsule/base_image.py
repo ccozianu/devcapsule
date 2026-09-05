@@ -17,8 +17,6 @@ from devcapsule.image_build import (
     BaseImageComponent,
     BuildComponent,
     BuildxImageBuilder,
-    CommandComponent,
-    EntrypointComponent,
     EnvComponent,
     FileComponent,
     ImageBuildSpec,
@@ -43,8 +41,7 @@ DEFAULT_ROOT_IMAGE = "ubuntu:24.04"
 NVIDIA_CUDA_ROOT_IMAGE = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
 DEFAULT_OUTPUT_IMAGE = "devcapsule-base:latest"
 PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
-RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
-BASE_RECIPE_VERSION = "5"
+BASE_RECIPE_VERSION = "6"
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
@@ -220,11 +217,11 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.component.postgresql-client.license", "PostgreSQL"),
                 )
             ),
-            # The runtime entrypoint is its own PID 1: it reaps, forwards
-            # signals, and supervises the foreground child (D1: pure Python;
-            # tini stays installed as the recorded fallback, not in front).
-            EntrypointComponent((PEX_DESTINATION, "runtime")),
-            CommandComponent((RUNTIME_PLAN_PATH,)),
+            # The base carries no real entrypoint (product-owner ruling
+            # 2026-09-05): every formation's materialization recipe sets its
+            # own ENTRYPOINT/CMD, so a boot contract baked here could only
+            # be inherited by accident. Running the base directly drops into
+            # the root image's default shell.
         ]
     )
     return ImageBuildSpec(options.image, root_image, tuple(components))

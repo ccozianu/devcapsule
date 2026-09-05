@@ -119,7 +119,9 @@ The ruling:
 
 1. **The base image should not have a real entrypoint.** (Today v0.2.9
    bakes the supervisor and v026 bakes tini; removing it is a change
-   for the next base release.)
+   for the next base release. **Implemented 2026-09-05**: the base
+   recipe no longer emits `ENTRYPOINT`/`CMD` — base recipe version 6 —
+   riding the owner's v0.2.9 base rebuild.)
 2. **The launcher sets the entrypoint in the derived image** — the
    materialization emits it, making the descriptor claim true by
    construction. Because a derived image's `ENTRYPOINT` overrides the

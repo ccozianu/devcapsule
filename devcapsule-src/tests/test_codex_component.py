@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import inspect
+import tomllib
 
 import pytest
 
 from devcapsule.components import ComponentDefinition
+from devcapsule.compat import CliError
 from devcapsule.components.codex import (
-    CODEX_EXECUTABLE,
+    CODEX_CONFIG_SEED,
+    CODEX_PACKAGE,
     DEFINITION,
     CodexComponent,
+    codex_bin,
+    codex_installation,
     runtime_template,
 )
 from devcapsule.components.pycharm import PyCharmComponent
@@ -27,11 +32,14 @@ def locked_components() -> dict[str, object]:
             "codex": {
                 "version": "0.145.0",
                 "delivery-policy": "local-materialization",
+                "npm-package": "@openai/codex",
+                "url": "https://example.test/codex-0.145.0.tgz",
+                "sha256": "b" * 64,
                 "artifacts": {
                     "linux-amd64": {
-                        "url": "https://example.test/codex.tgz",
+                        "npm-package": "@openai/codex-linux-x64",
+                        "url": "https://example.test/codex-0.145.0-linux-x64.tgz",
                         "sha256": "c" * 64,
-                        "archive-member": "package/vendor/x86_64-unknown-linux-musl/bin/codex",
                     }
                 },
             },
@@ -51,18 +59,74 @@ def test_built_in_components_explicitly_implement_abstract_contract() -> None:
         incomplete_component()
 
 
-def test_codex_implements_component_contract_and_declares_ready_made_cli() -> None:
+def test_codex_implements_component_contract_and_declares_the_npm_packages() -> None:
     definition: ComponentDefinition = DEFINITION
-    artifact = definition.locked_artifacts(
+    meta, platform = definition.locked_artifacts(
         locked_components()["components"]["codex"],  # type: ignore[index]
         "linux-amd64",
-    )[0]
+    )
 
     assert definition.id == "codex"
     assert definition.capability == "codex-agent"
-    assert artifact.version == "0.145.0"
-    assert artifact.destination == CODEX_EXECUTABLE
-    assert artifact.permissions == 0o755
+    # Both tarballs install into one versioned npm project under /opt; the
+    # meta package brings the launcher npm links into node_modules/.bin,
+    # which is what the image PATH gains.
+    assert codex_installation("0.145.0") == "/opt/codex/0.145.0"
+    assert codex_bin("0.145.0") == "/opt/codex/0.145.0/node_modules/.bin"
+    for declaration in (meta, platform):
+        assert declaration.version == "0.145.0"
+        assert declaration.artifact_format == "npm-package"
+        assert declaration.destination == "/opt/codex/0.145.0"
+        assert declaration.archive_member is None
+        assert declaration.permissions == 0o644
+    assert meta.npm_package == CODEX_PACKAGE == "@openai/codex"
+    assert meta.url == "https://example.test/codex-0.145.0.tgz"
+    assert meta.sha256 == "b" * 64
+    assert meta.environment == (("PATH", "/opt/codex/0.145.0/node_modules/.bin:${PATH}"),)
+    assert platform.npm_package == "@openai/codex-linux-x64"
+    assert platform.url == "https://example.test/codex-0.145.0-linux-x64.tgz"
+    assert platform.sha256 == "c" * 64
+    assert platform.environment == ()
+
+
+def test_codex_seeds_a_yolo_configuration_into_a_fresh_home_slot() -> None:
+    (seed,) = DEFINITION.state_seeds()
+
+    assert seed.slot == "home"
+    assert seed.relative_path == "config.toml"
+    assert seed.content == CODEX_CONFIG_SEED
+    # Owner ruling 2026-09-05: the capsule is the sandbox. The seed is a
+    # complete, valid TOML document whose keys are all top-level, so the
+    # tables codex appends later cannot capture them.
+    parsed = tomllib.loads(seed.content)
+    assert parsed == {
+        "approval_policy": "never",
+        "sandbox_mode": "danger-full-access",
+        "use_legacy_landlock": True,
+    }
+    first_key_line = next(
+        line for line in seed.content.splitlines() if line and not line.startswith("#")
+    )
+    assert first_key_line.startswith("approval_policy")
+    assert "[" not in seed.content.replace("[table]", "")
+
+
+def test_codex_lock_metadata_must_name_the_meta_package_and_platform_alias() -> None:
+    metadata = dict(locked_components()["components"]["codex"])  # type: ignore[index, arg-type]
+    metadata["npm-package"] = "@openai/codex-fork"
+    with pytest.raises(CliError, match="components.codex.npm-package must be '@openai/codex'"):
+        DEFINITION.locked_artifacts(metadata, "linux-amd64")
+
+    metadata = dict(locked_components()["components"]["codex"])  # type: ignore[index, arg-type]
+    metadata["artifacts"] = {"linux-amd64": {"url": "https://example.test/x.tgz", "sha256": "c" * 64}}
+    with pytest.raises(CliError, match="artifacts.linux-amd64.npm-package"):
+        DEFINITION.locked_artifacts(metadata, "linux-amd64")
+
+    with pytest.raises(CliError, match="no artifact for 'linux-arm64'"):
+        DEFINITION.locked_artifacts(
+            locked_components()["components"]["codex"],  # type: ignore[index]
+            "linux-arm64",
+        )
 
 
 def test_codex_component_derives_environment_from_credential_state() -> None:

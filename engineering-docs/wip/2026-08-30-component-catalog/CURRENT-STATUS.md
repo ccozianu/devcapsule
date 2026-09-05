@@ -252,6 +252,39 @@ entrypoint the recipe never enforces (tini is still PID 1 on v026
 formations, against `500909d`'s premise), and superseded multi-GB
 canonical images accumulate with no lifecycle.
 
+**2026-09-05, codex delivery rebuilt at the owner's direction.** The
+owner's "upgrading codex left it in an incomplete state" after the
+v0.2.9 rebuild root-caused to the single-member extraction: codex was
+one plucked binary, missing the bundled bubblewrap, ripgrep, zsh and
+code-mode host it resolves beside itself, so every sandboxed command
+panicked (never a regression of the upgrade; 0.145.0 formations fail
+the same way). Recorded in
+[2026-09-05-codex-installed-as-a-single-plucked-binary](../../bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md).
+The owner directed the vendor's own method — a plain local `npm install`
+with `node_modules/.bin` on `PATH` — under the `/opt` convention:
+`LockedArtifactDeclaration` gains the `npm-package` format, codex pins
+both npm tarballs (meta package new at the component level; platform
+package under its alias), materialization copies the host-verified
+tarballs into `/opt/codex/<version>` and runs one offline
+`npm install --ignore-scripts` with the base's node inside the build
+(matrix `embedded-13`; golden locks and the dogfood lock regenerated,
+so the checkout's base-image authorization goes stale by design and
+re-asks at the next resolve). Verified on a scratch image built from
+the rendered steps on the v0.2.9 base: launcher, binary, all helpers,
+and a Landlock-sandboxed command as an unprivileged user. Two things
+the owner should know: the tarballs stay beside the manifest (about
+135 MB per codex-carrying formation, so the recorded `package-lock.json`
+describes an install npm could repeat), and node is now a runtime
+dependency of codex — assumed shipped by every base for now, per the
+owner ("we'll resolve dependencies later"). The same day the owner
+ruled the sandbox half (*the capsule is the sandbox*) and directed the
+pin to 0.153.4: see the *Codex sandbox configuration* open thread for
+the seeded `config.toml` and the new `state_seeds` contract. The
+in-capsule smoke of the npm layout ran on the scratch tictactoe
+checkout (codium × codex 0.153.0 on v0.2.9): build clean, launcher on
+PATH, all helpers present, known-good generation `20260905T135119Z`
+recorded.
+
 ## Release Target: v0.2.9
 
 Set by the product owner on 2026-09-02. v0.2.9 ships when:
@@ -508,6 +541,26 @@ its ruling thread open):
 
 ## Open Threads
 
+- **Codex sandbox configuration** (opened and ruled 2026-09-05): with
+  the npm layout in place, codex's default bubblewrap sandbox failed
+  under capsule hardening for a different reason — unprivileged user
+  namespaces are denied by the seccomp filter and the empty capability
+  set (tested inside this capsule: `unshare -Ur` and the bundled `bwrap`
+  both refuse); Landlock worked but keeps the `sandbox` subcommand's
+  workspace read-only and is deprecated in codex 0.153. The owner ruled
+  *the capsule is the sandbox* and chose the seeded posture: a new
+  `ComponentDefinition.state_seeds` contract lets a component declare
+  default files for its slots; the host launcher writes them into a
+  freshly created managed slot as the invoking user, only when absent,
+  never into adopted directories. Codex seeds `approval_policy =
+  "never"`, `sandbox_mode = "danger-full-access"`, `use_legacy_landlock
+  = true` (validated against the 0.153.0 and 0.153.4 binaries; the owner
+  validated the pair by hand in the dogfood capsule). The pin advanced to
+  0.153.4 (matrix `embedded-14`, provisional edges). Still open: the
+  codex edges' evidence predates the npm layout and the seed; the owner's
+  next smoke of a codex-carrying formation on a fresh slot is the
+  evidence, and `use_legacy_landlock`'s deprecation means the sandboxed
+  fallback needs re-checking at the next codex advance.
 - **Base rebuild** (updated 2026-09-03): the codex and claude-code gen2
   edges entered provisionally (matrix `embedded-8`) when the owner's
   five-way formation — codium × antigravity × claude-code × codex —
