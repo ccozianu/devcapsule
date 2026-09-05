@@ -617,6 +617,21 @@ its ruling thread open):
     antigravity 1.1.26 remain available upstream, awaiting the owner's
     call on advancing before or after the spins. Suite green (537),
     mypy clean.
+  - **Formation-identity fix, entrypoint half (2026-09-05)**: ruled by
+    the owner ("base carries no real entrypoint; the launcher sets it
+    in the derived image; an entrypoint-only rebuild is almost a
+    no-op") and implemented the same day: the materialization recipe
+    now emits `ENTRYPOINT`/`CMD` from the descriptor, verification
+    compares the claim to the image's actual boot configuration,
+    pre-enforcement images self-heal via a configuration-only rebuild
+    onto the same tag (live-smoked: 0.92 s on a 7.58 GB formation),
+    materialization explains *why* it runs (first formation, or the
+    descriptor fields differing from the nearest existing one), and
+    prior formation images are reported with sizes rather than
+    silently accumulating. Reap-vs-cleanup-verb remains the bug's open
+    owner decision; base-without-entrypoint lands with the next base
+    release. Awaiting the owner's smoke. Suite green (542), mypy
+    clean.
   - Logged from the owner's first spin attempt (pycharm × three
     agents, strict refusal), awaiting owner triage onto a release
     list:

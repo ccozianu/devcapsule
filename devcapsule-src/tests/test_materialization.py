@@ -11,6 +11,9 @@ import pytest
 from devcapsule.compat import CliError
 from devcapsule.components import LockedArtifactDeclaration
 from devcapsule.materialization import (
+    ENTRYPOINT_CONTRACT,
+    RUNTIME_PLAN_PATH,
+    descriptor_differences,
     ArtifactSpec,
     ImageDetails,
     acquire_artifact,
@@ -565,3 +568,186 @@ def test_ancillary_environment_chains_path_prefixes_and_rejects_conflicts() -> N
                 declaration("other", (("DISABLE_UPDATES", "0"),)),
             )
         )
+
+
+# ---------------------------------------------------------------------------
+# Boot-contract enforcement (the 2026-09-02 formation-identity record,
+# entrypoint half ruled 2026-09-05)
+
+
+def test_materialization_recipe_enforces_the_boot_contract(tmp_path: Path) -> None:
+    source = tmp_path / "pycharm.tar.gz"
+    payload = fixture_archive(source)
+    spec = artifact(source, hashlib.sha256(payload).hexdigest())
+    built: dict[str, ImageDetails] = {}
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        assert plan.entrypoint == ENTRYPOINT_CONTRACT
+        assert plan.command == (RUNTIME_PLAN_PATH,)
+        built[plan.image] = ImageDetails(
+            plan.image,
+            "sha256:image",
+            dict(plan.labels),
+            "linux",
+            "amd64",
+            entrypoint=plan.entrypoint,
+            command=plan.command,
+        )
+
+    image, created = ensure_materialized_surface(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=spec,
+        cache_root=tmp_path / "cache",
+        inspect_image=lambda reference: built.get(reference),
+        build=build,
+    )
+    assert created is True
+    # The post-build recheck accepted an image whose actual boot
+    # configuration equals the descriptor claim.
+    assert built[image].entrypoint == ENTRYPOINT_CONTRACT
+
+
+def test_existing_image_with_stale_boot_config_is_repaired_in_place(tmp_path: Path) -> None:
+    spec = artifact(tmp_path / "missing.tar.gz")
+    canonical, labels = expected_labels("sha256:base", spec)
+    stale = ImageDetails(
+        canonical,
+        "sha256:stale",
+        labels,
+        "linux",
+        "amd64",
+        entrypoint=("/usr/bin/tini", "--") + ENTRYPOINT_CONTRACT,
+        command=(RUNTIME_PLAN_PATH,),
+    )
+    state = {"current": stale}
+    repairs: list[object] = []
+    messages: list[str] = []
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        repairs.append(build_spec)
+        # Configuration-only: FROM the canonical tag (held still by the
+        # materialization lock), no content steps, just the boot contract.
+        assert plan.base_image == canonical
+        assert plan.directories == () and plan.files == () and plan.labels == ()
+        assert plan.entrypoint == ENTRYPOINT_CONTRACT
+        assert plan.command == (RUNTIME_PLAN_PATH,)
+        state["current"] = ImageDetails(
+            canonical,
+            "sha256:repaired",
+            labels,
+            "linux",
+            "amd64",
+            entrypoint=plan.entrypoint,
+            command=plan.command,
+        )
+
+    image, created = ensure_materialized_surface(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=spec,
+        cache_root=tmp_path / "cache",
+        inspect_image=lambda reference: state["current"] if reference == canonical else None,
+        build=build,
+        report=messages.append,
+    )
+    assert image == canonical
+    assert created is False
+    assert len(repairs) == 1
+    assert any("Enforcing the recorded boot contract" in message for message in messages)
+
+
+def test_verify_rejects_boot_config_contradicting_descriptor(tmp_path: Path) -> None:
+    spec = artifact(tmp_path / "missing.tar.gz")
+    canonical, labels = expected_labels("sha256:base", spec)
+    descriptor = formation_descriptor(
+        platform="linux-amd64", base_identity="sha256:base", artifact=spec
+    )
+    lying = ImageDetails(
+        canonical,
+        "sha256:image",
+        labels,
+        "linux",
+        "amd64",
+        entrypoint=("/usr/bin/tini", "--") + ENTRYPOINT_CONTRACT,
+        command=(RUNTIME_PLAN_PATH,),
+    )
+    with pytest.raises(CliError, match="boots differently"):
+        verify_materialized_image(lying, descriptor=descriptor, canonical_name=canonical)
+
+
+def test_materialization_explains_first_and_nearest_formations(tmp_path: Path) -> None:
+    source = tmp_path / "pycharm.tar.gz"
+    payload = fixture_archive(source)
+    spec = artifact(source, hashlib.sha256(payload).hexdigest())
+    _prior_canonical, prior_labels = expected_labels("sha256:otherbase", spec)
+    prior = ImageDetails(
+        "devcapsule-local-pycharm:oldtag",
+        "sha256:prior",
+        prior_labels,
+        "linux",
+        "amd64",
+        size_bytes=7_000_000_000,
+    )
+    built: dict[str, ImageDetails] = {}
+    messages: list[str] = []
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        built[plan.image] = ImageDetails(
+            plan.image,
+            "sha256:image",
+            dict(plan.labels),
+            "linux",
+            "amd64",
+            entrypoint=plan.entrypoint,
+            command=plan.command,
+        )
+
+    ensure_materialized_surface(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=spec,
+        cache_root=tmp_path / "cache",
+        inspect_image=lambda reference: built.get(reference),
+        build=build,
+        report=messages.append,
+        list_formations=lambda: (prior,),
+    )
+    assert any(
+        "differs from devcapsule-local-pycharm:oldtag in base.identity" in message
+        for message in messages
+    )
+    assert any(
+        "Prior pycharm formation images remain (7.0 GB total)" in message
+        for message in messages
+    )
+
+    messages.clear()
+    built.clear()
+    ensure_materialized_surface(
+        base_reference="base:debug",
+        base_identity="sha256:base",
+        platform="linux-amd64",
+        artifact=spec,
+        cache_root=tmp_path / "cache2",
+        inspect_image=lambda reference: built.get(reference),
+        build=build,
+        report=messages.append,
+        list_formations=lambda: (),
+    )
+    assert any("first pycharm formation on this host" in message for message in messages)
+
+
+def test_descriptor_differences_reports_leaf_paths() -> None:
+    expected = {"base": {"identity": "a"}, "runtime": {"entrypoint": ["x"], "command": ["c"]}}
+    actual = {"base": {"identity": "b"}, "runtime": {"entrypoint": ["y"], "command": ["c"]}}
+    assert descriptor_differences(expected, actual) == (
+        "base.identity",
+        "runtime.entrypoint",
+    )

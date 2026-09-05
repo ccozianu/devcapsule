@@ -2,10 +2,14 @@
 
 Date opened: 2026-09-02
 
-Status: open; entrypoint half **ruled 2026-09-05** (see *Ruling* below),
-implementation pending. Reported by the product owner during v0.2.8
-dogfood validation, running `devcapsule-local.pex project run` against
-the DevCapsule checkout itself
+Status: open; entrypoint half **ruled 2026-09-05 and implemented the
+same day** on `component-catalog/antigravity-cli` (see *Ruling* and
+*Implementation* below), awaiting the owner's smoke. The remaining
+unruled half is the superseded-image lifecycle (reap vs. cleanup verb —
+reporting, the ruled minimum, is implemented). Reported by the product
+owner during v0.2.8 dogfood validation, running
+`devcapsule-local.pex project run` against the DevCapsule checkout
+itself
 
 Requirements: R-PRODUCT-001, root R-PRODUCT-002 (the host-side image
 accumulation), R-SCOPE-001
@@ -145,6 +149,39 @@ Recorded for future iterations, same session (not part of this fix):
 optimize materialization so component contributions are cached in
 per-component layers — an `npm install` or `curl … | sh` should run
 once per adopter machine, not once per formation rebuild.
+
+## Implementation (2026-09-05)
+
+Executed per the ruling, suite green (542) and mypy clean:
+
+- **The recipe enforces the boot contract.** `surface_materialization_spec`
+  emits `ENTRYPOINT`/`CMD` from the descriptor's `runtime` table, so the
+  claim is true by construction on every base (a derived image's
+  entrypoint overrides the base's).
+- **Verification compares claims to reality.** `ImageDetails` now carries
+  the image's actual entrypoint/command (and size);
+  `verify_materialized_image` fails loudly when an image boots
+  differently than its descriptor records.
+- **Pre-enforcement images self-heal in place.** When the existing
+  canonical image's labels verify but its boot configuration predates
+  enforcement, `ensure_materialized_surface` runs a configuration-only
+  rebuild (`runtime_enforcement_spec`: `FROM` the canonical tag — held
+  still by the materialization lock; BuildKit cannot address a local
+  image by ID — plus `ENTRYPOINT`/`CMD` only, empty context) onto the
+  same tag. No identity churn for the migration. Live-smoked against a
+  real 7.58 GB formation: 0.92 s, zero layers exported, labels
+  preserved — the ruling's "almost a no-op" measured.
+- **Materialization says why.** Before building, the tool reports either
+  "first `<component>` formation on this host" or "differs from
+  `<nearest existing formation>` in `<descriptor leaf paths>`"
+  (`descriptor_differences`), so identity churn is visible the day it
+  ships.
+- **Prior formations are reported, not reaped.** After a build, the
+  remaining `devcapsule-local-<component>` images are named with their
+  total size and an explicit "not reaped yet" note — the recorded
+  minimum; reap vs. cleanup verb stays an open owner decision (a prior
+  formation may still be current for another checkout sharing the
+  surface).
 
 ## Fix Scope (owner rulings needed on direction)
 

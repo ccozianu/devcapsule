@@ -915,7 +915,7 @@ class ProjectRunCommand(Command):
                 resolution_path=output_path,
                 resolution=resolved,
             )
-            realized = realize_environment(selected)
+            realized = realize_environment(selected, report=print)
             image = realized.image.reference
             checkout_runtime_plan = project_runtime_plan(selected, realized.locked)
             use_image_process = True
