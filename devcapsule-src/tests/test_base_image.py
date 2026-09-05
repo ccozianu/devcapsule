@@ -76,14 +76,16 @@ def test_base_image_packages_pex_with_generic_runtime_configuration(tmp_path: Pa
     assert "downloads.apache.org/maven" in dockerfile
     assert "@google/gemini-cli" not in dockerfile
     assert "gemini --version" not in dockerfile
-    assert 'ENTRYPOINT ["/opt/devcapsule/bin/devcapsule.pex", "runtime"]' in dockerfile
-    assert 'CMD ["/etc/devcapsule/runtime-plan.json"]' in dockerfile
+    # The base carries no boot contract (owner ruling 2026-09-05): every
+    # formation's materialization recipe sets its own ENTRYPOINT/CMD.
+    assert "ENTRYPOINT" not in dockerfile
+    assert "CMD" not in dockerfile
     assert ("devcapsule.image.managed", "true") in plan.labels
     assert ("devcapsule.metadata.version", "1") in plan.labels
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "5") in plan.labels
+    assert ("devcapsule.base.recipe-version", "6") in plan.labels
     # Recipe 5 adds the redistributable PostgreSQL client so projects can
     # declare the postgresql-client component instead of acquiring a client.
     assert "postgresql-client" in plan.apt_packages
