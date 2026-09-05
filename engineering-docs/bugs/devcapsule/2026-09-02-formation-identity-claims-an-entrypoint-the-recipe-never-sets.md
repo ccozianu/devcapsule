@@ -2,9 +2,10 @@
 
 Date opened: 2026-09-02
 
-Status: open; reported by the product owner during v0.2.8 dogfood
-validation, running `devcapsule-local.pex project run` against the
-DevCapsule checkout itself
+Status: open; entrypoint half **ruled 2026-09-05** (see *Ruling* below),
+implementation pending. Reported by the product owner during v0.2.8
+dogfood validation, running `devcapsule-local.pex project run` against
+the DevCapsule checkout itself
 
 Requirements: R-PRODUCT-001, root R-PRODUCT-002 (the host-side image
 accumulation), R-SCOPE-001
@@ -99,6 +100,51 @@ actually changes; descriptor fields that are enforced by the recipe (or
 verified against the image) rather than merely recorded; and a lifecycle
 for superseded canonical images consistent with the product's
 leave-nothing-behind promise.
+
+## Ruling (2026-09-05, product owner — the entrypoint half)
+
+The owner's framing: the tension is both of our own making and the
+technology's. A different entrypoint *is* logically a different
+fingerprint — an image with a different entrypoint cannot be used in
+place of the original — yet an entrypoint is just metadata, so changing
+it should never trigger gigabytes of rebuilding; rebuilding an image
+with the same contents and a different entrypoint should be almost a
+no-op.
+
+The ruling:
+
+1. **The base image should not have a real entrypoint.** (Today v0.2.9
+   bakes the supervisor and v026 bakes tini; removing it is a change
+   for the next base release.)
+2. **The launcher sets the entrypoint in the derived image** — the
+   materialization emits it, making the descriptor claim true by
+   construction. Because a derived image's `ENTRYPOINT` overrides the
+   base's, this holds on *every* existing base (v026's tini and
+   v0.2.9's baked supervisor both get overridden), so the fix does not
+   wait for the entrypoint-less base.
+3. **If a derived image does not need rebuilding for content, one may
+   be built anyway just to set the entrypoint.** Implementation shape:
+   when the only descriptor difference from the nearest existing
+   formation is entrypoint/command, build a thin derivative — `FROM
+   <existing canonical image>` plus the `ENTRYPOINT` — with an empty
+   build context, instead of re-running the full recipe (whose 4.31 GB
+   context transfer is the dominant cost even when every layer caches).
+   The identity keeps entrypoint in the fingerprint (the owner's
+   logical point stands); only the *cost* of an entrypoint-only
+   identity change collapses.
+
+Consequence for PID 1: with the recipe enforcing the supervisor as
+entrypoint, the supervisor genuinely takes PID 1 on all formations,
+including v026-based ones — realizing `500909d`'s premise. Its PID-1
+duties (signal forwarding, zombie reaping, or composing docker's
+`--init` where an init shim is still wanted) are the supervisor
+contract `contained-display` owns; the standing coordination item
+covers this.
+
+Recorded for future iterations, same session (not part of this fix):
+optimize materialization so component contributions are cached in
+per-component layers — an `npm install` or `curl … | sh` should run
+once per adopter machine, not once per formation rebuild.
 
 ## Fix Scope (owner rulings needed on direction)
 

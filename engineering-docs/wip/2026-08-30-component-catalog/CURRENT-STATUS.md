@@ -541,6 +541,14 @@ its ruling thread open):
   data/model separation to exist. The minimum step is done (2026-09-03):
   `scripts/regenerate-golden-locks.py` is checked in and imports the
   fixture needs from the test module, so the two cannot drift.
+- **Per-component layer caching** (owner-stated future work,
+  2026-09-05, stated with the entrypoint ruling): optimize the
+  materialization build so component contributions are cached in
+  layers that provide the parts — an `npm install` or `curl … | sh`
+  should run once on an adopter's machine, not once per formation
+  rebuild. Dovetails with the upgrade-experience intake (cheap
+  rebuilds make pin advances cheap) and the formation-identity fix's
+  thin-derivative build.
 - **Launcher naming**: the generic project launcher still lives in
   `configurations/pycharm/_launcher.py` and `run_pycharm` launches every
   surface. Deferred as cosmetic churn until the PyCharm slot migration
