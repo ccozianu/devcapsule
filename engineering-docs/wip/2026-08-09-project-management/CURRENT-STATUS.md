@@ -32,16 +32,18 @@ remains on `project-management/coordination`. DevCapsule's concrete release
 runbook remains project-specific and owned here; only its reusable workflow
 lessons are inputs to the new review.
 
-Delivery is through `project-management/outbox`. The prior release-process
-acknowledgment at `041fc7f` has not reached main and must be preserved in this
-send, together with its log entry, intake deletion, and handoff. Do not reset
-away that undelivered content. The new assignment is not received until it is
-visible on remote main. GitHub PR creation returned HTTP 403 during the prior
-task; verify delivery or report the remaining PR operation explicitly.
+Delivery is prepared and pushed on `project-management/outbox`. The prior
+release-process acknowledgment from `041fc7f` was preserved, including its
+unchanged log entry and intake deletion. The outbox contains exactly four
+record/intake paths and no deliverable changes; diff checks pass. PR creation
+was retried for this send on 2026-09-11 and again returned HTTP 403,
+`Resource not accessible by integration`. No open outbox PR was found. The
+assignment is not received until the outbox is merged and verified on remote
+main. Do not reset away either pending delivery.
 
 Recorded latitude: the send protocol requires resetting the outbox from main
-but does not specify retaining an earlier unmerged send. Preserve its committed
-diff, rebuild from fetched main with that content intact, then add this delivery.
+but does not specify retaining an earlier unmerged send. Preserved its committed
+diff, rebuilt from fetched main with that content intact, then added this delivery.
 This recurring gap is included in the recipient's evidence review and its
 existing outbox-loss/transport work rather than opening another duplicate item.
 
