@@ -12,6 +12,47 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## Release Process Adopted (2026-09-11)
+
+The product owner selected the release-candidate intake and directed this
+workstream to handle it here, without further delegation, adopting the
+successful v0.2.11 process for new versions. **Decision: acknowledged; the
+release-process documentation task is complete on this branch.** The existing
+[release guide](../../implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+is the single canonical operator document. It now leads with preparation,
+immutable RC publication, downloaded-candidate validation, acceptance,
+integration, final tagging at the accepted source, and final download
+verification. It includes the actual RC3/final source and acceptance record,
+maintenance releases, and publication recovery. Prominent links in the root
+README, documentation index, engineering welcome page, and CLI README make it
+discoverable without a second process document.
+
+Validation: compared the instructions with `release-pex.yml`,
+`release-protocol.py`, and `prepare-promotion.py`; verified that the RC3 and
+final tags both resolve to `94e798f1d1a7aaab93ae3e47d9636471448a8e66`, that this
+commit is on fetched `origin/main`, and that it matches the committed acceptance
+record. Relative documentation links and anchors pass; `git diff --check`
+passes. This is a documentation change, so no new release or runtime test is
+required.
+
+Delivery: the guide travels this branch's ordinary PR. The release-candidate
+intake's acknowledgment and deletion travel together through this workstream's
+outbox; until that lands, the file remains in main's intake. The other seven
+items are unchanged. The original intake's proposed coupling between every
+matrix combination and promotion is not silently adopted: the shipped process
+records the actual scope of acceptance, while the separate matrix-learning
+and automated-validation items remain for their own decisions.
+
+**Planned next step:** deliver this documentation and its intake disposition,
+then continue reconciling the remaining seven intake items against v0.2.11
+and the owner's decisions. No additional implementation task is selected.
+
+**Open threads for this task:** PR/outbox delivery must be verified on remote
+main before calling the item fully dispositioned. No release-process design
+question is left open by this task, and no work was sent to another workstream.
+Earlier next-step and eight-pending-item statements below are historical where
+superseded by this section.
+
 ## Checkout Selected After v0.2.11 (2026-09-09)
 
 The owner replaced component-catalog closure with a pause at the successful

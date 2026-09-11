@@ -15,6 +15,10 @@ and agent must discover them immediately:
 - `WORKFLOW.md` — authoritative human/agent workflow; and
 - `index.md` — repository-wide Markdown documentation index.
 
+For release preparation and publication, use [Releasing a new DevCapsule
+version](implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md),
+the canonical operator guide based on v0.2.11.
+
 ## Structure
 
 - `requirements/product/` — canonical repository-wide product requirement

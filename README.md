@@ -70,34 +70,6 @@ cd devcapsule-src
 .venv/bin/python -m nox -s build
 ```
 
-Prepare releases on a retained `release-MAJOR.MINOR.PATCH` branch. Pushing an
-immutable candidate tag runs the release backend without requiring main integration:
-
-```text
-git branch release-0.2.11 HEAD
-git tag v0.2.11-rc0 HEAD
-git push --atomic origin release-0.2.11 v0.2.11-rc0
-```
-
-CI tests the source, builds the PEX, proves its clean-machine and component/runtime
-behavior, then download-verifies and publishes a GitHub **prerelease**. Candidate
-fixes receive new tags (`-rc1`, etc.). The package version is `0.2.11rc0`.
-
-Accept the exact candidate with smoke/E2E evidence, integrate its changes through
-a PR, and commit its promotion record at `engineering-docs/releases/v0.2.11.json`
-on main. Then push `v0.2.11` at the accepted candidate commit. CI checks that
-record, release-branch membership, and main integration (ancestry, reviewed
-cherry-pick/squash evidence, or a scoped exception). It builds final-version bytes,
-checks frozen dependencies against the candidate, and repeats all release gates.
-The checked-in package version remains the local-build baseline.
-
-The [release protocol](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
-describes the record, maintenance releases, and exact operator commands. A future
-patch starts from the previous release tag even when main is not shippable.
-Retries verify and reuse staged assets; candidate tags and published assets stay
-immutable. Prereleases never become Latest; final publication uses GitHub's
-semantic-version-based Latest selection.
-
 New base images contain tools and OS dependencies; the launcher supplies its own
 PEX during environment materialization. Ordinary CLI releases reuse the pinned
 base. Component installations use independent BuildKit stages and copy their
@@ -140,6 +112,20 @@ The initial binary distribution channel is GitHub Releases: pushing an RC or fin
 `v*` tag runs the backend release workflow, which builds and clean-machine
 proves the self-contained Linux x86-64 PEX before publishing it with a SHA-256
 checksum, then downloads and proves the published bytes again.
+
+## Releasing A New Version
+
+Follow [Releasing a new DevCapsule version](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md),
+the canonical operator guide based on the successful v0.2.11 release.
+It covers candidate publication, testing the downloaded executable, acceptance,
+PR integration, final tagging, download verification, and failure recovery.
+
+The sequence is: publish an immutable RC from a retained release branch,
+validate it, integrate the accepted source and promotion record, then tag that
+exact source for final publication. CI builds and verifies both releases.
+Ordinary CLI releases reuse the pinned base; maintenance releases can start
+from the previous final tag when main is not ready. The guide contains the
+commands and the actual v0.2.11 acceptance record.
 
 ## Development Principles
 

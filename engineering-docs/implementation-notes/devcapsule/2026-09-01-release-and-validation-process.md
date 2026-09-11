@@ -1,17 +1,93 @@
-# DevCapsule Release And Validation Process
+# Releasing A New DevCapsule Version
 
-Originally recorded 2026-09-01. Revised for the owner's 2026-09-09 direction:
-stage and validate immutable release candidates away from main, then promote
-accepted source after main integration or a scoped engineering exception.
-Component installations are reused across image builds.
+This is the canonical operator guide for releasing DevCapsule. On 2026-09-11,
+the product owner adopted the successful v0.2.11 process as the process for
+new versions. Project management owns this release-process decision and its
+documentation; completing it does not depend on delegation to another
+workstream. The guide was originally recorded on 2026-09-01.
+
+The normal sequence is **prepare → publish an RC → validate the downloaded RC
+→ record acceptance → integrate → tag the accepted source → verify the final
+release**. An ordinary CLI release reuses its pinned base. The workflow builds
+and publishes the artifacts; the operator supplies acceptance and performs
+integration and tagging.
+
+## Operator Checklist
+
+The commands below use v0.2.11 as the worked example. For a new release,
+substitute its version and candidate number; never recreate or move an existing
+published tag. Run Git commands from the repository root. Python commands use
+the checkout-local environment described in the [developer setup](../../../README.md#developer-setup).
+
+1. **Prepare a committed release slice.** Select the version and scope, record
+   the full preparation-baseline SHA, and run `nox -s build` from
+   `devcapsule-src` through `.venv/bin/python -m nox -s build`. Keep source edits
+   on the selected workstream branch. `release-X.Y.Z` is a retained ref to the
+   release source, not a change of editing workstream. A maintenance patch may
+   start from the previous final tag when main contains unrelated or unready
+   work. Choose its integration method before promoting it.
+2. **Publish the first candidate.** Create the matching release ref and an
+   immutable `vX.Y.Z-rc0` tag, then push them atomically using the commands in
+   *Release Identity And Trigger*. Wait for **Publish DevCapsule PEX** to pass
+   and publish a non-draft GitHub prerelease with all three assets: the PEX,
+   its checksum file, and `release-manifest.json`.
+3. **Validate the published candidate.** Download and checksum-check its PEX;
+   use that executable for smoke/E2E testing. The [published-executable smoke
+   commands](../../../devcapsule-src/README.md#end-user-artifact) are documented
+   in the CLI README. Use the full-base `--build-base` mode when validating
+   the base recipe; ordinary CLI releases need not rebuild or publish a base.
+   Record actual evidence for changed GUI, login, and provider behavior.
+   Fixture tests cannot supply that acceptance. For a source fix, commit it,
+   advance the release ref without dropping earlier candidates, and publish
+   the next RC number. Repeat until an exact candidate is accepted.
+4. **Record acceptance.** Run `prepare-promotion.py` as shown below with the
+   accepted RC, preparation baseline, accepting operator, and evidence. Review
+   the generated record. For v0.2.11 the accepted candidate was **RC3**, not
+   RC0 or a later workstream tip. Commit the record on the integration side,
+   leaving the accepted candidate's source unchanged.
+5. **Integrate.** Deliver the release changes and acceptance record through
+   the normal PR process, then fetch and verify them on remote `main`. Follow
+   the repository's merge policy. If integration rewrites commit identities,
+   use the documented `reviewed` evidence method instead of claiming ancestry.
+   A scoped exception is a separately authorized alternative, not the normal
+   release path. Do not rebase the tested candidate to make it match main.
+6. **Publish the final tag at the accepted candidate commit.** Use the final
+   tagging commands below. Wait for the final backend run to finish. It
+   rebuilds version metadata, checks frozen inputs against the RC, and repeats
+   the automated gates. A pushed tag alone does not mean a successful release.
+7. **Verify delivery.** Confirm the GitHub release is non-draft and is a final
+   release, with all three assets. Download them into a fresh directory, check
+   `sha256sum --check devcapsule.pex.sha256`, make the PEX executable, and run
+   `./devcapsule.pex version --json`. Check its version, build mnemonic, and
+   source revision against the final tag and acceptance record. Record the
+   release URL, successful Actions run, and verification result in the owning
+   workstream's handoff. Retain the release branch and candidate tags.
+
+## The Successful v0.2.11 Reference
+
+| Fact | Accepted value |
+|---|---|
+| Release branch | `release-0.2.11` |
+| Candidate | `v0.2.11-rc3` |
+| Candidate and final source commit | `94e798f1d1a7aaab93ae3e47d9636471448a8e66` |
+| Preparation baseline | `3f028eeb97d7de6bce5b9f2ac2faf0a1b940cb61` |
+| Integration evidence | `ancestry` |
+| Final tag | `v0.2.11` |
+
+The [committed acceptance record](../../releases/v0.2.11.json) identifies the
+candidate checksum and the exact scope of acceptance. The [candidate backend
+run](https://github.com/ccozianu/devcapsule/actions/runs/34333414510) and
+[final release](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.11)
+are the corresponding published evidence. The record covers the release/build
+change and does not claim fresh GUI/login or provider acceptance. Preserve that
+distinction when using it as a template for a release with different changes.
 
 ## Release Identity And Trigger
 
 Prepare a release on `release-MAJOR.MINOR.PATCH` and push an immutable candidate
 tag such as `v0.2.11-rc1` at the prepared commit. A patch can start from the prior
 release tag rather than current main. `release-*` refs are durable release
-anchors, separate from workstream selection; the owner authorized this distinction
-on 2026-09-09 and sent its general workflow rules to workflow-improvements.
+anchors, separate from workstream selection, as authorized on 2026-09-09.
 
 ```text
 git branch release-0.2.11 HEAD
@@ -56,7 +132,7 @@ Generate the reviewable record on the integration side:
 
 ```text
 cd devcapsule-src
-.venv/bin/python scripts/prepare-promotion.py v0.2.11-rc1 \
+.venv/bin/python scripts/prepare-promotion.py v0.2.11-rc3 \
   --baseline FULL_PREPARATION_BASE_SHA --accepted-by OPERATOR \
   --evidence 'Exact candidate smoke result and Actions run URL'
 ```
@@ -84,7 +160,7 @@ The record has schema version 1, `tag`, `candidate-tag`, `source-revision`,
 After the record and integration reach main:
 
 ```text
-git tag -a v0.2.11 'v0.2.11-rc1^{commit}' -m 'DevCapsule 0.2.11'
+git tag -a v0.2.11 'v0.2.11-rc3^{commit}' -m 'DevCapsule 0.2.11'
 git push origin v0.2.11
 ```
 
@@ -104,6 +180,22 @@ new candidate. Neither a broken main nor unrelated main changes require bringing
 that work into a maintenance release. The initial implementation automates each
 tag's backend and promotion checks; acceptance, normal PR integration, and the
 final tag remain operator/agent steps.
+
+## Failed Candidates And Publication Retries
+
+A failed candidate is not promoted. Source or build-input fixes receive a new
+commit and RC tag. Published tags and assets remain immutable; do not delete or
+replace them to make an old candidate appear successful. If a final release
+needs a source fix, prepare a new patch release through the same RC process.
+
+For an infrastructure failure with unchanged source and inputs, rerun the
+failed Actions run or dispatch the workflow with its existing `release_tag`.
+The backend verifies and reuses staged assets. If an upload stopped partway,
+restore the missing original assets from that run's retained Actions artifact;
+do not rebuild replacements or overwrite assets. Resume publication only once
+the complete set passes verification. The workflow retains build artifacts for
+30 days; if the originals cannot be recovered, use a new candidate (or a new
+patch version if the final tag was already published).
 
 ## Runtime Delivery And Base Lifecycle
 
