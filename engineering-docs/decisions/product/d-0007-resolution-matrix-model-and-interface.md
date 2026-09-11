@@ -291,3 +291,4 @@ single plucked binary; the fix landed the same day, after the tag.
   per `R-COMPAT-001`. The manifest is still served by digest after the
   tag's removal, but that is registry retention, not a guarantee; such
   a checkout should regenerate.
+

@@ -26,6 +26,11 @@ runtime selection. No new override interface or runtime change is part of this
 documentation task. D-0004 and D-0007 now point to the new policy without
 rewriting accepted decision/rationale text.
 
+Validation: checked the rule against runtime-artifact selection,
+materialization, and existing unit/E2E assertions; relative links and anchors
+pass, and D-0007's previous body is preserved byte-for-byte. No runtime code
+changed and no new runtime validation is claimed.
+
 **Decision: acknowledged; design record and requirement complete on this
 branch.** Together with the release-process decision, this leaves six intake
 items for decisions: upgrades, automated validation, experiment evidence,
