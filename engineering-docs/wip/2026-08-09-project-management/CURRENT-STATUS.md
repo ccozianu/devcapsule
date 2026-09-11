@@ -47,9 +47,14 @@ and automated-validation items remain for their own decisions.
 then continue reconciling the remaining seven intake items against v0.2.11
 and the owner's decisions. No additional implementation task is selected.
 
-**Open threads for this task:** PR/outbox delivery must be verified on remote
-main before calling the item fully dispositioned. No release-process design
-question is left open by this task, and no work was sent to another workstream.
+**Open threads for this task:** PR creation was retried on 2026-09-11 and the
+GitHub connector rejected it with HTTP 403, `Resource not accessible by
+integration`; Git branch pushes work. Delivery requires PRs from
+`project-management/coordination` (guide) and `project-management/outbox`
+(acknowledgment, intake removal, and this handoff), preferably in that order.
+Verify both on remote main before calling the item fully dispositioned. No
+release-process design question is left open by this task, and no work was
+sent to another workstream.
 Earlier next-step and eight-pending-item statements below are historical where
 superseded by this section.
 
