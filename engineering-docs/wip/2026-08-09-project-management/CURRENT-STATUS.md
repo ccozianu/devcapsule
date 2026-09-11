@@ -4,13 +4,65 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active; permanent coordination
+State: paused 2026-09-11 at the owner's request for the evening; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## Pause And Resume Here (2026-09-11)
+
+The owner requested saving context and continuing tomorrow. The
+[detailed session record](../../session-records/devcapsule/2026-09-11-project-management-decisions-and-workflow-review.md)
+preserves the discussion. The current decisions, assignments, and next work
+are summarized here so reading the record is optional for resuming.
+
+**Completed decisions:** adopt the successful v0.2.11 release procedure as the
+canonical guide, owned in project management; adopt D-0009/R-RUNTIME-001,
+identical outside launcher and inside runtime by default unless explicitly
+overridden by user choice. **Assigned:** *One Workflow, Many Projects* review
+to the existing `workflow-improvements` workstream. Its execution has not begun
+in this checkout and its outbox delivery is not yet on main.
+
+**Six remaining intake decisions:** (1) upgrade experience; (2) automated
+component validation; (3) learning from successful experiments; (4)
+init/regenerate versus config; (5) internal naming conventions; (6) development
+blog. The first three are one connected upgrade discussion, a suggested next
+topic rather than an owner-selected task. Eclipse, contained display, remaining
+V1 assignments/acceptance, and safety/cleanup priorities remain in the portfolio.
+
+**Next resumable task:** fetch and verify whether the pending documentation and
+outbox have landed; synchronize this branch with accepted mainline and record
+resume before editing. Then relist the six items and let the owner select the
+next decision. Do not reopen the two adopted decisions or silently start an
+implementation/workstream switch.
+
+**Delivery and external state:** both branches are pushed. The documentation
+PR from `project-management/coordination` must land before
+`project-management/outbox`, whose handoff links the new permanent files.
+The outbox preserves both acknowledged-item removals and log entries, the new
+workflow intake, this handoff, and the pause registry row. Main may still show
+eight pending intake files and an active project-management row until delivery;
+that is publication lag, not eight unanswered decisions. GitHub PR creation
+returned HTTP 403 during this session; recheck on resume. No runtime resources
+were created or changed by this session. All intentional work is committed;
+temporary outbox checkouts are removed after publishing the branch.
+
+### Open Threads At Pause
+
+- **Awaiting the human:** which of the six remaining decisions to take next;
+  no new implementation has been selected. PR delivery needs working GitHub
+  access or the owner's intervention if the connector still returns 403.
+- **Weighed and unresolved:** discuss the three upgrade items together, then
+  settle their relationship with init/config. Blog and naming can be handled
+  independently. The workflow review returns a design for owner review before
+  broad migration; it does not take over DevCapsule's release runbook.
+- **Deliberately not preserved:** repeated lists and raw tool output; the
+  agent-authored session record preserves material reasoning, not a transcript.
+
+This pause section supersedes earlier active-state and next-step statements.
 
 ## Identical Launcher And Runtime Decided (2026-09-11)
 
