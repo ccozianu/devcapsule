@@ -20,6 +20,11 @@ superseded-by:
 
 # D-0004: Configuration Resolution And Guided Run Experience
 
+Current runtime-delivery policy: [D-0009](d-0009-launcher-delivers-identical-runtime.md)
+supersedes this proposal's embedded-runtime base design. The historical proposal
+below is retained; by default the launcher now installs itself during environment
+materialization.
+
 ## Context
 
 D-0001 establishes a capability-first project declaration, a committed

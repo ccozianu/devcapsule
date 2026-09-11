@@ -41,6 +41,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [D-0006 One Module For Host And Platform Friction](engineering-docs/decisions/product/d-0006-host-platform-friction-module.md)
 - [D-0007 Resolution Matrix As Accumulated Verified Combinations](engineering-docs/decisions/product/d-0007-resolution-matrix-model-and-interface.md)
 - [D-0008 Known-Good Checkout Configuration History](engineering-docs/decisions/product/d-0008-known-good-configuration-history.md)
+- [D-0009 One Executable Outside And Inside The Container](engineering-docs/decisions/product/d-0009-launcher-delivers-identical-runtime.md)
 
 ## Specifications
 
@@ -73,6 +74,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [DevCapsule test suites](devcapsule-src/tests/README.md)
 - [DevCapsule implementation requirements overview](devcapsule-src/REQUIREMENTS.md)
 - [R-ENV-001 Dockerized PyCharm Runtime](engineering-docs/requirements/devcapsule/r-env-001-dockerized-pycharm-runtime.md)
+- [R-RUNTIME-001 Identical Launcher And Container Runtime By Default](engineering-docs/requirements/devcapsule/r-runtime-001-launcher-runtime-identity.md)
 - [R-STATE-001 Persistent IDE State And Plugins](engineering-docs/requirements/devcapsule/r-state-001-persistent-ide-state-and-plugins.md)
 - [R-SCOPE-001 Explicit Host Filesystem Exposure](engineering-docs/requirements/devcapsule/r-scope-001-explicit-host-filesystem-exposure.md)
 - [R-DEV-001 Useful Development Tooling Baseline](engineering-docs/requirements/devcapsule/r-dev-001-useful-development-tooling-baseline.md)

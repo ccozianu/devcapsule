@@ -13,6 +13,11 @@ superseded-by:
 
 # D-0007: Resolution Matrix As Accumulated Verified Combinations
 
+Runtime-delivery update, 2026-09-11: [D-0009](d-0009-launcher-delivers-identical-runtime.md)
+establishes launcher-delivered identical runtime as the default. Embedded-runtime
+examples in the historical amendments below describe the earlier architecture;
+the accepted resolution model remains in force.
+
 ## Context
 
 `resolution_matrix.py` answers the product's central derivation: the user
@@ -286,4 +291,3 @@ single plucked binary; the fix landed the same day, after the tag.
   per `R-COMPAT-001`. The manifest is still served by digest after the
   tag's removal, but that is registry retention, not a guarantee; such
   a checkout should regenerate.
-

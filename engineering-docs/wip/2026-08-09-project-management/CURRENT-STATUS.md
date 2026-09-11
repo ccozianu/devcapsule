@@ -12,6 +12,39 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## Identical Launcher And Runtime Decided (2026-09-11)
+
+The owner settled intake item 7 as the continuing design:
+[D-0009: One Executable Outside And Inside The Container](../../decisions/product/d-0009-launcher-delivers-identical-runtime.md).
+Unless explicitly overridden by user choice, the CLI uses its corresponding
+resolved base and installs its own executable during materialization, so the
+outside launcher and inside runtime have identical bytes. The base need not
+have the CLI's version number. The linked
+[R-RUNTIME-001](../../requirements/devcapsule/r-runtime-001-launcher-runtime-identity.md)
+states the invariant, existing implementation/evidence, and current limits of
+runtime selection. No new override interface or runtime change is part of this
+documentation task. D-0004 and D-0007 now point to the new policy without
+rewriting accepted decision/rationale text.
+
+**Decision: acknowledged; design record and requirement complete on this
+branch.** Together with the release-process decision, this leaves six intake
+items for decisions: upgrades, automated validation, experiment evidence,
+init/config semantics, internal naming, and the blog. The old intake file
+remains until its outbox disposition reaches main; its historical architecture
+and already-corrected recovery account are not reopened.
+
+Delivery: preserve the existing pending release-process acknowledgment and
+workflow-review assignment, then add this item's log entry and intake removal
+in the same outbox commit. **The documentation PR must land before the updated
+outbox**, because this handoff now links the new permanent decision and
+requirement. The outbox carries only records; the new documents travel
+`project-management/coordination`. GitHub PR creation remains blocked by the
+HTTP 403 verified earlier in this session; pushed refs alone are not delivery.
+
+**Planned next step:** deliver the documentation, then the accumulated outbox,
+and continue with the six remaining decisions. **Open threads:** publication
+on remote main is pending; no architectural choice remains open for this item.
+
 ## Workflow Review Assigned (2026-09-11)
 
 The owner requested **One Workflow, Many Projects**: review lessons from
