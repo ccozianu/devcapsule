@@ -12,6 +12,44 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## Workflow Review Assigned (2026-09-11)
+
+The owner requested **One Workflow, Many Projects**: review lessons from
+DevCapsule development and the satellite samples against documented and
+installed workflow behavior; distinguish reusable and conditional mechanisms
+from project-specific policy/state; and define an installation and document
+structure that humans and agents can navigate easily. The assignment is
+`2026-09-11-project-management-one-workflow-many-projects.md` in
+`workflow-improvements`' intake. Its deliverables are an evidence/gap inventory,
+a boundary and installation table, a concrete document/read-path structure,
+walkthroughs across modes and contrasting samples, and ordered implementation
+slices. It connects the existing information-model, workflow-component, storage,
+and human-readable-documentation assignments rather than silently replacing them.
+
+The first slice is review and design at the recipient's next workflow review;
+broad migration and new policy choices follow owner review. This checkout
+remains on `project-management/coordination`. DevCapsule's concrete release
+runbook remains project-specific and owned here; only its reusable workflow
+lessons are inputs to the new review.
+
+Delivery is through `project-management/outbox`. The prior release-process
+acknowledgment at `041fc7f` has not reached main and must be preserved in this
+send, together with its log entry, intake deletion, and handoff. Do not reset
+away that undelivered content. The new assignment is not received until it is
+visible on remote main. GitHub PR creation returned HTTP 403 during the prior
+task; verify delivery or report the remaining PR operation explicitly.
+
+Recorded latitude: the send protocol requires resetting the outbox from main
+but does not specify retaining an earlier unmerged send. Preserve its committed
+diff, rebuild from fetched main with that content intact, then add this delivery.
+This recurring gap is included in the recipient's evidence review and its
+existing outbox-loss/transport work rather than opening another duplicate item.
+
+**Planned next step:** publish this assignment and the preserved release-process
+disposition through the outbox, then return to the remaining project-management
+items. **Open thread:** remote-main delivery must be verified; neither a pushed
+branch nor this handoff alone establishes receipt.
+
 ## Release Process Adopted (2026-09-11)
 
 The product owner selected the release-candidate intake and directed this
