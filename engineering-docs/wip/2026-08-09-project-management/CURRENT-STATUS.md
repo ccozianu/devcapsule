@@ -42,9 +42,24 @@ documentation-before-outbox ordering because the records link its new files.
 The user-docs start date is provisional until registration reaches main; if
 delivery crosses a date boundary, correct the proposed date/path before merge.
 
-**Planned next step:** deliver the registration through the standing outbox,
-then return to the owner to choose the first documentation journey. A workstream
-switch or documentation implementation has not been requested.
+Registration files are prepared at
+`engineering-docs/wip/2026-09-12-user-docs/`, with its handoff, empty intake,
+disposition log, root registry row, and index entry. Checked links and the
+registration diff; no runtime changes or runtime tests belong to this slice.
+GitHub PR creation was retried on 2026-09-12 and again returned HTTP 403,
+`Resource not accessible by integration`. The documentation branch needs a PR
+to main before existing outbox PR #70 can land. Until both land, registration
+is prepared/pushed rather than complete on main; no user-docs branch is created.
+
+Outbox protocol gap, already reported to workflow-improvements: resetting from
+main does not specify preservation of pending mail. Secured the full diff from
+`900223a`, rebuilt from main, and reapplied it before adding the registration.
+This preserves the earlier dispositions and workflow assignment rather than
+silently orphaning them. No new workflow rule is introduced here.
+
+**Planned next step:** obtain main delivery of the documentation branch and
+outbox PR #70, and ask the owner to choose the first documentation journey.
+A workstream switch or documentation implementation has not been requested.
 
 ### Open Threads For This Slice
 
