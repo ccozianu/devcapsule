@@ -4,13 +4,280 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active; permanent coordination
+State: active 2026-09-12; opening user-docs at the owner's request; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## User Documentation Workstream Opening (2026-09-12)
+
+The owner resumed project management and chose to open `user-docs` for V1,
+then review its first focus before documentation implementation begins. The
+six remaining intake decisions stay pending; none was dispositioned by this
+registration. This checkout remains on `project-management/coordination`.
+
+The proposed first slice is one newcomer journey: understand the product's
+purpose and prerequisites, obtain the released executable, launch one useful
+project with an IDE and agent, do a small task, then exit and resume. Audience,
+sample versus existing project, IDE/agent combination, and the first observable
+success are proposals awaiting the owner. Do not start a comprehensive manual
+or select those product-facing choices silently. The separate workflow review
+assignment and development-blog decision remain where they are.
+
+Resume verification: fetched all remote branches; `main` and `origin/main`
+still agree at `a27e0ed`. Fast-forwarded this checkout from `4139f15` to the
+newer remote project-management handoff at `9c46f3b`. It records six unanswered
+decisions, superseding this session's initial count of eight from stale local
+records. The two existing `.devcapsule` configuration edits are unrelated and
+remain outside this task's commits. The working branch already includes main.
+
+Delivery: the earlier documentation changes have not reached main. Outbox
+`900223a` holds pending dispositions, the workflow-review assignment, and this
+workstream's records; PR #70 is open. Preserve every pending delivery when
+rebuilding the outbox from main to add the new registration, and keep the
+documentation-before-outbox ordering because the records link its new files.
+The user-docs start date is provisional until registration reaches main; if
+delivery crosses a date boundary, correct the proposed date/path before merge.
+
+Registration files are prepared at
+`engineering-docs/wip/2026-09-12-user-docs/`, with its handoff, empty intake,
+disposition log, root registry row, and index entry. Checked links and the
+registration diff; no runtime changes or runtime tests belong to this slice.
+GitHub PR creation was retried on 2026-09-12 and again returned HTTP 403,
+`Resource not accessible by integration`. The documentation branch needs a PR
+to main before existing outbox PR #70 can land. Until both land, registration
+is prepared/pushed rather than complete on main; no user-docs branch is created.
+
+Outbox protocol gap, already reported to workflow-improvements: resetting from
+main does not specify preservation of pending mail. Secured the full diff from
+`900223a`, rebuilt from main, and reapplied it before adding the registration.
+This preserves the earlier dispositions and workflow assignment rather than
+silently orphaning them. No new workflow rule is introduced here.
+
+**Planned next step:** obtain main delivery of the documentation branch and
+outbox PR #70, and ask the owner to choose the first documentation journey.
+A workstream switch or documentation implementation has not been requested.
+
+### Open Threads For This Slice
+
+- Awaiting the owner: first reader and scenario, proposed above.
+- Delivery: verify both documentation and outbox PRs reach main before claiming
+  registration is complete or creating a `user-docs/` working branch.
+- Preserved: all prior pending outbox content. No session record requested or
+  created; the handoff holds this slice's consequential state.
+
+This section supersedes the pause and next-step instructions immediately below.
+
+## Pause And Resume Here (2026-09-11)
+
+The owner requested saving context and continuing tomorrow. The
+[detailed session record](../../session-records/devcapsule/2026-09-11-project-management-decisions-and-workflow-review.md)
+preserves the discussion. The current decisions, assignments, and next work
+are summarized here so reading the record is optional for resuming.
+
+**Completed decisions:** adopt the successful v0.2.11 release procedure as the
+canonical guide, owned in project management; adopt D-0009/R-RUNTIME-001,
+identical outside launcher and inside runtime by default unless explicitly
+overridden by user choice. **Assigned:** *One Workflow, Many Projects* review
+to the existing `workflow-improvements` workstream. Its execution has not begun
+in this checkout and its outbox delivery is not yet on main.
+
+**Six remaining intake decisions:** (1) upgrade experience; (2) automated
+component validation; (3) learning from successful experiments; (4)
+init/regenerate versus config; (5) internal naming conventions; (6) development
+blog. The first three are one connected upgrade discussion, a suggested next
+topic rather than an owner-selected task. Eclipse, contained display, remaining
+V1 assignments/acceptance, and safety/cleanup priorities remain in the portfolio.
+
+**Next resumable task:** fetch and verify whether the pending documentation and
+outbox have landed; synchronize this branch with accepted mainline and record
+resume before editing. Then relist the six items and let the owner select the
+next decision. Do not reopen the two adopted decisions or silently start an
+implementation/workstream switch.
+
+**Delivery and external state:** both branches are pushed. The documentation
+PR from `project-management/coordination` must land before
+`project-management/outbox`, whose handoff links the new permanent files.
+The outbox preserves both acknowledged-item removals and log entries, the new
+workflow intake, this handoff, and the pause registry row. Main may still show
+eight pending intake files and an active project-management row until delivery;
+that is publication lag, not eight unanswered decisions. GitHub PR creation
+returned HTTP 403 during this session; recheck on resume. No runtime resources
+were created or changed by this session. All intentional work is committed;
+temporary outbox checkouts are removed after publishing the branch.
+
+### Open Threads At Pause
+
+- **Awaiting the human:** which of the six remaining decisions to take next;
+  no new implementation has been selected. PR delivery needs working GitHub
+  access or the owner's intervention if the connector still returns 403.
+- **Weighed and unresolved:** discuss the three upgrade items together, then
+  settle their relationship with init/config. Blog and naming can be handled
+  independently. The workflow review returns a design for owner review before
+  broad migration; it does not take over DevCapsule's release runbook.
+- **Deliberately not preserved:** repeated lists and raw tool output; the
+  agent-authored session record preserves material reasoning, not a transcript.
+
+This pause section supersedes earlier active-state and next-step statements.
+
+## Identical Launcher And Runtime Decided (2026-09-11)
+
+The owner settled intake item 7 as the continuing design:
+[D-0009: One Executable Outside And Inside The Container](../../decisions/product/d-0009-launcher-delivers-identical-runtime.md).
+Unless explicitly overridden by user choice, the CLI uses its corresponding
+resolved base and installs its own executable during materialization, so the
+outside launcher and inside runtime have identical bytes. The base need not
+have the CLI's version number. The linked
+[R-RUNTIME-001](../../requirements/devcapsule/r-runtime-001-launcher-runtime-identity.md)
+states the invariant, existing implementation/evidence, and current limits of
+runtime selection. No new override interface or runtime change is part of this
+documentation task. D-0004 and D-0007 now point to the new policy without
+rewriting accepted decision/rationale text.
+
+Validation: checked the rule against runtime-artifact selection,
+materialization, and existing unit/E2E assertions; relative links and anchors
+pass, and D-0007's previous body is preserved byte-for-byte. No runtime code
+changed and no new runtime validation is claimed.
+
+**Decision: acknowledged; design record and requirement complete on this
+branch.** Together with the release-process decision, this leaves six intake
+items for decisions: upgrades, automated validation, experiment evidence,
+init/config semantics, internal naming, and the blog. The old intake file
+remains until its outbox disposition reaches main; its historical architecture
+and already-corrected recovery account are not reopened.
+
+Delivery: preserve the existing pending release-process acknowledgment and
+workflow-review assignment, then add this item's log entry and intake removal
+in the same outbox commit. **The documentation PR must land before the updated
+outbox**, because this handoff now links the new permanent decision and
+requirement. The outbox carries only records; the new documents travel
+`project-management/coordination`. GitHub PR creation remains blocked by the
+HTTP 403 verified earlier in this session; pushed refs alone are not delivery.
+
+**Planned next step:** deliver the documentation, then the accumulated outbox,
+and continue with the six remaining decisions. **Open threads:** publication
+on remote main is pending; no architectural choice remains open for this item.
+
+## Workflow Review Assigned (2026-09-11)
+
+The owner requested **One Workflow, Many Projects**: review lessons from
+DevCapsule development and the satellite samples against documented and
+installed workflow behavior; distinguish reusable and conditional mechanisms
+from project-specific policy/state; and define an installation and document
+structure that humans and agents can navigate easily. The assignment is
+`2026-09-11-project-management-one-workflow-many-projects.md` in
+`workflow-improvements`' intake. Its deliverables are an evidence/gap inventory,
+a boundary and installation table, a concrete document/read-path structure,
+walkthroughs across modes and contrasting samples, and ordered implementation
+slices. It connects the existing information-model, workflow-component, storage,
+and human-readable-documentation assignments rather than silently replacing them.
+
+The first slice is review and design at the recipient's next workflow review;
+broad migration and new policy choices follow owner review. This checkout
+remains on `project-management/coordination`. DevCapsule's concrete release
+runbook remains project-specific and owned here; only its reusable workflow
+lessons are inputs to the new review.
+
+Delivery is prepared and pushed on `project-management/outbox`. The prior
+release-process acknowledgment from `041fc7f` was preserved, including its
+unchanged log entry and intake deletion. The outbox contains exactly four
+record/intake paths and no deliverable changes; diff checks pass. PR creation
+was retried for this send on 2026-09-11 and again returned HTTP 403,
+`Resource not accessible by integration`. No open outbox PR was found. The
+assignment is not received until the outbox is merged and verified on remote
+main. Do not reset away either pending delivery.
+
+Recorded latitude: the send protocol requires resetting the outbox from main
+but does not specify retaining an earlier unmerged send. Preserved its committed
+diff, rebuilt from fetched main with that content intact, then added this delivery.
+This recurring gap is included in the recipient's evidence review and its
+existing outbox-loss/transport work rather than opening another duplicate item.
+
+**Planned next step:** publish this assignment and the preserved release-process
+disposition through the outbox, then return to the remaining project-management
+items. **Open thread:** remote-main delivery must be verified; neither a pushed
+branch nor this handoff alone establishes receipt.
+
+## Release Process Adopted (2026-09-11)
+
+The product owner selected the release-candidate intake and directed this
+workstream to handle it here, without further delegation, adopting the
+successful v0.2.11 process for new versions. **Decision: acknowledged; the
+release-process documentation task is complete on this branch.** The existing
+[release guide](../../implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+is the single canonical operator document. It now leads with preparation,
+immutable RC publication, downloaded-candidate validation, acceptance,
+integration, final tagging at the accepted source, and final download
+verification. It includes the actual RC3/final source and acceptance record,
+maintenance releases, and publication recovery. Prominent links in the root
+README, documentation index, engineering welcome page, and CLI README make it
+discoverable without a second process document.
+
+Validation: compared the instructions with `release-pex.yml`,
+`release-protocol.py`, and `prepare-promotion.py`; verified that the RC3 and
+final tags both resolve to `94e798f1d1a7aaab93ae3e47d9636471448a8e66`, that this
+commit is on fetched `origin/main`, and that it matches the committed acceptance
+record. Relative documentation links and anchors pass; `git diff --check`
+passes. This is a documentation change, so no new release or runtime test is
+required.
+
+Delivery: the guide travels this branch's ordinary PR. The release-candidate
+intake's acknowledgment and deletion travel together through this workstream's
+outbox; until that lands, the file remains in main's intake. The other seven
+items are unchanged. The original intake's proposed coupling between every
+matrix combination and promotion is not silently adopted: the shipped process
+records the actual scope of acceptance, while the separate matrix-learning
+and automated-validation items remain for their own decisions.
+
+**Planned next step:** deliver this documentation and its intake disposition,
+then continue reconciling the remaining seven intake items against v0.2.11
+and the owner's decisions. No additional implementation task is selected.
+
+**Open threads for this task:** PR creation was retried on 2026-09-11 and the
+GitHub connector rejected it with HTTP 403, `Resource not accessible by
+integration`; Git branch pushes work. Delivery requires PRs from
+`project-management/coordination` (guide) and `project-management/outbox`
+(acknowledgment, intake removal, and this handoff), preferably in that order.
+Verify both on remote main before calling the item fully dispositioned. No
+release-process design question is left open by this task, and no work was
+sent to another workstream.
+Earlier next-step and eight-pending-item statements below are historical where
+superseded by this section.
+
+## Checkout Selected After v0.2.11 (2026-09-09)
+
+The owner replaced component-catalog closure with a pause at the successful
+v0.2.11 milestone, keeping it open for future components, and retained the
+instruction to position this checkout on `project-management/coordination`.
+That switch is complete. The local branch was fast-forwarded to current main
+`a27e0ed`, which contains its prior recovery work through PR #67 and the outbox
+deliveries through PRs #68 and #69. An initial switch to the obsolete local
+branch would have overwritten populated sample-submodule files; fast-forwarding
+the inactive branch first avoided changing or removing those files.
+
+Component-catalog's unmerged archive proposal is withdrawn. Its working branch
+at `85a94d6` and standing outbox at `986136f` carry the pause, resumable WIP
+handoff, successful release/GUI evidence, and corrected historical intake claim.
+The outbox contains only records/index changes and awaits main delivery; the
+GitHub connector last rejected PR creation with HTTP 403. Do not infer that
+the earlier closure proposal or a stale registry row is the owner's intent.
+The separately registered `eclipse-surface` workstream retains its routing.
+
+Read this handoff, Open Threads, and all eight intake items. Their historical
+statements need reconciliation: launcher-delivered runtime and the RC promotion
+protocol are now shipped in [v0.2.11](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.11).
+The original sync intake is recoverable at commit
+`802adafa3d545895b979288a57cf1363329b94c7`; component-catalog corrected its
+delivery account, and PR #69 published its acknowledgment. No intake item was
+dispositioned merely by this checkout-selection task.
+
+**Planned next step:** reconcile the queued intake against the shipped milestone
+and owner decisions before prioritizing further work. The user has not selected
+a new implementation task. Earlier pending-release, component-catalog closure,
+and undelivered-PR statements below are historical, superseded where noted here.
 
 ## Goal
 
