@@ -44,6 +44,11 @@ from devcapsule.configuration_nodes import (
     build_node_registry,
 )
 from devcapsule.environment_realization import realize_environment, required_local_image
+from devcapsule.base_image import CONTAINED_DISPLAY_LABEL_VALUE, DISPLAY_LABEL
+from devcapsule.container_runtime.contract import (
+    CONTAINED_DISPLAY_TRANSPORT,
+    HOST_X11_DISPLAY_TRANSPORT,
+)
 from devcapsule.materialization import validate_base_image
 from devcapsule.project import project_namespace
 from devcapsule.project_operations import (
@@ -857,7 +862,7 @@ class RecursiveE2EGroup(Group):
 
 # The authorization nodes whose run-once answers feed the launch plan; every
 # other authorization (base-image, acquisitions) is inherently persistent.
-_RUN_ONCE_AUTHORIZATIONS = ("docker-daemon", "network", "development-sudo", "host-browser")
+_RUN_ONCE_AUTHORIZATIONS = ("docker-daemon", "network", "development-sudo", "host-browser", "host-x11")
 
 
 class ProjectRunCommand(Command):
@@ -914,6 +919,7 @@ class ProjectRunCommand(Command):
         image = runtime.get("image")
         checkout_runtime_plan = None
         use_image_process = False
+        image_labels: Mapping[str, str] = {}
         if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
             selected = ResolvedProject(
                 root=root,
@@ -927,6 +933,7 @@ class ProjectRunCommand(Command):
             )
             realized = realize_environment(selected, report=print)
             image = realized.image.reference
+            image_labels = realized.image.labels
             checkout_runtime_plan = project_runtime_plan(selected, realized.locked)
             use_image_process = True
             action = "Materialized" if realized.created else "Reused"
@@ -984,10 +991,19 @@ class ProjectRunCommand(Command):
                 authorization.get("host-browser", host.get("host-browser", False)),
             )
         )
+        selected_host_x11 = bool(
+            overrides.get(
+                "host-x11",
+                authorization.get("host-x11", host.get("host-x11", False)),
+            )
+        )
         if arguments.no_recursive_e2e:
             selected_docker_daemon = "none"
             selected_sudo = False
             selected_network = "bridge"
+        display_transport = _select_display_transport(
+            image_labels, host_x11_authorized=selected_host_x11
+        )
         recursive_environment = recursive_e2e_launch_environment(
             root,
             docker_daemon=str(selected_docker_daemon),
@@ -1074,6 +1090,7 @@ class ProjectRunCommand(Command):
                 extra_docker_args=["--pull=never", *docker_options],
                 project_state=None,
                 enable_host_browser=selected_host_browser,
+                display_transport=display_transport,
             )
         )
         if exit_code == 0:
@@ -1093,6 +1110,33 @@ class ProjectRunCommand(Command):
                 if recorded is not None:
                     print(f"Recorded known-good configuration: {recorded}")
         return exit_code
+
+
+def _select_display_transport(image_labels: Mapping[str, str], *, host_x11_authorized: bool) -> str:
+    """Choose the display transport for this run and say why, once.
+
+    The contained desktop is the default wherever the image carries the
+    display stack (base recipe 8 and later, labelled by the base build). Host
+    X11 passthrough is used only when the developer authorized ``host-x11``
+    or when the image predates the display stack; the reason is printed so
+    the run's transport is never a silent guess.
+    """
+
+    display_capable = image_labels.get(DISPLAY_LABEL) == CONTAINED_DISPLAY_LABEL_VALUE
+    if host_x11_authorized:
+        print(
+            "Display: host X11 passthrough, authorized by 'host-x11'; the capsule receives "
+            "your full X session credential and the boundary test is waived for this run."
+        )
+        return HOST_X11_DISPLAY_TRANSPORT
+    if not display_capable:
+        print(
+            "Display: host X11 passthrough; this image predates the contained display "
+            "(base recipe 8). Regenerating onto a newer base closes the exposure."
+        )
+        return HOST_X11_DISPLAY_TRANSPORT
+    print("Display: contained desktop, reached through your browser; no host X session is shared.")
+    return CONTAINED_DISPLAY_TRANSPORT
 
 
 def _run_once_answers(

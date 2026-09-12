@@ -147,6 +147,71 @@ class PersistenceContract:
     state_slots: tuple[StateSlotDeclaration, ...]
 
 
+CONTAINED_DISPLAY_TRANSPORT = "contained"
+HOST_X11_DISPLAY_TRANSPORT = "host-x11"
+DISPLAY_TRANSPORTS = frozenset({CONTAINED_DISPLAY_TRANSPORT, HOST_X11_DISPLAY_TRANSPORT})
+
+
+@dataclass(frozen=True)
+class DisplayPlan:
+    """How the interactive surface gets a display, as the run manifest records it.
+
+    ``contained``: the entrypoint starts the capsule's own X server and the
+    noVNC bridge, which listens at ``listen_address``:``port`` inside the
+    container and admits only requests carrying the token read from
+    ``token_path``. ``host-x11``: the launcher bound the host X socket and
+    credential into the capsule (the authorized passthrough); no listener, no
+    token. A plan without a display section means ``host-x11``, which is what
+    every plan meant before the section existed.
+    """
+
+    transport: str
+    listen_address: str = ""
+    port: int = 0
+    token_path: str = ""
+
+    @classmethod
+    def contained(cls, listen_address: str, port: int, token_path: str) -> DisplayPlan:
+        return cls(CONTAINED_DISPLAY_TRANSPORT, listen_address, port, token_path)
+
+    @classmethod
+    def host_x11(cls) -> DisplayPlan:
+        return cls(HOST_X11_DISPLAY_TRANSPORT)
+
+    @property
+    def is_contained(self) -> bool:
+        return self.transport == CONTAINED_DISPLAY_TRANSPORT
+
+    @classmethod
+    def from_mapping(cls, value: object, field: str) -> DisplayPlan:
+        if not isinstance(value, dict):
+            raise RuntimePlanError(f"{field} must be an object")
+        transport = _required_choice(value.get("transport"), f"{field}.transport", set(DISPLAY_TRANSPORTS))
+        if transport == HOST_X11_DISPLAY_TRANSPORT:
+            extra = sorted(set(value) - {"transport"})
+            if extra:
+                raise RuntimePlanError(f"{field} for {transport} must not carry {', '.join(extra)}")
+            return cls.host_x11()
+        listen_address = _required_string(value.get("listen_address"), f"{field}.listen_address")
+        if re.fullmatch(r"[0-9A-Za-z.:\-]+", listen_address) is None:
+            raise RuntimePlanError(f"{field}.listen_address must be a host address")
+        port = value.get("port")
+        if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
+            raise RuntimePlanError(f"{field}.port must be a TCP port number")
+        token_path = _absolute_path(value.get("token_path"), f"{field}.token_path")
+        return cls.contained(listen_address, port, token_path)
+
+    def to_mapping(self) -> dict[str, object]:
+        if not self.is_contained:
+            return {"transport": self.transport}
+        return {
+            "transport": self.transport,
+            "listen_address": self.listen_address,
+            "port": self.port,
+            "token_path": self.token_path,
+        }
+
+
 @dataclass(frozen=True)
 class ComponentRuntimeTemplate:
     version: int
@@ -279,6 +344,7 @@ class RuntimePlan:
     component: Component
     ancillary_components: tuple[Component, ...] = ()
     host_integrations: tuple[str, ...] = ()
+    display: DisplayPlan | None = None
 
     @classmethod
     def for_component(
@@ -394,6 +460,8 @@ class RuntimePlan:
         )
         if len(set(integrations)) != len(integrations):
             raise RuntimePlanError("host_integrations must not contain duplicates")
+        display_value = document.get("display")
+        display = None if display_value is None else DisplayPlan.from_mapping(display_value, "display")
         prefixes = {item.id for item in (component, *ancillary)}
         for slot in slots:
             namespace, separator, local_name = slot.name.partition("/")
@@ -411,6 +479,7 @@ class RuntimePlan:
             component=component,
             ancillary_components=ancillary,
             host_integrations=integrations,
+            display=display,
         )
 
     @staticmethod
@@ -459,6 +528,14 @@ class RuntimePlan:
             host_integrations=tuple(sorted({*self.host_integrations, selected})),
         )
 
+    def with_display(self, display: DisplayPlan) -> RuntimePlan:
+        return replace(self, display=display)
+
+    def display_transport(self) -> str:
+        """The transport this plan records; absent means host X11 passthrough."""
+
+        return HOST_X11_DISPLAY_TRANSPORT if self.display is None else self.display.transport
+
     def to_mapping(self) -> dict[str, object]:
         component: dict[str, object] = {
             "id": self.component.id,
@@ -487,6 +564,8 @@ class RuntimePlan:
             ]
         if self.host_integrations:
             result["host_integrations"] = list(self.host_integrations)
+        if self.display is not None:
+            result["display"] = self.display.to_mapping()
         return result
 
     def to_json(self) -> str:

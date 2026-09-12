@@ -127,6 +127,7 @@ def run_e2e_tests(session: nox.Session, *, release_smoke: bool = False) -> None:
         "DEVCAPSULE_EXPECTED_BUILD_MNEMONIC",
         "DEVCAPSULE_E2E_BUILT_BASE",
         "DEVCAPSULE_EXPECTED_BASE_SOURCE",
+        "DEVCAPSULE_E2E_BUILD_NETWORK",
     ):
         value = session.env.get(name) or os.environ.get(name)
         if value is not None:
@@ -356,8 +357,10 @@ def e2e(session: nox.Session) -> None:
     parser.add_argument("--build-base", action="store_true")
     parser.add_argument("--build-network", choices=("default", "host", "none"), default="default")
     options = parser.parse_args(session.posargs)
-    if options.build_network != "default" and not options.build_base:
-        session.error("--build-network requires --build-base")
+    if options.build_network != "default":
+        # The runtime-image e2e installs the display stack with apt during
+        # its own docker build, so the network choice reaches it too.
+        session.env["DEVCAPSULE_E2E_BUILD_NETWORK"] = options.build_network
     if options.build_base and not (
         session.env.get(PEX_UNDER_TEST_ENV) or os.environ.get(PEX_UNDER_TEST_ENV)
     ):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import socket
+import time
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
@@ -19,6 +20,7 @@ from devcapsule.configurations.pycharm import (
     build_run_config,
 )
 from devcapsule.configurations.pycharm._launcher import (
+    display_disclosure,
     HostUser,
     PycharmRunError,
     PycharmRunConfig,
@@ -33,7 +35,7 @@ from devcapsule.configurations.pycharm._launcher import (
     run_pycharm,
     write_user_files,
 )
-from devcapsule.container_runtime.contract import Identity, RuntimePlan
+from devcapsule.container_runtime.contract import DisplayPlan, Identity, RuntimePlan
 from devcapsule.materialization import RUNTIME_PLAN_PATH
 from devcapsule.host_open import (
     HOST_OPEN_BROWSER,
@@ -86,7 +88,8 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
     try:
         assert files.runtime_plan_file is not None
         assert files.runtime_plan_file.stat().st_mode & 0o777 == 0o644
-        assert RuntimePlan.from_file(files.runtime_plan_file) == external_runtime_plan()
+        # The plan now records the transport explicitly, even for passthrough.
+        assert RuntimePlan.from_file(files.runtime_plan_file) == external_runtime_plan().with_display(DisplayPlan.host_x11())
         args = build_docker_args(config, files, env)
         assert "JAVA_TOOL_OPTIONS=-Dide.browser.jcef.sandbox.enable=false" in args
         assert "SYS_ADMIN" not in args
@@ -895,7 +898,7 @@ def test_runtime_plan_serialization_failure_leaves_no_temporary_files(tmp_path: 
     runtime_directory = tmp_path / "runtime"
     config = cast(
         PycharmRunConfig,
-        SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan()),
+        SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan(), display_transport="host-x11"),
     )
     with (
         patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
@@ -1098,3 +1101,203 @@ def test_launcher_owned_docker_options_are_refused_in_passthrough() -> None:
     reject_launcher_owned_docker_options(
         ["-v", "/x:/y", "--volume", "/a:/b", "--env", "FOO=bar", "--mount", "type=tmpfs,dst=/z", "--cap-add", "NET_ADMIN"]
     )
+
+
+# --- Contained display (contained-display design note, T4/T6/T7) ---
+
+
+def contained_config(tmp_path: Path, network_mode: str = "bridge", **overrides: object) -> PycharmRunConfig:
+    project = tmp_path / "project"
+    project.mkdir(exist_ok=True)
+    env = base_env(tmp_path)
+    env.pop("DISPLAY")  # the contained display needs no host X session at all
+    options: dict[str, object] = dict(
+        project=project,
+        project_mount="/workspace/project",
+        docker_mode=DockerMode.none,
+        network_mode=network_mode,
+        runtime_plan=external_runtime_plan(),
+        use_image_process=True,
+        display_transport="contained",
+    )
+    options.update(overrides)
+    return build_run_config(PycharmRunOptions(**options), env)  # type: ignore[arg-type]
+
+
+def test_contained_display_publishes_a_token_gated_port_and_shares_no_x_session(tmp_path: Path) -> None:
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = contained_config(tmp_path)
+    assert config.display_transport == "contained"
+    assert config.display_host_port is not None and 1024 < config.display_host_port < 65536
+    assert len(config.display_token) == 48 and int(config.display_token, 16) >= 0
+    assert config.runtime_plan is not None and config.runtime_plan.display == DisplayPlan.contained(
+        "0.0.0.0", 6080, "/run/devcapsule-display-token"
+    )
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.write_xauthority") as xauthority,
+        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        xauthority.assert_not_called()
+        assert files.display_token_file is not None
+        assert files.display_token_file.stat().st_mode & 0o777 == 0o600
+        assert files.display_token_file.read_text(encoding="utf-8") == config.display_token + "\n"
+        args = build_docker_args(config, files, env)
+        joined = " ".join(args)
+        assert "/tmp/.X11-unix" not in joined
+        assert "XAUTHORITY" not in joined
+        assert "DISPLAY" not in args
+        assert "_JAVA_AWT_WM_NONREPARENTING=1" not in args
+        assert f"type=bind,src={files.display_token_file},dst=/run/devcapsule-display-token,ro" in args
+        assert f"127.0.0.1:{config.display_host_port}:6080" == args[args.index("--publish") + 1]
+        assert RuntimePlan.from_file(files.runtime_plan_file).display == config.runtime_plan.display  # type: ignore[arg-type]
+        # The token never appears on the docker command line.
+        assert config.display_token not in joined
+    finally:
+        cleanup_temp_runtime_files(files)
+    assert not (tmp_path / "runtime").exists() or list((tmp_path / "runtime").iterdir()) == []
+
+
+def test_contained_display_under_host_networking_listens_on_host_loopback_directly(tmp_path: Path) -> None:
+    env = base_env(tmp_path)
+    config = contained_config(tmp_path, network_mode="host")
+    assert config.runtime_plan is not None and config.runtime_plan.display == DisplayPlan.contained(
+        "127.0.0.1", config.display_host_port, "/run/devcapsule-display-token"  # type: ignore[arg-type]
+    )
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        args = build_docker_args(config, files, env)
+        assert "--publish" not in args
+        assert "/tmp/.X11-unix" not in " ".join(args)
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+def test_contained_display_refuses_network_none_and_names_the_alternatives(tmp_path: Path) -> None:
+    with pytest.raises(PycharmRunError, match="network mode 'none'.*host-x11"):
+        contained_config(tmp_path, network_mode="none")
+
+
+def test_contained_display_requires_the_image_process_and_a_plan(tmp_path: Path) -> None:
+    with pytest.raises(PycharmRunError, match="contained display requires the image process"):
+        contained_config(tmp_path, use_image_process=False, runtime_plan=None)
+
+
+def test_unknown_display_transport_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(PycharmRunError, match="Unknown display transport 'xephyr'"):
+        contained_config(tmp_path, display_transport="xephyr")
+
+
+def test_host_x11_passthrough_still_needs_a_host_display_and_binds_it(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env.pop("DISPLAY")
+    with pytest.raises(PycharmRunError, match="DISPLAY is not set"):
+        build_run_config(PycharmRunOptions(project=project, project_mount="/workspace/project"), env)
+    env = base_env(tmp_path)
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=external_runtime_plan(),
+            use_image_process=True,
+        ),
+        env,
+    )
+    assert config.display_transport == "host-x11"
+    assert config.runtime_plan is not None and config.runtime_plan.display == DisplayPlan.host_x11()
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.write_xauthority") as xauthority,
+        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        xauthority.assert_called_once()
+        assert files.display_token_file is None
+        args = build_docker_args(config, files, env)
+        assert "type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix,ro" in args
+        assert "XAUTHORITY=/tmp/.docker.xauth" in args
+        assert "DISPLAY" in args
+        assert "--publish" not in args
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+def test_display_disclosure_states_the_transport(tmp_path: Path) -> None:
+    contained = contained_config(tmp_path)
+    text = display_disclosure(contained)
+    assert "Contained desktop" in text
+    assert f"published to host loopback port {contained.display_host_port}" in text
+    assert "No host X socket, credential, or DISPLAY is shared" in text
+    assert "boundary test is waived" in display_disclosure(
+        build_run_config(
+            PycharmRunOptions(
+                project=tmp_path / "project",
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="bridge",
+            ),
+            base_env(tmp_path),
+        )
+    )
+
+
+def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env.pop("DISPLAY")
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    opened: list[str] = []
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+
+    def fake_docker_run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        # "The capsule is up": the published port answers, so the watcher opens
+        # the URL; then docker run returns as the session ends.
+        deadline = time.monotonic() + 10
+        while not opened and time.monotonic() < deadline:
+            time.sleep(0.05)
+        return SimpleNamespace(returncode=0)
+
+    with (
+        patch("devcapsule.configurations.pycharm._launcher.allocate_loopback_port", return_value=port),
+        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.configurations.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
+        patch("devcapsule.configurations.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
+    ):
+        try:
+            exit_code = run_pycharm(
+                PycharmRunOptions(
+                    project=project,
+                    project_mount="/workspace/project",
+                    docker_mode=DockerMode.none,
+                    network_mode="bridge",
+                    runtime_plan=external_runtime_plan(),
+                    use_image_process=True,
+                    display_transport="contained",
+                    open_display_url=opened.append,
+                ),
+                env,
+            )
+        finally:
+            listener.close()
+    assert exit_code == 0
+    (url,) = opened
+    assert url.startswith(f"http://127.0.0.1:{port}/vnc.html?autoconnect=1&resize=remote&path=websockify%3Ftoken%3D")
+    captured = capsys.readouterr()
+    assert f"Contained display: {url}" in captured.err
+    assert "opened in your browser" in captured.err
