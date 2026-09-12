@@ -4,13 +4,57 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-11 at the owner's request for the evening; permanent coordination
+State: active 2026-09-12; opening user-docs at the owner's request; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## User Documentation Workstream Opening (2026-09-12)
+
+The owner resumed project management and chose to open `user-docs` for V1,
+then review its first focus before documentation implementation begins. The
+six remaining intake decisions stay pending; none was dispositioned by this
+registration. This checkout remains on `project-management/coordination`.
+
+The proposed first slice is one newcomer journey: understand the product's
+purpose and prerequisites, obtain the released executable, launch one useful
+project with an IDE and agent, do a small task, then exit and resume. Audience,
+sample versus existing project, IDE/agent combination, and the first observable
+success are proposals awaiting the owner. Do not start a comprehensive manual
+or select those product-facing choices silently. The separate workflow review
+assignment and development-blog decision remain where they are.
+
+Resume verification: fetched all remote branches; `main` and `origin/main`
+still agree at `a27e0ed`. Fast-forwarded this checkout from `4139f15` to the
+newer remote project-management handoff at `9c46f3b`. It records six unanswered
+decisions, superseding this session's initial count of eight from stale local
+records. The two existing `.devcapsule` configuration edits are unrelated and
+remain outside this task's commits. The working branch already includes main.
+
+Delivery: the earlier documentation changes have not reached main. Outbox
+`900223a` holds pending dispositions, the workflow-review assignment, and this
+workstream's records; PR #70 is open. Preserve every pending delivery when
+rebuilding the outbox from main to add the new registration, and keep the
+documentation-before-outbox ordering because the records link its new files.
+The user-docs start date is provisional until registration reaches main; if
+delivery crosses a date boundary, correct the proposed date/path before merge.
+
+**Planned next step:** deliver the registration through the standing outbox,
+then return to the owner to choose the first documentation journey. A workstream
+switch or documentation implementation has not been requested.
+
+### Open Threads For This Slice
+
+- Awaiting the owner: first reader and scenario, proposed above.
+- Delivery: verify both documentation and outbox PRs reach main before claiming
+  registration is complete or creating a `user-docs/` working branch.
+- Preserved: all prior pending outbox content. No session record requested or
+  created; the handoff holds this slice's consequential state.
+
+This section supersedes the pause and next-step instructions immediately below.
 
 ## Pause And Resume Here (2026-09-11)
 
