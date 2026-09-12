@@ -1,266 +1,332 @@
-# Prior-Art Survey: Open Source Human/Agent Workflow Frameworks vs. DevCapsule WORKFLOW.md
+# Competitive Comparison: Agent Workflows and the DevCapsule Adopter Choice
 
-Date: 2026-08-15
+Last verified: 2026-09-12
 
-Scope: Comparison of the WORKFLOW.md human/agent development protocol (as of
-`main` on the date above) against the most popular open source projects
-covering overlapping functionality.
+Status: research and positioning input; recommendations are not adopted product decisions.
 
-> **Staleness warning.** This document is a dated snapshot of a fast-moving
-> ecosystem. Star counts, feature sets, file formats, and even the existence
-> of the projects surveyed here can drift within months. Several of the
-> projects below reorganized their command surface or file layout at least
-> once in the year preceding this survey. Treat this as a decision-support
-> record for its date, not as living documentation. If a decision depends on
-> a specific claim below, re-verify against the linked upstream sources
-> first. It remains useful anyway: the *structural* comparison (which
-> concerns each tool covers, and which it does not) changes far more slowly
-> than the numbers.
+Original survey: dated 2026-08-15, committed 2026-08-16. The filename is retained
+so existing links continue to work. The
+[original snapshot](https://github.com/ccozianu/devcapsule/blob/12f8c930fac6fbb8f611c35d9e3035eca097cf14/engineering-docs/wip/2026-08-09-project-management/2026-08-16-workflow-prior-art-comparison.md)
+is preserved in Git. This revision supersedes its competitive conclusions.
 
-## What WORKFLOW.md Actually Is
+## Finding
 
-To pick the right comparables, the subject must be named precisely.
-WORKFLOW.md is not primarily a spec-generation framework. It is a **durable
-project memory and handoff protocol**:
+DevCapsule cannot credibly distinguish itself by saying that other tools lack
+persistent project context, interrupted-work recovery, human review, or a
+structured delivery loop. Current upstream documentation describes all of
+these in overlapping combinations. Some of the earlier survey's exclusions
+were too categorical; the evidence below does not establish that every
+correction represents a feature introduced since August.
 
-- versioned markdown as the source of truth that survives model changes,
-  IDE restarts, and future sessions;
-- a workstream lifecycle bound to git topology (register on `main`, work on
-  `<mnemonic>/` branches, finalize through pull-request or direct delivery,
-  archive on success *or* failure);
-- a requirements register with stable IDs and traceability lines;
-- two-tier decision records (ceremonial immutable product decisions vs.
-  lightweight reversible design notes);
-- bug intake, completed-task archives, and session records with capture-mode
-  semantics;
-- turn-level choreography: slice sizing shapes, evidence-first reporting,
-  escalation triggers, checkpoint triggers, and an explicit human/agent
-  responsibility contract.
+The stronger product hypothesis is that a developer benefits from having a
+repeatable local IDE/agent environment, persistent developer state, explicit
+host-access choices, and an optional readable handoff workflow assembled and
+maintained together. That combination still has to earn its setup and learning
+cost against tools the developer already uses. A longer protocol is not proof
+of greater user value.
 
-The open source field covers overlapping *subsets* of this. No single
-project covers the whole.
+## Scope and Evidence
 
-## The Comparables
+The original compared **WORKFLOW.md**, not the whole DevCapsule product. This
+refresh retains its five principal comparables and ADR/MADR, adds GSD Core,
+Kiro and native agent memory, and briefly examines workspace alternatives that
+matter to the proposed adopter one-pager. It is a selected comparison, not an
+exhaustive market ranking.
+
+Sources below are upstream documentation and repositories opened on
+2026-09-12. They establish documented behavior, not independently tested
+reliability, token efficiency, speed, or security. Moving documentation can
+precede a release; experimental material and development-branch sources are
+marked. No competitor was installed or benchmarked for this refresh. Prices,
+star counts, integration counts and unsupported timing comparisons are omitted.
+
+DevCapsule's baseline is the current source checkout, synchronized with
+`origin/main` at `493e9e5`, including the still-unintegrated project-management
+documentation. Its [README](../../../README.md),
+[workflow](../../../WORKFLOW.md), [V1 ledger](v1-scope-ledger.md), and the
+local evidence linked below distinguish shipped behavior from intent.
+
+Two release-history checks anchor the elapsed period: Spec Kit lists v1.0.6
+on September 10, including per-step workflow integration configuration; GSD
+Core lists v1.11.0 on August 19 and v1.13.0 on September 6, with the latter
+including resumable batch-work machinery. These establish ongoing development,
+not that every feature discussed here first appeared in that interval.
+[Spec Kit releases](https://github.com/github/spec-kit/releases),
+[GSD Core releases](https://github.com/open-gsd/gsd-core/releases).
+
+## What the Earlier Survey Needs to Correct
+
+| Earlier conclusion | Current assessment |
+|---|---|
+| Spec Kit is forward-only, without recovery or unsuccessful outcomes | Its workflow engine documents persisted runs, resume after interruption/failure, human gates, and failed/aborted outcomes. See Spec Kit below. |
+| OpenSpec lacks session recovery and conversation structure | Its guide demonstrates returning to an interrupted change and includes human/assistant interaction patterns. This does not establish equivalence to every DevCapsule recovery rule. |
+| BMAD is necessarily a heavyweight simulated agile team | Current guidance scales planning to the change and offers direct work on a small, clear change. The old anecdotal 12-minute/90-minute/5.5-hour comparison is removed. |
+| Memory Bank has no recovery | Its documentation explicitly describes saving context and continuing in a new conversation. It is a narrower recovery method, not absence of one. |
+| Beads is adequately described as a Git-backed single-binary issue tracker | Current Beads is Dolt-backed, with memory, coordination, synchronization and migration considerations. Its repository now redirects to `gastownhall/beads`. |
+| Our handoff, conversation and session-record mechanisms are unique | GSD Core's documented phase loop and development-branch handoff/report commands overlap directly. Exact semantics differ; uniqueness is unproven. |
+| Plain Markdown has zero dependencies and is therefore the simpler choice | The records need no dedicated database to read. Operating DevCapsule's workflow still requires Git, hosting access, participant compliance and substantial procedural knowledge. |
+
+## Workflow and Memory Alternatives
 
 ### GitHub Spec Kit
 
-- Repo: <https://github.com/github/spec-kit>
-- Scale at survey date: roughly 110–120k stars, MIT license, backed by
-  GitHub; one of the fastest-growing developer tools of the period.
-- Model: Spec-Driven Development in phases — specify → plan → tasks →
-  implement — where each phase produces artifacts the next phase consumes.
-  A "constitution" holds project-level principles (loosely analogous to
-  AGENTS.md plus the Development Principles section). Ships as a CLI
-  (`specify`) with 30+ agent integrations including Claude Code (which uses
-  a skills-based integration).
+Spec Kit still provides a specification/planning/task process, but its current
+scope extends to customizable workflows. The documented engine sequences
+commands, shell actions and review gates; stores run state and logs; and resumes
+paused or failed runs. It explicitly represents completed, failed and aborted
+outcomes. These facts invalidate the old forward-only characterization.
+[Workflow reference](https://github.github.com/spec-kit/reference/workflows.html).
 
-**Covers from WORKFLOW.md:** requirements-before-code discipline,
-task/slice decomposition, artifact-driven phases, project principles.
+Its current command reference also includes post-implementation convergence and
+cross-artifact analysis. [Agentic SDD reference](https://github.github.com/spec-kit/reference/agentic-sdd.html).
 
-**Does not cover:** session handoff and recovery, the open-workstream
-registry, decision-record ceremony, bug and completed-task archives, any
-notion of resuming interrupted state. Spec Kit is per-feature and
-forward-only; WORKFLOW.md is whole-project and memory-oriented.
+**Adopter implication:** a developer primarily seeking disciplined feature
+execution and recovery has a substantive alternative. DevCapsule's exact
+registry, decision-authority and archival conventions are different, but that
+difference needs an outcome-based justification. Workflow run recovery is not
+proof of recovery of arbitrary dirty checkouts or external services.
 
-### OpenSpec (Fission-AI)
+### OpenSpec
 
-- Repo: <https://github.com/Fission-AI/OpenSpec>
-- Model: low-ceremony, markdown-filesystem-based spec workflow, explicitly
-  brownfield-first, with no rigid phase gates. Each change gets its own
-  folder (`proposal.md`, `specs/`, `design.md`, `tasks.md`) under
-  `openspec/changes/<name>/`. On archive, a change's delta specs merge into
-  `openspec/specs/`, the accumulating source of truth. Commands are
-  `/opsx:explore`, `/opsx:propose`, `/opsx:apply`, `/opsx:archive`; MIT
-  license; works across 20+ assistants.
+OpenSpec retains the distinction between current specifications and proposed
+changes. Its workflow guide demonstrates interrupting one change, completing
+another, then continuing the first from its recorded task state. It also
+covers verification and archival, including handling several completed changes.
+[Workflow guide](https://github.com/Fission-AI/OpenSpec/blob/main/docs/workflows.md).
 
-**Structural correspondence to WORKFLOW.md is the closest of any surveyed
-project:**
+A particularly relevant development is its **experimental** `openspec/work/`
+model: goals, roadmaps, slices, and result records containing evidence of
+success, failure or follow-up. The source explicitly says normal CLI validation
+and archival still use `changes/` and `specs/`; do not advertise the experiment
+as a released replacement.
+[Experiment and compatibility boundary](https://github.com/Fission-AI/OpenSpec/blob/main/openspec/work/README.md).
 
-| OpenSpec | WORKFLOW.md |
-| --- | --- |
-| `openspec/changes/<name>/` | `engineering-docs/wip/<date>-<mnemonic>/` |
-| archive merges delta into `specs/` | finalization promotes WIP into permanent categories + `archive/` |
-| `specs/` = current truth, `changes/` = proposals | root `docs/` = current truth, workstream `docs/` = drafts/proposals |
-| per-change `tasks.md` | active task format with done-means / verification / reopen-if |
+**Adopter implication:** it is a close comparison for maintaining intent and
+results through incremental changes. Our date/mnemonic directories and
+main-first registration are particular policy choices. Adopting OpenSpec's
+format would not automatically implement that policy; integration would need a
+prototype, ownership rules and a migration decision.
 
-**Does not cover:** the git-branch-to-workstream binding, the
-open-workstream registry on `main`, session recovery, decision records, bug
-intake, the responsibility contract, unsuccessful-completion archival.
+### BMad Method
 
-**Risk note:** OpenSpec is young and its format churned recently (a rebuilt
-"artifact-guided" workflow replaced the original command set). Pinning to
-it means tracking a moving target, whereas plain-markdown WORKFLOW.md has
-zero dependencies by construction.
+Current BMad guidance asks how much planning the intent needs. Small, clear
+changes can go directly to Build; larger work acquires a specification and,
+when needed, story breakdown. Its documentation even says an obvious low-risk
+edit does not need BMad. Describing all use as maximalist would mislead.
+[Planning-path guidance](https://docs.bmad-method.org/plan/choose-a-planning-path/).
 
-### BMAD-METHOD
+The current project-context skill produces a compact verified block in
+`AGENTS.md`, supports adoption and refresh of existing instructions, and asks
+for approval before changing them. The page says it replaces earlier
+project-context/document-project skills and can absorb their prior context file.
+This is a concrete documented evolution in its context-management approach.
+[Project-context lifecycle](https://docs.bmad-method.org/existing-codebases/set-and-maintain-project-context/).
 
-- Repo: <https://github.com/bmad-code-org/BMAD-METHOD>
-- Scale at survey date: roughly 37k stars — second in the field behind
-  Spec Kit.
-- Model: the maximalist option. An ecosystem of role-based agents —
-  analyst, PM, architect, developer, UX designer, technical writer — where
-  each role's workflow produces documents that gate the next phase.
-  Installed via `npx bmad-method install`; generates AGENTS.md and agent
-  YAML for Claude Code, Cursor, and similar tools.
+**Adopter implication:** compare the amount of process demanded by the chosen
+path, not the total size of either framework. Human control and persistent
+project instructions are shared concerns. We have no controlled evidence for a
+speed or token-cost advantage over BMad.
 
-**Covers:** human-gated phase progression, heavy planning artifacts,
-adversarial review.
+### Cline Memory Bank
 
-**Philosophical mismatch:** BMAD simulates a whole agile team; WORKFLOW.md
-formalizes one human/one agent iteration. It is also notoriously heavy —
-one published comparison found the same task took 12 minutes with
-OpenSpec, 90 minutes with Spec Kit, and 5.5 hours with BMAD, and reported
-substantial token costs and documented brownfield friction.
+The documented method uses project Markdown for goals, architecture, active
+context, progress and next steps. It explicitly instructs users to update the
+memory, start a fresh conversation and continue from the saved files. It also
+points to Cline's context-management commands.
+[Memory Bank method](https://docs.cline.bot/best-practices/memory-bank).
 
-### The Memory Bank Pattern (Cline canonical; Cursor/Windsurf forks)
+**Adopter implication:** this is a serious lower-ceremony alternative when the
+pain is simply forgetting where work stopped. DevCapsule supplies more
+lifecycle, authority and delivery conventions, but each convention must repay
+its maintenance cost. Neither method guarantees that an agent saves accurate
+state or follows what it reads.
 
-- Docs: <https://docs.cline.bot/best-practices/memory-bank>
-- Model: a documentation methodology, not a tool. Structured markdown files
-  in a `memory-bank/` folder — `projectbrief.md`, `productContext.md`,
-  `systemPatterns.md`, `techContext.md`, `activeContext.md`,
-  `progress.md` — read at session start and updated at checkpoints, so the
-  agent "remembers" the project across sessions. Version-controlled with
-  the code. Widely forked (cursor-memory-bank, skill-memory-bank, etc.).
+### Beads
 
-**Correspondence:** this is the closest analog to the `CURRENT-STATUS.md`
-handoff specifically. WORKFLOW.md's single-stream mode is essentially a
-more rigorous Memory Bank.
+The former `steveyegge/beads` URL now redirects to `gastownhall/beads`. The
+current README describes a Dolt-backed dependency graph, claimable tasks,
+agent setup hooks, persistent memories (`bd remember`/`bd prime`) and messaging.
+Embedded storage is the default single-writer mode; server mode permits
+concurrent writers. Cross-machine synchronization uses Dolt push/pull; JSONL is
+an interchange export, not the authoritative database.
+[Current Beads repository and storage modes](https://github.com/gastownhall/beads).
 
-**Does not cover:** workstream concurrency, requirements traceability,
-lifecycle, delivery policy, recovery — it is thin by design, which also
-makes it trivially adoptable.
+**Adopter implication:** Beads directly competes with parts of our task,
+coordination and memory machinery. Queryable state may reduce the amount an
+agent must read; that is a hypothesis to measure. The tradeoff includes database
+operations and upgrades. Markdown's human readability is a benefit, not proof
+that prose is better at dependencies, claiming work or delivering messages.
 
-### Beads (Steve Yegge)
+### GSD Core: an Omission from the Original Set
 
-- Repo: <https://github.com/steveyegge/beads>
-- Scale at survey date: roughly 18–19k stars; MIT; single Go binary;
-  Claude Code plugin and MCP server available.
-- Model: the interesting contrarian — it deliberately rejects WORKFLOW.md's
-  core premise. A git-backed graph issue tracker giving agents persistent
-  *structured* memory, explicitly marketed as replacing "messy markdown
-  plans" with a dependency-aware graph. `bd ready --json` returns only
-  unblocked tasks, which is more context-efficient than loading whole
-  markdown files.
+The old `gsd-build/get-shit-done` repository is archived and points to
+`open-gsd/gsd-core`; the old URL should not be used as the active installation
+home. [Migration notice](https://github.com/gsd-build/get-shit-done).
 
-**Covers:** the active-task list, bug intake, and workstream tracking — as
-queryable data instead of prose.
+GSD Core documents a discuss/plan/execute/verify/ship loop and durable state and
+context artifacts, with fresh agent contexts used for execution.
+[Current project overview](https://github.com/open-gsd/gsd-core).
 
-**Practitioner-reported caveats** that WORKFLOW.md's explicit core loop and
-checkpoint triggers address head-on: agents do not proactively use it,
-CLAUDE.md instructions fade by session end, and session handoff still needs
-explicit prompting.
+Its linked **`next` branch command reference** documents pause/resume,
+`continue-here.md`, optional session reports and named workstreams. This is
+strong evidence of overlapping design, but those exact commands must be checked
+against an installable release before a hands-on comparison.
+[Development command reference](https://github.com/open-gsd/gsd-core/blob/next/docs/COMMANDS.md).
 
-### Footnote: ADR / MADR
+**Adopter implication:** GSD belongs in any follow-up evaluation of our session
+and delivery protocol. The earlier claim that no comparable structures the
+conversation or preserves session reports is not supportable.
 
-The Design Decision Records section of WORKFLOW.md is nearly a verbatim
-restatement of the long-established Architecture Decision Record practice
-(propose / accept / supersede-never-edit, minimum two real options,
-immutability once accepted). MADR (<https://adr.github.io/madr/>) and
-adr-tools provide mature templates and tooling. This portion has decades of
-prior art and could be adopted wholesale.
+### Kiro: a Broader Product Alternative
 
-## Coverage Matrix
+Kiro's documentation covers feature and bugfix specs, requirements/design/task
+artifacts, task progress, and dependency-aware parallel execution. Its specs
+page is explicitly updated 2026-08-27.
+[Specs](https://kiro.dev/docs/specs/).
 
-Legend: ● covered, ◐ partial, — absent.
+Steering provides persistent project guidance, including `AGENTS.md` support
+and selective inclusion of steering files.
+[Steering](https://kiro.dev/docs/steering/).
 
-| WORKFLOW.md concern | Spec Kit | OpenSpec | BMAD | Memory Bank | Beads |
-| --- | --- | --- | --- | --- | --- |
-| Requirements/spec before code | ● | ● | ● | — | — |
-| Change-unit lifecycle with archive | ◐ (per-feature dirs) | ● | ◐ | — | ◐ |
-| Cross-session durable memory | — | ◐ | — | ● | ● |
-| Git-topology workstream binding | — | — | — | — | ◐ (git-backed data) |
-| Session recovery protocol | — | — | — | — | — |
-| Unsuccessful completion as first-class outcome | — | — | — | — | ◐ (close-as-wontfix) |
-| Decision records | ◐ (constitution) | — | ◐ | — | — |
-| Bug intake with evidence | — | — | — | — | ● |
-| Completed-task retrospective archive | — | ◐ | — | ◐ | ◐ |
-| Turn-level choreography / reporting contract | — | — | ◐ | — | — |
-| Session records with capture-mode semantics | — | — | — | — | — |
-| Human/agent responsibility contract | — | — | ◐ | — | — |
+**Adopter implication:** an integrated coding product can meet these needs
+without the adopter installing a separate workflow framework. Assess the value
+of DevCapsule's choice of IDE/agent and local environment management against
+that integrated experience. This survey does not classify Kiro's whole product
+as open source or evaluate its commercial terms.
 
-## What Is Genuinely DevCapsule's
+### Native Agent Memory: the Existing-Tool Baseline
 
-Found in none of the popular tools at survey date; these constitute
-WORKFLOW.md's actual differentiation:
+Claude Code documents both authored `CLAUDE.md` instructions and automatic
+memory loaded across sessions. Its documentation explicitly distinguishes
+context from enforced configuration.
+[Memory model](https://code.claude.com/docs/en/memory).
 
-1. **The git-topology binding.** Every non-`main` branch belongs to exactly
-   one registered workstream; registration is committed to `main` *before*
-   branching; root `CURRENT-STATUS.md` is a registry, not a status; explicit
-   rules exist for divergent `main`, invalid routing, and detached HEAD. No
-   comparable project ties its process state to git mechanics this
-   rigorously.
-2. **The recovery protocol.** Enumerate worktrees after interruption; treat
-   uncommitted files as recovery material, not canonical status; distinguish
-   "pending integration" from "open workstream." Everything else in the
-   field assumes happy-path sessions.
-3. **Unsuccessful completion as a first-class outcome.** Archiving a failed
-   workstream with its evidence and reconsideration conditions. Every other
-   framework models only success.
-4. **Turn-level choreography and the responsibility contract.** Slice-sizing
-   shapes, evidence-first reporting order, escalation triggers, "the human
-   chooses the hill to climb, the agent chooses the next safe foothold."
-   Spec Kit and OpenSpec structure artifacts; none of the surveyed tools
-   structure the *conversation*.
-5. **Session records with capture-mode semantics** (detailed / summary /
-   verbatim, redaction rules, never-canonical). No equivalent found
-   anywhere.
+**Adopter implication:** the baseline is no longer an agent with no memory.
+Ask what a maintained, human-readable, cross-agent handoff adds beyond the
+reader's existing setup. Repository records can make decisions reviewable by
+people and other agents, but their freshness still takes work. One vendor's
+memory behavior is not evidence about every agent.
 
-## Adopt-and-Adapt Assessment
+### ADR / MADR
 
-Full adoption of any single tool would forfeit the five items above, which
-appear to be the point of the exercise. Partial adoption is viable, in
-three tiers:
+MADR remains established prior art for recording decision context, considered
+options, outcomes and consequences in Markdown. Its templates are customizable;
+DevCapsule's exact adoption ceremony is a local rule, not something proven to
+be an almost verbatim universal ADR standard.
+[MADR documentation and templates](https://adr.github.io/madr/).
 
-**Adopt outright.**
+**Adopter implication:** reuse familiar decision-record concepts and evaluate
+compatibility. Neither adoption of MADR nor a workflow migration is authorized
+by this comparison.
 
-- MADR templates for the decision-record tier: mature, tool-supported,
-  near-identical semantics to what WORKFLOW.md already specifies.
-- Possibly OpenSpec's CLI and change-folder format as the concrete
-  implementation of workstream WIP directories: markdown-filesystem based,
-  no database dependencies, MIT (Apache-2.0 compatible), and its
-  propose/apply/archive lifecycle could carry the mnemonic-directory
-  convention with modest renaming. Weigh against the format-churn risk
-  noted above.
+## Compare Mechanisms, Not a Feature-Count Score
 
-**Adapt / interoperate.**
+These are documented approaches, not ratings of implementation quality. A cell
+names the inspected mechanism; it does not claim all unmentioned capabilities
+are absent. Sources are in the corresponding entries above.
 
-- Conform to Spec Kit at the vocabulary and file-format level
-  (`spec.md` / `plan.md` / `tasks.md`, constitution) even without running
-  it, because its star-count gravity means agents are increasingly trained
-  on and tooled for its conventions. The requirements register could emit
-  or consume its formats.
-- Practitioners already layer these tools (e.g., BMAD for inception,
-  Spec Kit for feature phases, OpenSpec for brownfield maintenance), so
-  positioning WORKFLOW.md as the *session / memory / git layer beneath* a
-  spec tool is a defensible niche rather than a redundant one.
+| Option | Keeping context | Continuing work | Main adoption tradeoff to investigate |
+|---|---|---|---|
+| DevCapsule WORKFLOW.md | Requirements, decisions, handoff and Open Threads | Git/workstream and external-state verification prescribed by protocol | Broad conventions and coordination overhead; compliance is not automatic |
+| Spec Kit | Feature artifacts and persisted workflow state | Resume a paused/failed workflow step | Install and maintain its workflow machinery |
+| OpenSpec | Current specs plus per-change artifacts | Continue an interrupted change from task state | Define how change artifacts fit project-level ownership |
+| BMad | Maintained project instructions and planning artifacts | Work sized to intent; this review does not establish general crash recovery | Choose the appropriate planning path |
+| Memory Bank | Small set of project Markdown files | Update, start a new conversation, reload | Keep the files accurate |
+| Beads | Structured tasks, dependencies and memories | Query ready work and restore agent context | Operate and synchronize the data store |
+| GSD Core | State/context and milestone artifacts | Pause/resume and reports documented on `next` | Verify release availability and execution-model fit |
+| Kiro | Specs, task state and steering | Continue tracked task execution | Adopt its product experience |
+| Existing agent memory | Vendor-specific instructions and saved learning | Reload across sessions | Assess portability and human review needs |
 
-**Keep as original work.** The branch-registry binding, recovery protocol,
-failure archival, turn choreography, and session records. If the workflow
-framework is spun out into its own repository, this subset is what
-justifies its existence next to the incumbents; framing it explicitly as
-"composes with Spec Kit / OpenSpec, replaces neither" is the strongest
-pitch.
+## The Workspace Half of the Adopter's Choice
 
-The stability-vs-ecosystem trade-off (zero-dependency plain markdown vs.
-leverage from a moving upstream) is a real product decision and, per this
-repository's own process, warrants a proposed decision record rather than a
-default.
+A workflow-only comparison cannot justify adopting all of DevCapsule. Three
+existing alternatives challenge the broader pitch:
 
-## Sources Consulted (as of 2026-08-15)
+- **VS Code Dev Containers** already provides a configured development
+  environment, editor settings and extensions. Calling it merely an application
+  runtime undercounts what developers get. DevCapsule should demonstrate why
+  its full IDE component model and state/permission choices help a particular
+  user. [Dev Containers guide](https://code.visualstudio.com/docs/devcontainers/containers).
+- **GitHub Codespaces** offers repository-configured cloud environments that
+  users can reopen, with browser and VS Code access. A developer who wants
+  hosted compute and little workstation setup has a different reason to choose
+  it. DevCapsule's current workstation-based product should make that choice
+  clear. [Codespaces overview](https://docs.github.com/en/codespaces/about-codespaces/what-are-codespaces).
+- **Docker Sandboxes** explicitly targets coding agents in microVMs with their
+  own Docker daemon, filesystem and network, plus declared sharing and editor
+  connections. Agent containment is therefore a direct competitive category,
+  not a unique DevCapsule idea. [Sandboxes overview](https://docs.docker.com/ai/sandboxes/).
+  Its current installation guide includes macOS, Windows and Ubuntu; Linux
+  requires KVM, and Ubuntu derivatives are explicitly unsupported. Match the
+  reader's actual host before comparing convenience.
+  [Installation requirements](https://docs.docker.com/ai/sandboxes/install/).
 
-- <https://github.com/github/spec-kit> and
-  <https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/>
-- <https://github.com/Fission-AI/OpenSpec> (README, docs/concepts.md,
-  docs/existing-projects.md)
-- <https://github.com/bmad-code-org/BMAD-METHOD>
-- <https://docs.cline.bot/best-practices/memory-bank> and
-  <https://cline.bot/blog/memory-bank-how-to-make-cline-an-ai-agent-that-never-forgets>
-- <https://github.com/steveyegge/beads> and
-  <https://ianbull.com/posts/beads/>
-- Comparative surveys: HackerNoon "The Spec-First Development Showdown"
-  (2026-05), Reenbit "BMAD vs Spec Kit vs OpenSpec" (2026-05), ArceApps
-  "SDD Frameworks Deep Dive" (2026-03), arXiv 2606.04967 "From Prompt to
-  Process", specdriven.com landscape pages.
+These alternatives can also be combined with memory/spec tools. The relevant
+comparison is the useful setup an adopter can assemble or already has, not
+whether one competitor copies our exact bundle. This review does not survey
+Coder, Ona, DevPod, Daytona or every cloud agent service; claims of market-wide
+uniqueness would require substantially broader evidence.
 
-Star counts and version details above were reported by third-party trackers
-and articles at survey time and are approximate.
+## What DevCapsule Can Claim, and What It Must Prove
+
+The current [CLI guide](../../../devcapsule-src/README.md) describes released
+executable distribution, capability/lock configuration, component acquisition
+and reuse, IDE/agent components and persistent state. The project also ships
+workflow definitions and bootstrap behavior. These are concrete things to
+show, although this refresh is not a new runtime acceptance test.
+
+Our exact workstream routing, decision rights, disposition records and
+explicit failure closure remain recognizable design choices. They are not
+established competitive advantages. The
+[One Workflow, Many Projects assignment](../2026-08-09-workflow-improvements/intake/2026-09-11-project-management-one-workflow-many-projects.md)
+already asks whether the inherited process is proportionate and discoverable.
+Our own [handoff](CURRENT-STATUS.md) records repeated outbox delivery failures.
+It would be particularly weak to advertise a uniquely reliable recovery system
+without acknowledging that evidence.
+
+Also distinguish **explicit access** from **strong containment**. The
+[X11 session-credential defect](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)
+is still open, and the checked-out launcher still binds the host X11 socket
+and copies its authority. A new contained-display branch is not release
+acceptance evidence. The V1 aspiration of safe full agent autonomy must not be
+presented as a current proven property. A diagram or checklist of features
+cannot establish a security advantage over microVM-based alternatives.
+
+The likely adopter worth addressing first is a developer who uses agents in
+several local projects, values a full IDE, and repeatedly pays to reconstruct
+either the environment or the work's intent. This is a positioning hypothesis
+for owner review, not a measured market segment.
+
+## Consequences for the One-Pager
+
+The owner selected a page that earns the reader's interest **before** an
+installation tutorial. The comparison supports this approach:
+
+1. Lead with a recognizable interruption or return-to-project problem, then
+   show what the assembled environment and maintained handoff change.
+2. Explain why this helps someone who already has an IDE, agent memory and
+   perhaps a dev container. Do not assume a blank starting point.
+3. Offer one checkable demonstration: make a change, record what remains,
+   exit, and return with another session or agent. Show the environment,
+   settings, decisions and next step that survive, including required user
+   actions. Do not imply automatic reconstruction of unrecorded conversations.
+4. State current platform/setup needs and make the permissions understandable.
+   Avoid unsupported setup-time, productivity or safety promises.
+5. Judge the prototype by the reader's willingness to try it and the observed
+   cost of the trial. Do not ask the reader to learn our internal process in
+   order to discover the benefit.
+
+**Recommended next evidence:** compare that same small return-to-work scenario
+using DevCapsule, the reader's existing agent setup, and a relevant established
+workspace plus memory method. Record setup effort, manual briefing, missed
+context, recovery steps and maintenance effort. No such comparison has been
+run here; the one-pager can propose a trial but cannot quote invented savings.
+
+## Maintenance
+
+Recheck these sources before publishing competitor claims or selecting a
+third-party dependency. For a hands-on evaluation, pin actual release versions,
+record host prerequisites and distinguish released commands from branch docs.
+Preserve the difference between documented support, observed behavior and our
+inference. Future changes to WORKFLOW.md or a tool-adoption decision belong to
+their normal workstream and decision process.

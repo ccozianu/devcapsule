@@ -4,13 +4,66 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-12; opening user-docs at the owner's request; permanent coordination
+State: active 2026-09-12; refreshing competitive evidence for the adopter one-pager; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## Competitive Evidence for the Adopter One-Pager (2026-09-12)
+
+The owner redirected the initial documentation focus to a one-page explanation
+that earns a prospective adopter's time before asking her to learn or install
+DevCapsule. The first-session tutorial remains a possible follow-on, not the
+selected first deliverable. A candidate page was discussed in chat; its wording
+and audience are not yet approved. No workstream switch was requested.
+
+At the owner's request, located and refreshed the existing
+[competitive comparison](2026-08-16-workflow-prior-art-comparison.md). The original
+was a workflow-specific survey, dated August 15 and committed August 16. Its
+original revision remains linked; the current file carries a September 12
+verification date, primary-source links, corrected claims, and a bounded
+workspace comparison to inform the one-pager.
+
+Finding: persistent memory, interruption recovery and structured delivery have
+substantial prior art. The earlier exclusive claims are not defensible. Evaluate
+DevCapsule's assembled local environment and maintained project handoff against
+the adopter's existing tools. Documentation evidence is distinguished from
+release availability, experiments, measured behavior and positioning inference.
+No competitor installation, benchmark or new runtime validation was performed.
+
+External state reverified: PR #70 has merged at `493e9e5`; the user-docs
+registration and the two intake dispositions are on main, leaving six intake
+items. The earlier documentation prerequisite has **not** landed: D-0009 is
+still absent from origin/main. Merged main into this published working branch,
+retaining its documentation and resolving the registry's obsolete pause row
+to the active row already delivered through our outbox. The two existing
+`.devcapsule` edits remain untouched and outside commits.
+
+Validation: reviewed the comparison's primary sources, checked local links and
+Markdown whitespace, and updated its entry in this document's internal index.
+The comparison is this workstream's deliverable and travels its ordinary branch,
+not the outbox. GitHub API write access returned 403 earlier in this session;
+Git branch push remains available.
+
+**Planned next step:** review the evidence with the owner and settle the
+one-pager's audience and central promise. Deliver this branch's documentation
+through a PR; once the comparison is on main, route the approved documentation
+focus and evidence to user-docs. Do not change its protected handoff or switch
+this checkout without the owner's instruction.
+
+### Open Threads for This Slice
+
+- Which adopter problem and demonstration make the assembled product worth
+  trying? The research recommends a return-to-work scenario but does not decide it.
+- Cross-tool timing, reliability and user-value comparisons remain unmeasured;
+  GSD's linked development commands and OpenSpec's work experiment need release
+  checks before an executable evaluation.
+- Previous delivery warnings below are historical where PR #70 supersedes them;
+  the missing documentation delivery is still real. No new session record was
+  requested or created.
 
 ## User Documentation Workstream Opening (2026-09-12)
 
@@ -1007,8 +1060,8 @@ thread 8 above. Nothing is lost if that file is gone.
 - [Portfolio checkpoint 2026-08-16](2026-08-16-portfolio-checkpoint.md)
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
 - [V1 scope ledger](v1-scope-ledger.md)
-- [Workflow prior-art comparison
-  2026-08-16](2026-08-16-workflow-prior-art-comparison.md)
+- [Competitive comparison: workflow and workspace alternatives
+  (refreshed 2026-09-12)](2026-08-16-workflow-prior-art-comparison.md)
 - [Display transport options and clipboard policy
   2026-08-19](2026-08-19-display-transport-options.md)
 - [The workflow versus Jira and GitHub Issues
