@@ -335,6 +335,11 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
   gates, host-side port and browser handling, rollout by image label, the
   `host-x11` authorization, clipboard, the regression test, and the recorded
   stretch options (native-window modes, GPU streaming).
+- [try-contained-display.sh](try-contained-display.sh) — the owner's hands-on
+  script for the ratification day: build the PEX and a local recipe-8 base
+  from this branch, select it for a checkout, run the contained desktop (the
+  default) and the legacy passthrough (`--authorize host-x11 true`) side by
+  side, verify mounts, ports, processes and the manifest, then revert.
 - [Supervisor core design note](supervisor-core-design.md) — D1–D9, all
   reviewed with the product owner 2026-08-30; the authoritative record of
   the supervisor scope, the transport lineup (contained desktop offered,
