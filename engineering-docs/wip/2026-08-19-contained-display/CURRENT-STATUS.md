@@ -229,6 +229,18 @@ per the D2 restaging.
 
 ## Intake Dispositions
 
+Recorded 2026-09-12 on resume:
+
+- **`2026-08-30-project-management-component-contract-is-load-bearing.md` —
+  acknowledged.** The pause it recorded is over (resume above), and its
+  standing instruction is honoured by construction: this stage changes no
+  part of the supervisor–component contract. `ComponentDefinition`,
+  `ComponentRuntimeTemplate`, the state-slot model and catalog selection are
+  untouched; the runtime plan grew an *additive* `display` section that no
+  component declares or reads, and the supervisor grew a readiness probe that
+  no component sees. Nothing needs routing to `component-catalog` first. The
+  item's warning stays in force for any later deliberate contract change.
+
 Recorded 2026-08-30, first session; reasoning here, one-line entries in the
 [disposition log](intake-dispositions.md), files removed per the queue rule.
 

@@ -13,3 +13,4 @@ The note is one line. The reasoning is in this workstream's
 |---|---|---|---|
 | `2026-08-19-project-management-display-transport-design-input.md` | 2026-08-30 | accepted | Adopted as working assumptions pending the spike; bug closes on the regression test. Reasoning in the handoff. |
 | `2026-08-30-project-management-supervisor-core-assigned.md` | 2026-08-30 | accepted | Goal widened: supervisor core first, display as its first consumer. Reasoning in the handoff. |
+| `2026-08-30-project-management-component-contract-is-load-bearing.md` | 2026-09-12 | acknowledged | Pause ended on resume; stage 2 leaves the component contract untouched (additive plan section, supervisor-internal readiness probe). Reasoning in the handoff. |
