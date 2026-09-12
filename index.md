@@ -59,6 +59,8 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)
 - [Eclipse interactive surface current status](engineering-docs/wip/2026-09-09-eclipse-surface/CURRENT-STATUS.md)
 
+- [User documentation current status](engineering-docs/wip/2026-09-12-user-docs/CURRENT-STATUS.md)
+
 ## Engineering Design Notes
 
 - [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
