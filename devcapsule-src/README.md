@@ -416,8 +416,13 @@ the `sudo` binary. It also installs the pinned language-tooling baseline:
 Node.js `v22.23.1` with bundled npm, Eclipse Temurin JDK `25.0.4+7`, and Apache
 Maven `3.9.16`. `JAVA_HOME` is `/opt/java/current`, `MAVEN_HOME` is
 `/opt/maven/current`, and the Maven, Java, and Node `bin` directories are on
-executable `PATH`. Recipe 7 adds no DevCapsule runtime. The launcher supplies
+executable `PATH`. Recipe 7 added no DevCapsule runtime: the launcher supplies
 its PEX at `/opt/devcapsule/bin/devcapsule.pex` in each derived environment.
+Recipe 8 adds the contained display stack — TigerVNC's `Xvnc`, the core X
+fonts, noVNC with `websockify`, and the Openbox window manager — and labels
+the base `devcapsule.base.display=contained`, which is how the launcher knows
+a capsule can bring its own desktop instead of borrowing the host's X session
+(see *Display* below).
 
 The repository-owned Python build plan is the inspectable source of truth:
 
@@ -816,12 +821,46 @@ physical-host foreground launcher owns the broker lifetime and removes its
 private runtime directory on exit. A nested detached successor therefore
 retains working links only while that owning outer launch remains alive.
 
+#### Display
+
+When the materialized image carries the display stack (base recipe 8 and
+later), `project run` gives the capsule its **own desktop**: the entrypoint
+starts `Xvnc` on display `:1`, Openbox, and a noVNC bridge as supervised
+infrastructure children ahead of the IDE, and nothing about the host's X
+session — no socket, no credential, no `DISPLAY` — crosses into the
+container. The launcher prints a URL of the form
+`http://127.0.0.1:PORT/vnc.html?...token=...` and opens it in your default
+browser once the capsule answers. The port is allocated per run on host
+loopback only; the token is generated per run, mounted read-only at
+`/run/devcapsule-display-token`, and required by the bridge before it will
+speak RFB. Closing the browser tab leaves the IDE running; reopening the URL
+resumes the session. The session still ends when the IDE exits or on
+`docker stop`. A native VNC viewer is not required and not supported as a
+separate path; the browser is the client.
+
+Two limitations are stated rather than worked around: Docker network mode
+`none` cannot publish the bridge, so the contained display refuses it and
+names the alternatives; and a second `project run` against an already running
+capsule cannot recover the first run's URL yet.
+
+Host X11 passthrough — the transport every earlier release used — remains
+available only as the `host-x11` authorization: `devcapsule project config
+authorize host-x11 true` persistently, or `project run --authorize host-x11
+true` once. It is never a default and no project can recommend it. Granting it
+binds the host X socket and your trusted cookie into the capsule, which can
+then capture keystrokes and windows across your whole session, inject input,
+and read the clipboard; the launch says so, and the session-credential
+boundary test is recorded as waived for that run. Images built before recipe
+8 have no display stack and keep using passthrough with the same statement.
+
 For a formation-based run, DevCapsule generates a version-1 runtime plan from
 the same component template used in the image's formation identity. The JSON
 contains only in-container project/home/state destinations, the runtime
-UID/GID/username, component adapter configuration, and names of enabled host
-integrations—never host source/state paths, checkout files, credentials, or
-authorization secrets. The launcher
+UID/GID/username, component adapter configuration, names of enabled host
+integrations, and the display transport (`contained`, with the in-container
+bridge address, port and token path, or `host-x11`) — never host source/state
+paths, checkout files, credentials, or authorization secrets, and never the
+display token itself. The launcher
 writes it to a temporary mode-`0644` file, mounts it read-only at
 `/etc/devcapsule/runtime-plan.json`, and removes it with the generated identity
 files after exit or launch preparation failure. No command follows the image

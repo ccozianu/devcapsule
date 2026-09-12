@@ -17,7 +17,8 @@ def test_release_built_base_has_tools_and_no_embedded_runtime() -> None:
     labels = inspection["Config"]["Labels"]
     assert labels["devcapsule.image.kind"] == "base"
     assert labels["devcapsule.base.recipe"] == "ubuntu-24.04"
-    assert labels["devcapsule.base.recipe-version"] == "7"
+    assert labels["devcapsule.base.recipe-version"] == "8"
+    assert labels["devcapsule.base.display"] == "contained"
     assert labels["devcapsule.base.runtime"] == "launcher-supplied"
     assert labels["devcapsule.source.revision"] == os.environ["DEVCAPSULE_EXPECTED_BASE_SOURCE"]
     assert labels["org.opencontainers.image.version"] == os.environ["DEVCAPSULE_EXPECTED_BUILD_MNEMONIC"]
@@ -41,6 +42,10 @@ mvn --version
 python3.12 --version
 git --version
 psql --version
+Xvnc -version 2>&1
+websockify --help >/dev/null
+openbox --version | head -1
+test -r /usr/share/novnc/vnc.html
 """
     result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", "/bin/sh",
                              image, "-c", script], capture_output=True, text=True, check=True)

@@ -144,3 +144,56 @@ def test_supervisor_rejects_malformed_child_sets() -> None:
         Supervisor((SupervisedChild("job", (), foreground=True),))
     with pytest.raises(SupervisorError, match="grace period"):
         Supervisor((job,), grace_seconds=0)
+
+
+def test_next_child_starts_only_after_the_readiness_probe_passes(tmp_path: Path) -> None:
+    ready = tmp_path / "x-server-ready"
+    # The foreground child asserts the marker the infrastructure child creates
+    # after a delay; it can only pass if the supervisor waited.
+    process = start_supervisor(
+        [
+            {
+                "name": "x-server",
+                "command": ["sh", "-c", f"sleep 0.4; touch {ready}; exec sleep 300"],
+                "ready_path": str(ready),
+            },
+            {"name": "ide", "command": ["sh", "-c", f"test -e {ready}"], "foreground": True},
+        ]
+    )
+    assert process.wait(timeout=15) == 0
+
+
+def test_child_that_never_becomes_ready_fails_the_start(tmp_path: Path) -> None:
+    process = start_supervisor(
+        [
+            {
+                "name": "x-server",
+                "command": ["sleep", "300"],
+                "ready_path": str(tmp_path / "never"),
+                "ready_timeout_seconds": 0.5,
+            },
+            {"name": "ide", "command": ["true"], "foreground": True},
+        ]
+    )
+    assert process.wait(timeout=15) == 2
+    assert process.stderr is not None
+    assert "'x-server' did not become ready within 0.5s" in process.stderr.read()
+
+
+def test_child_that_exits_before_ready_fails_the_start(tmp_path: Path) -> None:
+    process = start_supervisor(
+        [
+            {"name": "x-server", "command": ["sh", "-c", "exit 3"], "ready_path": str(tmp_path / "never")},
+            {"name": "ide", "command": ["true"], "foreground": True},
+        ]
+    )
+    assert process.wait(timeout=15) == 2
+    assert process.stderr is not None
+    assert "'x-server' exited before becoming ready" in process.stderr.read()
+
+
+def test_supervisor_rejects_non_positive_readiness_timeout() -> None:
+    with pytest.raises(SupervisorError, match="readiness timeouts must be positive"):
+        Supervisor(
+            (SupervisedChild("job", ("true",), foreground=True, ready=lambda: True, ready_timeout_seconds=0),)
+        )

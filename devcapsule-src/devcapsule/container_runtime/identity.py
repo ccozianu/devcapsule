@@ -8,6 +8,12 @@ from .contract import Identity
 
 
 def foreground_command(command: tuple[str, ...], identity: Identity) -> tuple[str, ...]:
+    """Wrap ``command`` so it runs as the capsule user when the caller is root.
+
+    Named for its first use; every supervised child, infrastructure included,
+    is wrapped the same way, so no display or IDE process ever runs as root.
+    """
+
     if not command:
         raise ValueError("foreground command must not be empty")
     if os.geteuid() == 0:

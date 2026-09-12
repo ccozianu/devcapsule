@@ -10,6 +10,7 @@ import shutil
 import signal
 import subprocess
 import tarfile
+import textwrap
 import time
 import tomllib
 import uuid
@@ -18,7 +19,7 @@ import pytest
 
 from devcapsule.base_image import BaseImageBuildOptions, build_base_image_spec, file_sha256
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
-from devcapsule.container_runtime.contract import Identity, RuntimePlan
+from devcapsule.container_runtime.contract import DisplayPlan, Identity, RuntimePlan
 from devcapsule.image_build import render_build_context
 from devcapsule.materialization import ArtifactSpec, ImageDetails, ensure_materialized_surface
 
@@ -27,20 +28,112 @@ DEFAULT_BASE_IMAGE = str(tomllib.loads(
 )["base"]["reference"])
 
 
+# Image builds here install apt packages (the display stack), so the suite
+# accepts the same network choice as the nox base build (`--build-network`).
+BUILD_NETWORK_ARGS = (
+    ["--network", os.environ["DEVCAPSULE_E2E_BUILD_NETWORK"]]
+    if os.environ.get("DEVCAPSULE_E2E_BUILD_NETWORK")
+    else []
+)
+
+
 def command(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, check=check, text=True, capture_output=True)
 
 
 def create_jetbrains_fixture(path: Path) -> bytes:
-    # The fixture "IDE" reports its own parentage so the supervised run can
-    # assert the process tree, then exits, which ends the session.
-    launcher = b'#!/bin/sh\necho "pycharm-fixture pid=$$ ppid=$PPID"\n'
+    # The fixture "IDE" reports its own parentage and display so the supervised
+    # run can assert the process tree, then exits, which ends the session.
+    # With FIXTURE_HOLD set it instead checks the contained display and stays
+    # up so the run can be probed from outside before it is stopped.
+    launcher = textwrap.dedent(
+        """\
+        #!/bin/sh
+        echo "pycharm-fixture pid=$$ ppid=$PPID DISPLAY=${DISPLAY-unset} XAUTHORITY=${XAUTHORITY-unset}"
+        if [ -n "${FIXTURE_HOLD-}" ]; then
+          test -S /tmp/.X11-unix/X1 || exit 5
+          test -r "$XAUTHORITY" || exit 6
+          echo fixture-ready
+          exec sleep 300
+        fi
+        """
+    ).encode()
     with tarfile.open(path, "w:gz") as archive:
         info = tarfile.TarInfo("pycharm-fixture/bin/pycharm.sh")
         info.mode = 0o755
         info.size = len(launcher)
         archive.addfile(info, io.BytesIO(launcher))
     return path.read_bytes()
+
+
+# Runs inside the capsule (docker exec) and reports the facts the design note's
+# regression test names: TCP listeners, the X socket, the token gate, and the
+# display processes' parentage and identity.
+DISPLAY_PROBE = textwrap.dedent(
+    """
+    import base64, json, os, socket, stat, sys
+    token = sys.argv[1]
+    listeners = set()
+    for table in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            rows = open(table).read().splitlines()[1:]
+        except OSError:
+            continue
+        for row in rows:
+            parts = row.split()
+            if parts[3] == "0A":
+                listeners.add(int(parts[1].rsplit(":", 1)[1], 16))
+
+    def ws(path):
+        s = socket.create_connection(("127.0.0.1", 6080), timeout=5)
+        key = base64.b64encode(os.urandom(16)).decode()
+        s.sendall((f"GET {path} HTTP/1.1\\r\\nHost: 127.0.0.1:6080\\r\\nUpgrade: websocket\\r\\n"
+                   f"Connection: Upgrade\\r\\nSec-WebSocket-Key: {key}\\r\\nSec-WebSocket-Version: 13\\r\\n"
+                   "Sec-WebSocket-Protocol: binary\\r\\n\\r\\n").encode())
+        data = b""
+        while b"\\r\\n\\r\\n" not in data:
+            chunk = s.recv(4096)
+            if not chunk:
+                return ["closed", data.decode(errors="replace")[:80]]
+            data += chunk
+        head, rest = data.split(b"\\r\\n\\r\\n", 1)
+        while len(rest) < 14:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            rest += chunk
+        s.close()
+        return [head.split(b"\\r\\n")[0].decode(), rest[2:14].decode(errors="replace")]
+
+    processes = {}
+    for entry in os.listdir("/proc"):
+        if not entry.isdigit():
+            continue
+        try:
+            argv = open(f"/proc/{entry}/cmdline", "rb").read().split(b"\\0")
+            status = open(f"/proc/{entry}/status").read()
+        except OSError:
+            continue
+        names = [os.path.basename(a.decode(errors="replace")) for a in argv if a]
+        for wanted in ("Xvnc", "openbox", "websockify"):
+            if wanted in names[:2]:
+                fields = dict(line.split(":\\t", 1) for line in status.splitlines() if ":\\t" in line)
+                processes[wanted] = {"ppid": int(fields["PPid"]), "uid": int(fields["Uid"].split()[0])}
+    import http.client
+    connection = http.client.HTTPConnection("127.0.0.1", 6080, timeout=5)
+    connection.request("GET", "/vnc.html")
+    vnc_html = connection.getresponse().status
+    print(json.dumps({
+        "listeners": sorted(listeners),
+        "x_socket": stat.S_ISSOCK(os.stat("/tmp/.X11-unix/X1").st_mode),
+        "valid": ws(f"/websockify?token={token}"),
+        "bad": ws("/websockify?token=nope"),
+        "missing": ws("/websockify"),
+        "vnc_html": vnc_html,
+        "processes": processes,
+    }))
+    """
+)
 
 
 @pytest.mark.e2e
@@ -63,6 +156,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
     image = f"devcapsule-runtime-e2e:{identifier}"
     materialized_image: str | None = None
     built_supervised_image: str | None = None
+    built_display_image: str | None = None
     spec = build_base_image_spec(
         BaseImageBuildOptions(
             pex=built_pex,
@@ -79,6 +173,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
             docker,
             "build",
             "--pull=false",
+            *BUILD_NETWORK_ARGS,
             "--tag",
             image,
             str(tmp_path),
@@ -86,6 +181,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
         inspection = json.loads(command(docker, "image", "inspect", image).stdout)[0]
         assert inspection["Config"]["Labels"]["devcapsule.image.kind"] == "base"
         assert inspection["Config"]["Labels"]["devcapsule.base.runtime"] == "launcher-supplied"
+        assert inspection["Config"]["Labels"]["devcapsule.base.display"] == "contained"
 
         python = command(docker, "run", "--rm", "--entrypoint", "python3.12", image, "--version")
         assert python.stdout.startswith("Python 3.12")
@@ -220,7 +316,7 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
         # and the IDE exiting ends the session with its exit code.
         interactive = command(*run_prefix, check=False)
         assert interactive.returncode == 0, interactive.stderr
-        parentage = re.search(r"pycharm-fixture pid=(\d+) ppid=(\d+)", interactive.stdout)
+        parentage = re.search(r"pycharm-fixture pid=(\d+) ppid=(\d+) DISPLAY=unset", interactive.stdout)
         assert parentage is not None, interactive.stdout
         assert parentage.group(1) != "1"
         assert parentage.group(2) == "1"
@@ -280,7 +376,65 @@ exit 9
             assert "session end requested (SIGTERM)" in logs.stderr
         finally:
             command(docker, "rm", "--force", container_id, check=False)
+
+        # --- Contained display: the regression test for the X11 credential bug ---
+        # The plan selects the contained transport; the token file is baked in
+        # beside it for the same bind-mount reason as the plan itself.
+        token = "e2e" + uuid.uuid4().hex
+        display_plan = plan.with_display(
+            DisplayPlan.contained("0.0.0.0", 6080, "/etc/devcapsule/display-token")
+        )
+        display_context = tmp_path / "display-context"
+        display_context.mkdir()
+        (display_context / "runtime-plan.json").write_text(display_plan.to_json() + "\n", encoding="utf-8")
+        (display_context / "display-token").write_text(token + "\n", encoding="utf-8")
+        (display_context / "Dockerfile").write_text(
+            f"FROM {supervised_image}\n"
+            "COPY runtime-plan.json /etc/devcapsule/runtime-plan.json\n"
+            "COPY display-token /etc/devcapsule/display-token\n"
+            "RUN chown 1000:1000 /etc/devcapsule/display-token && chmod 0600 /etc/devcapsule/display-token\n",
+            encoding="utf-8",
+        )
+        display_image = f"devcapsule-display-e2e:{identifier}"
+        command(docker, "build", "--pull=false", "--tag", display_image, str(display_context))
+        built_display_image = display_image
+        # No host X socket, no host credential, no DISPLAY: the capsule brings
+        # its own. FIXTURE_HOLD keeps the "IDE" up while the run is probed.
+        started = command(docker, "run", "--detach", "--env", "FIXTURE_HOLD=1", display_image)
+        container_id = started.stdout.strip()
+        try:
+            deadline = time.monotonic() + 60
+            while "fixture-ready" not in command(docker, "logs", container_id).stdout:
+                assert time.monotonic() < deadline, command(docker, "logs", container_id)
+                assert command(docker, "inspect", "-f", "{{.State.Running}}", container_id).stdout.strip() == "true", command(docker, "logs", container_id)
+                time.sleep(0.2)
+            display_logs = command(docker, "logs", container_id).stdout
+            assert re.search(
+                r"pycharm-fixture pid=\d+ ppid=1 DISPLAY=:1 XAUTHORITY=/tmp/devcapsule-runtime-1000/display/Xauthority",
+                display_logs,
+            ), display_logs
+            probe = command(docker, "exec", container_id, "python3", "-c", DISPLAY_PROBE, token)
+            facts = json.loads(probe.stdout)
+            # The only listener is the token-gated bridge; Xvnc has no TCP port.
+            assert facts["listeners"] == [6080], facts
+            assert facts["x_socket"] is True
+            assert facts["valid"] == ["HTTP/1.1 101 Switching Protocols", "RFB 003.008\n"], facts
+            assert facts["bad"] == ["closed", ""], facts
+            assert facts["missing"] == ["closed", ""], facts
+            assert facts["vnc_html"] == 200
+            # Display processes are the supervisor's direct children and run
+            # as the capsule user, never as root.
+            for name in ("Xvnc", "openbox", "websockify"):
+                assert facts["processes"][name] == {"ppid": 1, "uid": 1000}, facts
+            command(docker, "stop", container_id)
+            stopped = command(docker, "wait", container_id)
+            assert stopped.stdout.strip() == str(128 + signal.SIGTERM)
+            assert "session end requested (SIGTERM)" in command(docker, "logs", container_id).stderr
+        finally:
+            command(docker, "rm", "--force", container_id, check=False)
     finally:
+        if built_display_image is not None:
+            command(docker, "image", "rm", "--force", built_display_image, check=False)
         if built_supervised_image is not None:
             command(docker, "image", "rm", "--force", built_supervised_image, check=False)
         if materialized_image is not None:

@@ -42,11 +42,30 @@ DEFAULT_ROOT_IMAGE = "ubuntu:24.04"
 NVIDIA_CUDA_ROOT_IMAGE = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
 DEFAULT_OUTPUT_IMAGE = "devcapsule-base:latest"
 PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
-BASE_RECIPE_VERSION = "7"
+# Recipe 8 adds the contained display stack (DISPLAY_APT_PACKAGES) and the
+# label the launcher reads to select the contained transport.
+BASE_RECIPE_VERSION = "8"
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
 PUBLIC_SOURCE_TIMEOUT_SECONDS = 10
+
+# The contained display: the capsule's own X server with the RFB server built
+# in, the core fonts it refuses to start without, the browser client and its
+# WebSocket bridge, and a window manager. All redistributable (GPL-2.0,
+# MPL-2.0/LGPL, GPL-2.0) and shipped in the published base, so a capsule never
+# needs the host's X session. See the contained-display design note.
+DISPLAY_APT_PACKAGES = (
+    "tigervnc-standalone-server",
+    "xfonts-base",
+    "novnc",
+    "python3-websockify",
+    "openbox",
+)
+# Label value the launcher reads from a materialized image (labels are
+# inherited through FROM) to know the display stack is present.
+DISPLAY_LABEL = "devcapsule.base.display"
+CONTAINED_DISPLAY_LABEL_VALUE = "contained"
 
 
 @dataclass(frozen=True)
@@ -83,6 +102,9 @@ class BaseImageBuildOptions:
     source_revision: str | None = None
     allow_local_source: bool = False
     install_baseline: bool = True
+    # Separate from the baseline so a test can put the display stack on an
+    # already-built base without reinstalling everything else.
+    install_display: bool = True
     recipe: str = DEFAULT_BASE_RECIPE
 
 
@@ -190,6 +212,8 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                 )
             )
         )
+    if options.install_display:
+        components.append(AptPackagesComponent(DISPLAY_APT_PACKAGES))
     components.extend(
         [
             LabelComponent(
@@ -199,6 +223,13 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.base.recipe-version", BASE_RECIPE_VERSION),
                     ("devcapsule.base.recipe-status", recipe.status),
                     ("devcapsule.base.runtime", "launcher-supplied"),
+                )
+                + (
+                    ((DISPLAY_LABEL, CONTAINED_DISPLAY_LABEL_VALUE),)
+                    if options.install_display
+                    else ()
+                )
+                + (
                     ("devcapsule.source.repository", build_info.source_repository),
                     ("devcapsule.source.revision", build_info.source_revision),
                     ("devcapsule.source.url", build_info.source_url),

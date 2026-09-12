@@ -78,6 +78,16 @@ WORKSTATION_CAPABILITY_DEFAULTS: dict[str, tuple[AuthorizationScalar, str]] = {
         "Open HTTP(S) links from the capsule in the physical host's default browser "
         "through the URL-only broker.",
     ),
+    # Host X11 passthrough survives only as this node (contained-display
+    # design note, T7): never a default, never a project recommendation,
+    # and the trade-off is stated where the answer is given.
+    "host-x11": (
+        True,
+        "Run the IDE on the host's X session instead of the capsule's contained "
+        "display, handing the capsule your full X session credential: keystroke "
+        "capture across the session, window capture, input injection, and "
+        "clipboard access. The session-credential boundary test is waived for such runs.",
+    ),
 }
 
 # Each string-valued authorization node's deny spelling — the value the run

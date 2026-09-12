@@ -11,13 +11,29 @@ import stat
 import subprocess
 import sys
 import tempfile
+from threading import Event
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
-from ...container_runtime.contract import RuntimePlan
+from ...container_runtime.contract import (
+    CONTAINED_DISPLAY_TRANSPORT,
+    DISPLAY_TRANSPORTS,
+    HOST_X11_DISPLAY_TRANSPORT,
+    DisplayPlan,
+    RuntimePlan,
+)
+from ...display_client import (
+    CONTAINER_DISPLAY_PORT,
+    DISPLAY_TOKEN_DESTINATION,
+    allocate_loopback_port,
+    default_opener,
+    display_url,
+    new_display_token,
+    watch_display_ready,
+)
 from ...host_daemon import (
     current_container,
     docker_socket,
@@ -81,6 +97,7 @@ class TempRuntimeFiles:
     sudoers_file: Path | None = None
     token_file: Path | None = None
     runtime_plan_file: Path | None = None
+    display_token_file: Path | None = None
 
 
 SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
@@ -132,6 +149,14 @@ class PycharmRunOptions:
     secret_environment: tuple[str, ...] = ()
     extra_docker_args: list[str] = field(default_factory=list)
     enable_host_browser: bool = False
+    # How the surface gets a display. ``host-x11`` is the historical
+    # passthrough (host X socket and session credential bound into the
+    # capsule); ``contained`` is the capsule's own desktop reached through a
+    # browser, which requires an image carrying the display stack and an
+    # external runtime plan. The caller decides; see commands/project.py.
+    display_transport: str = HOST_X11_DISPLAY_TRANSPORT
+    # Test seam: how the contained display's URL is opened once ready.
+    open_display_url: Callable[[str], None] | None = None
 
 
 @dataclass
@@ -170,6 +195,12 @@ class PycharmRunConfig:
     runtime_plan: RuntimePlan | None
     use_image_process: bool
     host_browser_socket: Path | None = None
+    display_transport: str = HOST_X11_DISPLAY_TRANSPORT
+    # Contained display only: the host loopback port Docker publishes (or the
+    # bridge listens on directly under host networking) and the per-run token.
+    display_host_port: int | None = None
+    display_token: str = ""
+    open_display_url: Callable[[str], None] | None = None
     interactive_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_environment: tuple[tuple[str, str], ...] = ()
@@ -209,7 +240,27 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                 command = ["docker", "run", *docker_args, config.image]
                 if not config.use_image_process:
                     command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
-                completed = subprocess.run(command, check=False, env=runtime_env)
+                stop_watching = Event()
+                if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
+                    assert config.display_host_port is not None
+                    url = display_url(config.display_host_port, config.display_token)
+                    print(
+                        f"Contained display: {url}\n"
+                        "  (opens in your browser once the capsule is ready; closing the tab "
+                        "does not end the session)",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    watch_display_ready(
+                        config.display_host_port,
+                        url,
+                        config.open_display_url or default_opener(runtime_env),
+                        stop_watching,
+                    )
+                try:
+                    completed = subprocess.run(command, check=False, env=runtime_env)
+                finally:
+                    stop_watching.set()
                 return completed.returncode
             finally:
                 cleanup_temp_runtime_files(files)
@@ -315,12 +366,27 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
     if enable_sudo:
         writable_root = True
 
-    if not env.get("DISPLAY"):
-        raise PycharmRunError("DISPLAY is not set; this X11 launcher needs an active X session.")
+    if options.display_transport not in DISPLAY_TRANSPORTS:
+        raise PycharmRunError(
+            f"Unknown display transport {options.display_transport!r}; "
+            f"choose one of: {', '.join(sorted(DISPLAY_TRANSPORTS))}."
+        )
     if options.network_mode not in {"bridge", "host", "none"}:
         raise PycharmRunError("The Docker network mode must be bridge, host, or none.")
     if options.use_image_process and options.runtime_plan is None:
         raise PycharmRunError("Using the image process requires an external runtime plan.")
+    contained_display = options.display_transport == CONTAINED_DISPLAY_TRANSPORT
+    if contained_display:
+        if options.runtime_plan is None or not options.use_image_process:
+            raise PycharmRunError("The contained display requires the image process and an external runtime plan.")
+        if options.network_mode == "none":
+            raise PycharmRunError(
+                "The contained display cannot be reached under Docker network mode 'none': "
+                "nothing can be published from it. Use bridge (or host) networking, or "
+                "authorize 'host-x11' to run on the host X session instead."
+            )
+    elif not env.get("DISPLAY"):
+        raise PycharmRunError("DISPLAY is not set; host X11 passthrough needs an active X session.")
 
     global_settings_default = base_data_dir / "state"
 
@@ -508,6 +574,22 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         selected_runtime_plan = selected_runtime_plan.with_host_integration(
             HOST_OPEN_INTEGRATION
         )
+    display_host_port: int | None = None
+    display_token = ""
+    if selected_runtime_plan is not None:
+        if contained_display:
+            display_host_port = allocate_loopback_port()
+            display_token = new_display_token()
+            # Under host networking the bridge is on the host's loopback
+            # directly; otherwise it listens on the container's interfaces
+            # and Docker publishes it to host loopback (T4 of the design note).
+            listen_address = "127.0.0.1" if options.network_mode == "host" else "0.0.0.0"
+            container_port = display_host_port if options.network_mode == "host" else CONTAINER_DISPLAY_PORT
+            selected_runtime_plan = selected_runtime_plan.with_display(
+                DisplayPlan.contained(listen_address, container_port, DISPLAY_TOKEN_DESTINATION)
+            )
+        else:
+            selected_runtime_plan = selected_runtime_plan.with_display(DisplayPlan.host_x11())
     fixed_environment = selected_runtime_plan.component_environment() if selected_runtime_plan else {}
     if host_browser_socket is not None and (
         "BROWSER" in fixed_environment or HOST_OPEN_SOCKET_ENV in fixed_environment
@@ -580,6 +662,10 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         runtime_plan=selected_runtime_plan,
         use_image_process=options.use_image_process,
         host_browser_socket=host_browser_socket,
+        display_transport=options.display_transport,
+        display_host_port=display_host_port,
+        display_token=display_token,
+        open_display_url=options.open_display_url,
         interactive_state_mounts=tuple(interactive_state_mounts),
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),
@@ -714,10 +800,7 @@ def build_docker_args(
         config.name,
         "--workdir",
         config.project_mount,
-        "--env",
-        "DISPLAY",
-        "--env",
-        "XAUTHORITY=/tmp/.docker.xauth",
+        *_display_environment_args(config),
         "--env",
         f"PROJECT_PATH={config.project_mount}",
         "--env",
@@ -743,10 +826,6 @@ def build_docker_args(
         "--env",
         f"IDE_USER={host_user.name}",
         "--env",
-        "QT_X11_NO_MITSHM=1",
-        "--env",
-        "_JAVA_AWT_WM_NONREPARENTING=1",
-        "--env",
         f"LIBGL_ALWAYS_SOFTWARE={config.libgl_always_software}",
         "--env",
         f"MESA_LOADER_DRIVER_OVERRIDE={config.mesa_loader_driver_override}",
@@ -757,10 +836,7 @@ def build_docker_args(
         "--mount",
         f"type=bind,src={config.persistent_home},dst=/home/devcapsule",
         *_surface_state_mount_args(config),
-        "--mount",
-        "type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix,ro",
-        "--mount",
-        f"type=bind,src={files.xauth_file},dst=/tmp/.docker.xauth,ro",
+        *_display_mount_args(config, files),
         "--mount",
         f"type=bind,src={files.passwd_file},dst=/etc/passwd,ro",
         "--mount",
@@ -874,6 +950,46 @@ def build_docker_args(
         args.extend(["--memory", str(config.memory_limit_bytes)])
     args.extend(config.extra_docker_args)
     return args
+
+
+def _display_environment_args(config: PycharmRunConfig) -> list[str]:
+    if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
+        # The entrypoint sets DISPLAY and XAUTHORITY to the capsule's own
+        # X server; nothing about the host session crosses the boundary.
+        return []
+    return [
+        "--env",
+        "DISPLAY",
+        "--env",
+        "XAUTHORITY=/tmp/.docker.xauth",
+        # Both are host-X-socket workarounds: MIT-SHM cannot cross the
+        # container boundary, and the host's window manager may not reparent.
+        "--env",
+        "QT_X11_NO_MITSHM=1",
+        "--env",
+        "_JAVA_AWT_WM_NONREPARENTING=1",
+    ]
+
+
+def _display_mount_args(config: PycharmRunConfig, files: TempRuntimeFiles) -> list[str]:
+    if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
+        if files.display_token_file is None or config.display_host_port is None:
+            raise PycharmRunError("The contained display requires a generated token file and a host port.")
+        args = [
+            "--mount",
+            f"type=bind,src={files.display_token_file},dst={DISPLAY_TOKEN_DESTINATION},ro",
+        ]
+        if config.network_mode != "host":
+            args.extend(
+                ["--publish", f"127.0.0.1:{config.display_host_port}:{CONTAINER_DISPLAY_PORT}"]
+            )
+        return args
+    return [
+        "--mount",
+        "type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix,ro",
+        "--mount",
+        f"type=bind,src={files.xauth_file},dst=/tmp/.docker.xauth,ro",
+    ]
 
 
 def append_docker_mode_args(args: list[str], config: PycharmRunConfig, host_user: HostUser) -> None:
@@ -1031,7 +1147,12 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
         group_file=make_temp(runtime_parent, "pycharm-docker-group."),
     )
     try:
-        write_xauthority(files.xauth_file, env)
+        if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
+            files.display_token_file = make_temp(runtime_parent, "devcapsule-display-token.")
+            files.display_token_file.write_text(config.display_token + "\n", encoding="utf-8")
+            files.display_token_file.chmod(0o600)
+        else:
+            write_xauthority(files.xauth_file, env)
         write_user_files(config, files)
         if config.enable_sudo:
             files.sudoers_directory = Path(
@@ -1222,6 +1343,7 @@ def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
         files.sudoers_file,
         files.token_file,
         files.runtime_plan_file,
+        files.display_token_file,
     ]:
         if path:
             path.unlink(missing_ok=True)
@@ -1380,6 +1502,7 @@ Embedded browser security:
 Host browser integration:
   Enabled through a URL-only HTTP(S) broker. Any process running as the
   capsule user can ask the physical host to navigate its default browser."""
+    host_browser_disclosure += display_disclosure(config)
     if config.interactive_state_mounts:
         component_id = (
             config.runtime_plan.component.id if config.runtime_plan is not None else "surface"
@@ -1415,6 +1538,29 @@ Renderer security:
   Container project path: {config.project_mount}{browser_disclosure}{host_browser_disclosure}""",
         file=sys.stderr,
     )
+
+
+def display_disclosure(config: PycharmRunConfig) -> str:
+    """The run's display transport, stated the way the run manifest records it."""
+
+    if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
+        where = (
+            f"host loopback port {config.display_host_port} (host networking)"
+            if config.network_mode == "host"
+            else f"container port {CONTAINER_DISPLAY_PORT}, published to host loopback port {config.display_host_port}"
+        )
+        return f"""
+
+Display:
+  Contained desktop: the capsule runs its own X server and serves it to a
+  browser through a token-authorized noVNC bridge on {where}.
+  No host X socket, credential, or DISPLAY is shared with the capsule."""
+    return """
+
+Display:
+  Host X11 passthrough: the capsule holds your full X session credential
+  (keystroke capture across the session, window capture, input injection,
+  clipboard). The session-credential boundary test is waived for this run."""
 
 
 def print_host_docker_warning(config: PycharmRunConfig) -> None:
