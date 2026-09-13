@@ -842,6 +842,19 @@ resumes the session. The session still ends when the IDE exits or on
 `docker stop`. A native VNC viewer is not required and not supported as a
 separate path; the browser is the client.
 
+**Keys, Escape, and fullscreen.** In a normal tab every key the browser does
+not reserve reaches the capsule, Escape included. Do **not** use the
+fullscreen button on noVNC's side bar: that is the page-requested kind of
+fullscreen, which browsers leave on Escape, so Escape never reaches your
+editor. Enter *browser* fullscreen instead, which only F11 leaves: give
+keyboard focus to the address bar first (Ctrl+L), press F11, then click back
+into the desktop; or use the browser menu's fullscreen entry. noVNC forwards
+F11 to the capsule while the desktop has focus, which is why the focus step
+is needed, both to enter and to leave. Shortcuts the browser itself owns,
+such as Ctrl+W, Ctrl+T, Ctrl+N and Alt+Tab, never reach the capsule in any
+mode; closing the tab by accident does not end the session, and the printed
+URL reopens it.
+
 Two limitations are stated rather than worked around: Docker network mode
 `none` cannot publish the bridge, so the contained display refuses it and
 names the alternatives; and a second `project run` against an already running

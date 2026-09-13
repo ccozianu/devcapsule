@@ -148,6 +148,20 @@ to the display; the fix is to pass the helper's arguments through
 `translate_for_external_daemon` as the main launch already does. Left for
 the owner to assign.
 
+**Owner smoke, 2026-09-13, from the dogfood capsule:** the owner opened the
+contained desktop in a host browser and confirmed the essentials. Finding on
+keys: noVNC forwards every key the browser delivers and prevents the
+default, so F11 does not toggle browser fullscreen while the desktop has
+focus, and noVNC's own fullscreen button requests page fullscreen, which
+Escape exits. The zero-code answer the owner verified: focus the address bar
+(Ctrl+L), press F11, click back in; Escape then reaches the capsule. Recorded
+in the README's *Display* section. A companion page using the Keyboard Lock
+API was researched (Chrome 68+, Edge 79+, Firefox 151+, no Safari; noVNC
+upstream does not use it) and **rejected by the owner** as maintenance the
+project should not carry. Browser-owned shortcuts (Ctrl+W, Ctrl+T, Ctrl+N,
+Alt+Tab) remain with the browser in every mode; a native viewer through a
+host-side WebSocket relay is the recorded option for people who need them.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot
