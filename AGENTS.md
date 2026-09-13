@@ -1,9 +1,15 @@
 # Agent Instructions
 
-Before starting work in this repository, read the developer brief at:
+Before starting work in this repository, read the project introduction at:
 
 ```text
 README.md
+```
+
+Then read the developer brief at:
+
+```text
+DEVELOPING.md
 ```
 
 Then read the top-level `workflow-type` field in:
