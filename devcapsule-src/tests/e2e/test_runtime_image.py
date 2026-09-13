@@ -51,7 +51,7 @@ def create_jetbrains_fixture(path: Path) -> bytes:
         #!/bin/sh
         echo "pycharm-fixture pid=$$ ppid=$PPID DISPLAY=${DISPLAY-unset} XAUTHORITY=${XAUTHORITY-unset}"
         if [ -n "${FIXTURE_HOLD-}" ]; then
-          test -S /tmp/.X11-unix/X1 || exit 5
+          test -S "/tmp/.X11-unix/X${DISPLAY#:}" || exit 5
           test -r "$XAUTHORITY" || exit 6
           echo fixture-ready
           exec sleep 300
@@ -71,7 +71,7 @@ def create_jetbrains_fixture(path: Path) -> bytes:
 # display processes' parentage and identity.
 DISPLAY_PROBE = textwrap.dedent(
     """
-    import base64, json, os, socket, stat, sys
+    import base64, json, os, re, socket, stat, sys
     token = sys.argv[1]
     listeners = set()
     for table in ("/proc/net/tcp", "/proc/net/tcp6"):
@@ -125,7 +125,8 @@ DISPLAY_PROBE = textwrap.dedent(
     vnc_html = connection.getresponse().status
     print(json.dumps({
         "listeners": sorted(listeners),
-        "x_socket": stat.S_ISSOCK(os.stat("/tmp/.X11-unix/X1").st_mode),
+        "x_socket": [stat.S_ISSOCK(os.stat(f"/tmp/.X11-unix/{n}").st_mode) for n in sorted(os.listdir("/tmp/.X11-unix"))],
+        "abstract_x_sockets": sorted(set(re.findall(r"@/tmp/\\.X11-unix/X\\d+", open("/proc/net/unix").read()))),
         "valid": ws(f"/websockify?token={token}"),
         "bad": ws("/websockify?token=nope"),
         "missing": ws("/websockify"),
@@ -410,14 +411,18 @@ exit 9
                 time.sleep(0.2)
             display_logs = command(docker, "logs", container_id).stdout
             assert re.search(
-                r"pycharm-fixture pid=\d+ ppid=1 DISPLAY=:1 XAUTHORITY=/tmp/devcapsule-runtime-1000/display/Xauthority",
+                r"pycharm-fixture pid=\d+ ppid=1 DISPLAY=:\d+ XAUTHORITY=/tmp/devcapsule-runtime-1000/display/Xauthority",
                 display_logs,
             ), display_logs
             probe = command(docker, "exec", container_id, "python3", "-c", DISPLAY_PROBE, token)
             facts = json.loads(probe.stdout)
             # The only listener is the token-gated bridge; Xvnc has no TCP port.
             assert facts["listeners"] == [6080], facts
-            assert facts["x_socket"] is True
+            assert facts["x_socket"] == [True], facts  # exactly one X socket, ours
+            # No abstract X socket of ours: under host networking it would be
+            # visible to (and collide with) the host; ours is filesystem-only.
+            display_number = re.search(r"DISPLAY=:(\d+)", display_logs).group(1)  # type: ignore[union-attr]
+            assert f"@/tmp/.X11-unix/X{display_number}" not in facts["abstract_x_sockets"], facts
             assert facts["valid"] == ["HTTP/1.1 101 Switching Protocols", "RFB 003.008\n"], facts
             assert facts["bad"] == ["closed", ""], facts
             assert facts["missing"] == ["closed", ""], facts

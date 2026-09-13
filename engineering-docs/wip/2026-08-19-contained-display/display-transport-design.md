@@ -41,19 +41,21 @@ Everything below is a supervised child of the PID-1 supervisor from stage 1;
 the display costs configuration, not architecture, exactly as D9 predicted.
 Start order, all product-derived infrastructure children except the last:
 
-1. **`xvnc`** — `Xvnc :1`, run as the capsule user. Listens for RFB on a
-   Unix socket beneath `XDG_RUNTIME_DIR`, mode 0600, and on **no TCP port at
-   all** (`-rfbport -1`). X access is gated by a per-run cookie in a
-   per-run `Xauthority` file. Geometry 1920x1080, depth 24, DPI 96;
+1. **`xvnc`** — `Xvnc :N`, run as the capsule user, where **N is chosen at
+   start** (T2a). Listens for X on the filesystem socket only
+   (`-nolisten local -nolisten tcp`), for RFB on a Unix socket beneath
+   `XDG_RUNTIME_DIR`, mode 0600, and on **no TCP port at all**
+   (`-rfbport -1`). X access is gated by a per-run cookie in a per-run
+   `Xauthority` file. Geometry 1920x1080, depth 24, DPI 96;
    `AcceptSetDesktopSize` (on by default) lets the client resize it.
-2. **`window-manager`** — Openbox on `:1`. Not optional: Java IDEs need a
+2. **`window-manager`** — Openbox on `:N`. Not optional: Java IDEs need a
    window manager for focus, dialogs, and popups, so a bare Xvnc fails the
    hour-six test. Openbox is the smallest well-behaved stacking WM in the
    distribution.
 3. **`novnc`** — websockify serving noVNC's static page and bridging
    WebSocket to the RFB Unix socket. This is the **only** listener the
    capsule exposes, and it is reachable only as T4 describes.
-4. **The IDE** — the single foreground child, with `DISPLAY=:1` and the
+4. **The IDE** — the single foreground child, with `DISPLAY=:N` and the
    per-run `XAUTHORITY`. Its exit ends the session; nothing else does.
 
 Nothing in the user's manifest names the infrastructure children. The
@@ -66,6 +68,30 @@ probe does not succeed within its timeout is an infrastructure failure.
 
 Headless mode (`-- COMMAND`) declares no display children at all; the job
 runs exactly as in stage 1.
+
+### T2a. The Display Number Is Chosen, And The Abstract Socket Is Off
+
+Found on the owner's first run, 2026-09-13. An X server listens on two Unix
+sockets: the file `/tmp/.X11-unix/X<n>` and an *abstract* socket of the same
+name in the **network namespace**. Under host networking, which this
+repository's own project authorizes, that namespace is the host's, so a
+capsule `Xvnc :1` met the owner's host display `:1` there and died with
+"server already running". Worse, suppressing only the abstract listener would
+not do: X clients try the abstract socket first, so an IDE on `:1` would have
+reached the host's server and been refused.
+
+Two measures, both verified against the owner's daemon before the change:
+
+- the entrypoint picks the lowest display number from **10** that has
+  neither a socket file in `/tmp/.X11-unix` nor an abstract socket in
+  `/proc/net/unix` (which, under host networking, lists the host's servers);
+- Xvnc runs with `-nolisten local -nolisten tcp`, so the capsule's server
+  exists only as its private filesystem socket and nothing of it is visible
+  from the host namespace. With the abstract connect failing (nothing
+  listens there), libxcb falls back to the filesystem socket; Openbox
+  connected and ran that way in the verification.
+
+The IDE's `DISPLAY` is therefore `:10` or higher, never a fixed number.
 
 ## T3. The Runtime Plan Carries A `display` Section
 
@@ -153,7 +179,7 @@ case) it has no desktop of its own: it asks the host-browser bridge if one is
 authorized, and otherwise only prints.
 
 Closing the browser tab does **not** end the session: the IDE keeps running
-on `:1` and reopening the URL resumes it exactly where it was. `docker stop`
+on its display and reopening the URL resumes it exactly where it was. `docker stop`
 or closing the IDE ends it, as in stage 1. Reconnecting to an already running
 capsule from a *second* `project run` is a recorded follow-up (the second
 launcher does not know the first run's token); for now the URL stays in the
@@ -214,7 +240,7 @@ gains a contained-display run against a locally built recipe-8 base:
   port;
 - a WebSocket upgrade with the run's token receives the RFB greeting; one
   with a wrong or missing token is closed;
-- the fixture IDE runs with `DISPLAY=:1`, finds the X socket, and its exit
+- the fixture IDE runs with its chosen `DISPLAY`, finds the X socket, and its exit
   still ends the session with its own exit code;
 - `docker stop` still ends the session in reverse order with exit code 143.
 
@@ -254,3 +280,10 @@ Scratch image `ubuntu:24.04` plus the T6 packages, run as uid 1000:
   `token=nope` and no token were closed before any response, with "Token
   'nope' not found" and "Token not present" in websockify's log.
 - `GET /vnc.html` returned 200.
+
+Addendum 2026-09-13, against the owner's daemon with the recipe-8 base built
+the day before: `grep /proc/net/unix` in a host-networked container showed
+`@/tmp/.X11-unix/X1`; `Xvnc :1` there failed with "server already running";
+`Xvnc :10 -nolisten local -nolisten tcp` started with no abstract socket, and
+`openbox` on `DISPLAY=:10` connected and stayed up, while a client on `:1`
+with our cookie was refused by the host's server ("Authorization required").

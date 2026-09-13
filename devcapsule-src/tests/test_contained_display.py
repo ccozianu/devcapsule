@@ -4,20 +4,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import struct
 
 import pytest
 
 from devcapsule.container_runtime.contract import DisplayPlan, RuntimePlan, RuntimePlanError
 from devcapsule.container_runtime.display import (
-    DISPLAY_NAME,
     NOVNC_CHILD,
     WINDOW_MANAGER_CHILD,
-    X_SOCKET_PATH,
     XVNC_CHILD,
     prepare_contained_display,
     read_token,
+    select_display_number,
     write_xauthority,
+    x_socket_path,
 )
 from devcapsule.container_runtime.entrypoint import run
 
@@ -108,7 +109,10 @@ def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatc
     assert [child.name for child in display.children] == [XVNC_CHILD, WINDOW_MANAGER_CHILD, NOVNC_CHILD]
     assert not any(child.foreground for child in display.children)
     xvnc, window_manager, novnc = display.children
-    assert xvnc.command[:3] == ("as-user", "Xvnc", DISPLAY_NAME)
+    assert display.display_number >= 10
+    assert xvnc.command[:3] == ("as-user", "Xvnc", f":{display.display_number}")
+    # Filesystem socket only: never an abstract socket, never TCP (T2/T4).
+    assert xvnc.command[xvnc.command.index("-nolisten"):][:4] == ("-nolisten", "local", "-nolisten", "tcp")
     assert ("-rfbport", "-1") == xvnc.command[xvnc.command.index("-rfbport"):][:2]
     assert ("-rfbunixpath", display.rfb_socket_path) == xvnc.command[xvnc.command.index("-rfbunixpath"):][:2]
     assert ("-auth", display.xauthority_path) == xvnc.command[xvnc.command.index("-auth"):][:2]
@@ -123,9 +127,30 @@ def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatc
     tokens = directory / "tokens"
     assert tokens.read_text(encoding="utf-8") == f"deadbeef: unix_socket:{display.rfb_socket_path}\n"
     assert tokens.stat().st_mode & 0o777 == 0o600
-    assert Path(display.xauthority_path).stat().st_size == 2 + 2 + 3 + 20 + 18
-    assert display.environment == {"DISPLAY": DISPLAY_NAME, "XAUTHORITY": display.xauthority_path}
-    assert X_SOCKET_PATH == "/tmp/.X11-unix/X1"
+    # family + empty address + display number + protocol name + 16-byte cookie
+    assert Path(display.xauthority_path).stat().st_size == 2 + 2 + (2 + len(str(display.display_number))) + 20 + 18
+    assert display.environment == {"DISPLAY": f":{display.display_number}", "XAUTHORITY": display.xauthority_path}
+    assert x_socket_path(display.display_number) == f"/tmp/.X11-unix/X{display.display_number}"
+
+
+def test_display_number_skips_servers_visible_in_the_namespace_or_socket_directory(tmp_path: Path) -> None:
+    # A /proc/net/unix excerpt: the host's :1 (abstract, as seen under host
+    # networking) and a filesystem :10 belonging to someone else.
+    table = tmp_path / "unix"
+    table.write_text(
+        "Num RefCount Protocol Flags Type St Inode Path\n"
+        "0000000000000000: 00000002 00000000 00010000 0001 01 12345 @/tmp/.X11-unix/X1\n"
+        "0000000000000000: 00000002 00000000 00010000 0001 01 12346 /tmp/.X11-unix/X10\n"
+        "0000000000000000: 00000002 00000000 00010000 0001 01 12347 /run/other.sock\n",
+        encoding="utf-8",
+    )
+    sockets = tmp_path / ".X11-unix"
+    sockets.mkdir()
+    (sockets / "X11").touch()
+    assert select_display_number(unix_socket_table=str(table), socket_directory=str(sockets)) == 12
+    assert select_display_number(first=1, unix_socket_table=str(table), socket_directory=str(sockets)) == 2
+    # Unreadable table: only the socket directory counts.
+    assert select_display_number(unix_socket_table=str(tmp_path / "missing"), socket_directory=str(sockets)) == 10
 
 
 def test_prepare_refuses_a_plan_without_the_contained_display(tmp_path: Path) -> None:
@@ -149,7 +174,7 @@ def test_entrypoint_starts_display_infrastructure_before_the_surface(
     assert [child.foreground for child in supervisor.children] == [False, False, False, True]
     import os
 
-    assert os.environ["DISPLAY"] == DISPLAY_NAME
+    assert re.fullmatch(r":\d+", os.environ["DISPLAY"])
     assert os.environ["XAUTHORITY"].startswith("/tmp/devcapsule-runtime-1000/display/")
 
 

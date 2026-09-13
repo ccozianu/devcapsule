@@ -121,6 +121,16 @@ contained desktop, aesthetics judged at hour six — before the ledger row
 moves from `proposed` to ratified. Only after ratification does the X11
 passthrough bug close.
 
+**First owner run, 2026-09-13:** the contained run failed at start with
+Xvnc's "server already running": under the host networking this repository's
+project authorizes, the capsule's `:1` collided with the owner's host display
+`:1` through the abstract socket namespace. Fixed the same day (design note
+T2a): the entrypoint picks a free display number from `:10` and Xvnc listens
+on its filesystem socket only. Verified against the owner's daemon before the
+change, then by the unit suite (612 passed), mypy, and the runtime-image e2e
+rerun, which now also asserts that no abstract X socket of ours exists.
+The hands-on script is unchanged; rerun it from `build`.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot
