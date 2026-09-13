@@ -151,6 +151,16 @@ The hands-on script is unchanged; rerun it from `build`.
 - The host-side `webbrowser` opener is untested against a real desktop in
   this container; the readiness watcher and the bridge fallback are unit
   tested.
+- **TODO (owner, 2026-09-13): WSL2 browser opener.** On Windows the
+  launcher runs inside WSL2, where Python's `webbrowser` finds neither
+  `xdg-open` nor `BROWSER`, so the watcher only prints the URL. Add WSL
+  detection to `display_client.default_opener` (use `wslview` when present,
+  else `cmd.exe /c start` or `powershell.exe Start-Process`), with a unit
+  test. Everything else in the contained transport is container-internal or
+  loopback TCP and needs no Windows adaptation; host networking on Docker
+  Desktop and WSLg's `:0` abstract socket are already covered by bridge
+  publishing and the free display-number selection. Deferred until the
+  Linux ratification day passes.
 
 ## Scope
 
