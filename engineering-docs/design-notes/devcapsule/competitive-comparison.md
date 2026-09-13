@@ -4,8 +4,9 @@ Last verified: 2026-09-12
 
 Status: research and positioning input; recommendations are not adopted product decisions.
 
-Original survey: dated 2026-08-15, committed 2026-08-16. The filename is retained
-so existing links continue to work. The
+Original survey: dated 2026-08-15, committed 2026-08-16. Promoted from
+project-management WIP when the adopter page became the root README on
+2026-09-13. The
 [original snapshot](https://github.com/ccozianu/devcapsule/blob/12f8c930fac6fbb8f611c35d9e3035eca097cf14/engineering-docs/wip/2026-08-09-project-management/2026-08-16-workflow-prior-art-comparison.md)
 is preserved in Git. This revision supersedes its competitive conclusions.
 
@@ -43,7 +44,7 @@ star counts, integration counts and unsupported timing comparisons are omitted.
 DevCapsule's baseline is the current source checkout, synchronized with
 `origin/main` at `493e9e5`, including the still-unintegrated project-management
 documentation. Its [README](../../../README.md),
-[workflow](../../../WORKFLOW.md), [V1 ledger](v1-scope-ledger.md), and the
+[workflow](../../../WORKFLOW.md), [V1 ledger](../../wip/2026-08-09-project-management/v1-scope-ledger.md), and the
 local evidence linked below distinguish shipped behavior from intent.
 
 Two release-history checks anchor the elapsed period: Spec Kit lists v1.0.6
@@ -278,9 +279,9 @@ show, although this refresh is not a new runtime acceptance test.
 Our exact workstream routing, decision rights, disposition records and
 explicit failure closure remain recognizable design choices. They are not
 established competitive advantages. The
-[One Workflow, Many Projects assignment](../2026-08-09-workflow-improvements/intake/2026-09-11-project-management-one-workflow-many-projects.md)
+[One Workflow, Many Projects assignment](../../wip/2026-08-09-workflow-improvements/intake/2026-09-11-project-management-one-workflow-many-projects.md)
 already asks whether the inherited process is proportionate and discoverable.
-Our own [handoff](CURRENT-STATUS.md) records repeated outbox delivery failures.
+Our own [handoff](../../wip/2026-08-09-project-management/CURRENT-STATUS.md) records repeated outbox delivery failures.
 It would be particularly weak to advertise a uniquely reliable recovery system
 without acknowledging that evidence.
 

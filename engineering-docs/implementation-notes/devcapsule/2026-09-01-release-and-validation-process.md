@@ -17,7 +17,7 @@ integration and tagging.
 The commands below use v0.2.11 as the worked example. For a new release,
 substitute its version and candidate number; never recreate or move an existing
 published tag. Run Git commands from the repository root. Python commands use
-the checkout-local environment described in the [developer setup](../../../README.md#developer-setup).
+the checkout-local environment described in the [developer setup](../../../DEVELOPING.md#developer-setup).
 
 1. **Prepare a committed release slice.** Select the version and scope, record
    the full preparation-baseline SHA, and run `nox -s build` from

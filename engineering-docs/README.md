@@ -5,6 +5,9 @@ implement, validate, and coordinate the project. It is separate from `docs/`,
 which is intended for stable product documentation consumed by DevCapsule
 users and adopters.
 
+Start with [For developers](../DEVELOPING.md) for the developer brief, local
+setup, validation, and release guidance.
+
 The root control files remain at the repository root because every contributor
 and agent must discover them immediately:
 

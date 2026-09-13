@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-13; agreed V1 adopter one-pager saved; permanent coordination
+State: active 2026-09-13; adopter README and separate developer brief prepared for delivery; permanent coordination
 
 Integration target: `main`
 
@@ -12,10 +12,55 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## Repository Landing Page and Developer Brief (2026-09-13)
+
+The owner explicitly requested making the agreed one-pager the GitHub landing
+page while preserving the DevCapsule heading and test/coverage badges, and
+moving the existing developer instructions to a linked For developers page.
+This bounded repository-entry-point change concludes the positioning slice in
+the selected project-management checkout; the earlier plan to defer this
+publication step to user-docs is superseded by that request. Broader user guides
+remain with user-docs, whose handoff and branch selection are unchanged.
+
+The [root README](../../../README.md) now carries the agreed short V1 copy,
+comparison footer and navigation. [For developers](../../../DEVELOPING.md)
+preserves the old README's full developer brief, commands, repository layout,
+release guidance, development principles, license and status instructions.
+Both stay at the repository root so the transferred relative links and
+repository-root command examples retain their meaning. AGENTS.md now reads
+the introduction and then DEVELOPING.md; the release guide's developer-setup
+anchor and the documentation indexes follow the move. The reusable workflow
+definition and templates are unchanged.
+
+The [comparison](../../design-notes/devcapsule/competitive-comparison.md) is
+promoted from this workstream to a permanent engineering design-note location;
+its original survey remains available through its immutable Git link. The
+one-pager draft is removed after incorporation into README, leaving one current
+copy. Existing historical handoff links now point to the promoted documents.
+The V1 label remains: publication of the product direction is not acceptance
+evidence for unimplemented containment or onboarding features.
+
+Validation: preserved both badge lines exactly; compared the complete old
+developer brief and command blocks with DEVELOPING.md; checked changed relative
+links, Markdown anchors and whitespace; confirmed unrelated `.devcapsule` edits
+are unchanged. The index's existing sample-project README link cannot be checked
+locally because that submodule is uninitialized. Runtime tests are not applicable
+to this documentation-only change.
+Final screen fit depends on GitHub's layout and the reader's viewport.
+
+**Planned next step:** deliver the complete branch through an ordinary PR so
+GitHub's main-page README changes. Git transport works; earlier GitHub API
+writes returned 403. The prior release/runtime documentation still travels
+this branch and is included in the review scope.
+
+**Open threads:** main delivery if GitHub API access still prevents PR creation;
+broader user-docs content and V1 feature validation. No new session record was
+requested. The six pending project-management decisions are unaffected.
+
 ## V1 Adopter One-Pager Agreed (2026-09-13)
 
 The owner concluded the copy discussion and requested the document. The
-[one-pager](docs/product/why-try-devcapsule.md) captures the agreed direction:
+[one-pager](../../../README.md) captures the agreed direction:
 quick onboarding into a reproducible environment, a full IDE, agent autonomy
 within an explicit host boundary, and accessible engineering practices with AI
 helping maintain tests, requirements, decisions and handoffs. It keeps the short
@@ -58,7 +103,7 @@ selected first deliverable. A candidate page was discussed in chat; its wording
 and audience are not yet approved. No workstream switch was requested.
 
 At the owner's request, located and refreshed the existing
-[competitive comparison](2026-08-16-workflow-prior-art-comparison.md). The original
+[competitive comparison](../../design-notes/devcapsule/competitive-comparison.md). The original
 was a workflow-specific survey, dated August 15 and committed August 16. Its
 original revision remains linked; the current file carries a September 12
 verification date, primary-source links, corrected claims, and a bounded
@@ -1093,13 +1138,13 @@ thread 8 above. Nothing is lost if that file is gone.
 
 ## Workstream Document Index
 
-- [Why try DevCapsule? — agreed V1 one-pager](docs/product/why-try-devcapsule.md)
+- [Why try DevCapsule? — promoted to the project README](../../../README.md)
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
 - [Portfolio checkpoint 2026-08-16](2026-08-16-portfolio-checkpoint.md)
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
 - [V1 scope ledger](v1-scope-ledger.md)
-- [Competitive comparison: workflow and workspace alternatives
-  (refreshed 2026-09-12)](2026-08-16-workflow-prior-art-comparison.md)
+- [Competitive comparison: promoted research
+  (refreshed 2026-09-12)](../../design-notes/devcapsule/competitive-comparison.md)
 - [Display transport options and clipboard policy
   2026-08-19](2026-08-19-display-transport-options.md)
 - [The workflow versus Jira and GitHub Issues
