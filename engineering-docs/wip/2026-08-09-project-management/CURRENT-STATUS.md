@@ -48,10 +48,15 @@ locally because that submodule is uninitialized. Runtime tests are not applicabl
 to this documentation-only change.
 Final screen fit depends on GitHub's layout and the reader's viewport.
 
-**Planned next step:** deliver the complete branch through an ordinary PR so
-GitHub's main-page README changes. Git transport works; earlier GitHub API
-writes returned 403. The prior release/runtime documentation still travels
-this branch and is included in the review scope.
+Delivery: landing-page change `c6101ae` is pushed to
+`origin/project-management/coordination`. On 2026-09-13, verified no open PR
+for this branch and attempted PR creation; GitHub again returned HTTP 403,
+`Resource not accessible by integration`. The live main-page README has not
+changed.
+
+**Planned next step:** open the [branch pull request](https://github.com/ccozianu/devcapsule/compare/main...project-management/coordination)
+and deliver through normal review and merge. The prior release/runtime
+documentation still travels this branch and is included in the review scope.
 
 **Open threads:** main delivery if GitHub API access still prevents PR creation;
 broader user-docs content and V1 feature validation. No new session record was
