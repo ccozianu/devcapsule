@@ -100,10 +100,16 @@ previous tags unchanged. `.github/workflows/release-pex.yml` requires the tag's
 commit to belong to the matching release branch. Candidates do not require main
 integration. Main stays open; do not rebase tested release source onto it.
 
-The tag supplies the package version. `scripts/build-pex.sh` stamps package
-metadata and `_build_info.json` in a temporary directory: `v0.2.11-rc1` becomes
-`0.2.11rc1`, and `v0.2.11` becomes `0.2.11`. No version-bump commit is needed.
-The source version remains the local-build baseline.
+The tag supplies the package version of a *tagged* build. `scripts/build-pex.sh`
+stamps package metadata and `_build_info.json` in a temporary directory:
+`v0.2.11-rc1` becomes `0.2.11rc1`, and `v0.2.11` becomes `0.2.11`. The source
+version in `pyproject.toml` is what everything else reports — local builds
+(`v0.2.12-local-…`), source-form runs, `pip show devcapsule` after an editable
+install — so it must not lag the release. **Bump it to the release version in
+the first commit on the release branch** (`nox -s bump 0.2.12`), before the
+first candidate tag; the bump reaches main through the release's ordinary
+integration. Recorded 2026-09-13 after the baseline had silently stayed at
+0.2.10 through the v0.2.11 release and the first v0.2.12 candidate.
 
 ## Automated Candidate Release
 
