@@ -179,6 +179,22 @@ guide. The release also needs the published recipe-8 base and matrix entries
 before adopters get the contained desktop by default (see the 2026-09-13
 plan in the session).
 
+**Candidate prepared locally, 2026-09-13 (GitHub's tag run was queued):**
+the candidate CLI was built from a clean detached checkout of `v0.2.12-rc1`
+the way the workflow builds it (`devcapsule-src/dist/devcapsule-0.2.12-rc1.pex`,
+version 0.2.12rc1, sha256 `e1ae3b7102cc0a5ef28b9c876c11293312dd61635ca6f56bd0dce3d5cf445c43`),
+and it built the candidate base `devcapsule-base:v0.2.12-rc1` (recipe 8,
+`devcapsule.base.display=contained`, image id `094734fe…bb96c`, source
+`fac3323`, public-revision check passed). Every workflow gate passed locally
+against them: packaging integration (9), clean-machine proof, component-cache
+and launcher-delivery e2e (3), base validation and runtime-image e2e on the
+new base (2). The owner opened the contained desktop served by that
+candidate from the dogfood capsule and **confirmed the image works**, and
+decided to switch this repository's dogfood checkout to it. Not yet done:
+publishing the base under its release name, repinning the lock and matrix,
+the release flip of the unanswered default, acceptance record, PRs, final
+tag. GitHub's own candidate bytes, once built, are the ones to accept.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot
