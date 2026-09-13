@@ -4,13 +4,50 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-12; refreshing competitive evidence for the adopter one-pager; permanent coordination
+State: active 2026-09-13; agreed V1 adopter one-pager saved; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## V1 Adopter One-Pager Agreed (2026-09-13)
+
+The owner concluded the copy discussion and requested the document. The
+[one-pager](docs/product/why-try-devcapsule.md) captures the agreed direction:
+quick onboarding into a reproducible environment, a full IDE, agent autonomy
+within an explicit host boundary, and accessible engineering practices with AI
+helping maintain tests, requirements, decisions and handoffs. It keeps the short
+engineering-excellence section the owner preferred and adds the requested
+acknowledgment of alternatives, our own use of DevCapsule, and a comparison link.
+
+This is approved positioning input for the intended V1 experience, including
+plausible planned features expressly allowed by the owner. It is saved under
+this workstream's draft-docs path while project management concludes the product
+copy; publication belongs to user-docs. The small V1 label prevents the copy
+from presenting all promises as current-release facts. Strong containment,
+easy onboarding, and the precise privilege-revocation experience still need
+release validation before publishing those claims as delivered behavior.
+
+The intended permanent destination is `docs/product/why-try-devcapsule.md`.
+At publication, give the comparison a suitable durable destination and adjust
+the link; do not duplicate the survey into another source of truth. This draft
+is internally indexed below, in accordance with the WIP documentation rule.
+
+Validation: checked the relative comparison link, Markdown whitespace, and word
+count. The copy is 244 words; fitting one screen depends on the
+eventual layout and viewport and is not claimed as visually validated. Existing
+`.devcapsule` edits are untouched. No session record was requested or created.
+
+**Planned next step:** deliver this branch's pending documentation and agreed
+copy through the ordinary PR path, then hand the approved copy and comparison
+to user-docs for presentation and publication. No workstream switch was requested.
+
+**Open threads:** final page layout and V1 claim validation remain; expanding
+the first page with tutorial or workflow detail was expressly rejected. The
+six project-management intake decisions remain separate. Prior scoping questions
+below are superseded by the owner's agreed copy, not reopened.
 
 ## Competitive Evidence for the Adopter One-Pager (2026-09-12)
 
@@ -1056,6 +1093,7 @@ thread 8 above. Nothing is lost if that file is gone.
 
 ## Workstream Document Index
 
+- [Why try DevCapsule? — agreed V1 one-pager](docs/product/why-try-devcapsule.md)
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
 - [Portfolio checkpoint 2026-08-16](2026-08-16-portfolio-checkpoint.md)
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
