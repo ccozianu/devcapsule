@@ -195,6 +195,19 @@ publishing the base under its release name, repinning the lock and matrix,
 the release flip of the unanswered default, acceptance record, PRs, final
 tag. GitHub's own candidate bytes, once built, are the ones to accept.
 
+**Clipboard ergonomics, ruled 2026-09-13:** the owner accepted the panel
+mechanics for this release provided the documentation says so plainly and
+names it as an area of pursued improvement (README *Display* section,
+*Clipboard*). Researched middle ground, recorded as the follow-up slice:
+gesture-scoped clipboard in noVNC — read the browser clipboard only inside
+the user's own `paste` event (no permission, no standing access) and write it
+through `navigator.clipboard.writeText` only on a capsule copy while the tab
+is focused. Not in any noVNC release through 1.7.0; upstream master's new
+async-clipboard module reads on every focus after a per-origin permission,
+which is the standing access the owner rejects. Route: contribute the
+gesture-scoped variant upstream, then take the release that ships it as a
+base package change. No local noVNC patch (owner ruling of the same day).
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot

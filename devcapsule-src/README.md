@@ -863,6 +863,19 @@ such as Ctrl+W, Ctrl+T, Ctrl+N and Alt+Tab, never reach the capsule in any
 mode; closing the tab by accident does not end the session, and the printed
 URL reopens it.
 
+**Clipboard.** The capsule cannot see your host clipboard, and that is by
+design: nothing crosses without your gesture on the noVNC side. Text copied
+inside the capsule appears in the clipboard box on noVNC's side bar, from
+which you copy it; text going *into* the capsule is pasted into that box and
+is then available to the IDE. This is deliberately more work than Ctrl+C and
+Ctrl+V, and it is an area where we will pursue improvements: browsers can
+hand a page the clipboard exactly during your own Ctrl+V and let it write
+the clipboard only when you copy inside a focused tab, which would restore
+the familiar keys without the capsule ever gaining standing access. noVNC
+does not offer that yet; the planned route is an upstream contribution
+rather than a local patch. Native VNC viewers are not a shortcut here: they
+share the host clipboard continuously in both directions.
+
 Two limitations are stated rather than worked around: Docker network mode
 `none` cannot publish the bridge, so the contained display refuses it and
 names the alternatives; and a second `project run` against an already running
