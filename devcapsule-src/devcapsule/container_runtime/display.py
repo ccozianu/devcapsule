@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import re
 import secrets
 import socket
 import struct
@@ -31,9 +32,16 @@ from typing import Callable
 from .contract import RuntimePlan, RuntimePlanError
 from .supervisor import SupervisedChild
 
-DISPLAY_NUMBER = 1
-DISPLAY_NAME = f":{DISPLAY_NUMBER}"
-X_SOCKET_PATH = f"/tmp/.X11-unix/X{DISPLAY_NUMBER}"
+# X servers listen on a filesystem socket, /tmp/.X11-unix/X<n>, and by
+# default also on an *abstract* Unix socket in the network namespace. Under
+# host networking that namespace is the host's, so a number the host's own X
+# server uses collides, and a client would reach the host's server first. The
+# entrypoint therefore picks a number free in both places, starting well
+# above the host's usual :0/:1, and tells Xvnc not to listen abstractly at
+# all, so only the capsule's private /tmp socket exists.
+FIRST_DISPLAY_NUMBER = 10
+X_SOCKET_DIRECTORY = "/tmp/.X11-unix"
+UNIX_SOCKET_TABLE = "/proc/net/unix"
 NOVNC_WEB_ROOT = "/usr/share/novnc"
 DEFAULT_GEOMETRY = "1920x1080"
 DEFAULT_DEPTH = "24"
@@ -57,6 +65,7 @@ class ContainedDisplay:
 
     children: tuple[SupervisedChild, ...]
     environment: dict[str, str]
+    display_number: int
     xauthority_path: str
     rfb_socket_path: str
 
@@ -81,8 +90,11 @@ def prepare_contained_display(
     directory.mkdir(mode=0o700, exist_ok=True)
     _own(directory, plan)
 
+    display_number = select_display_number()
+    display_name = f":{display_number}"
+    x_socket = x_socket_path(display_number)
     xauthority = directory / "Xauthority"
-    write_xauthority(xauthority, DISPLAY_NUMBER, secrets.token_bytes(16))
+    write_xauthority(xauthority, display_number, secrets.token_bytes(16))
     _own(xauthority, plan)
 
     rfb_socket = directory / "rfb.sock"
@@ -99,8 +111,12 @@ def prepare_contained_display(
             command=run_as_identity(
                 (
                     "Xvnc",
-                    DISPLAY_NAME,
+                    display_name,
                     "-auth", str(xauthority),
+                    # Filesystem socket only: no abstract socket (shared with
+                    # the host under host networking) and no TCP.
+                    "-nolisten", "local",
+                    "-nolisten", "tcp",
                     "-rfbunixpath", str(rfb_socket),
                     "-rfbunixmode", "0600",
                     # No TCP listener at all: RFB is reachable only through
@@ -115,7 +131,7 @@ def prepare_contained_display(
                     "-AlwaysShared",
                 )
             ),
-            ready=lambda: _is_socket(X_SOCKET_PATH) and _is_socket(str(rfb_socket)),
+            ready=lambda: _is_socket(x_socket) and _is_socket(str(rfb_socket)),
         ),
         SupervisedChild(
             name=WINDOW_MANAGER_CHILD,
@@ -135,8 +151,41 @@ def prepare_contained_display(
             ready=lambda: _accepts_connections(probe_address, display.port),
         ),
     )
-    environment = {"DISPLAY": DISPLAY_NAME, "XAUTHORITY": str(xauthority)}
-    return ContainedDisplay(children, environment, str(xauthority), str(rfb_socket))
+    environment = {"DISPLAY": display_name, "XAUTHORITY": str(xauthority)}
+    return ContainedDisplay(children, environment, display_number, str(xauthority), str(rfb_socket))
+
+
+def x_socket_path(display_number: int) -> str:
+    return f"{X_SOCKET_DIRECTORY}/X{display_number}"
+
+
+def select_display_number(
+    *,
+    first: int = FIRST_DISPLAY_NUMBER,
+    unix_socket_table: str = UNIX_SOCKET_TABLE,
+    socket_directory: str = X_SOCKET_DIRECTORY,
+) -> int:
+    """The lowest display number from ``first`` that no X server is using.
+
+    "Using" means either a socket file in the X socket directory or an
+    abstract socket in this network namespace, which under host networking
+    includes every X server on the host.
+    """
+
+    try:
+        table = Path(unix_socket_table).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        table = ""
+    # The table names X sockets by their canonical path whatever directory
+    # this capsule's own sockets use; abstract entries carry a leading "@".
+    taken = {
+        int(match)
+        for match in re.findall(rf"@?{re.escape(X_SOCKET_DIRECTORY)}/X(\d+)\s*$", table, flags=re.MULTILINE)
+    }
+    number = first
+    while number in taken or Path(socket_directory, f"X{number}").exists():
+        number += 1
+    return number
 
 
 def read_token(path: str) -> str:

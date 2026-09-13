@@ -825,10 +825,13 @@ retains working links only while that owning outer launch remains alive.
 
 When the materialized image carries the display stack (base recipe 8 and
 later), `project run` gives the capsule its **own desktop**: the entrypoint
-starts `Xvnc` on display `:1`, Openbox, and a noVNC bridge as supervised
-infrastructure children ahead of the IDE, and nothing about the host's X
-session — no socket, no credential, no `DISPLAY` — crosses into the
-container. The launcher prints a URL of the form
+starts `Xvnc`, Openbox, and a noVNC bridge as supervised infrastructure
+children ahead of the IDE, and nothing about the host's X session — no
+socket, no credential, no `DISPLAY` — crosses into the container. The
+display number is chosen at start (`:10` or the next free one) and the
+server listens on its private filesystem socket only, so it neither
+collides with nor is visible to the host's X servers even under host
+networking. The launcher prints a URL of the form
 `http://127.0.0.1:PORT/vnc.html?...token=...` and opens it in your default
 browser once the capsule answers. The port is allocated per run on host
 loopback only; the token is generated per run, mounted read-only at
