@@ -8,7 +8,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Start Here
 
-- [Developer overview](README.md)
+- [DevCapsule — why try it?](README.md)
+- [For developers](DEVELOPING.md)
 - [Releasing a new DevCapsule version](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
 - [Current status and handoff](CURRENT-STATUS.md)
 - [Documentation index](index.md)
@@ -63,6 +64,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Engineering Design Notes
 
+- [Competitive comparison: agent workflows and the DevCapsule adopter choice](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
 - [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
 - [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
 - [DevCapsule V1 user experience design draft](engineering-docs/design-notes/devcapsule/v1-user-experience.md)

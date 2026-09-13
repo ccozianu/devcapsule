@@ -1008,7 +1008,7 @@ thread 8 above. Nothing is lost if that file is gone.
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
 - [V1 scope ledger](v1-scope-ledger.md)
 - [Workflow prior-art comparison
-  2026-08-16](2026-08-16-workflow-prior-art-comparison.md)
+  2026-08-16](../../design-notes/devcapsule/competitive-comparison.md)
 - [Display transport options and clipboard policy
   2026-08-19](2026-08-19-display-transport-options.md)
 - [The workflow versus Jira and GitHub Issues
