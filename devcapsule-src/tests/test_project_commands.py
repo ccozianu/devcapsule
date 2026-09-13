@@ -1997,3 +1997,21 @@ def test_run_passes_the_selected_transport_and_accepts_host_x11_run_once(
     err = capsys.readouterr().err
     assert "Run-once authorization: host-x11 = false" in err
     assert "Run-once authorization: host-x11 = true" in err
+
+
+def test_config_list_shows_the_recorded_answer_and_names_a_denial(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "host-x11", "false"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "host-browser", "true"]) == 0
+        capsys.readouterr()
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
+    assert rows["host-x11"][2:4] == ["denied", "false"]
+    assert rows["host-browser"][2:4] == ["authorized", "true"]
+    assert rows["development-sudo"][2:4] == ["available", "true"]

@@ -80,6 +80,7 @@ from devcapsule.recursive_successor import (
     launch_successor,
 )
 from devcapsule.project_configuration import (
+    authorization_deny_value,
     AuthorizationDeclaration,
     ProjectConfigurationError,
     ResolvedProject,
@@ -1461,12 +1462,22 @@ def _configuration_authorization_rows(
         raw_value = record.get("value")
         digest = record.get("recommendation-digest")
         try:
-            normalize_authorization_value(declaration, raw_value)
+            recorded = normalize_authorization_value(declaration, raw_value)
         except ProjectConfigurationError:
-            status = "invalid"
+            rows.append(ConfigurationListRow("authorization", name, "invalid", recommended))
+            continue
+        # The row shows the developer's recorded answer, not the node's
+        # supported value: a denial is a value (owner ruling 2026-09-03) and
+        # must read as one, never as "authorized true".
+        if digest != declaration.recommendation_digest:
+            status = "stale"
+        elif recorded == authorization_deny_value(declaration):
+            status = "denied"
         else:
-            status = "authorized" if digest == declaration.recommendation_digest else "stale"
-        rows.append(ConfigurationListRow("authorization", name, status, recommended))
+            status = "authorized"
+        rows.append(
+            ConfigurationListRow("authorization", name, status, render_authorization_value(recorded))
+        )
     for name, value in sorted(authorization.items(), key=lambda item: str(item[0])):
         if name not in declarations:
             rows.append(ConfigurationListRow("authorization", str(name), "unsupported", repr(value)))
