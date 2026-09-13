@@ -162,6 +162,19 @@ project should not carry. Browser-owned shortcuts (Ctrl+W, Ctrl+T, Ctrl+N,
 Alt+Tab) remain with the browser in every mode; a native viewer through a
 host-side WebSocket relay is the recorded option for people who need them.
 
+**Release candidates, 2026-09-13:** the owner directed cutting
+`release-0.2.12` from this branch with an RC tag for testing, under one
+exception: host X11 passthrough remains the default while the candidates are
+under test, the contained desktop being the opt-in (`--authorize host-x11
+false`); at release the unanswered default flips to contained (design note
+T7a, one constant in `commands/project.py`). The hands-on script's
+`contained` step passes the opt-in. **At release, remember to flip
+`UNANSWERED_HOST_X11_DISPLAY_TRANSPORT` and drop the README's
+release-candidate paragraph** — that is a new candidate, per the release
+guide. The release also needs the published recipe-8 base and matrix entries
+before adopters get the contained desktop by default (see the 2026-09-13
+plan in the session).
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot

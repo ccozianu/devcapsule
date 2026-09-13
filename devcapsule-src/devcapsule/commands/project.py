@@ -991,18 +991,15 @@ class ProjectRunCommand(Command):
                 authorization.get("host-browser", host.get("host-browser", False)),
             )
         )
-        selected_host_x11 = bool(
-            overrides.get(
-                "host-x11",
-                authorization.get("host-x11", host.get("host-x11", False)),
-            )
-        )
+        # None when the developer has not answered; the default then depends
+        # on the release stage (see _select_display_transport).
+        host_x11_answer = overrides.get("host-x11", authorization.get("host-x11"))
         if arguments.no_recursive_e2e:
             selected_docker_daemon = "none"
             selected_sudo = False
             selected_network = "bridge"
         display_transport = _select_display_transport(
-            image_labels, host_x11_authorized=selected_host_x11
+            image_labels, host_x11_answer=host_x11_answer
         )
         recursive_environment = recursive_e2e_launch_environment(
             root,
@@ -1112,27 +1109,43 @@ class ProjectRunCommand(Command):
         return exit_code
 
 
-def _select_display_transport(image_labels: Mapping[str, str], *, host_x11_authorized: bool) -> str:
+# What an *unanswered* ``host-x11`` means on an image that has the display
+# stack. Product-owner exception of 2026-09-13 for the v0.2.12 release
+# candidates: passthrough stays the default while the contained desktop is
+# under test, and the developer opts in by answering ``host-x11 false``. At
+# release this flips to CONTAINED_DISPLAY_TRANSPORT, which is the decided
+# default (contained-display design note, T6/T7); nothing else changes.
+UNANSWERED_HOST_X11_DISPLAY_TRANSPORT = HOST_X11_DISPLAY_TRANSPORT
+
+
+def _select_display_transport(image_labels: Mapping[str, str], *, host_x11_answer: object) -> str:
     """Choose the display transport for this run and say why, once.
 
-    The contained desktop is the default wherever the image carries the
-    display stack (base recipe 8 and later, labelled by the base build). Host
-    X11 passthrough is used only when the developer authorized ``host-x11``
-    or when the image predates the display stack; the reason is printed so
-    the run's transport is never a silent guess.
+    An image without the display stack (before base recipe 8, labelled by the
+    base build) can only do host X11 passthrough. On a capable image the
+    developer's ``host-x11`` answer decides: ``true`` is passthrough, ``false``
+    is the contained desktop, and no answer takes the stage default above.
+    The reason is printed so the run's transport is never a silent guess.
     """
 
     display_capable = image_labels.get(DISPLAY_LABEL) == CONTAINED_DISPLAY_LABEL_VALUE
-    if host_x11_authorized:
+    if not display_capable:
+        print(
+            "Display: host X11 passthrough; this image predates the contained display "
+            "(base recipe 8). Regenerating onto a newer base closes the exposure."
+        )
+        return HOST_X11_DISPLAY_TRANSPORT
+    if host_x11_answer is True:
         print(
             "Display: host X11 passthrough, authorized by 'host-x11'; the capsule receives "
             "your full X session credential and the boundary test is waived for this run."
         )
         return HOST_X11_DISPLAY_TRANSPORT
-    if not display_capable:
+    if host_x11_answer is None and UNANSWERED_HOST_X11_DISPLAY_TRANSPORT == HOST_X11_DISPLAY_TRANSPORT:
         print(
-            "Display: host X11 passthrough; this image predates the contained display "
-            "(base recipe 8). Regenerating onto a newer base closes the exposure."
+            "Display: host X11 passthrough, the release-candidate default; the capsule receives "
+            "your full X session credential. Answer 'host-x11 false' (--authorize host-x11 false, "
+            "or 'config authorize host-x11 false') to use the contained desktop instead."
         )
         return HOST_X11_DISPLAY_TRANSPORT
     print("Display: contained desktop, reached through your browser; no host X session is shared.")

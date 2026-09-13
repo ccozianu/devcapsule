@@ -217,6 +217,20 @@ and the disclosure states that the capsule holds the full host session
 credential and that the session-credential regression test is waived by
 authorization for this run.
 
+### T7a. Release-Candidate Exception: Passthrough Stays The Default Until Release
+
+Ruled by the product owner 2026-09-13 while cutting the v0.2.12 candidates:
+"the old direct X11 access should be the default while we are in test with
+the RC; once we release we'll make the new contained display the default."
+Implemented as the meaning of an **unanswered** `host-x11` on a capable
+image (`UNANSWERED_HOST_X11_DISPLAY_TRANSPORT` in `commands/project.py`):
+passthrough during the candidates, contained at release. The answers keep
+their meaning throughout: `true` is passthrough, `false` is the contained
+desktop, so the opt-in during the candidates is `--authorize host-x11 false`
+and the release flip is one constant with no change to the configuration
+grammar or to any recorded answer. The launch message names the stage and
+the opt-in.
+
 ## T8. Clipboard
 
 The asymmetric policy from the 2026-08-19 design input (automatic out,

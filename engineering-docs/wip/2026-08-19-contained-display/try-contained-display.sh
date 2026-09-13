@@ -8,7 +8,7 @@
 #
 #   try-contained-display.sh build      # PEX from this source + local recipe-8 base
 #   try-contained-display.sh select     # authorize that base for the checkout, resolve
-#   try-contained-display.sh contained  # project run: the capsule's own desktop (default)
+#   try-contained-display.sh contained  # project run --authorize host-x11 false: the capsule's own desktop
 #   try-contained-display.sh x11        # project run --authorize host-x11 true (legacy)
 #   try-contained-display.sh verify     # while a run is up: mounts, ports, processes
 #   try-contained-display.sh revert     # re-authorize the lock's published base
@@ -64,7 +64,9 @@ cmd_select() {
 cmd_contained() {
     say "Default run: contained desktop. Watch for 'Display: contained desktop' and the noVNC URL."
     say "Closing the browser tab does not end the session; closing the IDE or Ctrl-C does."
-    "$PEX" project --path "$PROJECT" run --name "$CONTAINER"
+    # During the v0.2.12 candidates an unanswered host-x11 means passthrough;
+    # answering false is the opt-in (release-candidate exception, 2026-09-13).
+    "$PEX" project --path "$PROJECT" run --name "$CONTAINER" --authorize host-x11 false
 }
 
 cmd_x11() {
