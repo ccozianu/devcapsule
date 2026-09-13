@@ -12,6 +12,45 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## Focused Temporary Delivery Branches (2026-09-13)
+
+The owner requested separate reviewable commits and temporary branches, and
+will create/merge the PRs on GitHub and delete the temporary branches. This
+supersedes the earlier plan to deliver the accumulated coordination branch as
+one PR. The selected workstream remains project-management.
+
+Pushed four branches, each adding a focused slice on its predecessor:
+
+1. `project-management/temp-pr-20260913-1`: release operator guidance.
+2. `project-management/temp-pr-20260913-2`: identical launcher/container runtime
+   decision, requirement and related documentation annotations.
+3. `project-management/temp-pr-20260913-3`: adopter README, developer brief,
+   refreshed/promoted comparison and the links required by those moves.
+4. `project-management/temp-pr-20260913-4`: previously requested session record,
+   documentation-index entry and accumulated project-management handoff.
+
+The first branch starts at accepted mainline `493e9e5`; each subsequent branch
+starts at the preceding temporary branch. Merge into `main` in numbered order.
+Do not also merge the original `project-management/coordination` delivery: it
+contains the same content. Later branches include earlier commits until GitHub
+recognizes their integration. If the configured merge method rewrites commits
+(squash/rebase), compare trees and refresh the remaining temporary branches as
+needed before the next PR; do not replay already-delivered work blindly.
+
+Validation: the four reconstructed commits reproduce the original delivery
+tree exactly before this note. Checked each slice's Markdown links, indexes
+and whitespace and preserved the source checkout's unrelated `.devcapsule`
+edits. No implementation change or new session record is introduced.
+
+**Planned next step:** the owner creates and merges the four GitHub PRs in
+order, then we verify remote main contains the finalized tree before
+synchronizing the coordination branch. The prior GitHub API 403 is already established; this
+owner-authorized branch delivery does not require another API attempt.
+
+**Open threads:** the four merges and subsequent synchronization remain;
+the six pending project-management decisions and broader user-docs work are
+unchanged. The original coordination history remains available.
+
 ## Repository Landing Page and Developer Brief (2026-09-13)
 
 The owner explicitly requested making the agreed one-pager the GitHub landing
