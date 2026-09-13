@@ -45,6 +45,55 @@ def commit(value: str) -> str:
     return value
 
 
+EXCEPTION_KEYS = ("authorized-by", "rationale", "forward-port-owner", "follow-up")
+
+
+def exception_path(tag: str) -> str:
+    return f"engineering-docs/releases/{tag}-integration-exception.json"
+
+
+def unintegrated_commits(revision: str, main_ref: str) -> list[str]:
+    """Commits the candidate carries that main has neither merged nor cherry-picked.
+
+    Patch equivalence (``--cherry-pick``) recognizes a cherry-picked fix as
+    integrated; merge commits carry no patch of their own and are ignored.
+    """
+
+    output = git("rev-list", "--right-only", "--cherry-pick", "--no-merges", f"{main_ref}...{revision}")
+    return output.split()
+
+
+def validate_candidate_integration(tag: str, revision: str, main_ref: str) -> dict:
+    """A candidate builds only from source main already has, or with a stated exception.
+
+    Owner rule 2026-09-13: every change since the release branch was cut must
+    be merged or cherry-picked to mainline before a candidate is built, unless
+    an explicit, documented exception travels with the candidate's own source
+    (for example a patch to an old release too far from mainline). The
+    exception file lives at ``exception_path(tag)`` in the tagged tree and
+    carries the same fields the final promotion record's exception requires.
+    """
+
+    missing = unintegrated_commits(revision, main_ref)
+    if not missing:
+        return {"method": "mainline", "unintegrated-commits": []}
+    path = exception_path(tag)
+    shown = subprocess.run(["git", "show", f"{revision}:{path}"], check=False, text=True, capture_output=True)
+    if shown.returncode != 0:
+        listed = ", ".join(item[:12] for item in missing)
+        raise ValueError(
+            f"Candidate {tag} carries {len(missing)} commit(s) main has neither merged nor "
+            f"cherry-picked ({listed}); integrate them to main first, or commit an explicit "
+            f"exception at {path} on the release branch"
+        )
+    record = json.loads(shown.stdout)
+    if not isinstance(record, dict) or record.get("schema-version") != 1 or record.get("tag") != tag:
+        raise ValueError(f"Integration exception at {path} must have schema-version 1 and name {tag}")
+    for key in EXCEPTION_KEYS:
+        require_text(record, key)
+    return {"method": "exception", "unintegrated-commits": missing, "record": record, "path": path}
+
+
 def validate_promotion(tag: str, revision: str, record: dict, main_ref: str) -> None:
     version, _, is_candidate = identity(tag)
     candidate = require_text(record, "candidate-tag")
@@ -103,7 +152,9 @@ def gate(tag: str, output: Path) -> dict:
         raise ValueError(f"Tag must belong to {branch}")
     result: dict = {"tag": tag, "source-revision": revision, "version": package_version,
               "prerelease": is_candidate, "release-branch": branch}
-    if not is_candidate:
+    if is_candidate:
+        result["integration"] = validate_candidate_integration(tag, revision, "refs/remotes/origin/main")
+    else:
         main_revision = git("rev-parse", "refs/remotes/origin/main")
         path = f"engineering-docs/releases/{tag}.json"
         record = json.loads(git("show", f"{main_revision}:{path}"))

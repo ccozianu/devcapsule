@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -94,12 +95,59 @@ def test_acceptance_is_bound_to_exact_candidate(history, key, value):
         MODULE.validate_promotion("v0.2.11", revision, record, "main")
 
 
-def test_candidate_can_publish_before_main_integration(history, tmp_path):
+def test_candidate_requires_main_integration_or_an_explicit_exception(history, tmp_path):
     git, revision, _ = history
     git("remote", "add", "origin", str(tmp_path))
+    # The release fix is on the release branch only: no candidate.
+    with pytest.raises(ValueError, match="neither merged nor cherry-picked.*integration-exception"):
+        MODULE.gate("v0.2.11-rc0", tmp_path / "gate.json")
+
+    # Cherry-picked to main (a different commit, the same patch): integrated.
+    git("checkout", "-q", "main")
+    git("commit", "--allow-empty", "-qm", "unrelated work")
+    git("cherry-pick", revision)
+    git("checkout", "-q", "release-0.2.11")
     result = MODULE.gate("v0.2.11-rc0", tmp_path / "gate.json")
     assert result["prerelease"] is True
     assert result["source-revision"] == revision
+    assert result["integration"] == {"method": "mainline", "unintegrated-commits": []}
+    assert json.loads((tmp_path / "gate.json").read_text())["integration"]["method"] == "mainline"
+
+    # A further release-only change needs an explicit, documented exception
+    # committed in the candidate's own tree.
+    (tmp_path / "hotfix").write_text("old release patch")
+    git("add", "hotfix")
+    git("commit", "-qm", "hotfix")
+    git("tag", "v0.2.11-rc1")
+    with pytest.raises(ValueError, match="carries 1 commit"):
+        MODULE.gate("v0.2.11-rc1", tmp_path / "gate.json")
+    exception = {"schema-version": 1, "tag": "v0.2.11-rc2", "authorized-by": "owner",
+                 "rationale": "patching a release too far from main", "forward-port-owner": "team",
+                 "follow-up": "forward-port tracked"}
+    path = tmp_path / MODULE.exception_path("v0.2.11-rc2")
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(exception))
+    git("add", str(path))
+    git("commit", "-qm", "declare the integration exception")
+    git("tag", "v0.2.11-rc2")
+    result = MODULE.gate("v0.2.11-rc2", tmp_path / "gate.json")
+    assert result["integration"]["method"] == "exception"
+    assert len(result["integration"]["unintegrated-commits"]) == 2
+    assert result["integration"]["record"] == exception
+    assert result["integration"]["path"] == MODULE.exception_path("v0.2.11-rc2")
+
+    # The exception must be complete and name its own candidate.
+    del exception["follow-up"]
+    exception["tag"] = "v0.2.11-rc3"
+    incomplete = tmp_path / MODULE.exception_path("v0.2.11-rc3")
+    incomplete.write_text(json.dumps(exception))
+    git("add", str(incomplete))
+    git("commit", "-qm", "incomplete exception")
+    git("tag", "v0.2.11-rc3")
+    with pytest.raises(ValueError, match="follow-up"):
+        MODULE.gate("v0.2.11-rc3", tmp_path / "gate.json")
+
+    # And the tag must still belong to the release branch.
     git("checkout", "--detach", "-q", revision)
     git("update-ref", "-d", "refs/remotes/origin/release-0.2.11")
     git("update-ref", "refs/heads/release-0.2.11", git("rev-parse", "main"))
