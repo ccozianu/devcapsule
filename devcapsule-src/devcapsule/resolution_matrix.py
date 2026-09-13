@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-18"
+_MATRIX_VERSION = "embedded-19"
 
 
 # --------------------------------------------------------------------------
@@ -498,6 +498,30 @@ _V0_2_10_BASE = _BasePin(
     },
 )
 
+# The v0.2.12 base (recipe version 8) adds the contained display stack —
+# TigerVNC's Xvnc, the core X fonts, noVNC with websockify, Openbox — and
+# the label the launcher reads to give the capsule its own desktop instead
+# of the host's X session. Same family, same OS and toolchain, and the base
+# carries no runtime (the launcher supplies its own executable, D-0009), so
+# it inherits every validation below. Built by the v0.2.12-rc3 executable
+# from its tag revision 9df101c and pushed by the owner on 2026-09-13; the
+# digest was read from the registry after the push. Evidence for the
+# display itself: the owner's 2026-09-13 dogfood of this repository's
+# three-agent formation on the locally built twin (recipe 8 from the same
+# source), including a full working session in the contained desktop.
+_V0_2_12_BASE = _BasePin(
+    mnemonic="v0.2.12-rc3",
+    base_family=_BASE_FAMILY_UBUNTU_24_04,
+    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:3a6e6eb6c0374d58e1d0af438d621cad76c272c621e4c97fca7b6e654a6d7b9c"
+        ),
+        "build-mnemonic": "v0.2.12-rc3",
+    },
+)
+
 _PYCHARM_2026_2_0_1 = _ComponentPin(
     component_id="pycharm",
     version="2026.2.0.1",
@@ -758,7 +782,7 @@ _POSTGRESQL_CLIENT_16 = _ComponentPin(
 _LINUX_AMD64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_AMD64,
     matrix_version=_MATRIX_VERSION,
-    bases=(_V0_2_8_BASE, _V0_2_10_BASE),
+    bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "codium": (_CODIUM_1_126_04524,),
