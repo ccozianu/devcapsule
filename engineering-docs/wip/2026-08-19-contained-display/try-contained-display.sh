@@ -15,10 +15,15 @@
 #
 # Environment: PROJECT (default: this repository), BUILD_NETWORK (default:
 # host — the Docker bridge has no DNS on some hosts), CONTAINER (default:
-# devcapsule-display-try).
+# devcapsule-display-try), NOX (default: nox on PATH, else python3 -m nox).
+#
+# Every path is relative to this script's own directory, so the script works
+# from any checkout location, inside or outside a capsule. Needs: bash, git,
+# docker, nox (pip/pipx install nox), and a desktop browser for the runs.
 set -euo pipefail
 
-REPO="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SRC="$REPO/devcapsule-src"
 PEX="$SRC/dist/devcapsule-local.pex"
 PROJECT="${PROJECT:-$REPO}"
@@ -29,9 +34,19 @@ LOCK="$PROJECT/.devcapsule/devcapsule.linux-amd64.lock"
 
 say() { printf '\n=== %s\n' "$*"; }
 
+run_nox() {
+    if [ -n "${NOX:-}" ]; then $NOX "$@"
+    elif command -v nox >/dev/null 2>&1; then nox "$@"
+    elif python3 -c 'import nox' >/dev/null 2>&1; then python3 -m nox "$@"
+    else
+        echo "nox is not installed; run 'pipx install nox' (or 'pip install nox') or set NOX=/path/to/nox" >&2
+        exit 1
+    fi
+}
+
 cmd_build() {
     say "Building the launcher/runtime PEX from this source"
-    (cd "$SRC" && .venv/bin/nox -s pex)
+    (cd "$SRC" && run_nox -s pex)
     say "Building a local recipe-8 base: $TAG (network: $BUILD_NETWORK)"
     "$PEX" images build --type base --tag "$TAG" --pex "$PEX" --allow-local-source --network "$BUILD_NETWORK"
     say "Base labels (expect: display=contained, recipe-version=8)"
@@ -71,7 +86,9 @@ cmd_verify() {
 }
 
 cmd_revert() {
-    locked="$(python3 -c "import tomllib;print(tomllib.load(open('$LOCK','rb'))['base']['reference'])")"
+    # The [base] table's reference line, read without depending on a Python.
+    locked="$(awk -F'"' '/^\[base\]/{f=1;next} /^\[/{f=0} f && /^reference[ \t]*=/{print $2; exit}' "$LOCK")"
+    [ -n "$locked" ] || { echo "no base.reference found in $LOCK" >&2; exit 1; }
     say "Re-authorizing the lock's published base: $locked"
     "$PEX" project --path "$PROJECT" config authorize base-image "$locked"
     "$PEX" project --path "$PROJECT" config resolve
@@ -84,5 +101,5 @@ case "${1:-}" in
     x11) cmd_x11 ;;
     verify) cmd_verify ;;
     revert) cmd_revert ;;
-    *) sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 2 ;;
+    *) sed -n '2,22p' "${BASH_SOURCE[0]}"; exit 2 ;;
 esac
