@@ -131,6 +131,23 @@ change, then by the unit suite (612 passed), mypy, and the runtime-image e2e
 rerun, which now also asserts that no abstract X socket of ours exists.
 The hands-on script is unchanged; rerun it from `build`.
 
+**Run from inside the dogfood capsule, 2026-09-13:** the contained display
+was launched from this capsule against the host daemon (`build`, `select`,
+then `project run --authorize development-sudo false`): the environment
+materialized on the recipe-8 base, Xvnc/Openbox/websockify/PyCharm ran as
+children of PID 1 as the developer, only the token mount crossed, and the
+manifest recorded `contained` on host loopback. Two cosmetic findings fixed
+the same day: the entrypoint pre-creates `/tmp/.X11-unix` (Xvnc cannot as an
+unprivileged user and said so), and the readiness message now comes from the
+opener, so a print-only fallback no longer claims a browser opened. One
+**pre-existing gap found, not fixed**: `ensure_sudoers_policy_ownership` in
+the launcher runs its own helper `docker run` with an untranslated bind
+source, so any `project run` with development sudo from inside a capsule
+fails with "bind source path does not exist" under `launch-staging`. Unrelated
+to the display; the fix is to pass the helper's arguments through
+`translate_for_external_daemon` as the main launch already does. Left for
+the owner to assign.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot

@@ -100,6 +100,7 @@ def test_token_must_be_one_clean_line(tmp_path: Path) -> None:
 
 def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("devcapsule.container_runtime.display.os.geteuid", lambda: 1000)
+    monkeypatch.setattr("devcapsule.container_runtime.display.X_SOCKET_DIRECTORY", str(tmp_path / ".X11-unix"))
     plan = RuntimePlan.from_mapping(contained_document(tmp_path, token="deadbeef"))
     runtime_dir = tmp_path / "runtime"
     runtime_dir.mkdir(mode=0o700)
@@ -130,7 +131,9 @@ def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatc
     # family + empty address + display number + protocol name + 16-byte cookie
     assert Path(display.xauthority_path).stat().st_size == 2 + 2 + (2 + len(str(display.display_number))) + 20 + 18
     assert display.environment == {"DISPLAY": f":{display.display_number}", "XAUTHORITY": display.xauthority_path}
-    assert x_socket_path(display.display_number) == f"/tmp/.X11-unix/X{display.display_number}"
+    assert x_socket_path(display.display_number) == f"{tmp_path / '.X11-unix'}/X{display.display_number}"
+    # The X socket directory exists before Xvnc starts, sticky and world-writable.
+    assert (tmp_path / ".X11-unix").stat().st_mode & 0o7777 == 0o1777
 
 
 def test_display_number_skips_servers_visible_in_the_namespace_or_socket_directory(tmp_path: Path) -> None:
@@ -163,6 +166,7 @@ def test_entrypoint_starts_display_infrastructure_before_the_surface(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, captured_supervisor: type[SupervisorCapture]
 ) -> None:
     monkeypatch.setattr("devcapsule.container_runtime.display.os.geteuid", lambda: 1000)
+    monkeypatch.setattr("devcapsule.container_runtime.display.X_SOCKET_DIRECTORY", str(tmp_path / ".X11-unix"))
     monkeypatch.delenv("DISPLAY", raising=False)
     plan = RuntimePlan.from_mapping(contained_document(tmp_path))
 

@@ -45,7 +45,7 @@ def test_watcher_opens_once_the_port_answers_and_reports_opener_failure(
         assert accepts_connections(port)
         watch_display_ready(port, "http://u", opened.append, Event()).join(timeout=10)
         assert opened == ["http://u"]
-        assert "opened in your browser" in capsys.readouterr().err
+        assert capsys.readouterr().err == ""  # the opener, not the watcher, reports what it did
 
         def failing(url: str) -> None:
             raise HostOpenError("no browser")
@@ -75,11 +75,12 @@ def test_watcher_gives_up_on_timeout_or_stop(capsys: pytest.CaptureFixture[str])
 def test_default_opener_prefers_the_host_bridge_inside_a_capsule(capsys: pytest.CaptureFixture[str]) -> None:
     with patch("devcapsule.display_client.in_container", return_value=True):
         default_opener({})("http://u")
-        assert "Open the contained display in a browser: http://u" in capsys.readouterr().err
+        assert "ready; open it in a browser: http://u" in capsys.readouterr().err
         with patch("devcapsule.display_client.open_host_url") as bridge:
             default_opener({HOST_OPEN_SOCKET_ENV: "/run/bridge.sock"})("http://u")
         bridge.assert_called_once()
         assert bridge.call_args.args == ("http://u",)
+        assert "opened through the host-browser bridge" in capsys.readouterr().err
     with (
         patch("devcapsule.display_client.in_container", return_value=False),
         patch("devcapsule.display_client.webbrowser.open", return_value=False) as browser,
@@ -87,3 +88,9 @@ def test_default_opener_prefers_the_host_bridge_inside_a_capsule(capsys: pytest.
         with pytest.raises(HostOpenError, match="no browser could be started"):
             default_opener({})("http://u")
         browser.assert_called_once_with("http://u", new=2)
+    with (
+        patch("devcapsule.display_client.in_container", return_value=False),
+        patch("devcapsule.display_client.webbrowser.open", return_value=True),
+    ):
+        default_opener({})("http://u")
+        assert "opened in your browser" in capsys.readouterr().err
