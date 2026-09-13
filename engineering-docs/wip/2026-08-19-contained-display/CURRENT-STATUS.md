@@ -208,6 +208,20 @@ which is the standing access the owner rejects. Route: contribute the
 gesture-scoped variant upstream, then take the release that ships it as a
 base package change. No local noVNC patch (owner ruling of the same day).
 
+**Published base pinned, 2026-09-13:** the owner built the recipe-8 base
+with the released `v0.2.12-rc3` executable and pushed it as
+`mycodespaceai/devcapsule-base:v0.2.12-rc3`; digest
+`sha256:3a6e6eb6c0374d58e1d0af438d621cad76c272c621e4c97fca7b6e654a6d7b9c`,
+verified on the registry (recipe 8, display=contained, source `9df101c`).
+The matrix gained `_V0_2_12_BASE` in the existing `ubuntu-24.04` family —
+same OS and toolchain, no runtime in the base — so it inherits every
+component validation; `_MATRIX_VERSION` is `embedded-19`; golden locks and
+this repository's lock are regenerated onto it; this checkout now authorizes
+the published digest instead of the local twin. Follow-ups: the sample
+project submodules' locks still pin v0.2.10 (regenerating them is a commit
+in each sample repository); at the final release, retag the same image as
+`v0.2.12` and let the pin's mnemonic follow in the flip candidate.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot
