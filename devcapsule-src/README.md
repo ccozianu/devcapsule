@@ -315,7 +315,8 @@ on the matching release branch. The backend checks a reviewed engineering
 promotion record on main, including acceptance of the candidate checksum and
 main integration or a scoped exception. It rebuilds with the final package
 version, checks dependency and Python fingerprints against the candidate, and
-reruns the release gates. See the [developer release protocol](../README.md).
+reruns the release gates. See [Releasing a new DevCapsule version](../engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+for the complete operator checklist and the successful v0.2.11 example.
 
 The tag supplies the package version in a disposable packaging tree; no version
 bump is needed in the tagged source. `v0.2.11-rc0` reports package version

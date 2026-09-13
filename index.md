@@ -9,6 +9,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Start Here
 
 - [Developer overview](README.md)
+- [Releasing a new DevCapsule version](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
 - [Current status and handoff](CURRENT-STATUS.md)
 - [Documentation index](index.md)
 - [Agent instructions](AGENTS.md)
@@ -149,7 +150,7 @@ history; record current decisions in the active documents above.
 - [DevCapsule V1 test backlog](engineering-docs/implementation-notes/devcapsule/2026-08-07-v1-test-backlog.md)
 - [Host browser URL bridge TLDR](engineering-docs/implementation-notes/devcapsule/2026-08-17-host-browser-url-bridge-tldr.md)
 - [V2 launcher-loss resource reconciliation](engineering-docs/implementation-notes/devcapsule/2026-08-18-v2-launch-resource-reconciliation.md)
-- [Release and validation process](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+- [Releasing a new DevCapsule version — operator checklist and validation](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
 
 ## Bugs
 
