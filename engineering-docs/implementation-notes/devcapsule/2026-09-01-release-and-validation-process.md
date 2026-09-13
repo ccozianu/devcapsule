@@ -199,6 +199,12 @@ patch version if the final tag was already published).
 
 ## Runtime Delivery And Base Lifecycle
 
+The continuing default is [D-0009: One Executable Outside And Inside The
+Container](../../decisions/product/d-0009-launcher-delivers-identical-runtime.md),
+adopted 2026-09-11: use the corresponding resolved base and install the invoking
+CLI itself, unless explicitly overridden by user choice. The base and CLI do
+not need matching release numbers. The procedure below describes that default.
+
 Recipe 7 produces a base containing the existing OS libraries and developer
 tools, with no DevCapsule PEX or entrypoint added by the recipe. The builder's
 source identity remains recorded as provenance; `--pex`, when supplied, selects
