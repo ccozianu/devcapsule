@@ -82,6 +82,7 @@ be assigned.
 ### Historical Baseline And Runtime Constraints
 
 - `R-ENV-001` — [Dockerized PyCharm Runtime](../engineering-docs/requirements/devcapsule/r-env-001-dockerized-pycharm-runtime.md)
+- `R-RUNTIME-001` — [Identical Launcher And Container Runtime By Default](../engineering-docs/requirements/devcapsule/r-runtime-001-launcher-runtime-identity.md)
 - `R-STATE-001` — [Persistent IDE State And Plugins](../engineering-docs/requirements/devcapsule/r-state-001-persistent-ide-state-and-plugins.md)
 - `R-SCOPE-001` — [Explicit Host Filesystem Exposure](../engineering-docs/requirements/devcapsule/r-scope-001-explicit-host-filesystem-exposure.md)
 - `R-DEV-001` — [Useful Development Tooling Baseline](../engineering-docs/requirements/devcapsule/r-dev-001-useful-development-tooling-baseline.md)

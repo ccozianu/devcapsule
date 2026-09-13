@@ -71,7 +71,10 @@ cd devcapsule-src
 ```
 
 New base images contain tools and OS dependencies; the launcher supplies its own
-PEX during environment materialization. Ordinary CLI releases reuse the pinned
+PEX during environment materialization. This is the [adopted default, unless
+explicitly overridden by user choice](engineering-docs/decisions/product/d-0009-launcher-delivers-identical-runtime.md):
+the outside launcher and inside runtime use identical executable bytes.
+Ordinary CLI releases reuse the pinned
 base. Component installations use independent BuildKit stages and copy their
 outputs into environments, preserving cache reuse across different formations.
 
