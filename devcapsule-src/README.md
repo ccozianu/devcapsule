@@ -417,8 +417,13 @@ the `sudo` binary. It also installs the pinned language-tooling baseline:
 Node.js `v22.23.1` with bundled npm, Eclipse Temurin JDK `25.0.4+7`, and Apache
 Maven `3.9.16`. `JAVA_HOME` is `/opt/java/current`, `MAVEN_HOME` is
 `/opt/maven/current`, and the Maven, Java, and Node `bin` directories are on
-executable `PATH`. Recipe 7 adds no DevCapsule runtime. The launcher supplies
+executable `PATH`. Recipe 7 added no DevCapsule runtime: the launcher supplies
 its PEX at `/opt/devcapsule/bin/devcapsule.pex` in each derived environment.
+Recipe 8 adds the contained display stack — TigerVNC's `Xvnc`, the core X
+fonts, noVNC with `websockify`, and the Openbox window manager — and labels
+the base `devcapsule.base.display=contained`, which is how the launcher knows
+a capsule can bring its own desktop instead of borrowing the host's X session
+(see *Display* below).
 
 The repository-owned Python build plan is the inspectable source of truth:
 
@@ -817,12 +822,83 @@ physical-host foreground launcher owns the broker lifetime and removes its
 private runtime directory on exit. A nested detached successor therefore
 retains working links only while that owning outer launch remains alive.
 
+#### Display
+
+**Release-candidate exception (v0.2.12 candidates).** While the contained
+desktop is under test, an unanswered `host-x11` still means host X11
+passthrough on every image, and the launch says so. Opt into the contained
+desktop for one launch with `project run --authorize host-x11 false`, or for
+the checkout with `devcapsule project config authorize host-x11 false`. At
+release the unanswered default flips to the contained desktop described
+below; the `host-x11` answers keep their meaning.
+
+When the materialized image carries the display stack (base recipe 8 and
+later), `project run` gives the capsule its **own desktop**: the entrypoint
+starts `Xvnc`, Openbox, and a noVNC bridge as supervised infrastructure
+children ahead of the IDE, and nothing about the host's X session — no
+socket, no credential, no `DISPLAY` — crosses into the container. The
+display number is chosen at start (`:10` or the next free one) and the
+server listens on its private filesystem socket only, so it neither
+collides with nor is visible to the host's X servers even under host
+networking. The launcher prints a URL of the form
+`http://127.0.0.1:PORT/vnc.html?...token=...` and opens it in your default
+browser once the capsule answers. The port is allocated per run on host
+loopback only; the token is generated per run, mounted read-only at
+`/run/devcapsule-display-token`, and required by the bridge before it will
+speak RFB. Closing the browser tab leaves the IDE running; reopening the URL
+resumes the session. The session still ends when the IDE exits or on
+`docker stop`. A native VNC viewer is not required and not supported as a
+separate path; the browser is the client.
+
+**Keys, Escape, and fullscreen.** In a normal tab every key the browser does
+not reserve reaches the capsule, Escape included. Do **not** use the
+fullscreen button on noVNC's side bar: that is the page-requested kind of
+fullscreen, which browsers leave on Escape, so Escape never reaches your
+editor. Enter *browser* fullscreen instead, which only F11 leaves: give
+keyboard focus to the address bar first (Ctrl+L), press F11, then click back
+into the desktop; or use the browser menu's fullscreen entry. noVNC forwards
+F11 to the capsule while the desktop has focus, which is why the focus step
+is needed, both to enter and to leave. Shortcuts the browser itself owns,
+such as Ctrl+W, Ctrl+T, Ctrl+N and Alt+Tab, never reach the capsule in any
+mode; closing the tab by accident does not end the session, and the printed
+URL reopens it.
+
+**Clipboard.** The capsule cannot see your host clipboard, and that is by
+design: nothing crosses without your gesture on the noVNC side. Text copied
+inside the capsule appears in the clipboard box on noVNC's side bar, from
+which you copy it; text going *into* the capsule is pasted into that box and
+is then available to the IDE. This is deliberately more work than Ctrl+C and
+Ctrl+V, and it is an area where we will pursue improvements: browsers can
+hand a page the clipboard exactly during your own Ctrl+V and let it write
+the clipboard only when you copy inside a focused tab, which would restore
+the familiar keys without the capsule ever gaining standing access. noVNC
+does not offer that yet; the planned route is an upstream contribution
+rather than a local patch. Native VNC viewers are not a shortcut here: they
+share the host clipboard continuously in both directions.
+
+Two limitations are stated rather than worked around: Docker network mode
+`none` cannot publish the bridge, so the contained display refuses it and
+names the alternatives; and a second `project run` against an already running
+capsule cannot recover the first run's URL yet.
+
+Host X11 passthrough — the transport every earlier release used — remains
+available only as the `host-x11` authorization: `devcapsule project config
+authorize host-x11 true` persistently, or `project run --authorize host-x11
+true` once. It is never a default and no project can recommend it. Granting it
+binds the host X socket and your trusted cookie into the capsule, which can
+then capture keystrokes and windows across your whole session, inject input,
+and read the clipboard; the launch says so, and the session-credential
+boundary test is recorded as waived for that run. Images built before recipe
+8 have no display stack and keep using passthrough with the same statement.
+
 For a formation-based run, DevCapsule generates a version-1 runtime plan from
 the same component template used in the image's formation identity. The JSON
 contains only in-container project/home/state destinations, the runtime
-UID/GID/username, component adapter configuration, and names of enabled host
-integrations—never host source/state paths, checkout files, credentials, or
-authorization secrets. The launcher
+UID/GID/username, component adapter configuration, names of enabled host
+integrations, and the display transport (`contained`, with the in-container
+bridge address, port and token path, or `host-x11`) — never host source/state
+paths, checkout files, credentials, or authorization secrets, and never the
+display token itself. The launcher
 writes it to a temporary mode-`0644` file, mounts it read-only at
 `/etc/devcapsule/runtime-plan.json`, and removes it with the generated identity
 files after exit or launch preparation failure. No command follows the image

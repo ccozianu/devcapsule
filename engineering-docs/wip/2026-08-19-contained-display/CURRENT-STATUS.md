@@ -4,10 +4,11 @@ Mnemonic: `contained-display`
 
 Start date: 2026-08-19
 
-State: paused 2026-08-30 with stage 1 (supervisor core) implemented, live-proven,
-and committed on `contained-display/supervisor-core`; resume at the
-display-transport spike under *Next Resumable Task*, reading *Open Threads*
-first
+State: active; resumed 2026-09-12 at the product owner's direction for the
+display-transport spike (stage 2). Stage 1 is merged on `main`. The contained
+display is implemented on `contained-display/display-transport` with unit,
+type and runtime-image e2e evidence; awaiting PR delivery, a published
+recipe-8 base, and the owner's ratification day. See *Resume And Current Task*.
 
 Integration target: `main`
 
@@ -43,10 +44,200 @@ It is named for its subject rather than for a release deliberately.
 
 ## Branch Association
 
-`contained-display/supervisor-core`, forked 2026-08-30 from `main` at
-`3017381` — the first branch of this workstream, created after the
-registration and the supervisor assignment both reached `main` through
-PR #46.
+`contained-display/display-transport`, forked 2026-09-12 from `main` at
+`a27e0ed` for stage 2. The stage-1 branch `contained-display/supervisor-core`
+(forked 2026-08-30 from `3017381`) is fully merged — zero commits ahead of
+`main` — and is no longer edited.
+
+## Resume And Current Task (2026-09-12)
+
+**Resumed** at the product owner's direction after `project-management`
+verified the pause condition (significant `component-catalog` progress) was
+met by v0.2.11. Re-verified on resume: the supervisor module and its tests are
+on `main`; the published base is recipe 7 and predates the display stack.
+
+**Design settled with the owner in conversation** and recorded in the
+[display-transport design note](display-transport-design.md), points T1–T9:
+Xvnc (not Xvfb plus a scraper) as the IDE's display server; Xvnc, Openbox and
+websockify as product-derived infrastructure children ahead of the single
+foreground IDE; a `display` section in the runtime plan; RFB on a Unix socket
+only, gated by a per-run X cookie and a per-run bridge token; a dynamically
+allocated host-loopback port; the browser as the client; rollout by image
+label; passthrough retained as the `host-x11` authorization. The owner's one
+correction to the summary — "the supervisor also starts an Xvfb" — is
+recorded as T1.
+
+**Implemented on this branch (2026-09-12):**
+
+- `container_runtime/contract.py`: `DisplayPlan` and the optional `display`
+  section (`contained` with listen address, port, token path; `host-x11`);
+  absent still means passthrough.
+- `container_runtime/supervisor.py`: per-child readiness probe with timeout,
+  so the window manager and bridge start only once the X socket exists; a
+  child that exits or stalls before ready fails the start (exit 2, named).
+- `container_runtime/display.py` (new): per-run `Xauthority` (wildcard
+  cookie, written directly in libXau format), websockify token file, and the
+  three children. `entrypoint.py` starts them ahead of the surface; headless
+  jobs declare none.
+- `base_image.py`: recipe **8** adds `tigervnc-standalone-server`,
+  `xfonts-base`, `novnc`, `python3-websockify`, `openbox` and the label
+  `devcapsule.base.display=contained`; `install_display` is separable so the
+  e2e can layer it on an existing base.
+- `display_client.py` (new, host side): token, loopback port, noVNC URL,
+  readiness watcher that opens the browser (host-open bridge when the
+  launcher itself runs in a capsule; print-only fallback).
+- `configurations/pycharm/_launcher.py`: `display_transport` option; under
+  `contained` no `DISPLAY`/`XAUTHORITY`/X-socket crosses, the token file is
+  mounted read-only and the bridge port published to `127.0.0.1` (listens on
+  host loopback directly under host networking); network `none` is refused
+  with the alternatives named; a display disclosure joins the storage summary.
+- `commands/project.py`: transport selected from the image label and the
+  `host-x11` answer, with the reason printed; `host-x11` added to the
+  run-once authorizations. `project_configuration.py`: `host-x11` as a
+  workstation capability node with the trade-off in its description.
+- README: base recipe 8, a *Display* section, runtime-plan contents.
+
+**Evidence:** unit suite 611 passed, 1 pre-existing xfail; mypy clean on 128
+files; new tests in `test_contained_display.py`, `test_display_client.py`,
+and additions to `test_supervisor.py`, `test_pycharm.py`,
+`test_project_commands.py`, `test_base_image.py`. Spike record in the design
+note (Xvnc on a Unix socket with no TCP listener, cookie refusal, token gate).
+Runtime-image e2e (`tests/e2e/test_runtime_image.py`, run 2026-09-12 with
+`DEVCAPSULE_E2E_BUILD_NETWORK=host` against the lock's recipe-6 base plus the
+display packages, PEX rebuilt from this source): passed in 95 s. It proves,
+from inside the running capsule, that the only TCP listener is the bridge on
+6080, that Xvnc's X socket exists, that the right token gets the RFB
+greeting and a wrong or missing one is closed, that `vnc.html` is served,
+that Xvnc, Openbox and websockify are direct children of PID 1 running as
+uid 1000, that the fixture IDE sees `DISPLAY=:1` and the per-run
+`XAUTHORITY`, and that `docker stop` still ends the session with 143. The
+passthrough and headless runs in the same test are unchanged and pass.
+
+**Planned next step:** deliver this branch by pull request; then the owner
+builds or publishes a recipe-8 base (`devcapsule images build --type base`
+from this source; publication is a release step the owner drives) and runs
+the **ratification day** — a full day of ordinary development inside the
+contained desktop, aesthetics judged at hour six — before the ledger row
+moves from `proposed` to ratified. Only after ratification does the X11
+passthrough bug close.
+
+**First owner run, 2026-09-13:** the contained run failed at start with
+Xvnc's "server already running": under the host networking this repository's
+project authorizes, the capsule's `:1` collided with the owner's host display
+`:1` through the abstract socket namespace. Fixed the same day (design note
+T2a): the entrypoint picks a free display number from `:10` and Xvnc listens
+on its filesystem socket only. Verified against the owner's daemon before the
+change, then by the unit suite (612 passed), mypy, and the runtime-image e2e
+rerun, which now also asserts that no abstract X socket of ours exists.
+The hands-on script is unchanged; rerun it from `build`.
+
+**Run from inside the dogfood capsule, 2026-09-13:** the contained display
+was launched from this capsule against the host daemon (`build`, `select`,
+then `project run --authorize development-sudo false`): the environment
+materialized on the recipe-8 base, Xvnc/Openbox/websockify/PyCharm ran as
+children of PID 1 as the developer, only the token mount crossed, and the
+manifest recorded `contained` on host loopback. Two cosmetic findings fixed
+the same day: the entrypoint pre-creates `/tmp/.X11-unix` (Xvnc cannot as an
+unprivileged user and said so), and the readiness message now comes from the
+opener, so a print-only fallback no longer claims a browser opened. One
+**pre-existing gap found, not fixed**: `ensure_sudoers_policy_ownership` in
+the launcher runs its own helper `docker run` with an untranslated bind
+source, so any `project run` with development sudo from inside a capsule
+fails with "bind source path does not exist" under `launch-staging`. Unrelated
+to the display; the fix is to pass the helper's arguments through
+`translate_for_external_daemon` as the main launch already does. Left for
+the owner to assign.
+
+**Owner smoke, 2026-09-13, from the dogfood capsule:** the owner opened the
+contained desktop in a host browser and confirmed the essentials. Finding on
+keys: noVNC forwards every key the browser delivers and prevents the
+default, so F11 does not toggle browser fullscreen while the desktop has
+focus, and noVNC's own fullscreen button requests page fullscreen, which
+Escape exits. The zero-code answer the owner verified: focus the address bar
+(Ctrl+L), press F11, click back in; Escape then reaches the capsule. Recorded
+in the README's *Display* section. A companion page using the Keyboard Lock
+API was researched (Chrome 68+, Edge 79+, Firefox 151+, no Safari; noVNC
+upstream does not use it) and **rejected by the owner** as maintenance the
+project should not carry. Browser-owned shortcuts (Ctrl+W, Ctrl+T, Ctrl+N,
+Alt+Tab) remain with the browser in every mode; a native viewer through a
+host-side WebSocket relay is the recorded option for people who need them.
+
+**Release candidates, 2026-09-13:** the owner directed cutting
+`release-0.2.12` from this branch with an RC tag for testing, under one
+exception: host X11 passthrough remains the default while the candidates are
+under test, the contained desktop being the opt-in (`--authorize host-x11
+false`); at release the unanswered default flips to contained (design note
+T7a, one constant in `commands/project.py`). The hands-on script's
+`contained` step passes the opt-in. **Cut 2026-09-13:** `release-0.2.12` and
+annotated tag `v0.2.12-rc1` at `fac3323` (this branch rebased on main
+`bf72900`), pushed atomically; the tag workflow builds and publishes the
+candidate as a prerelease. The release branch stays at that commit; later
+fixes need a new commit and `v0.2.12-rc2`. **At release, remember to flip
+`UNANSWERED_HOST_X11_DISPLAY_TRANSPORT` and drop the README's
+release-candidate paragraph** — that is a new candidate, per the release
+guide. The release also needs the published recipe-8 base and matrix entries
+before adopters get the contained desktop by default (see the 2026-09-13
+plan in the session).
+
+**Candidate prepared locally, 2026-09-13 (GitHub's tag run was queued):**
+the candidate CLI was built from a clean detached checkout of `v0.2.12-rc1`
+the way the workflow builds it (`devcapsule-src/dist/devcapsule-0.2.12-rc1.pex`,
+version 0.2.12rc1, sha256 `e1ae3b7102cc0a5ef28b9c876c11293312dd61635ca6f56bd0dce3d5cf445c43`),
+and it built the candidate base `devcapsule-base:v0.2.12-rc1` (recipe 8,
+`devcapsule.base.display=contained`, image id `094734fe…bb96c`, source
+`fac3323`, public-revision check passed). Every workflow gate passed locally
+against them: packaging integration (9), clean-machine proof, component-cache
+and launcher-delivery e2e (3), base validation and runtime-image e2e on the
+new base (2). The owner opened the contained desktop served by that
+candidate from the dogfood capsule and **confirmed the image works**, and
+decided to switch this repository's dogfood checkout to it. Not yet done:
+publishing the base under its release name, repinning the lock and matrix,
+the release flip of the unanswered default, acceptance record, PRs, final
+tag. GitHub's own candidate bytes, once built, are the ones to accept.
+
+**Clipboard ergonomics, ruled 2026-09-13:** the owner accepted the panel
+mechanics for this release provided the documentation says so plainly and
+names it as an area of pursued improvement (README *Display* section,
+*Clipboard*). Researched middle ground, recorded as the follow-up slice:
+gesture-scoped clipboard in noVNC — read the browser clipboard only inside
+the user's own `paste` event (no permission, no standing access) and write it
+through `navigator.clipboard.writeText` only on a capsule copy while the tab
+is focused. Not in any noVNC release through 1.7.0; upstream master's new
+async-clipboard module reads on every focus after a per-origin permission,
+which is the standing access the owner rejects. Route: contribute the
+gesture-scoped variant upstream, then take the release that ships it as a
+base package change. No local noVNC patch (owner ruling of the same day).
+
+**Open threads (2026-09-12):**
+
+- **Reconnect from a second `project run`**: the second launcher cannot
+  recover the first run's token; today the URL lives in the first launcher's
+  output. Design candidate: keep the token beside the launcher's runtime
+  files keyed by container name, so a second run prints the URL instead of
+  failing on the duplicate name.
+- **Clipboard in practice** (T8): Java `CLIPBOARD` versus the VNC selection
+  is a ratification-day finding; `autocutsel` is the remedy if needed.
+- **Aesthetics**: Openbox runs on its distribution defaults (a harmless
+  message about a missing Debian menu file); a minimal `rc.xml`, HiDPI
+  scaling and the default geometry are ratification-day inputs.
+- **Network `none`** cannot carry the display (T4); recorded, not fixed.
+- **Recursive successor** still launches on passthrough by default (its
+  options do not set `display_transport`); switching the dogfood successor to
+  the contained display is deliberate follow-up work once a recipe-8 base is
+  the lock's base.
+- The host-side `webbrowser` opener is untested against a real desktop in
+  this container; the readiness watcher and the bridge fallback are unit
+  tested.
+- **TODO (owner, 2026-09-13): WSL2 browser opener.** On Windows the
+  launcher runs inside WSL2, where Python's `webbrowser` finds neither
+  `xdg-open` nor `BROWSER`, so the watcher only prints the URL. Add WSL
+  detection to `display_client.default_opener` (use `wslview` when present,
+  else `cmd.exe /c start` or `powershell.exe Start-Process`), with a unit
+  test. Everything else in the contained transport is container-internal or
+  loopback TCP and needs no Windows adaptation; host networking on Docker
+  Desktop and WSLg's `:0` abstract socket are already covered by bridge
+  publishing and the free display-number selection. Deferred until the
+  Linux ratification day passes.
 
 ## Scope
 
@@ -135,6 +326,18 @@ per the D2 restaging.
 
 ## Intake Dispositions
 
+Recorded 2026-09-12 on resume:
+
+- **`2026-08-30-project-management-component-contract-is-load-bearing.md` —
+  acknowledged.** The pause it recorded is over (resume above), and its
+  standing instruction is honoured by construction: this stage changes no
+  part of the supervisor–component contract. `ComponentDefinition`,
+  `ComponentRuntimeTemplate`, the state-slot model and catalog selection are
+  untouched; the runtime plan grew an *additive* `display` section that no
+  component declares or reads, and the supervisor grew a readiness probe that
+  no component sees. Nothing needs routing to `component-catalog` first. The
+  item's warning stays in force for any later deliberate contract change.
+
 Recorded 2026-08-30, first session; reasoning here, one-line entries in the
 [disposition log](intake-dispositions.md), files removed per the queue rule.
 
@@ -222,6 +425,18 @@ Recorded 2026-08-30, first session; reasoning here, one-line entries in the
 
 ## Workstream Document Index
 
+- [Display transport design note](display-transport-design.md) — T1–T9,
+  settled with the product owner 2026-09-12 and verified by the same day's
+  spike: the contained display's mechanism (Xvnc, Openbox, websockify under
+  the supervisor), the runtime plan's `display` section, the two per-run
+  gates, host-side port and browser handling, rollout by image label, the
+  `host-x11` authorization, clipboard, the regression test, and the recorded
+  stretch options (native-window modes, GPU streaming).
+- [try-contained-display.sh](try-contained-display.sh) — the owner's hands-on
+  script for the ratification day: build the PEX and a local recipe-8 base
+  from this branch, select it for a checkout, run the contained desktop (the
+  default) and the legacy passthrough (`--authorize host-x11 true`) side by
+  side, verify mounts, ports, processes and the manifest, then revert.
 - [Supervisor core design note](supervisor-core-design.md) — D1–D9, all
   reviewed with the product owner 2026-08-30; the authoritative record of
   the supervisor scope, the transport lineup (contained desktop offered,

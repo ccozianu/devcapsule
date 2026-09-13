@@ -8,7 +8,7 @@ import signal
 import subprocess
 import sys
 import time
-from typing import Iterable
+from typing import Callable, Iterable
 
 
 class SupervisorError(ValueError):
@@ -25,17 +25,31 @@ INFRASTRUCTURE_FAILURE_EXIT_CODE = 70
 # orderly end and exits honestly before the engine kills the whole container.
 DEFAULT_GRACE_SECONDS = 5.0
 
+# How long a child with a readiness probe gets before the supervisor gives up
+# on it. Display infrastructure (an X server, a WebSocket bridge) is ready
+# within a second on any reasonable host; the margin covers a cold, loaded one.
+DEFAULT_READY_TIMEOUT_SECONDS = 20.0
+_READY_POLL_SECONDS = 0.05
+
 _HANDLED_SIGNALS = frozenset({signal.SIGCHLD, signal.SIGTERM, signal.SIGINT})
 
 
 @dataclass(frozen=True)
 class SupervisedChild:
-    """One process the supervisor starts and owns until the session ends."""
+    """One process the supervisor starts and owns until the session ends.
+
+    ``ready`` is an optional readiness probe: the supervisor starts the next
+    child only once it returns true, so a child may depend on a predecessor's
+    socket or file. A child that exits, or whose probe stays false for
+    ``ready_timeout_seconds``, before becoming ready fails the start.
+    """
 
     name: str
     command: tuple[str, ...]
     foreground: bool = False
     working_directory: str | None = None
+    ready: Callable[[], bool] | None = None
+    ready_timeout_seconds: float = DEFAULT_READY_TIMEOUT_SECONDS
 
 
 @dataclass
@@ -79,6 +93,8 @@ class Supervisor:
             raise SupervisorError("exactly one supervised child must be foreground")
         if grace_seconds <= 0:
             raise SupervisorError("grace period must be positive")
+        if any(child.ready_timeout_seconds <= 0 for child in children):
+            raise SupervisorError("readiness timeouts must be positive")
         self._children = children
         self._grace_seconds = grace_seconds
 
@@ -103,11 +119,14 @@ class Supervisor:
                     preexec_fn=_unblock_all_signals,
                 )
             except OSError as error:
-                for pid in reversed(live):
-                    _signal_child(pid, signal.SIGKILL)
-                _reap()
+                _abandon_start(live)
                 raise SupervisorError(f"cannot start child {child.name!r}: {error}") from error
             live[process.pid] = _RunningChild(child, process)
+            if child.ready is not None:
+                failure = _await_ready(child, process.pid)
+                if failure is not None:
+                    _abandon_start(live)
+                    raise SupervisorError(failure)
 
         foreground_status: int | None = None
         failed_child: SupervisedChild | None = None
@@ -167,6 +186,37 @@ class Supervisor:
             return INFRASTRUCTURE_FAILURE_EXIT_CODE
         assert foreground_status is not None  # the loop cannot end without it
         return _honest_exit_code(foreground_status)
+
+
+def _await_ready(child: SupervisedChild, pid: int) -> str | None:
+    """Poll the child's readiness probe; return the failure to report, if any."""
+
+    assert child.ready is not None
+    deadline = time.monotonic() + child.ready_timeout_seconds
+    while True:
+        if _exited_without_reaping(pid):
+            return f"child {child.name!r} exited before becoming ready"
+        if child.ready():
+            return None
+        if time.monotonic() >= deadline:
+            return f"child {child.name!r} did not become ready within {child.ready_timeout_seconds:g}s"
+        time.sleep(_READY_POLL_SECONDS)
+
+
+def _exited_without_reaping(pid: int) -> bool:
+    # WNOWAIT leaves the zombie for the main loop, which is the only place a
+    # child's exit may be reaped and attributed.
+    try:
+        result = os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    except ChildProcessError:
+        return True
+    return result is not None
+
+
+def _abandon_start(live: dict[int, "_RunningChild"]) -> None:
+    for pid in reversed(live):
+        _signal_child(pid, signal.SIGKILL)
+    _reap()
 
 
 def _reap() -> list[tuple[int, int]]:

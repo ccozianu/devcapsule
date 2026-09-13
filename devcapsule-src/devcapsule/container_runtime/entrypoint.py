@@ -4,6 +4,10 @@ The entrypoint prepares the capsule from the runtime plan and then stays: it
 spawns the one distinguished foreground child — the interactive surface from
 the plan, or the headless job given after ``--`` — and supervises it as PID 1
 until the session ends. The session's exit code is the child's, honestly.
+
+When the plan selects the contained display, the surface is preceded by the
+display's own infrastructure children (X server, window manager, browser
+bridge); see ``display.py``. A headless job declares no display at all.
 """
 
 from __future__ import annotations
@@ -17,6 +21,7 @@ from . import contract as rtcontract
 
 from .components import jetbrains, vscode
 from .contract import RuntimePlan, RuntimePlanError
+from .display import prepare_contained_display
 from .filesystem import plan_filesystem, prepare_filesystem
 from .graphics import environment as graphics_environment
 from .identity import foreground_command
@@ -40,7 +45,16 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
         command = vscode.plan(plan).command
     else:
         raise RuntimePlanError(f"unsupported component adapter: {plan.component.adapter}")
+    infrastructure: tuple[SupervisedChild, ...] = ()
     if job is None:
+        if plan.display is not None and plan.display.is_contained:
+            contained = prepare_contained_display(
+                plan,
+                filesystem.environment["XDG_RUNTIME_DIR"],
+                lambda child_command: foreground_command(child_command, plan.identity),
+            )
+            os.environ.update(contained.environment)
+            infrastructure = contained.children
         child = SupervisedChild(
             name=plan.component.id,
             command=foreground_command(command, plan.identity),
@@ -55,7 +69,7 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
             foreground=True,
             working_directory=plan.project_path,
         )
-    return Supervisor((child,)).run()
+    return Supervisor((*infrastructure, child)).run()
 
 
 def main(argv: Sequence[str] | None = None) -> int:

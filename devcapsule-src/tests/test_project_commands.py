@@ -554,7 +554,7 @@ def test_project_run_starts_immediately_after_init(tmp_path: Path, capsys) -> No
             encoding="utf-8"
         )
         realized = SimpleNamespace(
-            image=SimpleNamespace(reference="devcapsule-local-pycharm:0123456789abcdef0123"),
+            image=SimpleNamespace(labels={}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
             created=True,
             locked=parse_locked_environment(tomllib.loads(lock_text)),
         )
@@ -589,7 +589,7 @@ def test_project_run_records_known_good_configuration_only_on_success(
         )
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
         realized = SimpleNamespace(
-            image=SimpleNamespace(reference="devcapsule-local-codium:0123456789abcdef0123"),
+            image=SimpleNamespace(labels={}, reference="devcapsule-local-codium:0123456789abcdef0123"),
             created=True,
             locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
         )
@@ -659,7 +659,7 @@ def test_project_run_launches_a_codium_surface_from_its_plan_slots(
         capsys.readouterr()
 
         realized = SimpleNamespace(
-            image=SimpleNamespace(reference=canonical),
+            image=SimpleNamespace(labels={}, reference=canonical),
             created=True,
             locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
         )
@@ -749,7 +749,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
         capsys.readouterr()
 
         realized = SimpleNamespace(
-            image=SimpleNamespace(reference=canonical),
+            image=SimpleNamespace(labels={}, reference=canonical),
             created=False,
             locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
         )
@@ -1942,3 +1942,76 @@ def test_component_state_seed_is_written_once_and_never_overwrites(tmp_path: Pat
     _seed_component_state(other, SimpleNamespace(component_id="codex", slot_name="cache"))
     _seed_component_state(other, SimpleNamespace(component_id="unknown", slot_name="home"))
     assert list(other.iterdir()) == []
+
+
+def test_run_selects_the_display_transport_from_the_image_and_the_host_x11_answer(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from devcapsule.commands.project import _select_display_transport
+
+    contained = {"devcapsule.base.display": "contained"}
+    assert _select_display_transport(contained, host_x11_answer=False) == "contained"
+    assert "contained desktop" in capsys.readouterr().out
+    assert _select_display_transport(contained, host_x11_answer=True) == "host-x11"
+    assert "authorized by 'host-x11'" in capsys.readouterr().out
+    assert _select_display_transport({}, host_x11_answer=None) == "host-x11"
+    assert "predates the contained display" in capsys.readouterr().out
+    # Release-candidate exception (owner, 2026-09-13): unanswered means
+    # passthrough until release; the message says how to opt in.
+    assert _select_display_transport(contained, host_x11_answer=None) == "host-x11"
+    out = capsys.readouterr().out
+    assert "release-candidate default" in out and "host-x11 false" in out
+
+
+def test_run_passes_the_selected_transport_and_accepts_host_x11_run_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+    }
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        lock_path = write_formation_lock(project)
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "base-image", LOCKED_BASE]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+        realized = SimpleNamespace(
+            image=SimpleNamespace(labels={"devcapsule.base.display": "contained"}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
+            created=False,
+            locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
+        )
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch,
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+            assert launch.call_args.args[0].display_transport == "host-x11"  # RC default, unanswered
+            assert cli.main(["project", "--path", str(project), "run", "--authorize", "host-x11", "false"]) == 0
+            assert launch.call_args.args[0].display_transport == "contained"
+            assert cli.main(["project", "--path", str(project), "run", "--authorize", "host-x11", "true"]) == 0
+            assert launch.call_args.args[0].display_transport == "host-x11"
+    err = capsys.readouterr().err
+    assert "Run-once authorization: host-x11 = false" in err
+    assert "Run-once authorization: host-x11 = true" in err
+
+
+def test_config_list_shows_the_recorded_answer_and_names_a_denial(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "host-x11", "false"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "host-browser", "true"]) == 0
+        capsys.readouterr()
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
+    assert rows["host-x11"][2:4] == ["denied", "false"]
+    assert rows["host-browser"][2:4] == ["authorized", "true"]
+    assert rows["development-sudo"][2:4] == ["available", "true"]

@@ -77,6 +77,11 @@ def main() -> None:
         raise ValueError("Gate does not match artifact")
     expected["release-branch"] = gate["release-branch"]
     expected["prerelease"] = gate["prerelease"]
+    if "integration" in gate:
+        # A candidate carries how its source relates to main at build time,
+        # including any explicit exception, so the published artifact is
+        # self-describing.
+        expected["integration"] = gate["integration"]
     path = Path("dist/release-manifest.json")
     if "promotion" in gate:
         expected["promotion"] = gate["promotion"]
@@ -90,6 +95,10 @@ def main() -> None:
         if previous.get("record") != gate["promotion"]["record"]:
             raise ValueError("Published promotion evidence has changed")
         expected["promotion"] = previous
+    if arguments.verify and "integration" in expected:
+        # Main integrating the candidate's commits after publication changes
+        # the gate's live answer, not the published fact; keep what was built.
+        expected["integration"] = json.loads(path.read_text()).get("integration", expected["integration"])
     if arguments.verify:
         if json.loads(path.read_text()) != expected:
             raise ValueError("Published release manifest does not match its artifacts and tagged source")
