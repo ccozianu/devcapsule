@@ -97,8 +97,23 @@ git push --atomic origin release-0.2.11 v0.2.11-rc0
 
 Use a new commit and RC number for fixes, advance the release branch, and keep
 previous tags unchanged. `.github/workflows/release-pex.yml` requires the tag's
-commit to belong to the matching release branch. Candidates do not require main
-integration. Main stays open; do not rebase tested release source onto it.
+commit to belong to the matching release branch. Main stays open; do not rebase
+tested release source onto it.
+
+**A candidate builds only from source main already has.** Owner rule of
+2026-09-13, enforced by `scripts/release-protocol.py` for every candidate tag:
+each commit the release branch carries since it left main must be merged or
+cherry-picked to main (patch equivalence counts, so a cherry-pick with a
+different SHA is integrated) before the candidate is tagged. The only way past
+the gate is an explicit, documented exception committed on the release branch
+at `engineering-docs/releases/<tag>-integration-exception.json` — for example
+a patch to an old release too far from mainline — with `schema-version` 1,
+the `tag`, `authorized-by`, `rationale`, `forward-port-owner` and `follow-up`.
+The gate embeds the outcome (`mainline`, or `exception` with the record and the
+unintegrated commits) in the candidate's release manifest, and a rerun keeps
+the published fact rather than recomputing it against a main that has moved
+on. In practice: open and merge the working branch's pull request first, then
+cut the candidate.
 
 The tag supplies the package version of a *tagged* build. `scripts/build-pex.sh`
 stamps package metadata and `_build_info.json` in a temporary directory:
