@@ -19,7 +19,7 @@ will create/merge the PRs on GitHub and delete the temporary branches. This
 supersedes the earlier plan to deliver the accumulated coordination branch as
 one PR. The selected workstream remains project-management.
 
-Prepared four branches, each with one focused new commit on its predecessor:
+Pushed four branches, each adding a focused slice on its predecessor:
 
 1. `project-management/temp-pr-20260913-1`: release operator guidance.
 2. `project-management/temp-pr-20260913-2`: identical launcher/container runtime
@@ -42,9 +42,9 @@ tree exactly before this note. Checked each slice's Markdown links, indexes
 and whitespace and preserved the source checkout's unrelated `.devcapsule`
 edits. No implementation change or new session record is introduced.
 
-**Planned next step:** push these four branches for the owner's GitHub merges,
-then verify remote main contains the finalized tree before synchronizing the
-coordination branch. The prior GitHub API 403 is already established; this
+**Planned next step:** the owner creates and merges the four GitHub PRs in
+order, then we verify remote main contains the finalized tree before
+synchronizing the coordination branch. The prior GitHub API 403 is already established; this
 owner-authorized branch delivery does not require another API attempt.
 
 **Open threads:** the four merges and subsequent synchronization remain;
