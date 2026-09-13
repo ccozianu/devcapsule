@@ -132,6 +132,7 @@ history; record current decisions in the active documents above.
 ## Implementation Notes And Decisions
 
 - [User-requested session-record policy](engineering-docs/session-records/devcapsule/README.md)
+- [Project-management decisions and workflow review session record](engineering-docs/session-records/devcapsule/2026-09-11-project-management-decisions-and-workflow-review.md)
 - [Project-management resume and individual-projects framing session record](engineering-docs/session-records/devcapsule/2026-08-19-resume-verification-and-individual-projects.md)
 - [Inspector hardening, samples, and workflow bootstrap session record](engineering-docs/session-records/devcapsule/2026-08-16-inspector-hardening-samples-and-workflow-bootstrap.md)
 - [v021 external dogfood and V1 backlog session record](engineering-docs/session-records/devcapsule/2026-08-03-v021-external-dogfood-and-v1-backlog.md)

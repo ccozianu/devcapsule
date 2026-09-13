@@ -4,13 +4,192 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-12; opening user-docs at the owner's request; permanent coordination
+State: active 2026-09-13; adopter README and separate developer brief prepared for delivery; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## Focused Temporary Delivery Branches (2026-09-13)
+
+The owner requested separate reviewable commits and temporary branches, and
+will create/merge the PRs on GitHub and delete the temporary branches. This
+supersedes the earlier plan to deliver the accumulated coordination branch as
+one PR. The selected workstream remains project-management.
+
+Prepared four branches, each with one focused new commit on its predecessor:
+
+1. `project-management/temp-pr-20260913-1`: release operator guidance.
+2. `project-management/temp-pr-20260913-2`: identical launcher/container runtime
+   decision, requirement and related documentation annotations.
+3. `project-management/temp-pr-20260913-3`: adopter README, developer brief,
+   refreshed/promoted comparison and the links required by those moves.
+4. `project-management/temp-pr-20260913-4`: previously requested session record,
+   documentation-index entry and accumulated project-management handoff.
+
+The first branch starts at accepted mainline `493e9e5`; each subsequent branch
+starts at the preceding temporary branch. Merge into `main` in numbered order.
+Do not also merge the original `project-management/coordination` delivery: it
+contains the same content. Later branches include earlier commits until GitHub
+recognizes their integration. If the configured merge method rewrites commits
+(squash/rebase), compare trees and refresh the remaining temporary branches as
+needed before the next PR; do not replay already-delivered work blindly.
+
+Validation: the four reconstructed commits reproduce the original delivery
+tree exactly before this note. Checked each slice's Markdown links, indexes
+and whitespace and preserved the source checkout's unrelated `.devcapsule`
+edits. No implementation change or new session record is introduced.
+
+**Planned next step:** push these four branches for the owner's GitHub merges,
+then verify remote main contains the finalized tree before synchronizing the
+coordination branch. The prior GitHub API 403 is already established; this
+owner-authorized branch delivery does not require another API attempt.
+
+**Open threads:** the four merges and subsequent synchronization remain;
+the six pending project-management decisions and broader user-docs work are
+unchanged. The original coordination history remains available.
+
+## Repository Landing Page and Developer Brief (2026-09-13)
+
+The owner explicitly requested making the agreed one-pager the GitHub landing
+page while preserving the DevCapsule heading and test/coverage badges, and
+moving the existing developer instructions to a linked For developers page.
+This bounded repository-entry-point change concludes the positioning slice in
+the selected project-management checkout; the earlier plan to defer this
+publication step to user-docs is superseded by that request. Broader user guides
+remain with user-docs, whose handoff and branch selection are unchanged.
+
+The [root README](../../../README.md) now carries the agreed short V1 copy,
+comparison footer and navigation. [For developers](../../../DEVELOPING.md)
+preserves the old README's full developer brief, commands, repository layout,
+release guidance, development principles, license and status instructions.
+Both stay at the repository root so the transferred relative links and
+repository-root command examples retain their meaning. AGENTS.md now reads
+the introduction and then DEVELOPING.md; the release guide's developer-setup
+anchor and the documentation indexes follow the move. The reusable workflow
+definition and templates are unchanged.
+
+The [comparison](../../design-notes/devcapsule/competitive-comparison.md) is
+promoted from this workstream to a permanent engineering design-note location;
+its original survey remains available through its immutable Git link. The
+one-pager draft is removed after incorporation into README, leaving one current
+copy. Existing historical handoff links now point to the promoted documents.
+The V1 label remains: publication of the product direction is not acceptance
+evidence for unimplemented containment or onboarding features.
+
+Validation: preserved both badge lines exactly; compared the complete old
+developer brief and command blocks with DEVELOPING.md; checked changed relative
+links, Markdown anchors and whitespace; confirmed unrelated `.devcapsule` edits
+are unchanged. The index's existing sample-project README link cannot be checked
+locally because that submodule is uninitialized. Runtime tests are not applicable
+to this documentation-only change.
+Final screen fit depends on GitHub's layout and the reader's viewport.
+
+Delivery: landing-page change `c6101ae` is pushed to
+`origin/project-management/coordination`. On 2026-09-13, verified no open PR
+for this branch and attempted PR creation; GitHub again returned HTTP 403,
+`Resource not accessible by integration`. The live main-page README has not
+changed.
+
+**Planned next step:** open the [branch pull request](https://github.com/ccozianu/devcapsule/compare/main...project-management/coordination)
+and deliver through normal review and merge. The prior release/runtime
+documentation still travels this branch and is included in the review scope.
+
+**Open threads:** main delivery if GitHub API access still prevents PR creation;
+broader user-docs content and V1 feature validation. No new session record was
+requested. The six pending project-management decisions are unaffected.
+
+## V1 Adopter One-Pager Agreed (2026-09-13)
+
+The owner concluded the copy discussion and requested the document. The
+[one-pager](../../../README.md) captures the agreed direction:
+quick onboarding into a reproducible environment, a full IDE, agent autonomy
+within an explicit host boundary, and accessible engineering practices with AI
+helping maintain tests, requirements, decisions and handoffs. It keeps the short
+engineering-excellence section the owner preferred and adds the requested
+acknowledgment of alternatives, our own use of DevCapsule, and a comparison link.
+
+This is approved positioning input for the intended V1 experience, including
+plausible planned features expressly allowed by the owner. It is saved under
+this workstream's draft-docs path while project management concludes the product
+copy; publication belongs to user-docs. The small V1 label prevents the copy
+from presenting all promises as current-release facts. Strong containment,
+easy onboarding, and the precise privilege-revocation experience still need
+release validation before publishing those claims as delivered behavior.
+
+The intended permanent destination is `docs/product/why-try-devcapsule.md`.
+At publication, give the comparison a suitable durable destination and adjust
+the link; do not duplicate the survey into another source of truth. This draft
+is internally indexed below, in accordance with the WIP documentation rule.
+
+Validation: checked the relative comparison link, Markdown whitespace, and word
+count. The copy is 244 words; fitting one screen depends on the
+eventual layout and viewport and is not claimed as visually validated. Existing
+`.devcapsule` edits are untouched. No session record was requested or created.
+
+**Planned next step:** deliver this branch's pending documentation and agreed
+copy through the ordinary PR path, then hand the approved copy and comparison
+to user-docs for presentation and publication. No workstream switch was requested.
+
+**Open threads:** final page layout and V1 claim validation remain; expanding
+the first page with tutorial or workflow detail was expressly rejected. The
+six project-management intake decisions remain separate. Prior scoping questions
+below are superseded by the owner's agreed copy, not reopened.
+
+## Competitive Evidence for the Adopter One-Pager (2026-09-12)
+
+The owner redirected the initial documentation focus to a one-page explanation
+that earns a prospective adopter's time before asking her to learn or install
+DevCapsule. The first-session tutorial remains a possible follow-on, not the
+selected first deliverable. A candidate page was discussed in chat; its wording
+and audience are not yet approved. No workstream switch was requested.
+
+At the owner's request, located and refreshed the existing
+[competitive comparison](../../design-notes/devcapsule/competitive-comparison.md). The original
+was a workflow-specific survey, dated August 15 and committed August 16. Its
+original revision remains linked; the current file carries a September 12
+verification date, primary-source links, corrected claims, and a bounded
+workspace comparison to inform the one-pager.
+
+Finding: persistent memory, interruption recovery and structured delivery have
+substantial prior art. The earlier exclusive claims are not defensible. Evaluate
+DevCapsule's assembled local environment and maintained project handoff against
+the adopter's existing tools. Documentation evidence is distinguished from
+release availability, experiments, measured behavior and positioning inference.
+No competitor installation, benchmark or new runtime validation was performed.
+
+External state reverified: PR #70 has merged at `493e9e5`; the user-docs
+registration and the two intake dispositions are on main, leaving six intake
+items. The earlier documentation prerequisite has **not** landed: D-0009 is
+still absent from origin/main. Merged main into this published working branch,
+retaining its documentation and resolving the registry's obsolete pause row
+to the active row already delivered through our outbox. The two existing
+`.devcapsule` edits remain untouched and outside commits.
+
+Validation: reviewed the comparison's primary sources, checked local links and
+Markdown whitespace, and updated its entry in this document's internal index.
+The comparison is this workstream's deliverable and travels its ordinary branch,
+not the outbox. GitHub API write access returned 403 earlier in this session;
+Git branch push remains available.
+
+**Planned next step:** review the evidence with the owner and settle the
+one-pager's audience and central promise. Deliver this branch's documentation
+through a PR; once the comparison is on main, route the approved documentation
+focus and evidence to user-docs. Do not change its protected handoff or switch
+this checkout without the owner's instruction.
+
+### Open Threads for This Slice
+
+- Which adopter problem and demonstration make the assembled product worth
+  trying? The research recommends a return-to-work scenario but does not decide it.
+- Cross-tool timing, reliability and user-value comparisons remain unmeasured;
+  GSD's linked development commands and OpenSpec's work experiment need release
+  checks before an executable evaluation.
+- Previous delivery warnings below are historical where PR #70 supersedes them;
+  the missing documentation delivery is still real. No new session record was
+  requested or created.
 
 ## User Documentation Workstream Opening (2026-09-12)
 
@@ -1003,12 +1182,13 @@ thread 8 above. Nothing is lost if that file is gone.
 
 ## Workstream Document Index
 
+- [Why try DevCapsule? — promoted to the project README](../../../README.md)
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
 - [Portfolio checkpoint 2026-08-16](2026-08-16-portfolio-checkpoint.md)
 - [V1 readiness assessment 2026-08-16](2026-08-16-v1-readiness-assessment.md)
 - [V1 scope ledger](v1-scope-ledger.md)
-- [Workflow prior-art comparison
-  2026-08-16](../../design-notes/devcapsule/competitive-comparison.md)
+- [Competitive comparison: promoted research
+  (refreshed 2026-09-12)](../../design-notes/devcapsule/competitive-comparison.md)
 - [Display transport options and clipboard policy
   2026-08-19](2026-08-19-display-transport-options.md)
 - [The workflow versus Jira and GitHub Issues
