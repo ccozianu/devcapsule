@@ -90,6 +90,11 @@ def prepare_contained_display(
     directory.mkdir(mode=0o700, exist_ok=True)
     _own(directory, plan)
 
+    # Xvnc runs as the capsule user and cannot create the sticky world-writable
+    # X socket directory itself (it says so, loudly, before falling back).
+    x_socket_directory = Path(X_SOCKET_DIRECTORY)
+    x_socket_directory.mkdir(exist_ok=True)
+    x_socket_directory.chmod(0o1777)  # explicit: mkdir's mode is subject to the umask
     display_number = select_display_number()
     display_name = f":{display_number}"
     x_socket = x_socket_path(display_number)

@@ -77,17 +77,23 @@ def default_opener(env: Mapping[str, str] | None = None) -> Opener:
         bridge = environment.get(HOST_OPEN_SOCKET_ENV)
         if not bridge:
             return _print_only
-        return lambda url: open_host_url(url, environ=environment)
+
+        def open_through_bridge(url: str) -> None:
+            open_host_url(url, environ=environment)
+            print("Contained display is ready; opened through the host-browser bridge.", file=sys.stderr, flush=True)
+
+        return open_through_bridge
 
     def open_in_browser(url: str) -> None:
         if not webbrowser.open(url, new=2):
             raise HostOpenError("no browser could be started")
+        print("Contained display is ready; opened in your browser.", file=sys.stderr, flush=True)
 
     return open_in_browser
 
 
 def _print_only(url: str) -> None:
-    print(f"Open the contained display in a browser: {url}", file=sys.stderr, flush=True)
+    print(f"Contained display is ready; open it in a browser: {url}", file=sys.stderr, flush=True)
 
 
 def watch_display_ready(
@@ -117,8 +123,6 @@ def watch_display_ready(
                         file=sys.stderr,
                         flush=True,
                     )
-                else:
-                    print("Contained display is ready; opened in your browser.", file=sys.stderr, flush=True)
                 return
             if time.monotonic() >= deadline:
                 print(

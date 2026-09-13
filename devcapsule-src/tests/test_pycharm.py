@@ -1300,4 +1300,3 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
     assert url.startswith(f"http://127.0.0.1:{port}/vnc.html?autoconnect=1&resize=remote&path=websockify%3Ftoken%3D")
     captured = capsys.readouterr()
     assert f"Contained display: {url}" in captured.err
-    assert "opened in your browser" in captured.err
