@@ -168,7 +168,11 @@ exception: host X11 passthrough remains the default while the candidates are
 under test, the contained desktop being the opt-in (`--authorize host-x11
 false`); at release the unanswered default flips to contained (design note
 T7a, one constant in `commands/project.py`). The hands-on script's
-`contained` step passes the opt-in. **At release, remember to flip
+`contained` step passes the opt-in. **Cut 2026-09-13:** `release-0.2.12` and
+annotated tag `v0.2.12-rc1` at `fac3323` (this branch rebased on main
+`bf72900`), pushed atomically; the tag workflow builds and publishes the
+candidate as a prerelease. The release branch stays at that commit; later
+fixes need a new commit and `v0.2.12-rc2`. **At release, remember to flip
 `UNANSWERED_HOST_X11_DISPLAY_TRANSPORT` and drop the README's
 release-candidate paragraph** — that is a new candidate, per the release
 guide. The release also needs the published recipe-8 base and matrix entries
