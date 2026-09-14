@@ -222,6 +222,71 @@ project submodules' locks still pin v0.2.10 (regenerating them is a commit
 in each sample repository); at the final release, retag the same image as
 `v0.2.12` and let the pin's mnemonic follow in the flip candidate.
 
+**Minimize trap fixed, 2026-09-14:** on Windows the owner minimized PyCharm
+from Openbox's title-bar button and could not get it back — no panel, and
+Alt+Tab is consumed by the host before the browser page sees it — leaving
+the IDE and the agent running unattended. Cause: Openbox ran its packaged
+default (iconify button, four desktops switched by the wheel over the
+background, Debian root menu). Fix, portable to Linux since noVNC makes the
+bugs portable too: the runtime writes DevCapsule's own `openbox-rc.xml`
+(shipped as a package resource, derived from the default) per run and
+starts Openbox with `--config-file`: one desktop, no iconify/shade buttons,
+the surface maximized, window list on middle and right background click,
+Alt+backquote beside Alt+Tab. No base change: the configuration lives in
+the launcher-supplied runtime. Evidence: unit tests on the configuration
+and the child command; the runtime-image e2e now reads Openbox's
+`_OB_CONFIG_FILE` and `_NET_NUMBER_OF_DESKTOPS` root properties through a
+raw X11 client and asserts our file and one desktop. Recovery on an
+unfixed capsule: middle-click the empty background. A full desktop or panel
+remains post-V1 (supervisor design note, non-goals).
+
+**Recursive dogfood on the contained display, 2026-09-14:** the recursive
+path assumed host X11 passthrough end to end — the preflight required the
+X socket mount and a bind-mounted Xauthority, the dry run forwarded both
+into the successor, and the successor launch never chose a transport. Now
+the preflight and dry run read the current capsule's runtime plan and, on
+the contained display, forward nothing (the host launch context and staging
+take optional X material); the successor launch selects its transport the
+way `project run` does, through the shared `select_display_transport` in
+`display_client`, and reports the successor's display URL in its result
+since a detached launch has no watcher to open it. Verified from this
+capsule: a retained run with a clean detached clone registered as its own
+checkout (`checkout register`, the shared-config lock makes the clone
+necessary), `launch-successor` ran a successor on `:11` with Xvnc, Openbox,
+websockify and PyCharm under PID 1, all eleven launch checks and the
+independent `inspect-successor` passed, and the bridge answered on the
+host loopback port. Unit tests cover the contained preflight, the dry run
+without X material, the shared selection and the result field. The
+display-label constants moved to `image_metadata` to break an import cycle
+between the launcher and the base builder.
+
+**Panel added, 2026-09-14:** the owner tried the recursive successor (still
+on default Openbox) and found the keyboard route back to a hidden window
+unusable from a browser: GNOME owns Alt+backquote (it switched browser
+tabs), Alt+Tab never reaches the page, and noVNC's virtual keyboard is
+slow. Ruling: a minimal real panel is worth its cost. Base recipe **9** adds
+`tint2`; the runtime writes `tint2rc` per run (a package resource: a
+button per window and a clock at the bottom, one desktop) and starts the
+panel as an infrastructure child between Openbox and websockify, **only
+when the base has it** — on a recipe-8 base the runtime announces the
+absence and the background-click list remains, so the launcher-supplied
+runtime keeps running on the published rc3 base. The Alt+backquote binding
+is gone; no keyboard chord is promised beyond Alt+Tab where the host lets
+it through. Tests: configuration content, child order with and without the
+panel, the e2e's process check now includes tint2. Release: a recipe-9 base
+must be built and pushed by the owner and repinned before the flip
+candidate; the local twin for the spin is `devcapsule-base:v0.2.12-tint2`.
+
+**Owner acceptance of the desktop shape, 2026-09-14:** on the recipe-9
+successor ("clear and comfortable for the user"): no minimize button in
+the title bar, minimizing from the window menu still possible and the
+window promptly back from the tint2 task bar. The desktop shape — Openbox
+on DevCapsule's configuration, maximized surface, tint2 panel — is the
+one to ship. The recursive dry run passed on the contained display; the
+clean-clone protocol test only runs in a capsule launched from a
+revision-stamped executable (this one runs the local build), so it is
+evidence for the next candidate-launched capsule.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot

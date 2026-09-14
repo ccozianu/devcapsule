@@ -224,3 +224,42 @@ def test_keep_on_failure_preserves_only_the_owned_run(
     )
     assert failure.value.preserved_workspace == run_root
     assert run_root.is_dir()
+
+
+def test_contained_display_dry_run_forwards_no_host_x11(
+    recursive_fixture: RecursiveFixture, tmp_path: Path
+) -> None:
+    """A capsule on its own desktop has no host X socket or credential to forward."""
+
+    from devcapsule.container_runtime.contract import DisplayPlan
+
+    plan = RuntimePlan.from_file(recursive_fixture.runtime_plan).with_display(
+        DisplayPlan.contained("127.0.0.1", 40000, "/run/devcapsule-display-token")
+    )
+    recursive_fixture.runtime_plan.write_text(plan.to_json() + "\n", encoding="utf-8")
+    container = recursive_fixture.report.container
+    assert container is not None
+    mounts = tuple(m for m in container.mounts if m.destination not in ("/tmp/.X11-unix", str(recursive_fixture.xauthority)))
+    report = PreflightReport(
+        findings=recursive_fixture.report.findings,
+        facts={},
+        mounts=mounts,
+        container=ContainerInspection(
+            identity=container.identity,
+            name=container.name,
+            image=container.image,
+            source_revision=container.source_revision,
+            network_mode=container.network_mode,
+            mounts=mounts,
+            upper_directory=container.upper_directory,
+        ),
+    )
+    result = prepare_recursive_e2e_dry_run(
+        report,
+        checkout=recursive_fixture.project,
+        runtime_plan_path=recursive_fixture.runtime_plan,
+        environ={"DOCKER_HOST": f"unix://{recursive_fixture.docker_socket}"},  # no XAUTHORITY at all
+    )
+    assert "xauthority" not in result.staged_launch.by_name()
+    assert not [bind for bind in result.bind_mounts if bind.destination == "/tmp/.X11-unix"]
+    assert result.cleanup_complete is True

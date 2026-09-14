@@ -115,15 +115,70 @@ DISPLAY_PROBE = textwrap.dedent(
         except OSError:
             continue
         names = [os.path.basename(a.decode(errors="replace")) for a in argv if a]
-        for wanted in ("Xvnc", "openbox", "websockify"):
+        for wanted in ("Xvnc", "openbox", "tint2", "websockify"):
             if wanted in names[:2]:
                 fields = dict(line.split(":\\t", 1) for line in status.splitlines() if ":\\t" in line)
                 processes[wanted] = {"ppid": int(fields["PPid"]), "uid": int(fields["Uid"].split()[0])}
+    def x_root_properties(display_number, xauthority, names):
+        # A minimal X11 client: enough of the core protocol to read root-window
+        # properties, so the test needs no X tools in the image.
+        import struct
+        cookie = open(xauthority, "rb").read()
+        def field(buf, off):
+            n = struct.unpack(">H", buf[off:off + 2])[0]
+            return buf[off + 2:off + 2 + n], off + 2 + n
+        off = 2
+        _, off = field(cookie, off); _, off = field(cookie, off)
+        proto, off = field(cookie, off); data, off = field(cookie, off)
+        pad = lambda b: b + b"\\0" * ((4 - len(b) % 4) % 4)
+        s = socket.socket(socket.AF_UNIX); s.settimeout(5); s.connect(f"/tmp/.X11-unix/X{display_number}")
+        def recv_exact(n):
+            out = b""
+            while len(out) < n:
+                chunk = s.recv(n - len(out))
+                if not chunk:
+                    raise RuntimeError("X connection closed")
+                out += chunk
+            return out
+        s.sendall(struct.pack("<BxHHHHxx", 0x6C, 11, 0, len(proto), len(data)) + pad(proto) + pad(data))
+        head = recv_exact(8)
+        if head[0] != 1:
+            raise RuntimeError("X setup refused: %r" % recv_exact(struct.unpack("<H", head[6:8])[0] * 4))
+        body = recv_exact(struct.unpack("<H", head[6:8])[0] * 4)
+        vendor_len = struct.unpack("<H", body[16:18])[0]
+        nformats = body[21]
+        root = struct.unpack("<I", body[32 + len(pad(b"x" * vendor_len)) + 8 * nformats:][:4])[0]
+        def intern(name):
+            s.sendall(struct.pack("<BBHHxx", 16, 0, 2 + len(pad(name)) // 4, len(name)) + pad(name))
+            reply = recv_exact(32)
+            return struct.unpack("<I", reply[8:12])[0]
+        def get_property(atom):
+            s.sendall(struct.pack("<BBHIIIII", 20, 0, 6, root, atom, 0, 0, 256))
+            reply = recv_exact(32)
+            fmt = reply[1]
+            length = struct.unpack("<I", reply[4:8])[0] * 4
+            value_count = struct.unpack("<I", reply[16:20])[0]
+            payload = recv_exact(length)
+            if fmt == 8:
+                return payload[:value_count].decode(errors="replace")
+            if fmt == 32:
+                return list(struct.unpack("<%dI" % value_count, payload[:4 * value_count]))
+            return None
+        result = {name: get_property(intern(name.encode())) for name in names}
+        s.close()
+        return result
+
     import http.client
     connection = http.client.HTTPConnection("127.0.0.1", 6080, timeout=5)
     connection.request("GET", "/vnc.html")
     vnc_html = connection.getresponse().status
+    display_number = sorted(os.listdir("/tmp/.X11-unix"))[0][1:]
     print(json.dumps({
+        "window_manager": x_root_properties(
+            display_number,
+            "/tmp/devcapsule-runtime-1000/display/Xauthority",
+            ["_OB_CONFIG_FILE", "_NET_NUMBER_OF_DESKTOPS", "_NET_SUPPORTING_WM_CHECK"],
+        ),
         "listeners": sorted(listeners),
         "x_socket": [stat.S_ISSOCK(os.stat(f"/tmp/.X11-unix/{n}").st_mode) for n in sorted(os.listdir("/tmp/.X11-unix"))],
         "abstract_x_sockets": sorted(set(re.findall(r"@/tmp/\\.X11-unix/X\\d+", open("/proc/net/unix").read()))),
@@ -429,8 +484,14 @@ exit 9
             assert facts["vnc_html"] == 200
             # Display processes are the supervisor's direct children and run
             # as the capsule user, never as root.
-            for name in ("Xvnc", "openbox", "websockify"):
+            for name in ("Xvnc", "openbox", "tint2", "websockify"):
                 assert facts["processes"][name] == {"ppid": 1, "uid": 1000}, facts
+            # Openbox runs DevCapsule's configuration, not the distribution
+            # default: it announces the file it loaded and a single desktop.
+            window_manager = facts["window_manager"]
+            assert window_manager["_OB_CONFIG_FILE"] == "/tmp/devcapsule-runtime-1000/display/openbox-rc.xml", facts
+            assert window_manager["_NET_NUMBER_OF_DESKTOPS"] == [1], facts
+            assert window_manager["_NET_SUPPORTING_WM_CHECK"], facts
             command(docker, "stop", container_id)
             stopped = command(docker, "wait", container_id)
             assert stopped.stdout.strip() == str(128 + signal.SIGTERM)

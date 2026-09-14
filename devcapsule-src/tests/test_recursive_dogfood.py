@@ -273,3 +273,48 @@ def test_project_recursive_e2e_rejects_a_different_selected_project(
 
     assert result == 2
     assert "repository self-test" in capsys.readouterr().err
+
+
+def test_contained_display_preflight_needs_no_host_x11(tmp_path: Path) -> None:
+    from devcapsule import recursive_dogfood as module
+    from devcapsule.container_runtime.contract import DisplayPlan, RuntimePlan
+
+    checkout = tmp_path / "checkout"
+    home = tmp_path / "home"
+    checkout.mkdir()
+    home.mkdir()
+    plan_path = tmp_path / "runtime-plan.json"
+    plan = RuntimePlan.from_mapping(
+        {
+            "version": 1,
+            "project_path": str(checkout),
+            "home": str(home),
+            "identity": {"uid": 1000, "gid": 1000, "user": "developer"},
+            "state_slots": [],
+            "component": {"id": "pycharm", "adapter": "jetbrains", "configuration": {}},
+        }
+    ).with_display(DisplayPlan.contained("127.0.0.1", 40000, "/run/devcapsule-display-token"))
+    plan_path.write_text(plan.to_json(), encoding="utf-8")
+    # No X11 socket mount, no Xauthority mount: the capsule's X server is its own.
+    mounts = (
+        Mount("/host/checkout", str(checkout), "bind", True),
+        Mount("/host/home", str(home), "bind", True),
+        Mount("/host/plan", str(plan_path), "bind", False),
+    )
+    container = ContainerInspection(
+        "a" * 64, "dogfood-current", "sha256:" + "b" * 64, None, "host", mounts, "/docker/overlay/current/diff"
+    )
+    builder = module._ReportBuilder()
+    module._inspect_required_mounts(
+        builder,
+        checkout_root=checkout,
+        runtime_plan_path=plan_path,
+        runtime_plan=plan,
+        container=container,
+        env={"HOME": str(home), "DISPLAY": ":10", "XAUTHORITY": "/tmp/devcapsule-runtime-1000/display/Xauthority"},
+    )
+    by_check = {item.check: item for item in builder.findings}
+    assert "x11-mount" not in by_check
+    assert by_check["display"].status == "pass" and "own desktop" in by_check["display"].summary
+    assert by_check["display-authorization"].status == "pass"
+    assert not [item for item in builder.findings if item.status == "error"]

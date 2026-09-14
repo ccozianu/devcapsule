@@ -420,7 +420,8 @@ Maven `3.9.16`. `JAVA_HOME` is `/opt/java/current`, `MAVEN_HOME` is
 executable `PATH`. Recipe 7 added no DevCapsule runtime: the launcher supplies
 its PEX at `/opt/devcapsule/bin/devcapsule.pex` in each derived environment.
 Recipe 8 adds the contained display stack — TigerVNC's `Xvnc`, the core X
-fonts, noVNC with `websockify`, and the Openbox window manager — and labels
+fonts, noVNC with `websockify`, and the Openbox window manager — and recipe
+9 the tint2 panel; the base is labelled
 the base `devcapsule.base.display=contained`, which is how the launcher knows
 a capsule can bring its own desktop instead of borrowing the host's X session
 (see *Display* below).
@@ -862,6 +863,19 @@ is needed, both to enter and to leave. Shortcuts the browser itself owns,
 such as Ctrl+W, Ctrl+T, Ctrl+N and Alt+Tab, never reach the capsule in any
 mode; closing the tab by accident does not end the session, and the printed
 URL reopens it.
+
+**The desktop itself.** Openbox runs DevCapsule's own configuration, not
+the distribution default, and a tint2 panel sits at the bottom of the
+desktop with a button per window and a clock. A browser-reached desktop
+must have nowhere for a window to disappear into and a visible way back
+when it does: there is one virtual desktop and the mouse wheel over the
+background does not switch desktops; title bars carry no minimize (or
+shade) button; the IDE starts maximized and follows the browser window;
+any window, including one an application minimized itself or a dialog
+behind the IDE, is one click away on the panel, and a middle or right click
+on the empty background shows the same list. Alt+Tab cycles windows when
+the host lets it through; no other keyboard chord is promised, because
+hosts and browsers reserve unpredictable keys.
 
 **Clipboard.** The capsule cannot see your host clipboard, and that is by
 design: nothing crosses without your gesture on the noVNC side. Text copied

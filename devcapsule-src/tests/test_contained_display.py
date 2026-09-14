@@ -12,8 +12,11 @@ import pytest
 from devcapsule.container_runtime.contract import DisplayPlan, RuntimePlan, RuntimePlanError
 from devcapsule.container_runtime.display import (
     NOVNC_CHILD,
+    PANEL_CHILD,
     WINDOW_MANAGER_CHILD,
     XVNC_CHILD,
+    openbox_configuration_text,
+    panel_configuration_text,
     prepare_contained_display,
     read_token,
     select_display_number,
@@ -100,6 +103,7 @@ def test_token_must_be_one_clean_line(tmp_path: Path) -> None:
 
 def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("devcapsule.container_runtime.display.os.geteuid", lambda: 1000)
+    monkeypatch.setattr("devcapsule.container_runtime.display.shutil.which", lambda name: f"/usr/bin/{name}")
     monkeypatch.setattr("devcapsule.container_runtime.display.X_SOCKET_DIRECTORY", str(tmp_path / ".X11-unix"))
     plan = RuntimePlan.from_mapping(contained_document(tmp_path, token="deadbeef"))
     runtime_dir = tmp_path / "runtime"
@@ -107,9 +111,9 @@ def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatc
 
     display = prepare_contained_display(plan, str(runtime_dir), lambda command: ("as-user", *command))
 
-    assert [child.name for child in display.children] == [XVNC_CHILD, WINDOW_MANAGER_CHILD, NOVNC_CHILD]
+    assert [child.name for child in display.children] == [XVNC_CHILD, WINDOW_MANAGER_CHILD, PANEL_CHILD, NOVNC_CHILD]
     assert not any(child.foreground for child in display.children)
-    xvnc, window_manager, novnc = display.children
+    xvnc, window_manager, panel, novnc = display.children
     assert display.display_number >= 10
     assert xvnc.command[:3] == ("as-user", "Xvnc", f":{display.display_number}")
     # Filesystem socket only: never an abstract socket, never TCP (T2/T4).
@@ -118,7 +122,11 @@ def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatc
     assert ("-rfbunixpath", display.rfb_socket_path) == xvnc.command[xvnc.command.index("-rfbunixpath"):][:2]
     assert ("-auth", display.xauthority_path) == xvnc.command[xvnc.command.index("-auth"):][:2]
     assert xvnc.ready is not None and xvnc.ready() is False  # no X server in the test process
-    assert window_manager.command == ("as-user", "openbox")
+    assert window_manager.command == ("as-user", "openbox", "--config-file", display.openbox_configuration_path)
+    assert Path(display.openbox_configuration_path).read_text(encoding="utf-8") == openbox_configuration_text()
+    assert panel.command == ("as-user", "tint2", "-c", display.panel_configuration_path)
+    assert Path(display.panel_configuration_path).read_text(encoding="utf-8") == panel_configuration_text()
+    assert "panel_items = TC" in panel_configuration_text()  # taskbar and clock, nothing else
     assert novnc.command[-1] == "0.0.0.0:6080"
     assert "TokenFile" in novnc.command
     assert novnc.ready is not None and novnc.ready() is False  # nothing listens on 6080 here
@@ -162,10 +170,24 @@ def test_prepare_refuses_a_plan_without_the_contained_display(tmp_path: Path) ->
         prepare_contained_display(plan, str(tmp_path), lambda command: command)
 
 
+def test_panel_is_skipped_and_announced_on_a_base_without_tint2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("devcapsule.container_runtime.display.os.geteuid", lambda: 1000)
+    monkeypatch.setattr("devcapsule.container_runtime.display.X_SOCKET_DIRECTORY", str(tmp_path / ".X11-unix"))
+    monkeypatch.setattr("devcapsule.container_runtime.display.shutil.which", lambda name: None)
+    plan = RuntimePlan.from_mapping(contained_document(tmp_path))
+    (tmp_path / "runtime").mkdir(mode=0o700)
+    display = prepare_contained_display(plan, str(tmp_path / "runtime"), lambda command: command)
+    assert [child.name for child in display.children] == [XVNC_CHILD, WINDOW_MANAGER_CHILD, NOVNC_CHILD]
+    assert "no tint2 panel (base recipe 9 adds it)" in capsys.readouterr().err
+
+
 def test_entrypoint_starts_display_infrastructure_before_the_surface(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, captured_supervisor: type[SupervisorCapture]
 ) -> None:
     monkeypatch.setattr("devcapsule.container_runtime.display.os.geteuid", lambda: 1000)
+    monkeypatch.setattr("devcapsule.container_runtime.display.shutil.which", lambda name: f"/usr/bin/{name}")
     monkeypatch.setattr("devcapsule.container_runtime.display.X_SOCKET_DIRECTORY", str(tmp_path / ".X11-unix"))
     monkeypatch.delenv("DISPLAY", raising=False)
     plan = RuntimePlan.from_mapping(contained_document(tmp_path))
@@ -174,8 +196,8 @@ def test_entrypoint_starts_display_infrastructure_before_the_surface(
 
     (supervisor,) = captured_supervisor.instances
     names = [child.name for child in supervisor.children]
-    assert names == [XVNC_CHILD, WINDOW_MANAGER_CHILD, NOVNC_CHILD, "jetbrains"]
-    assert [child.foreground for child in supervisor.children] == [False, False, False, True]
+    assert names == [XVNC_CHILD, WINDOW_MANAGER_CHILD, PANEL_CHILD, NOVNC_CHILD, "jetbrains"]
+    assert [child.foreground for child in supervisor.children] == [False, False, False, False, True]
     import os
 
     assert re.fullmatch(r":\d+", os.environ["DISPLAY"])
@@ -193,3 +215,31 @@ def test_entrypoint_declares_no_display_for_passthrough_or_headless(
     first, second = captured_supervisor.instances
     assert [child.name for child in first.children] == ["jetbrains"]
     assert [child.name for child in second.children] == ["job"]
+
+
+def test_openbox_configuration_removes_the_minimize_trap() -> None:
+    """The desktop has nowhere for a window to disappear into (owner finding 2026-09-14)."""
+
+    import xml.etree.ElementTree as ET
+
+    ns = {"ob": "http://openbox.org/3.4/rc"}
+    root = ET.fromstring(openbox_configuration_text())
+    assert root.findtext("ob:desktops/ob:number", namespaces=ns) == "1"
+    layout = root.findtext("ob:theme/ob:titleLayout", namespaces=ns)
+    assert layout is not None and "I" not in layout and "S" not in layout and "C" in layout
+    # The window list is one click away on the background, both buttons.
+    for context in root.findall("ob:mouse/ob:context", ns):
+        if context.get("name") == "Root":
+            menus = {m.text for m in context.findall("ob:mousebind/ob:action/ob:menu", ns)}
+            assert menus == {"client-list-combined-menu"}
+        if context.get("name") == "Desktop":
+            assert not [a for a in context.findall("ob:mousebind/ob:action", ns) if a.get("name") == "GoToDesktop"]
+    # Alt+Tab stays for hosts that let it through; no other chord is promised,
+    # because hosts reserve unpredictable keys (GNOME owns Alt+backquote).
+    keys = {k.get("key"): [a.get("name") for a in k.findall("ob:action", ns)] for k in root.findall("ob:keyboard/ob:keybind", ns)}
+    assert keys["A-Tab"] == ["NextWindow"] and "A-grave" not in keys
+    # Ordinary windows (the IDE) start maximized; dialogs are untouched.
+    apps = root.findall("ob:applications/ob:application", ns)
+    assert [(a.get("type"), a.findtext("ob:maximized", namespaces=ns)) for a in apps] == [("normal", "yes")]
+    # No reference to the Debian menu file that is absent from the base.
+    assert "debian-menu" not in openbox_configuration_text()
