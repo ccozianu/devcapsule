@@ -129,8 +129,8 @@ class HostDaemonLaunchContext:
         project: Path,
         runtime_plan: Path,
         docker_socket: Path,
-        x11_socket_directory: Path,
-        xauthority: Path,
+        x11_socket_directory: Path | None,
+        xauthority: Path | None,
         state_paths: Sequence[Path] = (),
     ) -> HostDaemonLaunchContext:
         if not preflight.ready or preflight.container is None:
@@ -143,11 +143,15 @@ class HostDaemonLaunchContext:
                 "current-runtime-plan", runtime_plan, PathAccess.read, PathKind.file
             ),
             MountRequirement("host-docker", docker_socket, PathAccess.write, PathKind.socket),
-            MountRequirement(
-                "x11", x11_socket_directory, PathAccess.read, PathKind.directory
-            ),
-            MountRequirement("xauthority", xauthority, PathAccess.read, PathKind.file),
         ]
+        # Host X11 passthrough forwards the session socket and credential;
+        # the contained display has neither (both None).
+        if x11_socket_directory is not None:
+            requirements.append(
+                MountRequirement("x11", x11_socket_directory, PathAccess.read, PathKind.directory)
+            )
+        if xauthority is not None:
+            requirements.append(MountRequirement("xauthority", xauthority, PathAccess.read, PathKind.file))
         requirements.extend(
             MountRequirement(
                 f"state-{index}", path, PathAccess.write, PathKind.directory
@@ -428,7 +432,7 @@ class RecursiveStagingArea:
         self,
         runtime_plan: RuntimePlan,
         *,
-        xauthority: Path,
+        xauthority: Path | None,
         host_docker_gid: int,
         sudo_gid: int | None = None,
         shadow_last_change: int | None = None,
@@ -486,17 +490,18 @@ class RecursiveStagingArea:
             )
         )
 
-        xauthority_path = self._copy_xauthority(xauthority)
-        staged.append(StagedFile("xauthority", xauthority_path, 0o600, True))
-        binds.append(
-            self.context.plan_bind(
-                xauthority_path,
-                XAUTHORITY_DESTINATION,
-                read_only=True,
-                kind=PathKind.file,
-                sensitive=True,
+        if xauthority is not None:
+            xauthority_path = self._copy_xauthority(xauthority)
+            staged.append(StagedFile("xauthority", xauthority_path, 0o600, True))
+            binds.append(
+                self.context.plan_bind(
+                    xauthority_path,
+                    XAUTHORITY_DESTINATION,
+                    read_only=True,
+                    kind=PathKind.file,
+                    sensitive=True,
+                )
             )
-        )
 
         if sudo_gid is not None:
             selected_day = int(time.time()) // 86400 if shadow_last_change is None else shadow_last_change

@@ -1,0 +1,35 @@
+{
+  "accepted-by": "github.com/ccozianu",
+  "candidate-sha256": "3e6aba41ca0ae2d1e9a29101e7a6290d67fd6d61e88ef52ca080d09a45c46322",
+  "candidate-tag": "v0.2.12-rc6",
+  "evidence": [
+    "Successful v0.2.12-rc6 run performed by github.com/ccozianu: the owner's dogfood capsule restarted from the published rc6 executable onto the pinned recipe-9 base (mycodespaceai/devcapsule-base@sha256:8837edd3...42f7c) with the contained desktop and the tint2 panel functional; https://github.com/ccozianu/devcapsule/releases/tag/v0.2.12-rc6",
+    "From a capsule on the same combination: a recursive successor launched by the rc6 executable on the pinned base passed all eleven launch checks and the independent stage-6 inspection; the runtime-image e2e passed on GitHub for rc6 and locally against the candidate base."
+  ],
+  "integration": {
+    "baseline": "fac3323ddc99a888c9592bb27ba87ab193a222c5",
+    "covers-release-delta": true,
+    "main-commits": [
+      "9a264e516c3e549788ea21cc5a7da2cba9dee8b4",
+      "d41199f8750c02b6716f37e7274f08d7b7952758",
+      "9f168603f0f793da4bf8cb6ea2479cbef8bf4a5e",
+      "8759c5c265e9b6458879db96c6da978054b495b7",
+      "ebcf392b347bc3273b76f27de56c07299161b17b",
+      "86439a1d82a8cc82d64d6f8f57b64a222088a593",
+      "cfa7224e886d82215d4ef91cc7e4c1aee636b27a",
+      "7e9493a7407d6662b7278b27f2451ebfcee70d9f",
+      "89f652eb647e33cc1860bb8893afd574c1c77e46",
+      "fc4d642f6ede541f00561660e5cc4a76594de239",
+      "4d72d6c74aab74f52f31eaada59a64e6f89778d3",
+      "3debc28ca34b33acd0d1d81f19d3a6b9b88ec0d0",
+      "83e1053bca3ada8b784aeb3ca4eecc417728e682",
+      "b07fca3e892413dad0e0f535cd7301e550cdcb3d"
+    ],
+    "method": "reviewed",
+    "rationale": "release-0.2.12 carries cherry-picks of commits merged to main through the contained-display/display-transport pull requests (#75, #78, #80 and the outbox PRs); every commit since the baseline was matched to its patch-equivalent main commit by git patch-id, so the release delta is exactly main's own changes",
+    "reviewed-by": "github.com/ccozianu"
+  },
+  "schema-version": 1,
+  "source-revision": "2916c4c09aee13eeed85276c1a32889515ce7b19",
+  "tag": "v0.2.12"
+}

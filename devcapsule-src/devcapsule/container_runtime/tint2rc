@@ -1,0 +1,73 @@
+# DevCapsule's tint2 panel for the contained display: a button per window
+# and a clock, at the bottom of the desktop, so a window that ends up hidden
+# (an application minimizing itself, a dialog behind the IDE) is one click
+# away for a browser user who has no host-level Alt+Tab. Written per run by
+# container_runtime/display.py. Keys are documented in tint2's manual.
+
+# Backgrounds: 1 = panel, 2 = active task, 3 = other tasks
+rounded = 0
+border_width = 0
+background_color = #2b2b2b 100
+border_color = #2b2b2b 100
+
+rounded = 3
+border_width = 0
+background_color = #5a5a5a 100
+border_color = #5a5a5a 100
+
+rounded = 3
+border_width = 0
+background_color = #3c3c3c 100
+border_color = #3c3c3c 100
+
+# Panel
+panel_items = TC
+panel_position = bottom center horizontal
+panel_size = 100% 30
+panel_margin = 0 0
+panel_padding = 4 2 6
+panel_background_id = 1
+panel_layer = normal
+panel_monitor = all
+strut_policy = follow_size
+wm_menu = 0
+panel_dock = 0
+autohide = 0
+
+# Taskbar
+taskbar_mode = single_desktop
+taskbar_padding = 0 0 4
+taskbar_background_id = 0
+taskbar_name = 0
+
+# Tasks
+task_text = 1
+task_icon = 1
+task_centered = 0
+urgent_nb_of_blink = 8
+task_maximum_size = 260 30
+task_padding = 8 3 8
+task_font = sans 10
+task_tooltip = 1
+task_font_color = #dddddd 100
+task_active_font_color = #ffffff 100
+task_background_id = 3
+task_active_background_id = 2
+task_urgent_background_id = 2
+mouse_left = toggle_iconify
+mouse_middle = none
+mouse_right = close
+mouse_scroll_up = none
+mouse_scroll_down = none
+
+# Clock
+time1_format = %H:%M
+time1_font = sans 10
+clock_font_color = #dddddd 100
+clock_padding = 8 0
+clock_background_id = 0
+
+# Tooltips
+tooltip_show_timeout = 0.5
+tooltip_hide_timeout = 0.2
+tooltip_font = sans 9

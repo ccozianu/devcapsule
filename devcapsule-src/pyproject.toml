@@ -47,6 +47,10 @@ include = ["devcapsule*"]
 "devcapsule" = [
   "_build_info.json",
 ]
+"devcapsule.container_runtime" = [
+  "openbox-rc.xml",
+  "tint2rc",
+]
 "devcapsule.assets.docker4pycharm" = [
   "Dockerfile",
   "*.sh",

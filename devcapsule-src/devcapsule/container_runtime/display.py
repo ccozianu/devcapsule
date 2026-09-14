@@ -9,8 +9,14 @@ it and starts them, in order, ahead of the interactive surface:
    changed. It serves RFB on a Unix socket only and gates X clients with a
    per-run cookie.
 2. ``openbox`` — a window manager, because Java IDEs need one for focus,
-   dialogs and popups.
-3. ``websockify`` — serves noVNC's page and bridges WebSocket to the RFB
+   dialogs and popups. It runs DevCapsule's own configuration
+   (``openbox-rc.xml`` beside this module), not the distribution default:
+   one desktop, no minimize button, the surface maximized, the window list
+   on a background click. A minimized IDE with no panel and Alt+Tab owned by
+   the host is unrecoverable from a browser (owner finding 2026-09-14).
+3. ``tint2`` — a panel with a button per window and a clock, so a hidden
+   window is one click away; browser users have no host-level Alt+Tab.
+4. ``websockify`` — serves noVNC's page and bridges WebSocket to the RFB
    socket, admitting only requests that carry the run's token.
 
 The surface then runs with ``DISPLAY`` and ``XAUTHORITY`` pointing at that
@@ -21,12 +27,15 @@ display-transport-design.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib import resources
 import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import socket
 import struct
+import sys
 from typing import Callable
 
 from .contract import RuntimePlan, RuntimePlanError
@@ -47,8 +56,12 @@ DEFAULT_GEOMETRY = "1920x1080"
 DEFAULT_DEPTH = "24"
 DEFAULT_DPI = "96"
 
+OPENBOX_CONFIGURATION_RESOURCE = "openbox-rc.xml"
+PANEL_CONFIGURATION_RESOURCE = "tint2rc"
+
 XVNC_CHILD = "xvnc"
 WINDOW_MANAGER_CHILD = "window-manager"
+PANEL_CHILD = "panel"
 NOVNC_CHILD = "novnc"
 
 # Xauthority entry families (libXau): a wildcard entry matches any address, so
@@ -68,6 +81,8 @@ class ContainedDisplay:
     display_number: int
     xauthority_path: str
     rfb_socket_path: str
+    openbox_configuration_path: str
+    panel_configuration_path: str
 
 
 def prepare_contained_display(
@@ -101,6 +116,13 @@ def prepare_contained_display(
     xauthority = directory / "Xauthority"
     write_xauthority(xauthority, display_number, secrets.token_bytes(16))
     _own(xauthority, plan)
+
+    openbox_configuration = directory / OPENBOX_CONFIGURATION_RESOURCE
+    openbox_configuration.write_text(openbox_configuration_text(), encoding="utf-8")
+    _own(openbox_configuration, plan)
+    panel_configuration = directory / PANEL_CONFIGURATION_RESOURCE
+    panel_configuration.write_text(panel_configuration_text(), encoding="utf-8")
+    _own(panel_configuration, plan)
 
     rfb_socket = directory / "rfb.sock"
     tokens = directory / "tokens"
@@ -140,8 +162,9 @@ def prepare_contained_display(
         ),
         SupervisedChild(
             name=WINDOW_MANAGER_CHILD,
-            command=run_as_identity(("openbox",)),
+            command=run_as_identity(("openbox", "--config-file", str(openbox_configuration))),
         ),
+        *panel_children(run_as_identity, panel_configuration),
         SupervisedChild(
             name=NOVNC_CHILD,
             command=run_as_identity(
@@ -157,7 +180,51 @@ def prepare_contained_display(
         ),
     )
     environment = {"DISPLAY": display_name, "XAUTHORITY": str(xauthority)}
-    return ContainedDisplay(children, environment, display_number, str(xauthority), str(rfb_socket))
+    return ContainedDisplay(
+        children,
+        environment,
+        display_number,
+        str(xauthority),
+        str(rfb_socket),
+        str(openbox_configuration),
+        str(panel_configuration),
+    )
+
+
+def panel_children(run_as_identity: CommandWrapper, configuration: Path) -> tuple[SupervisedChild, ...]:
+    """The panel child, or nothing on a base that predates it (recipe 8).
+
+    The runtime is launcher-supplied and runs on any base carrying the
+    display label; the panel arrived one recipe later, so its absence is a
+    known, announced degradation rather than a failed start.
+    """
+
+    if shutil.which("tint2") is None:
+        print(
+            "devcapsule display: this base has no tint2 panel (base recipe 9 adds it); "
+            "the window list stays on a middle or right click on the desktop background",
+            file=sys.stderr,
+            flush=True,
+        )
+        return ()
+    return (
+        SupervisedChild(
+            name=PANEL_CHILD,
+            command=run_as_identity(("tint2", "-c", str(configuration))),
+        ),
+    )
+
+
+def openbox_configuration_text() -> str:
+    """DevCapsule's Openbox configuration, shipped inside the package."""
+
+    return (resources.files(__package__) / OPENBOX_CONFIGURATION_RESOURCE).read_text(encoding="utf-8")
+
+
+def panel_configuration_text() -> str:
+    """DevCapsule's tint2 panel configuration, shipped inside the package."""
+
+    return (resources.files(__package__) / PANEL_CONFIGURATION_RESOURCE).read_text(encoding="utf-8")
 
 
 def x_socket_path(display_number: int) -> str:

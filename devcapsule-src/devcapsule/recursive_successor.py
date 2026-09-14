@@ -22,7 +22,8 @@ from devcapsule.configurations.pycharm._launcher import (
     cleanup_temp_runtime_files,
     prepare_temp_runtime_files,
 )
-from devcapsule.container_runtime.contract import RuntimePlan, RuntimePlanError
+from devcapsule.container_runtime.contract import CONTAINED_DISPLAY_TRANSPORT, RuntimePlan, RuntimePlanError
+from devcapsule.display_client import display_url, select_display_transport
 from devcapsule.environment_realization import realize_environment
 from devcapsule.materialization import RUNTIME_PLAN_PATH as SUCCESSOR_RUNTIME_PLAN_PATH
 from devcapsule.project import project_namespace
@@ -73,6 +74,10 @@ class SuccessorResult:
     image_id: str
     state: str
     checks: Mapping[str, str]
+    # The contained display's per-run URL, or None under host X11 passthrough.
+    # The detached launch has no foreground watcher to open it, so it is
+    # reported here for the operator to open.
+    display_url: str | None = None
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -81,6 +86,7 @@ class SuccessorResult:
             "container_id": self.container_id,
             "container_name": self.container_name,
             "image_id": self.image_id,
+            "display_url": self.display_url,
             "state": self.state,
             "checks": dict(self.checks),
         }
@@ -135,8 +141,12 @@ def launch_successor(
         name=name,
         run_id=run_id,
         source_revision=source_revision,
+        image_labels=realized.image.labels,
     )
     config = build_run_config(options, env)
+    successor_display_url: str | None = None
+    if config.display_transport == CONTAINED_DISPLAY_TRANSPORT and config.display_host_port is not None:
+        successor_display_url = display_url(config.display_host_port, config.display_token)
 
     staging = run_root / "staging"
     try:
@@ -228,6 +238,7 @@ def launch_successor(
             realized.image.identity,
             "running",
             checks,
+            successor_display_url,
         )
     except (HostContextError, OSError, PycharmRunError) as exc:
         raise RecursiveSuccessorError(str(exc)) from exc
@@ -364,6 +375,7 @@ def _resolved_run_options(
     name: str,
     run_id: str,
     source_revision: str,
+    image_labels: Mapping[str, str] | None = None,
 ) -> PycharmRunOptions:
     runtime = selected.resolution.get("runtime", {})
     state_root = selected.resolution.get("state", {})
@@ -390,6 +402,11 @@ def _resolved_run_options(
     )
     if not isinstance(secret_environment, dict):
         raise RecursiveSuccessorError("resolved secret environment bindings are invalid")
+    # The successor chooses its display the way `project run` does: from the
+    # image's display stack and the checkout's recorded host-x11 answer.
+    display_transport, _reason = select_display_transport(
+        image_labels or {}, host_x11_answer=authorization.get("host-x11")
+    )
     return PycharmRunOptions(
         project=selected.root,
         project_mount=str(runtime["project-mount"]),
@@ -416,6 +433,7 @@ def _resolved_run_options(
         ),
         additional_environment=successor_runtime_environment(run_id),
         enable_host_browser=True,
+        display_transport=display_transport,
         secret_environment=tuple(sorted(str(value) for value in secret_environment.values())),
         extra_docker_args=[
             "--pull=never",

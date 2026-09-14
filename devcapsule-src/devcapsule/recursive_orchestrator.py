@@ -140,10 +140,15 @@ def prepare_recursive_e2e_dry_run(
         raise RecursiveE2EError(f"cannot load the recursive runtime plan: {exc}") from exc
 
     selected_docker_socket = docker_socket_path(env.get("DOCKER_HOST"))
-    xauthority_value = env.get("XAUTHORITY")
-    if not xauthority_value:
-        raise RecursiveE2EError("XAUTHORITY is required for recursive successor planning")
-    xauthority = Path(xauthority_value).expanduser().resolve()
+    # On the contained display nothing of the host X session exists to
+    # forward; the successor gets its own desktop from its runtime plan.
+    contained_display = runtime_plan.display is not None and runtime_plan.display.is_contained
+    xauthority: Path | None = None
+    if not contained_display:
+        xauthority_value = env.get("XAUTHORITY")
+        if not xauthority_value:
+            raise RecursiveE2EError("XAUTHORITY is required for recursive successor planning")
+        xauthority = Path(xauthority_value).expanduser().resolve()
     state_paths = tuple(Path(slot.path) for slot in runtime_plan.state_slots)
     try:
         context = HostDaemonLaunchContext.for_recursive_dogfood(
@@ -152,7 +157,7 @@ def prepare_recursive_e2e_dry_run(
             project=project_root,
             runtime_plan=selected_runtime_plan,
             docker_socket=selected_docker_socket,
-            x11_socket_directory=X11_SOCKET_DIRECTORY,
+            x11_socket_directory=None if contained_display else X11_SOCKET_DIRECTORY,
             xauthority=xauthority,
             state_paths=state_paths,
         )
@@ -181,6 +186,7 @@ def prepare_recursive_e2e_dry_run(
                 docker_socket=selected_docker_socket,
                 state_paths=state_paths,
                 staged_launch=staged_launch,
+                forward_x11=not contained_display,
             )
     except (HostContextError, OSError) as exc:
         preserved = (
@@ -212,6 +218,7 @@ def _planned_runtime_binds(
     docker_socket: Path,
     state_paths: tuple[Path, ...],
     staged_launch: StagedLaunchFiles,
+    forward_x11: bool = True,
 ) -> tuple[PlannedBindMount, ...]:
     binds = [
         context.plan_bind(
@@ -232,13 +239,16 @@ def _planned_runtime_binds(
             read_only=False,
             kind=PathKind.socket,
         ),
-        context.plan_bind(
-            X11_SOCKET_DIRECTORY,
-            str(X11_SOCKET_DIRECTORY),
-            read_only=True,
-            kind=PathKind.directory,
-        ),
     ]
+    if forward_x11:
+        binds.append(
+            context.plan_bind(
+                X11_SOCKET_DIRECTORY,
+                str(X11_SOCKET_DIRECTORY),
+                read_only=True,
+                kind=PathKind.directory,
+            )
+        )
     binds.extend(
         context.plan_bind(
             source,

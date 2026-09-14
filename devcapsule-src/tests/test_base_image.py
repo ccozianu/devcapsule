@@ -84,10 +84,11 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "8") in plan.labels
+    assert ("devcapsule.base.recipe-version", "9") in plan.labels
     # Recipe 8 ships the contained display stack and says so, which is how
-    # the launcher decides the capsule needs no host X session.
-    for package in ("tigervnc-standalone-server", "xfonts-base", "novnc", "python3-websockify", "openbox"):
+    # the launcher decides the capsule needs no host X session; recipe 9
+    # adds the panel.
+    for package in ("tigervnc-standalone-server", "xfonts-base", "novnc", "python3-websockify", "openbox", "tint2"):
         assert package in plan.apt_packages
     assert ("devcapsule.base.display", "contained") in plan.labels
     # Recipe 5 adds the redistributable PostgreSQL client so projects can

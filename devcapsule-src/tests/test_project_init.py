@@ -939,12 +939,12 @@ def test_init_unverified_resolves_past_the_matrix_with_a_gentle_warning(
         # exists, and the strict form discloses the gap and the experiment.
         assert cli.main(need) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.1.24 on base v0.2.10." in refusal
+        assert "Not yet validated: antigravity-cli 1.1.24 on base v0.2.12-rc5." in refusal
         assert "Run it as an experiment with --unverified" in refusal
 
         assert cli.main([*need, "--unverified"]) == 0
         warning = capsys.readouterr().err
-        assert "Running as an experiment. Not yet validated: antigravity-cli 1.1.24 on base v0.2.10." in warning
+        assert "Running as an experiment. Not yet validated: antigravity-cli 1.1.24 on base v0.2.12-rc5." in warning
 
     lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
     assert "antigravity-cli" in lock["unverified-combinations"]
@@ -1244,7 +1244,7 @@ def test_config_need_offers_and_accepts_the_experiment_lever(tmp_path: Path, cap
 
         assert cli.main(grow) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.1.24 on base v0.2.10." in refusal
+        assert "Not yet validated: antigravity-cli 1.1.24 on base v0.2.12-rc5." in refusal
         assert "Run it as an experiment with --unverified" in refusal
         manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
         assert manifest["capabilities"]["need"] == ["python", "python-ide"]
@@ -1255,7 +1255,7 @@ def test_config_need_offers_and_accepts_the_experiment_lever(tmp_path: Path, cap
         manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
         assert manifest["capabilities"]["need"] == ["antigravity-agent", "python", "python-ide"]
         lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
-        assert lock["unverified-combinations"] == "antigravity-cli 1.1.24 on base v0.2.10"
+        assert lock["unverified-combinations"] == "antigravity-cli 1.1.24 on base v0.2.12-rc5"
 
 
 def test_init_report_shows_recommendation_values_and_how_each_node_was_settled(
