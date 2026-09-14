@@ -863,6 +863,17 @@ such as Ctrl+W, Ctrl+T, Ctrl+N and Alt+Tab, never reach the capsule in any
 mode; closing the tab by accident does not end the session, and the printed
 URL reopens it.
 
+**The desktop itself.** Openbox runs DevCapsule's own configuration, not
+the distribution default, because a browser-reached desktop with no panel
+must have nowhere for a window to disappear into: there is one virtual
+desktop and the mouse wheel over the background does not switch desktops;
+title bars carry no minimize (or shade) button; the IDE starts maximized
+and follows the browser window; a middle or right click on the empty
+background shows the window list; Alt+Tab cycles windows when the host lets
+it through, and Alt+backquote does the same on hosts and browsers that
+reserve Alt+Tab. Should a window still end up hidden — an application can
+minimize itself — the background click brings it back.
+
 **Clipboard.** The capsule cannot see your host clipboard, and that is by
 design: nothing crosses without your gesture on the noVNC side. Text copied
 inside the capsule appears in the clipboard box on noVNC's side bar, from
