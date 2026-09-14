@@ -287,6 +287,21 @@ clean-clone protocol test only runs in a capsule launched from a
 revision-stamped executable (this one runs the local build), so it is
 evidence for the next candidate-launched capsule.
 
+**Recipe-9 base published and pinned; default flipped, 2026-09-14:** built
+the v0.2.12-rc5 candidate from a clean checkout of its tag the way the
+workflow does (GitHub's build was still queued; the base embeds only
+provenance, not the executable), built the recipe-9 base with it, and
+pushed `mycodespaceai/devcapsule-base:v0.2.12-rc5`, digest
+`sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c`,
+re-inspected from the registry (recipe 9, display=contained, tint2
+present). The matrix pin `_V0_2_12_BASE` now names it (`embedded-20`) and
+retires the recipe-8 rc3 base explicitly; golden locks and this
+repository's lock regenerated; this checkout authorizes the new digest.
+**The unanswered `host-x11` now means the contained desktop** (T7a
+exception closed; README's release-candidate paragraph removed; tests
+updated). Next: PR, then `v0.2.12-rc6` as the acceptance candidate; at the
+final, retag the same image as `v0.2.12`.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot
