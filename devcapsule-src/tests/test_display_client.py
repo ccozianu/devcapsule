@@ -107,6 +107,5 @@ def test_transport_selection_is_shared_and_stage_aware() -> None:
         "contained",
         "Display: contained desktop, reached through your browser; no host X session is shared.",
     )
-    # Release-candidate exception: unanswered means passthrough, and the reason names the opt-in.
-    transport, reason = select_display_transport(contained, host_x11_answer=None)
-    assert transport == "host-x11" and "host-x11 false" in reason
+    # Unanswered means the contained desktop: adopters do nothing to get the safe default.
+    assert select_display_transport(contained, host_x11_answer=None)[0] == "contained"

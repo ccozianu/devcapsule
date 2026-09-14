@@ -35,12 +35,11 @@ _READY_POLL_SECONDS = 0.25
 Opener = Callable[[str], None]
 
 # What an *unanswered* ``host-x11`` means on an image that has the display
-# stack. Product-owner exception of 2026-09-13 for the v0.2.12 release
-# candidates: passthrough stays the default while the contained desktop is
-# under test, and the developer opts in by answering ``host-x11 false``. At
-# release this flips to CONTAINED_DISPLAY_TRANSPORT, which is the decided
-# default (contained-display design note, T6/T7); nothing else changes.
-UNANSWERED_HOST_X11_DISPLAY_TRANSPORT = HOST_X11_DISPLAY_TRANSPORT
+# stack: the contained desktop, the decided default (contained-display
+# design note, T6/T7). During the v0.2.12 candidates this was passthrough
+# under a product-owner exception (2026-09-13, T7a); flipped for the
+# release on 2026-09-14. A recorded ``false`` is now merely explicit.
+UNANSWERED_HOST_X11_DISPLAY_TRANSPORT = CONTAINED_DISPLAY_TRANSPORT
 
 
 def select_display_transport(image_labels: Mapping[str, str], *, host_x11_answer: object) -> tuple[str, str]:
@@ -48,8 +47,8 @@ def select_display_transport(image_labels: Mapping[str, str], *, host_x11_answer
 
     An image without the display stack (before base recipe 8, labelled by the
     base build) can only do host X11 passthrough. On a capable image the
-    developer's ``host-x11`` answer decides: ``true`` is passthrough, ``false``
-    is the contained desktop, and no answer takes the stage default above.
+    developer's ``host-x11`` answer decides: ``true`` is passthrough, and
+    ``false`` or no answer is the contained desktop, the default above.
     Shared by ``project run`` and the recursive successor launch so both
     choose the same way.
     """
