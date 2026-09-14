@@ -44,11 +44,7 @@ from devcapsule.configuration_nodes import (
     build_node_registry,
 )
 from devcapsule.environment_realization import realize_environment, required_local_image
-from devcapsule.base_image import CONTAINED_DISPLAY_LABEL_VALUE, DISPLAY_LABEL
-from devcapsule.container_runtime.contract import (
-    CONTAINED_DISPLAY_TRANSPORT,
-    HOST_X11_DISPLAY_TRANSPORT,
-)
+from devcapsule.display_client import select_display_transport
 from devcapsule.materialization import validate_base_image
 from devcapsule.project import project_namespace
 from devcapsule.project_operations import (
@@ -1110,47 +1106,12 @@ class ProjectRunCommand(Command):
         return exit_code
 
 
-# What an *unanswered* ``host-x11`` means on an image that has the display
-# stack. Product-owner exception of 2026-09-13 for the v0.2.12 release
-# candidates: passthrough stays the default while the contained desktop is
-# under test, and the developer opts in by answering ``host-x11 false``. At
-# release this flips to CONTAINED_DISPLAY_TRANSPORT, which is the decided
-# default (contained-display design note, T6/T7); nothing else changes.
-UNANSWERED_HOST_X11_DISPLAY_TRANSPORT = HOST_X11_DISPLAY_TRANSPORT
-
-
 def _select_display_transport(image_labels: Mapping[str, str], *, host_x11_answer: object) -> str:
-    """Choose the display transport for this run and say why, once.
+    """Choose the display transport for this run and say why, once."""
 
-    An image without the display stack (before base recipe 8, labelled by the
-    base build) can only do host X11 passthrough. On a capable image the
-    developer's ``host-x11`` answer decides: ``true`` is passthrough, ``false``
-    is the contained desktop, and no answer takes the stage default above.
-    The reason is printed so the run's transport is never a silent guess.
-    """
-
-    display_capable = image_labels.get(DISPLAY_LABEL) == CONTAINED_DISPLAY_LABEL_VALUE
-    if not display_capable:
-        print(
-            "Display: host X11 passthrough; this image predates the contained display "
-            "(base recipe 8). Regenerating onto a newer base closes the exposure."
-        )
-        return HOST_X11_DISPLAY_TRANSPORT
-    if host_x11_answer is True:
-        print(
-            "Display: host X11 passthrough, authorized by 'host-x11'; the capsule receives "
-            "your full X session credential and the boundary test is waived for this run."
-        )
-        return HOST_X11_DISPLAY_TRANSPORT
-    if host_x11_answer is None and UNANSWERED_HOST_X11_DISPLAY_TRANSPORT == HOST_X11_DISPLAY_TRANSPORT:
-        print(
-            "Display: host X11 passthrough, the release-candidate default; the capsule receives "
-            "your full X session credential. Answer 'host-x11 false' (--authorize host-x11 false, "
-            "or 'config authorize host-x11 false') to use the contained desktop instead."
-        )
-        return HOST_X11_DISPLAY_TRANSPORT
-    print("Display: contained desktop, reached through your browser; no host X session is shared.")
-    return CONTAINED_DISPLAY_TRANSPORT
+    transport, reason = select_display_transport(image_labels, host_x11_answer=host_x11_answer)
+    print(reason)
+    return transport
 
 
 def _run_once_answers(

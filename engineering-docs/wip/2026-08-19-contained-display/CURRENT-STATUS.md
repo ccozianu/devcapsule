@@ -240,6 +240,26 @@ raw X11 client and asserts our file and one desktop. Recovery on an
 unfixed capsule: middle-click the empty background. A full desktop or panel
 remains post-V1 (supervisor design note, non-goals).
 
+**Recursive dogfood on the contained display, 2026-09-14:** the recursive
+path assumed host X11 passthrough end to end — the preflight required the
+X socket mount and a bind-mounted Xauthority, the dry run forwarded both
+into the successor, and the successor launch never chose a transport. Now
+the preflight and dry run read the current capsule's runtime plan and, on
+the contained display, forward nothing (the host launch context and staging
+take optional X material); the successor launch selects its transport the
+way `project run` does, through the shared `select_display_transport` in
+`display_client`, and reports the successor's display URL in its result
+since a detached launch has no watcher to open it. Verified from this
+capsule: a retained run with a clean detached clone registered as its own
+checkout (`checkout register`, the shared-config lock makes the clone
+necessary), `launch-successor` ran a successor on `:11` with Xvnc, Openbox,
+websockify and PyCharm under PID 1, all eleven launch checks and the
+independent `inspect-successor` passed, and the bridge answered on the
+host loopback port. Unit tests cover the contained preflight, the dry run
+without X material, the shared selection and the result field. The
+display-label constants moved to `image_metadata` to break an import cycle
+between the launcher and the base builder.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot

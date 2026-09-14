@@ -94,3 +94,19 @@ def test_default_opener_prefers_the_host_bridge_inside_a_capsule(capsys: pytest.
     ):
         default_opener({})("http://u")
         assert "opened in your browser" in capsys.readouterr().err
+
+
+def test_transport_selection_is_shared_and_stage_aware() -> None:
+    from devcapsule.display_client import select_display_transport
+
+    contained = {"devcapsule.base.display": "contained"}
+    assert select_display_transport({}, host_x11_answer=None)[0] == "host-x11"
+    assert "predates" in select_display_transport({}, host_x11_answer=False)[1]
+    assert select_display_transport(contained, host_x11_answer=True)[0] == "host-x11"
+    assert select_display_transport(contained, host_x11_answer=False) == (
+        "contained",
+        "Display: contained desktop, reached through your browser; no host X session is shared.",
+    )
+    # Release-candidate exception: unanswered means passthrough, and the reason names the opt-in.
+    transport, reason = select_display_transport(contained, host_x11_answer=None)
+    assert transport == "host-x11" and "host-x11 false" in reason
