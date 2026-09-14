@@ -277,6 +277,16 @@ panel, the e2e's process check now includes tint2. Release: a recipe-9 base
 must be built and pushed by the owner and repinned before the flip
 candidate; the local twin for the spin is `devcapsule-base:v0.2.12-tint2`.
 
+**Owner acceptance of the desktop shape, 2026-09-14:** on the recipe-9
+successor ("clear and comfortable for the user"): no minimize button in
+the title bar, minimizing from the window menu still possible and the
+window promptly back from the tint2 task bar. The desktop shape — Openbox
+on DevCapsule's configuration, maximized surface, tint2 panel — is the
+one to ship. The recursive dry run passed on the contained display; the
+clean-clone protocol test only runs in a capsule launched from a
+revision-stamped executable (this one runs the local build), so it is
+evidence for the next candidate-launched capsule.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot
