@@ -2,7 +2,12 @@
 
 Date opened: 2026-08-16
 
-Status: open
+Status: resolved in v0.2.12 (2026-09-14). The capsule runs its own display
+(Xvnc, Openbox, tint2, noVNC) by default on base recipe 9; no host X socket,
+credential, or `DISPLAY` crosses into the container. Host X11 passthrough
+survives only behind the explicit `host-x11` authorization, whose grant the
+launch states as this exposure. See the contained-display workstream's
+[design note](../../wip/2026-08-19-contained-display/display-transport-design.md).
 
 Requirements: R-SCOPE-001, R-PRODUCT-002, R-DOCKER-001
 

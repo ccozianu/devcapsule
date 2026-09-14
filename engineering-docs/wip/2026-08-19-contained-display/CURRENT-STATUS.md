@@ -302,6 +302,22 @@ exception closed; README's release-candidate paragraph removed; tests
 updated). Next: PR, then `v0.2.12-rc6` as the acceptance candidate; at the
 final, retag the same image as `v0.2.12`.
 
+**Released: v0.2.12, 2026-09-14.** The owner restarted the dogfood capsule
+from the published rc6 executable onto the pinned recipe-9 base and found
+the panel functional ("the pane is up indeed, and functional"); the
+promotion record (`engineering-docs/releases/v0.2.12.json`, reviewed
+method, fourteen release-branch commits mapped to main) reached main
+through PR #81 after PR #79 had merged the release branch itself; the
+final tag `v0.2.12` was pushed at the rc6 commit `2916c4c` after the final
+gate passed locally against main, and GitHub published the final:
+checksum verified, version 0.2.12, manifest promoting rc6 against main
+`65d0410`. The base is retagged `mycodespaceai/devcapsule-base:v0.2.12` on
+the pinned digest. The X11 passthrough bug record is marked resolved. What
+remains for this workstream is records: the V1 ledger row's ratification is
+project-management's to record from this evidence, the reconnect and WSL2
+opener threads stay open, and the sample submodule locks still pin
+v0.2.10.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot
