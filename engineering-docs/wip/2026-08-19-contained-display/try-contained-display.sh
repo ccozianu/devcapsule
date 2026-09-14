@@ -64,8 +64,8 @@ cmd_select() {
 cmd_contained() {
     say "Default run: contained desktop. Watch for 'Display: contained desktop' and the noVNC URL."
     say "Closing the browser tab does not end the session; closing the IDE or Ctrl-C does."
-    # During the v0.2.12 candidates an unanswered host-x11 means passthrough;
-    # answering false is the opt-in (release-candidate exception, 2026-09-13).
+    # An unanswered host-x11 means the contained desktop since the release
+    # flip (2026-09-14); the explicit false is kept so the step reads plainly.
     "$PEX" project --path "$PROJECT" run --name "$CONTAINER" --authorize host-x11 false
 }
 

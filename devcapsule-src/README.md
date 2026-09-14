@@ -825,14 +825,6 @@ retains working links only while that owning outer launch remains alive.
 
 #### Display
 
-**Release-candidate exception (v0.2.12 candidates).** While the contained
-desktop is under test, an unanswered `host-x11` still means host X11
-passthrough on every image, and the launch says so. Opt into the contained
-desktop for one launch with `project run --authorize host-x11 false`, or for
-the checkout with `devcapsule project config authorize host-x11 false`. At
-release the unanswered default flips to the contained desktop described
-below; the `host-x11` answers keep their meaning.
-
 When the materialized image carries the display stack (base recipe 8 and
 later), `project run` gives the capsule its **own desktop**: the entrypoint
 starts `Xvnc`, Openbox, and a noVNC bridge as supervised infrastructure

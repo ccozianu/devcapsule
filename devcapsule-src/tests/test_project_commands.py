@@ -1956,11 +1956,9 @@ def test_run_selects_the_display_transport_from_the_image_and_the_host_x11_answe
     assert "authorized by 'host-x11'" in capsys.readouterr().out
     assert _select_display_transport({}, host_x11_answer=None) == "host-x11"
     assert "predates the contained display" in capsys.readouterr().out
-    # Release-candidate exception (owner, 2026-09-13): unanswered means
-    # passthrough until release; the message says how to opt in.
-    assert _select_display_transport(contained, host_x11_answer=None) == "host-x11"
-    out = capsys.readouterr().out
-    assert "release-candidate default" in out and "host-x11 false" in out
+    # Unanswered means the contained desktop (flipped for the release 2026-09-14).
+    assert _select_display_transport(contained, host_x11_answer=None) == "contained"
+    assert "contained desktop" in capsys.readouterr().out
 
 
 def test_run_passes_the_selected_transport_and_accepts_host_x11_run_once(
@@ -1989,7 +1987,7 @@ def test_run_passes_the_selected_transport_and_accepts_host_x11_run_once(
             patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch,
         ):
             assert cli.main(["project", "--path", str(project), "run"]) == 0
-            assert launch.call_args.args[0].display_transport == "host-x11"  # RC default, unanswered
+            assert launch.call_args.args[0].display_transport == "contained"  # unanswered: the safe default
             assert cli.main(["project", "--path", str(project), "run", "--authorize", "host-x11", "false"]) == 0
             assert launch.call_args.args[0].display_transport == "contained"
             assert cli.main(["project", "--path", str(project), "run", "--authorize", "host-x11", "true"]) == 0
