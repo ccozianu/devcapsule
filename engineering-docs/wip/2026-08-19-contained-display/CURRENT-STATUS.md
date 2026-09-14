@@ -222,6 +222,24 @@ project submodules' locks still pin v0.2.10 (regenerating them is a commit
 in each sample repository); at the final release, retag the same image as
 `v0.2.12` and let the pin's mnemonic follow in the flip candidate.
 
+**Minimize trap fixed, 2026-09-14:** on Windows the owner minimized PyCharm
+from Openbox's title-bar button and could not get it back — no panel, and
+Alt+Tab is consumed by the host before the browser page sees it — leaving
+the IDE and the agent running unattended. Cause: Openbox ran its packaged
+default (iconify button, four desktops switched by the wheel over the
+background, Debian root menu). Fix, portable to Linux since noVNC makes the
+bugs portable too: the runtime writes DevCapsule's own `openbox-rc.xml`
+(shipped as a package resource, derived from the default) per run and
+starts Openbox with `--config-file`: one desktop, no iconify/shade buttons,
+the surface maximized, window list on middle and right background click,
+Alt+backquote beside Alt+Tab. No base change: the configuration lives in
+the launcher-supplied runtime. Evidence: unit tests on the configuration
+and the child command; the runtime-image e2e now reads Openbox's
+`_OB_CONFIG_FILE` and `_NET_NUMBER_OF_DESKTOPS` root properties through a
+raw X11 client and asserts our file and one desktop. Recovery on an
+unfixed capsule: middle-click the empty background. A full desktop or panel
+remains post-V1 (supervisor design note, non-goals).
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot

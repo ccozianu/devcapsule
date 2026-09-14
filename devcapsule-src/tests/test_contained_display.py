@@ -14,6 +14,7 @@ from devcapsule.container_runtime.display import (
     NOVNC_CHILD,
     WINDOW_MANAGER_CHILD,
     XVNC_CHILD,
+    openbox_configuration_text,
     prepare_contained_display,
     read_token,
     select_display_number,
@@ -118,7 +119,8 @@ def test_prepared_display_declares_children_and_files(tmp_path: Path, monkeypatc
     assert ("-rfbunixpath", display.rfb_socket_path) == xvnc.command[xvnc.command.index("-rfbunixpath"):][:2]
     assert ("-auth", display.xauthority_path) == xvnc.command[xvnc.command.index("-auth"):][:2]
     assert xvnc.ready is not None and xvnc.ready() is False  # no X server in the test process
-    assert window_manager.command == ("as-user", "openbox")
+    assert window_manager.command == ("as-user", "openbox", "--config-file", display.openbox_configuration_path)
+    assert Path(display.openbox_configuration_path).read_text(encoding="utf-8") == openbox_configuration_text()
     assert novnc.command[-1] == "0.0.0.0:6080"
     assert "TokenFile" in novnc.command
     assert novnc.ready is not None and novnc.ready() is False  # nothing listens on 6080 here
@@ -193,3 +195,30 @@ def test_entrypoint_declares_no_display_for_passthrough_or_headless(
     first, second = captured_supervisor.instances
     assert [child.name for child in first.children] == ["jetbrains"]
     assert [child.name for child in second.children] == ["job"]
+
+
+def test_openbox_configuration_removes_the_minimize_trap() -> None:
+    """The desktop has nowhere for a window to disappear into (owner finding 2026-09-14)."""
+
+    import xml.etree.ElementTree as ET
+
+    ns = {"ob": "http://openbox.org/3.4/rc"}
+    root = ET.fromstring(openbox_configuration_text())
+    assert root.findtext("ob:desktops/ob:number", namespaces=ns) == "1"
+    layout = root.findtext("ob:theme/ob:titleLayout", namespaces=ns)
+    assert layout is not None and "I" not in layout and "S" not in layout and "C" in layout
+    # The window list is one click away on the background, both buttons.
+    for context in root.findall("ob:mouse/ob:context", ns):
+        if context.get("name") == "Root":
+            menus = {m.text for m in context.findall("ob:mousebind/ob:action/ob:menu", ns)}
+            assert menus == {"client-list-combined-menu"}
+        if context.get("name") == "Desktop":
+            assert not [a for a in context.findall("ob:mousebind/ob:action", ns) if a.get("name") == "GoToDesktop"]
+    # Alt+Tab stays; Alt+backquote is the chord no host or browser owns.
+    keys = {k.get("key"): [a.get("name") for a in k.findall("ob:action", ns)] for k in root.findall("ob:keyboard/ob:keybind", ns)}
+    assert keys["A-Tab"] == ["NextWindow"] and keys["A-grave"] == ["NextWindow"] and keys["A-S-grave"] == ["PreviousWindow"]
+    # Ordinary windows (the IDE) start maximized; dialogs are untouched.
+    apps = root.findall("ob:applications/ob:application", ns)
+    assert [(a.get("type"), a.findtext("ob:maximized", namespaces=ns)) for a in apps] == [("normal", "yes")]
+    # No reference to the Debian menu file that is absent from the base.
+    assert "debian-menu" not in openbox_configuration_text()

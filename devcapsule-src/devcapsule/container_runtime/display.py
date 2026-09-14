@@ -9,7 +9,11 @@ it and starts them, in order, ahead of the interactive surface:
    changed. It serves RFB on a Unix socket only and gates X clients with a
    per-run cookie.
 2. ``openbox`` — a window manager, because Java IDEs need one for focus,
-   dialogs and popups.
+   dialogs and popups. It runs DevCapsule's own configuration
+   (``openbox-rc.xml`` beside this module), not the distribution default:
+   one desktop, no minimize button, the surface maximized, the window list
+   on a background click. A minimized IDE with no panel and Alt+Tab owned by
+   the host is unrecoverable from a browser (owner finding 2026-09-14).
 3. ``websockify`` — serves noVNC's page and bridges WebSocket to the RFB
    socket, admitting only requests that carry the run's token.
 
@@ -21,6 +25,7 @@ display-transport-design.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib import resources
 import os
 from pathlib import Path
 import re
@@ -47,6 +52,8 @@ DEFAULT_GEOMETRY = "1920x1080"
 DEFAULT_DEPTH = "24"
 DEFAULT_DPI = "96"
 
+OPENBOX_CONFIGURATION_RESOURCE = "openbox-rc.xml"
+
 XVNC_CHILD = "xvnc"
 WINDOW_MANAGER_CHILD = "window-manager"
 NOVNC_CHILD = "novnc"
@@ -68,6 +75,7 @@ class ContainedDisplay:
     display_number: int
     xauthority_path: str
     rfb_socket_path: str
+    openbox_configuration_path: str
 
 
 def prepare_contained_display(
@@ -101,6 +109,10 @@ def prepare_contained_display(
     xauthority = directory / "Xauthority"
     write_xauthority(xauthority, display_number, secrets.token_bytes(16))
     _own(xauthority, plan)
+
+    openbox_configuration = directory / OPENBOX_CONFIGURATION_RESOURCE
+    openbox_configuration.write_text(openbox_configuration_text(), encoding="utf-8")
+    _own(openbox_configuration, plan)
 
     rfb_socket = directory / "rfb.sock"
     tokens = directory / "tokens"
@@ -140,7 +152,7 @@ def prepare_contained_display(
         ),
         SupervisedChild(
             name=WINDOW_MANAGER_CHILD,
-            command=run_as_identity(("openbox",)),
+            command=run_as_identity(("openbox", "--config-file", str(openbox_configuration))),
         ),
         SupervisedChild(
             name=NOVNC_CHILD,
@@ -157,7 +169,15 @@ def prepare_contained_display(
         ),
     )
     environment = {"DISPLAY": display_name, "XAUTHORITY": str(xauthority)}
-    return ContainedDisplay(children, environment, display_number, str(xauthority), str(rfb_socket))
+    return ContainedDisplay(
+        children, environment, display_number, str(xauthority), str(rfb_socket), str(openbox_configuration)
+    )
+
+
+def openbox_configuration_text() -> str:
+    """DevCapsule's Openbox configuration, shipped inside the package."""
+
+    return (resources.files(__package__) / OPENBOX_CONFIGURATION_RESOURCE).read_text(encoding="utf-8")
 
 
 def x_socket_path(display_number: int) -> str:
