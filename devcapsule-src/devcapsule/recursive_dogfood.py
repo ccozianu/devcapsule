@@ -584,11 +584,15 @@ def _inspect_required_mounts(
     container: ContainerInspection,
     env: Mapping[str, str],
 ) -> None:
+    # A capsule on the contained display owns its X server; no host X socket
+    # or credential is (or may be) forwarded, and the successor brings its
+    # own desktop. Only host X11 passthrough has anything to check here.
+    contained_display = runtime_plan.display is not None and runtime_plan.display.is_contained
     requirements = (
         ("checkout-mount", checkout_root, True, "bind"),
         ("persistent-home", Path(runtime_plan.home), True, "bind"),
         ("runtime-plan-mount", runtime_plan_path, False, "bind"),
-        ("x11-mount", X11_SOCKET_DIRECTORY, False, "bind"),
+        *(() if contained_display else (("x11-mount", X11_SOCKET_DIRECTORY, False, "bind"),)),
     )
     for check, path, writable, kind in requirements:
         try:
@@ -625,13 +629,18 @@ def _inspect_required_mounts(
 
     display = env.get("DISPLAY")
     xauthority = env.get("XAUTHORITY")
-    if not display:
+    if contained_display:
+        report.add("pass", "display", "Contained display: the successor brings its own desktop; no host X forwarding.")
+        report.add("pass", "display-authorization", "No host X credential is held or forwarded.")
+    elif not display:
         report.add("error", "display", "DISPLAY is not configured for successor IDE validation.")
     elif not X11_SOCKET_DIRECTORY.is_dir():
         report.add("error", "display", "The X11 socket directory is absent.")
     else:
         report.add("pass", "display", "Display and X11 socket forwarding are configured.")
-    if not xauthority:
+    if contained_display:
+        pass
+    elif not xauthority:
         report.add("error", "display-authorization", "Xauthority is not configured.")
     else:
         selected_xauthority = Path(xauthority)

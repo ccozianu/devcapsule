@@ -11,6 +11,13 @@ from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
 
+# Label a base build stamps when the image carries the contained display
+# stack; the launcher reads it (labels are inherited through FROM) to know
+# a capsule can bring its own desktop. Lives here, below both the base
+# builder and the launcher, so neither imports the other for it.
+DISPLAY_LABEL = "devcapsule.base.display"
+CONTAINED_DISPLAY_LABEL_VALUE = "contained"
+
 
 MANAGED_LABEL = "devcapsule.image.managed"
 METADATA_VERSION_LABEL = "devcapsule.metadata.version"

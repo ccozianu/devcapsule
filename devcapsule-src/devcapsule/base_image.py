@@ -35,7 +35,12 @@ from devcapsule.image_tooling import (
     node_tooling_component,
     temurin_tooling_component,
 )
-from devcapsule.image_metadata import BASE_KIND, managed_labels
+from devcapsule.image_metadata import (
+    BASE_KIND,
+    CONTAINED_DISPLAY_LABEL_VALUE,
+    DISPLAY_LABEL,
+    managed_labels,
+)
 
 
 DEFAULT_ROOT_IMAGE = "ubuntu:24.04"
@@ -62,10 +67,8 @@ DISPLAY_APT_PACKAGES = (
     "python3-websockify",
     "openbox",
 )
-# Label value the launcher reads from a materialized image (labels are
-# inherited through FROM) to know the display stack is present.
-DISPLAY_LABEL = "devcapsule.base.display"
-CONTAINED_DISPLAY_LABEL_VALUE = "contained"
+# DISPLAY_LABEL and CONTAINED_DISPLAY_LABEL_VALUE are defined in
+# image_metadata and re-exported here for the base build's callers.
 
 
 @dataclass(frozen=True)

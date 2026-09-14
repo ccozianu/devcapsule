@@ -327,3 +327,11 @@ def test_ownership_marker_mismatch_is_rejected(retained_run: Path, fake_docker: 
 
     with pytest.raises(RecursiveSuccessorError, match="ownership marker"):
         inspect_successor(RUN_ID, environ={}, workspace_root=retained_run)
+
+
+def test_successor_result_reports_the_contained_display_url() -> None:
+    from devcapsule.recursive_successor import SuccessorResult
+
+    result = SuccessorResult("a" * 16, "b" * 64, "devcapsule-e2e-successor", "sha256:" + "c" * 64, "running", {}, "http://127.0.0.1:40000/vnc.html?x")
+    assert result.to_mapping()["display_url"] == "http://127.0.0.1:40000/vnc.html?x"
+    assert SuccessorResult("a" * 16, "b" * 64, "n", "i", "running", {}).to_mapping()["display_url"] is None
