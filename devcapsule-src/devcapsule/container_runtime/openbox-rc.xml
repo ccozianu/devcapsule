@@ -3,8 +3,7 @@
      Openbox's packaged default (Debian 3.6.1) with these deliberate changes:
      one desktop and no wheel switching; no iconify or shade buttons; the
      interactive surface starts maximized; middle and right click on the
-     background show the window list; Alt+backquote cycles windows beside
-     Alt+Tab. Owner finding 2026-09-14: a minimized IDE could not be recovered
+     background show the window list; the tint2 panel lists every window. Owner finding 2026-09-14: a minimized IDE could not be recovered
      because Alt+Tab never reaches the browser page and there is no panel.
      Written per run by container_runtime/display.py. -->
 <openbox_config xmlns="http://openbox.org/3.4/rc">
@@ -255,24 +254,6 @@
     <keybind key="Print">
       <action name="Execute">
         <command>scrot</command>
-      </action>
-    </keybind>
-    <keybind key="A-grave">
-      <action name="NextWindow">
-        <finalactions>
-          <action name="Focus" />
-          <action name="Raise" />
-          <action name="Unshade" />
-        </finalactions>
-      </action>
-    </keybind>
-    <keybind key="A-S-grave">
-      <action name="PreviousWindow">
-        <finalactions>
-          <action name="Focus" />
-          <action name="Raise" />
-          <action name="Unshade" />
-        </finalactions>
       </action>
     </keybind>
   </keyboard>

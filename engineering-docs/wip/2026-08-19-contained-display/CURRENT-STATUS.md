@@ -260,6 +260,23 @@ without X material, the shared selection and the result field. The
 display-label constants moved to `image_metadata` to break an import cycle
 between the launcher and the base builder.
 
+**Panel added, 2026-09-14:** the owner tried the recursive successor (still
+on default Openbox) and found the keyboard route back to a hidden window
+unusable from a browser: GNOME owns Alt+backquote (it switched browser
+tabs), Alt+Tab never reaches the page, and noVNC's virtual keyboard is
+slow. Ruling: a minimal real panel is worth its cost. Base recipe **9** adds
+`tint2`; the runtime writes `tint2rc` per run (a package resource: a
+button per window and a clock at the bottom, one desktop) and starts the
+panel as an infrastructure child between Openbox and websockify, **only
+when the base has it** — on a recipe-8 base the runtime announces the
+absence and the background-click list remains, so the launcher-supplied
+runtime keeps running on the published rc3 base. The Alt+backquote binding
+is gone; no keyboard chord is promised beyond Alt+Tab where the host lets
+it through. Tests: configuration content, child order with and without the
+panel, the e2e's process check now includes tint2. Release: a recipe-9 base
+must be built and pushed by the owner and repinned before the flip
+candidate; the local twin for the spin is `devcapsule-base:v0.2.12-tint2`.
+
 **Open threads (2026-09-12):**
 
 - **Reconnect from a second `project run`**: the second launcher cannot

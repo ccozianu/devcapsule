@@ -115,7 +115,7 @@ DISPLAY_PROBE = textwrap.dedent(
         except OSError:
             continue
         names = [os.path.basename(a.decode(errors="replace")) for a in argv if a]
-        for wanted in ("Xvnc", "openbox", "websockify"):
+        for wanted in ("Xvnc", "openbox", "tint2", "websockify"):
             if wanted in names[:2]:
                 fields = dict(line.split(":\\t", 1) for line in status.splitlines() if ":\\t" in line)
                 processes[wanted] = {"ppid": int(fields["PPid"]), "uid": int(fields["Uid"].split()[0])}
@@ -484,7 +484,7 @@ exit 9
             assert facts["vnc_html"] == 200
             # Display processes are the supervisor's direct children and run
             # as the capsule user, never as root.
-            for name in ("Xvnc", "openbox", "websockify"):
+            for name in ("Xvnc", "openbox", "tint2", "websockify"):
                 assert facts["processes"][name] == {"ppid": 1, "uid": 1000}, facts
             # Openbox runs DevCapsule's configuration, not the distribution
             # default: it announces the file it loaded and a single desktop.
