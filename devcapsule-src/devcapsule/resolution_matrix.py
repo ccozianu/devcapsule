@@ -59,7 +59,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-19"
+_MATRIX_VERSION = "embedded-20"
 
 
 # --------------------------------------------------------------------------
@@ -498,27 +498,34 @@ _V0_2_10_BASE = _BasePin(
     },
 )
 
-# The v0.2.12 base (recipe version 8) adds the contained display stack —
-# TigerVNC's Xvnc, the core X fonts, noVNC with websockify, Openbox — and
-# the label the launcher reads to give the capsule its own desktop instead
-# of the host's X session. Same family, same OS and toolchain, and the base
-# carries no runtime (the launcher supplies its own executable, D-0009), so
-# it inherits every validation below. Built by the v0.2.12-rc3 executable
-# from its tag revision 9df101c and pushed by the owner on 2026-09-13; the
-# digest was read from the registry after the push. Evidence for the
-# display itself: the owner's 2026-09-13 dogfood of this repository's
-# three-agent formation on the locally built twin (recipe 8 from the same
-# source), including a full working session in the contained desktop.
+# The v0.2.12 base (recipe version 9) adds the contained display stack —
+# TigerVNC's Xvnc, the core X fonts, noVNC with websockify, Openbox, and
+# the tint2 panel — and the label the launcher reads to give the capsule
+# its own desktop instead of the host's X session. Same family, same OS
+# and toolchain, and the base carries no runtime (the launcher supplies its
+# own executable, D-0009), so it inherits every validation below. Built by
+# the v0.2.12-rc5 executable from its tag revision 3d09ab4 and pushed on
+# 2026-09-14; the digest was read from the registry after the push and the
+# registry copy re-inspected (recipe 9, display=contained, tint2 present).
+# The recipe-8 predecessor (v0.2.12-rc3, digest 3a6e6eb6…6d7b9c, pushed
+# 2026-09-13) is retired here, explicitly per D-0007: only the v0.2.12-rc4
+# candidate ever pinned it, and the owner accepted the recipe-9 desktop
+# shape on 2026-09-14 after the rc3 desktop proved unrecoverable from a
+# browser once a window was minimized. Evidence for the display: the
+# owner's 2026-09-13 and 2026-09-14 dogfood sessions of this repository's
+# three-agent formation in the contained desktop, on locally built twins
+# of both recipes from the same sources, and the recursive successor run
+# on the recipe-9 twin.
 _V0_2_12_BASE = _BasePin(
-    mnemonic="v0.2.12-rc3",
+    mnemonic="v0.2.12-rc5",
     base_family=_BASE_FAMILY_UBUNTU_24_04,
     satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
     lock_table={
         "reference": (
             "docker.io/mycodespaceai/devcapsule-base"
-            "@sha256:3a6e6eb6c0374d58e1d0af438d621cad76c272c621e4c97fca7b6e654a6d7b9c"
+            "@sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c"
         ),
-        "build-mnemonic": "v0.2.12-rc3",
+        "build-mnemonic": "v0.2.12-rc5",
     },
 )
 
