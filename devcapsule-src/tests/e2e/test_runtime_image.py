@@ -173,12 +173,29 @@ DISPLAY_PROBE = textwrap.dedent(
     connection.request("GET", "/vnc.html")
     vnc_html = connection.getresponse().status
     display_number = sorted(os.listdir("/tmp/.X11-unix"))[0][1:]
+
+    def window_manager_facts():
+        # Openbox publishes its root properties once initialized, and the
+        # runtime deliberately has no readiness gate for it (X clients cope
+        # with a window manager appearing later), so wait for the announcement
+        # rather than race it: a slow CI runner lost that race.
+        import time
+        deadline = time.monotonic() + 30
+        while True:
+            facts = x_root_properties(
+                display_number,
+                "/tmp/devcapsule-runtime-1000/display/Xauthority",
+                ["_OB_CONFIG_FILE", "_NET_NUMBER_OF_DESKTOPS", "_NET_SUPPORTING_WM_CHECK"],
+            )
+            if facts["_NET_SUPPORTING_WM_CHECK"] and facts["_OB_CONFIG_FILE"]:
+                return facts
+            if time.monotonic() > deadline:
+                facts["timed_out"] = True
+                return facts
+            time.sleep(0.25)
+
     print(json.dumps({
-        "window_manager": x_root_properties(
-            display_number,
-            "/tmp/devcapsule-runtime-1000/display/Xauthority",
-            ["_OB_CONFIG_FILE", "_NET_NUMBER_OF_DESKTOPS", "_NET_SUPPORTING_WM_CHECK"],
-        ),
+        "window_manager": window_manager_facts(),
         "listeners": sorted(listeners),
         "x_socket": [stat.S_ISSOCK(os.stat(f"/tmp/.X11-unix/{n}").st_mode) for n in sorted(os.listdir("/tmp/.X11-unix"))],
         "abstract_x_sockets": sorted(set(re.findall(r"@/tmp/\\.X11-unix/X\\d+", open("/proc/net/unix").read()))),
