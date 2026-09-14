@@ -47,9 +47,10 @@ DEFAULT_ROOT_IMAGE = "ubuntu:24.04"
 NVIDIA_CUDA_ROOT_IMAGE = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
 DEFAULT_OUTPUT_IMAGE = "devcapsule-base:latest"
 PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
-# Recipe 8 adds the contained display stack (DISPLAY_APT_PACKAGES) and the
-# label the launcher reads to select the contained transport.
-BASE_RECIPE_VERSION = "8"
+# Recipe 8 added the contained display stack (DISPLAY_APT_PACKAGES) and the
+# label the launcher reads to select the contained transport; recipe 9 adds
+# the tint2 panel so a hidden window is always one click away.
+BASE_RECIPE_VERSION = "9"
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
@@ -66,6 +67,9 @@ DISPLAY_APT_PACKAGES = (
     "novnc",
     "python3-websockify",
     "openbox",
+    # The panel: a button per window, so nothing can hide where a browser
+    # user cannot reach it with the mouse (owner finding 2026-09-14).
+    "tint2",
 )
 # DISPLAY_LABEL and CONTAINED_DISPLAY_LABEL_VALUE are defined in
 # image_metadata and re-exported here for the base build's callers.
