@@ -4,7 +4,7 @@ Mnemonic: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-15; first-adopter journey under implementation
+State: active 2026-09-15; first-session slice prepared for PR delivery; Windows follow-up remains
 
 Integration target: `main`
 
@@ -62,8 +62,8 @@ not a speed benchmark or proof that arbitrary repositories need no setup.
   waiting for the source conversation rather than being invented or forwarded.
   The shared Gemini URL could not be read; the owner was asked for its text.
 
-Both acknowledgments travel with intake removal and the disposition log
-through the outbox. The existing files on main remain the sender's evidence
+Both acknowledgments are pushed with intake removal and the disposition log
+through `user-docs/outbox`. The existing files on main remain the sender's evidence
 until that delivery lands.
 
 ## Current Evidence
@@ -77,17 +77,32 @@ program inside the capsule, and verified the resulting file from outside.
 Stopped the capsule, relaunched the same checkout without initialization,
 verified its persisted file and IDE state, trusted the demo folder through the
 actual GUI, and ran `node hello.js` in VSCodium's own terminal. The displayed
-output was `Hello, DevCapsule!`. Final document checks are next. This uses an existing Docker
+output was `Hello, DevCapsule!`. A further restart retained folder trust and
+the terminal state. File → Exit in VSCodium stopped the launcher cleanly with
+exit code 0. Ctrl+C also stopped the container but printed KeyboardInterrupt;
+the guide now prefers the clean IDE exit and explains interruption output.
+
+Checked 186 local links/anchors, the three guides' shell-block syntax, their
+permanent index entries, and Git whitespace. The landing pitch and both badge
+lines are byte-for-byte preserved around the new Start here/Windows links. The
+index's existing uninitialized sample-submodule link is the one unavailable
+local target. No runtime source changed or broad test suite was run. This uses an existing Docker
 host/cache, not a clean workstation or measured cold download. Browser keyboard,
 clipboard and Windows checks must not be claimed from this evidence alone.
 
 ## Planned Next Step
 
-Finalize the checked first-session guides and entry points, then prepare
-the slice for ordinary PR delivery after the intake disposition outbox lands.
-Apply the repository's draft-document rules and keep proof limits explicit.
-Send any discovered product defects as intake instead of enlarging this task
-into runtime implementation. The workstream remains open for additional guides.
+The owner merges the records outboxes (`project-management/outbox` for the
+pause, `user-docs/outbox` for active routing/intake disposition), then the ordinary
+`user-docs/first-session` PR. GitHub API creation remains unavailable; Git branch
+push is the delivery path already chosen with the owner. Verify those records
+are on main before integration, and verify the final documentation on remote
+main after the owner's merge. The workstream stays open for additional guides.
+
+The checked first-session slice is finalized under Publishing Before Integration's
+explicit allowance for an ordinary PR delivering a finished slice. Drafts were
+written first, then promoted; the entry-point proposal was applied to the existing
+product index at this finalization. There are no divergent current guide copies.
 
 ## Open Threads
 
@@ -96,7 +111,7 @@ into runtime implementation. The workstream remains open for additional guides.
 - Actual browser clipboard/fullscreen behavior and fresh Windows installation
   need human platform checks; preserve the contained-display evidence separately
   from validation performed here.
-- One restart attempt hit a host Docker DNAT/iptables error; retrying the same
+- Two restart attempts hit a host Docker DNAT/iptables error; retrying the same
   documented command succeeded without changes to Docker or host permissions.
   This is recorded as an observed environment limitation, not an established
   DevCapsule defect or a reason to weaken the default boundary.
@@ -104,13 +119,18 @@ into runtime implementation. The workstream remains open for additional guides.
   matches the released base. Explain the prompt locally and record the UX issue.
 - No new session transcript or session record was requested or created.
 
-## Draft Deliverables
+## Delivered-Branch Documents
 
-The branch holds drafts at `docs/guides/first-session.md`,
-`docs/guides/your-project.md`, `docs/guides/windows-wsl2.md`, and
-`docs/entry-point-changes.md` beneath this workstream. They are not delivered
-through the records outbox. Promotion destinations are the matching root
-`docs/guides/` paths; the entry-point proposal is internal.
+The guide copies have been promoted to `docs/guides/first-session.md`,
+`docs/guides/your-project.md`, and `docs/guides/windows-wsl2.md` at the repository
+root, indexed by `index.md` in the same change. They travel the ordinary PR,
+never the records outbox. The internal proposal remains at
+`docs/entry-point-changes.md` beneath this workstream, marked applied.
+
+The user-docs intake to project-management,
+`2026-09-15-user-docs-first-session-ux.md`, records the misleading base label,
+startup diagnostics and Ctrl+C traceback. It asks for implementation ownership;
+it is not a change to another workstream's handoff.
 
 ## Documents
 

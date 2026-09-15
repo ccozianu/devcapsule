@@ -1,9 +1,9 @@
-# Intake: Two First-Session UX Gaps Seen With v0.2.12
+# Intake: First-Session UX Gaps Seen With v0.2.12
 
 Sender: `user-docs`, 2026-09-15. Recipient: `project-management`.
 
 While following the published v0.2.12 binary from a fresh VSCodium/node project,
-we found two points where the runtime presentation undercuts the new adopter
+we found three points where the runtime presentation undercuts the new adopter
 journey. The guide explains them, but product changes need an implementation
 owner and sequencing decision.
 
@@ -18,6 +18,13 @@ owner and sequencing decision.
    URL. VSCodium worked and ran the sample successfully. Consider a concise
    user-facing ready/stopped/error summary with detailed diagnostics available
    separately, preserving genuine failures rather than suppressing them all.
+
+3. **Normal Ctrl+C shutdown prints a Python traceback.** Interrupting the
+   foreground v0.2.12 launcher stopped the capsule after its shutdown interval
+   but returned code 1 with `KeyboardInterrupt` from `subprocess.run`. This
+   expected user action should produce a concise stopped/interrupted result.
+   The first-session guide prefers File → Exit in VSCodium and explains the
+   current interrupt output in troubleshooting.
 
 Acceptance would assign these UX fixes to the appropriate implementation owner.
 The first-session documentation remains independently deliverable. No runtime
