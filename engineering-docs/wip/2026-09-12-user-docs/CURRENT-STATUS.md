@@ -4,7 +4,7 @@ Mnemonic: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-15; collaboration guidance accepted; returning to user-docs scoping
+State: active 2026-09-15; designing the v1 first sessions around a small project with AI
 
 Integration target: `main`
 
@@ -21,12 +21,28 @@ comparison are accepted starting points, already integrated through PRs #71–74
 Preserve the short pitch and health badges; make the next action obvious.
 
 DevCapsule provides reproducible IDE/agent workspaces with explicit host
-boundaries and durable state. This slice documents supported released behavior,
-not prospective V1 promises or implementation history. It does not implement
-runtime changes or rewrite the reusable workflow.
+boundaries and durable state. The owner redirected this work to designing the
+intended v1 experience through user documentation. Compare current v0.x behavior
+against that target to discover implementation gaps, prioritize them over coming
+iterations, and refine the docs from implementation feedback. Release-specific
+observations are evidence, not the design target. Keep unimplemented behavior
+explicitly identified while drafting; do not advertise it as available today.
 
-The owner subsequently challenged the agent's unilateral product choices and
-the cost of its runtime investigations. The current requested slice is generic
+The first sessions should start a small project using at least one AI, possibly
+two. An adopter without AI access remains supported but is a secondary path,
+not the audience around which to design the main experience. The project,
+IDE/agent pairing, and role of a possible second AI remain open.
+
+The owner wants to encourage investing in excellent tools: time saved and
+learning can justify a paid AI subscription, with $20/month as an accessible
+example and $200/month as a professional investment. These are positioning
+ideas, not verified provider prices or a purchase prerequisite. A requested
+Erik Meijer quotation about paying for tools remains unverified verbatim;
+[Nathan Jones's 2015 account](https://nathanpjones.com/posts/) paraphrases his
+comparison to chefs buying premium knives. Do not turn that into a direct quote.
+
+The owner challenged the agent's unilateral product choices and
+the cost of its runtime investigations. The resulting slice added generic
 guidance in the shared root `AGENTS.md` for proportionate investigation, reasoning
 from contracts, and consultation on consequential choices. This applies to agents
 working here; the packaged reusable workflow definition has not been changed.
@@ -62,6 +78,24 @@ The agent proposed resolving sample selection by using a tiny new folder:
 no private Git credentials, external sample lock, or dependency installation
 stands between the reader and a first result. Whether that exercise delivers
 the intended first-session value remains a product decision for the pair.
+
+## Accepted Later Requirement: OpenCode Setup
+
+Owner direction, 2026-09-15: user-docs will test and document an adopter setup
+using OpenCode. This is accepted work for later, after the current first-session
+journey is scoped; it is not an instruction to install or test OpenCode now.
+
+Cover one concrete setup from selecting OpenCode and connecting a model through
+a small coding task and resuming work, including prerequisites, persistent state,
+and explicit host access. Include a locally run open model in the setup we
+evaluate; Gemma is a candidate, not a selected or validated pairing. Record
+implementation gaps rather than silently changing the intended v1 experience.
+
+Project-management is asked to arrange OpenCode testing and determine any
+implementation ownership and sequencing. Its intake item is
+`2026-09-15-user-docs-opencode-evaluation.md`. Use the resulting evidence when
+verifying the documented journey; do not assume endpoint compatibility proves
+that the selected agent/model combination works well.
 
 ## Intake Acknowledgments
 
@@ -104,16 +138,15 @@ clipboard and Windows checks must not be claimed from this evidence alone.
 
 ## Planned Next Step
 
-Deliver the accepted agent guidance and this handoff on the owner-requested
-temporary branch `user-docs/temp-pr-20260915-agent-guidance`, based on current
-main and containing only these two files. The owner will open and merge the PR
-on GitHub; this environment has neither PR write rights nor `gh`. The explicit
-request groups the guidance and its handoff in one reviewable delivery instead
-of sending the handoff separately through the standing outbox.
+The owner merged the isolated agent-guidance delivery through PR #84, verified
+on remote main at `1965be0`; this checkout has merged that main. The delivery
+contained only root `AGENTS.md` and this handoff, grouped on one temporary branch
+at the owner's explicit request. This environment has neither PR write rights
+nor `gh`; future PR opening and merging remains the owner's work.
 
-Then return attention to user docs. Before resuming onboarding implementation,
-agree the intended adopter,
-first useful outcome, and the smallest useful next slice. Do not resume the
+Agree a small project and a useful first outcome with at least one AI, then
+draft the intended v1 journey and identify current implementation gaps. Keep
+the possible second AI as an open design choice. Do not resume the
 runtime experiments or treat the existing guides as accepted on the strength
 of the previous handoff. An autonomous product-development experiment was
 discussed hypothetically; none has been authorized to run.
@@ -123,14 +156,17 @@ outboxes (`project-management/outbox` and `user-docs/outbox`) and documentation
 branch remain unmerged as of the latest fetch. The guides were moved to permanent
 paths on this branch and entry-point changes applied, but those mechanical steps
 do not establish owner acceptance. No existing guide work has been discarded.
-The older `user-docs/outbox` handoff is superseded: refresh it from the current
-working branch before any future delivery rather than merging its stale account
-of accepted product choices.
+The refreshed `user-docs/outbox` delivery carries this current handoff, the
+OpenCode evaluation intake, and the previously pending routing, intake
+dispositions, and UX intake. Its older handoff is superseded. Merge the refreshed
+records delivery independently of the unaccepted onboarding guides.
 
 ## Open Threads
 
-- Revisit the agent-selected first-session journey with the owner before
-  additional implementation or delivery. The collaboration guidance is accepted.
+- Choose the small project, first useful outcome, and AI/IDE pairing with the
+  owner. Decide whether and how a second AI improves the first sessions.
+- Verify the exact Meijer quotation if the owner supplies its source; the
+  located secondary account supports a paraphrase only.
 - Awaiting the owner's Windows/Gemini workaround text; basic Linux documentation
   and confirmed WSL2 notes can proceed independently.
 - Actual browser clipboard/fullscreen behavior and fresh Windows installation
