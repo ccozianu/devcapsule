@@ -4,7 +4,7 @@ Mnemonic: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-15; first-session slice prepared for PR delivery; Windows follow-up remains
+State: active 2026-09-15; collaboration guidance accepted; returning to user-docs scoping
 
 Integration target: `main`
 
@@ -25,6 +25,14 @@ boundaries and durable state. This slice documents supported released behavior,
 not prospective V1 promises or implementation history. It does not implement
 runtime changes or rewrite the reusable workflow.
 
+The owner subsequently challenged the agent's unilateral product choices and
+the cost of its runtime investigations. The current requested slice is generic
+guidance in the shared root `AGENTS.md` for proportionate investigation, reasoning
+from contracts, and consultation on consequential choices. This applies to agents
+working here; the packaged reusable workflow definition has not been changed.
+The owner accepted this guidance, including the distinction between existing
+tests and newly written tests that may encode unvalidated product assumptions.
+
 ## Branch And Checkout
 
 Selected branch: `user-docs/first-session`, created from accepted main `a09e09d`.
@@ -35,7 +43,11 @@ The owner's unrelated local host settings were saved on local-only
 `project-management/local-host-settings-20260915`; they are not documentation
 changes and were not copied onto this branch. No stash is the handoff boundary.
 
-## Selected First Slice
+## First-Session Proposal Awaiting Owner Agreement
+
+The following was implemented by the agent without first agreeing the adopter
+journey with the owner. Preserve it as existing branch work, not an accepted
+product decision or a slice authorized for publication by its test results.
 
 1. A visible “Start here” link from the README to one short first-session guide.
 2. Prerequisites, verified executable download, a disposable VSCodium/JavaScript
@@ -46,10 +58,10 @@ changes and were not copied onto this branch. No stash is the handoff boundary.
    confirmed browser workaround. The owner's missing Gemini conversation is
    required before adding its exact remaining WSL2 workarounds.
 
-The formerly proposed sample selection is resolved by using a tiny new folder:
+The agent proposed resolving sample selection by using a tiny new folder:
 no private Git credentials, external sample lock, or dependency installation
-stands between the reader and a first result. This is a first useful session,
-not a speed benchmark or proof that arbitrary repositories need no setup.
+stands between the reader and a first result. Whether that exercise delivers
+the intended first-session value remains a product decision for the pair.
 
 ## Intake Acknowledgments
 
@@ -92,20 +104,33 @@ clipboard and Windows checks must not be claimed from this evidence alone.
 
 ## Planned Next Step
 
-The owner merges the records outboxes (`project-management/outbox` for the
-pause, `user-docs/outbox` for active routing/intake disposition), then the ordinary
-`user-docs/first-session` PR. GitHub API creation remains unavailable; Git branch
-push is the delivery path already chosen with the owner. Verify those records
-are on main before integration, and verify the final documentation on remote
-main after the owner's merge. The workstream stays open for additional guides.
+Deliver the accepted agent guidance and this handoff on the owner-requested
+temporary branch `user-docs/temp-pr-20260915-agent-guidance`, based on current
+main and containing only these two files. The owner will open and merge the PR
+on GitHub; this environment has neither PR write rights nor `gh`. The explicit
+request groups the guidance and its handoff in one reviewable delivery instead
+of sending the handoff separately through the standing outbox.
 
-The checked first-session slice is finalized under Publishing Before Integration's
-explicit allowance for an ordinary PR delivering a finished slice. Drafts were
-written first, then promoted; the entry-point proposal was applied to the existing
-product index at this finalization. There are no divergent current guide copies.
+Then return attention to user docs. Before resuming onboarding implementation,
+agree the intended adopter,
+first useful outcome, and the smallest useful next slice. Do not resume the
+runtime experiments or treat the existing guides as accepted on the strength
+of the previous handoff. An autonomous product-development experiment was
+discussed hypothetically; none has been authorized to run.
+
+The earlier delivery proposal is superseded by this feedback. The pushed records
+outboxes (`project-management/outbox` and `user-docs/outbox`) and documentation
+branch remain unmerged as of the latest fetch. The guides were moved to permanent
+paths on this branch and entry-point changes applied, but those mechanical steps
+do not establish owner acceptance. No existing guide work has been discarded.
+The older `user-docs/outbox` handoff is superseded: refresh it from the current
+working branch before any future delivery rather than merging its stale account
+of accepted product choices.
 
 ## Open Threads
 
+- Revisit the agent-selected first-session journey with the owner before
+  additional implementation or delivery. The collaboration guidance is accepted.
 - Awaiting the owner's Windows/Gemini workaround text; basic Linux documentation
   and confirmed WSL2 notes can proceed independently.
 - Actual browser clipboard/fullscreen behavior and fresh Windows installation
