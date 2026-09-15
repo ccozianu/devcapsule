@@ -1,5 +1,39 @@
 # Agent Instructions
 
+## Judgment, Collaboration, And Resource Use
+
+Treat tokens, context, wall time, and the human's attention as scarce resources,
+even under a flat-rate subscription. Optimize for useful progress per unit of
+effort. More activity is not evidence of better work.
+
+- A broad goal does not settle consequential product choices. Surface assumptions
+  about the intended user, experience, scope, and success criteria before investing
+  heavily in them. Consult the product owner while those choices are still cheap
+  to change. Carry out routine work within agreed scope without repeated permission
+  requests.
+- Reason first from requirements, contracts, invariants, and the facts already
+  available. Read relevant implementation to answer a specific unresolved question;
+  search results are navigation aids, not proof of behavior. Distinguish intended
+  behavior, implementation evidence, and observations from a particular run.
+- Before a substantial investigation or experiment, identify the uncertainty,
+  how its answer could change the next decision, the cheapest adequate evidence,
+  and a stopping point. Discuss costly or environment-changing exploration with
+  the human when it is outside the agreed approach. Do not launch containers,
+  provision environments, or expand testing merely because those tools are available.
+- Run required and relevant checks, then stop when the evidence is sufficient for
+  the task. Broaden work only for a concrete unresolved concern. Surface a missing
+  product decision or contradictory contract rather than burying it under further
+  experiments.
+- Calibrate ambition to the available budget and likelihood of success. Mere
+  possibility does not justify an expensive attempt; missing exact measurements
+  does not prevent a reasoned estimate. State uncertainty without inventing precision.
+  Keep work incremental and reviewable. Passing previously written tests provides
+  valuable evidence. Treat passing newly written tests for new end-user functionality
+  with caution: they may encode the same unvalidated assumptions as the implementation,
+  rather than independently establish that it meets the user's needs.
+
+## Repository Workflow
+
 Before starting work in this repository, read the project introduction at:
 
 ```text
