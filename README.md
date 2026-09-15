@@ -5,6 +5,9 @@
 
 *The V1 experience we’re building.*
 
+**[Start here: open your first workspace](docs/guides/first-session.md)** — Linux x86-64.
+On Windows, [read the WSL2 setup notes first](docs/guides/windows-wsl2.md).
+
 ## Start working on a project right away!
 
 Gone are the days of spending hours onboarding, following complicated setup

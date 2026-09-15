@@ -136,8 +136,9 @@ clipboard is not automatically shared.
 
 ## 5. Stop and come back
 
-Save your file. In the original launcher terminal, press **Ctrl+C** to stop
-the session. Later, even from a new terminal:
+Save your file, then choose **File → Exit** inside VSCodium to end the
+session. Wait for the launcher terminal to return to its prompt. Later, even
+from a new terminal:
 
 ```bash
 cd ~/hello-devcapsule
@@ -164,6 +165,7 @@ cannot recover the URL of an already-running session yet.
 | Download/build failure | Check the reported URL, internet connection and available disk space, then retry `project run`. Keep the specific error if asking for help. |
 | No browser tab | Open the full printed URL manually on the computer running Docker. |
 | Escape leaves fullscreen instead of reaching the editor | Exit noVNC's fullscreen mode. Use the browser menu's fullscreen option instead. |
+| `KeyboardInterrupt` after pressing Ctrl+C in the launcher | v0.2.12 can print a traceback when interrupted. Prefer **File → Exit** inside the IDE for an ordinary stop. |
 | A shortcut closes the tab | Some shortcuts belong to the browser. Reopen the printed URL and use the IDE menus. |
 
 Still stuck? [Open an issue](https://github.com/ccozianu/devcapsule/issues/new)

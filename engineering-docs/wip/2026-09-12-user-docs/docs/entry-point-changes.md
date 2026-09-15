@@ -1,5 +1,7 @@
 # First-Session Entry-Point Changes
 
+Status: applied on 2026-09-15 when finalizing the checked first-session slice.
+
 Targets: root `README.md`, `docs/README.md`, and `devcapsule-src/README.md`.
 
 The current landing page offers a reason to try DevCapsule but no direct action.
@@ -7,7 +9,7 @@ The product index sends the reader to a developer brief with obsolete command
 examples and a v026 download among build instructions. The first path must lead
 to current released commands without requiring contributor setup.
 
-At finalization of this slice:
+Applied at finalization of this slice:
 
 - Add a prominent Start here link to `docs/guides/first-session.md` near the
   top of the landing page; retain the pitch, heading and badges. Put the Windows
