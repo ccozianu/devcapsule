@@ -65,6 +65,13 @@ several checkouts integrating through the shared remote, not from any local
 arrangement of directories, which is an implementation detail and not workflow
 state. See *Checkouts, Branches, And Workstreams* in `WORKFLOW.md`.
 
+`WORKFLOW.md` uses the vocabulary of the Workflow Patterns initiative as its
+reference vocabulary: process, case, sub-process, task, work item, resource,
+trigger. A workstream is a case of the workstream sub-process; a release is a
+case of the release sub-process. Read *Vocabulary* at the start of
+`WORKFLOW.md` before reading the rules, and where this repository's own term
+differs from the catalogue's, this repository's definition governs.
+
 This workflow is incomplete by admission, and `WORKFLOW.md` opens with
 *Latitude Where This Document Is Silent*. Where the protocol does not cover a
 situation, what it does not expressly deny is allowed: resolve it with judgment
@@ -131,6 +138,13 @@ workstream's registration — use the sender's standing `<mnemonic>/outbox`
 branch, reset from current `main` and carrying only what is being sent, never
 working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 `WORKFLOW.md`.
+
+Release refs — `release-<version>` branches and `v<version>` tags — are not
+workstream branches. Never synchronize, rebase, or force-push one, and never
+cherry-pick between a release branch and a workstream branch. A registry row
+whose branch association names a release branch means that workstream is
+driving a release: work on that branch, land fixes only there, and merge it to
+`main` before each candidate tag. See *Releases* in `WORKFLOW.md`.
 
 The outbox also carries the workstream's own records — its handoff and its
 disposition log — when something on `main` refers to them or when the workstream
