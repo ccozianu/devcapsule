@@ -5,8 +5,8 @@ Before starting work, read `README.md`, then read the top-level
 `single-stream` and `multiple-streams`; a missing field means `single-stream`.
 Treat any other value as invalid.
 
-Read `WORKFLOW.md` for the reusable protocol and `CURRENT-STATUS.md` for this
-project's live state. In single-stream mode, `CURRENT-STATUS.md` is the active
+Read `WORKFLOW.md` for the reusable protocol, starting with its *Vocabulary*,
+and `CURRENT-STATUS.md` for this project's live state. In single-stream mode, `CURRENT-STATUS.md` is the active
 handoff. In multiple-streams mode, it is the mainline registry: select the one
 workstream associated with the user's request and current branch, then read its
 `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md` and `intake/`.
@@ -24,7 +24,10 @@ Keep important requirements, decisions, evidence, open questions, current
 state, and next steps in repository files rather than only in chat. Update the
 selected handoff at meaningful checkpoints and before pausing. In
 multiple-streams mode, follow `WORKFLOW.md` for branch routing, synchronization,
-intake disposition, outbox publication, and integration.
+intake disposition, outbox publication, and integration. A registry row whose
+branch association names a `release-<version>` branch means that workstream is
+driving a release: follow *Releases* in `WORKFLOW.md`, and never rebase,
+force-push, or cherry-pick release refs.
 
 The workflow is intentionally incomplete. Where it is silent, use judgment,
 record the gap and the action taken in the selected handoff, and continue

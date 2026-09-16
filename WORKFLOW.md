@@ -95,6 +95,45 @@ restrictions and procedures as binding, and treat prose as the reasoning that
 explains them. Where a rule and this preamble appear to disagree, the rule
 governs and the disagreement is a defect worth reporting.
 
+### Vocabulary
+
+Where this document needs a precise word for a piece of process, it uses the
+vocabulary of the Workflow Patterns initiative (Wil van der Aalst, Arthur ter
+Hofstede, Nick Russell and others; <http://www.workflowpatterns.com/>). That
+vocabulary was chosen because its base terms are ordinary words that humans
+and agents already know, and because its catalogue gives a shared, neutral
+name to a shape of process when one is needed. The base terms:
+
+- **Process** — a definition of how a kind of work is carried out. This
+  document defines the development process a project runs.
+- **Case** — one run of a process. Developing one project is one case of the
+  development process.
+- **Sub-process** — a process that runs as part of another. A workstream is a
+  case of the workstream sub-process. A release is a case of the release
+  sub-process; see *Releases*. Sub-processes run inside the development
+  process, not inside each other, so this changes nothing about restriction 1.
+- **Task** — a unit of work in a process. **Work item** — one occurrence of a
+  task once it exists and is assigned to someone.
+- **Resource** — who or what performs a work item. Here the resources are the
+  pair and, in `multiple-streams` mode, the workstream the pair is working in.
+- **Trigger** — the event or decision that makes a task ready to perform.
+
+Three limits keep this useful rather than ceremonial:
+
+1. The vocabulary is a reference, not a modelling obligation. Rules are written
+   in plain English. Nothing has to be expressed as a pattern before it is
+   allowed, and no formal model of the process is kept.
+2. A pattern name appears only where it makes a rule shorter or less ambiguous
+   than plain words would, and the sentence must still read correctly to
+   someone who does not know the pattern.
+3. Where this document already uses a word with its own meaning, this
+   document's definition governs inside this document. One known collision:
+   **milestone** here is a planning unit, defined in *Release, Milestone,
+   Stage, Task, And Checkpoint Terminology*; in the pattern catalogue it is a
+   control-flow pattern. A full mapping of every term in this document onto
+   the reference vocabulary is deliberately not attempted here; it belongs
+   with the definition of the workflow's information model.
+
 ## Checkouts, Branches, And Workstreams
 
 Work means editing files in a **checkout**. Everything this document describes
@@ -116,7 +155,8 @@ The relationships, which fix what every "current" in this document means:
 
 - A project has one authoritative remote and any number of checkouts.
 - A checkout has exactly one current branch.
-- Every branch other than `main` belongs to exactly one workstream.
+- Every branch other than `main` belongs to exactly one workstream. Release
+  refs are the one exception; see *Releases*.
 - A workstream may own several branches.
 - A checkout therefore has at most one selected workstream at any moment. The
   *current branch* determines the *current workstream*, not the reverse.
@@ -236,12 +276,17 @@ The following restrictions keep concurrent work understandable:
 3. Every workstream has one immutable ISO start date: the calendar date on
    which its registration is first committed to `main`. Migration exceptions
    record their historically established start date.
-4. Every branch other than `main` belongs to exactly one workstream.
-5. Each workstream branch name begins with `<mnemonic>/`.
+4. Every branch other than `main` belongs to exactly one workstream. Release
+   refs are the one exception; see *Releases*.
+5. Each workstream branch name begins with `<mnemonic>/`. A release branch
+   does not, because it is not a workstream branch; see *Releases*.
 6. A workstream may have more than one branch, but every branch starts from
    `main` and is intended to return to `main` if the workstream succeeds. Its
    outbox branch is the exception: it starts from `main` and returns to `main`
-   repeatedly, throughout the workstream's life rather than at its end.
+   repeatedly, throughout the workstream's life rather than at its end. A
+   release branch is not a workstream branch: it starts from `main` or from a
+   prior release tag, merges to `main` before every candidate, and is never
+   deleted; see *Releases*.
 7. `main` belongs to no workstream. It is the shared registration, visibility,
    finalization, and integration branch.
 8. Ordinary workstream implementation does not happen directly on `main`.
@@ -1224,6 +1269,188 @@ When planning a release:
    successor plan without claiming that the release is complete.
 6. Reserve release completion for the product-owner decision after the selected
    artifacts, documentation, and release-level acceptance evidence exist.
+
+## Releases
+
+A release is the moment a project's work becomes an externally meaningful
+version: a defined set of artifacts, documentation, and acceptance evidence,
+identified by a version and a tag. *Release, Milestone, Stage, Task, And
+Checkpoint Terminology* defines the words. This section defines the Git refs a
+release uses and how a release is run. Both had been left to each release to
+improvise, and improvising them cost real work: fixes committed twice, a
+candidate gate that had to prove two copies were the same patch, and a checkout
+switching branches for every fix.
+
+In the reference vocabulary, releasing is a **sub-process** of the development
+process, and a release is one case of it. It has a trigger (the decision to
+cut), a bounded duration, one resource that drives it from start to finish, and
+a defined end. In `multiple-streams` mode that resource is a workstream, and
+*Taking A Release Over* says how a workstream takes a release on and hands it
+back.
+
+### Release Refs
+
+A project's release refs are the branch and the tags that identify one
+release's source:
+
+- **The release branch**, `release-<version>`, holds the source of every
+  candidate and of the final release. Its first commit is the version bump that
+  makes the source describe itself as that version.
+- **Candidate tags**, `v<version>-rc<n>`, mark each candidate on the release
+  branch, numbered from zero. They are never moved and never deleted.
+- **The final tag**, `v<version>`, marks the accepted candidate's commit.
+
+A project may spell these differently. If it does, it records the spelling
+once, in its release policy, and uses it everywhere. What matters is that a
+reader can tell a release ref from a workstream branch by its name alone.
+
+**Release refs are not workstream branches.** They carry no `<mnemonic>/`
+prefix, belong to no workstream, and are the one exception to the rule that
+every branch other than `main` belongs to exactly one workstream. A release
+branch is associated with a workstream only for the duration of a release, and
+only through the registry row, as described under *Taking A Release Over*.
+Nothing is inferred from a release ref's name except that it is one.
+
+**Lifetime.** A release branch is created at the cut and retained for as long
+as the project keeps its history. Once a candidate tag points into it, it is
+never rebased, never force-pushed, and never deleted. Tags are immutable. A
+release whose source must change gets a new candidate; a released version that
+needs a fix gets a new version.
+
+**Direction of flow.** Work flows from the release branch to `main`, by merge,
+and never the other way after the cut. *Staying Current With `main`* does not
+apply to release refs: a release branch is not synchronized with `main`, and
+tested release source is never rebased onto a `main` that has moved on. Other
+workstreams keep integrating to `main` during a release; the release branch
+does not take their work.
+
+**Who may commit.** While a release is open, only the resource driving it
+commits to the release branch, and only release fixes: changes needed to make
+the candidate acceptable. Everything else waits for `main`. After the final tag
+the branch is closed and nobody commits to it.
+
+**A candidate is cut only from source `main` already has.** Every commit the
+release branch carries since it left `main`, or since its previous candidate,
+is merged to `main` before the candidate is tagged. Merged, not cherry-picked:
+a merge lets the candidate gate pass by plain ancestry, while a cherry-pick
+produces a second commit with the same content and forces the gate to prove
+equivalence. A maintenance release that cannot merge uses the exception below.
+
+**Maintenance releases.** A fix to an already released version, when `main`
+cannot ship, starts a new release from that version's final tag rather than
+from `main`. Its release branch is named for the new version and follows every
+rule above. Its source may be unable to merge to `main` at all, because `main`
+has moved past it. The project's candidate gate then accepts a documented
+exception naming who authorized it, why, who owns the forward port of the fix
+to `main`, and what follow-up closes it. The exception is a reviewed record
+committed on the release branch, not a flag.
+
+### Taking A Release Over
+
+In `multiple-streams` mode, a workstream drives a release. It is the
+workstream whose deliverable is the release's headline. When that is unclear,
+or for a maintenance release of an old version, `project-management` drives.
+The product owner decides the cut.
+
+For the duration of the release, the rules below replace the ordinary branch
+rules for that workstream, and only for that workstream. Unrelated workstreams
+are unaffected.
+
+1. **Cut from `main`, not from the workstream branch.** The workstream merges
+   its working branch to `main` first. The release branch starts at that merge
+   commit on `main`, and its first commit is the version bump. The working
+   branch is then closed for modification.
+2. **The release branch is the workstream's selection.** The registry row's
+   branch association names the release branch, and its state reads
+   `active; releasing <version>`. The handoff is edited on the release branch
+   and reaches `main` with the merges of rule 3, which satisfies *Publishing
+   Before Integration* for the handoff without a separate send. The outbox
+   still carries intake items and every other message. The checkout sits on
+   the release branch from the cut to the final tag.
+3. **Integrate by merging the release branch into `main` before each
+   candidate tag.** By pull request or the repository's delivery method, never
+   by cherry-pick. The candidate gate then passes by ancestry, and the
+   acceptance record uses the ancestry method.
+4. **Closed means closed.** While the release is open, work on the
+   workstream's subject lands only as release fixes on the release branch.
+   Nothing is committed to the closed working branch, and no new working
+   branch is opened under the mnemonic.
+5. **Afterwards**, the workstream resumes on a fresh `<mnemonic>/...` branch
+   forked from `main`, or concludes. The registry row's branch association
+   returns to a workstream branch. The release branch stays behind as a release
+   anchor, closed, and is never a workstream branch again.
+6. **The handoff records the release** as it records any task: the cut
+   commit, each candidate and its outcome, the accepted candidate, the
+   acceptance record, and the final tag. That is the release's durable record
+   inside the workstream. The project's release policy says what else is
+   recorded, and where.
+
+Pausing or blocking during a release follows *Workstream States, Pausing, And
+Resuming* unchanged, with one addition: the registry row keeps naming the
+release branch, so whoever resumes knows they are resuming a release and not
+ordinary work.
+
+In `single-stream` mode there is no workstream to take a release over. The
+same ref rules apply, and `CURRENT-STATUS.md` records the open release, its
+branch, and its candidates in place of a registry row.
+
+### Two Examples
+
+The versions are illustrative. The rules are the same in a project that spells
+its refs differently.
+
+**An ordinary release, `1.4.0`, driven by the workstream whose work it ships.**
+
+1. The workstream `search` has merged its branch `search/v2` to `main`. The
+   merge commit is the cut point. The owner decides to release.
+2. `release-1.4.0` is created at the cut point. Its first commit bumps the
+   source version to `1.4.0`. The registry row for `search` now names
+   `release-1.4.0` with state `active; releasing 1.4.0`, and `search/v2` is
+   closed.
+3. `release-1.4.0` is merged to `main` by pull request. `v1.4.0-rc0` is tagged
+   at its tip and pushed. The candidate is built, published, and validated.
+4. Validation finds a defect. The fix is committed on `release-1.4.0`, the
+   branch is merged to `main` again, and `v1.4.0-rc1` is tagged. Meanwhile an
+   unrelated workstream merges its own work to `main`; `release-1.4.0` does not
+   take it.
+5. `v1.4.0-rc1` is accepted. The acceptance record is committed and reaches
+   `main`. `v1.4.0` is tagged at the same commit as `v1.4.0-rc1`.
+6. The `search` workstream resumes on `search/v3`, forked from `main`, and its
+   registry row names that branch. `release-1.4.0`, `v1.4.0-rc0`,
+   `v1.4.0-rc1`, and `v1.4.0` remain for good.
+
+**A patch to a released version, `1.3.1`, when `main` is not shippable.**
+
+1. `v1.3.0` is in use. A defect must be fixed in it, but `main` carries
+   unfinished `1.4.0` work that cannot ship. The owner decides on a
+   maintenance release, driven by `project-management` because no workstream's
+   deliverable is its headline.
+2. `release-1.3.1` is created at `v1.3.0`, not at `main`. Its first commit
+   bumps the version to `1.3.1`. The `project-management` registry row names
+   `release-1.3.1` for the duration.
+3. The fix is committed on `release-1.3.1`. Merging it to `main` would carry
+   the whole `1.3` line across `main`'s newer history, so it is not merged.
+   Instead the release branch carries a documented integration exception
+   naming who authorized it, why, which workstream owns forward-porting the fix
+   to `main`, and the follow-up that closes it. `v1.3.1-rc0` is tagged and
+   validated.
+4. `v1.3.1-rc0` is accepted, and `v1.3.1` is tagged at the same commit. The
+   forward-port owner delivers the fix to `main` through its own working branch
+   as ordinary work.
+5. The `project-management` row returns to its coordination branch.
+   `release-1.3.1` stays behind, closed.
+
+### What This Section Leaves To The Project
+
+The shape above is reusable; the mechanics are not. Each project records in
+its own release policy: the exact ref spelling if it differs from the default,
+how a candidate is built and published, what the candidate gate checks and how
+an exception is recorded, what acceptance evidence is required and where the
+acceptance record lives, and the version-bump command. That policy is project
+state, not part of this definition, and a project writes it before its first
+release. In this repository that policy is the
+[operator guide for releasing a new version](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md),
+owned by `project-management`.
 
 ## Turn-Level Choreography
 
