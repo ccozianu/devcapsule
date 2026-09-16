@@ -68,6 +68,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Eclipse interactive surface current status](engineering-docs/wip/2026-09-09-eclipse-surface/CURRENT-STATUS.md)
 
 - [User documentation current status](engineering-docs/wip/2026-09-12-user-docs/CURRENT-STATUS.md)
+- [Website autonomy experiment current status](engineering-docs/wip/2026-09-16-website/CURRENT-STATUS.md)
 
 ## Engineering Design Notes
 
