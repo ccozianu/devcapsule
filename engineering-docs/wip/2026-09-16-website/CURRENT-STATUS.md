@@ -4,15 +4,16 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active; initial implementation ready for owner review; production not published
+State: active; website PR merged; parent integration and owner-authorized publication next; final review remains open
 
 Branch association: `website/initial-cut`; prefix `website/`
 
-Integration target: DevCapsule `main`, after the website project's reviewed
-`initial-cut` branch reaches its own `main`.
+Integration target: DevCapsule `main`. Website PR #1 is merged into its `main`
+at `b55ea0a`, with the same tree as previewed implementation `c508b91`.
 
 Delivery method: reviewable SSH-pushed branches; the owner creates/merges PRs
-and performs final GitHub backend wiring. Production publication follows review.
+and performs final GitHub backend wiring. The owner has now authorized making
+the site live at `devcapsule.mycodespace.ai` before finishing the review.
 No force-push or mainline implementation is needed.
 
 ## Task Contract And Current Stage
@@ -21,7 +22,10 @@ The [website autonomy work order](../../work-orders/2026-09-16-website-autonomy.
 is the contract. The owner explicitly selected this fresh-context experiment,
 delegating design and implementation after initial setup. Implementation is
 complete to a reviewable local preview; experiment success awaits owner judgment.
-Do not expand or keep polishing before that review.
+Do not expand or keep polishing before that review. The owner said the preview
+looks good and chose to finish reviewing after publication at the actual domain.
+That later instruction supersedes the work order's publication-after-final-review
+sequence; it does not constitute final experiment acceptance.
 
 The site presents the root README substance, current user guides, and all three
 development-blog articles. Other engineering/developer references lead to GitHub.
@@ -47,11 +51,14 @@ git submodule update --init website
 Use the printed URL if 8080 is occupied. `PORT=8090` changes the starting port.
 Build/check on demand: `./scripts/website.sh build`.
 
-Next step: the owner reviews the landing page, a guide and a journal entry.
-If accepted, prepare final document/status moves under `WORKFLOW.md`, integrate
-website then parent by PR, and complete the prepared Pages/DNS wiring. If the
-owner requests changes, keep them in this workstream and record the review
-outcome. Do not claim integration or final experiment success before it happens.
+Next step: merge the parent `website/initial-cut` integration PR, then enable
+Pages and configure the production domain/DNS before triggering publication.
+Website PR #1 was verified by SSH fetch; no source differences remained between
+the review branch and merged main. The parent gitlink now selects the website
+merge commit. Deliver this as an ordinary integration slice and retain the active
+workstream records: final review and experiment acceptance are still pending.
+After publication, continue review on the live site and finalize the workstream
+only after the owner accepts it.
 
 ## Delivered Structure
 
@@ -139,8 +146,8 @@ An abrupt platform cutoff invisible to the agent cannot guarantee warning.
 
 ## Open Threads
 
-- Awaiting human: first review of the visible site; final PR merges and
-  Pages/DNS/TLS wiring after acceptance. This is the agreed review boundary.
+- Awaiting human: parent PR merge and Pages/DNS/TLS setup. Website PR #1 is
+  merged. The owner authorized publication now and will finish review live.
 - Weighed: GitHub Pages plus local review avoids cloud provisioning, tokens,
   DNS or mainline merges as implementation prerequisites. No hosted preview
   was needed; the owner confirmed localhost access.
