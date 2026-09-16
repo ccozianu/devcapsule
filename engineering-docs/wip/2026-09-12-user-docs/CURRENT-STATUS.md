@@ -4,7 +4,7 @@ Mnemonic: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-15; designing the v1 first sessions around a small project with AI
+State: active 2026-09-16; owner authorized interim docs, landing edits, and both blog versions for mainline delivery; v1 cleanup backlogged
 
 Integration target: `main`
 
@@ -59,11 +59,13 @@ The owner's unrelated local host settings were saved on local-only
 `project-management/local-host-settings-20260915`; they are not documentation
 changes and were not copied onto this branch. No stash is the handoff boundary.
 
-## First-Session Proposal Awaiting Owner Agreement
+## Interim First-Session Slice Accepted For Mainline
 
-The following was implemented by the agent without first agreeing the adopter
-journey with the owner. Preserve it as existing branch work, not an accepted
-product decision or a slice authorized for publication by its test results.
+The following was initially implemented without agreeing the intended journey
+with the owner. On 2026-09-16 the owner explicitly authorized pushing the work
+for mainline integration, accepting that occasional visitors may encounter the
+v0.2.12-specific experience temporarily. This accepts an interim delivery; the
+intended v1 journey remains AI-first and needs the choices below.
 
 1. A visible “Start here” link from the README to one short first-session guide.
 2. Prerequisites, verified executable download, a disposable VSCodium/JavaScript
@@ -76,8 +78,39 @@ product decision or a slice authorized for publication by its test results.
 
 The agent proposed resolving sample selection by using a tiny new folder:
 no private Git credentials, external sample lock, or dependency installation
-stands between the reader and a first result. Whether that exercise delivers
-the intended first-session value remains a product decision for the pair.
+stands between the reader and a first result. It is now accepted as an interim
+exercise, not as the agreed v1 introduction.
+
+## Accepted Follow-Up Backlog: Replace The v0.2.12-Specific Journey
+
+Owner: `user-docs`. Accepted 2026-09-16; these items follow the current mainline
+delivery and do not block it. Work in this order unless the owner redirects:
+
+1. **UD-001 — Design the v1 first sessions with AI.** Agree a small project,
+   useful outcome, and IDE/agent pairing, then replace the no-AI JavaScript
+   exercise as the main journey. Decide whether a second AI adds value. Draft
+   the intended experience and record implementation gaps for coordination.
+2. **UD-002 — Remove incidental dependence on v0.2.12.** Review the download
+   URL, expected version output, platform prerequisites, and release references
+   across `docs/guides/first-session.md`, `your-project.md`, `windows-wsl2.md`,
+   and their entry points. Agree how users get a supported release without
+   requiring the whole journey to be redesigned per patch release. Keep
+   executable instructions and checksum verification tied to actual artifacts;
+   do not just replace version strings with unverified future commands.
+3. **UD-003 — Retire obsolete workaround prose as fixes arrive.** Revisit the
+   RC-labelled base prompt, init answers, launch diagnostics, browser opening,
+   and Ctrl+C/exit guidance against the implementation selected for the guide.
+   Coordinate runtime changes through project-management's existing UX intake;
+   this workstream owns the documentation changes and relevant verification.
+4. **UD-004 — Close documented platform evidence gaps.** Incorporate the
+   owner's Windows/WSL2 findings when available and confirm the browser
+   clipboard/fullscreen and resume instructions needed by the chosen journey.
+
+Done means the main entry points describe the agreed v1 experience, remaining
+release-specific limitations are clearly identified, and the published steps
+match the release they claim to support. The later OpenCode setup requirement
+below remains accepted after the first-session scoping; it is not forgotten
+or an immediate installation task.
 
 ## Accepted Later Requirement: OpenCode Setup
 
@@ -108,9 +141,8 @@ that the selected agent/model combination works well.
   waiting for the source conversation rather than being invented or forwarded.
   The shared Gemini URL could not be read; the owner was asked for its text.
 
-Both acknowledgments are pushed with intake removal and the disposition log
-through `user-docs/outbox`. The existing files on main remain the sender's evidence
-until that delivery lands.
+Both acknowledgments, intake removals, and the disposition log reached main
+through `user-docs/outbox` in PR #85, verified on 2026-09-16.
 
 ## Current Evidence
 
@@ -128,15 +160,39 @@ the terminal state. File → Exit in VSCodium stopped the launcher cleanly with
 exit code 0. Ctrl+C also stopped the container but printed KeyboardInterrupt;
 the guide now prefers the clean IDE exit and explains interruption output.
 
-Checked 186 local links/anchors, the three guides' shell-block syntax, their
-permanent index entries, and Git whitespace. The landing pitch and both badge
-lines are byte-for-byte preserved around the new Start here/Windows links. The
+The earlier guide validation checked 186 local links/anchors, the three guides'
+shell-block syntax, their permanent index entries, and Git whitespace. Both
+badge lines remain unchanged; the owner subsequently edited the landing copy
+and approved its grammar corrections and informal installation wording. The
 index's existing uninitialized sample-submodule link is the one unavailable
 local target. No runtime source changed or broad test suite was run. This uses an existing Docker
 host/cache, not a clean workstation or measured cold download. Browser keyboard,
 clipboard and Windows checks must not be claimed from this evidence alone.
 
+Delivery checks on 2026-09-16: reviewed 203 relative Markdown link targets and
+parsed 19 shell blocks with `bash -n`; both health badges remain unchanged.
+The existing index link into the uninitialized `typescript_tictactoe_5inrow`
+sample submodule is the only unavailable local target. Git whitespace checks
+pass. No runtime tests or installations were repeated for this prose delivery.
+
 ## Planned Next Step
+
+At the owner's request, wrote the second development-blog entry,
+[I asked for user docs](../../blog/2026-09-16-i-asked-for-user-docs.md), in the
+owner's voice with its AI-assisted authorship and edited quotations disclosed.
+The owner reviewed it positively, then requested a separate, funnier version
+as an imaginary dialogue between friends, including more of the autonomy
+argument and Navier–Stokes budget thought experiment. That alternative,
+[Does the subscription include Navier–Stokes?](../../blog/2026-09-16-does-the-subscription-include-navier-stokes.md),
+explicitly distinguishes invented dialogue from a transcript and makes no claim
+that a mathematical problem was solved. The owner clarified that the two friends
+are Costin and the AI itself, imagined as golfing/drinking buddies. Rewrote the
+alternative as Costin and Astra, explicitly identified as the Codex assistant;
+Astra argues its own case and answers for its decisions rather than appearing
+as a third party discussed by an invented human. On 2026-09-16 the owner
+authorized pushing the accumulated work for mainline integration. Both versions
+are included; no separate blog-site publication or implementation experiment
+was requested.
 
 The owner merged the isolated agent-guidance delivery through PR #84, verified
 on remote main at `1965be0`; this checkout has merged that main. The delivery
@@ -144,22 +200,24 @@ contained only root `AGENTS.md` and this handoff, grouped on one temporary branc
 at the owner's explicit request. This environment has neither PR write rights
 nor `gh`; future PR opening and merging remains the owner's work.
 
-Agree a small project and a useful first outcome with at least one AI, then
-draft the intended v1 journey and identify current implementation gaps. Keep
-the possible second AI as an open design choice. Do not resume the
-runtime experiments or treat the existing guides as accepted on the strength
-of the previous handoff. An autonomous product-development experiment was
-discussed hypothetically; none has been authorized to run.
+Push `user-docs/first-session` and give the owner the GitHub comparison link for
+the mainline merge. After the owner merges, verify the delivered tree on remote
+main and synchronize this checkout without discarding any unique work. This is
+an interim slice; the workstream stays open for UD-001 through UD-004 and the
+accepted OpenCode requirement. Then agree the AI-first project and outcome
+before resuming implementation or runtime experiments. The hypothetical
+autonomous product-development experiment remains unauthorized.
 
-The earlier delivery proposal is superseded by this feedback. The pushed records
-outboxes (`project-management/outbox` and `user-docs/outbox`) and documentation
-branch remain unmerged as of the latest fetch. The guides were moved to permanent
-paths on this branch and entry-point changes applied, but those mechanical steps
-do not establish owner acceptance. No existing guide work has been discarded.
-The refreshed `user-docs/outbox` delivery carries this current handoff, the
-OpenCode evaluation intake, and the previously pending routing, intake
-dispositions, and UX intake. Its older handoff is superseded. Merge the refreshed
-records delivery independently of the unaccepted onboarding guides.
+The user-docs
+records outbox reached remote main through PR #85 at `bfbfa5a`, verified on
+2026-09-16 and merged into this checkout. The project-management pause outbox
+and onboarding documentation branch remain unmerged as of that fetch.
+The guides are at permanent paths with their entry-point changes applied and
+are now accepted for this interim integration. No existing guide work has been
+discarded.
+That records delivery included the OpenCode evaluation intake and the pending
+routing, intake dispositions, and UX intake. The onboarding guides travel with
+the current ordinary delivery, separately from that already-merged outbox.
 
 ## Open Threads
 
@@ -195,6 +253,8 @@ it is not a change to another workstream's handoff.
 
 ## Documents
 
+- [Second development-blog entry: I asked for user docs](../../blog/2026-09-16-i-asked-for-user-docs.md) — first-person version.
+- [Alternative second entry: Does the subscription include Navier–Stokes?](../../blog/2026-09-16-does-the-subscription-include-navier-stokes.md) — fictional Costin/Astra dialogue.
 - [Intake](intake/README.md)
 - [Disposition log](intake-dispositions.md)
 

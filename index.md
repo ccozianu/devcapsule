@@ -18,6 +18,9 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
 - [Product documentation](docs/README.md)
+- [Your first DevCapsule session](docs/guides/first-session.md)
+- [Use your own project and add a coding agent](docs/guides/your-project.md)
+- [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
 - [Engineering documentation](engineering-docs/README.md)
 
 ## Root Requirement Records
@@ -107,6 +110,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [The DevCapsule development blog](engineering-docs/blog/README.md)
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](engineering-docs/blog/2026-09-06-when-should-a-tool-refuse.md)
+- [I asked for user docs](engineering-docs/blog/2026-09-16-i-asked-for-user-docs.md) — second development-blog entry.
+- [Does the subscription include Navier–Stokes?](engineering-docs/blog/2026-09-16-does-the-subscription-include-navier-stokes.md) — alternative second entry in dialogue form.
 
 ## Product And Positioning
 
