@@ -110,6 +110,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [The DevCapsule development blog](engineering-docs/blog/README.md)
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](engineering-docs/blog/2026-09-06-when-should-a-tool-refuse.md)
+- [I asked for user docs](engineering-docs/blog/2026-09-16-i-asked-for-user-docs.md) — second development-blog entry.
+- [Does the subscription include Navier–Stokes?](engineering-docs/blog/2026-09-16-does-the-subscription-include-navier-stokes.md) — alternative second entry in dialogue form.
 
 ## Product And Positioning
 
