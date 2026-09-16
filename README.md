@@ -15,7 +15,7 @@ But don't worry—you can already use it productively. DevCapsule is being
 developed using DevCapsule. We also use it for trading research to help manage
 the owner's stock portfolio. **We DO eat our own dog food.**
 
-## Start working on a project right away!
+### The essence of why DevCapsule: start working on a project right away!
 
 Gone are the days of spending hours onboarding, following complicated setup
 instructions, and debugging your development environment. For supported project
@@ -57,7 +57,10 @@ helps with the bookkeeping.
 
 ---
 
-Others solve parts of this; we’re building the combination we want—and using
+### But is it really needed?
+
+Others solve parts of this; we tried them and found they fell a bit short of
+our expectations. We’re building the combination we want—and using
 DevCapsule to build DevCapsule. [See the detailed comparison](engineering-docs/design-notes/devcapsule/competitive-comparison.md).
 
 [Documentation](docs/README.md) · [For developers](DEVELOPING.md) · [Apache-2.0 license](LICENSE)
