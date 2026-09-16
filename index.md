@@ -23,6 +23,11 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
 - [Engineering documentation](engineering-docs/README.md)
 
+## Website
+
+- [Website development and preview](website/README.md)
+- [Website publication](website/PUBLISHING.md)
+
 ## Root Requirement Records
 
 - [R-PRODUCT-001 Batteries-Included IDE Environments](engineering-docs/requirements/product/r-product-001-batteries-included-ide-environments.md)

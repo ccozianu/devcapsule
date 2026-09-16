@@ -27,6 +27,8 @@ developer-owned configuration authorizes host access.
 - `devcapsule-src/devcapsule/assets/project_workflow/` — reusable workflow
   definitions and separate project-instance templates embedded in the PEX.
 - `docs/` — stable product guidance for DevCapsule users and adopters.
+- `website/` — separate website presentation project, pinned as a Git submodule;
+  landing, documentation, and blog content remain authored in this repository.
 - `engineering-docs/` — contributor- and agent-facing requirements,
   specifications, decisions, design notes, implementation evidence, and
   workflow records.
@@ -114,6 +116,17 @@ The initial binary distribution channel is GitHub Releases: pushing an RC or fin
 `v*` tag runs the backend release workflow, which builds and clean-machine
 proves the self-contained Linux x86-64 PEX before publishing it with a SHA-256
 checksum, then downloads and proves the published bytes again.
+
+## Website Development
+
+For website development, initialize only the website submodule with
+`git submodule update --init website`, then run `./scripts/website.sh install`
+and `./scripts/website.sh preview`. Open the loopback URL printed by the server.
+`./scripts/website.sh build` creates and checks the static output. The website
+has its own Node-based checks and standalone DevCapsule setup; see
+[`website/README.md`](website/README.md) and
+[`website/PUBLISHING.md`](website/PUBLISHING.md). Website publication is manual
+and separate from a CLI release.
 
 ## Releasing A New Version
 

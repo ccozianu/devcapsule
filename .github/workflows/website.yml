@@ -1,0 +1,75 @@
+name: Website
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Preview artifact only, or owner-approved production deployment'
+        type: choice
+        options: [preview, production]
+        default: preview
+        required: true
+      site_origin:
+        description: 'HTTPS origin without trailing slash (required for production)'
+        type: string
+        default: 'https://devcapsule.mycodespace.ai'
+      base_path:
+        description: '/ for custom domain, /devcapsule/ for GitHub project URL'
+        type: string
+        default: '/'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-${{ inputs.mode }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SITE_MODE: ${{ inputs.mode }}
+      SITE_ORIGIN: ${{ inputs.site_origin }}
+      SITE_BASE_PATH: ${{ inputs.base_path }}
+    steps:
+      - uses: actions/checkout@v6
+      # Public checkout via HTTPS: no SSH/deployment secret needed in Actions.
+      - name: Fetch the exact website submodule commit
+        shell: bash
+        run: |
+          git config submodule.website.url https://github.com/ccozianu/devcapsule-website.git
+          git submodule update --init website
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: ./scripts/website.sh install
+      - run: npm --prefix website test
+      - run: ./scripts/website.sh build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website-preview
+          path: website/_site/
+          retention-days: 7
+      - uses: actions/upload-pages-artifact@v4
+        if: inputs.mode == 'production' && github.ref == 'refs/heads/main'
+        with:
+          path: website/_site/
+
+  deploy:
+    if: inputs.mode == 'production' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy reviewed website
+        id: deployment
+        uses: actions/deploy-pages@v4
