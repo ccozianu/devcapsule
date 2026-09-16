@@ -49,8 +49,9 @@ branch with accepted main without overwriting unique work.
 
 ## Planned Next Step
 
-Resolve the consolidated setup request below, verify access to the new website
-repository, and confirm the preview, warning, budget, and final delivery paths.
+Resolve the remaining preview, warning, and budget setup items below.
+Website repository SSH access is verified and final GitHub wiring is deferred
+by explicit owner instruction.
 Then begin implementation. Do not interpret elapsed time as setup agreement.
 
 Then execute the scoped autonomous experiment without routine design approvals.
@@ -100,10 +101,15 @@ Observed access and tooling:
   reports owner admin/push rights. The collaborator-permission endpoint returns
   403 `Resource not accessible by integration`; API mutation rights remain
   unverified. No GH_TOKEN/GITHUB_TOKEN environment variable is present.
-- The proposed website repository returns 404 through the connector: absent or
-  inaccessible. Ask the owner to create it with an initial README and provide
-  this environment Git write access; connector access is useful but optional
-  if the owner handles PR creation/merge.
+- The owner created `ccozianu/devcapsule-website` and instructed use of SSH,
+  without GitHub app access. SSH clone/read succeeded at main
+  `ed4c18eebb96994966f3f98e1822878e0e723f75` (initial README only), and a
+  push dry run for an `initial-cut` branch succeeded. No remote branch was
+  created by the probe. Actual implementation pushes will verify writes.
+- The owner explicitly accepts executing build/update scripts by hand in this
+  environment for validation and defers final GitHub backend wiring until
+  delivery. That wiring is not a prerequisite for the preview or a measure of
+  this experiment's website quality. Do not request app credentials again.
 
 Feasibility: this is a small static publishing project with existing content;
 completion appears feasible within the authorized ceiling, without needing to
@@ -132,9 +138,9 @@ an invisible abrupt platform cutoff cannot guarantee advance warning.
 
 ## Open Threads
 
-- Awaiting human: create/access the website repository; agree local preview
-  access and owner-managed final merges/Pages/DNS; establish warning channel
-  and visible allowance/reset status. Verify supplied access before building.
+- Awaiting human: confirm local preview access, exceptional-warning channel,
+  and any visible allowance/reset status (unknown is acceptable). Repository
+  SSH access is verified; final GitHub wiring is explicitly deferred.
 - Budget is at most the agreed subscription-month allowance plus the three
   reported resets. Establish visibility and warning arrangements at setup;
   do not invent a token balance or assume control of account resets.
