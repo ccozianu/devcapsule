@@ -4,7 +4,7 @@ Mnemonic: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-16; owner authorized interim docs, landing edits, and both blog versions for mainline delivery; v1 cleanup backlogged
+State: paused 2026-09-16; website experiment brief prepared; human will select website in a fresh context
 
 Integration target: `main`
 
@@ -175,51 +175,44 @@ The existing index link into the uninitialized `typescript_tictactoe_5inrow`
 sample submodule is the only unavailable local target. Git whitespace checks
 pass. No runtime tests or installations were repeated for this prose delivery.
 
-## Planned Next Step
+## Last Task And Planned Next Step
 
-At the owner's request, wrote the second development-blog entry,
-[I asked for user docs](../../blog/2026-09-16-i-asked-for-user-docs.md), in the
-owner's voice with its AI-assisted authorship and edited quotations disclosed.
-The owner reviewed it positively, then requested a separate, funnier version
-as an imaginary dialogue between friends, including more of the autonomy
-argument and Navier–Stokes budget thought experiment. That alternative,
-[Does the subscription include Navier–Stokes?](../../blog/2026-09-16-does-the-subscription-include-navier-stokes.md),
-explicitly distinguishes invented dialogue from a transcript and makes no claim
-that a mathematical problem was solved. The owner clarified that the two friends
-are Costin and the AI itself, imagined as golfing/drinking buddies. Rewrote the
-alternative as Costin and Astra, explicitly identified as the Codex assistant;
-Astra argues its own case and answers for its decisions rather than appearing
-as a third party discussed by an invented human. On 2026-09-16 the owner
-authorized pushing the accumulated work for mainline integration. Both versions
-are included; no separate blog-site publication or implementation experiment
-was requested.
+The owner accepted the interim guides, landing edits, and both blog versions
+for mainline delivery. Verified PR #86 (`6a44168`) and the final landing follow-up
+PR #87 (`2e5f3b1`) on remote main; this checkout is synchronized through
+`21367b8`, including the subsequent coverage-badge update. Agent instructions
+and earlier coordination records already landed through PRs #84 and #85.
 
-The owner merged the isolated agent-guidance delivery through PR #84, verified
-on remote main at `1965be0`; this checkout has merged that main. The delivery
-contained only root `AGENTS.md` and this handoff, grouped on one temporary branch
-at the owner's explicit request. This environment has neither PR write rights
-nor `gh`; future PR opening and merging remains the owner's work.
+At the owner's direction, prepared the permanent
+[website autonomy work order](../../work-orders/2026-09-16-website-autonomy.md)
+in this workstream, then the `website` registration through `user-docs/outbox`.
+Deliver the work order through `user-docs/first-session` before merging the
+registration outbox, so its linked brief exists on main. The outbox carries
+this handoff verbatim and pauses user-docs in the registry. The owner authorized
+a prepared `website/initial-cut` branch from this workstream's branch; record
+that narrow pre-registration branch exception in the new handoff.
 
-Push `user-docs/first-session` and give the owner the GitHub comparison link for
-the mainline merge. After the owner merges, verify the delivered tree on remote
-main and synchronize this checkout without discarding any unique work. This is
-an interim slice; the workstream stays open for UD-001 through UD-004 and the
-accepted OpenCode requirement. Then agree the AI-first project and outcome
-before resuming implementation or runtime experiments. The hypothetical
-autonomous product-development experiment remains unauthorized.
+Website implementation has not started. The human will use `/new` and explicitly
+select `website/initial-cut` after the deliveries land. Leave this checkout on
+user-docs for that handoff; do not switch or begin the experiment in this context.
+The initial setup/credentials checkpoint belongs to the new pair. Its work order
+is self-contained and expressly includes the repository-owned development blog.
 
-The user-docs
-records outbox reached remote main through PR #85 at `bfbfa5a`, verified on
-2026-09-16 and merged into this checkout. The project-management pause outbox
-and onboarding documentation branch remain unmerged as of that fetch.
-The guides are at permanent paths with their entry-point changes applied and
-are now accepted for this interim integration. No existing guide work has been
-discarded.
-That records delivery included the OpenCode evaluation intake and the pending
-routing, intake dispositions, and UX intake. The onboarding guides travel with
-the current ordinary delivery, separately from that already-merged outbox.
+On a future human-directed return to user-docs, resume UD-001: agree the small
+AI-first project and outcome, then design the v1 journey and record gaps.
+UD-002 through UD-004 and the later OpenCode requirement remain accepted.
+No remaining website design choices should be decided here.
 
 ## Open Threads
+
+- Pending delivery: work-order PR, then registration outbox; verify external
+  merge state before starting website. Git push works, but the human opens and
+  merges PRs. No infrastructure access has been requested for the experiment.
+- This is a deliberate pause, not completion of user-docs. The v1 guide cleanup,
+  OpenCode setup, and platform follow-ups remain here.
+- Preserved for the next pair: the work order and website handoff. No full chat
+  transcript or unpublished speculative website design is being carried over;
+  the blog dialogue is illustrative fiction, not an additional task contract.
 
 - Choose the small project, first useful outcome, and AI/IDE pairing with the
   owner. Decide whether and how a second AI improves the first sessions.
@@ -252,6 +245,8 @@ startup diagnostics and Ctrl+C traceback. It asks for implementation ownership;
 it is not a change to another workstream's handoff.
 
 ## Documents
+
+- [Website autonomy work order](../../work-orders/2026-09-16-website-autonomy.md) — agreed experiment brief handed to website.
 
 - [Second development-blog entry: I asked for user docs](../../blog/2026-09-16-i-asked-for-user-docs.md) — first-person version.
 - [Alternative second entry: Does the subscription include Navier–Stokes?](../../blog/2026-09-16-does-the-subscription-include-navier-stokes.md) — fictional Costin/Astra dialogue.
