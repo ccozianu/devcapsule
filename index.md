@@ -53,6 +53,10 @@ status file; internal WIP/archive documents use the local index in that status.
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
+## Work Orders
+
+- [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)
+
 ## Workstream Status
 
 - [Multiple-stream workflow successful archive](engineering-docs/archive/2026-08-08-multi-workflow/CURRENT-STATUS.md)
