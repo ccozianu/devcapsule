@@ -12,7 +12,7 @@ on:
       site_origin:
         description: 'HTTPS origin without trailing slash (required for production)'
         type: string
-        default: 'https://devcapsule.mycodespace.ai'
+        default: 'https://test-devcapsule.mycodespace.ai'
       base_path:
         description: '/ for custom domain, /devcapsule/ for GitHub project URL'
         type: string
@@ -73,3 +73,44 @@ jobs:
       - name: Deploy reviewed website
         id: deployment
         uses: actions/deploy-pages@v4
+
+  candidate:
+    # Only the custom-domain test deployment can become a production candidate.
+    if: inputs.mode == 'production' && github.ref == 'refs/heads/main' && inputs.site_origin == 'https://test-devcapsule.mycodespace.ai' && inputs.base_path == '/'
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Fetch the pinned website implementation
+        run: |
+          git config submodule.website.url https://github.com/ccozianu/devcapsule-website.git
+          git submodule update --init website
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v8
+        with:
+          name: website-preview
+          path: candidate-site
+          digest-mismatch: error
+      - name: Package the exact deployed files
+        env:
+          CANDIDATE_TAG: website-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+        run: node website/scripts/candidate.mjs pack
+      - name: Publish public website candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CANDIDATE_TAG: website-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          # Draft until both assets are uploaded; never overwrite an existing tag.
+          gh release create "$CANDIDATE_TAG" candidate-bundle/website.tar.gz candidate-bundle/candidate.json \
+            --draft --prerelease --latest=false --target "$GITHUB_SHA" \
+            --title "Website candidate $CANDIDATE_TAG" \
+            --notes-file candidate-bundle/release-notes.txt
+          gh release edit "$CANDIDATE_TAG" --draft=false --prerelease --latest=false
+          echo "Candidate: https://github.com/$GH_REPO/releases/tag/$CANDIDATE_TAG" >> "$GITHUB_STEP_SUMMARY"

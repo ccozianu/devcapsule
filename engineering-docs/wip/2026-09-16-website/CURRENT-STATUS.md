@@ -51,13 +51,24 @@ git submodule update --init website
 Use the printed URL if 8080 is occupied. `PORT=8090` changes the starting port.
 Build/check on demand: `./scripts/website.sh build`.
 
-Next step: the owner merges website `production-pages`, configures production
-Pages/DNS and its read-only artifact secret, then manually dispatches the new
-production action. See website PUBLISHING.md for the complete sequence.
-The production workflow promotes a selected successful parent test run without
-rebuilding content or presentation. The only generated-page changes are canonical
-origins, plus promotion provenance in build-info.json. The parent workflow stays
-unchanged and continues to own the test deployment.
+Next step: the owner merges website `production-pages`, then parent
+`website/initial-cut` with the updated website pin and test workflow. Squash
+merges require selecting the merged website revision in the parent first.
+Configure production Pages/DNS/HTTPS; no personal token or repository secret is
+needed. Start a new parent Website run from updated main, review the test site,
+then promote its public candidate release tag using the website production action.
+See website PUBLISHING.md for the complete sequence.
+
+The owner rejected personal-token renewal overhead and selected public GitHub
+Release assets. The parent workflow publishes a candidate prerelease only after
+successful test deployment, using built-in GITHUB_TOKEN with contents: write
+only in the candidate job. Tags use website-candidate-RUN_ID-ATTEMPT and cannot
+replace the latest CLI release. Production downloads public assets anonymously,
+validates SHA-256/source metadata/archive paths and promotes without rebuilding.
+The only generated-page changes are canonical origins and promotion provenance.
+Releases remain available until deleted; Actions artifact/log retention is no
+longer a promotion/rollback dependency. The former CANDIDATE_READ_TOKEN proposal
+is superseded; do not ask the owner to create or renew it.
 
 On 2026-09-17, both checkout HEADs matched fetched remote main (parent `8233dab`,
 website `b55ea0a`). The parent integration is merged. The owner reports the test
@@ -118,13 +129,17 @@ Formal experiment acceptance and finalization remain open.
   nine packaging integration checks. The dirty-tree gate intentionally skipped
   the public revision-bearing PEX; its local PEX passed. No runtime source changed.
 - Test-site Actions build/deploy success and HTTPS manifest independently verified
-  on 2026-09-17. New production workflow execution and authenticated artifact
-  retrieval remain unverified; owner wiring/dispatch is the agreed completion path.
-- Production slice: seven website unit tests passed; a clean temporary build of
-  the exact deployed revisions was promoted locally and passed all 582 links
-  across 16 pages. This was a rebuilt fixture, not the authenticated artifact.
-  The workflow passes actionlint 1.7.12. No page appearance or parent runtime
-  source changed.
+  on 2026-09-17. New public candidate publication and production deployment remain
+  unverified; owner merges and dispatches are the agreed completion path.
+- Release promotion: eleven website tests pass, covering credential-free downloads,
+  archive corruption/unsafe paths, source validation and byte preservation.
+  A clean build of the deployed sources passed packaging, simulated anonymous
+  download, promotion and all 582 local links across 16 pages. Both workflows
+  pass actionlint 1.7.12. No page appearance or parent runtime source changed.
+
+The required parent `nox -s build` gate passed again, including all nine
+packaging integration checks. Its dirty-tree policy skipped the public revision
+PEX; the local PEX build and smoke checks passed.
 
 ## Setup, Access And Budget
 
@@ -158,12 +173,13 @@ An abrupt platform cutoff invisible to the agent cannot guarantee warning.
 
 ## Open Threads
 
-- Awaiting human: production workflow PR merge, production domain/HTTPS, repository
-  secret CANDIDATE_READ_TOKEN (Actions: read on parent), and manual promotion.
-  The saved test artifact expires after seven days (current candidate: 2026-09-24).
-- Chosen: promote the saved test build; rebuilding latest main would not preserve
-  the tested candidate. Rollback needs an unexpired source artifact; permanent
-  release archival and separate test noindex support are outside this slice.
+- Awaiting human: website and parent PR merges, production domain/HTTPS and manual
+  workflow runs. Start a new test run from updated main; old run 35187865183 has
+  no public release assets and rerunning its old definition cannot create them.
+- Chosen: public release candidates remove personal-token maintenance and allow
+  promotion/rollback after Actions artifacts expire. Keep release assets for as
+  long as rollback is required; owners can still delete or modify releases.
+- Separate test noindex support remains outside this slice.
 - Weighed: GitHub Pages plus local review avoids cloud provisioning, tokens,
   DNS or mainline merges as implementation prerequisites. No hosted preview
   was needed; the owner confirmed localhost access.
