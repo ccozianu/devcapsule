@@ -4,7 +4,7 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active; website PR merged; parent integration and owner-authorized publication next; final review remains open
+State: active; initial PRs merged and test site working; production promotion action prepared; final review remains open
 
 Branch association: `website/initial-cut`; prefix `website/`
 
@@ -51,14 +51,22 @@ git submodule update --init website
 Use the printed URL if 8080 is occupied. `PORT=8090` changes the starting port.
 Build/check on demand: `./scripts/website.sh build`.
 
-Next step: merge the parent `website/initial-cut` integration PR, then enable
-Pages and configure the production domain/DNS before triggering publication.
-Website PR #1 was verified by SSH fetch; no source differences remained between
-the review branch and merged main. The parent gitlink now selects the website
-merge commit. Deliver this as an ordinary integration slice and retain the active
-workstream records: final review and experiment acceptance are still pending.
-After publication, continue review on the live site and finalize the workstream
-only after the owner accepts it.
+Next step: the owner merges website `production-pages`, configures production
+Pages/DNS and its read-only artifact secret, then manually dispatches the new
+production action. See website PUBLISHING.md for the complete sequence.
+The production workflow promotes a selected successful parent test run without
+rebuilding content or presentation. The only generated-page changes are canonical
+origins, plus promotion provenance in build-info.json. The parent workflow stays
+unchanged and continues to own the test deployment.
+
+On 2026-09-17, both checkout HEADs matched fetched remote main (parent `8233dab`,
+website `b55ea0a`). The parent integration is merged. The owner reports the test
+site works well; HTTPS manifest and GitHub API independently confirm test run
+`35187865183`, content `8233dab98bf85710bb73ebd3e66ef0b29880eaf4`, website
+`b55ea0a378725080bc7cf13b2c78844b2d225c52`, with successful build and deploy.
+Only `mycodespace.ai` is owned; all `codespace.ai` spellings were human typos.
+Test is `test-devcapsule.mycodespace.ai`; production is `devcapsule.mycodespace.ai`.
+Formal experiment acceptance and finalization remain open.
 
 ## Delivered Structure
 
@@ -109,10 +117,14 @@ only after the owner accepts it.
   including compilation, shell syntax, type checks, tests, CLI/PEX smoke and
   nine packaging integration checks. The dirty-tree gate intentionally skipped
   the public revision-bearing PEX; its local PEX passed. No runtime source changed.
-- GitHub Actions execution, hosted Pages/DNS/TLS, and production deployment are
-  untested and deferred by owner authorization; local script execution is the
-  agreed validation for the update mechanism. npm audit reported no known
-  dependency vulnerabilities at installation.
+- Test-site Actions build/deploy success and HTTPS manifest independently verified
+  on 2026-09-17. New production workflow execution and authenticated artifact
+  retrieval remain unverified; owner wiring/dispatch is the agreed completion path.
+- Production slice: seven website unit tests passed; a clean temporary build of
+  the exact deployed revisions was promoted locally and passed all 582 links
+  across 16 pages. This was a rebuilt fixture, not the authenticated artifact.
+  The workflow passes actionlint 1.7.12. No page appearance or parent runtime
+  source changed.
 
 ## Setup, Access And Budget
 
@@ -146,8 +158,12 @@ An abrupt platform cutoff invisible to the agent cannot guarantee warning.
 
 ## Open Threads
 
-- Awaiting human: parent PR merge and Pages/DNS/TLS setup. Website PR #1 is
-  merged. The owner authorized publication now and will finish review live.
+- Awaiting human: production workflow PR merge, production domain/HTTPS, repository
+  secret CANDIDATE_READ_TOKEN (Actions: read on parent), and manual promotion.
+  The saved test artifact expires after seven days (current candidate: 2026-09-24).
+- Chosen: promote the saved test build; rebuilding latest main would not preserve
+  the tested candidate. Rollback needs an unexpired source artifact; permanent
+  release archival and separate test noindex support are outside this slice.
 - Weighed: GitHub Pages plus local review avoids cloud provisioning, tokens,
   DNS or mainline merges as implementation prerequisites. No hosted preview
   was needed; the owner confirmed localhost access.
