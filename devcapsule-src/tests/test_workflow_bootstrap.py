@@ -54,6 +54,9 @@ def test_single_stream_bootstrap_installs_definition_and_instance(tmp_path: Path
     assert report.workflow_type == "single-stream"
     assert (tmp_path / "WORKFLOW.md").is_file()
     assert "Read `WORKFLOW.md`" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    local = (tmp_path / "WORKFLOW-LOCAL.md").read_text(encoding="utf-8")
+    assert local.startswith("# Local Workflow: Example Project\n")
+    assert "## Version Scheme" in local and "## Exceptions" in local
     status = (tmp_path / "CURRENT-STATUS.md").read_text(encoding="utf-8")
     assert "Workflow type: `single-stream`" in status
     assert "Initial project orientation" in status

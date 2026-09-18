@@ -174,6 +174,11 @@ There is no 0.2.13. Rules changed since 0.2.12:
   table names the definition, its version, and the mode; the frontmatter of
   this file carries the same version. Migration: add the table; a definition
   refresh writes it.
+- **The project's local workflow.** *The Project's Local Workflow*:
+  `WORKFLOW-LOCAL.md` holds what only one project can decide, permissively,
+  with recommended headings. *Releases* now states the development-version
+  rule generically and delegates its spelling there. Migration: create the
+  file from the template; bootstrap does so where it is missing.
 
 #### 0.2.12 and earlier
 
@@ -335,6 +340,52 @@ each release, and release tags are immutable, so every version of this text is
 readable for good at its tag, with no second numbering scheme to maintain. A
 release that changes no rule still advances the version; *Changes* says
 whether anything changed.
+
+## The Project's Local Workflow
+
+This document is the generic half of a project's workflow: installed by the
+tooling, versioned, and the same in every project that runs it, which is what
+lets a contributor rely on it. The other half is the project's own, in
+`WORKFLOW-LOCAL.md` beside this file: the rules that only make sense for one
+project, because they depend on its ecosystem, its hosting, or its history.
+
+**What each file governs.** This document binds wherever it speaks. Where it
+is silent, the local file may say whatever the project needs, and that is the
+ordinary way to fill the silence rather than an exception to it; *Latitude
+Where This Document Is Silent* applies unchanged. A local rule that
+contradicts a rule here is not an override. It is recorded under the local
+file's *Exceptions* heading with its reason, so the contradiction is visible
+and reportable, and it is the signal that this document should have been
+silent there.
+
+**What the local file usually settles.** Recommended, not required. The
+template a fresh project receives carries these headings with the question
+each answers:
+
+- **Version scheme.** How the source names itself between releases and at a
+  release, and the command that sets it. A Python project says `0.2.14.dev0`
+  and then `0.2.14`; a Maven project says `0.2.14-SNAPSHOT`; each ecosystem
+  has its own, and *Releases* only requires that the marker exists and orders
+  before the release.
+- **Release policy.** Ref spelling if it differs from the default, how a
+  candidate is built and published, what the candidate gate checks, what
+  acceptance evidence is required, and where the acceptance record lives.
+- **Validation commands.** What a pair runs before a checkpoint and before
+  integration, and where the full description lives.
+- **Host capabilities.** What the project needs from the machine and the
+  hosting service that this document cannot assume: branch permissions,
+  runners, credentials, and their declared justifications.
+- **Exceptions.** Every recorded departure from this document, each with its
+  reason and, where one exists, the condition that ends it.
+
+Nothing else is prescribed. A section the project does not need stays empty
+or is deleted. A section the project needs and the template did not foresee
+is added.
+
+**Ownership.** The local file is project state. Bootstrap renders it once
+from the template and never touches it again; a definition refresh replaces
+this document only. Agents read this document first and the local file
+second, and treat both as binding in their own territory.
 
 ## Single-Stream Workflow
 
@@ -1483,6 +1534,15 @@ never rebased, never force-pushed, and never deleted. Tags are immutable. A
 release whose source must change gets a new candidate; a released version that
 needs a fix gets a new version.
 
+**The source version between releases.** Between releases the source names
+itself by a development marker that the ecosystem's tooling orders before the
+release it works toward; the release branch's first commit replaces it with
+the release version, or confirms one the product owner already set; and after
+the final tag `main` reopens with the next development version, the next patch
+by default unless the owner names another. The marker's spelling and the
+command that sets it are the project's, under *Version scheme* in
+`WORKFLOW-LOCAL.md`.
+
 **Direction of flow.** Work flows from the release branch to `main`, by merge,
 and never the other way after the cut. *Staying Current With `main`* does not
 apply to release refs: a release branch is not synchronized with `main`, and
@@ -1610,12 +1670,12 @@ its refs differently.
 ### What This Section Leaves To The Project
 
 The shape above is reusable; the mechanics are not. Each project records in
-its own release policy: the exact ref spelling if it differs from the default,
-how a candidate is built and published, what the candidate gate checks and how
-an exception is recorded, what acceptance evidence is required and where the
-acceptance record lives, and the version-bump command. That policy is project
-state, not part of this definition, and a project writes it before its first
-release. In this repository that policy is the
+`WORKFLOW-LOCAL.md`, under *Release policy* and *Version scheme*: the exact
+ref spelling if it differs from the default, how a candidate is built and
+published, what the candidate gate checks and how an exception is recorded,
+what acceptance evidence is required and where the acceptance record lives,
+and the version-bump command. That policy is project state, not part of this
+definition, and a project writes it before its first release. In this repository that policy is the
 [operator guide for releasing a new version](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md),
 owned by `project-management`.
 
@@ -1737,6 +1797,8 @@ Use markdown files with distinct responsibilities:
   canonical detailed requirement records for that subproject.
 - `AGENTS.md`: instructions every future agent should read before touching the
   repository.
+- `WORKFLOW-LOCAL.md`: the project's own half of the workflow, beside the
+  installed `WORKFLOW.md`; see *The Project's Local Workflow*.
 - `engineering-docs/design-notes/`: proposals, alternatives, research, and
   unsettled implementation-scoped architecture.
 - `engineering-docs/implementation-notes/`: execution plans, validation
@@ -2296,6 +2358,7 @@ At minimum, add or update these files in the target project:
 ```text
 .devcapsule/devcapsule.toml
 AGENTS.md
+WORKFLOW-LOCAL.md
 README.md
 CURRENT-STATUS.md
 REQUIREMENTS.md

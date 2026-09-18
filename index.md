@@ -17,6 +17,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Claude compatibility pointer](CLAUDE.md)
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
+- [This project's local workflow](WORKFLOW-LOCAL.md)
 - [Product documentation](docs/README.md)
 - [Your first DevCapsule session](docs/guides/first-session.md)
 - [Use your own project and add a coding agent](docs/guides/your-project.md)

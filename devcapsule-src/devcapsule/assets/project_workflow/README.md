@@ -8,6 +8,7 @@ repository but have different ownership:
   `WORKFLOW.md` in adopter repositories.
 - `templates/` contains initial project-memory instances. Bootstrap renders
   these into files such as `CURRENT-STATUS.md`, `REQUIREMENTS.md`, `index.md`,
+  `WORKFLOW-LOCAL.md` (the project's own half of the workflow, never refreshed),
   and, for multiple-stream projects, the reserved `project-management`
   workstream records.
 

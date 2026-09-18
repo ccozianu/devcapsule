@@ -917,6 +917,52 @@ owning it. The runbook consequence rides the pending outbox item to
 pre-existing expected failure); syntax and typecheck gates pass. The wider
 suite was not run.
 
+### Eighteenth Task: The Project's Local Workflow, And The Version Between Releases
+
+Two owner decisions of 2026-09-18, after 0.2.14 was stamped mid-cycle and the
+question arose of what the package version of work in progress should be.
+
+**Work in progress carries a development version.** Two conventions were
+put to the owner with evidence read from the projects' main branches that
+day: static `X.Y.Z.dev0` (pip at `26.3.dev0`, NumPy at `2.6.0.dev0`) and
+git-derived versions (pytest through setuptools_scm). The owner chose the
+static form. The package, both definition frontmatters, and this repository's
+declaration now carry `0.2.14.dev0`; the bump script accepts the suffix,
+orders development versions before their release, and refuses backwards
+moves, so the transition was made by hand once. The rule was deliberately
+not written into the definition until the next decision was made.
+
+**The workflow has a generic half and a project half.** The owner's design:
+the generic definition is installed by the tooling and can be relied on
+because it is verified elsewhere; a project's own rules, such as its version
+scheme, cannot live there because a Maven project says `-SNAPSHOT` where a
+Python project says `.dev0`. The owner's second ruling shaped the authority
+rule: permissive, "what is not forbidden is permitted", not a fixed list of
+delegation points. Written as *The Project's Local Workflow* in
+`WORKFLOW.md`: the definition binds wherever it speaks, `WORKFLOW-LOCAL.md`
+governs wherever it is silent, a contradiction is a recorded exception rather
+than an override, and five headings are recommended rather than required:
+version scheme, release policy, validation commands, host capabilities,
+exceptions. *Releases* now states the development-version rule generically
+and delegates its spelling to the local file. Bootstrap renders the local
+file once from a new common template and never refreshes it; both `AGENTS.md`
+copies read it after the definition; the spec, the asset README, *Markdown
+Roles*, *Applying This To Other Projects*, and the index follow. This
+repository's own `WORKFLOW-LOCAL.md` is written, with its three standing
+exceptions recorded.
+
+This answers question 3 of the *One Workflow, Many Projects* item ahead of
+the umbrella review, which should treat it as a delivered slice.
+
+**Decided rather than transcribed, open to reversal.** After the final tag,
+`main` reopens at the next patch's development version by default; the owner
+may name another, as with 0.2.14. The owner had not chosen between automatic
+and named reopening; the default keeps `main` from ever claiming a released
+version.
+
+**Verification.** Bootstrap and bump tests pass; syntax and typecheck gates
+pass. The wider suite was not run.
+
 ## Next Resumable Task
 
 Put the `maintenance` workstream, the bug vocabulary, the backfilled bug
@@ -1098,6 +1144,8 @@ can be reordered.
    request. See *Sixteenth Task*.
 8. ~~The `ws-` branch vocabulary and the workflow declaration.~~ Drafted
    2026-09-18 with item 7. See *Seventeenth Task*.
+9. ~~The project's local workflow and the development version.~~ Drafted
+   2026-09-18. See *Eighteenth Task*.
 
 ## Assessment Of The Queue
 

@@ -9,8 +9,10 @@ any other value as invalid. The declared version governs: follow this
 repository's `WORKFLOW.md` as it is, whatever newer text you know, and never
 refresh it or change the declared version except on explicit instruction.
 
-Read `WORKFLOW.md` for the reusable protocol, starting with its *Vocabulary*,
-and `CURRENT-STATUS.md` for this project's live state. In single-stream mode, `CURRENT-STATUS.md` is the active
+Read `WORKFLOW.md` for the reusable protocol, starting with its *Vocabulary*;
+then `WORKFLOW-LOCAL.md` for this project's own half of the workflow, which
+governs wherever `WORKFLOW.md` is silent; then `CURRENT-STATUS.md` for this
+project's live state. In single-stream mode, `CURRENT-STATUS.md` is the active
 handoff. In multiple-streams mode, it is the mainline registry: select the one
 workstream associated with the user's request and current branch, then read its
 `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md` and `intake/`.

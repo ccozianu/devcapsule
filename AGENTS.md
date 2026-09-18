@@ -72,6 +72,12 @@ several checkouts integrating through the shared remote, not from any local
 arrangement of directories, which is an implementation detail and not workflow
 state. See *Checkouts, Branches, And Workstreams* in `WORKFLOW.md`.
 
+After `WORKFLOW.md`, read `WORKFLOW-LOCAL.md`, this project's own half of the
+workflow: the version scheme, release policy, validation commands, host
+capabilities, and recorded exceptions that only this project can decide.
+`WORKFLOW.md` binds wherever it speaks; the local file governs where it is
+silent. See *The Project's Local Workflow* in `WORKFLOW.md`.
+
 `WORKFLOW.md` uses the vocabulary of the Workflow Patterns initiative as its
 reference vocabulary: process, case, sub-process, task, work item, resource,
 trigger. A workstream is a case of the workstream sub-process; a release is a

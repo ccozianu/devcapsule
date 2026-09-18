@@ -48,7 +48,8 @@ The command:
 
 1. installs missing `AGENTS.md` and `WORKFLOW.md` from packaged definition
    bytes;
-2. initializes only missing project-owned files and directories;
+2. initializes only missing project-owned files and directories, including
+   the project's `WORKFLOW-LOCAL.md` rendered once from its template;
 3. preserves existing project-owned files;
 4. migrates an older final README `Current State And Next Step` section into a
    newly created single-stream `CURRENT-STATUS.md` without deleting the README
