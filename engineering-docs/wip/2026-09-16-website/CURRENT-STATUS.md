@@ -4,7 +4,7 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: delivered and public; final smoke check passed; awaiting owner experiment verdict and closure records
+State: paused 2026-09-18 at owner request to switch to project-management; delivered and public; awaiting owner experiment verdict and closure records
 
 Branch association: `website/initial-cut`; prefix `website/`
 
@@ -15,6 +15,24 @@ Delivery method: reviewable SSH-pushed branches; the owner creates/merges PRs
 and performs final GitHub backend wiring. The owner has now authorized making
 the site live at `devcapsule.mycodespace.ai` before finishing the review.
 No force-push or mainline implementation is needed.
+
+## Synchronization And Pause (2026-09-18)
+
+The owner requested synchronization with main and a switch to project-management.
+The clean website branch fast-forwarded to fetched main `042c094`; no conflicts
+or implementation edits were required. Existing Open Threads below remain the
+handoff: owner verdict, then closure records through the normal PR route.
+Branch-name migration to `ws-website/` remains due before the next release
+candidate under WORKFLOW-LOCAL.md's transition exception. No migration or
+additional website work was requested in this synchronization task.
+
+Validation: `nox -s build` passed, including all nine packaging integration
+checks. The dirty-tree policy skipped the public revision-bearing PEX; the
+local validation artifact passed. Pause records are sent separately through
+`ws-website/outbox` for the owner to merge; production was not rechecked during
+this Git-only task. The target project-management branch has divergent local
+and remote histories; owner direction is pending before switching or merging
+there.
 
 ## Task Contract And Current Stage
 
