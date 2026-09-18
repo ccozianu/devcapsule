@@ -53,8 +53,14 @@ itself. It is not an editing checkout; see selection rule 6.
   identity that the remote's two commits were the same content. The sample
   projects arrived as submodules with the rebase; nothing about them is this
   workstream's.
-- Eleven intake items were waiting. Two are acknowledged and drafted as of
-  2026-09-16 (*Fifteenth Task*); nine remain in `intake/`.
+- Eleven intake items were waiting. Two are acknowledged and their rule is on
+  `main` (*Fifteenth Task*); nine remain in `intake/`.
+- The release rule is operative since 2026-09-16. The product owner merged
+  `workflow-improvements/v1` as [`PR #88`](https://github.com/ccozianu/devcapsule/pull/88)
+  on 2026-09-16 and the outbox send as [`PR #89`](https://github.com/ccozianu/devcapsule/pull/89)
+  on 2026-09-18, both as merge commits. Verified by `git cherry`: nothing unique
+  remains on either branch, and `workflow-improvements/v1` was hard-reset to
+  `main` on 2026-09-18 per *Staying Current With `main`*.
 - Corrected 2026-08-16. This handoff previously said no workflow correction had
   been implemented. Two rounds have since landed, both published by
   `project-management` as deliberate bootstrap exceptions because this
@@ -690,7 +696,8 @@ the Workflow Patterns vocabulary as its reference vocabulary, and framed the
 structure as: developing a project is the parent process, a workstream is a
 child of it, and a release is a special kind of workstream.
 
-Drafted, on this branch, awaiting the owner's review before the pull request:
+Written on this branch, reviewed by the owner, and merged as `PR #88` on
+2026-09-16:
 
 - `WORKFLOW.md`: a *Vocabulary* subsection in the preamble, after *How To Read
   This Document*, naming the reference vocabulary (process, case, sub-process,
@@ -760,12 +767,12 @@ task's records. The guide is `project-management`'s to edit.
 
 ## Next Resumable Task
 
-Put the drafted *Vocabulary* and *Releases* text in front of the product owner,
-apply what the review changes, and push the branch for the pull request. The
-owner opens and merges it; this environment has no GitHub API access.
-
-Then disposition the remaining nine intake items, which need the owner's answer
-on four points before work starts. They are listed under *Open Threads*.
+Disposition the remaining nine intake items. Work cannot start until the
+product owner answers the four questions under *Open Threads*; put them first
+in the next session. The owner's stated immediate interest is that the next
+release, whatever it contains, runs under the release rule now on `main`; the
+only step left for that is `project-management`'s edit of its operator guide,
+delivered to its intake on 2026-09-18 in `PR #89`.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
 actionable and unclaimed.
@@ -919,9 +926,9 @@ can be reordered.
    `recursive-e2e`, told this workstream on 2026-08-22 that Stage 7 was ready,
    and has since concluded and been archived; the convention needs a new
    consumer or an explicit decision to drop it.
-5. ~~Release refs are not workstream branches.~~ Drafted 2026-09-16; awaiting
-   owner review and the pull request. See *Fifteenth Task*.
-6. ~~A workstream takes a release over.~~ Drafted 2026-09-16 with item 5.
+5. ~~Release refs are not workstream branches.~~ Done 2026-09-16, merged as
+   `PR #88`. See *Fifteenth Task*.
+6. ~~A workstream takes a release over.~~ Done 2026-09-16 with item 5.
 
 ## Assessment Of The Queue
 
@@ -1067,8 +1074,6 @@ resume changed every question. Short by design.
 
 ### Awaiting The Product Owner
 
-- **Review of the drafted *Vocabulary* and *Releases* text.** Nothing else on
-  this branch waits on it; the pull request does.
 - **Whether the freeze lifts for the remaining nine items.** The 2026-08-30
   freeze runs until the release-candidate check, which is now. The owner lifted
   it for the release rules only. Eight of the nine remaining items change
@@ -1137,9 +1142,8 @@ retains after their deletion.
   under some. See *Open Threads* for the standing question.
 - This track overlaps `CURRENT-STATUS.md`, `WORKFLOW.md`, `AGENTS.md`, and the
   workflow requirements. Synchronize with `main` before integrating.
-- Verified 2026-09-16: `workflow-improvements/v1` is rebased onto `origin/main`
-  and pushed; `workflow-improvements/outbox` is 428 commits stale and is reset
-  from `main` for the send that carries this task's records. The
+- Verified 2026-09-18: both branches are merged and `workflow-improvements/v1`
+  equals `origin/main`; the outbox holds its 2026-09-16 send, merged. The
   operator guide for releasing a new version, owned by `project-management`,
   contradicts the new release rule in its step 1 until that workstream edits
   it; the contradiction is reported through its intake, not fixed here.
