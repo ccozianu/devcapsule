@@ -125,6 +125,7 @@ def bootstrap_project(
     refreshed: list[Path] = []
     preserved: list[Path] = []
 
+    definition_written = False
     for relative, asset in DEFINITION_ASSETS.items():
         destination = root / relative
         existed = destination.exists()
@@ -134,6 +135,7 @@ def bootstrap_project(
         content = _asset_text(asset)
         atomic_write(destination, content, mode=0o644)
         (refreshed if existed else created).append(relative)
+        definition_written = definition_written or relative == Path("WORKFLOW.md")
 
     for relative, asset in COMMON_TEMPLATES.items():
         destination = root / relative
@@ -176,6 +178,13 @@ def bootstrap_project(
             )
 
     _update_gitignore(root, created=created, updated=updated, preserved=preserved)
+    _reconcile_declaration(
+        root,
+        workflow_type,
+        definition_refreshed=definition_written,
+        updated=updated,
+        preserved=preserved,
+    )
     return BootstrapReport(
         target=root,
         workflow_type=workflow_type,
@@ -186,21 +195,152 @@ def bootstrap_project(
     )
 
 
+@dataclass(frozen=True)
+class WorkflowDeclaration:
+    """The ``[workflow]`` table of ``.devcapsule/devcapsule.toml``.
+
+    ``mode`` always has a value: the table's ``mode``, else the older top-level
+    ``workflow-type`` field, else ``single-stream``. ``version`` and
+    ``definition`` are ``None`` when the table does not declare them.
+    """
+
+    mode: str
+    version: str | None
+    definition: str | None
+
+
 def project_workflow_type(root: Path) -> str:
+    return project_workflow_declaration(root).mode
+
+
+def project_workflow_declaration(root: Path) -> WorkflowDeclaration:
     declaration = root / ".devcapsule" / "devcapsule.toml"
     if not declaration.is_file():
-        return "single-stream"
+        return WorkflowDeclaration("single-stream", None, None)
     try:
         value = tomllib.loads(declaration.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
         raise WorkflowBootstrapError(f"cannot read {declaration}: {exc}") from exc
-    selected = value.get("workflow-type", "single-stream")
-    if not isinstance(selected, str) or selected not in WORKFLOW_TYPES:
+    table = value.get("workflow")
+    if table is None:
+        table = {}
+    if not isinstance(table, dict):
+        raise WorkflowBootstrapError(f"{declaration} has a [workflow] entry that is not a table")
+    legacy = value.get("workflow-type")
+    mode = table.get("mode", legacy if legacy is not None else "single-stream")
+    if not isinstance(mode, str) or mode not in WORKFLOW_TYPES:
         raise WorkflowBootstrapError(
-            f"{declaration} has invalid workflow-type {selected!r}; expected "
+            f"{declaration} has invalid workflow-type {mode!r}; expected "
             "'single-stream' or 'multiple-streams'"
         )
-    return str(selected)
+    if legacy is not None and "mode" in table and legacy != mode:
+        raise WorkflowBootstrapError(
+            f"{declaration} declares workflow-type {legacy!r} and [workflow] mode "
+            f"{mode!r}; they must agree"
+        )
+    version = table.get("version")
+    definition = table.get("definition")
+    for name, field in (("version", version), ("definition", definition)):
+        if field is not None and not isinstance(field, str):
+            raise WorkflowBootstrapError(f"{declaration} [workflow] {name} must be a string")
+    return WorkflowDeclaration(mode, version, definition)
+
+
+DEFINITION_NAME = "devcapsule"
+UNVERSIONED = "unversioned"
+
+
+def definition_version(text: str) -> str:
+    """The ``version`` declared in a WORKFLOW.md frontmatter block, or
+    ``unversioned`` for a definition written before versions existed."""
+    if not text.startswith("---\n"):
+        return UNVERSIONED
+    end = text.find("\n---\n", 4)
+    if end < 0:
+        return UNVERSIONED
+    for line in text[4:end].splitlines():
+        key, _, value = line.partition(":")
+        if key.strip() == "version" and value.strip():
+            return value.strip()
+    return UNVERSIONED
+
+
+def _reconcile_declaration(
+    root: Path,
+    mode: str,
+    *,
+    definition_refreshed: bool,
+    updated: list[Path],
+    preserved: list[Path],
+) -> None:
+    """Keep ``[workflow] version`` equal to the installed WORKFLOW.md's version.
+
+    Bootstrap writes both on install and refresh. When neither was touched and
+    the two disagree, the project is misdeclared; that is reported, never
+    guessed at, because the declared version is what governs the project.
+    """
+    relative = Path(".devcapsule/devcapsule.toml")
+    path = root / relative
+    if not path.is_file():
+        return
+    installed = definition_version((root / "WORKFLOW.md").read_text(encoding="utf-8"))
+    declared = project_workflow_declaration(root)
+    if declared.version == installed and declared.definition is not None:
+        preserved.append(relative)
+        return
+    if (
+        declared.version is not None
+        and declared.version != installed
+        and not definition_refreshed
+    ):
+        raise WorkflowBootstrapError(
+            f"{path} declares workflow version {declared.version!r} but WORKFLOW.md "
+            f"is version {installed!r}; refresh the definition or correct the "
+            "declaration"
+        )
+    text = path.read_text(encoding="utf-8")
+    atomic_write(path, _with_workflow_table(text, mode, installed), mode=0o644)
+    updated.append(relative)
+
+
+def _with_workflow_table(text: str, mode: str, version: str) -> str:
+    """Return ``text`` with a ``[workflow]`` table declaring ``definition``,
+    ``version``, and ``mode``, editing an existing table in place so the rest
+    of the file keeps its formatting."""
+    lines = text.splitlines()
+    wanted = {
+        "definition": f'definition = "{DEFINITION_NAME}"',
+        "version": f'version = "{version}"',
+        "mode": f'mode = "{mode}"',
+    }
+    start = next(
+        (index for index, line in enumerate(lines) if line.strip() == "[workflow]"),
+        None,
+    )
+    if start is None:
+        body = [""] if lines and lines[-1].strip() else []
+        body += ["[workflow]", *wanted.values()]
+        return "\n".join([*lines, *body]) + "\n"
+    end = next(
+        (
+            index
+            for index in range(start + 1, len(lines))
+            if lines[index].strip().startswith("[")
+        ),
+        len(lines),
+    )
+    seen: set[str] = set()
+    for index in range(start + 1, end):
+        key = lines[index].split("=", 1)[0].strip()
+        if key in wanted:
+            lines[index] = wanted[key]
+            seen.add(key)
+    insert_at = start + 1
+    for key, line in wanted.items():
+        if key not in seen:
+            lines.insert(insert_at, line)
+            insert_at += 1
+    return "\n".join(lines) + "\n"
 
 
 def _initialize_reserved_workstream(

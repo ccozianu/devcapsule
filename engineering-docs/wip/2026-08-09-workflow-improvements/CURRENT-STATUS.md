@@ -7,9 +7,9 @@ Start date: 2026-08-09
 State: active. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
-`maintenance` workstream with the bug vocabulary, granting the freeze
-exception each needed. Eight intake items remain undispositioned; see *Next
-Resumable Task*.
+`maintenance` workstream with the bug vocabulary, then the `ws-` branch
+vocabulary and the workflow declaration, granting the freeze exception each
+needed. Eight intake items remain undispositioned; see *Next Resumable Task*.
 
 Integration target: `main`
 
@@ -28,7 +28,11 @@ fixed, explicitly deferred, or rejected.
 
 ## Branch Association
 
-The active branch is `workflow-improvements/v1`, forked from the registration
+The active branch is `ws-workflow-improvements/v1`, renamed on 2026-09-18
+from `workflow-improvements/v1` under the `ws-` vocabulary this workstream
+introduced the same day; the outbox is `ws-workflow-improvements/outbox`
+likewise. The old names stay on the remote until their open pull requests
+merge, then are deleted. The branch was forked from the registration
 commit on `main` and resynchronized with `main` on 2026-08-16. It was renamed
 from `workflow-improvements/intake` on 2026-08-16: the old name collided with
 the `intake/` directory convention introduced the same day, and the new one
@@ -846,11 +850,67 @@ is now `maintenance`. A short follow-up item travels with this round, also
 noting that the readiness assessment's "thirteen open bugs carry no triage"
 now has an owner and a vocabulary, and that the triage is the owner's.
 
+### Seventeenth Task: The `ws-` Branch Vocabulary And The Workflow Declaration
+
+Two owner proposals of 2026-09-18, taken as one round because both touch the
+declaration, the templates, and the bootstrap.
+
+**Branch names become a closed vocabulary.** The owner proposed
+`ws-<workstream>/<sub>` so humans and agents can recognize a workstream
+branch by name, with `ws-<workstream>/outbox` reserved. Written as three kinds
+and nothing else: `main`; `ws-<workstream>/<sub>`; `release-<version>` with
+its tags. Anything else is outside the workflow: a legacy ref, a tooling
+branch, an experiment. That is stronger than the release-refs item's ask and
+closes it properly. Restrictions 4, 5, and 13 and every branch spelling in
+`WORKFLOW.md`, `AGENTS.md`, and the templates follow. The migration is in
+*Changes*: each open workstream renames its own branches, updates its row
+through its own outbox, and retargets open pull requests before the next
+release candidate is tagged. This workstream renamed its own two branches;
+the other six rows are their owners' to change, and `project-management` is
+told so it can schedule it.
+
+**The declaration names the workflow and its version.** The owner's case: a
+contributor with a newer DevCapsule executable joins a project on an older
+workflow and must not apply newer rules, such as renaming branches, to it.
+The rule that follows is that the declared version governs the project, never
+the contributor's tool or the agent's training. The `[workflow]` table in
+`.devcapsule/devcapsule.toml` carries `definition`, `version`, and `mode`,
+with the old top-level `workflow-type` as fallback for one release. The
+definition's frontmatter carries the same `version`, and tooling keeps them
+equal: bootstrap writes both on install and refresh and reports a mismatch
+rather than resolving it; the bump script stamps the package version into both
+definition copies and closes the *Unreleased* changes entry. A *Changes*
+section at the top of the definition records, per release, what changed and
+the migration step, so a version says more than "you are behind".
+
+**Decided rather than transcribed, each open to reversal.**
+
+- **The version is the DevCapsule release, not a separate number.** The
+  owner asked whether to stamp 1.0. Recommended against: the information
+  model, coordination-off-`main`, and the mail transport are still open and
+  each may change rules incompatibly, so 1.0 now would mean 2.0 soon. Tying
+  the version to the release costs nothing, since tags are immutable and are
+  the permanent public reference, and 1.0 arrives with DevCapsule V1, by
+  which time the freeze's own intent has those items settled. Stamped
+  `0.2.12`, the current package version, with the changes under *Unreleased*;
+  the next release bump makes it `0.2.13`.
+- **`unversioned` is a real value** for a definition installed before
+  versions existed, so a project can declare honestly and a refresh can
+  replace it.
+- **Bootstrap edits the declaration textually**, in place, so the rest of a
+  project's file keeps its formatting. It never creates the file.
+- **Sample projects are untouched.** They are separate repositories; they
+  pick the table up on their next refresh.
+
+**Verification.** Bootstrap, bump, and noxfile tests pass (33 passed, 1
+pre-existing expected failure); syntax and typecheck gates pass. The wider
+suite was not run.
+
 ## Next Resumable Task
 
-Put the `maintenance` workstream, the bug vocabulary, and the backfilled bug
-records in front of the product owner, apply what the review changes, and push
-for the pull request. The owner then triages the twelve untriaged bugs in the
+Put the `maintenance` workstream, the bug vocabulary, the backfilled bug
+records, the `ws-` vocabulary, and the workflow declaration in front of the
+product owner, apply what the review changes, and push for the pull request. The owner then triages the twelve untriaged bugs in the
 `maintenance` workstream, which is where the next release's handful comes from.
 
 Then disposition the remaining eight intake items, which wait on the owner's
@@ -1025,6 +1085,8 @@ can be reordered.
 7. ~~A shared vocabulary for bugs, and the reserved `maintenance`
    workstream.~~ Drafted 2026-09-18; awaiting owner review and the pull
    request. See *Sixteenth Task*.
+8. ~~The `ws-` branch vocabulary and the workflow declaration.~~ Drafted
+   2026-09-18 with item 7. See *Seventeenth Task*.
 
 ## Assessment Of The Queue
 
@@ -1241,7 +1303,7 @@ retains after their deletion.
   under some. See *Open Threads* for the standing question.
 - This track overlaps `CURRENT-STATUS.md`, `WORKFLOW.md`, `AGENTS.md`, and the
   workflow requirements. Synchronize with `main` before integrating.
-- Verified 2026-09-18: the 2026-09-16 round is merged; `workflow-improvements/v1`
+- Verified 2026-09-18: the 2026-09-16 round is merged; `ws-workflow-improvements/v1`
   now carries the `maintenance` round, unmerged, and the outbox carries its
   registration and records, unmerged. The bootstrap tests pass (7 passed, 1
   pre-existing expected failure); the wider suite was not run. The

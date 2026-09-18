@@ -1,3 +1,8 @@
+---
+definition: devcapsule
+version: 0.2.12
+---
+
 # Human / Agent Iteration Workflow
 
 This project treats markdown files in the repository as the durable memory for
@@ -134,6 +139,45 @@ Three limits keep this useful rather than ceremonial:
    the reference vocabulary is deliberately not attempted here; it belongs
    with the definition of the workflow's information model.
 
+### Changes
+
+One entry per DevCapsule release that changed a rule, newest first, each with
+the step a project takes to adopt it where one exists. The `version` in this
+file's frontmatter names the release this text ships in; see *Workflow
+Declaration* for what that version means and who keeps it correct.
+
+#### Unreleased
+
+Becomes the next release's version at the version bump. Rules changed since
+0.2.12:
+
+- **Reference vocabulary.** *Vocabulary* adopts the Workflow Patterns base
+  terms. No migration.
+- **Releases.** *Releases* defines release refs and how a workstream takes a
+  release over. No migration for existing refs; the next release follows
+  *Taking A Release Over*.
+- **The reserved `maintenance` workstream, and bug frontmatter.** *The
+  Reserved `maintenance` Workstream* and *Bug Intake*. Migration: create the
+  reserved workstream under its adoption exception, and add the controlled
+  frontmatter to every bug record; a definition refresh does the first and
+  the bug template shows the second.
+- **The `ws-` branch vocabulary.** *Checkouts, Branches, And Workstreams* and
+  restrictions 4, 5, and 13. Migration: each open workstream renames its own
+  branches to `ws-<workstream>/<sub>`, updates its registry row through its
+  own outbox, and retargets any open pull request, before the next release
+  candidate is tagged. After that, a branch outside the vocabulary is not a
+  workstream branch, whatever it was before. Legacy refs that predate the
+  workflow are untouched by this and stay outside it.
+- **The workflow declaration.** *Workflow Declaration*: the `[workflow]`
+  table names the definition, its version, and the mode; the frontmatter of
+  this file carries the same version. Migration: add the table; a definition
+  refresh writes it.
+
+#### 0.2.12 and earlier
+
+Unversioned. The definition shipped in each release is readable at that
+release's tag.
+
 ## Checkouts, Branches, And Workstreams
 
 Work means editing files in a **checkout**. Everything this document describes
@@ -155,11 +199,26 @@ The relationships, which fix what every "current" in this document means:
 
 - A project has one authoritative remote and any number of checkouts.
 - A checkout has exactly one current branch.
-- Every branch other than `main` belongs to exactly one workstream. Release
-  refs are the one exception; see *Releases*.
+- Every `ws-` branch belongs to exactly one workstream. Release refs belong
+  to none. Any other ref is outside the workflow; see below.
 - A workstream may own several branches.
 - A checkout therefore has at most one selected workstream at any moment. The
   *current branch* determines the *current workstream*, not the reverse.
+
+**The ref vocabulary is closed.** A branch name says what kind of thing it is:
+
+- `main`;
+- `ws-<workstream>/<sub>`, a workstream branch. `ws` is short for workstream,
+  and `<sub>` is the workstream's own choice, except that
+  `ws-<workstream>/outbox` is reserved; see *The Outbox Branch*;
+- `release-<version>`, a release branch, with its `v<version>` tags; see
+  *Releases*.
+
+Anything else is not workflow state: a legacy ref, a tooling branch, an
+experiment. It is not selected, not synchronized, and not registered, and it
+becomes workflow state only by being renamed into the vocabulary after its
+workstream is registered. A human or an agent can tell the kind of any ref by
+name alone, which is the point.
 
 **Sequential within a checkout, concurrent across checkouts.** One checkout can
 work on many workstreams over time when the human specifically directs a
@@ -231,19 +290,49 @@ workflow young enough that its gaps outnumber the cost of specifying them in
 advance. Revisit it when the gaps become rare enough that discovering one is a
 surprise rather than a routine event.
 
-## Workflow Type Selection
+## Workflow Declaration
 
-Before interpreting project status, read the top-level `workflow-type` field in
+Before interpreting project status, read the `[workflow]` table in
 `.devcapsule/devcapsule.toml`:
 
 ```toml
-workflow-type = "single-stream"
+[workflow]
+definition = "devcapsule"
+version = "0.2.12"
+mode = "multiple-streams"
 ```
 
-The supported values are `single-stream` and `multiple-streams`. A missing
-field means `single-stream`. Any other value is invalid; report it instead of
-guessing which status protocol applies. The field selects repository workflow,
-not runtime behavior or live contributor presence.
+- `definition` names the workflow the project runs: `devcapsule` for this one,
+  the name or URL of another, or `none`. The product works in every case; the
+  workflow is an optional component.
+- `version` is the DevCapsule release whose packaged definition the project's
+  `WORKFLOW.md` was installed or refreshed from. It is the same value as the
+  `version` in that file's frontmatter, and tooling keeps the two equal:
+  bootstrap writes both, a refresh updates both, and a mismatch is reported as
+  a defect rather than resolved by guessing. The value `unversioned` means the
+  definition was installed before versions existed; refresh to adopt one.
+- `mode` selects `single-stream` or `multiple-streams`. A missing table, or a
+  missing `mode`, falls back to the older top-level `workflow-type` field,
+  which means the same thing; a missing value means `single-stream`. Any other
+  value is invalid; report it instead of guessing which status protocol
+  applies. The mode selects repository workflow, not runtime behavior or live
+  contributor presence.
+
+**The declared version governs the project.** A contributor's tool may be
+newer than the project's workflow, and a contributor's agent may know a newer
+text. Neither changes the rules the project runs. The `WORKFLOW.md` in the
+repository, at the version the declaration names, is what everyone follows,
+and it changes only when the project deliberately refreshes it and performs
+the migration steps in *Changes*. A tool never refreshes the definition or
+changes the declared version as a side effect of another action, and a
+mechanical action a tool performs on workflow state either follows the
+declared version's rules or says plainly that it does not know that version.
+
+**Why the version is the DevCapsule release.** The definition ships inside
+each release, and release tags are immutable, so every version of this text is
+readable for good at its tag, with no second numbering scheme to maintain. A
+release that changes no rule still advances the version; *Changes* says
+whether anything changed.
 
 ## Single-Stream Workflow
 
@@ -277,9 +366,10 @@ The following restrictions keep concurrent work understandable:
 3. Every workstream has one immutable ISO start date: the calendar date on
    which its registration is first committed to `main`. Migration exceptions
    record their historically established start date.
-4. Every branch other than `main` belongs to exactly one workstream. Release
-   refs are the one exception; see *Releases*.
-5. Each workstream branch name begins with `<mnemonic>/`. A release branch
+4. Every `ws-` branch belongs to exactly one workstream. Release refs belong
+   to none, and a ref outside the vocabulary in *Checkouts, Branches, And
+   Workstreams* is not workflow state.
+5. Each workstream branch name begins with `ws-<mnemonic>/`. A release branch
    does not, because it is not a workstream branch; see *Releases*.
 6. A workstream may have more than one branch, but every branch starts from
    `main` and is intended to return to `main` if the workstream succeeds. Its
@@ -312,7 +402,7 @@ The following restrictions keep concurrent work understandable:
     workstream in the project carries each, no ordinary workstream may take
     either, and neither is archived and recreated while the project stays in
     `multiple-streams` mode.
-13. `<mnemonic>/outbox` is a reserved branch name in every workstream. It
+13. `ws-<mnemonic>/outbox` is a reserved branch name in every workstream. It
     carries only what the workstream sends to `main` ahead of its own
     integration, never its working changes. See *The Outbox Branch*.
 14. Once a pair has selected a workstream and begun the task, an agent may
@@ -333,7 +423,8 @@ project adopts the mode later. Both paths produce the same starting shape.
 
 In one commit on `main`:
 
-1. Set `workflow-type = "multiple-streams"` in `.devcapsule/devcapsule.toml`.
+1. Set `mode = "multiple-streams"` in the `[workflow]` table of
+   `.devcapsule/devcapsule.toml`.
 2. Convert root `CURRENT-STATUS.md` from a detailed handoff into the compact
    open-workstream registry. Detailed state carried over from single-stream
    mode moves into a workstream handoff rather than staying at the root.
@@ -387,8 +478,8 @@ coordination`, and paused or blocked are as legitimate for it as for any other
 workstream — a project can go a long time with nothing to coordinate.
 
 **Branches, selection, and integration are ordinary.** Its branches are
-`project-management/<topic>`, forked from `main`, returning to `main` by the
-repository's default delivery method. `project-management/coordination` is the
+`ws-project-management/<topic>`, forked from `main`, returning to `main` by the
+repository's default delivery method. `ws-project-management/coordination` is the
 conventional first branch. Checkout selection, intake, checkpoints, commit
 cadence, and integration follow the same rules as any other workstream. Only
 its lifecycle is special.
@@ -408,7 +499,7 @@ never as an ordinary conclusion. Migrating to `single-stream`, in one commit on
    `engineering-docs/wip/<start-date>-maintenance/` to the matching
    `engineering-docs/archive/` directories unchanged, and record the
    migration, its date, and the resulting mode in each final status.
-4. Set `workflow-type = "single-stream"`.
+4. Set `mode = "single-stream"` in the `[workflow]` table.
 
 **Adoption exception.** A project adopting `multiple-streams` that already has
 a branch, directory, or bounded workstream named `project-management` records a
@@ -454,7 +545,7 @@ A pair selecting it lists those at session start, the way any workstream reads
 its intake.
 
 **Load is balanced by branches and pairs, not by more workstreams.** Its
-branches are `maintenance/<bug-or-release-line>`, one per fix or per
+branches are `ws-maintenance/<bug-or-release-line>`, one per fix or per
 maintained release line, and several pairs may work it at once, as *Two pairs
 may select the same workstream* allows. A defect cluster large enough to have
 its own goal and its own end is an ordinary bounded workstream, not a second
@@ -502,10 +593,10 @@ Begin from a clean, current `main` checkout:
    as intake and does not require committing directly to `main`. At
    initialization, when no workstream exists yet to send it, the initializing
    commit on `main` carries it.
-7. Fork the first `<mnemonic>/...` branch from the registration commit once it
+7. Fork the first `ws-<mnemonic>/...` branch from the registration commit once it
    is on `main`.
 8. Perform workstream changes only on its associated branch or branches. Its
-   own `<mnemonic>/outbox` is created on first use, not at registration.
+   own `ws-<mnemonic>/outbox` is created on first use, not at registration.
 
 A branch created before the registration commit is not a valid new workstream
 branch. Existing branches that predate adoption require an explicit migration
@@ -536,7 +627,7 @@ Select exactly one editing workstream for the current checkout:
 2. If the user explicitly names an open workstream, select it. Explicit intent
    chooses the target but does not reassign the current branch or authorize
    mixing dirty state.
-3. Otherwise, when the current branch starts with `<mnemonic>/`, select the one
+3. Otherwise, when the current branch starts with `ws-<mnemonic>/`, select the one
    open registry entry with that mnemonic. A documented adoption exception may
    provide the same unique association for a historical branch.
 4. Treat a mnemonic-prefixed or excepted branch whose workstream is absent from
@@ -546,7 +637,7 @@ Select exactly one editing workstream for the current checkout:
    workstream. Registry coordination and repository-wide inspection may occur
    there. Workstream changes require an explicit selection followed by a switch
    to that workstream's branch in a clean checkout.
-6. A checked-out `<mnemonic>/outbox` identifies its workstream but is not an
+6. A checked-out `ws-<mnemonic>/outbox` identifies its workstream but is not an
    editing checkout. It carries only outbound messages; see *The Outbox
    Branch*. Do not resume workstream work there. Switch to a working branch
    first, and treat uncommitted working changes found on an outbox as recovery
@@ -767,7 +858,7 @@ lists workstream status files rather than their internal documents.
 
 Intake defines where a message lands. The outbox defines how it travels.
 
-Every workstream has one standing branch named `<mnemonic>/outbox`. It carries
+Every workstream has one standing branch named `ws-<mnemonic>/outbox`. It carries
 what the workstream needs to publish to `main` ahead of, and independently of,
 its own integration. A workstream's working branch may run for weeks; anything
 riding along with it is invisible until it merges, which is the failure intake
@@ -803,7 +894,7 @@ one.
 
 **Sending.** From a clean checkout, and never from the working branch:
 
-1. Fetch, and create or hard-reset `<mnemonic>/outbox` to current `main`. The
+1. Fetch, and create or hard-reset `ws-<mnemonic>/outbox` to current `main`. The
    outbox holds no history of its own worth preserving; every send starts from
    `main`.
 2. Add only the files being sent. One commit per coherent delivery.
@@ -1375,7 +1466,7 @@ A project may spell these differently. If it does, it records the spelling
 once, in its release policy, and uses it everywhere. What matters is that a
 reader can tell a release ref from a workstream branch by its name alone.
 
-**Release refs are not workstream branches.** They carry no `<mnemonic>/`
+**Release refs are not workstream branches.** They carry no `ws-<mnemonic>/`
 prefix, belong to no workstream, and are the one exception to the rule that
 every branch other than `main` belongs to exactly one workstream. A release
 branch is associated with a workstream only for the duration of a release, and
@@ -1447,7 +1538,7 @@ are unaffected.
    workstream's subject lands only as release fixes on the release branch.
    Nothing is committed to the closed working branch, and no new working
    branch is opened under the mnemonic.
-5. **Afterwards**, the workstream resumes on a fresh `<mnemonic>/...` branch
+5. **Afterwards**, the workstream resumes on a fresh `ws-<mnemonic>/...` branch
    forked from `main`, or concludes. The registry row's branch association
    returns to a workstream branch. The release branch stays behind as a release
    anchor, closed, and is never a workstream branch again.
@@ -1473,11 +1564,11 @@ its refs differently.
 
 **An ordinary release, `1.4.0`, driven by the workstream whose work it ships.**
 
-1. The workstream `search` has merged its branch `search/v2` to `main`. The
+1. The workstream `search` has merged its branch `ws-search/v2` to `main`. The
    merge commit is the cut point. The owner decides to release.
 2. `release-1.4.0` is created at the cut point. Its first commit bumps the
    source version to `1.4.0`. The registry row for `search` now names
-   `release-1.4.0` with state `active; releasing 1.4.0`, and `search/v2` is
+   `release-1.4.0` with state `active; releasing 1.4.0`, and `ws-search/v2` is
    closed.
 3. `release-1.4.0` is merged to `main` by pull request. `v1.4.0-rc0` is tagged
    at its tip and pushed. The candidate is built, published, and validated.
@@ -1487,7 +1578,7 @@ its refs differently.
    take it.
 5. `v1.4.0-rc1` is accepted. The acceptance record is committed and reaches
    `main`. `v1.4.0` is tagged at the same commit as `v1.4.0-rc1`.
-6. The `search` workstream resumes on `search/v3`, forked from `main`, and its
+6. The `search` workstream resumes on `ws-search/v3`, forked from `main`, and its
    registry row names that branch. `release-1.4.0`, `v1.4.0-rc0`,
    `v1.4.0-rc1`, and `v1.4.0` remain for good.
 
@@ -1508,7 +1599,7 @@ its refs differently.
 4. `v1.3.1-rc0` is accepted, and `v1.3.1` is tagged at the same commit. The
    forward-port owner delivers the fix to `main` through its own working branch
    as ordinary work.
-5. The `maintenance` row returns to a `maintenance/...` branch.
+5. The `maintenance` row returns to a `ws-maintenance/...` branch.
    `release-1.3.1` stays behind, closed.
 
 ### What This Section Leaves To The Project
@@ -1772,7 +1863,7 @@ Use this documentation split:
   it: installation path, command path, common examples, validation expectations,
   and current limitations.
 - Root `CURRENT-STATUS.md` records the linear handoff or open-workstream
-  registry selected by `workflow-type`; a WIP status records track-local state
+  registry selected by the declared mode; a WIP status records track-local state
   in `multiple-streams` mode.
 - Implementation notes record design rationale, rejected alternatives, and
   evidence that would distract from user instructions.
@@ -2188,8 +2279,9 @@ Bootstrap the vibe-coding process documentation from
 /usr/local/share/docker4ide/vibe-coding-process.md into this project.
 Create or update AGENTS.md, README.md, CURRENT-STATUS.md, REQUIREMENTS.md,
 docs/, and engineering-docs/ as appropriate. Preserve existing project docs
-and adapt the process to this repository. Set workflow-type in
-.devcapsule/devcapsule.toml to single-stream or multiple-streams. If
+and adapt the process to this repository. Declare the workflow in the
+[workflow] table of .devcapsule/devcapsule.toml: definition, version, and
+mode, single-stream or multiple-streams. If
 multiple-streams, follow Initializing Multiple-Stream Mode, including the
 reserved project-management workstream.
 ```

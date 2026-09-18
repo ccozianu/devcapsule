@@ -1,9 +1,13 @@
 # Agent Instructions
 
-Before starting work, read `README.md`, then read the top-level
-`workflow-type` field in `.devcapsule/devcapsule.toml`. Supported values are
-`single-stream` and `multiple-streams`; a missing field means `single-stream`.
-Treat any other value as invalid.
+Before starting work, read `README.md`, then read the `[workflow]` table in
+`.devcapsule/devcapsule.toml`: `definition` names the workflow, `version` the
+DevCapsule release the project's `WORKFLOW.md` came from, and `mode` is
+`single-stream` or `multiple-streams`. A missing table falls back to the older
+top-level `workflow-type` field; a missing value means `single-stream`. Treat
+any other value as invalid. The declared version governs: follow this
+repository's `WORKFLOW.md` as it is, whatever newer text you know, and never
+refresh it or change the declared version except on explicit instruction.
 
 Read `WORKFLOW.md` for the reusable protocol, starting with its *Vocabulary*,
 and `CURRENT-STATUS.md` for this project's live state. In single-stream mode, `CURRENT-STATUS.md` is the active
@@ -27,7 +31,9 @@ multiple-streams mode, follow `WORKFLOW.md` for branch routing, synchronization,
 intake disposition, outbox publication, and integration. A registry row whose
 branch association names a `release-<version>` branch means that workstream is
 driving a release: follow *Releases* in `WORKFLOW.md`, and never rebase,
-force-push, or cherry-pick release refs. Every multiple-streams project has two
+force-push, or cherry-pick release refs. Workstream branches are
+`ws-<workstream>/<sub>`; any ref outside `main`, `ws-*`, and `release-*` is
+not workflow state. Every multiple-streams project has two
 reserved workstreams, `project-management` and `maintenance`; report a project
 missing either as incompletely initialized. Bug records under
 `engineering-docs/bugs/` are routed by their frontmatter `owner` field: list

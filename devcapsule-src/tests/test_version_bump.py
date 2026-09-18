@@ -74,3 +74,36 @@ def test_check_rejects_ambiguous_version_authorship(tmp_path: Path) -> None:
 
     with pytest.raises(VERSION_MODULE.VersionError, match="exactly one"):
         VERSION_MODULE.checked_version(root)
+
+
+def definition(path: Path, version: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f"---\ndefinition: devcapsule\nversion: {version}\n---\n\n# Workflow\n\n"
+        "### Changes\n\n#### Unreleased\n\n- a rule\n\n#### 1.2.3\n\n- older\n",
+        encoding="utf-8",
+    )
+
+
+def test_bump_stamps_both_definition_copies_and_closes_unreleased(tmp_path: Path) -> None:
+    root = project(tmp_path)
+    copies = [root / relative for relative in VERSION_MODULE.DEFINITION_COPIES]
+    for copy in copies:
+        definition(copy, "1.2.3")
+
+    assert VERSION_MODULE.bump_version("patch", root) == ("1.2.3", "1.2.4")
+
+    for copy in copies:
+        text = copy.read_text(encoding="utf-8")
+        assert text.startswith("---\ndefinition: devcapsule\nversion: 1.2.4\n---\n")
+        assert "#### Unreleased" not in text
+        assert "#### 1.2.4\n\n- a rule" in text
+        assert "#### 1.2.3\n\n- older" in text
+
+
+def test_check_rejects_a_definition_copy_that_lags_the_package(tmp_path: Path) -> None:
+    root = project(tmp_path)
+    definition(root / VERSION_MODULE.DEFINITION_COPIES[0], "1.0.0")
+
+    with pytest.raises(VERSION_MODULE.VersionError, match="frontmatter declares version '1.0.0'"):
+        VERSION_MODULE.checked_version(root)

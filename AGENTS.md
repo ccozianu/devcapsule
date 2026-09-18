@@ -46,15 +46,22 @@ Then read the developer brief at:
 DEVELOPING.md
 ```
 
-Then read the top-level `workflow-type` field in:
+Then read the `[workflow]` table in:
 
 ```text
 .devcapsule/devcapsule.toml
 ```
 
-The supported values are `single-stream` and `multiple-streams`; a missing
-field means `single-stream`. Treat any other value as invalid and ask the user
-to correct it rather than guessing which handoff protocol applies.
+Its `definition` names the workflow, its `version` names the DevCapsule release
+the project's `WORKFLOW.md` was installed from, and its `mode` is
+`single-stream` or `multiple-streams`. A missing table falls back to the older
+top-level `workflow-type` field, and a missing value means `single-stream`.
+Treat any other value as invalid and ask the user to correct it rather than
+guessing which handoff protocol applies. The declared version governs: follow
+the `WORKFLOW.md` in this repository as it is, whatever newer text your tool or
+your training knows, and never refresh it or change the declared version
+except on the user's explicit instruction. See *Workflow Declaration* in
+`WORKFLOW.md`.
 
 Work means editing files in a **checkout**: one local clone directory. A
 checkout has one current branch, that branch belongs to one workstream, and so
@@ -144,12 +151,15 @@ In `multiple-streams` mode, synchronize the selected workstream's branch with
 intake, registrations, and repository-wide coordination facts reach a
 workstream, and a stale branch cannot act on items it can nonetheless see. To
 send work the other way — an intake item for another workstream, or a new
-workstream's registration — use the sender's standing `<mnemonic>/outbox`
+workstream's registration — use the sender's standing `ws-<mnemonic>/outbox`
 branch, reset from current `main` and carrying only what is being sent, never
 working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 `WORKFLOW.md`.
 
-Release refs — `release-<version>` branches and `v<version>` tags — are not
+Branch names are a closed vocabulary: `main`; `ws-<workstream>/<sub>` for a
+workstream branch, with `ws-<workstream>/outbox` reserved; and
+`release-<version>` for a release branch, with its `v<version>` tags. Any
+other ref is not workflow state. Release refs are not
 workstream branches. Never synchronize, rebase, or force-push one, and never
 cherry-pick between a release branch and a workstream branch. A registry row
 whose branch association names a release branch means that workstream is

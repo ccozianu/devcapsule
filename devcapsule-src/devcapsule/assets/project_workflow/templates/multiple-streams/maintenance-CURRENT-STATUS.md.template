@@ -6,7 +6,7 @@ Start date: `{{MAINTENANCE_START_DATE}}`
 
 State: active; permanent maintenance
 
-Branch association: `maintenance/`; no branch yet
+Branch association: `ws-maintenance/`; no branch yet
 
 ## Goal
 

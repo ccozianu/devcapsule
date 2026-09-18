@@ -3,8 +3,13 @@
 The version is authored in exactly one place, the ``[project]`` table of
 ``pyproject.toml``; everything else derives it — runtime code through
 ``importlib.metadata``, built artifacts through the build-time record
-``scripts/build-pex.sh`` stamps. This script therefore only validates that
-single source's shape and rewrites it on an intentional bump.
+``scripts/build-pex.sh`` stamps. Two derived copies are kept in step by this
+script rather than at build time, because they are read by humans and agents
+straight from the repository: the ``version`` in the frontmatter of the root
+``WORKFLOW.md`` and of the packaged workflow definition, which is what a
+project's ``[workflow] version`` declaration refers to. A bump rewrites all
+three and turns the definition's ``#### Unreleased`` changes entry into the
+new version's entry; ``--check`` verifies the copies agree.
 """
 
 from __future__ import annotations
@@ -17,6 +22,15 @@ import sys
 
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# Workflow definitions whose frontmatter mirrors the distribution version,
+# relative to the project root. Absent files are skipped: a checkout that
+# carries only pyproject.toml, as the tests build, has nothing to mirror.
+DEFINITION_COPIES = (
+    Path("..") / "WORKFLOW.md",
+    Path("devcapsule") / "assets" / "project_workflow" / "definition" / "WORKFLOW.md",
+)
+FRONTMATTER_VERSION = re.compile(r"^(---\n(?:(?!---\n).*\n)*?version:[ \t]*)([^\n]+)$", re.M)
+UNRELEASED_HEADING = re.compile(r"^#### Unreleased$", re.M)
 
 
 class VersionError(ValueError):
@@ -58,7 +72,32 @@ def checked_version(project_root: Path = PROJECT_ROOT) -> str:
         raise VersionError(
             f"distribution version {version!r} must use numeric MAJOR.MINOR.PATCH form"
         )
+    for relative in DEFINITION_COPIES:
+        path = project_root / relative
+        if not path.is_file():
+            continue
+        mirrored = _definition_version(path)
+        if mirrored != version:
+            raise VersionError(
+                f"{path} frontmatter declares version {mirrored!r}; pyproject.toml "
+                f"says {version!r}. Run the bump to resynchronize."
+            )
     return version
+
+
+def _definition_version(path: Path) -> str | None:
+    match = FRONTMATTER_VERSION.search(path.read_text(encoding="utf-8"))
+    return None if match is None else match.group(2).strip()
+
+
+def _stamp_definition(path: Path, version: str) -> None:
+    """Set the frontmatter version and close the Unreleased changes entry."""
+    text = path.read_text(encoding="utf-8")
+    text, count = FRONTMATTER_VERSION.subn(lambda m: m.group(1) + version, text, count=1)
+    if count != 1:
+        raise VersionError(f"{path} has no frontmatter version to stamp")
+    text = UNRELEASED_HEADING.sub(f"#### {version}", text, count=1)
+    path.write_text(text, encoding="utf-8")
 
 
 def next_version(current: str, requested: str) -> str:
@@ -89,6 +128,10 @@ def bump_version(requested: str, project_root: Path = PROJECT_ROOT) -> tuple[str
     path = project_root / "pyproject.toml"
     _, updated = _pyproject_version_and_replacement(path, selected)
     path.write_text(updated, encoding="utf-8")
+    for relative in DEFINITION_COPIES:
+        definition = project_root / relative
+        if definition.is_file():
+            _stamp_definition(definition, selected)
     if checked_version(project_root) != selected:
         raise VersionError("distribution version did not update consistently")
     return current, selected
