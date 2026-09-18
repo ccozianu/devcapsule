@@ -20,7 +20,11 @@ import re
 import sys
 
 
-VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+# A release version, or a PEP 440 development version of the release being
+# worked toward: 0.2.14.dev0 is the unreleased source between releases and
+# orders before 0.2.14 itself. Candidate and local forms are stamped at build
+# time from tags and never authored here.
+VERSION_PATTERN = re.compile(r"([0-9]+)\.([0-9]+)\.([0-9]+)(?:\.dev([0-9]+))?")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # Workflow definitions whose frontmatter mirrors the distribution version,
 # relative to the project root. Absent files are skipped: a checkout that
@@ -70,7 +74,8 @@ def checked_version(project_root: Path = PROJECT_ROOT) -> str:
     )
     if VERSION_PATTERN.fullmatch(version) is None:
         raise VersionError(
-            f"distribution version {version!r} must use numeric MAJOR.MINOR.PATCH form"
+            f"distribution version {version!r} must use numeric MAJOR.MINOR.PATCH "
+            "form, optionally with a .devN suffix"
         )
     for relative in DEFINITION_COPIES:
         path = project_root / relative
@@ -100,26 +105,38 @@ def _stamp_definition(path: Path, version: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def _sort_key(version: str) -> tuple[int, int, int, int, int]:
+    """PEP 440 ordering for the forms this script accepts: a development
+    version sorts before the release it works toward."""
+    match = VERSION_PATTERN.fullmatch(version)
+    if match is None:
+        raise VersionError(f"version {version!r} is not MAJOR.MINOR.PATCH[.devN]")
+    major, minor, patch, dev = match.groups()
+    is_release = dev is None
+    return (int(major), int(minor), int(patch), 1 if is_release else 0, 0 if is_release else int(dev))
+
+
 def next_version(current: str, requested: str) -> str:
-    parts = tuple(int(part) for part in current.split("."))
+    major, minor, patch, _dev = VERSION_PATTERN.fullmatch(current).groups()  # type: ignore[union-attr]
+    parts = (int(major), int(minor), int(patch))
     if requested == "major":
-        selected = (parts[0] + 1, 0, 0)
+        selected = f"{parts[0] + 1}.0.0"
     elif requested == "minor":
-        selected = (parts[0], parts[1] + 1, 0)
+        selected = f"{parts[0]}.{parts[1] + 1}.0"
     elif requested == "patch":
-        selected = (parts[0], parts[1], parts[2] + 1)
+        selected = f"{parts[0]}.{parts[1]}.{parts[2] + 1}"
     elif VERSION_PATTERN.fullmatch(requested) is not None:
-        explicit = requested.split(".")
-        selected = (int(explicit[0]), int(explicit[1]), int(explicit[2]))
+        selected = requested
     else:
         raise VersionError(
-            "version must be major, minor, patch, or an explicit numeric MAJOR.MINOR.PATCH"
+            "version must be major, minor, patch, or an explicit numeric "
+            "MAJOR.MINOR.PATCH, optionally with a .devN suffix"
         )
-    if selected <= parts:
+    if _sort_key(selected) <= _sort_key(current):
         raise VersionError(
-            f"new distribution version {'.'.join(map(str, selected))} must be greater than {current}"
+            f"new distribution version {selected} must be greater than {current}"
         )
-    return ".".join(map(str, selected))
+    return selected
 
 
 def bump_version(requested: str, project_root: Path = PROJECT_ROOT) -> tuple[str, str]:

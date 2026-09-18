@@ -107,3 +107,19 @@ def test_check_rejects_a_definition_copy_that_lags_the_package(tmp_path: Path) -
 
     with pytest.raises(VERSION_MODULE.VersionError, match="frontmatter declares version '1.0.0'"):
         VERSION_MODULE.checked_version(root)
+
+
+def test_development_versions_are_accepted_and_order_before_their_release(
+    tmp_path: Path,
+) -> None:
+    root = project(tmp_path, version="1.2.4.dev0")
+
+    assert VERSION_MODULE.checked_version(root) == "1.2.4.dev0"
+    # Finishing the cycle: the release the development version works toward.
+    assert VERSION_MODULE.next_version("1.2.4.dev0", "1.2.4") == "1.2.4"
+    # Reopening after a release: the next development version.
+    assert VERSION_MODULE.next_version("1.2.4", "1.2.5.dev0") == "1.2.5.dev0"
+    with pytest.raises(VERSION_MODULE.VersionError, match="must be greater"):
+        VERSION_MODULE.next_version("1.2.4", "1.2.4.dev0")
+    with pytest.raises(VERSION_MODULE.VersionError, match="MAJOR.MINOR.PATCH"):
+        VERSION_MODULE.checked_version(project(tmp_path / "other", version="1.2.4.dev"))
