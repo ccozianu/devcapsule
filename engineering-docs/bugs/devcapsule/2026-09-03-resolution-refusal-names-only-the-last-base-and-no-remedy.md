@@ -1,8 +1,18 @@
+---
+status: closed
+severity: untriaged
+target: none
+owner: none
+opened: 2026-09-03
+closed: 2026-09-06
+requirements: [R-PRODUCT-001]
+---
+
 # Bug: The Resolution Refusal Names Only The Last Base Tried And Offers No Remedy
 
 Date opened: 2026-09-03
 
-Status: **closed 2026-09-06.** The 2026-09-05 fix (every base's gap named,
+Status note (pre-vocabulary, kept as evidence): **closed 2026-09-06.** The 2026-09-05 fix (every base's gap named,
 newest first; every refusal naming `--unverified`) was superseded the next
 day by the owner's ruling that a missing validation is disclosed, not
 refused: the message now names only the elements the experiment would run

@@ -1,8 +1,18 @@
+---
+status: closed
+severity: untriaged
+target: none
+owner: none
+opened: 2026-09-02
+closed: 2026-09-03
+requirements: [R-PRODUCT-001]
+---
+
 # Bug: Antigravity's State Is Wider Than The Analyzed Path, And The Nested Slot Walls It Off
 
 Date opened: 2026-09-02
 
-Status: **closed 2026-09-03** — the owner's v0.2.9 smoke
+Status note (pre-vocabulary, kept as evidence): **closed 2026-09-03** — the owner's v0.2.9 smoke
 (rebuild-and-run of the five-way formation) exercised the widened
 `~/.gemini` slot and the launcher pre-creation live, with no hand
 repair, and confirmed everything working. Fix had been applied on the

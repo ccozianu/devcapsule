@@ -27,7 +27,13 @@ multiple-streams mode, follow `WORKFLOW.md` for branch routing, synchronization,
 intake disposition, outbox publication, and integration. A registry row whose
 branch association names a `release-<version>` branch means that workstream is
 driving a release: follow *Releases* in `WORKFLOW.md`, and never rebase,
-force-push, or cherry-pick release refs.
+force-push, or cherry-pick release refs. Every multiple-streams project has two
+reserved workstreams, `project-management` and `maintenance`; report a project
+missing either as incompletely initialized. Bug records under
+`engineering-docs/bugs/` are routed by their frontmatter `owner` field: list
+the open bugs owned by the selected workstream at session start, and file new
+ones with `owner` set to the open workstream whose goal covers them, otherwise
+`maintenance`. See *Bug Intake* in `WORKFLOW.md`.
 
 The workflow is intentionally incomplete. Where it is silent, use judgment,
 record the gap and the action taken in the selected handoff, and continue

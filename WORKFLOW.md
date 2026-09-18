@@ -263,10 +263,11 @@ multiple-stream support was introduced.
 ### Definition And Restrictions
 
 A workstream is a bounded set of changes developed toward one goal. It begins,
-develops, and ends successfully or unsuccessfully. Exactly one exception
-exists: the reserved `project-management` workstream, which every
-multiple-stream project has and which stays open for as long as the project
-uses that mode. See *The Reserved `project-management` Workstream*.
+develops, and ends successfully or unsuccessfully. Two exceptions exist: the
+reserved `project-management` and `maintenance` workstreams, which every
+multiple-stream project has and which stay open for as long as the project
+uses that mode. See *The Reserved `project-management` Workstream* and *The
+Reserved `maintenance` Workstream*.
 
 The following restrictions keep concurrent work understandable:
 
@@ -307,9 +308,10 @@ The following restrictions keep concurrent work understandable:
     *Workstream Intake*. Wider
     exclusivity applies only where a documented locking protocol exists and is
     actually used for that file. No such protocol exists today.
-12. `project-management` is a reserved mnemonic. Exactly one workstream in the
-    project carries it, no ordinary workstream may take it, and it is never
-    archived and recreated while the project stays in `multiple-streams` mode.
+12. `project-management` and `maintenance` are reserved mnemonics. Exactly one
+    workstream in the project carries each, no ordinary workstream may take
+    either, and neither is archived and recreated while the project stays in
+    `multiple-streams` mode.
 13. `<mnemonic>/outbox` is a reserved branch name in every workstream. It
     carries only what the workstream sends to `main` ahead of its own
     integration, never its working changes. See *The Outbox Branch*.
@@ -335,16 +337,17 @@ In one commit on `main`:
 2. Convert root `CURRENT-STATUS.md` from a detailed handoff into the compact
    open-workstream registry. Detailed state carried over from single-stream
    mode moves into a workstream handoff rather than staying at the root.
-3. Create the reserved `project-management` workstream by the procedure in
-   *Beginning A Workstream*, using the initialization date as its immutable
-   ISO start date, and register it in the new registry.
+3. Create the reserved `project-management` and `maintenance` workstreams by
+   the procedure in *Beginning A Workstream*, using the initialization date as
+   their immutable ISO start date, and register both in the new registry.
 4. Create `engineering-docs/wip/` and `engineering-docs/archive/`.
 
-A multiple-stream project with no `project-management` workstream is
-incompletely initialized. Report that rather than working around it.
+A multiple-stream project missing either reserved workstream is incompletely
+initialized. Report that rather than working around it.
 
-Initialization creates exactly one workstream. Ordinary workstreams begin
-afterwards, separately, and only when there is real work for them.
+Initialization creates exactly two workstreams, both reserved. Ordinary
+workstreams begin afterwards, separately, and only when there is real work for
+them.
 
 ### The Reserved `project-management` Workstream
 
@@ -396,19 +399,87 @@ never as an ordinary conclusion. Migrating to `single-stream`, in one commit on
 
 1. Confirm no ordinary workstream is still open. Migrating with open
    workstreams silently orphans their handoffs; conclude or archive them first.
-   Its own intake must be empty as well, and it is the last queue that can be
-   emptied: once it is gone there is nowhere left to forward anything.
+   Its own intake and `maintenance`'s must be empty as well, and its own is the
+   last queue that can be emptied: once it is gone there is nowhere left to
+   forward anything.
 2. Fold the coordination state that remains useful into root
    `CURRENT-STATUS.md`, which becomes the detailed single-stream handoff again.
-3. Move `engineering-docs/wip/<start-date>-project-management/` to
-   `engineering-docs/archive/<start-date>-project-management/` unchanged, and
-   record the migration, its date, and the resulting mode in its final status.
+3. Move `engineering-docs/wip/<start-date>-project-management/` and
+   `engineering-docs/wip/<start-date>-maintenance/` to the matching
+   `engineering-docs/archive/` directories unchanged, and record the
+   migration, its date, and the resulting mode in each final status.
 4. Set `workflow-type = "single-stream"`.
 
 **Adoption exception.** A project adopting `multiple-streams` that already has
 a branch, directory, or bounded workstream named `project-management` records a
 migration exception in the reserved workstream's handoff, in the same form as
 any other adoption exception, rather than renaming history.
+
+### The Reserved `maintenance` Workstream
+
+Software has defects, and a defect found against `main` or against a released
+version needs an owner from the moment it is recorded. Without a reserved home,
+a bug either waits for a feature workstream that happens to be open on its
+subject, and there may be none, or it is filed and nobody is committed to it.
+The registry cannot show commitment to a bug that nobody owns. The reserved
+`maintenance` workstream is that commitment: the permanent owner of last
+resort for defects, and the driver of maintenance releases.
+
+**Scope.** It owns the bug records under `engineering-docs/bugs/` whose
+`owner` field names it: triaging them, fixing them on `main`, and fixing them
+on maintained release lines. It drives maintenance releases of already released
+versions under *Releases*. It keeps the bug queue honest: every open bug
+carries a controlled status and a severity, and an untriaged one is its work
+to triage. See *Bug Intake* for the fields.
+
+Three exclusions keep it from becoming the place work goes to wait:
+
+- It is not a catch-all for defects. A bug inside an open workstream's subject
+  is owned and fixed by that workstream, at the source. `maintenance` owns a
+  bug when no open workstream's goal covers it, or when the owning workstream
+  hands it over with a recorded reason, for example because it is closing or
+  its scope is frozen.
+- It is not a feature workstream. Work that changes what the product does,
+  rather than making it do what it already claims, is a reason to begin an
+  ordinary workstream, which is `project-management`'s decision. A fix that
+  grows into a feature is handed over, not finished quietly.
+- It is not a second bug tracker. The bug records are the durable evidence and
+  the queue; its handoff holds only what is being fixed now and what is next.
+  History goes to the bug record and, on closure, to
+  `engineering-docs/completed-tasks/`, never to the handoff.
+
+**Its queue is read from `main`**, not from its handoff: the bug records whose
+`owner` is `maintenance` and whose `status` is neither `closed` nor `retired`.
+A pair selecting it lists those at session start, the way any workstream reads
+its intake.
+
+**Load is balanced by branches and pairs, not by more workstreams.** Its
+branches are `maintenance/<bug-or-release-line>`, one per fix or per
+maintained release line, and several pairs may work it at once, as *Two pairs
+may select the same workstream* allows. A defect cluster large enough to have
+its own goal and its own end is an ordinary bounded workstream, not a second
+permanent one.
+
+**Lifecycle.** Permanent for the lifetime of `multiple-streams` mode, like
+`project-management`: restriction 12 reserves its mnemonic, initialization
+creates it, it has no completion criteria, and its registry state reads
+`active; permanent maintenance`. Paused is legitimate when its queue is
+empty; blocked is legitimate when every open bug it owns waits on something
+external.
+
+**Branches, selection, and integration are ordinary**, exactly as for
+`project-management`. Only its lifecycle and its default ownership of bugs
+are special.
+
+**Retirement.** Together with `project-management`, on migration to
+`single-stream`, by the procedure above; its intake must be empty like the
+other. Its open bug records stay where they are and their `owner` becomes
+`none`, since a single-stream project has no workstreams.
+
+**Adoption exception.** A project that adopted `multiple-streams` before this
+workstream existed creates it when it adopts this rule, with that date as the
+immutable start date, and records in the new handoff that the start date is
+later than the mode's initialization.
 
 ### Beginning A Workstream
 
@@ -1348,9 +1419,10 @@ committed on the release branch, not a flag.
 ### Taking A Release Over
 
 In `multiple-streams` mode, a workstream drives a release. It is the
-workstream whose deliverable is the release's headline. When that is unclear,
-or for a maintenance release of an old version, `project-management` drives.
-The product owner decides the cut.
+workstream whose deliverable is the release's headline. A maintenance release
+of an already released version is driven by the reserved `maintenance`
+workstream. When the headline is unclear, `project-management` decides who
+drives. The product owner decides the cut.
 
 For the duration of the release, the rules below replace the ordinary branch
 rules for that workstream, and only for that workstream. Unrelated workstreams
@@ -1423,10 +1495,9 @@ its refs differently.
 
 1. `v1.3.0` is in use. A defect must be fixed in it, but `main` carries
    unfinished `1.4.0` work that cannot ship. The owner decides on a
-   maintenance release, driven by `project-management` because no workstream's
-   deliverable is its headline.
+   maintenance release, which the reserved `maintenance` workstream drives.
 2. `release-1.3.1` is created at `v1.3.0`, not at `main`. Its first commit
-   bumps the version to `1.3.1`. The `project-management` registry row names
+   bumps the version to `1.3.1`. The `maintenance` registry row names
    `release-1.3.1` for the duration.
 3. The fix is committed on `release-1.3.1`. Merging it to `main` would carry
    the whole `1.3` line across `main`'s newer history, so it is not merged.
@@ -1437,7 +1508,7 @@ its refs differently.
 4. `v1.3.1-rc0` is accepted, and `v1.3.1` is tagged at the same commit. The
    forward-port owner delivers the fix to `main` through its own working branch
    as ordinary work.
-5. The `project-management` row returns to its coordination branch.
+5. The `maintenance` row returns to a `maintenance/...` branch.
    `release-1.3.1` stays behind, closed.
 
 ### What This Section Leaves To The Project
@@ -1577,9 +1648,10 @@ Use markdown files with distinct responsibilities:
   clutter the active task list.
 - `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/`: temporary documentation and the
   detailed handoff for an open workstream in `multiple-streams` mode. Exactly
-  one of these is always the reserved `project-management` workstream, which
-  holds project-wide priorities, sequencing, and lifecycle reasoning rather
-  than a second copy of the registry.
+  two of these are always the reserved workstreams: `project-management`,
+  which holds project-wide priorities, sequencing, and lifecycle reasoning
+  rather than a second copy of the registry, and `maintenance`, which owns the
+  defects no open workstream covers.
 - `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`: final status and retained
   historical material for an ended workstream.
 - `engineering-docs/bugs/`: one file per active or recently investigated
@@ -1750,9 +1822,46 @@ task. Name files like:
 engineering-docs/bugs/SCOPE/YYYY-MM-DD-short-title.md
 ```
 
-Each bug file should capture:
+**Every bug record opens with frontmatter carrying the controlled fields**, so
+that questions about bugs can be answered from the records rather than by
+reading all of them:
 
-- Requirements, if the bug affects known requirements.
+```text
+---
+status: reported
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-09-18
+requirements: [R-PRODUCT-001]
+---
+```
+
+- `status`, exactly one of: `reported`, filed but not yet reproduced or
+  evidenced; `confirmed`, reproduced or evidenced, no fix yet; `fixing`, an
+  owner is working on it on a named branch; `fixed`, a fix is committed and
+  validation is pending; `closed`, validated or no longer reproduced, and the
+  record says which; `retired`, will not be fixed, with the reason recorded.
+- `severity`, exactly one of: `blocking`, the named `target` cannot ship with
+  it; `major`, wrong or unsafe behaviour that the product claims to prevent,
+  with no acceptable workaround; `minor`, everything else; `untriaged`, not
+  yet rated, which is the owner's first job.
+- `target`: the release version the fix is meant for, or `none`.
+- `owner`: the mnemonic of the workstream that owns the fix, or `none` in
+  `single-stream` mode. In `multiple-streams` mode a bug always has one: the
+  open workstream whose goal covers it, otherwise `maintenance`.
+- `opened`, and once closed or retired `closed`: ISO dates.
+- `requirements`: the identifiers of the requirements the bug threatens, or an
+  empty list.
+
+Prose after the frontmatter may say more and never contradicts the fields.
+Whoever changes a field changes it in the record, in the same commit as the
+work that justified the change. A bug whose `severity` is `blocking` and whose
+`target` names a release blocks that release until its `status` is `closed`
+or `retired`; nothing else needs to be consulted to know that.
+
+Each bug file should also capture:
+
 - Symptom.
 - Environment: image, launcher command, project path or mount, host
   assumptions, and relevant versions.
@@ -1767,15 +1876,25 @@ Do not include secrets. Keep detailed bug evidence in the bug file. The
 selected handoff should only contain the next action, such as investigating the
 bug, validating a fix, or adding a regression check.
 
-When a task is completed, validated, no longer reproduced, or intentionally
+**Filing and routing.** A bug record is a durable product artifact and lives on
+`main`. In `multiple-streams` mode, filing one is sending a message: it travels
+the filer's outbox like any other, with `owner` set by the rule above. A bug
+record is not an intake item and is not dispositioned; the `owner` field is
+its routing, and each owner reads its queue from the records on `main` at
+session start. Handing a bug to another workstream is changing `owner`, with
+the reason recorded in the record and sent through the outbox.
+
+When a bug is fixed and validated, no longer reproduced, or intentionally
 retired:
 
-1. Remove it from the active list.
-2. Add a dated status note near the current-state section if future agents need
-   to know why it disappeared.
+1. Set `status` to `closed` or `retired` and fill in `closed`, with the reason
+   in the record.
+2. Add a dated status note near the current-state section of the owner's
+   handoff if future agents need to know why it disappeared from the queue.
 3. Move detailed evidence into the corresponding scope beneath
-   `engineering-docs/completed-tasks/`.
-4. State when the task should be reopened, for example "only if a later image or
+   `engineering-docs/completed-tasks/` when the record has served its purpose
+   as active evidence; the bug file may stay as the short durable pointer.
+4. State when the bug should be reopened, for example "only if a later image or
    launcher change regresses this path."
 
 This keeps the next-session question "what should we do next?" unambiguous.

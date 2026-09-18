@@ -68,6 +68,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Recursive dogfood E2E successful archive](engineering-docs/archive/2026-08-06-recursive-e2e/CURRENT-STATUS.md)
 - [Project management current status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md)
 - [Workflow improvements current status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md)
+- [Maintenance current status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md)
 - [Sample demo projects current status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md)
 - [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)
 - [Eclipse interactive surface current status](engineering-docs/wip/2026-09-09-eclipse-surface/CURRENT-STATUS.md)
@@ -175,6 +176,13 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [The Resolution Refusal Names Only The Last Base Tried And Offers No Remedy](engineering-docs/bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
+- [The Formation Identity Claims An Entrypoint The Recipe Never Sets](engineering-docs/bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
+- [The Codium Setuid Sandbox Crashes Under The Development-Sudo Posture](engineering-docs/bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
+- [Codium Relaunch Intermittently Crashes Its First Renderer After A Clean Exit](engineering-docs/bugs/devcapsule/2026-09-02-codium-relaunch-renderer-crash-after-clean-exit.md)
+- [`--authorize base-image` Conflates Consent With Selection And Explains Neither](engineering-docs/bugs/devcapsule/2026-09-02-authorize-base-image-conflates-consent-with-selection.md)
+- [The Authorization Grammar Cannot Express Denial](engineering-docs/bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
+- [Antigravity's State Is Wider Than The Analyzed Path, And The Nested Slot Walls It Off](engineering-docs/bugs/devcapsule/2026-09-02-antigravity-state-wider-than-the-analyzed-path.md)
 - [Codex was installed as a single plucked binary, so every sandboxed command failed](engineering-docs/bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md)
 - [Init and run answers are not persisted as the authorizations they express](engineering-docs/bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
 - [init --authorize base-image left the checkout unauthorized](engineering-docs/bugs/devcapsule/2026-09-01-init-authorize-base-image-not-recorded.md)

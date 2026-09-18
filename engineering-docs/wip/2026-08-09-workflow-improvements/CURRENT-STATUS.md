@@ -6,10 +6,10 @@ Start date: 2026-08-09
 
 State: active. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
-owner chose the release-related intake as the first work, as the least
-controversial, and directed it under an owner-directed exception to the freeze
-for the release rules only. Nine intake items remain undispositioned; see
-*Next Resumable Task*.
+owner chose the release-related intake first and, on 2026-09-18, the reserved
+`maintenance` workstream with the bug vocabulary, granting the freeze
+exception each needed. Eight intake items remain undispositioned; see *Next
+Resumable Task*.
 
 Integration target: `main`
 
@@ -54,7 +54,8 @@ itself. It is not an editing checkout; see selection rule 6.
   projects arrived as submodules with the rebase; nothing about them is this
   workstream's.
 - Eleven intake items were waiting. Two are acknowledged and their rule is on
-  `main` (*Fifteenth Task*); nine remain in `intake/`.
+  `main` (*Fifteenth Task*); a third is acknowledged and drafted (*Sixteenth
+  Task*); eight remain in `intake/`.
 - The release rule is operative since 2026-09-16. The product owner merged
   `workflow-improvements/v1` as [`PR #88`](https://github.com/ccozianu/devcapsule/pull/88)
   on 2026-09-16 and the outbox send as [`PR #89`](https://github.com/ccozianu/devcapsule/pull/89)
@@ -765,14 +766,95 @@ first release commit, merge-then-tag by pull request, ancestry as the normal
 integration method, resume on a fresh branch) travels the outbox with this
 task's records. The guide is `project-management`'s to edit.
 
+### Sixteenth Task: The Reserved `maintenance` Workstream And The Bug Vocabulary
+
+Proposed by the product owner on 2026-09-18, when asked where a handful of
+bugs should be fixed: a permanent bug-fixing workstream, to show commitment to
+fixing defects found against `main` and against maintained releases, possibly
+several for load balancing. The owner granted the freeze exception and asked
+that it be taken to a new workflow version.
+
+Two points were pushed back on and the owner accepted both. **One, not
+several**: load is balanced by branches and by pairs, which the model already
+allows, and a second queue would make a reporter guess where to file. **Not a
+catch-all**: a bug inside an open workstream's subject is fixed there, and the
+reserved workstream takes only what has no open owner or what an owner hands
+over with a reason. Both are in the section as exclusions, in the shape
+`project-management`'s scope already uses.
+
+Written on this branch, awaiting the owner's review before the pull request:
+
+- `WORKFLOW.md`: *The Reserved `maintenance` Workstream* after the
+  `project-management` section; restriction 12 reserves both mnemonics;
+  *Definition And Restrictions*, *Initializing Multiple-Stream Mode*,
+  retirement, and *Markdown Roles* say two reserved workstreams; *Releases*
+  now has `maintenance` drive maintenance releases of released versions, with
+  `project-management` deciding only when the headline is unclear, and the
+  patch example follows; *Bug Intake* defines the controlled frontmatter
+  (`status`, `severity`, `target`, `owner`, `opened`, `closed`,
+  `requirements`) and the routing rule that a bug's `owner` field, not an
+  intake item, is how it reaches a workstream.
+- The packaged definition: the same. Both `AGENTS.md` copies: short forms.
+- The bootstrap: a `maintenance` handoff template, both intake templates made
+  mnemonic-neutral, the registry and index templates listing both reserved
+  workstreams, the bug template with the frontmatter, and
+  `workflow_bootstrap.py` generalized to create each reserved workstream that
+  is missing. A project that predates `maintenance` gets it with the current
+  date under the adoption exception; a project with no `project-management`
+  is still refused as incomplete. Tests cover both.
+- `R-PRODUCT-006` and the bootstrap specification, updated to say two.
+- All 23 bug records under `engineering-docs/bugs/devcapsule/` carry the
+  frontmatter. The free-text status line each had is kept, renamed
+  `Status note`, so its detail survives without being a second status. Seven
+  records were missing from `index.md` and are now listed, which is the
+  index-and-directory disagreement the intake item predicted.
+- This repository's `maintenance` workstream is registered:
+  `engineering-docs/wip/2026-09-18-maintenance/`, the registry row, the root
+  registry's prose on the two exceptions, and the index entry. Registration
+  travels the outbox.
+
+**Decided rather than transcribed, each open to reversal.**
+
+- **Status values**: reported, confirmed, fixing, fixed, closed, retired. Six,
+  because each is a different answer to "what would I do next with this".
+  Requirements use six as well.
+- **Severity values**: blocking, major, minor, untriaged. `untriaged` is a
+  real value, not a missing one, because the backfill could not honestly rate
+  23 records the owner had never rated, and a queue that hides that is worse
+  than one that shows it. Triage is the reserved workstream's first task.
+- **Backfill mapping**: closed stays closed with its date; "fixed on a branch,
+  validation pending" is `fixed`; "reproduced" or "diagnosed" is `confirmed`;
+  a bare "open" or "observed" is `reported`; the two records the owner had
+  marked low-priority are `minor`. Owners: `contained-display` for the X11
+  bug, whose registry row says it shipped fixed in v0.2.12 while the record
+  still said open; `component-catalog` for the two fixed on its branch;
+  `maintenance` for the rest. Twelve open bugs are owned by `maintenance`.
+- **No `priority` field.** The item asked for priority or severity. One
+  controlled scale with a `target` beside it answers the questions actually
+  asked (what blocks the release, what is high) without two scales that
+  disagree.
+- **Bug records are not intake items.** They are durable records on `main`,
+  per the ratified boundary, and their `owner` field is the routing. Making
+  them intake items would have doubled every bug into a queue file and a
+  record.
+- **`docker4pycharm`'s bug record and template are untouched.** That
+  subproject is frozen at the owner's request.
+
+**Owed to `project-management`.** The runbook item sent on 2026-09-16 said
+maintenance releases of old versions are driven by `project-management`; that
+is now `maintenance`. A short follow-up item travels with this round, also
+noting that the readiness assessment's "thirteen open bugs carry no triage"
+now has an owner and a vocabulary, and that the triage is the owner's.
+
 ## Next Resumable Task
 
-Disposition the remaining nine intake items. Work cannot start until the
-product owner answers the four questions under *Open Threads*; put them first
-in the next session. The owner's stated immediate interest is that the next
-release, whatever it contains, runs under the release rule now on `main`; the
-only step left for that is `project-management`'s edit of its operator guide,
-delivered to its intake on 2026-09-18 in `PR #89`.
+Put the `maintenance` workstream, the bug vocabulary, and the backfilled bug
+records in front of the product owner, apply what the review changes, and push
+for the pull request. The owner then triages the twelve untriaged bugs in the
+`maintenance` workstream, which is where the next release's handful comes from.
+
+Then disposition the remaining eight intake items, which wait on the owner's
+answers under *Open Threads*.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
 actionable and unclaimed.
@@ -906,6 +988,17 @@ records. The two items were dispositioned together because the second presumes
 the first: a release branch can be a workstream's selection only once it is
 established that it is not a workstream branch.
 
+**A shared vocabulary for bugs and their properties** (`project-management`,
+2026-08-16, at the product owner's request). Acknowledged and implemented on
+2026-09-18 as the controlled frontmatter in *Bug Intake*, applied to all 23
+records, together with the reserved `maintenance` workstream that the
+vocabulary serves. The sender's three analyses were all taken: the properties
+that answer the questions asked (severity, status, target, requirements,
+owner); something that checks the vocabulary is used, which is the
+`pre-commit` invariant work already on `project-management`'s backlog and
+which this format is shaped to be checkable by; and the explicit decision,
+recorded above, of what was chosen over free text.
+
 ## Acknowledged Work
 
 Ordered by readiness, not by size. Positions are this workstream's judgment and
@@ -929,6 +1022,9 @@ can be reordered.
 5. ~~Release refs are not workstream branches.~~ Done 2026-09-16, merged as
    `PR #88`. See *Fifteenth Task*.
 6. ~~A workstream takes a release over.~~ Done 2026-09-16 with item 5.
+7. ~~A shared vocabulary for bugs, and the reserved `maintenance`
+   workstream.~~ Drafted 2026-09-18; awaiting owner review and the pull
+   request. See *Sixteenth Task*.
 
 ## Assessment Of The Queue
 
@@ -1074,10 +1170,13 @@ resume changed every question. Short by design.
 
 ### Awaiting The Product Owner
 
-- **Whether the freeze lifts for the remaining nine items.** The 2026-08-30
-  freeze runs until the release-candidate check, which is now. The owner lifted
-  it for the release rules only. Eight of the nine remaining items change
-  rules.
+- **Review of the `maintenance` workstream, the bug vocabulary, and the
+  backfilled records.** The pull request waits on it; the triage of twelve
+  untriaged bugs follows it, in the `maintenance` workstream.
+- **Whether the freeze lifts for the remaining eight items.** The 2026-08-30
+  freeze runs until the release-candidate check, which is now. The owner has
+  lifted it twice, for the release rules and for `maintenance`. Seven of the
+  eight remaining items change rules.
 - **Whether *One Workflow, Many Projects* (2026-09-11) subsumes the structural
   sequence** of information model, component shape, coordination off `main`,
   and mail transport as its first phase, which its text implies, or runs after
@@ -1142,8 +1241,10 @@ retains after their deletion.
   under some. See *Open Threads* for the standing question.
 - This track overlaps `CURRENT-STATUS.md`, `WORKFLOW.md`, `AGENTS.md`, and the
   workflow requirements. Synchronize with `main` before integrating.
-- Verified 2026-09-18: both branches are merged and `workflow-improvements/v1`
-  equals `origin/main`; the outbox holds its 2026-09-16 send, merged. The
+- Verified 2026-09-18: the 2026-09-16 round is merged; `workflow-improvements/v1`
+  now carries the `maintenance` round, unmerged, and the outbox carries its
+  registration and records, unmerged. The bootstrap tests pass (7 passed, 1
+  pre-existing expected failure); the wider suite was not run. The
   operator guide for releasing a new version, owned by `project-management`,
   contradicts the new release rule in its step 1 until that workstream edits
   it; the contradiction is reported through its intake, not fixed here.

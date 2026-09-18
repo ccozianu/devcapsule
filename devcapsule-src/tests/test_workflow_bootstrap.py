@@ -107,14 +107,49 @@ def test_multiple_streams_bootstrap_initializes_reserved_workstream(
     assert (handoff_root / "CURRENT-STATUS.md").is_file()
     assert (handoff_root / "intake/README.md").is_file()
     assert (handoff_root / "intake-dispositions.md").is_file()
-    assert "Project management current status" in (tmp_path / "index.md").read_text(
+    index = (tmp_path / "index.md").read_text(encoding="utf-8")
+    assert "Project management current status" in index
+    assert "Maintenance current status" in index
+    assert "`maintenance`" in registry
+    maintenance_root = tmp_path / "engineering-docs/wip/2026-08-21-maintenance"
+    assert (maintenance_root / "CURRENT-STATUS.md").is_file()
+    assert "Mnemonic: `maintenance`" in (maintenance_root / "CURRENT-STATUS.md").read_text(
         encoding="utf-8"
     )
+    assert "# Intake: `maintenance`" in (maintenance_root / "intake/README.md").read_text(
+        encoding="utf-8"
+    )
+    assert (maintenance_root / "intake-dispositions.md").is_file()
+    bug_template = (tmp_path / "engineering-docs/bugs/_template.md").read_text(
+        encoding="utf-8"
+    )
+    assert bug_template.startswith("---\nstatus: reported\n")
 
     repeated = bootstrap_project(tmp_path, today=date(2030, 1, 1))
     assert not repeated.created
     assert handoff_root.is_dir()
     assert not (tmp_path / "engineering-docs/wip/2030-01-01-project-management").exists()
+    assert not (tmp_path / "engineering-docs/wip/2030-01-01-maintenance").exists()
+
+
+def test_project_predating_maintenance_gets_it_with_todays_date(
+    tmp_path: Path,
+) -> None:
+    """A multiple-streams project initialized before the maintenance workstream
+    existed is not incomplete: bootstrap adds it under the adoption exception,
+    dated today rather than at the project-management start date."""
+    declaration(tmp_path, "multiple-streams")
+    bootstrap_project(tmp_path, today=date(2026, 8, 21))
+    import shutil
+
+    shutil.rmtree(tmp_path / "engineering-docs/wip/2026-08-21-maintenance")
+
+    report = bootstrap_project(tmp_path, today=date(2026, 9, 18))
+
+    created = {str(path) for path in report.created}
+    assert "engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md" in created
+    assert not (tmp_path / "engineering-docs/wip/2026-08-21-maintenance").exists()
+    assert (tmp_path / "engineering-docs/wip/2026-08-21-project-management").is_dir()
 
 
 def test_incomplete_existing_multiple_streams_instance_is_rejected(

@@ -1,8 +1,17 @@
+---
+status: reported
+severity: minor
+target: none
+owner: maintenance
+opened: 2026-08-03
+requirements: [R-ENV-001, R-DEV-001]
+---
+
 # Observation: JetBrains Runtime Disables Alpha Compositing On X11
 
 Date opened: 2026-08-03
 
-Status: observed in external dogfood; low-priority review, not currently a V1
+Status note (pre-vocabulary, kept as evidence): observed in external dogfood; low-priority review, not currently a V1
 blocker
 
 Requirements: R-ENV-001, R-DEV-001

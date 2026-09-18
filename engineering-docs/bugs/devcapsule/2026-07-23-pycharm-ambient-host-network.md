@@ -1,8 +1,17 @@
+---
+status: confirmed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-07-23
+requirements: [R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, R-PRODUCT-002]
+---
+
 # Bug: PyCharm Run-Image Network And Docker-Option Parity
 
 Date opened: 2026-07-23
 
-Status: reopened; open pending an explicit network option and broader
+Status note (pre-vocabulary, kept as evidence): reopened; open pending an explicit network option and broader
 `run-image` Docker-option parity
 
 Requirements: R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, root R-PRODUCT-002

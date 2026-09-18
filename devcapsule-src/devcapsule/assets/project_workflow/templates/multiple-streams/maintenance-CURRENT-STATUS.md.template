@@ -1,0 +1,35 @@
+# Workstream Current Status: Maintenance
+
+Mnemonic: `maintenance`
+
+Start date: `{{MAINTENANCE_START_DATE}}`
+
+State: active; permanent maintenance
+
+Branch association: `maintenance/`; no branch yet
+
+## Goal
+
+Own the defects that no open workstream covers, on `main` and on maintained
+release lines, and drive maintenance releases, while this repository uses
+multiple-streams mode.
+
+## Queue
+
+Read from `main`, not from this file: the bug records under
+`engineering-docs/bugs/` whose `owner` is `maintenance` and whose `status` is
+neither `closed` nor `retired`. See *Bug Intake* in `WORKFLOW.md`.
+
+## Current State
+
+The reserved workstream was initialized. Replace this with the first verified
+queue state after registration reaches main.
+
+## Planned Next Step
+
+Triage any bug whose `severity` is `untriaged`, then take the highest-severity
+open bug on the current release line.
+
+## Open Threads
+
+- None recorded yet.

@@ -1,12 +1,18 @@
+---
+status: reported
+severity: untriaged
+target: none
+owner: maintenance
+opened: YYYY-MM-DD
+requirements: []
+---
+
 # Bug: Short Title
 
-Date opened:
-
-Status: open | reproduced | fixed | cannot reproduce | retired
-
-Requirements:
-
-- R-...
+Fields above are controlled; see *Bug Intake* in `WORKFLOW.md`. `status` is
+one of reported, confirmed, fixing, fixed, closed, retired. `severity` is one
+of blocking, major, minor, untriaged. `owner` is the open workstream whose goal
+covers the bug, otherwise `maintenance`; `none` in single-stream mode.
 
 ## Symptom
 

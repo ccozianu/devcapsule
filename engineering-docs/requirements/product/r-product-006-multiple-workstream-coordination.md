@@ -21,10 +21,14 @@ workstream explicitly, preserve one independently resumable handoff for each,
 associate every non-main branch with exactly one workstream, isolate unfinished
 documentation, and define deterministic beginning, development, successful or
 unsuccessful completion, integration, and recovery rules without relying on
-conversation history. Initializing or adopting the mode must create exactly one
-reserved `project-management` workstream that owns project-wide priorities,
-sequencing, cross-workstream dependencies, and lifecycle decisions, remains
-open for the lifetime of the mode, and ends only on migration away from it. Successful integration must be executable as a routine
+conversation history. Initializing or adopting the mode must create exactly two
+reserved workstreams: `project-management`, which owns project-wide priorities,
+sequencing, cross-workstream dependencies, and lifecycle decisions, and
+`maintenance`, which owns the defects no open workstream covers and drives
+maintenance releases. Both remain open for the lifetime of the mode and end
+only on migration away from it. Bug records must carry a controlled status,
+severity, target, and owner so that release-blocking defects and their owners
+can be read from the records. Successful integration must be executable as a routine
 agent operation while respecting repository policy: prepare and validate a
 frozen integration branch, finalize the workstream records, and deliver through
 a pull request by default or through explicitly permitted direct-main
@@ -59,11 +63,15 @@ This requirement is satisfied when repository inspection shows that:
   does not wait on the sender's own integration, exactly two disposition
   outcomes, and a completion gate that prevents a workstream from concluding
   while items remain undispositioned;
-- exactly one open workstream uses the reserved `project-management` mnemonic,
-  is registered like any other, and carries a handoff whose scope, permanent
-  lifecycle, branch association, and retirement-on-migration match
-  `WORKFLOW.md`; and the agent instructions and the reusable bootstrap template
-  require initialization and adoption to create it;
+- exactly one open workstream uses each reserved mnemonic,
+  `project-management` and `maintenance`, is registered like any other, and
+  carries a handoff whose scope, permanent lifecycle, branch association, and
+  retirement-on-migration match `WORKFLOW.md`; and the agent instructions and
+  the reusable bootstrap template require initialization and adoption to
+  create both;
+- every bug record under `engineering-docs/bugs/` opens with the controlled
+  frontmatter `WORKFLOW.md` defines, and every open one in multiple-stream
+  mode names an open workstream as its owner;
 - ended workstreams preserve that directory name under
   `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`; and
 - selection reads the registry from an unambiguous locally accepted mainline

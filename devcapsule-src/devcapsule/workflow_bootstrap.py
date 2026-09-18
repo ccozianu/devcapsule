@@ -99,11 +99,22 @@ def bootstrap_project(
         if workflow_type == "multiple-streams"
         else requested_date
     )
+    # The maintenance workstream shares the initialization date on a fresh
+    # project. A project that predates it gets it now, with today's date: the
+    # adoption exception WORKFLOW.md defines for that case.
+    maintenance_start_date = (
+        _reserved_start_date(root, "maintenance", requested_date)
+        if workflow_type == "multiple-streams"
+        else requested_date
+    )
     project_name = _project_name(root)
     substitutions = {
         "{{PROJECT_NAME}}": project_name,
         "{{START_DATE}}": start_date.isoformat(),
-        "{{WORKSTREAM_INDEX}}": _workstream_index(workflow_type, start_date),
+        "{{MAINTENANCE_START_DATE}}": maintenance_start_date.isoformat(),
+        "{{WORKSTREAM_INDEX}}": _workstream_index(
+            workflow_type, start_date, maintenance_start_date
+        ),
     }
 
     for directory in ENGINEERING_DIRECTORIES:
@@ -151,13 +162,18 @@ def bootstrap_project(
         created.append(Path("CURRENT-STATUS.md"))
 
     if workflow_type == "multiple-streams":
-        _initialize_project_management(
-            root,
-            start_date,
-            substitutions,
-            created=created,
-            preserved=preserved,
-        )
+        for mnemonic, workstream_date in (
+            ("project-management", start_date),
+            ("maintenance", maintenance_start_date),
+        ):
+            _initialize_reserved_workstream(
+                root,
+                mnemonic,
+                workstream_date,
+                substitutions,
+                created=created,
+                preserved=preserved,
+            )
 
     _update_gitignore(root, created=created, updated=updated, preserved=preserved)
     return BootstrapReport(
@@ -187,20 +203,25 @@ def project_workflow_type(root: Path) -> str:
     return str(selected)
 
 
-def _initialize_project_management(
+def _initialize_reserved_workstream(
     root: Path,
+    mnemonic: str,
     start_date: date,
     substitutions: Mapping[str, str],
     *,
     created: list[Path],
     preserved: list[Path],
 ) -> None:
-    workstream = Path("engineering-docs/wip") / (
-        f"{start_date.isoformat()}-project-management"
-    )
+    """Create one reserved workstream's records where they are missing.
+
+    Both reserved workstreams share the intake templates; only the handoff
+    template is specific to the mnemonic.
+    """
+    workstream = Path("engineering-docs/wip") / f"{start_date.isoformat()}-{mnemonic}"
+    substitutions = {**substitutions, "{{MNEMONIC}}": mnemonic}
     templates = {
         workstream / "CURRENT-STATUS.md": (
-            "templates/multiple-streams/project-management-CURRENT-STATUS.md.template"
+            f"templates/multiple-streams/{mnemonic}-CURRENT-STATUS.md.template"
         ),
         workstream / "intake/README.md": (
             "templates/multiple-streams/intake-README.md.template"
@@ -223,32 +244,48 @@ def _initialize_project_management(
 
 
 def _project_management_start_date(root: Path, fallback: date) -> date:
-    candidates = sorted(
-        path.parent
-        for path in (root / "engineering-docs" / "wip").glob(
-            "????-??-??-project-management/CURRENT-STATUS.md"
-        )
-    )
-    if len(candidates) > 1:
-        raise WorkflowBootstrapError(
-            "multiple project-management workstream handoffs already exist: "
-            + ", ".join(str(path.relative_to(root)) for path in candidates)
-        )
-    if not candidates and (root / "CURRENT-STATUS.md").exists():
+    """The existing project-management start date, or ``fallback`` on a fresh
+    project. A registry without the project-management handoff is an
+    incompletely initialized instance and is refused rather than repaired."""
+    if (
+        _reserved_workstream_dirs(root, "project-management") == []
+        and (root / "CURRENT-STATUS.md").exists()
+    ):
         raise WorkflowBootstrapError(
             "multiple-streams project is incompletely initialized: "
             "CURRENT-STATUS.md exists but the reserved project-management "
             "workstream handoff does not"
         )
+    return _reserved_start_date(root, "project-management", fallback)
+
+
+def _reserved_start_date(root: Path, mnemonic: str, fallback: date) -> date:
+    """The immutable start date of an existing reserved workstream, read from
+    its directory name, or ``fallback`` when the workstream does not exist yet."""
+    candidates = _reserved_workstream_dirs(root, mnemonic)
+    if len(candidates) > 1:
+        raise WorkflowBootstrapError(
+            f"multiple {mnemonic} workstream handoffs already exist: "
+            + ", ".join(str(path.relative_to(root)) for path in candidates)
+        )
     if not candidates:
         return fallback
-    prefix = candidates[0].name.removesuffix("-project-management")
+    prefix = candidates[0].name.removesuffix(f"-{mnemonic}")
     try:
         return date.fromisoformat(prefix)
     except ValueError as exc:
         raise WorkflowBootstrapError(
-            f"project-management workstream has invalid start date: {prefix!r}"
+            f"{mnemonic} workstream has invalid start date: {prefix!r}"
         ) from exc
+
+
+def _reserved_workstream_dirs(root: Path, mnemonic: str) -> list[Path]:
+    return sorted(
+        path.parent
+        for path in (root / "engineering-docs" / "wip").glob(
+            f"????-??-??-{mnemonic}/CURRENT-STATUS.md"
+        )
+    )
 
 
 def _single_stream_status(root: Path, substitutions: Mapping[str, str]) -> str:
@@ -293,11 +330,17 @@ def _project_name(root: Path) -> str:
     return root.name
 
 
-def _workstream_index(workflow_type: str, start_date: date) -> str:
+def _workstream_index(
+    workflow_type: str, start_date: date, maintenance_start_date: date
+) -> str:
     if workflow_type == "single-stream":
         return ""
-    path = f"engineering-docs/wip/{start_date.isoformat()}-project-management/CURRENT-STATUS.md"
-    return "## Workstream Handoffs\n\n- [Project management current status](" + path + ")"
+    wip = "engineering-docs/wip"
+    return (
+        "## Workstream Handoffs\n\n"
+        f"- [Project management current status]({wip}/{start_date.isoformat()}-project-management/CURRENT-STATUS.md)\n"
+        f"- [Maintenance current status]({wip}/{maintenance_start_date.isoformat()}-maintenance/CURRENT-STATUS.md)"
+    )
 
 
 def _include_existing_markdown(root: Path, content: str) -> str:

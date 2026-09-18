@@ -102,15 +102,25 @@ branch inference but does not authorize mixing two workstreams' dirty state.
 Ask the user to select a workstream only when several remain plausible and the
 choice materially changes the work.
 
-Every `multiple-streams` project has exactly one reserved `project-management`
-workstream, created when the mode is initialized or adopted and open for as
-long as the mode lasts. It owns project-wide priorities, sequencing,
+Every `multiple-streams` project has exactly two reserved workstreams, created
+when the mode is initialized or adopted and open for as long as the mode
+lasts. `project-management` owns project-wide priorities, sequencing,
 cross-workstream dependencies, and lifecycle decisions; it is not a second
 registry, not an implementation catch-all, and not the owner of other
-workstreams' state. Select and work in it exactly as you would any other
-workstream. If a project declares `multiple-streams` and has no such
-workstream, report that it is incompletely initialized rather than working
-around it. See *The Reserved `project-management` Workstream* in `WORKFLOW.md`.
+workstreams' state. `maintenance` owns the bugs no open workstream covers and
+drives maintenance releases; it is not a catch-all for defects, not a feature
+workstream, and not a second bug tracker. Select and work in either exactly as
+you would any other workstream. If a project declares `multiple-streams` and
+lacks either, report that it is incompletely initialized rather than working
+around it. See *The Reserved `project-management` Workstream* and *The
+Reserved `maintenance` Workstream* in `WORKFLOW.md`.
+
+Bug records under `engineering-docs/bugs/` carry frontmatter with controlled
+`status`, `severity`, `target`, and `owner` fields; see *Bug Intake* in
+`WORKFLOW.md`. A bug is routed by its `owner` field, not by an intake item: at
+session start, list the open bugs whose `owner` is the selected workstream, and
+when filing one set `owner` to the open workstream whose goal covers it,
+otherwise to `maintenance`.
 
 The checked-out branch is the persistent local workstream selection; there is
 no separate untracked selection file. `main`, detached

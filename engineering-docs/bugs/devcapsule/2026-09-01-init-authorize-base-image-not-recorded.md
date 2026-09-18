@@ -1,8 +1,18 @@
+---
+status: closed
+severity: untriaged
+target: none
+owner: none
+opened: 2026-09-01
+closed: 2026-09-03
+requirements: [R-PRODUCT-001]
+---
+
 # Bug: `init --authorize base-image` Left The Checkout Unauthorized
 
 Date opened: 2026-09-01
 
-Status: **closed 2026-09-03** — validated by the owner across the v0.2.9
+Status note (pre-vocabulary, kept as evidence): **closed 2026-09-03** — validated by the owner across the v0.2.9
 smokes: the 2026-09-02 tictactoe smoke, the 2026-09-03 five-way smoke, and
 the same-day hands-on check of base selection at init with the v0.2.9 CLI
 ("thoroughly as expected and no trace of previous behavior"). The

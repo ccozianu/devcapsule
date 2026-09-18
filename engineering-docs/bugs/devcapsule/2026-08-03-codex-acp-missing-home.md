@@ -1,8 +1,17 @@
+---
+status: fixed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-08-03
+requirements: [R-DEV-001, R-STATE-001, R-FRAMEWORK-001]
+---
+
 # Bug: Codex ACP Fails Because Explicit CODEX_HOME Does Not Exist
 
 Date opened: 2026-08-03
 
-Status: reproduced; root cause/workaround validated; component fix implemented, external validation pending
+Status note (pre-vocabulary, kept as evidence): reproduced; root cause/workaround validated; component fix implemented, external validation pending
 
 Requirements: R-DEV-001, R-STATE-001, R-FRAMEWORK-001
 

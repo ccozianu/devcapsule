@@ -1,8 +1,17 @@
+---
+status: confirmed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-08-03
+requirements: [R-DEV-001, R-IMAGE-BUILD-001, R-FRAMEWORK-001]
+---
+
 # Bug: Component Tooling Is Not Added To The Runtime Path
 
 Date opened: 2026-08-03
 
-Status: reproduced; accepted V1 backlog item
+Status note (pre-vocabulary, kept as evidence): reproduced; accepted V1 backlog item
 
 Requirements: R-DEV-001, R-IMAGE-BUILD-001, R-FRAMEWORK-001
 

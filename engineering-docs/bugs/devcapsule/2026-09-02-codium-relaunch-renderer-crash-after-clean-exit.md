@@ -1,8 +1,18 @@
+---
+status: closed
+severity: untriaged
+target: none
+owner: none
+opened: 2026-09-02
+closed: 2026-09-03
+requirements: [R-PRODUCT-001]
+---
+
 # Bug: Codium Relaunch Intermittently Crashes Its First Renderer After A Clean Exit
 
 Date opened: 2026-09-02
 
-Status: **closed 2026-09-03** — the owner's v0.2.9 smoke confirmed
+Status note (pre-vocabulary, kept as evidence): **closed 2026-09-03** — the owner's v0.2.9 smoke confirmed
 clean codium launches and relaunches with no passthrough flag, the
 declared shm size (640m) doing the work. Root-caused and fixed on the
 branch, 2026-09-02. The owner ran

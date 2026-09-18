@@ -1,8 +1,18 @@
+---
+status: closed
+severity: untriaged
+target: none
+owner: none
+opened: 2026-09-02
+closed: 2026-09-03
+requirements: [R-PRODUCT-001]
+---
+
 # Bug: Init And Run Answers Are Not Persisted As The Authorizations They Express
 
 Date opened: 2026-09-02
 
-Status: **closed 2026-09-03** — the owner exercised base selection with the
+Status note (pre-vocabulary, kept as evidence): **closed 2026-09-03** — the owner exercised base selection with the
 v0.2.9 CLI and signed off: "the UX is thoroughly as expected and no trace
 of previous behavior". Originally reported by the product owner during the
 successful tictactoe codium smoke on the v0.2.8 base. See *Closure* below.
