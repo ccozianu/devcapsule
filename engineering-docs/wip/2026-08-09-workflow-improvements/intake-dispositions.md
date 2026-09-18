@@ -19,3 +19,4 @@ The note is one line. The reasoning is in *Dispositions* in this workstream's
 | `2026-08-16-project-management-external-resource-ownership.md` | 2026-08-17 | acknowledged | Convention only. Implementation delivered onward to `recursive-e2e` Stage 7 as derived work, not as a refusal. |
 | `2026-09-09-component-catalog-release-branch-names.md` | 2026-09-16 | acknowledged | Drafted as *Release Refs* in `WORKFLOW.md`; release refs are the stated exception to branch-belongs-to-a-workstream. |
 | `2026-09-15-contained-display-one-branch-per-release.md` | 2026-09-16 | acknowledged | Drafted as *Taking A Release Over* in `WORKFLOW.md`, the owner's six points in order; runbook consequences sent to `project-management`. |
+| `2026-08-16-project-management-bug-vocabulary.md` | 2026-09-18 | acknowledged | Implemented as the controlled bug frontmatter in *Bug Intake*, applied to all 23 records, with the reserved `maintenance` workstream as the queue's owner. |

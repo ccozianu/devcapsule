@@ -8,8 +8,9 @@ state belongs in each linked workstream handoff.
 
 | Mnemonic | Started | Goal | State | Branch association | Handoff |
 |---|---|---|---|---|---|
-| `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | active 2026-09-16; release sub-process and reference vocabulary drafted for owner review under an owner-directed freeze exception; nine intake items remain | `workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
+| `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | active 2026-09-18; release rule merged; reserved `maintenance` workstream and bug vocabulary drafted for owner review under a second freeze exception; eight intake items remain | `workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
 | `project-management` | 2026-08-09 | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active 2026-09-12; opening user-docs for owner scoping; six intake decisions remain | `project-management/coordination` | [workstream status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md) |
+| `maintenance` | 2026-09-18 | Own the defects no open workstream covers, on `main` and on maintained release lines, and drive maintenance releases | active; permanent maintenance; owns 12 open bugs, all untriaged; first task is triage | `maintenance/`; no branch yet | [workstream status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md) |
 | `sample-projects` | 2026-08-14 | Provide realistic sample projects as submodules that demonstrate ordinary adopter development inside DevCapsule | paused 2026-08-21 after adding human-authorized workstream-change rules; labeled fixtures are next | `sample-projects/fastapi-webapp` | [workstream status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md) |
 | `contained-display` | 2026-08-19 | Own the capsule supervisor core (container entry process, supervised children, explicit session end, headless mode) and the capsule's own display environment, closing the host-session credential exposure — supervisor first, display as its first consumer | active; **the contained display shipped in v0.2.12 on 2026-09-14** (recipe-9 base, contained desktop by default, X11 passthrough behind `host-x11`); the X11 credential bug is resolved; remaining threads are records and follow-ups (reconnect, WSL2 opener, sample locks) | `contained-display/display-transport`; `contained-display/outbox` | [workstream status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md) |
 | `eclipse-surface` | 2026-09-09 | Add the Eclipse IDE (JDT) as a third interactive surface beside PyCharm and VSCodium, as an ordinary catalog component | open 2026-09-09; registered, entry survey recorded, awaiting product-owner scoping | `eclipse-surface/`; no branch yet | [workstream status](engineering-docs/wip/2026-09-09-eclipse-surface/CURRENT-STATUS.md) |
@@ -18,9 +19,10 @@ state belongs in each linked workstream handoff.
 | `website` | 2026-09-16 | Deliver the website autonomy experiment: repository-owned landing/docs/blog content, independently developable website submodule, local preview and publishing mechanism | active; awaiting human fresh-context start and initial setup checkpoint | `website/initial-cut`; explicit preparation exception in handoff | [workstream status](engineering-docs/wip/2026-09-16-website/CURRENT-STATUS.md) |
 
 Paused and blocked workstreams remain open until they conclude successfully or
-unsuccessfully. The one exception is `project-management`, which every
-multiple-stream project reserves and keeps open for as long as the mode lasts;
-see *The Reserved `project-management` Workstream* in `WORKFLOW.md`.
+unsuccessfully. The two exceptions are `project-management` and `maintenance`,
+which every multiple-stream project reserves and keeps open for as long as the
+mode lasts; see *The Reserved `project-management` Workstream* and *The
+Reserved `maintenance` Workstream* in `WORKFLOW.md`.
 
 ## Coordination Baseline
 
@@ -46,6 +48,9 @@ adopted. This repository's instance is therefore no longer an exception in
 substance. It keeps one narrow adoption exception: this repository adopted
 `multiple-streams` on 2026-08-08 and created the reserved workstream on
 2026-08-09, so its immutable start date is one day later than initialization.
+`maintenance` was reserved by `workflow-improvements` on 2026-09-18 and
+created the same day, under the adoption exception `WORKFLOW.md` defines for
+projects that adopted the mode before it existed.
 
 Other local or remote branch refs that predate this transition are inactive
 legacy refs, not implicitly open workstreams. Do not resume work on one until
