@@ -904,6 +904,15 @@ the migration step, so a version says more than "you are behind".
 - **Sample projects are untouched.** They are separate repositories; they
   pick the table up on their next refresh.
 
+**Owner ruling on version timing, 2026-09-18.** Stamping 0.2.14 mid-cycle
+collided with the rule that the release branch's first commit is the version
+bump. The owner ruled that a product-owner bump is accommodated at any point
+in the cycle, by any jump, and that the operator guide need not be strict
+about it. *Releases* now says the source describes itself as the version no
+later than the branch's first commit, which confirms the version rather than
+owning it. The runbook consequence rides the pending outbox item to
+`project-management`.
+
 **Verification.** Bootstrap, bump, and noxfile tests pass (33 passed, 1
 pre-existing expected failure); syntax and typecheck gates pass. The wider
 suite was not run.

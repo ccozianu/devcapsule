@@ -154,8 +154,10 @@ There is no 0.2.13. Rules changed since 0.2.12:
 - **Reference vocabulary.** *Vocabulary* adopts the Workflow Patterns base
   terms. No migration.
 - **Releases.** *Releases* defines release refs and how a workstream takes a
-  release over. No migration for existing refs; the next release follows
-  *Taking A Release Over*.
+  release over. The product owner may set the version at any point in the
+  cycle; the release branch's first commit confirms it rather than owning it.
+  No migration for existing refs; the next release follows *Taking A Release
+  Over*.
 - **The reserved `maintenance` workstream, and bug frontmatter.** *The
   Reserved `maintenance` Workstream* and *Bug Intake*. Migration: create the
   reserved workstream under its adoption exception, and add the controlled
@@ -1410,8 +1412,10 @@ A project's release refs are the branch and the tags that identify one
 release's source:
 
 - **The release branch**, `release-<version>`, holds the source of every
-  candidate and of the final release. Its first commit is the version bump that
-  makes the source describe itself as that version.
+  candidate and of the final release. The source describes itself as that
+  version no later than the branch's first commit. The product owner may set
+  the version earlier, at any point in the cycle and by any jump; the first
+  commit then only confirms it.
 - **Candidate tags**, `v<version>-rc<n>`, mark each candidate on the release
   branch, numbered from zero. They are never moved and never deleted.
 - **The final tag**, `v<version>`, marks the accepted candidate's commit.
@@ -1475,8 +1479,9 @@ are unaffected.
 
 1. **Cut from `main`, not from the workstream branch.** The workstream merges
    its working branch to `main` first. The release branch starts at that merge
-   commit on `main`, and its first commit is the version bump. The working
-   branch is then closed for modification.
+   commit on `main`, and its first commit confirms the version, bumping it if
+   the product owner has not already. The working branch is then closed for
+   modification.
 2. **The release branch is the workstream's selection.** The registry row's
    branch association names the release branch, and its state reads
    `active; releasing <version>`. The handoff is edited on the release branch
