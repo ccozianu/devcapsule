@@ -4,7 +4,7 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active; initial PRs merged and test site working; production promotion action prepared; final review remains open
+State: active; public candidate workflows merged and test site working; visible build timestamp prepared; final review remains open
 
 Branch association: `website/initial-cut`; prefix `website/`
 
@@ -51,13 +51,20 @@ git submodule update --init website
 Use the printed URL if 8080 is occupied. `PORT=8090` changes the starting port.
 Build/check on demand: `./scripts/website.sh build`.
 
-Next step: the owner merges website `production-pages`, then parent
-`website/initial-cut` with the updated website pin and test workflow. Squash
-merges require selecting the merged website revision in the parent first.
-Configure production Pages/DNS/HTTPS; no personal token or repository secret is
-needed. Start a new parent Website run from updated main, review the test site,
-then promote its public candidate release tag using the website production action.
-See website PUBLISHING.md for the complete sequence.
+Next step: merge website `build-timestamp`, then the parent `website/initial-cut`
+with the new website pin (select the merged website revision if squash-merging).
+Run a fresh test deployment and promote its reviewed candidate tag to production.
+The footer now shows a readable UTC “Site built” timestamp, also recorded as
+`builtAt` in build-info.json and preserved through promotion/rollback. It is the
+candidate build time, not deployment completion or per-article modification time.
+Existing release candidates remain promotable without invented timestamps.
+
+Publication recheck: fetched website main c97c959 and parent main a99ca28;
+both selected branches fast-forwarded before editing. Public candidate
+website-candidate-35286734496-1 is present. Test HTTPS manifest independently
+confirms content a99ca28/implementation ff1a987. Production publication is
+owner-reported; this environment still sees a production certificate hostname
+mismatch, so production HTTPS is not independently verified.
 
 The owner rejected personal-token renewal overhead and selected public GitHub
 Release assets. The parent workflow publishes a candidate prerelease only after
@@ -141,6 +148,12 @@ The required parent `nox -s build` gate passed again, including all nine
 packaging integration checks. Its dirty-tree policy skipped the public revision
 PEX; the local PEX build and smoke checks passed.
 
+Timestamp validation: all 11 unit tests, the build and 582 local links pass.
+Twelve desktop/mobile browser audits pass without overflow or automated WCAG
+A/AA violations. Additional desktop/mobile/320px checks without JavaScript
+confirm that the visible timestamp matches the manifest; footer screenshots
+were visually inspected. Existing promotion tests confirm builtAt is preserved.
+
 ## Setup, Access And Budget
 
 The starting checkout was clean. Accepted `origin/main` was `02eb470`; local
@@ -173,9 +186,8 @@ An abrupt platform cutoff invisible to the agent cannot guarantee warning.
 
 ## Open Threads
 
-- Awaiting human: website and parent PR merges, production domain/HTTPS and manual
-  workflow runs. Start a new test run from updated main; old run 35187865183 has
-  no public release assets and rerunning its old definition cannot create them.
+- Awaiting human: website and parent timestamp PR merges, then a fresh test run
+  and promotion. Old release candidates do not gain new footer metadata.
 - Chosen: public release candidates remove personal-token maintenance and allow
   promotion/rollback after Actions artifacts expire. Keep release assets for as
   long as rollback is required; owners can still delete or modify releases.
