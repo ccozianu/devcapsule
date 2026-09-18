@@ -1,8 +1,17 @@
+---
+status: fixed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-09-02
+requirements: [R-PRODUCT-001, R-PRODUCT-002]
+---
+
 # Bug: `--authorize base-image` Conflates Consent With Selection And Explains Neither
 
 Date opened: 2026-09-02
 
-Status: ruled and fixed on the branch 2026-09-03. The owner ruled the
+Status note (pre-vocabulary, kept as evidence): ruled and fixed on the branch 2026-09-03. The owner ruled the
 UX directly: init accepts the reference the user typed — DevCapsule
 reads the image from the local daemon (digest, platform, base labels),
 presents the metadata, and solicits informed consent that this is the

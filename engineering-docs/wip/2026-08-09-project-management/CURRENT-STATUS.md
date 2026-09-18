@@ -4,13 +4,42 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-15 at owner request; checkout switching to user-docs; permanent coordination
+State: active 2026-09-18 at owner request; synchronized with origin and main; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## Resumed And Synchronized (2026-09-18)
+
+The owner selected project-management and authorized updating from origin.
+Merged remote coordination `472f64a` into the local history, then merged
+`origin/main` at `042c094`. Both histories are preserved. Status-only conflicts
+were resolved by retaining the newer September 15 pause record below and the
+latest mainline registry, with this resumption replacing the old current state.
+All files outside this handoff and the registry match accepted main exactly.
+
+Validation: merge ancestry and whitespace checks passed. The `nox -s build`
+gate already passed on the same implementation tree during the preceding website
+synchronization, including nine packaging integration checks; it was not repeated
+for status-only differences. The local PEX passed; the public revision-bearing
+PEX was skipped by the gate's dirty-tree policy.
+
+**Planned next step:** resume owner-selected coordination decisions and disposition
+the current intake. Release-runbook alignment, maintenance ownership and the
+`ws-` branch migration are now present alongside the earlier items. This Git-only
+task does not disposition them or change their priority. No bugs currently name
+project-management as owner. The existing branch-name transition exception
+remains valid until the next release candidate.
+
+**Open Threads:** earlier product decisions remain open; current intake remains
+undispositioned. Local host settings remain saved on the named branch below.
+The website pause records are published on `ws-website/outbox`; their merge and
+the owner's website experiment verdict remain outstanding. This resumption's
+handoff and registry update are sent via `ws-project-management/outbox` for the
+owner's normal PR delivery. No new product decision or session record is added.
 
 ## Paused For User Documentation (2026-09-15)
 

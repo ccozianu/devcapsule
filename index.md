@@ -17,8 +17,17 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Claude compatibility pointer](CLAUDE.md)
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
+- [This project's local workflow](WORKFLOW-LOCAL.md)
 - [Product documentation](docs/README.md)
+- [Your first DevCapsule session](docs/guides/first-session.md)
+- [Use your own project and add a coding agent](docs/guides/your-project.md)
+- [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
 - [Engineering documentation](engineering-docs/README.md)
+
+## Website
+
+- [Website development and preview](website/README.md)
+- [Website publication](website/PUBLISHING.md)
 
 ## Root Requirement Records
 
@@ -50,17 +59,23 @@ status file; internal WIP/archive documents use the local index in that status.
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
+## Work Orders
+
+- [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)
+
 ## Workstream Status
 
 - [Multiple-stream workflow successful archive](engineering-docs/archive/2026-08-08-multi-workflow/CURRENT-STATUS.md)
 - [Recursive dogfood E2E successful archive](engineering-docs/archive/2026-08-06-recursive-e2e/CURRENT-STATUS.md)
 - [Project management current status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md)
 - [Workflow improvements current status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md)
+- [Maintenance current status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md)
 - [Sample demo projects current status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md)
 - [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)
 - [Eclipse interactive surface current status](engineering-docs/wip/2026-09-09-eclipse-surface/CURRENT-STATUS.md)
 
 - [User documentation current status](engineering-docs/wip/2026-09-12-user-docs/CURRENT-STATUS.md)
+- [Website autonomy experiment current status](engineering-docs/wip/2026-09-16-website/CURRENT-STATUS.md)
 
 ## Engineering Design Notes
 
@@ -107,6 +122,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [The DevCapsule development blog](engineering-docs/blog/README.md)
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](engineering-docs/blog/2026-09-06-when-should-a-tool-refuse.md)
+- [I asked for user docs](engineering-docs/blog/2026-09-16-i-asked-for-user-docs.md) — second development-blog entry.
+- [Does the subscription include Navier–Stokes?](engineering-docs/blog/2026-09-16-does-the-subscription-include-navier-stokes.md) — alternative second entry in dialogue form.
 
 ## Product And Positioning
 
@@ -156,9 +173,17 @@ history; record current decisions in the active documents above.
 - [Host browser URL bridge TLDR](engineering-docs/implementation-notes/devcapsule/2026-08-17-host-browser-url-bridge-tldr.md)
 - [V2 launcher-loss resource reconciliation](engineering-docs/implementation-notes/devcapsule/2026-08-18-v2-launch-resource-reconciliation.md)
 - [Releasing a new DevCapsule version — operator checklist and validation](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+- [Merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md)
 
 ## Bugs
 
+- [The Resolution Refusal Names Only The Last Base Tried And Offers No Remedy](engineering-docs/bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
+- [The Formation Identity Claims An Entrypoint The Recipe Never Sets](engineering-docs/bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
+- [The Codium Setuid Sandbox Crashes Under The Development-Sudo Posture](engineering-docs/bugs/devcapsule/2026-09-02-codium-setuid-sandbox-crashes-under-development-sudo.md)
+- [Codium Relaunch Intermittently Crashes Its First Renderer After A Clean Exit](engineering-docs/bugs/devcapsule/2026-09-02-codium-relaunch-renderer-crash-after-clean-exit.md)
+- [`--authorize base-image` Conflates Consent With Selection And Explains Neither](engineering-docs/bugs/devcapsule/2026-09-02-authorize-base-image-conflates-consent-with-selection.md)
+- [The Authorization Grammar Cannot Express Denial](engineering-docs/bugs/devcapsule/2026-09-02-authorization-grammar-cannot-express-denial.md)
+- [Antigravity's State Is Wider Than The Analyzed Path, And The Nested Slot Walls It Off](engineering-docs/bugs/devcapsule/2026-09-02-antigravity-state-wider-than-the-analyzed-path.md)
 - [Codex was installed as a single plucked binary, so every sandboxed command failed](engineering-docs/bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md)
 - [Init and run answers are not persisted as the authorizations they express](engineering-docs/bugs/devcapsule/2026-09-02-init-and-run-answers-not-persisted-as-authorizations.md)
 - [init --authorize base-image left the checkout unauthorized](engineering-docs/bugs/devcapsule/2026-09-01-init-authorize-base-image-not-recorded.md)

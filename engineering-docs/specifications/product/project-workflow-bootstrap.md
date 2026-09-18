@@ -48,20 +48,25 @@ The command:
 
 1. installs missing `AGENTS.md` and `WORKFLOW.md` from packaged definition
    bytes;
-2. initializes only missing project-owned files and directories;
+2. initializes only missing project-owned files and directories, including
+   the project's `WORKFLOW-LOCAL.md` rendered once from its template;
 3. preserves existing project-owned files;
 4. migrates an older final README `Current State And Next Step` section into a
    newly created single-stream `CURRENT-STATUS.md` without deleting the README
    section;
-5. initializes the one reserved `project-management` workstream when
-   multiple-streams mode has none; and
+5. initializes the two reserved workstreams, `project-management` and
+   `maintenance`, when multiple-streams mode lacks them; and
 6. appends only missing standard development ignore entries.
 
-Running bootstrap again is idempotent. It must reuse an existing immutable
-project-management start date and must not create a second reserved workstream.
-If an existing multiple-streams registry has no reserved project-management
-handoff, bootstrap reports the instance as incompletely initialized before
-writing anything; repairing workflow state requires deliberate human judgment.
+Running bootstrap again is idempotent. It must reuse the existing immutable
+start date of each reserved workstream and must not create a second instance
+of either. If an existing multiple-streams registry has no reserved
+project-management handoff, bootstrap reports the instance as incompletely
+initialized before writing anything; repairing workflow state requires
+deliberate human judgment. A project that has `project-management` but
+predates the `maintenance` workstream is not incomplete in that sense:
+bootstrap adds `maintenance` with the current date as its start date, which
+is the adoption exception `WORKFLOW.md` defines for it.
 
 ## Definition Refresh
 

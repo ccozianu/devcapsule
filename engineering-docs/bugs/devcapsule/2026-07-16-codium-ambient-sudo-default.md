@@ -1,8 +1,17 @@
+---
+status: confirmed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-07-16
+requirements: [R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, R-PRODUCT-002]
+---
+
 # Bug: Codium Grants Ambient Passwordless Sudo By Default
 
 Date opened: 2026-07-16
 
-Status: open; diagnosed and evidenced, no fix implemented
+Status note (pre-vocabulary, kept as evidence): open; diagnosed and evidenced, no fix implemented
 
 Requirements: R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, root R-PRODUCT-002
 

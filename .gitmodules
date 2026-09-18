@@ -7,3 +7,6 @@
 [submodule "devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow"]
 	path = devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow
 	url = git@github.com:ccozianu/devcapsule-sample-typescript-tictactoe.git
+[submodule "website"]
+	path = website
+	url = git@github.com:ccozianu/devcapsule-website.git

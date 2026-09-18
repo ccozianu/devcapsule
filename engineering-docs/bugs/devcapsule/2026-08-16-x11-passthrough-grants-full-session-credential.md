@@ -1,8 +1,17 @@
+---
+status: fixed
+severity: untriaged
+target: none
+owner: contained-display
+opened: 2026-08-16
+requirements: [R-SCOPE-001, R-PRODUCT-002, R-DOCKER-001]
+---
+
 # Bug: X11 Passthrough Grants The Container A Full Host Session Credential
 
 Date opened: 2026-08-16
 
-Status: open
+Status note (pre-vocabulary, kept as evidence): open
 
 Requirements: R-SCOPE-001, R-PRODUCT-002, R-DOCKER-001
 

@@ -1,8 +1,17 @@
+---
+status: reported
+severity: minor
+target: none
+owner: maintenance
+opened: 2026-08-03
+requirements: [R-ENV-001, R-FRAMEWORK-001]
+---
+
 # Observation: PyCharm Recommends Its Native Launcher
 
 Date opened: 2026-08-03
 
-Status: observed in external dogfood; low-priority V1 review
+Status note (pre-vocabulary, kept as evidence): observed in external dogfood; low-priority V1 review
 
 Requirements: R-ENV-001, R-FRAMEWORK-001
 

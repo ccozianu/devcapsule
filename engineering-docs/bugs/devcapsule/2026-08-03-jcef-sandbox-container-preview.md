@@ -1,8 +1,17 @@
+---
+status: fixed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-08-03
+requirements: [R-ENV-001, R-DEV-001, R-SCOPE-001, R-DOCKER-001]
+---
+
 # Bug: JetBrains Embedded Browser Is Suspended In The Container
 
 Date opened: 2026-08-03
 
-Status: V1 workaround implemented and automated; external GUI validation pending
+Status note (pre-vocabulary, kept as evidence): V1 workaround implemented and automated; external GUI validation pending
 
 Requirements: R-ENV-001, R-DEV-001, R-SCOPE-001, R-DOCKER-001
 

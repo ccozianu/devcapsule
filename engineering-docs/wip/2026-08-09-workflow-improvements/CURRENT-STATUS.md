@@ -4,12 +4,12 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: paused. Paused on 2026-08-17, resumed twice the same day — to specify
-publishing before integration, then to record merge strategy and commit
-identity. Paused rather than blocked because the backlog now holds one item that
-is actionable today. The acknowledged external-resource item is separately
-blocked and still cannot be written until `recursive-e2e` Stage 7 exists to
-exercise it.
+State: active. Resumed 2026-09-16 by the product owner at the release-candidate
+check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
+owner chose the release-related intake first and, on 2026-09-18, the reserved
+`maintenance` workstream with the bug vocabulary, then the `ws-` branch
+vocabulary and the workflow declaration, granting the freeze exception each
+needed. Eight intake items remain undispositioned; see *Next Resumable Task*.
 
 Integration target: `main`
 
@@ -28,7 +28,11 @@ fixed, explicitly deferred, or rejected.
 
 ## Branch Association
 
-The active branch is `workflow-improvements/v1`, forked from the registration
+The active branch is `ws-workflow-improvements/v1`, renamed on 2026-09-18
+from `workflow-improvements/v1` under the `ws-` vocabulary this workstream
+introduced the same day; the outbox is `ws-workflow-improvements/outbox`
+likewise. The old names stay on the remote until their open pull requests
+merge, then are deleted. The branch was forked from the registration
 commit on `main` and resynchronized with `main` on 2026-08-16. It was renamed
 from `workflow-improvements/intake` on 2026-08-16: the old name collided with
 the `intake/` directory convention introduced the same day, and the new one
@@ -46,6 +50,30 @@ itself. It is not an editing checkout; see selection rule 6.
 
 ## Current State
 
+- Resumed 2026-09-16. The branch was 428 commits behind `main` and was rebased
+  onto it; its two unlanded commits (the merge-strategy note and the open-thread
+  resolution) replayed cleanly apart from one additive conflict in `index.md`.
+  The rebased branch was force-pushed with a lease after verifying by patch
+  identity that the remote's two commits were the same content. The sample
+  projects arrived as submodules with the rebase; nothing about them is this
+  workstream's.
+- Eleven intake items were waiting. Three are acknowledged and their rules
+  are on `main`; eight remain in `intake/`.
+- The 2026-09-18 rounds are merged: the product owner merged
+  `ws-workflow-improvements/v1` as [`PR #98`](https://github.com/ccozianu/devcapsule/pull/98)
+  on 2026-09-18, carrying the `maintenance` workstream and bug vocabulary, the
+  `ws-` branch vocabulary and workflow declaration, the 0.2.14 stamp and its
+  `0.2.14.dev0` form, and the project's local workflow. Verified by
+  `git cherry`: nothing unique remained, and the branch was hard-reset to
+  `main`. The outbox was rebuilt from `main` the same day carrying only the
+  one item not yet delivered, the branch-rename scheduling request to
+  `project-management`.
+- The release rule is operative since 2026-09-16. The product owner merged
+  `workflow-improvements/v1` as [`PR #88`](https://github.com/ccozianu/devcapsule/pull/88)
+  on 2026-09-16 and the outbox send as [`PR #89`](https://github.com/ccozianu/devcapsule/pull/89)
+  on 2026-09-18, both as merge commits. Verified by `git cherry`: nothing unique
+  remains on either branch, and `workflow-improvements/v1` was hard-reset to
+  `main` on 2026-09-18 per *Staying Current With `main`*.
 - Corrected 2026-08-16. This handoff previously said no workflow correction had
   been implemented. Two rounds have since landed, both published by
   `project-management` as deliberate bootstrap exceptions because this
@@ -669,52 +697,291 @@ is the *Coordination Baseline* rather than `WORKFLOW.md`.
 The adopter-facing version is deliberately not this document, and is now the
 backlog's only item.
 
+### Fifteenth Task: The Release Sub-Process And The Reference Vocabulary
+
+Chosen by the product owner on 2026-09-16 as the first work after resuming:
+the two release-related intake items, from `component-catalog` (2026-09-09)
+and `contained-display` (2026-09-15), were judged the least controversial and
+the most sensibly settled, since the v0.2.12 retrospective had already produced
+the rule and sent it here through intake. Both are acknowledged; see
+*Dispositions*. The owner also decided, the same day, that the workflow adopts
+the Workflow Patterns vocabulary as its reference vocabulary, and framed the
+structure as: developing a project is the parent process, a workstream is a
+child of it, and a release is a special kind of workstream.
+
+Written on this branch, reviewed by the owner, and merged as `PR #88` on
+2026-09-16:
+
+- `WORKFLOW.md`: a *Vocabulary* subsection in the preamble, after *How To Read
+  This Document*, naming the reference vocabulary (process, case, sub-process,
+  task, work item, resource, trigger), its source, and three limits on its
+  use; a new top-level *Releases* section after the terminology section, with
+  *Release Refs*, *Taking A Release Over*, *Two Examples*, and *What This
+  Section Leaves To The Project*; and amendments to the checkout model and to
+  restrictions 4, 5, and 6 making release refs the stated exception to
+  "every branch other than `main` belongs to exactly one workstream".
+- The packaged definition under `devcapsule-src/devcapsule/assets/project_workflow/definition/`:
+  the same changes, with the closing paragraph generic instead of naming this
+  repository's operator guide. The other, pre-existing drift between the two
+  copies is untouched; reconciling it is the *One Workflow, Many Projects*
+  item's work.
+- `AGENTS.md`, root and packaged: a short form for each.
+
+**How the owner's framing was expressed.** "A release is a special kind of
+workstream" was written as: releasing is a sub-process of the development
+process; a release is one case of it; in `multiple-streams` mode the resource
+that drives it is a workstream, which takes the release over for its duration
+and hands it back. This keeps three earlier rulings intact: restriction 1
+(workstreams are flat: sub-processes run inside the development process, not
+inside each other), the 2026-09-09 ruling that release refs are anchors and not
+workstreams, and the 2026-09-15 rule that the release branch becomes the
+driving workstream's selection through its registry row.
+
+**Decided rather than transcribed, each open to reversal.**
+
+- **No fifth workstream state.** A workstream driving a release stays
+  `active`; its row reads `active; releasing <version>` and its branch
+  association names the release branch. A new state would have needed its own
+  pause and resume rules for no gain, since the branch association already
+  says what is different.
+- **The handoff travels with the release merges.** During a release the
+  handoff is edited on the release branch and reaches `main` each time the
+  branch merges before a candidate. The 2026-09-15 item proposed this; it is
+  stated as satisfying *Publishing Before Integration* for the handoff only.
+  Intake items and other messages still travel the outbox.
+- **Merge, never cherry-pick, is stated as the reason the gate is cheap**, not
+  as a stylistic preference: a merge lets the candidate gate pass by ancestry,
+  a cherry-pick forces it to prove patch equivalence. That is the v0.2.12
+  evidence, generalized.
+- **Ref spelling is a default, not a rule.** The section names
+  `release-<version>`, `v<version>-rc<n>`, and `v<version>` and lets a project
+  record another spelling in its release policy. `R-PRODUCT-004` keeps the
+  definition adopter-neutral; the load-bearing requirement is that a reader can
+  tell a release ref from a workstream branch by name.
+- **The maintenance-release exception is stated in shape only.** Who
+  authorized, why, forward-port owner, follow-up: the four fields this
+  repository's gate already requires, named without the file format, which is
+  project policy.
+
+**The vocabulary notice's collision list has one entry.** *Milestone* is a
+planning unit here and a control-flow pattern in the catalogue. The full
+mapping of this document's terms is deliberately left to the information-model
+item, which the notice says.
+
+**Owed to `project-management`.** The 2026-09-15 item asks that the runbook be
+told what it must say. The operator guide's step 1 currently reads "keep source
+edits on the selected workstream branch; `release-X.Y.Z` is a retained ref to
+the release source, not a change of editing workstream", which the new rule
+reverses for the driving workstream. An intake item naming that and the other
+runbook consequences (cut point after the merge to `main`, baseline bump as the
+first release commit, merge-then-tag by pull request, ancestry as the normal
+integration method, resume on a fresh branch) travels the outbox with this
+task's records. The guide is `project-management`'s to edit.
+
+### Sixteenth Task: The Reserved `maintenance` Workstream And The Bug Vocabulary
+
+Proposed by the product owner on 2026-09-18, when asked where a handful of
+bugs should be fixed: a permanent bug-fixing workstream, to show commitment to
+fixing defects found against `main` and against maintained releases, possibly
+several for load balancing. The owner granted the freeze exception and asked
+that it be taken to a new workflow version.
+
+Two points were pushed back on and the owner accepted both. **One, not
+several**: load is balanced by branches and by pairs, which the model already
+allows, and a second queue would make a reporter guess where to file. **Not a
+catch-all**: a bug inside an open workstream's subject is fixed there, and the
+reserved workstream takes only what has no open owner or what an owner hands
+over with a reason. Both are in the section as exclusions, in the shape
+`project-management`'s scope already uses.
+
+Written on this branch, awaiting the owner's review before the pull request:
+
+- `WORKFLOW.md`: *The Reserved `maintenance` Workstream* after the
+  `project-management` section; restriction 12 reserves both mnemonics;
+  *Definition And Restrictions*, *Initializing Multiple-Stream Mode*,
+  retirement, and *Markdown Roles* say two reserved workstreams; *Releases*
+  now has `maintenance` drive maintenance releases of released versions, with
+  `project-management` deciding only when the headline is unclear, and the
+  patch example follows; *Bug Intake* defines the controlled frontmatter
+  (`status`, `severity`, `target`, `owner`, `opened`, `closed`,
+  `requirements`) and the routing rule that a bug's `owner` field, not an
+  intake item, is how it reaches a workstream.
+- The packaged definition: the same. Both `AGENTS.md` copies: short forms.
+- The bootstrap: a `maintenance` handoff template, both intake templates made
+  mnemonic-neutral, the registry and index templates listing both reserved
+  workstreams, the bug template with the frontmatter, and
+  `workflow_bootstrap.py` generalized to create each reserved workstream that
+  is missing. A project that predates `maintenance` gets it with the current
+  date under the adoption exception; a project with no `project-management`
+  is still refused as incomplete. Tests cover both.
+- `R-PRODUCT-006` and the bootstrap specification, updated to say two.
+- All 23 bug records under `engineering-docs/bugs/devcapsule/` carry the
+  frontmatter. The free-text status line each had is kept, renamed
+  `Status note`, so its detail survives without being a second status. Seven
+  records were missing from `index.md` and are now listed, which is the
+  index-and-directory disagreement the intake item predicted.
+- This repository's `maintenance` workstream is registered:
+  `engineering-docs/wip/2026-09-18-maintenance/`, the registry row, the root
+  registry's prose on the two exceptions, and the index entry. Registration
+  travels the outbox.
+
+**Decided rather than transcribed, each open to reversal.**
+
+- **Status values**: reported, confirmed, fixing, fixed, closed, retired. Six,
+  because each is a different answer to "what would I do next with this".
+  Requirements use six as well.
+- **Severity values**: blocking, major, minor, untriaged. `untriaged` is a
+  real value, not a missing one, because the backfill could not honestly rate
+  23 records the owner had never rated, and a queue that hides that is worse
+  than one that shows it. Triage is the reserved workstream's first task.
+- **Backfill mapping**: closed stays closed with its date; "fixed on a branch,
+  validation pending" is `fixed`; "reproduced" or "diagnosed" is `confirmed`;
+  a bare "open" or "observed" is `reported`; the two records the owner had
+  marked low-priority are `minor`. Owners: `contained-display` for the X11
+  bug, whose registry row says it shipped fixed in v0.2.12 while the record
+  still said open; `component-catalog` for the two fixed on its branch;
+  `maintenance` for the rest. Twelve open bugs are owned by `maintenance`.
+- **No `priority` field.** The item asked for priority or severity. One
+  controlled scale with a `target` beside it answers the questions actually
+  asked (what blocks the release, what is high) without two scales that
+  disagree.
+- **Bug records are not intake items.** They are durable records on `main`,
+  per the ratified boundary, and their `owner` field is the routing. Making
+  them intake items would have doubled every bug into a queue file and a
+  record.
+- **`docker4pycharm`'s bug record and template are untouched.** That
+  subproject is frozen at the owner's request.
+
+**Owed to `project-management`.** The runbook item sent on 2026-09-16 said
+maintenance releases of old versions are driven by `project-management`; that
+is now `maintenance`. A short follow-up item travels with this round, also
+noting that the readiness assessment's "thirteen open bugs carry no triage"
+now has an owner and a vocabulary, and that the triage is the owner's.
+
+### Seventeenth Task: The `ws-` Branch Vocabulary And The Workflow Declaration
+
+Two owner proposals of 2026-09-18, taken as one round because both touch the
+declaration, the templates, and the bootstrap.
+
+**Branch names become a closed vocabulary.** The owner proposed
+`ws-<workstream>/<sub>` so humans and agents can recognize a workstream
+branch by name, with `ws-<workstream>/outbox` reserved. Written as three kinds
+and nothing else: `main`; `ws-<workstream>/<sub>`; `release-<version>` with
+its tags. Anything else is outside the workflow: a legacy ref, a tooling
+branch, an experiment. That is stronger than the release-refs item's ask and
+closes it properly. Restrictions 4, 5, and 13 and every branch spelling in
+`WORKFLOW.md`, `AGENTS.md`, and the templates follow. The migration is in
+*Changes*: each open workstream renames its own branches, updates its row
+through its own outbox, and retargets open pull requests before the next
+release candidate is tagged. This workstream renamed its own two branches;
+the other six rows are their owners' to change, and `project-management` is
+told so it can schedule it.
+
+**The declaration names the workflow and its version.** The owner's case: a
+contributor with a newer DevCapsule executable joins a project on an older
+workflow and must not apply newer rules, such as renaming branches, to it.
+The rule that follows is that the declared version governs the project, never
+the contributor's tool or the agent's training. The `[workflow]` table in
+`.devcapsule/devcapsule.toml` carries `definition`, `version`, and `mode`,
+with the old top-level `workflow-type` as fallback for one release. The
+definition's frontmatter carries the same `version`, and tooling keeps them
+equal: bootstrap writes both on install and refresh and reports a mismatch
+rather than resolving it; the bump script stamps the package version into both
+definition copies and closes the *Unreleased* changes entry. A *Changes*
+section at the top of the definition records, per release, what changed and
+the migration step, so a version says more than "you are behind".
+
+**Decided rather than transcribed, each open to reversal.**
+
+- **The version is the DevCapsule release, not a separate number.** The
+  owner asked whether to stamp 1.0. Recommended against: the information
+  model, coordination-off-`main`, and the mail transport are still open and
+  each may change rules incompatibly, so 1.0 now would mean 2.0 soon. Tying
+  the version to the release costs nothing, since tags are immutable and are
+  the permanent public reference, and 1.0 arrives with DevCapsule V1, by
+  which time the freeze's own intent has those items settled. First stamped
+  `0.2.12`, the package version of the moment; the owner then directed
+  `0.2.14` the same day, skipping 0.2.13 by preference, so the bump script
+  ran and the package version advanced with it. The next release ships as
+  0.2.14 and its first release-branch commit finds the version already set.
+- **`unversioned` is a real value** for a definition installed before
+  versions existed, so a project can declare honestly and a refresh can
+  replace it.
+- **Bootstrap edits the declaration textually**, in place, so the rest of a
+  project's file keeps its formatting. It never creates the file.
+- **Sample projects are untouched.** They are separate repositories; they
+  pick the table up on their next refresh.
+
+**Owner ruling on version timing, 2026-09-18.** Stamping 0.2.14 mid-cycle
+collided with the rule that the release branch's first commit is the version
+bump. The owner ruled that a product-owner bump is accommodated at any point
+in the cycle, by any jump, and that the operator guide need not be strict
+about it. *Releases* now says the source describes itself as the version no
+later than the branch's first commit, which confirms the version rather than
+owning it. The runbook consequence rides the pending outbox item to
+`project-management`.
+
+**Verification.** Bootstrap, bump, and noxfile tests pass (33 passed, 1
+pre-existing expected failure); syntax and typecheck gates pass. The wider
+suite was not run.
+
+### Eighteenth Task: The Project's Local Workflow, And The Version Between Releases
+
+Two owner decisions of 2026-09-18, after 0.2.14 was stamped mid-cycle and the
+question arose of what the package version of work in progress should be.
+
+**Work in progress carries a development version.** Two conventions were
+put to the owner with evidence read from the projects' main branches that
+day: static `X.Y.Z.dev0` (pip at `26.3.dev0`, NumPy at `2.6.0.dev0`) and
+git-derived versions (pytest through setuptools_scm). The owner chose the
+static form. The package, both definition frontmatters, and this repository's
+declaration now carry `0.2.14.dev0`; the bump script accepts the suffix,
+orders development versions before their release, and refuses backwards
+moves, so the transition was made by hand once. The rule was deliberately
+not written into the definition until the next decision was made.
+
+**The workflow has a generic half and a project half.** The owner's design:
+the generic definition is installed by the tooling and can be relied on
+because it is verified elsewhere; a project's own rules, such as its version
+scheme, cannot live there because a Maven project says `-SNAPSHOT` where a
+Python project says `.dev0`. The owner's second ruling shaped the authority
+rule: permissive, "what is not forbidden is permitted", not a fixed list of
+delegation points. Written as *The Project's Local Workflow* in
+`WORKFLOW.md`: the definition binds wherever it speaks, `WORKFLOW-LOCAL.md`
+governs wherever it is silent, a contradiction is a recorded exception rather
+than an override, and five headings are recommended rather than required:
+version scheme, release policy, validation commands, host capabilities,
+exceptions. *Releases* now states the development-version rule generically
+and delegates its spelling to the local file. Bootstrap renders the local
+file once from a new common template and never refreshes it; both `AGENTS.md`
+copies read it after the definition; the spec, the asset README, *Markdown
+Roles*, *Applying This To Other Projects*, and the index follow. This
+repository's own `WORKFLOW-LOCAL.md` is written, with its three standing
+exceptions recorded.
+
+This answers question 3 of the *One Workflow, Many Projects* item ahead of
+the umbrella review, which should treat it as a delivered slice.
+
+**Decided rather than transcribed, open to reversal.** After the final tag,
+`main` reopens at the next patch's development version by default; the owner
+may name another, as with 0.2.14. The owner had not chosen between automatic
+and named reopening; the default keeps `main` from ever claiming a released
+version.
+
+**Verification.** Bootstrap and bump tests pass; syntax and typecheck gates
+pass. The wider suite was not run.
+
 ## Next Resumable Task
 
-Write the adopter-facing treatment of merge strategy, backlog item 1. It is
-actionable today, needs no external event, and has its engineering source
-already written.
+Everything drafted on 2026-09-18 is merged. The owner triages the twelve
+untriaged bugs in the `maintenance` workstream, which is where the next
+release's handful comes from; that is that workstream's task, not this one's.
 
-One acknowledged item remains — the external-resource ownership convention — and
-it is blocked: its main consumer, `recursive-e2e` Stage 7, has not been reached,
-and the convention should be written against a consumer that can exercise it
-rather than in the abstract. `recursive-e2e` was told, through its intake on
-2026-08-17.
+Then disposition the remaining eight intake items, which wait on the owner's
+answers under *Open Threads*.
 
-Three further events would add work, and all three are outside this workstream:
-
-1. `recursive-e2e` reaches Stage 7, which unblocks the convention.
-2. `project-management` routes one of the three questions above back here, or
-   decides this workstream should conclude and hand the convention onward.
-3. The bug-vocabulary item lands. It is committed on
-   `project-management/coordination` and arrives when that branch merges, at
-   which point the intake queue is non-empty again and the completion gate
-   applies.
-
-Everything this workstream wrote is now integrated. The product owner merged
-`workflow-improvements/v1` as [`PR #19`](https://github.com/ccozianu/devcapsule/pull/19)
-and `workflow-improvements/outbox` as
-[`PR #20`](https://github.com/ccozianu/devcapsule/pull/20) on 2026-08-17, both as
-merge commits rather than by the rebase merge every earlier delivery used.
-`git cherry` reports nothing unique on either branch.
-
-Two things remain unmerged, both written 2026-08-17 after those pull requests:
-this branch's engineering note and its `index.md` entry, and an outbox send
-setting the registry row to `paused`. The row is `paused` and not `blocked`
-because the backlog item added the same day is actionable today; the state was
-briefly recorded as blocked, before that item existed, and the outbox commit was
-rewritten rather than sent twice.
-
-A row reading `active` for a workstream nobody is working on is the failure the
-states were defined to prevent, which is why the send is a step rather than an
-afterthought. Noted while doing it: a resumption this short costs two
-registry sends for a state that was true for one session. Whether that is worth
-a rule is not obvious enough to write one now, and it is recorded here so the
-second occurrence is recognized rather than re-derived.
-
-On resuming, synchronize first — the pause procedure exists because intake
-arrives on `main` while a workstream sleeps — and re-verify the claims in
-*External State And Risks* rather than trusting them.
+The backlog's adopter-facing merge-strategy document for `docs/` remains
+actionable and unclaimed.
 
 ## Dispositions
 
@@ -826,6 +1093,36 @@ remainder. It is defensible because all four are protocol and this workstream
 is the protocol owner, but *done* is now visibly further away than it was, and
 the product owner should see that rather than discover it. See *Open Threads*.
 
+### Acknowledged 2026-09-16
+
+**Distinguish workstream branches from release and maintenance refs**
+(`component-catalog`, 2026-09-09, relaying the product owner's ruling).
+Acknowledged and drafted the same day as *Release Refs* in `WORKFLOW.md`, with
+the checkout model and restrictions 4 to 6 amended to name the exception. The
+item asked for recognition, editing ownership and routing, lifetime, and
+maintenance rules while preserving explicit workstream selection; each has a
+paragraph. The 2026-09-09 ruling that release refs are anchors and not
+workstreams is kept verbatim in substance.
+
+**One branch per release: a workstream takes the release over**
+(`contained-display`, 2026-09-15, recording the product owner's v0.2.12
+retrospective). Acknowledged and drafted the same day as *Taking A Release
+Over*, with the owner's six points in order, plus a seventh on what the handoff
+records. The two items were dispositioned together because the second presumes
+the first: a release branch can be a workstream's selection only once it is
+established that it is not a workstream branch.
+
+**A shared vocabulary for bugs and their properties** (`project-management`,
+2026-08-16, at the product owner's request). Acknowledged and implemented on
+2026-09-18 as the controlled frontmatter in *Bug Intake*, applied to all 23
+records, together with the reserved `maintenance` workstream that the
+vocabulary serves. The sender's three analyses were all taken: the properties
+that answer the questions asked (severity, status, target, requirements,
+owner); something that checks the vocabulary is used, which is the
+`pre-commit` invariant work already on `project-management`'s backlog and
+which this format is shaped to be checkable by; and the explicit decision,
+recorded above, of what was chosen over free text.
+
 ## Acknowledged Work
 
 Ordered by readiness, not by size. Positions are this workstream's judgment and
@@ -842,7 +1139,20 @@ can be reordered.
    knowledge, and its main consumer is not ready. Done means: how a resource
    derives its owning workstream and run identity; how names avoid collision by
    construction rather than by discipline; how an agent enumerates what is held
-   and by whom; and what an agent may and may not remove.
+   and by whom; and what an agent may and may not remove. Its requester,
+   `recursive-e2e`, told this workstream on 2026-08-22 that Stage 7 was ready,
+   and has since concluded and been archived; the convention needs a new
+   consumer or an explicit decision to drop it.
+5. ~~Release refs are not workstream branches.~~ Done 2026-09-16, merged as
+   `PR #88`. See *Fifteenth Task*.
+6. ~~A workstream takes a release over.~~ Done 2026-09-16 with item 5.
+7. ~~A shared vocabulary for bugs, and the reserved `maintenance`
+   workstream.~~ Drafted 2026-09-18; awaiting owner review and the pull
+   request. See *Sixteenth Task*.
+8. ~~The `ws-` branch vocabulary and the workflow declaration.~~ Drafted
+   2026-09-18 with item 7. See *Seventeenth Task*.
+9. ~~The project's local workflow and the development version.~~ Drafted
+   2026-09-18. See *Eighteenth Task*.
 
 ## Assessment Of The Queue
 
@@ -925,48 +1235,30 @@ Two parts could not be completed by this workstream and were delivered to
   restriction 11's carve-out forbids this workstream from editing; and
 - routing the tooling implementation, which fits no open workstream's goal.
 
-## Open Threads
+## Settled Questions
 
-Rewritten at the pause of 2026-08-17, superseding the 2026-08-16 version. Short
-by design.
+Moved out of *Open Threads* on 2026-09-16 so that section stays bounded.
+Each was settled at or before the 2026-08-17 pause; the reasoning stands.
 
-### Awaiting The Product Owner
+- **What the V026 workflow-improvement condition requires.** Resolved
+  2026-08-17 by the product owner: most findings have been identified and the
+  workflow improvements completed so far are merged to `main`. The workstream
+  may remain open and paused until the pair returns to its remaining work; its
+  continued existence does not hold the already-merged improvements open.
 
-1. **Does "the workflow improvements already identified" mean identified, or
-   identified and implemented?** The product owner named that as a condition for
-   starting their own projects on v026. The two readings put very different
-   obligations on this workstream, and it is currently described as being on the
-   critical path for those project starts. The 2026-08-16 rename to
-   `workflow-improvements/v1` presumes this workstream delivers *for* V1, which
-   sharpens the question rather than answering it.
+- **Repository merge strategy.** Routing resolved 2026-08-17, substance
+  deliberately deferred. This is a later `project-management` decision, not a
+  decision for this workstream or for an agent acting alone. Agents push the
+  required branches and the human delivers them to `main` through GitHub pull
+  requests; until coordination adopts a repository-wide policy, the human
+  chooses the merge method there.
 
-2. **Should the repository standardize on merge commits?** Raised 2026-08-17
-   after `PR #19` and `PR #20` merged that way. The evidence favours it: both
-   defects recorded in *Ninth Task* were caused by rebase merge rewriting
-   identities, and both stop existing under merge commits — ancestry answers
-   correctly again, the outbox reset stops needing a force-push, and
-   synchronizing a delivered branch becomes a fast-forward instead of a
-   conflicting rebase, all three observed on this branch within the hour. The
-   cost is a non-linear `main`, read with `--first-parent`. What matters more
-   than the choice is that it stop varying per pull request: several rules in
-   `WORKFLOW.md` are true under one strategy and false under another, and a
-   mixed history has neither property reliably. If adopted, it is a repository
-   coordination fact for root `CURRENT-STATUS.md` rather than a workflow rule,
-   since `WORKFLOW.md` must stay strategy-neutral for adopters, and one
-   sentence in *The Outbox Branch* — "expect that reset to require a
-   force-push" — should be conditioned rather than deleted.
-
-3. **Who owns protocol boilerplate that lives inside another workstream's
-   directory?** Each `intake/README.md` restated the delivery rule, so changing
-   that rule made four workstreams' READMEs stale at once — and restriction
-   11's carve-out bars this workstream from editing three of them. Its own
-   README now points at `WORKFLOW.md` instead of restating it, which removes
-   the recurrence. The other three still carry the superseded sentence and are
-   noted in the outbox delivery, but "duplicated protocol text inside a
-   carve-out" is a shape that will recur, and the rule does not say who
-   resolves it.
-
-### Settled Since The Last Pause
+- **Obsolete intake README boilerplate.** Resolved for this workstream on
+  2026-08-17 by the product owner: the three stale `intake/README.md` copies are
+  obsolete and are not cleanup owned by `workflow-improvements`. Their
+  replacement, removal, or reassignment is delivered to `project-management`
+  for routing rather than performed across other workstreams' directories
+  here.
 
 - **The right size for this workstream.** Question 1 of the 2026-08-16 pause is
   answered, not by a number but by a routing rule: new protocol findings go to
@@ -999,27 +1291,41 @@ by design.
   something that would otherwise have waited on this branch's still-unmerged
   pull request. The doubt is closed.
 
+## Open Threads
+
+Rewritten on 2026-09-16 while active, ahead of the next pause, because the
+resume changed every question. Short by design.
+
+### Awaiting The Product Owner
+
+- **Review of the `maintenance` workstream, the bug vocabulary, and the
+  backfilled records.** The pull request waits on it; the triage of twelve
+  untriaged bugs follows it, in the `maintenance` workstream.
+- **Whether the freeze lifts for the remaining eight items.** The 2026-08-30
+  freeze runs until the release-candidate check, which is now. The owner has
+  lifted it twice, for the release rules and for `maintenance`. Seven of the
+  eight remaining items change rules.
+- **Whether *One Workflow, Many Projects* (2026-09-11) subsumes the structural
+  sequence** of information model, component shape, coordination off `main`,
+  and mail transport as its first phase, which its text implies, or runs after
+  them.
+- **A home for the external-resource ownership convention** now that
+  `recursive-e2e`, which asked for it, is archived.
+
 ### Weighed And Unresolved
 
-- **Whether this workstream should conclude rather than wait.** Its registered
-  goal is dispositioning the dogfood cycle's findings, and that is done except
-  for one item blocked on another workstream's Stage 7. Concluding and handing
-  the convention onward is a real option; it was not taken because the
-  lifecycle call belongs to `project-management`, which has now been told. The
-  cost of waiting is a registry row that looks abandoned; the cost of
-  concluding is that the next protocol finding has no open owner.
-- **Whether the three routed questions are one question.** All three are about
-  the workflow's packaging rather than its rules — who reads it, how it loads,
-  where it lives. They were sent separately because they can be decided
-  separately, but a decision to extract the workflow would largely determine
-  the other two, and `project-management` may prefer to take them as one.
+- **Whether a releasing workstream needs its own state.** Decided no for now;
+  see *Fifteenth Task*. Reopen if a resume during a release goes wrong for
+  lack of it.
+- **Whether the outbox-is-a-mechanism item (2026-08-18) is moot.** If the
+  off-`main` mail transport retires the outbox, the item's sentence is never
+  written. It stays in intake until the transport decision is made.
 
 ### Deliberately Not Preserved
 
-The 2026-08-16 and 2026-08-17 conversations. What mattered is above, in the
-task sections, or in the intake files. The three routed questions carry their
-own reasoning to the recipient, so this handoff does not restate it beyond
-*Twelfth Task*.
+The 2026-09-16 conversation. Its decisions are in *Fifteenth Task*; the
+release rule's reasoning is in the two intake items' own text, which Git
+retains after their deletion.
 
 ## Evidence
 
@@ -1030,6 +1336,9 @@ own reasoning to the recipient, so this handoff does not restate it beyond
   `recursive-e2e/stage-4`.
 - On 2026-08-16 the branch was rebased onto `main`; three duplicate commits were
   dropped by patch-id and the resulting branch is identical to `main`.
+- On 2026-09-16 the branch was rebased onto `main` again, 428 commits forward;
+  `git range-diff` showed its two commits identical in content to the remote's
+  two, and the remote was replaced with `--force-with-lease`.
 
 ## External State And Risks
 
@@ -1060,6 +1369,15 @@ own reasoning to the recipient, so this handoff does not restate it beyond
   under some. See *Open Threads* for the standing question.
 - This track overlaps `CURRENT-STATUS.md`, `WORKFLOW.md`, `AGENTS.md`, and the
   workflow requirements. Synchronize with `main` before integrating.
+- Verified 2026-09-18: the 2026-09-16 round is merged; `ws-workflow-improvements/v1`
+  now carries the `maintenance` round, unmerged, and the outbox carries its
+  registration and records, unmerged. The bootstrap tests pass (7 passed, 1
+  pre-existing expected failure); the wider suite was not run. The
+  operator guide for releasing a new version, owned by `project-management`,
+  contradicts the new release rule in its step 1 until that workstream edits
+  it; the contradiction is reported through its intake, not fixed here.
+- The 2026-08-30 freeze of `WORKFLOW.md` is lifted for the release rules only,
+  by the owner on 2026-09-16, as the exception the freeze anticipated.
 - Two bootstrap exceptions have now published workflow changes from
   `project-management` because this workstream had not started. A third would
   suggest the split between the two tracks is not working as intended.

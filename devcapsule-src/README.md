@@ -1,31 +1,19 @@
 # DevCapsule Python CLI
 
-`devcapsule` is the Python command layer for the post-MVP refactor. It uses
-Click for the public command tree and option parsing, with class-backed built-in
-commands discovered from `devcapsule.commands`. The primary command shape is
-configuration-first, for example `devcapsule pycharm run`. The `commands`
-package is deliberately a thin CLI adapter; IDE-specific knowledge belongs in
-configuration packages such as `devcapsule.configurations.pycharm`. The
-PyCharm run path is being translated from the validated
-`docker4pycharm/run-pycharm-container.sh` Bash launcher into maintainable Python
-runtime planning and Docker invocation code.
-
-Read [devcapsule-src/REQUIREMENTS.md](REQUIREMENTS.md) first for the subproject
-requirement overview. The canonical detailed records for those requirements live
-under `engineering-docs/requirements/devcapsule/`.
+This directory contains DevCapsule's Python CLI implementation, packaging and
+contributor reference. Current project commands use `devcapsule project …`;
+image operations use `devcapsule images …`.
 
 ## User Setup
 
-From the repository root:
+To use DevCapsule, start with [your first session](../docs/guides/first-session.md):
+download the released executable, open an IDE and return to your saved work.
+You do not need to clone this repository, install Python or build an artifact.
+For an existing repository or a coding agent, continue with
+[use your own project](../docs/guides/your-project.md).
 
-```bash
-python3.12 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ./devcapsule-src
-
-python -m devcapsule --help
-```
+To develop DevCapsule itself, read [For developers](../DEVELOPING.md) and the
+[subproject requirements](REQUIREMENTS.md), then use the setup below.
 
 ## Development Setup
 
@@ -237,20 +225,10 @@ devcapsule-src/dist/devcapsule.pex pycharm run --help
 devcapsule-src/dist/devcapsule.pex pycharm build --help
 ```
 
-GitHub Releases is the initial public download channel. Release assets contain
-the PEX and its checksum; downloading the raw asset requires restoring its
-executable bit:
-
-```bash
-release_tag=v026
-curl --fail --location --output devcapsule.pex \
-  "https://github.com/ccozianu/devcapsule/releases/download/${release_tag}/devcapsule.pex"
-curl --fail --location --output devcapsule.pex.sha256 \
-  "https://github.com/ccozianu/devcapsule/releases/download/${release_tag}/devcapsule.pex.sha256"
-sha256sum --check devcapsule.pex.sha256
-chmod 0755 devcapsule.pex
-./devcapsule.pex version --json
-```
+Published executable downloads and checksum verification are documented in
+[your first session](../docs/guides/first-session.md#1-get-devcapsule). The
+remaining examples in this section are contributor build/release validation,
+not prerequisites for using DevCapsule.
 
 To build a full candidate base and run the Docker E2E smoke suite using a
 published executable:

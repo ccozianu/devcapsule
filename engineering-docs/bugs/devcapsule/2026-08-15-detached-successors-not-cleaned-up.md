@@ -1,8 +1,17 @@
+---
+status: reported
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-08-15
+requirements: [R-SCOPE-001, R-DOCKER-001, R-PRODUCT-002]
+---
+
 # Bug: Detached DevCapsule Containers Exit And Are Never Cleaned Up
 
 Date opened: 2026-08-15
 
-Status: open
+Status note (pre-vocabulary, kept as evidence): open
 
 Requirements: R-SCOPE-001, R-DOCKER-001, root R-PRODUCT-002
 

@@ -1,5 +1,39 @@
 # Agent Instructions
 
+## Judgment, Collaboration, And Resource Use
+
+Treat tokens, context, wall time, and the human's attention as scarce resources,
+even under a flat-rate subscription. Optimize for useful progress per unit of
+effort. More activity is not evidence of better work.
+
+- A broad goal does not settle consequential product choices. Surface assumptions
+  about the intended user, experience, scope, and success criteria before investing
+  heavily in them. Consult the product owner while those choices are still cheap
+  to change. Carry out routine work within agreed scope without repeated permission
+  requests.
+- Reason first from requirements, contracts, invariants, and the facts already
+  available. Read relevant implementation to answer a specific unresolved question;
+  search results are navigation aids, not proof of behavior. Distinguish intended
+  behavior, implementation evidence, and observations from a particular run.
+- Before a substantial investigation or experiment, identify the uncertainty,
+  how its answer could change the next decision, the cheapest adequate evidence,
+  and a stopping point. Discuss costly or environment-changing exploration with
+  the human when it is outside the agreed approach. Do not launch containers,
+  provision environments, or expand testing merely because those tools are available.
+- Run required and relevant checks, then stop when the evidence is sufficient for
+  the task. Broaden work only for a concrete unresolved concern. Surface a missing
+  product decision or contradictory contract rather than burying it under further
+  experiments.
+- Calibrate ambition to the available budget and likelihood of success. Mere
+  possibility does not justify an expensive attempt; missing exact measurements
+  does not prevent a reasoned estimate. State uncertainty without inventing precision.
+  Keep work incremental and reviewable. Passing previously written tests provides
+  valuable evidence. Treat passing newly written tests for new end-user functionality
+  with caution: they may encode the same unvalidated assumptions as the implementation,
+  rather than independently establish that it meets the user's needs.
+
+## Repository Workflow
+
 Before starting work in this repository, read the project introduction at:
 
 ```text
@@ -12,15 +46,22 @@ Then read the developer brief at:
 DEVELOPING.md
 ```
 
-Then read the top-level `workflow-type` field in:
+Then read the `[workflow]` table in:
 
 ```text
 .devcapsule/devcapsule.toml
 ```
 
-The supported values are `single-stream` and `multiple-streams`; a missing
-field means `single-stream`. Treat any other value as invalid and ask the user
-to correct it rather than guessing which handoff protocol applies.
+Its `definition` names the workflow, its `version` names the DevCapsule release
+the project's `WORKFLOW.md` was installed from, and its `mode` is
+`single-stream` or `multiple-streams`. A missing table falls back to the older
+top-level `workflow-type` field, and a missing value means `single-stream`.
+Treat any other value as invalid and ask the user to correct it rather than
+guessing which handoff protocol applies. The declared version governs: follow
+the `WORKFLOW.md` in this repository as it is, whatever newer text your tool or
+your training knows, and never refresh it or change the declared version
+except on the user's explicit instruction. See *Workflow Declaration* in
+`WORKFLOW.md`.
 
 Work means editing files in a **checkout**: one local clone directory. A
 checkout has one current branch, that branch belongs to one workstream, and so
@@ -30,6 +71,19 @@ but never on two at once. Concurrency comes from several human/agent pairs in
 several checkouts integrating through the shared remote, not from any local
 arrangement of directories, which is an implementation detail and not workflow
 state. See *Checkouts, Branches, And Workstreams* in `WORKFLOW.md`.
+
+After `WORKFLOW.md`, read `WORKFLOW-LOCAL.md`, this project's own half of the
+workflow: the version scheme, release policy, validation commands, host
+capabilities, and recorded exceptions that only this project can decide.
+`WORKFLOW.md` binds wherever it speaks; the local file governs where it is
+silent. See *The Project's Local Workflow* in `WORKFLOW.md`.
+
+`WORKFLOW.md` uses the vocabulary of the Workflow Patterns initiative as its
+reference vocabulary: process, case, sub-process, task, work item, resource,
+trigger. A workstream is a case of the workstream sub-process; a release is a
+case of the release sub-process. Read *Vocabulary* at the start of
+`WORKFLOW.md` before reading the rules, and where this repository's own term
+differs from the catalogue's, this repository's definition governs.
 
 This workflow is incomplete by admission, and `WORKFLOW.md` opens with
 *Latitude Where This Document Is Silent*. Where the protocol does not cover a
@@ -61,15 +115,25 @@ branch inference but does not authorize mixing two workstreams' dirty state.
 Ask the user to select a workstream only when several remain plausible and the
 choice materially changes the work.
 
-Every `multiple-streams` project has exactly one reserved `project-management`
-workstream, created when the mode is initialized or adopted and open for as
-long as the mode lasts. It owns project-wide priorities, sequencing,
+Every `multiple-streams` project has exactly two reserved workstreams, created
+when the mode is initialized or adopted and open for as long as the mode
+lasts. `project-management` owns project-wide priorities, sequencing,
 cross-workstream dependencies, and lifecycle decisions; it is not a second
 registry, not an implementation catch-all, and not the owner of other
-workstreams' state. Select and work in it exactly as you would any other
-workstream. If a project declares `multiple-streams` and has no such
-workstream, report that it is incompletely initialized rather than working
-around it. See *The Reserved `project-management` Workstream* in `WORKFLOW.md`.
+workstreams' state. `maintenance` owns the bugs no open workstream covers and
+drives maintenance releases; it is not a catch-all for defects, not a feature
+workstream, and not a second bug tracker. Select and work in either exactly as
+you would any other workstream. If a project declares `multiple-streams` and
+lacks either, report that it is incompletely initialized rather than working
+around it. See *The Reserved `project-management` Workstream* and *The
+Reserved `maintenance` Workstream* in `WORKFLOW.md`.
+
+Bug records under `engineering-docs/bugs/` carry frontmatter with controlled
+`status`, `severity`, `target`, and `owner` fields; see *Bug Intake* in
+`WORKFLOW.md`. A bug is routed by its `owner` field, not by an intake item: at
+session start, list the open bugs whose `owner` is the selected workstream, and
+when filing one set `owner` to the open workstream whose goal covers it,
+otherwise to `maintenance`.
 
 The checked-out branch is the persistent local workstream selection; there is
 no separate untracked selection file. `main`, detached
@@ -93,10 +157,20 @@ In `multiple-streams` mode, synchronize the selected workstream's branch with
 intake, registrations, and repository-wide coordination facts reach a
 workstream, and a stale branch cannot act on items it can nonetheless see. To
 send work the other way — an intake item for another workstream, or a new
-workstream's registration — use the sender's standing `<mnemonic>/outbox`
+workstream's registration — use the sender's standing `ws-<mnemonic>/outbox`
 branch, reset from current `main` and carrying only what is being sent, never
 working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 `WORKFLOW.md`.
+
+Branch names are a closed vocabulary: `main`; `ws-<workstream>/<sub>` for a
+workstream branch, with `ws-<workstream>/outbox` reserved; and
+`release-<version>` for a release branch, with its `v<version>` tags. Any
+other ref is not workflow state. Release refs are not
+workstream branches. Never synchronize, rebase, or force-push one, and never
+cherry-pick between a release branch and a workstream branch. A registry row
+whose branch association names a release branch means that workstream is
+driving a release: work on that branch, land fixes only there, and merge it to
+`main` before each candidate tag. See *Releases* in `WORKFLOW.md`.
 
 The outbox also carries the workstream's own records — its handoff and its
 disposition log — when something on `main` refers to them or when the workstream
