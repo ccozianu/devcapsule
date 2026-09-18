@@ -1,6 +1,6 @@
 ---
 definition: devcapsule
-version: 0.2.12
+version: 0.2.14
 ---
 
 # Human / Agent Iteration Workflow
@@ -146,10 +146,10 @@ the step a project takes to adopt it where one exists. The `version` in this
 file's frontmatter names the release this text ships in; see *Workflow
 Declaration* for what that version means and who keeps it correct.
 
-#### Unreleased
+#### 0.2.14
 
-Becomes the next release's version at the version bump. Rules changed since
-0.2.12:
+Stamped 2026-09-18 by the product owner, ahead of the release that ships it.
+There is no 0.2.13. Rules changed since 0.2.12:
 
 - **Reference vocabulary.** *Vocabulary* adopts the Workflow Patterns base
   terms. No migration.
@@ -297,7 +297,7 @@ Before interpreting project status, read the `[workflow]` table in
 ```toml
 [workflow]
 definition = "devcapsule"
-version = "0.2.12"
+version = "0.2.14"
 mode = "multiple-streams"
 ```
 

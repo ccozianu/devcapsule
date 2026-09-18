@@ -3,7 +3,7 @@ workflow-type = "multiple-streams"
 
 [workflow]
 definition = "devcapsule"
-version = "0.2.12"
+version = "0.2.14"
 mode = "multiple-streams"
 
 [capabilities]

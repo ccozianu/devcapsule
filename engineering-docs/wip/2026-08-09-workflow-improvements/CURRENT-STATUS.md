@@ -891,9 +891,11 @@ the migration step, so a version says more than "you are behind".
   each may change rules incompatibly, so 1.0 now would mean 2.0 soon. Tying
   the version to the release costs nothing, since tags are immutable and are
   the permanent public reference, and 1.0 arrives with DevCapsule V1, by
-  which time the freeze's own intent has those items settled. Stamped
-  `0.2.12`, the current package version, with the changes under *Unreleased*;
-  the next release bump makes it `0.2.13`.
+  which time the freeze's own intent has those items settled. First stamped
+  `0.2.12`, the package version of the moment; the owner then directed
+  `0.2.14` the same day, skipping 0.2.13 by preference, so the bump script
+  ran and the package version advanced with it. The next release ships as
+  0.2.14 and its first release-branch commit finds the version already set.
 - **`unversioned` is a real value** for a definition installed before
   versions existed, so a project can declare honestly and a refresh can
   replace it.
