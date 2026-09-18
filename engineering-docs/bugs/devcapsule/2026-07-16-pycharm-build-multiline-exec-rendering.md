@@ -1,8 +1,17 @@
+---
+status: reported
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-07-16
+requirements: []
+---
+
 # Bug: Python-Owned PyCharm Image Build Emits Fragile Multiline `RUN` Shell Quoting
 
 Date: 2026-07-16
 
-Status: open
+Status note (pre-vocabulary, kept as evidence): open
 
 ## Summary
 

@@ -21,6 +21,7 @@ DEFINITION_ASSETS: Mapping[Path, str] = {
 }
 COMMON_TEMPLATES: Mapping[Path, str] = {
     Path("README.md"): "templates/common/README.md.template",
+    Path("WORKFLOW-LOCAL.md"): "templates/common/WORKFLOW-LOCAL.md.template",
     Path("REQUIREMENTS.md"): "templates/common/REQUIREMENTS.md.template",
     Path("engineering-docs/bugs/_template.md"): "templates/common/bug-template.md.template",
     Path("index.md"): "templates/common/index.md.template",
@@ -99,11 +100,22 @@ def bootstrap_project(
         if workflow_type == "multiple-streams"
         else requested_date
     )
+    # The maintenance workstream shares the initialization date on a fresh
+    # project. A project that predates it gets it now, with today's date: the
+    # adoption exception WORKFLOW.md defines for that case.
+    maintenance_start_date = (
+        _reserved_start_date(root, "maintenance", requested_date)
+        if workflow_type == "multiple-streams"
+        else requested_date
+    )
     project_name = _project_name(root)
     substitutions = {
         "{{PROJECT_NAME}}": project_name,
         "{{START_DATE}}": start_date.isoformat(),
-        "{{WORKSTREAM_INDEX}}": _workstream_index(workflow_type, start_date),
+        "{{MAINTENANCE_START_DATE}}": maintenance_start_date.isoformat(),
+        "{{WORKSTREAM_INDEX}}": _workstream_index(
+            workflow_type, start_date, maintenance_start_date
+        ),
     }
 
     for directory in ENGINEERING_DIRECTORIES:
@@ -114,6 +126,7 @@ def bootstrap_project(
     refreshed: list[Path] = []
     preserved: list[Path] = []
 
+    definition_written = False
     for relative, asset in DEFINITION_ASSETS.items():
         destination = root / relative
         existed = destination.exists()
@@ -123,6 +136,7 @@ def bootstrap_project(
         content = _asset_text(asset)
         atomic_write(destination, content, mode=0o644)
         (refreshed if existed else created).append(relative)
+        definition_written = definition_written or relative == Path("WORKFLOW.md")
 
     for relative, asset in COMMON_TEMPLATES.items():
         destination = root / relative
@@ -151,15 +165,27 @@ def bootstrap_project(
         created.append(Path("CURRENT-STATUS.md"))
 
     if workflow_type == "multiple-streams":
-        _initialize_project_management(
-            root,
-            start_date,
-            substitutions,
-            created=created,
-            preserved=preserved,
-        )
+        for mnemonic, workstream_date in (
+            ("project-management", start_date),
+            ("maintenance", maintenance_start_date),
+        ):
+            _initialize_reserved_workstream(
+                root,
+                mnemonic,
+                workstream_date,
+                substitutions,
+                created=created,
+                preserved=preserved,
+            )
 
     _update_gitignore(root, created=created, updated=updated, preserved=preserved)
+    _reconcile_declaration(
+        root,
+        workflow_type,
+        definition_refreshed=definition_written,
+        updated=updated,
+        preserved=preserved,
+    )
     return BootstrapReport(
         target=root,
         workflow_type=workflow_type,
@@ -170,37 +196,173 @@ def bootstrap_project(
     )
 
 
+@dataclass(frozen=True)
+class WorkflowDeclaration:
+    """The ``[workflow]`` table of ``.devcapsule/devcapsule.toml``.
+
+    ``mode`` always has a value: the table's ``mode``, else the older top-level
+    ``workflow-type`` field, else ``single-stream``. ``version`` and
+    ``definition`` are ``None`` when the table does not declare them.
+    """
+
+    mode: str
+    version: str | None
+    definition: str | None
+
+
 def project_workflow_type(root: Path) -> str:
+    return project_workflow_declaration(root).mode
+
+
+def project_workflow_declaration(root: Path) -> WorkflowDeclaration:
     declaration = root / ".devcapsule" / "devcapsule.toml"
     if not declaration.is_file():
-        return "single-stream"
+        return WorkflowDeclaration("single-stream", None, None)
     try:
         value = tomllib.loads(declaration.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
         raise WorkflowBootstrapError(f"cannot read {declaration}: {exc}") from exc
-    selected = value.get("workflow-type", "single-stream")
-    if not isinstance(selected, str) or selected not in WORKFLOW_TYPES:
+    table = value.get("workflow")
+    if table is None:
+        table = {}
+    if not isinstance(table, dict):
+        raise WorkflowBootstrapError(f"{declaration} has a [workflow] entry that is not a table")
+    legacy = value.get("workflow-type")
+    mode = table.get("mode", legacy if legacy is not None else "single-stream")
+    if not isinstance(mode, str) or mode not in WORKFLOW_TYPES:
         raise WorkflowBootstrapError(
-            f"{declaration} has invalid workflow-type {selected!r}; expected "
+            f"{declaration} has invalid workflow-type {mode!r}; expected "
             "'single-stream' or 'multiple-streams'"
         )
-    return str(selected)
+    if legacy is not None and "mode" in table and legacy != mode:
+        raise WorkflowBootstrapError(
+            f"{declaration} declares workflow-type {legacy!r} and [workflow] mode "
+            f"{mode!r}; they must agree"
+        )
+    version = table.get("version")
+    definition = table.get("definition")
+    for name, field in (("version", version), ("definition", definition)):
+        if field is not None and not isinstance(field, str):
+            raise WorkflowBootstrapError(f"{declaration} [workflow] {name} must be a string")
+    return WorkflowDeclaration(mode, version, definition)
 
 
-def _initialize_project_management(
+DEFINITION_NAME = "devcapsule"
+UNVERSIONED = "unversioned"
+
+
+def definition_version(text: str) -> str:
+    """The ``version`` declared in a WORKFLOW.md frontmatter block, or
+    ``unversioned`` for a definition written before versions existed."""
+    if not text.startswith("---\n"):
+        return UNVERSIONED
+    end = text.find("\n---\n", 4)
+    if end < 0:
+        return UNVERSIONED
+    for line in text[4:end].splitlines():
+        key, _, value = line.partition(":")
+        if key.strip() == "version" and value.strip():
+            return value.strip()
+    return UNVERSIONED
+
+
+def _reconcile_declaration(
     root: Path,
+    mode: str,
+    *,
+    definition_refreshed: bool,
+    updated: list[Path],
+    preserved: list[Path],
+) -> None:
+    """Keep ``[workflow] version`` equal to the installed WORKFLOW.md's version.
+
+    Bootstrap writes both on install and refresh. When neither was touched and
+    the two disagree, the project is misdeclared; that is reported, never
+    guessed at, because the declared version is what governs the project.
+    """
+    relative = Path(".devcapsule/devcapsule.toml")
+    path = root / relative
+    if not path.is_file():
+        return
+    installed = definition_version((root / "WORKFLOW.md").read_text(encoding="utf-8"))
+    declared = project_workflow_declaration(root)
+    if declared.version == installed and declared.definition is not None:
+        preserved.append(relative)
+        return
+    if (
+        declared.version is not None
+        and declared.version != installed
+        and not definition_refreshed
+    ):
+        raise WorkflowBootstrapError(
+            f"{path} declares workflow version {declared.version!r} but WORKFLOW.md "
+            f"is version {installed!r}; refresh the definition or correct the "
+            "declaration"
+        )
+    text = path.read_text(encoding="utf-8")
+    atomic_write(path, _with_workflow_table(text, mode, installed), mode=0o644)
+    updated.append(relative)
+
+
+def _with_workflow_table(text: str, mode: str, version: str) -> str:
+    """Return ``text`` with a ``[workflow]`` table declaring ``definition``,
+    ``version``, and ``mode``, editing an existing table in place so the rest
+    of the file keeps its formatting."""
+    lines = text.splitlines()
+    wanted = {
+        "definition": f'definition = "{DEFINITION_NAME}"',
+        "version": f'version = "{version}"',
+        "mode": f'mode = "{mode}"',
+    }
+    start = next(
+        (index for index, line in enumerate(lines) if line.strip() == "[workflow]"),
+        None,
+    )
+    if start is None:
+        body = [""] if lines and lines[-1].strip() else []
+        body += ["[workflow]", *wanted.values()]
+        return "\n".join([*lines, *body]) + "\n"
+    end = next(
+        (
+            index
+            for index in range(start + 1, len(lines))
+            if lines[index].strip().startswith("[")
+        ),
+        len(lines),
+    )
+    seen: set[str] = set()
+    for index in range(start + 1, end):
+        key = lines[index].split("=", 1)[0].strip()
+        if key in wanted:
+            lines[index] = wanted[key]
+            seen.add(key)
+    insert_at = start + 1
+    for key, line in wanted.items():
+        if key not in seen:
+            lines.insert(insert_at, line)
+            insert_at += 1
+    return "\n".join(lines) + "\n"
+
+
+def _initialize_reserved_workstream(
+    root: Path,
+    mnemonic: str,
     start_date: date,
     substitutions: Mapping[str, str],
     *,
     created: list[Path],
     preserved: list[Path],
 ) -> None:
-    workstream = Path("engineering-docs/wip") / (
-        f"{start_date.isoformat()}-project-management"
-    )
+    """Create one reserved workstream's records where they are missing.
+
+    Both reserved workstreams share the intake templates; only the handoff
+    template is specific to the mnemonic.
+    """
+    workstream = Path("engineering-docs/wip") / f"{start_date.isoformat()}-{mnemonic}"
+    substitutions = {**substitutions, "{{MNEMONIC}}": mnemonic}
     templates = {
         workstream / "CURRENT-STATUS.md": (
-            "templates/multiple-streams/project-management-CURRENT-STATUS.md.template"
+            f"templates/multiple-streams/{mnemonic}-CURRENT-STATUS.md.template"
         ),
         workstream / "intake/README.md": (
             "templates/multiple-streams/intake-README.md.template"
@@ -223,32 +385,48 @@ def _initialize_project_management(
 
 
 def _project_management_start_date(root: Path, fallback: date) -> date:
-    candidates = sorted(
-        path.parent
-        for path in (root / "engineering-docs" / "wip").glob(
-            "????-??-??-project-management/CURRENT-STATUS.md"
-        )
-    )
-    if len(candidates) > 1:
-        raise WorkflowBootstrapError(
-            "multiple project-management workstream handoffs already exist: "
-            + ", ".join(str(path.relative_to(root)) for path in candidates)
-        )
-    if not candidates and (root / "CURRENT-STATUS.md").exists():
+    """The existing project-management start date, or ``fallback`` on a fresh
+    project. A registry without the project-management handoff is an
+    incompletely initialized instance and is refused rather than repaired."""
+    if (
+        _reserved_workstream_dirs(root, "project-management") == []
+        and (root / "CURRENT-STATUS.md").exists()
+    ):
         raise WorkflowBootstrapError(
             "multiple-streams project is incompletely initialized: "
             "CURRENT-STATUS.md exists but the reserved project-management "
             "workstream handoff does not"
         )
+    return _reserved_start_date(root, "project-management", fallback)
+
+
+def _reserved_start_date(root: Path, mnemonic: str, fallback: date) -> date:
+    """The immutable start date of an existing reserved workstream, read from
+    its directory name, or ``fallback`` when the workstream does not exist yet."""
+    candidates = _reserved_workstream_dirs(root, mnemonic)
+    if len(candidates) > 1:
+        raise WorkflowBootstrapError(
+            f"multiple {mnemonic} workstream handoffs already exist: "
+            + ", ".join(str(path.relative_to(root)) for path in candidates)
+        )
     if not candidates:
         return fallback
-    prefix = candidates[0].name.removesuffix("-project-management")
+    prefix = candidates[0].name.removesuffix(f"-{mnemonic}")
     try:
         return date.fromisoformat(prefix)
     except ValueError as exc:
         raise WorkflowBootstrapError(
-            f"project-management workstream has invalid start date: {prefix!r}"
+            f"{mnemonic} workstream has invalid start date: {prefix!r}"
         ) from exc
+
+
+def _reserved_workstream_dirs(root: Path, mnemonic: str) -> list[Path]:
+    return sorted(
+        path.parent
+        for path in (root / "engineering-docs" / "wip").glob(
+            f"????-??-??-{mnemonic}/CURRENT-STATUS.md"
+        )
+    )
 
 
 def _single_stream_status(root: Path, substitutions: Mapping[str, str]) -> str:
@@ -293,11 +471,17 @@ def _project_name(root: Path) -> str:
     return root.name
 
 
-def _workstream_index(workflow_type: str, start_date: date) -> str:
+def _workstream_index(
+    workflow_type: str, start_date: date, maintenance_start_date: date
+) -> str:
     if workflow_type == "single-stream":
         return ""
-    path = f"engineering-docs/wip/{start_date.isoformat()}-project-management/CURRENT-STATUS.md"
-    return "## Workstream Handoffs\n\n- [Project management current status](" + path + ")"
+    wip = "engineering-docs/wip"
+    return (
+        "## Workstream Handoffs\n\n"
+        f"- [Project management current status]({wip}/{start_date.isoformat()}-project-management/CURRENT-STATUS.md)\n"
+        f"- [Maintenance current status]({wip}/{maintenance_start_date.isoformat()}-maintenance/CURRENT-STATUS.md)"
+    )
 
 
 def _include_existing_markdown(root: Path, content: str) -> str:

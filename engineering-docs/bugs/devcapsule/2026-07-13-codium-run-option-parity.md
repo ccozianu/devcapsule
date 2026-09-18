@@ -1,8 +1,17 @@
+---
+status: confirmed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-07-13
+requirements: [R-PYTHON-MVP-003, R-FRAMEWORK-001, R-SCOPE-001, R-DOCKER-001]
+---
+
 # Bug: Codium Run Lacks Shared Developer Runtime Options
 
 Date opened: 2026-07-13
 
-Status: accepted parity gap; first shared state-layout slice implemented, broader parity still pending
+Status note (pre-vocabulary, kept as evidence): accepted parity gap; first shared state-layout slice implemented, broader parity still pending
 
 Requirements: R-PYTHON-MVP-003, R-FRAMEWORK-001, R-SCOPE-001, R-DOCKER-001
 

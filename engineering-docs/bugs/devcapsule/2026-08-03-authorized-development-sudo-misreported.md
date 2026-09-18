@@ -1,8 +1,18 @@
+---
+status: closed
+severity: untriaged
+target: none
+owner: none
+opened: 2026-08-03
+closed: 2026-08-05
+requirements: [R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001]
+---
+
 # Bug: Authorized Development Sudo Is Reported As Enabled But Is Unusable
 
 Date opened: 2026-08-03
 
-Status: closed; fixed and externally validated on 2026-08-05
+Status note (pre-vocabulary, kept as evidence): closed; fixed and externally validated on 2026-08-05
 
 Requirements: R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001
 

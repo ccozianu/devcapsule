@@ -21,7 +21,7 @@ uses `multiple-streams` mode. See *The Reserved `maintenance` Workstream* in
 
 ## Branch Association
 
-`maintenance/`; no branch yet. Branches are `maintenance/<bug-or-release-line>`,
+`ws-maintenance/`; no branch yet. Branches are `ws-maintenance/<bug-or-release-line>`,
 one per fix or per maintained release line, forked from `main`. Several pairs
 may work this workstream at once on separate branches.
 
@@ -57,7 +57,7 @@ predates the vocabulary; it is evidence, not a second status.
 Triage: the product owner rates each of the 12 untriaged bugs `blocking`,
 `major`, or `minor`, and names a `target` release where one applies. Then take
 the highest-severity open bug on the current release line, on a
-`maintenance/<bug>` branch. The owner has said a handful of bugs should be
+`ws-maintenance/<bug>` branch. The owner has said a handful of bugs should be
 fixed for the next release; which handful is the triage's output.
 
 ## Open Threads

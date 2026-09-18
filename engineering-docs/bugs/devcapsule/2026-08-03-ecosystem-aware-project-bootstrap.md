@@ -1,8 +1,17 @@
+---
+status: confirmed
+severity: untriaged
+target: none
+owner: maintenance
+opened: 2026-08-03
+requirements: [R-PRODUCT-001, R-PRODUCT-004, R-DEV-001, R-FRAMEWORK-001]
+---
+
 # Gap: Fresh Clones Require Manual Ecosystem Bootstrap
 
 Date opened: 2026-08-03
 
-Status: reproduced; accepted V1 backlog item
+Status note (pre-vocabulary, kept as evidence): reproduced; accepted V1 backlog item
 
 Requirements: root R-PRODUCT-001, root R-PRODUCT-004, R-DEV-001,
 R-FRAMEWORK-001

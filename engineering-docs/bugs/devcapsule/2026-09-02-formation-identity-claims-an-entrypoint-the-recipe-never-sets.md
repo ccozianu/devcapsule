@@ -1,8 +1,17 @@
+---
+status: confirmed
+severity: untriaged
+target: none
+owner: component-catalog
+opened: 2026-09-02
+requirements: [R-PRODUCT-001, R-PRODUCT-002, R-SCOPE-001]
+---
+
 # Bug: The Formation Identity Claims An Entrypoint The Recipe Never Sets
 
 Date opened: 2026-09-02
 
-Status: open; entrypoint half **ruled 2026-09-05 and implemented the
+Status note (pre-vocabulary, kept as evidence): open; entrypoint half **ruled 2026-09-05 and implemented the
 same day** on `component-catalog/antigravity-cli` (see *Ruling* and
 *Implementation* below), awaiting the owner's smoke. The remaining
 unruled half is the superseded-image lifecycle (reap vs. cleanup verb —

@@ -1,8 +1,18 @@
+---
+status: closed
+severity: untriaged
+target: none
+owner: none
+opened: 2026-09-02
+closed: 2026-09-03
+requirements: [R-PRODUCT-002, R-PRODUCT-001]
+---
+
 # Bug: The Authorization Grammar Cannot Express Denial
 
 Date opened: 2026-09-02
 
-Status: **closed 2026-09-03** — the owner's smoke confirmed everything
+Status note (pre-vocabulary, kept as evidence): **closed 2026-09-03** — the owner's smoke confirmed everything
 working, including the reworked authorization grammar live. Ruled and
 fixed the same day by the owner's `none`-keyword ruling (recorded
 across the base-image grammar records):

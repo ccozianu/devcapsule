@@ -8,9 +8,9 @@ state belongs in each linked workstream handoff.
 
 | Mnemonic | Started | Goal | State | Branch association | Handoff |
 |---|---|---|---|---|---|
-| `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | active 2026-09-18; release rule merged; reserved `maintenance` workstream and bug vocabulary drafted for owner review under a second freeze exception; eight intake items remain | `workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
+| `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | active 2026-09-18; release rule merged; `maintenance` workstream, bug vocabulary, `ws-` branch vocabulary, and the workflow declaration drafted for owner review under owner-granted freeze exceptions; eight intake items remain | `ws-workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
 | `project-management` | 2026-08-09 | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active 2026-09-12; opening user-docs for owner scoping; six intake decisions remain | `project-management/coordination` | [workstream status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md) |
-| `maintenance` | 2026-09-18 | Own the defects no open workstream covers, on `main` and on maintained release lines, and drive maintenance releases | active; permanent maintenance; owns 12 open bugs, all untriaged; first task is triage | `maintenance/`; no branch yet | [workstream status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md) |
+| `maintenance` | 2026-09-18 | Own the defects no open workstream covers, on `main` and on maintained release lines, and drive maintenance releases | active; permanent maintenance; owns 12 open bugs, all untriaged; first task is triage | `ws-maintenance/`; no branch yet | [workstream status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md) |
 | `sample-projects` | 2026-08-14 | Provide realistic sample projects as submodules that demonstrate ordinary adopter development inside DevCapsule | paused 2026-08-21 after adding human-authorized workstream-change rules; labeled fixtures are next | `sample-projects/fastapi-webapp` | [workstream status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md) |
 | `contained-display` | 2026-08-19 | Own the capsule supervisor core (container entry process, supervised children, explicit session end, headless mode) and the capsule's own display environment, closing the host-session credential exposure — supervisor first, display as its first consumer | active; **the contained display shipped in v0.2.12 on 2026-09-14** (recipe-9 base, contained desktop by default, X11 passthrough behind `host-x11`); the X11 credential bug is resolved; remaining threads are records and follow-ups (reconnect, WSL2 opener, sample locks) | `contained-display/display-transport`; `contained-display/outbox` | [workstream status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md) |
 | `eclipse-surface` | 2026-09-09 | Add the Eclipse IDE (JDT) as a third interactive surface beside PyCharm and VSCodium, as an ordinary catalog component | open 2026-09-09; registered, entry survey recorded, awaiting product-owner scoping | `eclipse-surface/`; no branch yet | [workstream status](engineering-docs/wip/2026-09-09-eclipse-surface/CURRENT-STATUS.md) |
@@ -37,8 +37,11 @@ The workflow transition reached `main` through
 `b648623`; its date-prefixed layout and checkout-selection refinements reached
 `main` through [`PR #9`](https://github.com/ccozianu/devcapsule/pull/9) at merge
 revision `ed30a58`. Later workstreams must be registered on current `main`
-first, use their mnemonic as the branch prefix, and use an immutable
+first, use `ws-<mnemonic>/` as the branch prefix, and use an immutable
 ISO-start-date and mnemonic directory name for WIP and archive records.
+Branches named under the older `<mnemonic>/` prefix are renamed by their own
+workstreams before the next release candidate is tagged, per *Changes* in
+`WORKFLOW.md`; after that they are outside the workflow.
 
 `project-management` was opened on 2026-08-09 as a one-off permanent workstream
 before the workflow defined one. On 2026-08-16 `workflow-improvements` made it

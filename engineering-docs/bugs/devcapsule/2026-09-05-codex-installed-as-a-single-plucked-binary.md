@@ -1,8 +1,17 @@
+---
+status: fixed
+severity: untriaged
+target: none
+owner: component-catalog
+opened: 2026-09-05
+requirements: [R-PRODUCT-001]
+---
+
 # Bug: Codex Was Installed As A Single Plucked Binary, So Every Sandboxed Command Failed
 
 Date opened: 2026-09-05
 
-Status: **fixed on the workstream branch 2026-09-05; owner smoke
+Status note (pre-vocabulary, kept as evidence): **fixed on the workstream branch 2026-09-05; owner smoke
 pending** — Codex is now delivered as npm publishes it (see *Fix*).
 Closes on the owner's next `project run` of a codex-carrying formation
 with a sandboxed command succeeding.

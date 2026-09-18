@@ -9,4 +9,5 @@ registered workstream handoff.
 
 | Mnemonic | Started | Goal | State | Branch association | Handoff |
 |---|---|---|---|---|---|
-| `project-management` | {{START_DATE}} | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active; permanent coordination | `project-management/coordination` | [workstream status](engineering-docs/wip/{{START_DATE}}-project-management/CURRENT-STATUS.md) |
+| `project-management` | {{START_DATE}} | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active; permanent coordination | `ws-project-management/coordination` | [workstream status](engineering-docs/wip/{{START_DATE}}-project-management/CURRENT-STATUS.md) |
+| `maintenance` | {{MAINTENANCE_START_DATE}} | Own the defects no open workstream covers, on `main` and on maintained release lines, and drive maintenance releases | active; permanent maintenance | `ws-maintenance/`; no branch yet | [workstream status](engineering-docs/wip/{{MAINTENANCE_START_DATE}}-maintenance/CURRENT-STATUS.md) |
