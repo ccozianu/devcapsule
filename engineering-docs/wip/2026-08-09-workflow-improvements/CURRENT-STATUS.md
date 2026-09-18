@@ -57,9 +57,17 @@ itself. It is not an editing checkout; see selection rule 6.
   identity that the remote's two commits were the same content. The sample
   projects arrived as submodules with the rebase; nothing about them is this
   workstream's.
-- Eleven intake items were waiting. Two are acknowledged and their rule is on
-  `main` (*Fifteenth Task*); a third is acknowledged and drafted (*Sixteenth
-  Task*); eight remain in `intake/`.
+- Eleven intake items were waiting. Three are acknowledged and their rules
+  are on `main`; eight remain in `intake/`.
+- The 2026-09-18 rounds are merged: the product owner merged
+  `ws-workflow-improvements/v1` as [`PR #98`](https://github.com/ccozianu/devcapsule/pull/98)
+  on 2026-09-18, carrying the `maintenance` workstream and bug vocabulary, the
+  `ws-` branch vocabulary and workflow declaration, the 0.2.14 stamp and its
+  `0.2.14.dev0` form, and the project's local workflow. Verified by
+  `git cherry`: nothing unique remained, and the branch was hard-reset to
+  `main`. The outbox was rebuilt from `main` the same day carrying only the
+  one item not yet delivered, the branch-rename scheduling request to
+  `project-management`.
 - The release rule is operative since 2026-09-16. The product owner merged
   `workflow-improvements/v1` as [`PR #88`](https://github.com/ccozianu/devcapsule/pull/88)
   on 2026-09-16 and the outbox send as [`PR #89`](https://github.com/ccozianu/devcapsule/pull/89)
@@ -965,10 +973,9 @@ pass. The wider suite was not run.
 
 ## Next Resumable Task
 
-Put the `maintenance` workstream, the bug vocabulary, the backfilled bug
-records, the `ws-` vocabulary, and the workflow declaration in front of the
-product owner, apply what the review changes, and push for the pull request. The owner then triages the twelve untriaged bugs in the
-`maintenance` workstream, which is where the next release's handful comes from.
+Everything drafted on 2026-09-18 is merged. The owner triages the twelve
+untriaged bugs in the `maintenance` workstream, which is where the next
+release's handful comes from; that is that workstream's task, not this one's.
 
 Then disposition the remaining eight intake items, which wait on the owner's
 answers under *Open Threads*.
