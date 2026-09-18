@@ -4,7 +4,7 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active; public candidate workflows merged and test site working; visible build timestamp prepared; final review remains open
+State: delivered and public; final smoke check passed; awaiting owner experiment verdict and closure records
 
 Branch association: `website/initial-cut`; prefix `website/`
 
@@ -51,20 +51,30 @@ git submodule update --init website
 Use the printed URL if 8080 is occupied. `PORT=8090` changes the starting port.
 Build/check on demand: `./scripts/website.sh build`.
 
-Next step: merge website `build-timestamp`, then the parent `website/initial-cut`
-with the new website pin (select the merged website revision if squash-merging).
-Run a fresh test deployment and promote its reviewed candidate tag to production.
-The footer now shows a readable UTC “Site built” timestamp, also recorded as
-`builtAt` in build-info.json and preserved through promotion/rollback. It is the
-candidate build time, not deployment completion or per-article modification time.
-Existing release candidates remain promotable without invented timestamps.
+Next step: obtain the owner's explicit experiment verdict, then finalize/archive
+this workstream via the normal PR delivery path. Website development continues
+in its own repository after this initial experiment; product content remains
+owned here. Do not begin further features as part of closing the experiment.
 
-Publication recheck: fetched website main c97c959 and parent main a99ca28;
-both selected branches fast-forwarded before editing. Public candidate
-website-candidate-35286734496-1 is present. Test HTTPS manifest independently
-confirms content a99ca28/implementation ff1a987. Production publication is
-owner-reported; this environment still sees a production certificate hostname
-mismatch, so production HTTPS is not independently verified.
+Final live check on 2026-09-18: production and test homepage, documentation,
+first-session guide and journal all return HTTP 200 over validated HTTPS.
+Production canonical URLs are correct and the visible build time is
+2026-09-18T00:43:08.793Z. Its build-info records content
+`5a4b35435ee3e1cb460b48d292f15e5efe5228be`, implementation
+`0691956e3aa383b74c9fb87f4d46140136b8a0b6`, and candidate
+`website-candidate-35292339140-1`. Anonymous public candidate metadata matches
+production source revisions and archive checksum provenance. The previous
+production TLS hostname mismatch is resolved.
+
+The test site's newer 00:57 UTC build uses production canonical URLs. This is
+servable but does not meet the current candidate packaging checks. Record input
+simplification as maintenance; production's earlier valid candidate is correct.
+Future candidate runs must retain the test origin and root base path.
+
+All implementation and timestamp changes are on remote main. Final handoff
+updates live on website `experiment-handoff` and parent `website/initial-cut`.
+The workstream is not yet archived: owner verdict is pending. No inferred
+acceptance, unsuccessful assessment or independent website session is claimed.
 
 The owner rejected personal-token renewal overhead and selected public GitHub
 Release assets. The parent workflow publishes a candidate prerelease only after
@@ -135,9 +145,8 @@ Formal experiment acceptance and finalization remain open.
   including compilation, shell syntax, type checks, tests, CLI/PEX smoke and
   nine packaging integration checks. The dirty-tree gate intentionally skipped
   the public revision-bearing PEX; its local PEX passed. No runtime source changed.
-- Test-site Actions build/deploy success and HTTPS manifest independently verified
-  on 2026-09-17. New public candidate publication and production deployment remain
-  unverified; owner merges and dispatches are the agreed completion path.
+- Hosted test deployment, public candidate metadata and production promotion/HTTPS
+  are now independently verified on 2026-09-18; details are in continuation above.
 - Release promotion: eleven website tests pass, covering credential-free downloads,
   archive corruption/unsafe paths, source validation and byte preservation.
   A clean build of the deployed sources passed packaging, simulated anonymous
@@ -186,19 +195,22 @@ An abrupt platform cutoff invisible to the agent cannot guarantee warning.
 
 ## Open Threads
 
-- Awaiting human: website and parent timestamp PR merges, then a fresh test run
-  and promotion. Old release candidates do not gain new footer metadata.
-- Chosen: public release candidates remove personal-token maintenance and allow
-  promotion/rollback after Actions artifacts expire. Keep release assets for as
-  long as rollback is required; owners can still delete or modify releases.
-- Separate test noindex support remains outside this slice.
-- Weighed: GitHub Pages plus local review avoids cloud provisioning, tokens,
-  DNS or mainline merges as implementation prerequisites. No hosted preview
-  was needed; the owner confirmed localhost access.
-- Deliberately unverified: a separate graphical launch of the website capsule;
-  its configuration and clean standalone Node preview are verified.
-- Deliberately not preserved: a full chat transcript, a second content copy,
-  a website implementation backlog in DevCapsule, or speculative future features.
+- Awaiting human: the explicit success/partial-success/failure verdict required
+  by the work order. Then prepare final archive/registry/index closure and deliver
+  it through owner-merged PRs. Remote main must contain final records before the
+  workstream is fully closed.
+- Future website maintenance: clarify test workflow labels/defaults and constrain
+  its origin; add test noindex intentionally; retain release candidates for
+  rollback. These are recorded in the website handoff, not new experiment scope.
+- Deliberately unverified: a full graphical launch of the standalone capsule and
+  an actual live production rollback. Standalone Node development, candidate
+  checks, publication and promoted-source preservation are validated.
+- Budget: no expected overrun, reset request, paid hosting or purchase occurred.
+  Account allowance/reset telemetry was unavailable, so exact consumption cannot
+  be reported. SSH-only delivery/local checks were the agreed access workaround;
+  the owner performed GitHub settings, DNS, merges and dispatches.
+- Deliberately not preserved: full chat transcript, duplicate authored content,
+  a parent website implementation backlog, or speculative product features.
 
 ## Documents
 
