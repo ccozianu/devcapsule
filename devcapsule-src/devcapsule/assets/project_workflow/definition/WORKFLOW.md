@@ -163,15 +163,13 @@ There is no 0.2.13. Rules changed since 0.2.12:
   reserved workstream under its adoption exception, and add the controlled
   frontmatter to every bug record; a definition refresh does the first and
   the bug template shows the second.
-- **The `ws-` branch vocabulary.** *Checkouts, Branches, And Workstreams* and
-  restrictions 4, 5, and 13. Migration, for a project that installed an
-  earlier version: each open workstream renames its own branches to
-  `ws-<workstream>/<sub>`, updates its registry row through its own outbox,
-  and retargets any open pull request. A project that cannot rename everything
-  at once records the old names under *Exceptions* in `WORKFLOW-LOCAL.md`,
-  with the condition that ends the exception; until then those branches are
-  honored as workstream branches, and after it they are not. Refs that predate
-  the workflow are untouched by this and stay outside it.
+- **The `ws-` branch form.** *Checkouts, Branches, And Workstreams* and
+  restrictions 4, 5, and 13: new workstream branches are
+  `ws-<workstream>/<sub>`, and the workflow claims no other ref. No migration
+  is required: a workstream branch under an older name stays that
+  workstream's through its registry row. A project that chooses to rename
+  does so one workstream at a time, each through its own outbox, and may
+  record its schedule under *Exceptions* in `WORKFLOW-LOCAL.md`.
 - **The workflow declaration.** *Workflow Declaration*: the `[workflow]`
   table names the definition, its version, and the mode; the frontmatter of
   this file carries the same version. Migration: add the table; a definition
@@ -214,20 +212,26 @@ The relationships, which fix what every "current" in this document means:
 - A checkout therefore has at most one selected workstream at any moment. The
   *current branch* determines the *current workstream*, not the reverse.
 
-**The ref vocabulary is closed.** A branch name says what kind of thing it is:
+**The workflow claims only the refs it names.** Three kinds, recognizable by
+name alone:
 
-- `main`;
+- `main`, the integration branch;
 - `ws-<workstream>/<sub>`, a workstream branch. `ws` is short for workstream,
   and `<sub>` is the workstream's own choice, except that
   `ws-<workstream>/outbox` is reserved; see *The Outbox Branch*;
 - `release-<version>`, a release branch, with its `v<version>` tags; see
-  *Releases*.
+  *Releases*. A project may spell these differently in `WORKFLOW-LOCAL.md`.
 
-Anything else is not workflow state: a legacy ref, a tooling branch, an
-experiment. It is not selected, not synchronized, and not registered, and it
-becomes workflow state only by being renamed into the vocabulary after its
-workstream is registered. A human or an agent can tell the kind of any ref by
-name alone, which is the point.
+Every other ref belongs to the project, not to the workflow: a branch that
+predates it, a tooling branch, a collaborator's own naming, an experiment. The
+workflow says nothing about such refs, and an agent following it does not
+create, rename, delete, rebase, or select one unless the project's local
+workflow or the human directs it. A project adopting this workflow, including
+an open-source project with its own conventions, keeps its namespace; only
+new workstream branches take the `ws-` form. A workstream branch under an
+older name is still that workstream's branch through its registry row; the
+name is what lets a reader tell without the registry, not what makes the
+association true.
 
 **Sequential within a checkout, concurrent across checkouts.** One checkout can
 work on many workstreams over time by switching branches, but only one at a
@@ -421,8 +425,8 @@ The following restrictions keep concurrent work understandable:
    which its registration is first committed to `main`. Migration exceptions
    record their historically established start date.
 4. Every `ws-` branch belongs to exactly one workstream. Release refs belong
-   to none, and a ref outside the vocabulary in *Checkouts, Branches, And
-   Workstreams* is not workflow state.
+   to none. A ref the workflow does not name is the project's, as *Checkouts,
+   Branches, And Workstreams* says, and agents leave it alone.
 5. Each workstream branch name begins with `ws-<mnemonic>/`. A release branch
    does not, because it is not a workstream branch; see *Releases*.
 6. A workstream may have more than one branch, but every branch starts from

@@ -162,10 +162,11 @@ branch, reset from current `main` and carrying only what is being sent, never
 working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 `WORKFLOW.md`.
 
-Branch names are a closed vocabulary: `main`; `ws-<workstream>/<sub>` for a
-workstream branch, with `ws-<workstream>/outbox` reserved; and
-`release-<version>` for a release branch, with its `v<version>` tags. Any
-other ref is not workflow state. Release refs are not
+The workflow claims only the refs it names: `main`; `ws-<workstream>/<sub>`
+for a workstream branch, with `ws-<workstream>/outbox` reserved; and
+`release-<version>` for a release branch, with its `v<version>` tags. Every
+other ref is the project's: do not create, rename, delete, rebase, or select
+one unless `WORKFLOW-LOCAL.md` or the user directs it. Release refs are not
 workstream branches. Never synchronize, rebase, or force-push one, and never
 cherry-pick between a release branch and a workstream branch. A registry row
 whose branch association names a release branch means that workstream is
