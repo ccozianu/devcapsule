@@ -30,9 +30,12 @@ Keep important requirements, decisions, evidence, open questions, current
 state, and next steps in repository files rather than only in chat. Update the
 selected status file at meaningful checkpoints and before pausing. In
 multiple-streams mode, follow `WORKFLOW.md` for branch routing, synchronization,
-intake decisions, outbox publication, and integration. Take your mail at
-session start with `devcapsule workflow mail take` and send items to other
-workstreams with `devcapsule workflow mail send`; mail never travels `main`. A workstream-list row whose
+intake decisions, publishing, and integration. At session start read the
+live workstream list with `devcapsule workflow list` and take your mail with
+`devcapsule workflow mail take`; send items with `devcapsule workflow mail
+send`; publish your status file with `devcapsule workflow publish` at each
+checkpoint and before pausing. Records reach `main` only inside your ordinary
+integration; nothing is merged for a record alone. A workstream-list row whose
 branch association names a `release-<version>` branch means that workstream is
 driving a release: follow *Releases* in `WORKFLOW.md`, and never rebase,
 force-push, or cherry-pick release refs. Workstream branches are

@@ -1,12 +1,20 @@
-"""Workstream mail on the coordination branch.
+"""The coordination branch: workstream mail and live workstream state.
 
-Intake items travel a single shared branch, ``coordination`` by default, that
-lives on the remote and is never merged into the integration branch. Its
-history is append-only: a sender adds one file under ``mail/<recipient>/``,
-a recipient deletes only its own files after copying them into its intake
-directory, and nobody ever resets or force-pushes the branch. A push that
-loses a race is retried from a fresh fetch; racing commits touch different
-files, so the retry never conflicts.
+One shared branch, ``coordination`` by default, lives on the remote and is
+never merged into the integration branch. It carries two things:
+
+- ``mail/<recipient>/<item>.md``: intake items in flight. A sender adds one
+  file; the recipient deletes only its own files after copying them into its
+  intake directory.
+- ``state/<name>/``: the live copy of each open workstream's status file and
+  decision log, pushed by the workstream itself from its working branch. The
+  copies on ``main`` are the record as of the last integration; these are
+  the truth while the workstream is open.
+
+The branch's history is append-only in the sense that matters: nobody resets
+or force-pushes it, and every change is an ordinary commit on top. A push
+that loses a race is retried from a fresh fetch; racing commits touch
+different files, so the retry never conflicts.
 
 Everything here works through git plumbing on the remote-tracking ref. The
 current branch and the working tree are never switched or dirtied, except
@@ -24,6 +32,8 @@ import subprocess
 
 COORDINATION_BRANCH = "coordination"
 MAIL_ROOT = "mail"
+STATE_ROOT = "state"
+STATE_FILES = ("CURRENT-STATUS.md", "intake-dispositions.md")
 DEFAULT_ATTEMPTS = 5
 WORKSTREAM_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 ITEM_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*\.md$")
@@ -32,16 +42,21 @@ TREE_MODE = "040000"
 README_PATH = "README.md"
 README_TEXT = """# Coordination Branch
 
-This branch carries workstream mail: intake items in flight between
-workstreams. It is never merged into the integration branch, and its history
-is append-only. A sender adds one file under `mail/<recipient>/`; the
-recipient deletes only its own files after copying them into its intake
-directory; nobody resets or force-pushes this branch.
+This branch carries the workflow's live coordination state and is never
+merged into the integration branch. Nobody resets or force-pushes it.
 
-Read and write it with `devcapsule workflow mail check|send|take`, or with
-plain git: `git fetch origin coordination` and
-`git show origin/coordination:mail/<name>/`. See *The Coordination Branch* in
-`WORKFLOW.md`.
+- `mail/<recipient>/`: intake items in flight. A sender adds one file; the
+  recipient deletes only its own files after copying them into its intake
+  directory.
+- `state/<name>/`: the live copy of each open workstream's status file and
+  decision log, pushed by that workstream from its working branch. While a
+  workstream is open this is the truth; the copies on the integration branch
+  are the record as of its last integration.
+
+Read and write it with `devcapsule workflow mail check|send|take`,
+`devcapsule workflow publish`, and `devcapsule workflow list`, or with plain
+git: `git fetch origin coordination` and `git show origin/coordination:<path>`.
+See *The Coordination Branch* in `WORKFLOW.md`.
 """
 
 
@@ -193,6 +208,130 @@ def take(
     )
 
 
+@dataclass(frozen=True)
+class WorkstreamState:
+    """One workstream's live row, read from its published status file."""
+
+    name: str
+    state: str
+    branch: str
+    next_step: str
+
+
+def publish(
+    root: Path,
+    name: str,
+    *,
+    remote: str = "origin",
+    branch: str = COORDINATION_BRANCH,
+    retire: bool = False,
+    attempts: int = DEFAULT_ATTEMPTS,
+) -> str | None:
+    """Push the working tree's copies of ``name``'s records to
+    ``state/<name>/``, or remove that directory when ``retire`` is set.
+
+    Returns the commit made, or ``None`` when the branch already held exactly
+    these contents. The copies are taken from the working tree, so what is
+    published is what the pair is looking at, committed or not.
+    """
+    _require_name(name, "workstream name")
+    git = _Git(root)
+    wanted: dict[str, str] = {}
+    if not retire:
+        directory = _workstream_directory(root, name)
+        for file_name in STATE_FILES:
+            source = directory / file_name
+            if file_name == STATE_FILES[0] and not source.is_file():
+                raise WorkflowMailError(f"{source} does not exist; nothing to publish")
+            if source.is_file():
+                wanted[f"{STATE_ROOT}/{name}/{file_name}"] = git.run(
+                    "hash-object", "-w", str(source)
+                ).strip()
+    prefix = f"{STATE_ROOT}/{name}/"
+    for _ in range(attempts):
+        tip = _fetch_tip(git, remote, branch)
+        entries = _tree_entries(git, tip) if tip else {README_PATH: _readme_blob(git)}
+        current = {path: blob for path, blob in entries.items() if path.startswith(prefix)}
+        if current == wanted:
+            return None
+        for path in current:
+            del entries[path]
+        entries.update(wanted)
+        verb = "retired" if retire else "published"
+        commit = _commit(git, entries, tip, f"state: {name} {verb}")
+        if _push(git, remote, branch, commit, tip):
+            return commit
+    raise WorkflowMailError(
+        f"could not push to {remote}/{branch} after {attempts} attempts; the branch keeps moving"
+    )
+
+
+def list_state(
+    root: Path, *, remote: str = "origin", branch: str = COORDINATION_BRANCH
+) -> list[WorkstreamState]:
+    """Every workstream with a published status file, read live from the
+    remote, in name order."""
+    git = _Git(root)
+    tip = _fetch_tip(git, remote, branch)
+    if tip is None:
+        return []
+    rows: list[WorkstreamState] = []
+    for path, blob in sorted(_tree_entries(git, tip).items()):
+        head, _, rest = path.partition("/")
+        if head != STATE_ROOT or not rest.endswith("/" + STATE_FILES[0]):
+            continue
+        name = rest[: -len("/" + STATE_FILES[0])]
+        if "/" in name:
+            continue
+        rows.append(_parse_status(name, git.run("cat-file", "-p", blob)))
+    return rows
+
+
+def _parse_status(name: str, text: str) -> WorkstreamState:
+    """What a status file says about itself: the ``State:`` line, the branch
+    association (a ``Branch association:`` line, or the first paragraph under
+    a *Branch Association* heading), and the first paragraph under *Planned
+    Next Step* or *Next Resumable Task*. Wrapped lines are joined."""
+    state = branch = next_step = ""
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        key, _, value = line.partition(":")
+        if key.strip() == "State" and not state:
+            state = value.strip()
+        elif key.strip() == "Branch association" and not branch:
+            branch = value.strip()
+        elif line.startswith("## "):
+            heading = line[3:].strip()
+            if heading == "Branch Association" and not branch:
+                branch = _first_paragraph(lines, index + 1)
+            elif heading in ("Planned Next Step", "Next Resumable Task") and not next_step:
+                next_step = _first_paragraph(lines, index + 1)
+    return WorkstreamState(name, state, branch, next_step)
+
+
+def _first_paragraph(lines: list[str], start: int) -> str:
+    collected: list[str] = []
+    for line in lines[start:]:
+        if line.strip():
+            collected.append(line.strip())
+        elif collected:
+            break
+    return " ".join(collected)
+
+
+def render_list(rows: list[WorkstreamState]) -> str:
+    if not rows:
+        return "no published workstream state\n"
+    width = max(len(row.name) for row in rows)
+    out = []
+    for row in rows:
+        out.append(f"{row.name:<{width}}  {row.state}")
+        out.append(f"{'':<{width}}  branch: {row.branch}")
+        if row.next_step:
+            out.append(f"{'':<{width}}  next: {row.next_step}")
+    return "\n".join(out) + "\n"
+
+
 def current_workstream_name(root: Path) -> str | None:
     """The workstream a checkout is on, read from a ``ws-<name>/...`` branch."""
     completed = _Git(root).attempt("symbolic-ref", "--short", "HEAD")
@@ -289,13 +428,17 @@ def _push(git: _Git, remote: str, branch: str, commit: str, expected: str | None
     raise WorkflowMailError(f"pushing to {remote}/{branch} failed: {stderr.strip()}")
 
 
-def _intake_directory(root: Path, name: str) -> Path:
+def _workstream_directory(root: Path, name: str) -> Path:
     candidates = sorted((root / "engineering-docs" / "wip").glob(f"????-??-??-{name}"))
     if len(candidates) != 1:
         raise WorkflowMailError(
             f"expected exactly one open-work directory for {name!r} under engineering-docs/wip, "
             f"found {len(candidates)}"
         )
-    intake = candidates[0] / "intake"
+    return candidates[0]
+
+
+def _intake_directory(root: Path, name: str) -> Path:
+    intake = _workstream_directory(root, name) / "intake"
     intake.mkdir(exist_ok=True)
     return intake
