@@ -4,8 +4,8 @@ Work other workstreams have delivered to `maintenance` and that `maintenance`
 has not yet dispositioned.
 
 Senders add one file per item, named `YYYY-MM-DD-<sender-mnemonic>-<slug>.md`,
-and deliver it through their own `<mnemonic>/outbox` branch rather than waiting
-for their own integration. Senders never remove or reclassify items, and never
+and deliver it by mail on the coordination branch, never through `main` or
+by editing this directory. Senders never remove or reclassify items, and never
 edit anything else in this workstream's directory.
 
 Bug records are not intake items. A bug is handed to this workstream by setting

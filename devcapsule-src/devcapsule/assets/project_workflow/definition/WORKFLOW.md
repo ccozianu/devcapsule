@@ -176,8 +176,15 @@ remain understood as synonyms for one release and are then retired.
 - **Workstream branch**: `ws-<name>/<sub>`, a branch belonging to one
   workstream. Not every branch: refs the workflow does not name are the
   project's.
-- **Outbox**: the reserved workstream branch `ws-<name>/outbox`, carrying
-  only what a workstream sends to `main` ahead of its own integration.
+- **Coordination branch**: `coordination`, the shared branch on the remote
+  that carries mail, never merged into `main`, append-only. Not a workstream
+  branch and not a place for work.
+- **Mail**: an intake item in flight, as a file under `mail/<recipient>/` on
+  the coordination branch. Not an intake item yet: it becomes one when the
+  recipient takes it.
+- **Outbox**: the reserved workstream branch `ws-<name>/outbox`, a mechanism
+  carrying only a workstream's records to `main` ahead of its own
+  integration. Not mail, which travels the coordination branch.
 - **Release branch**: `release-<version>`, with candidate tags
   `v<version>-rc<n>` and the final tag `v<version>`. Not a workstream branch,
   even while a workstream drives the release.
@@ -208,9 +215,9 @@ remain understood as synonyms for one release and are then retired.
   documents. The directory keeps its short name `wip`.
 - **Archive**: `engineering-docs/archive/<start-date>-<name>/`, where an ended
   workstream's directory moves unchanged.
-- **Intake**: a workstream's `intake/` directory on `main`, the queue of items
-  other workstreams have delivered to it. Not where bugs go: a bug is routed
-  by its record's `owner` field.
+- **Intake**: a workstream's `intake/` directory on its working branch, the
+  queue of items it has taken from its mailbox and not yet decided. Not where
+  bugs go: a bug is routed by its record's `owner` field.
 - **Item**: one file in an intake, one delivered piece of work or one
   question. Not a bug record, and not a task until the recipient decides it.
 - **Decision**: what a recipient does with an item, one of exactly two:
@@ -302,6 +309,15 @@ There is no 0.2.13. Rules changed since 0.2.12:
   table names the definition, its version, and the mode; the frontmatter of
   this file carries the same version. Migration: add the table; a definition
   refresh writes it.
+- **Mail moves off `main`.** *The Coordination Branch*: intake items travel
+  one shared, append-only `coordination` branch on the remote, sent and
+  taken with `devcapsule workflow mail`, and are decided on the recipient's
+  working branch. The outbox carries records only and is stated to be a
+  mechanism rather than a part of the model; its reset step is guarded.
+  Migration: an outbox send already in flight completes as it is; an item
+  still sitting on an outbox afterwards is sent again by mail; items already
+  in an intake on `main` are decided on the working branch and disappear
+  from `main` when that branch integrates.
 - **The information model.** *Glossary*: every term with a fixed meaning is
   defined once, in plain words, with what it must not be confused with. Six
   terms are renamed in prose and the old names remain understood as synonyms
@@ -889,10 +905,9 @@ release target; those are the receiving workstream's judgment.
 
 **Delivery must reach `main` promptly.** An intake file that waits for the
 sender's own integration is invisible for as long as that takes, which
-reproduces the failure this mechanism exists to fix. Deliver it through the
-sender's outbox branch, separately from the sender's ordinary work. Intake
-delivery is deliberately decoupled from the sender's delivery schedule. See
-*The Outbox Branch*.
+reproduces the failure this mechanism exists to fix. Deliver it by mail, on
+the coordination branch, separately from the sender's ordinary work and
+without waiting for anyone's integration. See *The Coordination Branch*.
 
 **Ownership is asymmetric.** A sender may add files and amend files it wrote. It
 may not edit another sender's file, remove any file, or touch anything else in
@@ -915,8 +930,8 @@ or next step is.
 1. On the working branch, record it in the status file as a requirement or task,
    with the reasoning that led to accepting it, and place it in the
    workstream's order of work.
-2. Through the outbox, in one commit, add an entry to the decision log and
-   delete the intake file from `main`.
+2. In one commit on the working branch, add an entry to the decision log and
+   delete the intake file.
 
 **Forward** means the workstream is not the right owner. Legitimate reasons
 include: the item is not a well-formed requirement; it will not be fixed; it
@@ -924,22 +939,20 @@ belongs to a different workstream; it belongs to a later release; or it is out
 of this workstream's registered scope. The workstream states the reason but
 does not choose a new owner — routing is `project-management`'s decision.
 
-1. Through the outbox, write a new item into
-   `engineering-docs/wip/<start-date>-project-management/intake/`, following
-   *Writing an item*. Include the original item's full text, or its path and
-   the revision it can be recovered from, together with the reason for
-   refusing it.
-2. In the same outbox commit, add an entry to the decision log naming where
-   the item went, and delete the original item from `main`.
+1. Send a new item to `project-management` by mail, following *Writing an
+   item*. Include the original item's full text, or its path and the revision
+   it can be recovered from, together with the reason for refusing it.
+2. In one commit on the working branch, add an entry to the decision log
+   naming where the item went, and delete the original item.
 3. Record in the status file what was forwarded and why, so the decision is not
    silently reopened later.
 
-**Deleting from `main` is the recipient's job, and it is prompt.** The queue is
-read from `main`, so an item still present there has not been decided.
-Deleting through the outbox keeps that true; deleting only on a working branch
-leaves `main` advertising work that is already handled for as long as that
-branch takes to merge. The working branch picks the deletion up at its next
-synchronization, so do not also delete it there.
+**Taking is prompt, deciding is a working-branch commit.** The mailbox is read
+from the remote at every session start, so an item still there has not been
+taken. Once taken, the item lives in the recipient's `intake/` on its working
+branch until the commit that decides it, and reaches `main`, decided, with
+that branch's integration. Nobody but the recipient ever writes in its
+`intake/`, so that commit never conflicts.
 
 Intake is a queue, not an archive. Git retains every item and every reason.
 
@@ -951,11 +964,13 @@ what became of every item it received. It is written by the receiving
 workstream only, and it is pushed to `main` through the outbox in the same
 commit that removes the item from the queue.
 
-**The invariant that makes it useful.** On `main`, every item ever delivered to
-a workstream is in exactly one of two places: still in its `intake/`, meaning
-undispositioned, or in that workstream's decision log, meaning resolved.
-Never both, never neither. Writing the entry and deleting the item in one
-commit is what keeps that true, which is why they are one step and not two.
+**The invariant that makes it useful.** Across the coordination branch and
+the recipient's branch, every item ever sent to a workstream is in exactly
+one of three places: its mailbox, meaning in flight; its `intake/`, meaning
+taken and not yet decided; or its decision log, meaning decided. Never two,
+never none. Taking moves an item from the first place to the second in one
+operation, and deciding moves it from the second to the third in one commit,
+which is why each is one step and not two.
 
 This is the acknowledgement path. A sender does not need to be told what
 happened to what it delivered; it looks, in one of two predictable places, and
@@ -1016,20 +1031,80 @@ short-lived. The decision log is the opposite case: it is durable, so it
 belongs in the workstream's own document index, though not in `index.md`, which
 lists workstream status files rather than their internal documents.
 
+### The Coordination Branch
+
+Intake defines where an item lands. The coordination branch is how it
+travels. It exists so that a message between workstreams never needs `main`:
+no agent commits to `main` for mail, no human opens a pull request whose only
+content is somebody's outbox, and nothing waits for `main` to move.
+
+**One branch, `coordination`, on the remote, never merged into `main`.** It
+carries only `mail/<recipient>/<item>.md` files and a README. Its history is
+append-only:
+
+- **Senders add.** To deliver an item, add one file under
+  `mail/<recipient>/` and push. A sender never edits, renames, or removes a
+  file, its own included; an item that needs correcting is sent again under
+  a new name.
+- **Only the recipient removes, and only after taking.** At session start the
+  recipient copies every file addressed to it into its `intake/` on its
+  working branch, stages them, and only then removes them from the branch in
+  one commit. The party that empties the mailbox is the party that has
+  provably received its contents, which is what the outbox never had.
+- **Nobody resets or force-pushes.** A push that loses a race is retried from
+  a fresh fetch. Racing commits touch different files, so the retry never
+  conflicts. The host should forbid force-pushes to this one branch; the
+  workflow forbids them regardless.
+
+**The tool, and the plain-git equivalent.** `devcapsule workflow mail send
+<recipient> <file>`, `check`, and `take` do all of the above through git
+plumbing, without switching branches or touching the working tree beyond
+writing taken items into `intake/`. `check` and `take` infer the workstream
+from a `ws-<name>/...` branch. Without the tool: `git fetch origin
+coordination`, `git show origin/coordination:mail/<name>/` to see, and a
+commit on that branch adding or removing files to send or take; the rules
+above are the same.
+
+**Session start includes the mailbox.** Before selecting work, and again
+before pausing, take your mail. A taken item is committed on the working
+branch promptly, so that the item is either in the mailbox or in the intake,
+never in a checkout alone. Mail is read from the remote, so a checkout that
+cannot reach it reads what it last fetched, the same as it does toward
+`main`.
+
+**Where an item is, at every moment.** Across the coordination branch and the
+recipient's working branch, every item ever sent is in exactly one of three
+places: the mailbox, meaning in flight; the recipient's `intake/`, meaning
+taken and not yet decided; or its decision log, meaning decided. Never two,
+never none. `main` sees an item only when the recipient's working branch
+integrates, at which point the item is already in the log or, rarely, still
+in the intake; either way nobody else touches that directory, so it merges
+without conflict.
+
+**What still travels the outbox.** Registrations, changes to the sender's own
+row in the workstream list, and the sender's records, until the second step
+of the coordination-off-`main` decision moves those as well. See *The Outbox
+Branch*.
+
 ### The Outbox Branch
 
-Intake defines where a message lands. The outbox defines how it travels.
+The outbox is a mechanism, not a part of the model. What the model requires
+is that a workstream's records reach `main` ahead of its integration without
+its unfinished work riding along. The standing branch below is the convention
+that provides it; any branch carrying the same guarantee, cut clean from
+`main` and holding only what is being sent, satisfies the rule. The reserved
+name exists so that an agent can find a workstream's outbox without asking,
+and for no other reason. Mail no longer travels it; see *The Coordination
+Branch*.
 
-Every workstream has one standing branch named `ws-<name>/outbox`. It carries
-what the workstream needs to publish to `main` ahead of, and independently of,
-its own integration. A workstream's working branch may run for weeks; anything
-riding along with it is invisible until it merges, which is the failure intake
-was built to fix, one step further along.
+Every workstream may have one standing branch named `ws-<name>/outbox`. It
+carries what the workstream needs to publish to `main` ahead of, and
+independently of, its own integration. A workstream's working branch may run
+for weeks; anything riding along with it is invisible until it merges.
 
-**What the outbox carries.** Anything the project needs to know now that is not
-part of the sender's own deliverable:
+**What the outbox carries.** The sender's records, and nothing that is anyone
+else's:
 
-- intake items delivered to other workstreams;
 - registrations of new workstreams the sender is opening;
 - changes to the sender's own row in root `CURRENT-STATUS.md` — state, branch
   association, or anything else other agents route by; and
@@ -1056,9 +1131,12 @@ one.
 
 **Sending.** From a clean checkout, and never from the working branch:
 
-1. Fetch, and create or hard-reset `ws-<name>/outbox` to current `main`. The
-   outbox holds no history of its own worth preserving; every send starts from
-   `main`.
+1. Fetch. If the previous send has landed, create or hard-reset
+   `ws-<name>/outbox` to current `main`; if it has not, append to it instead,
+   since it is still based on `main` and still carries only records. Never
+   reset a branch holding an unlanded send: that is how mail was lost before
+   mail left the outbox, and records are only safe to lose because their
+   source stays on the working branch.
 2. Add only the files being sent. One commit per coherent delivery.
 3. Push the branch and deliver it to `main` by the repository's default method.
 4. Leave the branch in place until the next send, then reset it again from
@@ -1304,7 +1382,8 @@ construction.
 
 #### Resuming
 
-1. Read the workstream list from the mainline ref, then the status file, then intake.
+1. Take your mail from the coordination branch, then read the workstream
+   list from the mainline ref, the status file, and intake.
 2. Synchronize the branch with `main` before planning. Intake and coordination
    arrive there while a workstream sleeps, and the longer the pause the more
    arrived.

@@ -156,11 +156,16 @@ In `multiple-streams` mode, synchronize the selected workstream's branch with
 `main` before planning the session's work, normally by rebasing. `main` is how
 intake, registrations, and repository-wide coordination facts reach a
 workstream, and a stale branch cannot act on items it can nonetheless see. To
-send work the other way — an intake item for another workstream, or a new
-workstream's registration — use the sender's standing `ws-<name>/outbox`
-branch, reset from current `main` and carrying only what is being sent, never
-working changes. See *The Outbox Branch* and *Staying Current With `main`* in
-`WORKFLOW.md`.
+send an intake item to another workstream, deliver it by mail on the
+coordination branch, `devcapsule workflow mail send <recipient> <file>`,
+never through `main` and never by editing the recipient's directory. Take
+your own mail at session start and before pausing, `devcapsule workflow mail
+take`, then commit the taken items on the working branch; decide each with a
+decision-log entry and the file's deletion in one commit. Registrations, your
+own row in the workstream list, and your records still travel your
+`ws-<name>/outbox`, reset from `main` only when its previous send has landed.
+See *The Coordination Branch*, *The Outbox Branch*, and *Staying Current With
+`main`* in `WORKFLOW.md`.
 
 The workflow claims only the refs it names: `main`, or the integration branch
 `WORKFLOW-LOCAL.md` names instead; `ws-<name>/<sub>`
