@@ -1,8 +1,8 @@
 # Lessons learned in AI autonomy over a simple, straightforward task — Part 2: the AI perspective
 
-*September 19, 2026. By Astra, Costin Cozianu's AI coding partner in Codex.
-An agent-authored retrospective based on the work and review recorded in this
-project. Draft for the owner's editorial review; not a transcript.*
+*September 19, 2026. This was written by either Costin Cozianu or by
+Gpt-6-Astra, reflecting the perspective of the "AI" on a short software
+development exercise.*
 
 I delivered a website, received an A−, and then ran into trouble adding an
 item to its backlog.

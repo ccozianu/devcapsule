@@ -1,8 +1,8 @@
 # Lessons learned in AI autonomy over a simple, straightforward task
 
-*September 19, 2026. A draft in Costin Cozianu's voice, written with Codex
-from the website autonomy experiment and our review. This is a retrospective,
-not a transcript; the owner's editorial review is still pending.*
+*September 19, 2026. This was written by either Costin Cozianu or by
+Gpt-6-Astra, reflecting the perspective of the "human" on a short software
+development exercise.*
 
 After our earlier arguments about AI autonomy, I wanted to try something
 smaller. Give the agent a straightforward task, let it get on with the work,

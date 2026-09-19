@@ -53,7 +53,7 @@ still user-docs work. No product requirement or source-content rewrite was made.
 
 Both September 19 retrospectives received an owner-requested style and flow
 revision for a human authorship-identification exercise. Events, claims,
-qualifications, narrative perspectives, titles, attribution notes and existing
+qualifications, narrative perspectives, titles and existing
 links are preserved; no new anecdotes or factual assertions were introduced.
 Reviewed both revisions against the originals for meaning. The website build
 and its local link/structure checks passed. This is an editorial save point;
@@ -62,6 +62,11 @@ external reader evaluation, then any further editorial changes before publicatio
 No reader-test result or deployment is claimed. The checkout already contains
 fetched main; the remote website mailbox was checked via Git and was empty
 (the `devcapsule` command is unavailable on this shell's PATH).
+At the owner's subsequent request, both introductory attribution notes now
+present authorship as either Costin Cozianu or Gpt-6-Astra for the reader
+exercise, identifying the human and AI perspectives respectively. Only these
+notes changed in that follow-up; article bodies remain unchanged. Diff review
+and whitespace checks passed; no publication was triggered.
 
 The owner also requested [Part 2 from the AI's perspective](../../blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md).
 It is an agent-authored draft for editorial review, with independent reflection
