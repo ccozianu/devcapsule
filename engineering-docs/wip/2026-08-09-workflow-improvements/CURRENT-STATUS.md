@@ -1142,6 +1142,16 @@ row edit is on this branch, the user-docs item was re-sent by mail, and the
 outbox branch is deleted. This workstream published itself, the first
 `state/` entry on the coordination branch.
 
+**First mail received.** Two items arrived on the coordination branch from
+the other checkout before this round was even merged, both sent with the
+plain-git equivalent: `website` reporting five passages still contradicting
+the mail protocol, all reconciled here (the outbox section, the decision log,
+senders append-only, judgment gaps by mail, and `main` no longer "the
+medium"), and `project-management` asking for a review of its local blog
+instructions, answered by mail the same day: sound, one broken link, and the
+migration of its pending outbox send. Both decided on this branch under the
+new rule; the mailbox is empty.
+
 **Left to their owners.** The other open workstreams publish once at their
 next session and delete their outbox branches; the two stranded pause records
 on `sample-projects` and `component-catalog` become moot the moment those
