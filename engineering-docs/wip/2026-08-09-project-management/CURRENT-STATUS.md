@@ -12,6 +12,26 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## Blog Instructions Settled (2026-09-19)
+
+The owner settled the blog item: the human asks for an entry on a topic and
+the agent writes it using the simple file conventions in root WORKFLOW-LOCAL.md.
+The website already supplies publication; no separate editorial procedure or
+generic workflow feature is wanted. The blog README now points to the local
+instructions and retains its entry index. The old structure/hosting questions
+are resolved. This supersedes the older six-item lists below: five of those
+items remain, alongside newer intake and bug triage.
+
+Documentation is delivered on `project-management/coordination`; its intake
+acknowledgement and removal are prepared on `ws-project-management/outbox` for
+delivery after the documentation. Next step: choose the next outstanding
+decision. No blog entry or website deployment was requested in this task.
+
+Validation: checked the website's existing Markdown discovery/date handling,
+the documentation links and whitespace. Required `nox -s build` passed,
+including nine packaging integration checks; the local PEX passed and the
+dirty-tree policy skipped the public revision-bearing PEX.
+
 ## Configuration Upgrade Bug Filed (2026-09-19)
 
 The owner supplied the v0.2.11-to-v0.2.12 host-checkout recovery transcript.
