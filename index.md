@@ -177,6 +177,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Website test publication accepts inconsistent settings](engineering-docs/bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
 - [Upgrade Configuration Recovery Rejects Its Own Remedy](engineering-docs/bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)
 - [The Resolution Refusal Names Only The Last Base Tried And Offers No Remedy](engineering-docs/bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
 - [The Formation Identity Claims An Entrypoint The Recipe Never Sets](engineering-docs/bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
