@@ -51,6 +51,16 @@ still user-docs work. No product requirement or source-content rewrite was made.
 
 ## Review And Continuation
 
+Owner-requested retrospective drafted on 2026-09-19:
+[Lessons learned in AI autonomy over a simple, straightforward task](../../blog/2026-09-19-lessons-learned-in-ai-autonomy.md).
+Written in the owner's voice and explicitly awaiting his editorial review;
+no invented dialogue or claim of reviewed publication. The article preserves
+the accepted A− verdict and treats analytics as second-stage scope. Blog and
+root documentation indexes are updated. Relevant validation: website build
+and local link/structure checks pass with the new article. No website deployment
+was triggered. Next editorial step is owner review before publication; the
+remaining website backlog and ownership migration are unchanged.
+
 Preview: **http://127.0.0.1:8080/**, running on loopback in this host-networked
 capsule. The owner confirmed localhost access and authorized trying subsequent
 ports if occupied. The development server watches content and presentation;
