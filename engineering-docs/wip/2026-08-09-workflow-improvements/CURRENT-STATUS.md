@@ -1284,6 +1284,36 @@ Documentation Protocol* and *Draft User Documentation* in `WORKFLOW.md`.
 This is actionable now and depends on nothing external, which is why this
 workstream is paused rather than blocked.
 
+**2. Soft claims on workstreams, so pairs stop colliding without locks.**
+Priority: `wanted`. Added 2026-09-19 by the product owner, from a collision
+that day: the owner sent one agent in one checkout to work on
+`project-management` and realized that nothing told another agent in another
+checkout, or another human in a multi-human project, that the workstream was
+taken. The definition says two pairs may select the same workstream, no lock
+exists, and they should coordinate outside the protocol; this item asks for
+the protocol to do the coordinating, automatically and between agents, so
+humans are not bothered.
+
+Done means: a pair starting on a workstream or a branch leaves a small,
+advisory claim where other checkouts can see it, with who, when, and what;
+a pair about to start sees any live claim and tells its human before editing,
+with the options (wait, take another slice, take another workstream, or
+proceed knowingly); claims expire on their own and are cleared at pause and
+finish, so a crashed session never blocks anyone; and the mechanical
+conflicts that still happen are resolved by the agents, semantic ones
+reported to the humans, which the synchronization rules already say. Soft
+throughout: a claim informs, it never refuses, because locking source
+control was the failure git exists to end. The owner named that history
+explicitly and wants no part of it.
+
+Constraints and inputs: a claim is coordination state and belongs off
+`main` under the ratified boundary, so its home is whatever the off-`main`
+transport decides, a mailbox branch or a state ref, not a status-file commit
+that would cost a pull request per claim. It should fit the verifier and
+session-start tooling on `project-management`'s backlog, since the check is
+one fetch and one comparison. Design after the transport decision; it is the
+first consumer that needs a write from an agent without a human in the loop.
+
 The earlier item — making `project-management` a mandatory permanent workstream
 — was completed on 2026-08-16. Its done-criteria were met as follows:
 
