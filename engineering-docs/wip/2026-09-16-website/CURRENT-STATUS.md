@@ -51,6 +51,16 @@ still user-docs work. No product requirement or source-content rewrite was made.
 
 ## Review And Continuation
 
+Owner-requested retrospective drafted on 2026-09-19:
+[Lessons learned in AI autonomy over a simple, straightforward task](../../blog/2026-09-19-lessons-learned-in-ai-autonomy.md).
+Written in the owner's voice and explicitly awaiting his editorial review;
+no invented dialogue or claim of reviewed publication. The article preserves
+the accepted A− verdict and treats analytics as second-stage scope. Blog and
+root documentation indexes are updated. Relevant validation: website build
+and local link/structure checks pass with the new article. No website deployment
+was triggered. Next editorial step is owner review before publication; the
+remaining website backlog and ownership migration are unchanged.
+
 Preview: **http://127.0.0.1:8080/**, running on loopback in this host-networked
 capsule. The owner confirmed localhost access and authorized trying subsequent
 ports if occupied. The development server watches content and presentation;
@@ -488,12 +498,40 @@ migration. W00 belongs to devcapsule-website. W09 remains unchanged and separate
   thresholds and stop conditions agreed before expanding the test matrix.
 - Reopen if new layouts/platform promises invalidate the tested user journey.
 
+### W13 — Wanted: Audience analytics and visitor experience measurement
+
+- [ ] Add website-owned audience and experience measurement as second-stage
+  functionality. The owner explicitly accepts its absence from the initial cut;
+  this is an enhancement, not a defect counted against the experiment's quality.
+- Evidence: the delivered website has no analytics or usage-event collection.
+  Search Console's search reporting does not measure journeys within the site.
+- Scope: visitor/page-view trends, acquisition sources, popular content and
+  journeys to key actions such as starting instructions and GitHub; relevant
+  real-visitor performance and browser-error evidence. Distinguish observed
+  events from inferred engagement or completion of off-site actions.
+- Before implementation: agree the owner's questions and useful reports, define
+  metrics and unique/returning-visitor estimation, and select a proportionate
+  collection approach with explicit cost, retention, privacy and consent
+  behavior. Named-person identification, accounts, session replay and invasive
+  tracking are not implied by this request. No provider is selected yet.
+- Done means: the owner can access documented reports answering the agreed
+  questions; instrumentation survives the build/promotion process, excludes
+  staging from production reporting, and does not impair ordinary reading.
+  Document measurement limitations, including blocked scripts and any consent
+  effects, so estimates are not presented as exact counts of people.
+- Verify: controlled visits and key actions appear correctly without duplicate
+  events; staging is excluded; collection respects the chosen settings; the
+  site still works when measurement is unavailable. Owner reviews report utility.
+- Reopen if publication changes break collection or reports stop answering the
+  agreed questions. Migrate this item to devcapsule-website with its backlog.
+
 ## Open Threads
 
 - Owner has accepted the autonomy experiment: successful, A−. No further verdict
   request is pending. Workstream closure is deferred at his request for this task
   inventory; his additional shortcomings and priority corrections remain welcome.
-- W00–W11 are inventoried here per explicit owner instruction; W00 is first.
+- W00–W11 and W13 are inventoried here per explicit owner instruction; W00 is first.
+  W12 is the separately proposed content–website contract item from owner review.
   Website-owned tasks await migration to devcapsule-website under the agreed
   content/implementation split. No fix, feature,
   deployment, new service, live rollback or expanded test campaign was authorized
