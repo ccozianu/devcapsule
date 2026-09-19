@@ -73,6 +73,25 @@ his additional findings, then select one implementation slice. The current reque
 is to enumerate and preserve shortcomings, not to implement all of them or close
 the workstream. Future website development remains expected.
 
+Urgent exception authorized 2026-09-19: implement the W00 prerequisite to serve
+Google's ownership verification file. Website branch `google-site-verification`
+at `4a9ba02` adds the exact response at `/googledda808d7513923e5.html`, copies it
+unchanged at build time, and lets validated verification files pass page checks
+and promotion without canonical rewriting. The parent pins that implementation.
+All 12 website tests, production-mode build, 582 link/asset checks and an exact
+source/output comparison pass. The candidate round-trip test preserves the file.
+No visual checks or container builds were needed. Public deployment and Search
+Console verification are still pending; this does not close W00.
+The existing required parent `nox -s build` integration gate also passed;
+the dirty-tree policy skipped the revision-bearing PEX.
+
+Immediate next step: owner merges the website fix, then this parent submodule
+update. Run the parent Website workflow on main with mode `production`, origin
+`https://test-devcapsule.mycodespace.ai`, base `/`; promote the new candidate
+using the website's production workflow on main. Check the production root
+verification URL before clicking Verify in Search Console. Retain the file in
+future deployments; older candidates lack it. SSH-only delivery still applies.
+
 The owner accepted the experiment as successful with an A−, explicitly valuing
 the agent's recognition of shortcomings. That verdict is now recorded; do not
 ask for it again. On 2026-09-19 the owner specifically requested task items in
