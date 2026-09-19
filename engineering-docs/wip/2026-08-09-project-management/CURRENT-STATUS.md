@@ -12,6 +12,29 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## Configuration Upgrade Bug Filed (2026-09-19)
+
+The owner supplied the v0.2.11-to-v0.2.12 host-checkout recovery transcript.
+Recorded it in the [confirmed upgrade configuration bug](../../bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md): serial stale-authorization
+refusals, a prescribed base-image command rejected by the same executable,
+recovery using `default`, and the reported loss of the previous host-X11
+experience with an unexpected build. Logs and causal uncertainties live there.
+The owner renewed the Hoare-standard critique of configuration; this filing
+does not claim that isolated message fixes satisfy the whole upgrade journey.
+
+Routing: `maintenance` owns the fix; severity is `untriaged`, target `none`.
+Project-management retains the existing upgrade/configuration design items.
+Next step: owner triage and sequencing with that design work. No implementation,
+new product decision, intake disposition, or separate session record was added.
+The bug, index entry and handoff travel through `ws-project-management/outbox`.
+Mainline was refreshed to `0aa5276`, which includes the preceding synchronization
+and website pause deliveries; their earlier pending-delivery notes are historical.
+
+Validation: new record links and whitespace checked; required `nox -s build`
+passed, including nine packaging integration checks. The dirty-tree gate built
+and checked the local PEX and skipped the public revision-bearing artifact.
+These checks validate repository health, not a fix for the recorded bug.
+
 ## Resumed And Synchronized (2026-09-18)
 
 The owner selected project-management and authorized updating from origin.
