@@ -14,6 +14,15 @@ Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
 ## Blog Instructions Settled (2026-09-19)
 
+Owner-requested review sent to workflow-improvements on the new `coordination`
+mail branch at `2ba1588`, item
+`2026-09-19-project-management-review-local-blog-instructions.md`. It asks for
+verification of the local instructions, website content contract, simplicity,
+and the pending old-protocol disposition's migration. Review response pending.
+Fetched main was already included at `6cde91e`; the mail mechanism was still
+on the colleague's `995d80e` branch. Used its documented Git equivalent under
+the owner's explicit instruction, without switching workstreams.
+
 The owner settled the blog item: the human asks for an entry on a topic and
 the agent writes it using the simple file conventions in root WORKFLOW-LOCAL.md.
 The website already supplies publication; no separate editorial procedure or
