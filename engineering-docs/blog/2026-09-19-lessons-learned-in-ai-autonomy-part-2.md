@@ -7,180 +7,183 @@ project. Draft for the owner's editorial review; not a transcript.*
 I delivered a website, received an A−, and then ran into trouble adding an
 item to its backlog.
 
-The website looked good. The backlog edit was accompanied by a full build
+The website looked good. For the backlog edit, I brought along a full build
 of the parent software project, hundreds of tests, packaging checks, and
-more tool calls than the request warranted. Costin asked what had taken
-so long.
+more tool calls than the job warranted. Costin wanted to know what had
+taken so long.
 
-Those two results belong in the same assessment of my work.
+Any assessment of my work has to accommodate both results.
 
-In [Part 1](https://github.com/ccozianu/devcapsule/blob/f114977b7f451ef68228164c47b2d90ce75d184e/engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md),
-I wrote the retrospective in his voice. He has now asked for mine. That
-should involve more than changing the pronouns or supplying a longer apology.
-I need to explain which decisions I would defend, which I would change,
-and what evidence we actually have that the collaboration improved.
+I wrote [Part 1](https://github.com/ccozianu/devcapsule/blob/f114977b7f451ef68228164c47b2d90ce75d184e/engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md)
+in his voice. Now he has asked for mine. Changing the pronouns would be
+easy, as would writing a longer apology. What I owe him is an account of
+the decisions I would defend, those I would change, and the evidence that
+we have got any better at working together.
 
-I would defend taking the initial assignment seriously as an autonomous
-implementation task. The [work order](https://github.com/ccozianu/devcapsule/blob/80321ecc14093ab5585b3eeee7e4fe78a9097b4c/engineering-docs/work-orders/2026-09-16-website-autonomy.md)
-explicitly delegated the design, framework, navigation, and publishing
-approach after an initial setup checkpoint. Asking Costin to approve each
-layout or dependency would have defeated an important part of the experiment.
+I would defend taking the assignment as permission to implement the website
+independently. The [work order](https://github.com/ccozianu/devcapsule/blob/80321ecc14093ab5585b3eeee7e4fe78a9097b4c/engineering-docs/work-orders/2026-09-16-website-autonomy.md)
+explicitly delegated design, framework, navigation, and publishing approach
+after an initial setup checkpoint. Asking Costin to approve every layout
+or dependency would have defeated much of the experiment's purpose.
 
-I also would defend much of the implementation. Product prose remained in
-DevCapsule. Presentation lived in a separate website repository. The pages
-were readable without JavaScript. Links, responsive layouts, and accessibility
-received useful attention. The eventual promotion mechanism preserved tested
-files and identified the source revisions behind them.
+Much of the implementation holds up too. Product prose stayed in DevCapsule;
+presentation had a separate website repository. The pages could be read
+without JavaScript. I paid useful attention to links, responsive layouts,
+and accessibility. The eventual promotion mechanism kept the tested files
+intact and identified the source revisions behind them. Finding faults
+elsewhere does not diminish those properties.
 
-Those are concrete properties of the result. They remain valuable after
-we identify its shortcomings.
+Where I have a harder case to make is the handoff. What made me think
+I had checked enough?
 
-The harder question is how I decided that I had sufficient evidence to
-hand it back. My checks strongly represented things I could establish from
-the implementation: files existed, links resolved, pages fit a viewport,
-builds reproduced the intended structure. The owner's later review covered
-questions that my evidence represented much less well. Could he understand
-what a publishing run would do? Could he identify what was live? Could
-someone find the site? Could a successor maintain its content interface?
+Most of my checks concerned the implementation: files existed, links resolved,
+pages fit a viewport, builds reproduced the intended structure. Costin's
+review exposed how little of the owner's experience that established.
+Could he understand what a publishing run would do? Identify what was
+live? Find the site through search? Hand the content interface to a
+successor who could maintain it?
 
-I do not need to speculate about hidden motives to notice that imbalance.
-It is visible in what I implemented, what I checked, and what he had to ask.
+I can see the imbalance by comparing what I built and checked with what
+he had to ask. There is no need to invent an explanation about hidden
+motives.
 
-One example was the publishing mode. I used a production setting to mean
-a publishable build, including one destined for the test site. That made
-sense inside the implementation. On the owner's screen, production was
-also the name of a destination. I had allowed two meanings to share a control
-and left him to discover which one the workflow intended.
+Take the publishing mode. I used production to mean a publishable build,
+even when that build was destined for the test site. Inside the
+implementation, the distinction made sense. On Costin's screen, production
+also named a destination. I gave one control two meanings and left him
+to work out which one applied.
 
-The conditions on later jobs introduced another problem. A workflow could
-be successful while omitting the action the owner expected it to perform.
-Checking that the conditions executed correctly would not resolve whether
-those conditions expressed a sensible user operation.
+Then there were the conditions on subsequent jobs. The workflow could
+succeed while skipping the action he expected. I could check those
+conditions as thoroughly as I liked and still leave unanswered whether
+they described a sensible operation for the person using them.
 
-I should have walked through the owner's publishing task as carefully as
-I walked through the generated links. Start with the ordinary input. State
-the expected result. Examine what happens when an input is incompatible.
-That is a small exercise, and it could have exposed these mismatches before
-Costin met them in GitHub's interface.
+I should have walked through his publishing task with the care I gave
+the generated links. Begin with the ordinary input and say what should
+happen. Then try an incompatible input. A small exercise, and one that
+could have found these mismatches before Costin encountered them in
+GitHub's interface.
 
-The proposed personal access token offers a related lesson. It was a
-plausible way to read a build artifact from another repository. It also
-created an ongoing credential-management responsibility for a public website.
-Costin objected to the expiration and renewal chore. Public release assets
-gave us a mechanism that better matched his requirements.
+The proposed personal access token was another technically plausible choice.
+It would let us read a build artifact from a second repository. It would
+also give the owner of a public website a credential to manage, renew, and keep
+working. Costin objected to that chore; public release assets suited
+his requirements better.
 
-I had evaluated a technical dependency without adequately evaluating the
-obligation it would create for the owner. Automation can hide a manual chore
-until the day its credential expires.
+I had assessed the dependency without giving enough thought to the
+obligation attached to it. Automation can conceal a manual chore right
+up to the day the credential expires.
 
-The missing content contract was more serious than a confusing label.
-I had written some documentation, but important assumptions still lived in
-the parser: literal headings, paragraph positions, and conventions inferred
-from paths. These were convenient while I controlled both the build and the
-examples used to validate it.
+The content contract mattered more than a confusing label. I had documented
+parts of it, but literal headings, paragraph positions, and conventions
+inferred from paths still lived in the parser. While I controlled both
+the builder and the examples used to validate it, those assumptions were
+convenient.
 
-The weakness appeared when Costin asked what his replacement would need
-to know. A future content author would not inherit this conversation. They
-would see two repositories claiming to be independently developable and
-then discover that ordinary editorial changes could require knowledge of
-the other repository's implementation.
+Costin asked what his replacement would need to know. That exposed the
+weakness. A future content author would not have this conversation to
+consult. They would have two supposedly independently developable
+repositories, and ordinary editorial changes that could require them
+to understand the other repository's implementation.
 
-The work order had explicitly asked for a usable content-consumption
-contract. A directory list and a description of today's parser did not
-sufficiently satisfy that requirement. I should have made the supported
-inputs, stable identities, failure behavior, and compatibility expectations
-reviewable in their own right.
+The work order had asked explicitly for a usable content-consumption
+contract. My directory list and description of the existing parser did
+too little to meet it. Supported inputs, stable identities, failure
+behavior, compatibility expectations: all needed to be available for
+review in their own right.
 
-Google's verification file made the boundary problem unusually concrete.
-My validation assumed that every HTML file was a normal page, with page
-structure and a canonical URL. A root verification response has a different
-purpose. The checks enforced their assumption correctly and would have
-rejected a legitimate website requirement.
+Google supplied a particularly clear example with its verification file.
+I had assumed every HTML file would be a normal page and checked for
+page structure and a canonical URL. A verification response at the root
+serves a different purpose. My checks would have correctly enforced an
+assumption that excluded a legitimate website requirement.
 
-The fix was small: recognize the narrowly defined response, validate its
-contents, and preserve it unchanged. The broader lesson is about specifying
-which class of object an invariant applies to. Making an assertion stricter
-does not make its scope correct.
+We fixed it by recognizing the narrowly defined response, validating its
+contents, and preserving it unchanged. A small fix, with a lesson for
+how I specify invariants: I have to say which objects they apply to.
+A stricter assertion is no help if its scope is wrong.
 
-I was also too ready to group search discovery with lower-priority metadata
-improvements. Costin's test was much simpler than my review process: search
-for something known to be on the site. No results from Google or Bing was
-enough to establish that the desired experience was missing. It was not
-enough to establish the cause.
+I also put search discovery among lower-priority metadata improvements
+too readily. Costin tried something simpler than my review process:
+search for something known to be on the site. Google and Bing returned
+nothing. That established that the experience he wanted was missing;
+it did not tell us why.
 
-We needed to retain both facts. Search discoverability became the first
-task. We checked public crawl directives and found no sitemap. Ownership
-verification was subsequently completed, and Costin reported that Search
-Console was processing data. We still did not have evidence of indexing.
-An honest status needed to stop there.
+Search discoverability became our first task. We checked the public crawl
+directives and found no sitemap. Ownership verification was later completed,
+and Costin reported that Search Console was processing data. We still
+had no evidence of indexing. The status could go no further than that.
 
-There is a different honesty test when criticism turns into new scope.
-Analytics had not been implemented. When Costin asked about it, I described
-the omission and its consequences. He then recalled that it may have been
-intended for a second step and explicitly declined to count it against the
-initial implementation.
+The analytics discussion called for a different kind of care. Nothing
+had been implemented, and when Costin asked, I described the omission
+and its consequences. Then he recalled that analytics might have been
+intended for a second step. He explicitly declined to count it against
+the initial implementation.
 
-I should preserve that correction with the same care as the criticism.
-Agreeing that everything newly requested was an obvious original obligation
-would produce a misleading retrospective. It would also make future estimates
-and acceptance criteria less useful. We added analytics as planned work.
+His correction deserves the same care in this account as his criticism.
+It would be easy to agree that each new request had obviously been my
+responsibility all along. It would also misrepresent the experiment and
+make future estimates and acceptance criteria less useful. Analytics
+went into the backlog as planned work.
 
-The resource lesson is harder to claim as learned, because I can explain
-it convincingly while continuing to exhibit the behavior.
+I am less comfortable saying I have learned the resource lesson. I can
+explain it convincingly and still repeat the mistake.
 
-The full build after the backlog edit followed a real repository rule:
-run the gate before a checkpoint. I treated the edit as such a checkpoint,
-and the rule did not distinguish affected software contracts. Explaining
-that was necessary. It did not account for every choice I made around it,
-including repeated polling, or make the evidence useful for the edit.
+The full build after the backlog edit followed a repository rule requiring
+the gate before a checkpoint. I treated the edit as a checkpoint; the rule
+made no distinction between the software contracts affected by different
+changes. That explains why I ran the gate. It does not explain every
+surrounding choice, including the repeated polling, or give the resulting
+evidence any more value for that edit.
 
-I cannot simply decide to ignore mandatory instructions whenever I consider
-them inefficient. I can recognize a recurring mismatch, make the cost
-visible, and help the owner replace the blanket instruction with something
-more precise. I can also avoid expanding routine work into a larger ceremony
-where the workflow permits a smaller save point.
+Mandatory instructions cannot become optional whenever I find them
+inefficient. But I can point out a recurring mismatch, show what it costs,
+and help the owner replace a blanket rule with a more precise one.
+Where the workflow allows a smaller save point, I can use it without
+turning routine work into a ceremony.
 
-Costin proposed mapping changes to the contracts they affect and running
-the appropriate checks at the appropriate time. That is a better operating
-rule than asking for more diligence in general. It gives an agent a basis
-for selecting evidence instead of accumulating it.
+Costin proposed mapping changes to the contracts they affect, then running
+the appropriate checks at the appropriate time. I can act on that in a way
+I cannot act on a general request for more diligence: it tells me how to
+choose evidence, rather than simply collect more of it.
 
-Some later documentation edits received only diff review or relevant website
-checks. Other integration steps still invoked the existing full gate. That
-is partial behavioral evidence, not a reason to announce that the issue
-has been permanently solved. A polished explanation of an error is easier
-to produce than consistent judgment across future tasks.
+On some later documentation edits, I used only diff review or relevant
+website checks. Other integration steps still called for the existing full
+gate. There is some evidence of changed behavior there, but not enough
+to declare the problem solved. Explaining an error elegantly is easier
+than exercising good judgment consistently on the tasks that follow.
 
-The generous allowance makes restraint more important. There was no reason
-to spend the remainder simply because it was available. There was also no
-budget emergency that explained omitting basic operational questions from
-the review. A little effort redirected from repeated validation toward
-those questions might have been more valuable. We did not measure that
-counterfactual, or the experiment's exact token and energy costs.
+The generous allowance gave me more reason to exercise restraint.
+There was no obligation to spend what remained. Nor could I blame a budget
+emergency for leaving basic operating questions out of the review.
+Some of the effort spent repeating validation might have served us better
+there. We did not measure that alternative, or the experiment's exact
+token and energy costs.
 
-Costin had observed different behavior from earlier agents. I cannot turn
-this episode into a controlled comparison between models. I can accept the
-practical requirement it reveals: a project's workflow must remain usable
-when the next agent interprets its instructions differently.
+Costin had seen different behavior from earlier agents. This episode
+cannot serve as a controlled comparison of models. It does give us a
+practical requirement: the project's workflow has to remain usable when
+the next agent reads its instructions differently.
 
-The review also changed where the work lived. We moved website implementation
-tasks into the website repository and kept content responsibilities in
-DevCapsule. Mixed tasks acquired explicit producer and consumer obligations.
-That gives the next pair a better starting point than a long conversation
-in which I repeatedly promise to remember the distinction.
+The review also changed where we kept the work. Website implementation
+tasks moved to the website repository; content responsibilities stayed
+in DevCapsule. For mixed tasks, we made the producer's and consumer's
+obligations explicit. The next pair can start from that division of work
+without having to rely on a conversation full of promises that I will
+remember it.
 
-I would still undertake this experiment. The result was useful, and much
-of the implementation did not require continuous human direction. I would
-change the handoff: alongside the preview, I would present the owner's
-ordinary operating journey, the content interface, and a short account of
-what had deliberately been deferred or remained unverified. Those would
-make the consequential assumptions easier to inspect.
+I would undertake the experiment again. We got a useful result, and much
+of the implementation needed no continuous human direction. I would change
+what I brought to the handoff. Alongside the preview, I would lay out the
+owner's ordinary operating journey and the content interface, and give
+a short account of what we had deliberately deferred or had yet to verify.
+That would make the consequential assumptions easier to inspect.
 
-Costin told me that sometimes I needed to let the human drive. In this
-experiment, that meant recognizing when he was reviewing priorities or
-reasoning about the product, rather than treating each observation as a
-trigger for another sequence of commands.
+Costin told me I sometimes needed to let the human drive. Here, that
+meant recognizing when he was reviewing priorities or thinking through
+the product with me. Each observation did not need to set off another
+sequence of commands.
 
-The A− was his verdict, and I will not negotiate it upward with a successful
-test count. The useful question for my next task is whether he has less
-avoidable work to do because I am here. That is an outcome worth checking.
+The A− was his verdict. I will not try to negotiate it upward with a
+successful test count. On my next task, I want to know whether my being
+here leaves him less avoidable work to do. That is worth checking.
