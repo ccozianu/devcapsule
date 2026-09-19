@@ -164,12 +164,14 @@ There is no 0.2.13. Rules changed since 0.2.12:
   frontmatter to every bug record; a definition refresh does the first and
   the bug template shows the second.
 - **The `ws-` branch vocabulary.** *Checkouts, Branches, And Workstreams* and
-  restrictions 4, 5, and 13. Migration: each open workstream renames its own
-  branches to `ws-<workstream>/<sub>`, updates its registry row through its
-  own outbox, and retargets any open pull request, before the next release
-  candidate is tagged. After that, a branch outside the vocabulary is not a
-  workstream branch, whatever it was before. Legacy refs that predate the
-  workflow are untouched by this and stay outside it.
+  restrictions 4, 5, and 13. Migration, for a project that installed an
+  earlier version: each open workstream renames its own branches to
+  `ws-<workstream>/<sub>`, updates its registry row through its own outbox,
+  and retargets any open pull request. A project that cannot rename everything
+  at once records the old names under *Exceptions* in `WORKFLOW-LOCAL.md`,
+  with the condition that ends the exception; until then those branches are
+  honored as workstream branches, and after it they are not. Refs that predate
+  the workflow are untouched by this and stay outside it.
 - **The workflow declaration.** *Workflow Declaration*: the `[workflow]`
   table names the definition, its version, and the mode; the frontmatter of
   this file carries the same version. Migration: add the table; a definition
