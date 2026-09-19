@@ -28,6 +28,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [Website development and preview](website/README.md)
 - [Website publication](website/PUBLISHING.md)
+- [Website-owned backlog and producer dependencies](website/BACKLOG.md)
 
 ## Root Requirement Records
 
@@ -120,6 +121,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Development Blog
 
+- [Lessons learned in AI autonomy — Part 2: the AI perspective](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — agent-authored retrospective; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md) — website autonomy experiment retrospective; draft for owner review.
 - [The DevCapsule development blog](engineering-docs/blog/README.md)
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](engineering-docs/blog/2026-09-06-when-should-a-tool-refuse.md)
@@ -178,7 +180,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
-- [Website test publication accepts inconsistent settings](engineering-docs/bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
+- [Website test publication accepts inconsistent settings — transferred](engineering-docs/bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
 - [Upgrade Configuration Recovery Rejects Its Own Remedy](engineering-docs/bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)
 - [The Resolution Refusal Names Only The Last Base Tried And Offers No Remedy](engineering-docs/bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
 - [The Formation Identity Claims An Entrypoint The Recipe Never Sets](engineering-docs/bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md)
