@@ -877,6 +877,15 @@ release candidate is tagged. This workstream renamed its own two branches;
 the other six rows are their owners' to change, and `project-management` is
 told so it can schedule it.
 
+**Narrowed on 2026-09-19 at the owner's direction.** "Closed vocabulary"
+presumed an adopter, in particular a collaborator on an open-source project,
+would take the whole naming convention on. The workflow now claims only the
+refs it names, `ws-` and the release refs; every other ref is the project's,
+and agents following the workflow do not touch one unless the local file or
+the human says so. No rename is required of anyone: an old-named workstream
+branch stays its workstream's through the registry row, and our own rename
+schedule is local policy under *Exceptions* in `WORKFLOW-LOCAL.md`.
+
 **The declaration names the workflow and its version.** The owner's case: a
 contributor with a newer DevCapsule executable joins a project on an older
 workflow and must not apply newer rules, such as renaming branches, to it.

@@ -9,6 +9,10 @@ root `WORKFLOW.md` is the source of the packaged one rather than an installed
 copy. That is recorded under *Exceptions* below; everything else here is what
 any adopting project would record.
 
+## Integration Branch
+
+`main`, as the definition assumes.
+
 ## Version Scheme
 
 PEP 440. Between releases the source carries the development form of the
