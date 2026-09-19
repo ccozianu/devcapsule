@@ -34,7 +34,8 @@ intake disposition, outbox publication, and integration. A registry row whose
 branch association names a `release-<version>` branch means that workstream is
 driving a release: follow *Releases* in `WORKFLOW.md`, and never rebase,
 force-push, or cherry-pick release refs. Workstream branches are
-`ws-<workstream>/<sub>`; every ref outside `main`, `ws-*`, and `release-*`
+`ws-<workstream>/<sub>`; every ref outside `main` (or the integration branch `WORKFLOW-LOCAL.md`
+names instead), `ws-*`, and `release-*`
 is the project's own, and you do not create, rename, delete, rebase, or
 select one unless `WORKFLOW-LOCAL.md` or the user directs it. Every multiple-streams project has two
 reserved workstreams, `project-management` and `maintenance`; report a project

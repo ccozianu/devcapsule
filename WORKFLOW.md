@@ -163,6 +163,10 @@ There is no 0.2.13. Rules changed since 0.2.12:
   reserved workstream under its adoption exception, and add the controlled
   frontmatter to every bug record; a definition refresh does the first and
   the bug template shows the second.
+- **The integration branch may be renamed locally.** `main` in this document
+  means the project's integration branch; a project whose branch has another
+  name says so under *Integration Branch* in `WORKFLOW-LOCAL.md`. No
+  migration.
 - **The `ws-` branch form.** *Checkouts, Branches, And Workstreams* and
   restrictions 4, 5, and 13: new workstream branches are
   `ws-<workstream>/<sub>`, and the workflow claims no other ref. No migration
@@ -215,7 +219,10 @@ The relationships, which fix what every "current" in this document means:
 **The workflow claims only the refs it names.** Three kinds, recognizable by
 name alone:
 
-- `main`, the integration branch;
+- `main`, the integration branch. A project whose integration branch has
+  another name, such as `master` or `trunk`, says so under *Integration
+  Branch* in `WORKFLOW-LOCAL.md`, and every `main` in this document then
+  means that branch;
 - `ws-<workstream>/<sub>`, a workstream branch. `ws` is short for workstream,
   and `<sub>` is the workstream's own choice, except that
   `ws-<workstream>/outbox` is reserved; see *The Outbox Branch*;
@@ -368,6 +375,10 @@ silent there.
 template a fresh project receives carries these headings with the question
 each answers:
 
+- **Integration branch.** Only when it is not `main`. This document says
+  `main` throughout and means the project's integration branch, whatever it
+  is called; the local file is where a project says it is called something
+  else.
 - **Version scheme.** How the source names itself between releases and at a
   release, and the command that sets it. A Python project says `0.2.14.dev0`
   and then `0.2.14`; a Maven project says `0.2.14-SNAPSHOT`; each ecosystem

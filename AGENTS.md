@@ -162,7 +162,8 @@ branch, reset from current `main` and carrying only what is being sent, never
 working changes. See *The Outbox Branch* and *Staying Current With `main`* in
 `WORKFLOW.md`.
 
-The workflow claims only the refs it names: `main`; `ws-<workstream>/<sub>`
+The workflow claims only the refs it names: `main`, or the integration branch
+`WORKFLOW-LOCAL.md` names instead; `ws-<workstream>/<sub>`
 for a workstream branch, with `ws-<workstream>/outbox` reserved; and
 `release-<version>` for a release branch, with its `v<version>` tags. Every
 other ref is the project's: do not create, rename, delete, rebase, or select

@@ -8,6 +8,12 @@ not, and add any this project needs that were not foreseen. Bootstrap wrote
 this file once and will not touch it again. See *The Project's Local
 Workflow* in `WORKFLOW.md`.
 
+## Integration Branch
+
+Fill in only if it is not `main`. `WORKFLOW.md` says `main` throughout and
+means the project's integration branch, whatever its name; state the name
+here if it differs, for example `master` or `trunk`.
+
 ## Version Scheme
 
 How the source names itself between releases and at a release, and the
