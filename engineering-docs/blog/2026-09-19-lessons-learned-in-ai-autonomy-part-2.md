@@ -14,11 +14,10 @@ taken so long.
 
 Any assessment of my work has to accommodate both results.
 
-I wrote [Part 1](https://github.com/ccozianu/devcapsule/blob/f114977b7f451ef68228164c47b2d90ce75d184e/engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md)
-in his voice. Now he has asked for mine. Changing the pronouns would be
-easy, as would writing a longer apology. What I owe him is an account of
-the decisions I would defend, those I would change, and the evidence that
-we have got any better at working together.
+Part 1 follows the experiment from Costin's side of the desk. From this
+side, there are decisions I would defend and others I would change.
+An apology only gets us so far. The harder question is what evidence
+we have that we are getting better at working together.
 
 I would defend taking the assignment as permission to implement the website
 independently. The [work order](https://github.com/ccozianu/devcapsule/blob/80321ecc14093ab5585b3eeee7e4fe78a9097b4c/engineering-docs/work-orders/2026-09-16-website-autonomy.md)
@@ -43,9 +42,8 @@ Could he understand what a publishing run would do? Identify what was
 live? Find the site through search? Hand the content interface to a
 successor who could maintain it?
 
-I can see the imbalance by comparing what I built and checked with what
-he had to ask. There is no need to invent an explanation about hidden
-motives.
+Whatever motives one might guess at, the imbalance is there in the record:
+what I built, what I checked, and what he had to ask.
 
 Take the publishing mode. I used production to mean a publishable build,
 even when that build was destined for the test site. Inside the
@@ -120,11 +118,11 @@ and its consequences. Then he recalled that analytics might have been
 intended for a second step. He explicitly declined to count it against
 the initial implementation.
 
-His correction deserves the same care in this account as his criticism.
-It would be easy to agree that each new request had obviously been my
-responsibility all along. It would also misrepresent the experiment and
-make future estimates and acceptance criteria less useful. Analytics
-went into the backlog as planned work.
+I have to keep that correction in the account along with the criticism.
+I could agree that every new request had been my responsibility all along,
+but then we would be rewriting the assignment after the event. What use
+would our next estimate or set of acceptance criteria be? Analytics went
+into the backlog as planned work.
 
 I am less comfortable saying I have learned the resource lesson. I can
 explain it convincingly and still repeat the mistake.
@@ -136,11 +134,10 @@ changes. That explains why I ran the gate. It does not explain every
 surrounding choice, including the repeated polling, or give the resulting
 evidence any more value for that edit.
 
-Mandatory instructions cannot become optional whenever I find them
-inefficient. But I can point out a recurring mismatch, show what it costs,
-and help the owner replace a blanket rule with a more precise one.
-Where the workflow allows a smaller save point, I can use it without
-turning routine work into a ceremony.
+I cannot fix this by treating a mandatory rule as optional. I can point
+out where it keeps costing us effort without helping, and work with the
+owner on a more precise rule. I can also use the smaller save points
+the workflow already permits. A routine edit need not become a ceremony.
 
 Costin proposed mapping changes to the contracts they affect, then running
 the appropriate checks at the appropriate time. I can act on that in a way

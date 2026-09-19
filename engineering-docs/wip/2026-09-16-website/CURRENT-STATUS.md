@@ -51,6 +51,19 @@ still user-docs work. No product requirement or source-content rewrite was made.
 
 ## Review And Continuation
 
+The owner subsequently requested removal of authorship giveaways within the
+articles, so that the AI narrator could credibly have been written by either
+participant. Part 2 no longer claims to have written Part 1 or describes being
+asked to write the follow-up. Its link to the earlier, explicitly attributed
+Part 1 draft was removed with that passage. A few passages of self-assessment
+were rephrased; the development events and qualifications are retained.
+Both article bodies were reviewed for further explicit authorship claims;
+the owner-requested ambiguous introductory notes and narrative perspectives
+remain. This concerns clues in the articles, not concealment of public Git
+history. Earlier editorial commits are now on fetched main; the working branch
+fast-forwarded before this follow-up. Diff review, whitespace checks, and the
+website build/link checks passed. Human evaluation remains pending.
+
 Both September 19 retrospectives received an owner-requested style and flow
 revision for a human authorship-identification exercise. Events, claims,
 qualifications, narrative perspectives, titles and existing
