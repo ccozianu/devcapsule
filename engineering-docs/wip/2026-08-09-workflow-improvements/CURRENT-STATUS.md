@@ -980,13 +980,67 @@ version.
 **Verification.** Bootstrap and bump tests pass; syntax and typecheck gates
 pass. The wider suite was not run.
 
+### Nineteenth Task: The Information Model, As A Glossary
+
+The 2026-08-18 item from `project-management`, the owner's task to define the
+workflow's information model minimally, in plain words, for readers whose
+first language is not English. Taken on 2026-09-19 after the owner asked for
+a home for an "exceedingly nice to have" priority and found that three
+priority vocabularies existed and none said it.
+
+**Shape, agreed with the owner before writing.** A one-page glossary inside
+the definition, not a schema: every term with a fixed meaning, defined once in
+plain words, with where it lives and what it must not be confused with, the
+last being the sentence the owner asked for to stop agent confusion. The test
+for ceremony: a concept earns a place only if a rule refers to it, and the
+model adds no file, name, or obligation to any adopter. Explanation for
+humans goes to user documentation, which may explain any term and defines
+none; the *How To Read This Document* subsection now says so, and the
+user-docs workstream receives the drift rule and the settled term list
+through its intake.
+
+**Renames, in prose only, six of them.** Workstream name for mnemonic;
+decision and decision log for disposition; status file for handoff;
+workstream list for registry; judgment where this document is silent for
+latitude; finishing for finalization. Old names remain synonyms for one
+release, per the *Changes* entry. Left alone on purpose: intake and outbox
+(ordinary words, and the outbox is contingent on the transport decision),
+delivery method and adoption exception (plain English already), and every
+file and directory name, including `intake-dispositions.md`, `wip/`, and
+the decision log's `Dispositioned` column, because renaming files is a
+migration for every installed project and renaming words is not.
+
+**Two model decisions, the owner's, made as proposed.** Milestone and stage
+are optional planning words that no rule depends on, which is the answer to
+the item's question whether a solo developer needs five levels. Requirements
+and backlog items share one priority scale relative to the next release:
+`gating`, `wanted`, `optional`, `later`, replacing `MVP`, `current
+stabilization`, and `later`, whose drift (eleven records said `current`, a
+value the definition never listed) showed nobody was checking it.
+
+**Backfill.** All 29 requirement records were mapped mechanically: `MVP` to
+`gating`, `current` and `current stabilization` to `wanted`, `later`
+unchanged. The mapping is reversible and the owner should review it; the V1
+ledger's `in-v1` rows remain the authority on what gates V1.
+
+**Applied to** both definition copies, both `AGENTS.md` copies, the packaged
+templates and asset README, the bootstrap's index heading, and the root
+workstream list's header. Records under `engineering-docs/wip/`, `archive/`,
+`session-records/`, the requirement and specification texts, and the frozen
+`docker4pycharm/` subproject keep their wording; they are history or someone
+else's, and the synonyms rule covers them.
+
+**Verification.** Bootstrap and bump tests pass; syntax and typecheck gates
+pass. Leftover-term greps over the definition and agent files find only the
+decision log's column header, kept deliberately.
+
 ## Next Resumable Task
 
 Everything drafted on 2026-09-18 is merged. The owner triages the twelve
 untriaged bugs in the `maintenance` workstream, which is where the next
 release's handful comes from; that is that workstream's task, not this one's.
 
-Then disposition the remaining eight intake items, which wait on the owner's
+Then decide the remaining seven intake items, which wait on the owner's
 answers under *Open Threads*.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
@@ -1102,6 +1156,16 @@ remainder. It is defensible because all four are protocol and this workstream
 is the protocol owner, but *done* is now visibly further away than it was, and
 the product owner should see that rather than discover it. See *Open Threads*.
 
+### Acknowledged 2026-09-19
+
+**Define the workflow's information model, minimally** (`project-management`,
+2026-08-18, at the product owner's direction). Acknowledged and implemented
+as the *Glossary* in `WORKFLOW.md`, with six prose renames, milestone and
+stage made optional, and one priority scale; see *Nineteenth Task*. The
+item's three constraints were honored as stated: minimal, ordinary words, and
+written for a non-native reader. Its packaging interactions are unaffected:
+a glossary is a prerequisite for extraction, not a bet on it.
+
 ### Acknowledged 2026-09-16
 
 **Distinguish workstream branches from release and maintenance refs**
@@ -1162,6 +1226,8 @@ can be reordered.
    2026-09-18 with item 7. See *Seventeenth Task*.
 9. ~~The project's local workflow and the development version.~~ Drafted
    2026-09-18. See *Eighteenth Task*.
+10. ~~The information model.~~ Drafted 2026-09-19 as the glossary. See
+    *Nineteenth Task*.
 
 ## Assessment Of The Queue
 

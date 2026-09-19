@@ -4,7 +4,7 @@ title: Explicit Host Filesystem Exposure
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: MVP
+priority: gating
 source_of_truth: repo
 verification:
   - implementation-review

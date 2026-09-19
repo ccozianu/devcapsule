@@ -4,7 +4,7 @@ title: Git Identity And Credentials Without Host Credential Mounts
 type: requirement
 kind: concrete-requirement
 status: manually validated
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - manual

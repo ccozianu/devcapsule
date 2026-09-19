@@ -13,9 +13,9 @@ Read `WORKFLOW.md` for the reusable protocol, starting with its *Vocabulary*;
 then `WORKFLOW-LOCAL.md` for this project's own half of the workflow, which
 governs wherever `WORKFLOW.md` is silent; then `CURRENT-STATUS.md` for this
 project's live state. In single-stream mode, `CURRENT-STATUS.md` is the active
-handoff. In multiple-streams mode, it is the mainline registry: select the one
+status file. In multiple-streams mode, it is the mainline workstream list: select the one
 workstream associated with the user's request and current branch, then read its
-`engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md` and `intake/`.
+`engineering-docs/wip/YYYY-MM-DD-NAME/CURRENT-STATUS.md` and `intake/`.
 Do not mix two workstreams' unfinished state in one checkout.
 
 After reading, tell the user that you understand the project and state the
@@ -28,13 +28,13 @@ selected task.
 
 Keep important requirements, decisions, evidence, open questions, current
 state, and next steps in repository files rather than only in chat. Update the
-selected handoff at meaningful checkpoints and before pausing. In
+selected status file at meaningful checkpoints and before pausing. In
 multiple-streams mode, follow `WORKFLOW.md` for branch routing, synchronization,
-intake disposition, outbox publication, and integration. A registry row whose
+intake decision, outbox publication, and integration. A workstream-list row whose
 branch association names a `release-<version>` branch means that workstream is
 driving a release: follow *Releases* in `WORKFLOW.md`, and never rebase,
 force-push, or cherry-pick release refs. Workstream branches are
-`ws-<workstream>/<sub>`; every ref outside `main` (or the integration branch `WORKFLOW-LOCAL.md`
+`ws-<name>/<sub>`; every ref outside `main` (or the integration branch `WORKFLOW-LOCAL.md`
 names instead), `ws-*`, and `release-*`
 is the project's own, and you do not create, rename, delete, rebase, or
 select one unless `WORKFLOW-LOCAL.md` or the user directs it. Every multiple-streams project has two
@@ -46,7 +46,7 @@ ones with `owner` set to the open workstream whose goal covers them, otherwise
 `maintenance`. See *Bug Intake* in `WORKFLOW.md`.
 
 The workflow is intentionally incomplete. Where it is silent, use judgment,
-record the gap and the action taken in the selected handoff, and continue
+record the gap and the action taken in the selected status file, and continue
 unless another instruction requires stopping or asking for authority.
 
 Maintain `index.md` when permanent Markdown files are added, removed, renamed,
