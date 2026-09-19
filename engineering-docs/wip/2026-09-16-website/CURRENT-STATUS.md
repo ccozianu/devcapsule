@@ -39,11 +39,10 @@ there.
 The [website autonomy work order](../../work-orders/2026-09-16-website-autonomy.md)
 is the contract. The owner explicitly selected this fresh-context experiment,
 delegating design and implementation after initial setup. Implementation is
-complete to a reviewable local preview; experiment success awaits owner judgment.
-Do not expand or keep polishing before that review. The owner said the preview
-looks good and chose to finish reviewing after publication at the actual domain.
-That later instruction supersedes the work order's publication-after-final-review
-sequence; it does not constitute final experiment acceptance.
+complete through hosted production. The owner accepted the experiment as
+successful with A− and requested the follow-up inventory below. Publication
+before final review was separately authorized; acceptance is now settled.
+Further implementation awaits selection of a bounded follow-up slice.
 
 The site presents the root README substance, current user guides, and all three
 development-blog articles. Other engineering/developer references lead to GitHub.
@@ -88,6 +87,27 @@ The older branch name remains covered by WORKFLOW-LOCAL.md's adoption exception.
 Mail take with explicit --workstream website reported no mail; intake is empty.
 No existing open bug record was owned by website at review start. No project-
 management implementation or workstream state was changed.
+
+Workflow synchronization, 2026-09-19: merged fetched main `3f573b5` into the
+published working branch without rewriting history; reread AGENTS.md,
+WORKFLOW.md and WORKFLOW-LOCAL.md under the declared `0.2.14.dev0` definition.
+Mail take again found no website mail. The open website-owned bug is the W01
+test-publication input defect linked below. Website source and deployments were
+not changed or revalidated during this workflow-only task.
+
+Inter-workstream items now use `devcapsule workflow mail` on `coordination`;
+our own status, registry row and bug records still travel `ws-website/outbox`.
+The existing unmerged records delivery is preserved. The new coordination
+section conflicts with leftover main/outbox intake prose elsewhere in
+WORKFLOW.md and AGENTS.md. Following the owner's explicit instruction and the
+new section, use mail for delivery and working-branch commits for decisions.
+Reported the contradictory guidance to `workflow-improvements` by mail as
+`2026-09-19-website-mail-protocol-stale-guidance.md`; our intake README now
+describes the new mechanism.
+
+Validation after synchronization: `nox -s build` passed (633 tests, one expected
+failure, and nine packaging integration checks). The local PEX passed; the
+revision-bearing PEX was skipped under the gate's dirty-tree policy.
 
 Final live check on 2026-09-18: production and test homepage, documentation,
 first-session guide and journal all return HTTP 200 over validated HTTPS.
