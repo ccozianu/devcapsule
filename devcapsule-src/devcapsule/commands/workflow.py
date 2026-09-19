@@ -8,7 +8,7 @@ from typing import Mapping
 
 from devcapsule.commands.framework import Command, Group
 from devcapsule.compat import CliError
-from devcapsule import workflow_mail
+from devcapsule import workflow_coordination as workflow_mail
 
 
 def _add_mail_options(parser: argparse.ArgumentParser) -> None:
@@ -139,13 +139,73 @@ class MailCommand(Group):
         }
 
 
+class PublishCommand(Command):
+    name = "publish"
+    help = "Push a workstream's status file and decision log to the coordination branch."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+        _add_name_option(parser)
+        parser.add_argument(
+            "--retire",
+            action="store_true",
+            help="Remove the workstream's published state instead; used when it concludes.",
+        )
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = _resolve_name(arguments)
+        try:
+            commit = workflow_mail.publish(
+                arguments.project_path,
+                name,
+                remote=arguments.remote,
+                branch=arguments.branch,
+                retire=arguments.retire,
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        if commit is None:
+            print(f"{name}: already current on {arguments.branch}")
+        elif arguments.retire:
+            print(f"{name}: retired from {arguments.branch} at {commit[:12]}")
+        else:
+            print(f"{name}: published to {arguments.branch} at {commit[:12]}")
+        return 0
+
+
+class ListCommand(Command):
+    name = "list"
+    help = "Show every open workstream's live state from the coordination branch."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        try:
+            rows = workflow_mail.list_state(
+                arguments.project_path, remote=arguments.remote, branch=arguments.branch
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        print(workflow_mail.render_list(rows), end="")
+        return 0
+
+
 class WorkflowCommand(Group):
     name = "workflow"
     help = "Multiple-stream workflow operations."
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
-        return {MailCommand.name: MailCommand}
+        return {
+            MailCommand.name: MailCommand,
+            PublishCommand.name: PublishCommand,
+            ListCommand.name: ListCommand,
+        }
 
 
 COMMAND = WorkflowCommand
