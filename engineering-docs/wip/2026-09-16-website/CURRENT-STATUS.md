@@ -261,7 +261,8 @@ is now recorded with owner website; follow-up details remain in this status file
 
 ## Follow-up Tasks (2026-09-19)
 
-All items below are **open; inventory only**. Priority is proposed order, not a
+All items below are **open; inventory only**. The owner designated **W00 as the
+top priority (gating)**. The remaining priority order is proposed, not a
 release commitment: **P1** removes publishing/verification traps; **P2** improves
 maintainability and user understanding; **P3** is a useful enhancement to scope
 with the owner. These are not retroactive reasons to revoke the accepted grade.
@@ -269,6 +270,37 @@ Requirements basis: the work order's repeatable updates, content ownership,
 reading experience and reviewable publication; enhancements beyond that baseline
 are identified explicitly. No paid service or automatic production publishing is
 implied. Verification is a future task, not evidence claimed today.
+
+Ownership clarified by the owner: DevCapsule owns authored content and content
+decisions; devcapsule-website owns website functionality, appearance and
+publishing. Website-owned items must migrate there; mixed items need linked
+content and implementation tasks. This inventory remains here pending that
+migration. W00 belongs to devcapsule-website. W09 remains unchanged and separate.
+
+### W00 — Gating, top priority: Establish and verify Google search discoverability
+
+- [ ] Diagnose and resolve production's absence from Google search results.
+- Evidence: the owner reports no results for
+  `+site:devcapsule.mycodespace.ai github`. Direct public checks on 2026-09-19
+  found homepage and `/docs/` returning HTTPS 200 with production canonicals,
+  no robots/Googlebot noindex meta or X-Robots-Tag header, and robots.txt allowing
+  crawling. `/sitemap.xml` returns 404. These checks do not establish what Google
+  has crawled or indexed; the missing sitemap alone does not establish the cause.
+- Done means: inspect production in Google Search Console with the owner's
+  verified access; distinguish discovery, crawling, indexing and canonical issues;
+  fix identified barriers; provide and submit a production sitemap (shared
+  implementation with W09 where appropriate), reference it in robots.txt, and
+  request indexing of key pages. Keep staging excluded under W02. Obtain evidence
+  of indexing and representative production search results before closing;
+  a successful build or submission alone is insufficient. Google's timing and
+  inclusion decisions are external; record pending status rather than promising
+  a deadline or ranking.
+- Verify: Search Console URL Inspection/Page Indexing evidence for the homepage
+  and representative guide, sitemap retrieval/submission, and a repeat of the
+  owner's query. Use URL Inspection to diagnose indexing; a site query alone is
+  not an exhaustive index report. No Search Console access/result is claimed yet.
+- Reopen if intended public pages become undiscoverable or publication changes
+  introduce indexing barriers.
 
 ### W01 — P1: Make the test publication action hard to misuse
 
@@ -442,7 +474,9 @@ implied. Verification is a future task, not evidence claimed today.
 - Owner has accepted the autonomy experiment: successful, A−. No further verdict
   request is pending. Workstream closure is deferred at his request for this task
   inventory; his additional shortcomings and priority corrections remain welcome.
-- W01–W11 are inventoried here per explicit owner instruction. No fix, feature,
+- W00–W11 are inventoried here per explicit owner instruction; W00 is first.
+  Website-owned tasks await migration to devcapsule-website under the agreed
+  content/implementation split. No fix, feature,
   deployment, new service, live rollback or expanded test campaign was authorized
   merely by recording them. Select a bounded slice before implementation.
 - Existing release/publication decisions stand: authoritative content here,
