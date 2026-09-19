@@ -118,7 +118,7 @@ def test_multiple_streams_bootstrap_initializes_reserved_workstream(
     assert "`maintenance`" in registry
     maintenance_root = tmp_path / "engineering-docs/wip/2026-08-21-maintenance"
     assert (maintenance_root / "CURRENT-STATUS.md").is_file()
-    assert "Mnemonic: `maintenance`" in (maintenance_root / "CURRENT-STATUS.md").read_text(
+    assert "Name: `maintenance`" in (maintenance_root / "CURRENT-STATUS.md").read_text(
         encoding="utf-8"
     )
     assert "# Intake: `maintenance`" in (maintenance_root / "intake/README.md").read_text(

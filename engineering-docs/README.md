@@ -36,10 +36,10 @@ the canonical operator guide based on v0.2.11.
   architecture.
 - `implementation-notes/` — execution plans, milestone plans, checklists,
   implementation investigations, and validation exercises.
-- `wip/YYYY-MM-DD-MNEMONIC/` — temporary documentation and the detailed
+- `wip/YYYY-MM-DD-NAME/` — temporary documentation and the detailed
   `CURRENT-STATUS.md` for an open workstream in `multiple-streams` mode. The
   date is the workstream's immutable ISO start date.
-- `archive/YYYY-MM-DD-MNEMONIC/` — final status and retained evidence for a
+- `archive/YYYY-MM-DD-NAME/` — final status and retained evidence for a
   successfully or unsuccessfully ended workstream; it preserves the WIP
   directory name.
 - `bugs/` — active or recently investigated defect evidence and closure
@@ -76,13 +76,13 @@ does not change its status, authority, or validation result.
 
 This repository selects `multiple-streams`. Root `CURRENT-STATUS.md` is the
 compact open-workstream registry. Each open workstream owns
-`wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md` and keeps every unfinished
+`wip/YYYY-MM-DD-NAME/CURRENT-STATUS.md` and keeps every unfinished
 engineering record beneath the same directory.
 
 The directory name `docs/` is reserved beneath `engineering-docs/` and is
 normally forbidden. The only exceptions are
-`wip/YYYY-MM-DD-MNEMONIC/docs/` and
-`archive/YYYY-MM-DD-MNEMONIC/docs/`, where draft user documentation remains
+`wip/YYYY-MM-DD-NAME/docs/` and
+`archive/YYYY-MM-DD-NAME/docs/`, where draft user documentation remains
 clearly non-authoritative.
 
 On successful completion, new user documents move into root `docs/`, proposals

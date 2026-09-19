@@ -4,7 +4,7 @@ title: Compelling V1 Announcement For Adopters
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: current
+priority: wanted
 source_of_truth: repo
 verification:
   - doc-review

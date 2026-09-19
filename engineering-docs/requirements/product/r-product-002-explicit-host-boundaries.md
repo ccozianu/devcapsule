@@ -4,7 +4,7 @@ title: Explicit Host Boundaries
 type: requirement
 kind: concrete-requirement
 status: accepted
-priority: current
+priority: wanted
 source_of_truth: repo
 verification:
   - doc-review

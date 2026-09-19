@@ -2,12 +2,12 @@
 
 Workflow type: `multiple-streams`
 
-This file is the compact mainline registry. Detailed state belongs in each
-registered workstream handoff.
+This file is the compact mainline workstream list. Detailed state belongs in each
+registered workstream status file.
 
 ## Open Workstreams
 
-| Mnemonic | Started | Goal | State | Branch association | Handoff |
+| Name | Started | Goal | State | Branch association | Status file |
 |---|---|---|---|---|---|
 | `project-management` | {{START_DATE}} | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active; permanent coordination | `ws-project-management/coordination` | [workstream status](engineering-docs/wip/{{START_DATE}}-project-management/CURRENT-STATUS.md) |
 | `maintenance` | {{MAINTENANCE_START_DATE}} | Own the defects no open workstream covers, on `main` and on maintained release lines, and drive maintenance releases | active; permanent maintenance | `ws-maintenance/`; no branch yet | [workstream status](engineering-docs/wip/{{MAINTENANCE_START_DATE}}-maintenance/CURRENT-STATUS.md) |

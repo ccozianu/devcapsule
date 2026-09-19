@@ -4,7 +4,7 @@ title: Multiple Human/Agent Workstream Coordination
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: current
+priority: wanted
 source_of_truth: repo
 verification:
   - doc-review
@@ -57,7 +57,7 @@ This requirement is satisfied when repository inspection shows that:
 - root `CURRENT-STATUS.md` is a compact open-workstream registry in
   multiple-stream mode;
 - every open workstream has
-  `engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`, using its
+  `engineering-docs/wip/YYYY-MM-DD-NAME/CURRENT-STATUS.md`, using its
   immutable ISO start date;
 - work handed between workstreams has a defined queue, a delivery route that
   does not wait on the sender's own integration, exactly two disposition
@@ -73,7 +73,7 @@ This requirement is satisfied when repository inspection shows that:
   frontmatter `WORKFLOW.md` defines, and every open one in multiple-stream
   mode names an open workstream as its owner;
 - ended workstreams preserve that directory name under
-  `engineering-docs/archive/YYYY-MM-DD-MNEMONIC/`; and
+  `engineering-docs/archive/YYYY-MM-DD-NAME/`; and
 - selection reads the registry from an unambiguous locally accepted mainline
   ref, uses the current branch or a documented exception as the persistent
   local default, leaves `main` and detached or unregistered checkouts

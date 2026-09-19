@@ -4,7 +4,7 @@ title: Root Documentation Stays Implementation-Agnostic
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: current
+priority: wanted
 source_of_truth: repo
 verification:
   - doc-review

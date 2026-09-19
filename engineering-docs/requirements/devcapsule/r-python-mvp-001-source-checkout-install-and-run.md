@@ -4,7 +4,7 @@ title: Source Checkout Install And Run
 type: requirement
 kind: concrete-requirement
 status: repo-validated
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - tests

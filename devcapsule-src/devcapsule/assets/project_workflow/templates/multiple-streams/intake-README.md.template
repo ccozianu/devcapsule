@@ -1,6 +1,6 @@
 # Intake: `{{MNEMONIC}}`
 
 This directory contains work delivered by other workstreams that has not yet
-been dispositioned. Follow `WORKFLOW.md`: each item is acknowledged into this
-workstream's handoff or otherwise handled as the protocol permits, and every
-disposition is recorded before the item is removed.
+been decided. Follow `WORKFLOW.md`: each item is acknowledged into this
+workstream's status file or otherwise handled as the protocol permits, and every
+decision is recorded before the item is removed.

@@ -4,7 +4,7 @@ title: Durable Human/Agent Project Memory
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: MVP
+priority: gating
 source_of_truth: repo
 verification:
   - doc-review

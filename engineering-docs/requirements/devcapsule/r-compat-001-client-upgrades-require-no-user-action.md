@@ -4,7 +4,7 @@ title: Client Upgrades Require No User Action For Existing Projects
 type: requirement
 kind: concrete-requirement
 status: accepted
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - tests

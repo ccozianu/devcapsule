@@ -4,7 +4,7 @@ title: User-Level Documentation Coevolves With User-Visible Behavior
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - doc-review

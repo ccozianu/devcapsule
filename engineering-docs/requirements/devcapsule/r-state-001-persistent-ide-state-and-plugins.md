@@ -4,7 +4,7 @@ title: Persistent IDE State And Plugins
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: MVP
+priority: gating
 source_of_truth: repo
 verification:
   - doc-review
