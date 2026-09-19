@@ -12,6 +12,22 @@ Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
+## V1 WOW Design Issue Saved (2026-09-19)
+
+At the owner's request, saved the [V1 completeness and WOW design issue](2026-09-19-v1-wow-functionality-areas.md):
+ten adopter-facing functionality areas for documentation and requirements/items,
+the identified pressure points, and a proposed whole-project journey assessment.
+The grouping is a working proposal, not an expansion of approved V1 scope.
+Next discussion: refine the areas and map existing work to identify genuine gaps.
+
+Synchronized with main at `d71559a`, including the new mail mechanism. Took
+`2026-08-17-workflow-improvements-obsolete-intake-readmes.md` from coordination
+into this workstream's intake; its routing decision remains pending.
+
+Validation: design-issue links and whitespace checked; required `nox -s build`
+passed, including nine packaging integration checks. The local PEX passed;
+the dirty-tree policy skipped the public revision-bearing artifact.
+
 ## Blog Instructions Settled (2026-09-19)
 
 Owner-requested review sent to workflow-improvements on the new `coordination`
@@ -1287,6 +1303,7 @@ thread 8 above. Nothing is lost if that file is gone.
 
 ## Workstream Document Index
 
+- [Design issue: V1 completeness and the WOW experience](2026-09-19-v1-wow-functionality-areas.md)
 - [Why try DevCapsule? — promoted to the project README](../../../README.md)
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
 - [Portfolio checkpoint 2026-08-16](2026-08-16-portfolio-checkpoint.md)
