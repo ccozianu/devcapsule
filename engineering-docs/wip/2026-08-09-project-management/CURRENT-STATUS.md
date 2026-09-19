@@ -4,13 +4,66 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-13; adopter README and separate developer brief prepared for delivery; permanent coordination
+State: active 2026-09-18 at owner request; synchronized with origin and main; permanent coordination
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## Resumed And Synchronized (2026-09-18)
+
+The owner selected project-management and authorized updating from origin.
+Merged remote coordination `472f64a` into the local history, then merged
+`origin/main` at `042c094`. Both histories are preserved. Status-only conflicts
+were resolved by retaining the newer September 15 pause record below and the
+latest mainline registry, with this resumption replacing the old current state.
+All files outside this handoff and the registry match accepted main exactly.
+
+Validation: merge ancestry and whitespace checks passed. The `nox -s build`
+gate already passed on the same implementation tree during the preceding website
+synchronization, including nine packaging integration checks; it was not repeated
+for status-only differences. The local PEX passed; the public revision-bearing
+PEX was skipped by the gate's dirty-tree policy.
+
+**Planned next step:** resume owner-selected coordination decisions and disposition
+the current intake. Release-runbook alignment, maintenance ownership and the
+`ws-` branch migration are now present alongside the earlier items. This Git-only
+task does not disposition them or change their priority. No bugs currently name
+project-management as owner. The existing branch-name transition exception
+remains valid until the next release candidate.
+
+**Open Threads:** earlier product decisions remain open; current intake remains
+undispositioned. Local host settings remain saved on the named branch below.
+The website pause records are published on `ws-website/outbox`; their merge and
+the owner's website experiment verdict remain outstanding. This resumption's
+handoff and registry update are sent via `ws-project-management/outbox` for the
+owner's normal PR delivery. No new product decision or session record is added.
+
+## Paused For User Documentation (2026-09-15)
+
+The owner explicitly selected user-docs and assigned the first-adopter journey:
+from the landing page to useful work without unexplained steps. Project-management
+is paused. PRs #71–74 are merged; the final split-delivery tree was verified
+against main, and all four temporary branches were deleted locally and remotely.
+The checkout was synchronized with accepted main `a09e09d` before the switch.
+
+Existing local `.devcapsule` edits are preserved, without publication, on
+`project-management/local-host-settings-20260915` at `ce56755`. They are the
+owner's host-browser recommendation and earlier lock selection, not documentation
+changes. Do not restore the old lock over the newer release without reviewing it.
+This named local commit is the durable checkpoint; no stash is used as a handoff.
+
+**Planned next step on resumption:** read current main and intake, then resume
+project-wide decisions when the owner selects this workstream again.
+
+**Open Threads:** the previously discussed six decisions remain unresolved;
+additional contained-display intake now records v0.2.12 delivery and configuration
+follow-ups. Those items remain in intake for disposition when resumed. Broader
+user documentation now belongs to the explicitly selected user-docs workstream.
+No new transcript or session record was requested; no additional chat-only
+reasoning is deliberately being retained outside this handoff.
 
 ## Focused Temporary Delivery Branches (2026-09-13)
 
