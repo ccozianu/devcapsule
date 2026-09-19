@@ -45,6 +45,23 @@ maintenance release that cannot merge; requires downloaded-artifact smoke
 evidence for acceptance; and keeps the acceptance record under
 `engineering-docs/releases/`.
 
+## Blog Entries
+
+When the human says "write a blog entry on topic X", write it:
+
+- Create `engineering-docs/blog/YYYY-MM-DD-short-topic.md` in the flat blog
+  directory. Use the date of writing; the website reads the date from the filename.
+- Start with `# Title`, then plain Markdown prose. Use existing entries as
+  examples. No frontmatter or website-specific markup is needed.
+- Attribute quoted material and identify any editing of quotations. For links
+  to repository evidence, use a mainline commit SHA so the reference stays stable.
+- Add the entry to `engineering-docs/blog/README.md` and root `index.md`.
+
+The website picks up these files. Its [publishing instructions](website/PUBLISHING.md)
+define deployment. The human's request supplies the topic and occasion; there
+is no separate blog proposal, schedule, or approval procedure. These instructions
+are local to DevCapsule.
+
 ## Validation Commands
 
 `nox -s build` from `devcapsule-src` is the local gate before a checkpoint
