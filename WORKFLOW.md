@@ -958,10 +958,12 @@ reproduces the failure this mechanism exists to fix. Deliver it by mail, on
 the coordination branch, separately from the sender's ordinary work and
 without waiting for anyone's integration. See *The Coordination Branch*.
 
-**Ownership is asymmetric.** A sender may add files and amend files it wrote. It
-may not edit another sender's file, remove any file, or touch anything else in
-the recipient's directory. Only the receiving workstream removes or reclassifies
-items in its own intake. Its account of itself remains exclusively its own.
+**Ownership is asymmetric.** A sender adds files, and only adds: sent mail is
+append-only, so a correction is a new item under a new name that says what it
+supersedes. A sender never edits, removes, or reclassifies anything in the
+recipient's mailbox or intake. Only the receiving workstream removes or
+reclassifies items in its own intake. Its account of itself remains
+exclusively its own.
 
 **Decision has exactly two outcomes: acknowledge or forward.** Every item
 ends in one of them, and no item may be left alone indefinitely; see *Intake
@@ -1208,9 +1210,11 @@ what has already landed so a later reader is not misled about what remains.
 
 ### Staying Current With `main`
 
-`main` is the medium every message travels through, so a workstream that does
-not watch it does not receive. Intake arrives there, registrations arrive
-there, and repository-wide coordination facts arrive there.
+Mail and live state travel the coordination branch, but everything the
+project has agreed on travels `main`: the definition, the requirements, the
+decisions, and every workstream's records as of its last integration. A
+workstream that does not watch `main` works against a project that has
+moved on.
 
 Synchronize the working branch with `main` often — at least at every stage
 boundary, before beginning a substantial slice, and before integrating.
@@ -1245,10 +1249,11 @@ that the conflict becomes unaffordable.
 
 Two practical consequences:
 
-- A stale branch cannot act on its own intake. Discovery reads `main`, so items
-  are visible from anywhere, but the files an agent must edit and delete when
-  deciding them exist only on a synchronized branch. Synchronize before
-  planning a session's work, not after.
+- A stale branch decides against stale rules. Mail arrives on the
+  coordination branch whatever the branch's age, but the definition, the
+  local workflow file, and the shared documents an item may ask to change
+  exist at their current versions only on a synchronized branch. Synchronize
+  before planning a session's work, not after.
 - A long-lived branch that never rebases accumulates conflicts against work it
   could have absorbed cheaply, and diverges from coordination decisions it is
   expected to be following.
