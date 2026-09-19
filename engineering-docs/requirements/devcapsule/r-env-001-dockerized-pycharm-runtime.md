@@ -4,7 +4,7 @@ title: Dockerized PyCharm Runtime
 type: requirement
 kind: concrete-requirement
 status: manually validated
-priority: MVP
+priority: gating
 source_of_truth: repo
 verification:
   - manual

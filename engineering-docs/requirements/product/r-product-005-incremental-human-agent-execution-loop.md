@@ -4,7 +4,7 @@ title: Incremental Human/Agent Execution Loop
 type: requirement
 kind: concrete-requirement
 status: implemented
-priority: current
+priority: wanted
 source_of_truth: repo
 verification:
   - doc-review

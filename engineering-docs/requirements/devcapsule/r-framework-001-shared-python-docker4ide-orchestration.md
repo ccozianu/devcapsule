@@ -4,7 +4,7 @@ title: Shared Python DevCapsule Orchestration
 type: requirement
 kind: high-level-goal
 status: implemented
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - repo-inspection

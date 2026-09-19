@@ -478,7 +478,7 @@ def _workstream_index(
         return ""
     wip = "engineering-docs/wip"
     return (
-        "## Workstream Handoffs\n\n"
+        "## Workstream Status Files\n\n"
         f"- [Project management current status]({wip}/{start_date.isoformat()}-project-management/CURRENT-STATUS.md)\n"
         f"- [Maintenance current status]({wip}/{maintenance_start_date.isoformat()}-maintenance/CURRENT-STATUS.md)"
     )

@@ -72,7 +72,7 @@ missing field means `single-stream`. Then read `CURRENT-STATUS.md`. Treat it as
 the detailed handoff for `single-stream` and the open-workstream registry for
 `multiple-streams`; in multiple-stream mode, select one workstream and read
 the registry-linked
-`engineering-docs/wip/YYYY-MM-DD-MNEMONIC/CURRENT-STATUS.md`.
+`engineering-docs/wip/YYYY-MM-DD-NAME/CURRENT-STATUS.md`.
 
 In multiple-stream mode, read the open-workstream registry from an unambiguous
 locally accepted mainline ref, normally current local `main` or newer fetched
@@ -252,8 +252,8 @@ out of bug records.
 
 Use `engineering-docs/decisions/` for adopted durable choices and
 `engineering-docs/specifications/` for normative technical contracts. Use
-`engineering-docs/wip/YYYY-MM-DD-MNEMONIC/` and
-`engineering-docs/archive/YYYY-MM-DD-MNEMONIC/` only when the project selects
+`engineering-docs/wip/YYYY-MM-DD-NAME/` and
+`engineering-docs/archive/YYYY-MM-DD-NAME/` only when the project selects
 `multiple-streams`. The ISO date is the workstream's immutable start date.
 Create session records only when explicitly requested.
 

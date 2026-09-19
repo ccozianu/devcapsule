@@ -1,12 +1,12 @@
 # Current Status
 
 DevCapsule uses `workflow-type = "multiple-streams"`. On `main`, this file is
-the compact registry of workstreams that have begun but not ended. Detailed
-state belongs in each linked workstream handoff.
+the compact workstream list of workstreams that have begun but not ended. Detailed
+state belongs in each linked workstream status file.
 
 ## Open Workstreams
 
-| Mnemonic | Started | Goal | State | Branch association | Handoff |
+| Name | Started | Goal | State | Branch association | Status file |
 |---|---|---|---|---|---|
 | `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | active 2026-09-18; release rule merged; `maintenance` workstream, bug vocabulary, `ws-` branch vocabulary, and the workflow declaration drafted for owner review under owner-granted freeze exceptions; eight intake items remain | `ws-workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
 | `project-management` | 2026-08-09 | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active 2026-09-18 at owner request; synchronized with origin and main; pending coordination decisions and intake remain | `project-management/coordination` | [workstream status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md) |

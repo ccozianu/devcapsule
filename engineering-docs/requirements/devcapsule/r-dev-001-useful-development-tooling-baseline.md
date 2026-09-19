@@ -4,7 +4,7 @@ title: Useful Development Tooling Baseline
 type: requirement
 kind: concrete-requirement
 status: manually validated
-priority: MVP
+priority: gating
 source_of_truth: repo
 verification:
   - manual

@@ -4,7 +4,7 @@ title: Python MVP Feature Scope
 type: requirement
 kind: high-level-goal
 status: accepted
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - judgment

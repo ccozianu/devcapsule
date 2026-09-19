@@ -4,7 +4,7 @@ title: Capability-First End-User CLI Model
 type: requirement
 kind: concrete-requirement
 status: accepted
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - tests

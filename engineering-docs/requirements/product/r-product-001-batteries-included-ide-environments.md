@@ -4,7 +4,7 @@ title: Batteries-Included IDE Environments
 type: requirement
 kind: high-level-goal
 status: accepted
-priority: current
+priority: wanted
 source_of_truth: repo
 verification:
   - judgment

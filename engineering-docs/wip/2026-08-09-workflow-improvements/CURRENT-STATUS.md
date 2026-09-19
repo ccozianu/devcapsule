@@ -980,13 +980,136 @@ version.
 **Verification.** Bootstrap and bump tests pass; syntax and typecheck gates
 pass. The wider suite was not run.
 
+### Nineteenth Task: The Information Model, As A Glossary
+
+The 2026-08-18 item from `project-management`, the owner's task to define the
+workflow's information model minimally, in plain words, for readers whose
+first language is not English. Taken on 2026-09-19 after the owner asked for
+a home for an "exceedingly nice to have" priority and found that three
+priority vocabularies existed and none said it.
+
+**Shape, agreed with the owner before writing.** A one-page glossary inside
+the definition, not a schema: every term with a fixed meaning, defined once in
+plain words, with where it lives and what it must not be confused with, the
+last being the sentence the owner asked for to stop agent confusion. The test
+for ceremony: a concept earns a place only if a rule refers to it, and the
+model adds no file, name, or obligation to any adopter. Explanation for
+humans goes to user documentation, which may explain any term and defines
+none; the *How To Read This Document* subsection now says so, and the
+user-docs workstream receives the drift rule and the settled term list
+through its intake.
+
+**Renames, in prose only, six of them.** Workstream name for mnemonic;
+decision and decision log for disposition; status file for handoff;
+workstream list for registry; judgment where this document is silent for
+latitude; finishing for finalization. Old names remain synonyms for one
+release, per the *Changes* entry. Left alone on purpose: intake and outbox
+(ordinary words, and the outbox is contingent on the transport decision),
+delivery method and adoption exception (plain English already), and every
+file and directory name, including `intake-dispositions.md`, `wip/`, and
+the decision log's `Dispositioned` column, because renaming files is a
+migration for every installed project and renaming words is not.
+
+**Two model decisions, the owner's, made as proposed.** Milestone and stage
+are optional planning words that no rule depends on, which is the answer to
+the item's question whether a solo developer needs five levels. Requirements
+and backlog items share one priority scale relative to the next release:
+`gating`, `wanted`, `optional`, `later`, replacing `MVP`, `current
+stabilization`, and `later`, whose drift (eleven records said `current`, a
+value the definition never listed) showed nobody was checking it.
+
+**Backfill.** All 29 requirement records were mapped mechanically: `MVP` to
+`gating`, `current` and `current stabilization` to `wanted`, `later`
+unchanged. The mapping is reversible and the owner should review it; the V1
+ledger's `in-v1` rows remain the authority on what gates V1.
+
+**Applied to** both definition copies, both `AGENTS.md` copies, the packaged
+templates and asset README, the bootstrap's index heading, and the root
+workstream list's header. Records under `engineering-docs/wip/`, `archive/`,
+`session-records/`, the requirement and specification texts, and the frozen
+`docker4pycharm/` subproject keep their wording; they are history or someone
+else's, and the synonyms rule covers them.
+
+**Verification.** Bootstrap and bump tests pass; syntax and typecheck gates
+pass. Leftover-term greps over the definition and agent files find only the
+decision log's column header, kept deliberately.
+
+### Twentieth Task: Mail Off `main`, On One Coordination Branch
+
+The owner named this on 2026-09-19 as the item with the highest impact on
+dogfood productivity and asked for it quickly and safely: a specially named
+branch that agents and humans push to with plain git, while `main` stays
+protected and the build cannot break.
+
+**The fork, and how it was settled.** Project-management's 2026-08-30 spike,
+owner-endorsed, chose per-recipient `mail/<name>` branches over one shared
+branch, on deletion ownership: a shared branch relies on "only remove your
+own files", a convention git cannot enforce, and the outbox losses were what
+happens to such conventions. That objection assumed resets. Proposed instead,
+and accepted by the owner the same day: one shared `coordination` branch
+whose history is append-only, where senders add, recipients delete only
+their own files by ordinary commits, nobody resets or force-pushes, and a
+lost push race is a fetch and a retry that never conflicts because racing
+commits touch different files. One place to look, one log that is the whole
+message history, one branch for the host to protect, and no `gh` anywhere.
+The spike's design is recorded here as the fallback it now is.
+
+**Built.** `devcapsule/workflow_mail.py` and the `devcapsule workflow mail
+send|check|take` commands: git plumbing only, no branch switch, no
+working-tree change except writing taken items into `intake/` and staging
+them; `check` and `take` infer the workstream from a `ws-<name>/` branch;
+`send` refuses to rewrite an item in flight and is idempotent for identical
+content; `take` writes and stages before touching the branch, so a failed
+push leaves both copies and is safe to repeat. Tests cover creation of the
+branch, take, idempotence, a lost push race, name validation, and the CLI.
+The branch carries only `mail/<recipient>/` files and a README; CI triggers
+on `main` alone, so nothing on it can break a build.
+
+**Protocol.** *The Coordination Branch* precedes *The Outbox Branch*.
+Delivery is by mail; taking is at session start and before pausing;
+deciding is one commit on the working branch, log entry plus deletion; the
+invariant has three places, mailbox, intake, decision log, across the
+coordination branch and the recipient's branch. An item reaches `main` only
+inside the recipient's ordinary integration, decided or, rarely, still in
+its intake, and merges without conflict because only the recipient writes
+there. The owner made that observation and it is now the stated rule.
+
+**The outbox, reduced and named for what it is.** It carries records only,
+and the section now opens with the sentence the 2026-08-18 item asked for:
+the outbox is a mechanism, not a part of the model; any clean branch
+carrying the same guarantee satisfies the rule; the reserved name exists so
+an agent can find it. Its reset step is guarded: append when the previous
+send has not landed. That closes the 2026-08-18 item and the second case it
+found while sending.
+
+**Three items decided.** The 2026-08-30 mail-transport item, implemented as
+above with the design fork recorded. The 2026-08-18 outbox-is-a-mechanism
+item, implemented as the sentence and the guard. The 2026-08-19
+coordination-does-not-belong-on-`main` item, acknowledged as backlog item 3:
+its ratified boundary stands, mail was its first half, and moving the
+workstream list and the records onto the same branch is the second, which
+retires the outbox entirely.
+
+**Delivery check before the switch.** Every outbox on origin was audited.
+One stranded intake item was found, this workstream's 2026-08-17 note to
+`project-management` on obsolete intake READMEs, row 5 of the custody
+record; its branch was deleted this week but the commit survives locally and
+matches Appendix B. It is the first message sent on the coordination branch,
+which both delivers it and creates the branch. Two outboxes hold pause
+records that `main` lacks, `sample-projects` (2026-08-22) and
+`component-catalog` (2026-09-09); they are records, not mail, and their
+owners' to resend.
+
+**Verification.** Mail, CLI, and framework tests pass (52 passed); syntax and
+typecheck gates pass. The wider suite was not run.
+
 ## Next Resumable Task
 
 Everything drafted on 2026-09-18 is merged. The owner triages the twelve
 untriaged bugs in the `maintenance` workstream, which is where the next
 release's handful comes from; that is that workstream's task, not this one's.
 
-Then disposition the remaining eight intake items, which wait on the owner's
+Then decide the remaining four intake items, which wait on the owner's
 answers under *Open Threads*.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
@@ -1102,6 +1225,32 @@ remainder. It is defensible because all four are protocol and this workstream
 is the protocol owner, but *done* is now visibly further away than it was, and
 the product owner should see that rather than discover it. See *Open Threads*.
 
+### Acknowledged 2026-09-19
+
+**The off-`main` mail transport** (`project-management`, 2026-08-30, the
+owner's spiked design). Acknowledged and implemented as *The Coordination
+Branch* and `devcapsule workflow mail`, with one design change accepted by
+the owner: a single append-only shared branch instead of per-recipient
+branches. See *Twentieth Task*.
+
+**State that the outbox is a mechanism, not a model entity**
+(`project-management`, 2026-08-18). Acknowledged and implemented as the
+opening paragraph of *The Outbox Branch* and the guard on its reset step.
+
+**Coordination state may not belong on `main` at all** (`project-management`,
+2026-08-19, boundary ratified by the owner). Acknowledged as backlog item 3,
+the second step after mail: the workstream list and the records move to the
+coordination branch, retiring the outbox. Position: after the owner's
+freeze answer for the remaining items.
+
+**Define the workflow's information model, minimally** (`project-management`,
+2026-08-18, at the product owner's direction). Acknowledged and implemented
+as the *Glossary* in `WORKFLOW.md`, with six prose renames, milestone and
+stage made optional, and one priority scale; see *Nineteenth Task*. The
+item's three constraints were honored as stated: minimal, ordinary words, and
+written for a non-native reader. Its packaging interactions are unaffected:
+a glossary is a prerequisite for extraction, not a bet on it.
+
 ### Acknowledged 2026-09-16
 
 **Distinguish workstream branches from release and maintenance refs**
@@ -1162,6 +1311,9 @@ can be reordered.
    2026-09-18 with item 7. See *Seventeenth Task*.
 9. ~~The project's local workflow and the development version.~~ Drafted
    2026-09-18. See *Eighteenth Task*.
+10. ~~The information model.~~ Drafted 2026-09-19 as the glossary. See
+    *Nineteenth Task*.
+11. ~~Mail off `main`.~~ Built and drafted 2026-09-19. See *Twentieth Task*.
 
 ## Assessment Of The Queue
 
@@ -1217,6 +1369,46 @@ Documentation Protocol* and *Draft User Documentation* in `WORKFLOW.md`.
 
 This is actionable now and depends on nothing external, which is why this
 workstream is paused rather than blocked.
+
+**2. Soft claims on workstreams, so pairs stop colliding without locks.**
+Priority: `wanted`. Added 2026-09-19 by the product owner, from a collision
+that day: the owner sent one agent in one checkout to work on
+`project-management` and realized that nothing told another agent in another
+checkout, or another human in a multi-human project, that the workstream was
+taken. The definition says two pairs may select the same workstream, no lock
+exists, and they should coordinate outside the protocol; this item asks for
+the protocol to do the coordinating, automatically and between agents, so
+humans are not bothered.
+
+Done means: a pair starting on a workstream or a branch leaves a small,
+advisory claim where other checkouts can see it, with who, when, and what;
+a pair about to start sees any live claim and tells its human before editing,
+with the options (wait, take another slice, take another workstream, or
+proceed knowingly); claims expire on their own and are cleared at pause and
+finish, so a crashed session never blocks anyone; and the mechanical
+conflicts that still happen are resolved by the agents, semantic ones
+reported to the humans, which the synchronization rules already say. Soft
+throughout: a claim informs, it never refuses, because locking source
+control was the failure git exists to end. The owner named that history
+explicitly and wants no part of it.
+
+Constraints and inputs: a claim is coordination state and belongs off
+`main` under the ratified boundary, so its home is whatever the off-`main`
+transport decides, a mailbox branch or a state ref, not a status-file commit
+that would cost a pull request per claim. It should fit the verifier and
+session-start tooling on `project-management`'s backlog, since the check is
+one fetch and one comparison. Design after the transport decision; it is the
+first consumer that needs a write from an agent without a human in the loop.
+
+**3. Move the workstream list and the records onto the coordination branch.**
+Priority: `wanted`. Acknowledged 2026-09-19 from the 2026-08-19 item. Done
+means: the workstream list, status files, and decision logs live on the
+`coordination` branch under a state directory, written by the tool without
+a branch switch; registration is a mail to nobody in particular, a push of
+a new row; the outbox is retired with credit; links between `main` and the
+branch follow one convention; and the two-homes trial, if any, has a date
+by which one home wins. It also unblocks backlog item 2, soft claims, which
+needs the same write path.
 
 The earlier item — making `project-management` a mandatory permanent workstream
 — was completed on 2026-08-16. Its done-criteria were met as follows:
@@ -1310,10 +1502,9 @@ resume changed every question. Short by design.
 - **Review of the `maintenance` workstream, the bug vocabulary, and the
   backfilled records.** The pull request waits on it; the triage of twelve
   untriaged bugs follows it, in the `maintenance` workstream.
-- **Whether the freeze lifts for the remaining eight items.** The 2026-08-30
+- **Whether the freeze lifts for the remaining four items.** The 2026-08-30
   freeze runs until the release-candidate check, which is now. The owner has
-  lifted it twice, for the release rules and for `maintenance`. Seven of the
-  eight remaining items change rules.
+  lifted it for every slice so far. All four remaining items change rules.
 - **Whether *One Workflow, Many Projects* (2026-09-11) subsumes the structural
   sequence** of information model, component shape, coordination off `main`,
   and mail transport as its first phase, which its text implies, or runs after
@@ -1326,9 +1517,9 @@ resume changed every question. Short by design.
 - **Whether a releasing workstream needs its own state.** Decided no for now;
   see *Fifteenth Task*. Reopen if a resume during a release goes wrong for
   lack of it.
-- **Whether the outbox-is-a-mechanism item (2026-08-18) is moot.** If the
-  off-`main` mail transport retires the outbox, the item's sentence is never
-  written. It stays in intake until the transport decision is made.
+- **Whether `sample-projects` and `component-catalog` want their stranded
+  pause records resent.** Both outboxes hold status-file text `main` lacks;
+  records, not mail, and theirs to send when next selected.
 
 ### Deliberately Not Preserved
 

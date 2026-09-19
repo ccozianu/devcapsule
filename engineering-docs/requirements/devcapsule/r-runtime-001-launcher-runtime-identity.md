@@ -4,7 +4,7 @@ title: Identical Launcher And Container Runtime By Default
 type: requirement
 kind: concrete-requirement
 status: accepted
-priority: current stabilization
+priority: wanted
 source_of_truth: repo
 verification:
   - tests
