@@ -4,7 +4,7 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active 2026-09-19; experiment accepted as successful with A−; follow-up task inventory requested by the owner, implementation not started
+State: active 2026-09-19; experiment accepted with A−; website backlog transferred under owner exception; content and parent-integration tasks remain
 
 Branch association: `website/initial-cut`; prefix `website/`
 
@@ -44,8 +44,8 @@ successful with A− and requested the follow-up inventory below. Publication
 before final review was separately authorized; acceptance is now settled.
 Further implementation awaits selection of a bounded follow-up slice.
 
-The site presents the root README substance, current user guides, and all three
-development-blog articles. Other engineering/developer references lead to GitHub.
+The site presents the root README substance, current user guides, and the
+development blog. Other engineering/developer references lead to GitHub.
 Current v0.2.12 guides remain the accepted interim content; their V1 rewrite is
 still user-docs work. No product requirement or source-content rewrite was made.
 
@@ -78,10 +78,10 @@ git submodule update --init website
 Use the printed URL if 8080 is occupied. `PORT=8090` changes the starting port.
 Build/check on demand: `./scripts/website.sh build`.
 
-Next step: review the prioritized follow-up tasks below with the owner, incorporate
-his additional findings, then select one implementation slice. The current request
-is to enumerate and preserve shortcomings, not to implement all of them or close
-the workstream. Future website development remains expected.
+Next step: review/merge the direct website backlog handoff and parent pointer;
+then agree producer-side W12-C and the website contract before further content
+structure changes. Review the autonomy blog draft separately. W00 remains the
+website project's first priority; no new implementation is started by migration.
 
 Urgent exception authorized 2026-09-19: implement the W00 prerequisite to serve
 Google's ownership verification file. Website branch `google-site-verification`
@@ -91,24 +91,23 @@ and promotion without canonical rewriting. The parent pins that implementation.
 All 12 website tests, production-mode build, 582 link/asset checks and an exact
 source/output comparison pass. The candidate round-trip test preserves the file.
 No visual checks or container builds were needed. Public deployment and Search
-Console verification are still pending; this does not close W00.
+Console verification were pending at that checkpoint; see the owner update below.
 The existing required parent `nox -s build` integration gate also passed;
 the dirty-tree policy skipped the revision-bearing PEX.
 
-Immediate next step: owner merges the website fix, then this parent submodule
-update. Run the parent Website workflow on main with mode `production`, origin
-`https://test-devcapsule.mycodespace.ai`, base `/`; promote the new candidate
-using the website's production workflow on main. Check the production root
-verification URL before clicking Verify in Search Console. Retain the file in
-future deployments; older candidates lack it. SSH-only delivery still applies.
+Update from the owner after publication: Google verification succeeded and
+Search Console reports indexing data is processing. This is owner-reported
+progress; indexing is not yet established. The verification fix is merged in
+website main at `2f7cc75`. Continue W00 from the website backlog, retaining the
+verification file in future deployments and checking older rollback candidates.
 
 The owner accepted the experiment as successful with an A−, explicitly valuing
 the agent's recognition of shortcomings. That verdict is now recorded; do not
 ask for it again. On 2026-09-19 the owner specifically requested task items in
 this workstream. This supersedes the earlier plan to archive immediately and the
-earlier limitation against keeping a parent workstream website backlog. Content
-ownership is unchanged; execution may later move to the standalone website only
-with the owner's direction.
+earlier limitation against keeping a parent workstream website backlog. The owner
+subsequently authorized the direct backlog handoff recorded below;
+website implementation work now belongs to the standalone website project.
 
 Resume: clean checkout switched from project-management to the registered website
 branch for this explicit continuation, then fast-forwarded to origin/main d71559a.
@@ -286,256 +285,139 @@ unchanged index entry into an uninitialized sample-project submodule.
 The required nox build gate passed, including nine packaging integration checks;
 the dirty-tree policy skipped the public revision PEX, as expected. Mail and the
 pre-existing website bug queue were empty. The confirmed publishing-input defect
-is now recorded with owner website; follow-up details remain in this status file.
+is now recorded with owner website; follow-up details were subsequently transferred to the website backlog.
 
-## Follow-up Tasks (2026-09-19)
+## Content And Integration Tasks Retained In DevCapsule
 
-All items below are **open; inventory only**. The owner designated **W00 as the
-top priority (gating)**. The remaining priority order is proposed, not a
-release commitment: **P1** removes publishing/verification traps; **P2** improves
-maintainability and user understanding; **P3** is a useful enhancement to scope
-with the owner. These are not retroactive reasons to revoke the accepted grade.
-Requirements basis: the work order's repeatable updates, content ownership,
-reading experience and reviewable publication; enhancements beyond that baseline
-are identified explicitly. No paid service or automatic production publishing is
-implied. Verification is a future task, not evidence claimed today.
+The owner authorized direct submodule edits as a one-time handoff exception on
+2026-09-19. Detailed W00–W13 website tasks now live in the website project's
+[authoritative backlog](../../../website/BACKLOG.md), including newly formalized
+W12. This parent no longer owns those implementation tasks. Website uses its
+own single-stream status for continuation; this checkout remains selected to
+DevCapsule's website workstream. No autonomous workstream switch is implied.
 
-Ownership clarified by the owner: DevCapsule owns authored content and content
-decisions; devcapsule-website owns website functionality, appearance and
-publishing. Website-owned items must migrate there; mixed items need linked
-content and implementation tasks. This inventory remains here pending that
-migration. W00 belongs to devcapsule-website. W09 remains unchanged and separate.
+DevCapsule owns authored content and editorial decisions. The website owns
+functionality, appearance, rendering and publishing design. The parent retains
+its content, the following producer obligations, and the small integration that
+pins/invokes website tooling. These are open tasks, not implemented changes.
+`-C` IDs correspond to the linked website task, with distinct acceptance criteria.
+W00 remains the highest website priority; this split does not reprioritize it.
 
-### W00 — Gating, top priority: Establish and verify Google search discoverability
+| Parent task | Website dependency |
+|---|---|
+| I01 — Parent publication integration | [W01](../../../website/BACKLOG.md#w01--p1-make-the-test-publication-action-hard-to-misuse), [W05](../../../website/BACKLOG.md#w05--p1-verify-the-public-result-after-deployment), [W06](../../../website/BACKLOG.md#w06--p2-make-rollback-and-candidate-retention-operationally-reliable) |
+| W04-C — Content PR validation | [W04](../../../website/BACKLOG.md#w04--p1-validate-website-changes-before-the-manual-publishing-run), W12 |
+| W07-C — Landing content structure | [W07](../../../website/BACKLOG.md#w07--p2-remove-brittle-coupling-to-readme-wording-and-paragraph-order), W12 |
+| W08-C — Editorial status and version | [W08](../../../website/BACKLOG.md#w08--p2-make-content-status-and-version-explicit), W12 |
+| W09-C — Descriptions and social artwork | [W09](../../../website/BACKLOG.md#w09--p2-improve-discovery-and-link-previews), W12 |
+| W11-C — Guide and demonstration content | [W11](../../../website/BACKLOG.md#w11--p2-validate-the-experience-with-people-and-browsers-beyond-this-setup) |
+| W12-C — Producer contract requirements and acceptance | [W12](../../../website/BACKLOG.md#w12--gating-define-the-contentwebsite-contract) |
 
-- [ ] Diagnose and resolve production's absence from Google search results.
-- Evidence: the owner reports no results for
-  `+site:devcapsule.mycodespace.ai github`. Direct public checks on 2026-09-19
-  found homepage and `/docs/` returning HTTPS 200 with production canonicals,
-  no robots/Googlebot noindex meta or X-Robots-Tag header, and robots.txt allowing
-  crawling. `/sitemap.xml` returns 404. These checks do not establish what Google
-  has crawled or indexed; the missing sitemap alone does not establish the cause.
-- Done means: inspect production in Google Search Console with the owner's
-  verified access; distinguish discovery, crawling, indexing and canonical issues;
-  fix identified barriers; provide and submit a production sitemap (shared
-  implementation with W09 where appropriate), reference it in robots.txt, and
-  request indexing of key pages. Keep staging excluded under W02. Obtain evidence
-  of indexing and representative production search results before closing;
-  a successful build or submission alone is insufficient. Google's timing and
-  inclusion decisions are external; record pending status rather than promising
-  a deadline or ranking.
-- Verify: Search Console URL Inspection/Page Indexing evidence for the homepage
-  and representative guide, sitemap retrieval/submission, and a repeat of the
-  owner's query. Use URL Inspection to diagnose indexing; a site query alone is
-  not an exhaustive index report. No Search Console access/result is claimed yet.
-- Reopen if intended public pages become undiscoverable or publication changes
-  introduce indexing barriers.
+### I01 — Maintain the parent integration with website publishing
 
-### W01 — P1: Make the test publication action hard to misuse
+- [ ] Apply website-owned interface changes to the parent caller, workflow and
+  submodule pin when ready. Existing publishing implementation happens to run
+  here; that does not make its behavior or backlog content-owned.
+- Done means: parent invocations select the intended content/website revisions
+  and expose the website's agreed publication/verification/recovery behavior.
+  Keep substantive website logic in its owner repository where practical; agree
+  the interface before moving code. The parent still owns its GitHub permissions
+  and release-namespace integration. No workflow is changed by this migration.
+- Verify: targeted caller/configuration checks and an agreed test publication;
+  coordinate with W01/W05/W06 rather than duplicating their implementation tests.
 
-- [ ] Resolve the [confirmed input-validation bug](../../bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md).
-- Evidence: parent `.github/workflows/website.yml` defaults to `preview`, labels
-  test deployment `production`, and lets the origin/base path disagree with the
-  candidate conditions. Wrong settings can yield a successful run with skipped
-  jobs, or replace staging with a build that cannot be promoted.
-- Done means: clear build-only/deploy-test choices; deploy-test is the owner-
-  requested normal default; its host/base path are fixed or validated before
-  deployment; intentional skips and invalid inputs are explicitly explained.
-- Verify: default dispatch produces a test deployment and candidate; build-only
-  is explicit; wrong host/path and wrong branch cannot quietly publish or skip.
-- Reopen if new modes or destinations reintroduce incompatible combinations.
+### W04-C — Validate content changes before publication
 
-### W02 — P1: Distinguish staging and prevent accidental indexing
+- [ ] Invoke website-supplied conformance/build/link checks on relevant content PRs
+  against a declared website revision. Do not duplicate the check implementation.
+- Done means: a broken authored link or incompatible content is caught before
+  merge with useful author feedback, without deployment or exposing write tokens.
+- Verify: representative valid and invalid content changes through the parent PR
+  check; website owns its browser/layout checks and presentation PR workflow.
 
-- [ ] Give staging a visible environment label and an explicit noindex policy,
-  separate from the existing build-only/production rendering mode.
-- Evidence: live test HTML on 2026-09-19 has no robots noindex meta, its robots.txt
-  says Allow: /, and the shared layout has no test label. Its latest canonical
-  URL points at production. This is observed configuration, not proof of indexing.
-- Done means: visitors can identify staging; a chosen staging canonical policy and
-  noindex directives are consistent; promotion deliberately removes staging-only
-  metadata while preserving content. Update promotion's currently strict robots
-  and canonical validation together, rather than patching the template alone.
-- Verify: inspect staged and promoted HTML/robots, desktop/mobile label visibility,
-  and a file-difference check limiting transformation to the agreed metadata.
-- Reopen if a new host or rendering mode bypasses the staging policy.
+### W07-C — Agree and author stable landing content structure
 
-### W03 — P1: Show what is being promoted and what is currently live
+- [ ] Agree section identities and editorial structure with W12, then adjust the
+  authored README/metadata if needed without duplicating prose in the website.
+- Done means: product meaning and ordering remain content-owned; ordinary wording
+  changes do not require coordinating literal heading strings with the builder.
+- Verify: representative editorial changes against the W07 consumer implementation
+  and agreed contract, reviewed for meaning as well as build success.
 
-- [ ] Make candidate selection understandable without copying opaque tags between
-  repositories and manually reading raw build-info JSON.
-- Evidence: production accepts one free-text candidate tag; there is no comparison
-  with deployed production, human-readable change summary, or publication timestamp.
-  The footer's builtAt correctly preserves build time, including on rollback.
-- Done means: the owner can see the selected candidate's content/presentation
-  changes, source test run and comparison with current production before approval;
-  current deployment/candidate identity and publication time are discoverable.
-  Keep build time distinct. Decide how an older candidate is reviewed once the
-  shared staging URL has advanced; do not imply that URL still shows the old one.
-- Verify: two different candidates and an intentional rollback display the correct
-  changes/identities; publication metadata does not rewrite original build time.
-- Reopen if candidate selection becomes ambiguous again.
+### W08-C — Decide publication status, supported version and freshness
 
-### W04 — P1: Validate website changes before the manual publishing run
+- [ ] Decide which authored pages are public, draft or historical; supply explicit
+  status/version metadata under W12. A fresh site build is not a guide review.
+- Done means: editorial publication decisions and supported versions are recorded
+  in content; website W08 renders/enforces them. Preserve intended historical
+  references. The accepted guide rewrite remains user-docs work; send actionable
+  changes through coordination mail rather than editing its workstream records.
+- Verify: owner review of current/draft/historical examples and generated output.
 
-- [ ] Add proportionate PR validation in both content and presentation repositories.
-- Evidence: the website workflows are workflow_dispatch only. Publication runs
-  unit/build/link checks; the existing browser/accessibility checks are absent
-  from those workflows. Current browser evidence came from local agent execution.
-- Done means: relevant content and website PRs run build/link/unit checks, with
-  representative browser checks where appropriate, using the correct content and
-  presentation revisions. PR checks produce reviewable output without deploying
-  or exposing a write token to untrusted PR code.
-- Verify: an intentionally broken link/layout fixture fails the appropriate check;
-  a presentation PR builds its proposed version without first needing a parent
-  submodule merge. Preserve manual production promotion.
-- Reopen if a content/implementation path can merge without relevant validation.
+### W09-C — Supply editorial descriptions and social assets
 
-### W05 — P1: Verify the public result after deployment
+- [ ] Author concise approved descriptions and select/provide relevant social
+  artwork for the homepage, guides and articles under the agreed metadata fields.
+- Done means: accurate authored copy/assets are available to W09's generator;
+  sitemap, canonical and social-tag mechanics stay website-owned.
+- Verify: owner reviews representative text/artwork in generated share previews.
 
-- [ ] Add bounded post-deployment checks before calling a test candidate or
-  production deployment successful.
-- Evidence: both workflows stop deployment verification at deploy-pages success.
-  They do not fetch the custom domain, validate its TLS/canonical/robots policy,
-  or compare the served build-info revision with the intended candidate.
-- Done means: distinguish an API-accepted deployment from a verified served site;
-  check homepage, representative deep link/assets and provenance with bounded
-  cache/propagation retries; give a useful failure summary. Do not automatically
-  roll back based on an ambiguous transient network failure.
-- Verify: wrong revision/hostname and a broken deep link produce actionable failure;
-  a normal delayed propagation succeeds inside the documented bound.
-- Reopen if a hosting or caching change defeats served-revision verification.
+### W11-C — Improve guide and product demonstration content from evidence
 
-### W06 — P2: Make rollback and candidate retention operationally reliable
+- [ ] Supply authentic DevCapsule screenshots/demo content if selected, and route
+  substantive guide corrections from newcomer tasks to the content owner.
+- Done means: content matches supported product behavior and addresses observed
+  reader problems; do not infer a required video or rewrite without owner scope.
+- Verify: representative user tasks/content review with W11; website owns browser,
+  performance, visual layout and standalone website-environment verification.
 
-- [ ] Document and rehearse restoration, protect needed candidates, and define
-  retention/recovery for missing assets and partially published releases.
-- Evidence: rollback is another dispatch with an older tag; no live rollback has
-  been exercised. Candidate assets are mutable/deletable, with no archive policy.
-  A checksum stored beside its archive detects inconsistency, not an independent
-  provenance proof against an authorized rewrite of both. Candidate prereleases
-  also accumulate in the same Releases list visitors use for the CLI download.
-- Done means: identify the last known good candidate; preserve required assets;
-  exercise recovery in staging before any separately authorized production drill;
-  define cleanup that cannot remove deployed/rollback candidates and keep CLI
-  downloads easy to find. Handle release-upload failure without falsely claiming
-  the already deployed test site rolled back. Choose immutability/backups based
-  on the owner's actual recovery requirement, not speculative security machinery.
-- Verify: restore an older candidate with unchanged content/assets, exercise missing
-  and corrupt assets, and confirm cleanup/recovery preserves known-good releases.
-- Reopen if release storage or cleanup changes invalidate the recovery procedure.
+### W12-C — Agree the producer side of the content–website contract
 
-### W07 — P2: Remove brittle coupling to README wording and paragraph order
+- [ ] Define author needs and acceptable metadata/structure, review the website's
+  canonical contract, and reference the agreed version from DevCapsule guidance.
+- Done means: one authoritative contract in the website repository, with explicit
+  content-owner acceptance, compatibility/migration rules and examples that both
+  sides can use. Implementation observations are not silently made requirements.
+- Verify: a new maintainer can author and preview a conforming example from the
+  written instructions without reconstructing our conversation or parser code.
 
-- [ ] Define a resilient landing-content mapping without duplicating authored prose.
-- Evidence: `website/scripts/content.mjs` matches literal English headings and
-  assigns paragraphs[0], paragraphs[1], slice(2,4) to visual roles. A harmless
-  heading rename fails the build; reordering/adding prose can misassign sections.
-- Done means: explicit stable section identities or another owner-approved content
-  contract; routine editorial changes preserve intended grouping or fail with a
-  targeted author-facing explanation; new authored content is not silently lost.
-- Verify: heading rename, inserted/reordered paragraph and new section examples
-  reviewed for meaning, not merely passing a test derived from the implementation.
-- Reopen if ordinary editing again requires changing presentation code.
+### Migration Record And Remaining Editorial Work
 
-### W08 — P2: Make content status and version explicit
-
-- [ ] Decide which drafts/historical pages belong on the public site, and make
-  current documentation's supported version and freshness understandable.
-- Evidence: all Markdown under docs is imported; historical/draft status is inferred
-  from `/product/` or `docker4pycharm` in the filename. Draft announcement pages
-  are therefore public and indexable today, though visibly labeled. A fresh site
-  build does not establish that an individual guide is current. The accepted
-  v0.2.12 guide rewrite still belongs to user-docs, not this review.
-- Done means: an explicit publication/status contract and version presentation,
-  agreed with the content owner. Decide inclusion vs labeling vs noindex for
-  drafts; preserve intentional historical links. Do not silently rewrite guides.
-- Verify: representative current, draft and historical documents, plus a newly
-  added file, receive the intended visibility/status/version and navigation.
-- Reopen if path naming again becomes the only publication/status decision.
-
-### W09 — P2: Improve discovery and link previews
-
-- [ ] Add deliberate production metadata and a sitemap; fix redundant social titles
-  and choose useful descriptions/social images for homepage, docs and blog entries.
-- Evidence: production sitemap.xml returns 404; base.njk has og:title and og:type
-  only, without og:url/image/description. Homepage og:title is
-  `DevCapsule · DevCapsule`; its description is the first setup paragraph rather
-  than a concise product explanation. No search-ranking penalty was measured.
-- Done means: accurate, nonduplicated metadata and canonical URLs, a sitemap limited
-  to intended public pages, and meaningful share cards without inventing claims.
-- Verify: generated head/sitemap checks and actual share-card previews for the
-  homepage, guide and article; staging/drafts follow W02/W08 decisions.
-- Reopen if new page types inherit misleading generic metadata.
-
-### W10 — P3: Help readers find answers and follow the journal
-
-- [ ] Scope lightweight documentation search/topic navigation and an RSS/Atom feed.
-- Evidence: sidebar/toc navigation exists, but there is no site-wide search or
-  journal subscription link/template; live feed.xml returns 404. These are
-  enhancements, not failures of an original search/feed requirement.
-- Done means: a reader can locate a known topic across guides, distinguish current
-  from historical answers, and subscribe to new articles. Keep ordinary reading
-  usable without JavaScript; avoid adding a backend/service without need.
-- Verify: representative novice search tasks, keyboard/mobile use and an independent
-  feed reader. Agree relevance/navigation expectations before choosing a library.
-- Reopen if corpus growth makes answer-finding or feed delivery unreliable.
-
-### W11 — P2: Validate the experience with people and browsers beyond this setup
-
-- [ ] Test an unfamiliar visitor's first-use journey, and fill the explicit browser,
-  performance and standalone-environment evidence gaps proportionately.
-- Evidence: current browser evidence is Chromium automation plus agent screenshots;
-  no independent novice study, Firefox/WebKit/mobile-device checks, performance
-  budget or graphical launch of the website's own capsule is recorded. This is
-  missing evidence, not a claim those experiences are broken or slow. The hero
-  illustrates a concept but does not demonstrate an actual DevCapsule session.
-- Done means: choose a small user task and target-browser set with the owner;
-  record where a newcomer gets stuck and fix prioritized findings. Measure before
-  choosing performance work; assess whether an authentic screenshot/demo clarifies
-  the product. Verify the advertised standalone setup rather than assuming it.
-- Verify: documented task outcomes and targeted browser/device/environment evidence;
-  thresholds and stop conditions agreed before expanding the test matrix.
-- Reopen if new layouts/platform promises invalidate the tested user journey.
-
-### W13 — Wanted: Audience analytics and visitor experience measurement
-
-- [ ] Add website-owned audience and experience measurement as second-stage
-  functionality. The owner explicitly accepts its absence from the initial cut;
-  this is an enhancement, not a defect counted against the experiment's quality.
-- Evidence: the delivered website has no analytics or usage-event collection.
-  Search Console's search reporting does not measure journeys within the site.
-- Scope: visitor/page-view trends, acquisition sources, popular content and
-  journeys to key actions such as starting instructions and GitHub; relevant
-  real-visitor performance and browser-error evidence. Distinguish observed
-  events from inferred engagement or completion of off-site actions.
-- Before implementation: agree the owner's questions and useful reports, define
-  metrics and unique/returning-visitor estimation, and select a proportionate
-  collection approach with explicit cost, retention, privacy and consent
-  behavior. Named-person identification, accounts, session replay and invasive
-  tracking are not implied by this request. No provider is selected yet.
-- Done means: the owner can access documented reports answering the agreed
-  questions; instrumentation survives the build/promotion process, excludes
-  staging from production reporting, and does not impair ordinary reading.
-  Document measurement limitations, including blocked scripts and any consent
-  effects, so estimates are not presented as exact counts of people.
-- Verify: controlled visits and key actions appear correctly without duplicate
-  events; staging is excluded; collection respects the chosen settings; the
-  site still works when measurement is unavailable. Owner reviews report utility.
-- Reopen if publication changes break collection or reports stop answering the
-  agreed questions. Migrate this item to devcapsule-website with its backlog.
+- Full task evidence and acceptance criteria moved to website/BACKLOG.md. Mixed
+  items have producer tasks above and links from the website backlog. No copied
+  implementation backlog remains here.
+- The publishing-input bug moved to the website's engineering-docs/bugs/website/;
+  the original parent record is a retired transfer pointer, not a claim of a fix.
+- W00 records the owner's successful Google verification and processing report;
+  indexing remains unverified and Bing/sitemap work is still open. W13 is planned
+  second-stage functionality, not an initial implementation defect.
+- The owner-requested autonomy retrospective remains DevCapsule-authored content,
+  awaiting editorial review before website publication.
+- Validation: all 14 destination IDs and six producer counterparts were checked;
+  W09's original scope is unchanged. Local documentation links resolve apart
+  from the unchanged index reference into an uninitialized sample submodule.
+  The required parent `nox -s build` gate passed, including nine packaging
+  integration tests; dirty-tree policy skipped the revision-bearing PEX.
+- Delivery: website branch `backlog-handoff`, then the parent `website/initial-cut`
+  PR containing its gitlink and companion records. Keep those parent records
+  with the pointer update so main does not link to a backlog absent from its
+  pinned submodule. No publication workflow needs running for this records-only
+  migration; the blog remains subject to separate editorial approval.
+- The workflow does not define a cross-repository mailbox transfer. The explicit
+  owner exception authorizes direct edits in the submodule; commit/push its
+  authoritative records first, then pin them here. Ordinary messages to other
+  DevCapsule workstreams still use coordination mail. No second local selection
+  or permanent exception to workstream routing is introduced.
 
 ## Open Threads
 
 - Owner has accepted the autonomy experiment: successful, A−. No further verdict
   request is pending. Workstream closure is deferred at his request for this task
   inventory; his additional shortcomings and priority corrections remain welcome.
-- W00–W11 and W13 are inventoried here per explicit owner instruction; W00 is first.
-  W12 is the separately proposed content–website contract item from owner review.
-  Website-owned tasks await migration to devcapsule-website under the agreed
-  content/implementation split. No fix, feature,
-  deployment, new service, live rollback or expanded test campaign was authorized
-  merely by recording them. Select a bounded slice before implementation.
+- Website-owned W00–W13 have moved to the submodule backlog. DevCapsule keeps
+  producer tasks and parent integration, plus the blog draft awaiting review.
+  Cross-repository delivery is via the paired reviewable commits described above.
+  This migration authorizes no implementation or deployment.
 - Existing release/publication decisions stand: authoritative content here,
   presentation in the website repository, public release candidates, no personal
   deployment token, manual production approval.
@@ -547,9 +429,10 @@ migration. W00 belongs to devcapsule-website. W09 remains unchanged and separate
 ## Documents
 
 - [Work order](../../work-orders/2026-09-16-website-autonomy.md)
-- [Test publication input bug](../../bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
+- [Transferred test publication input bug](../../bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
 - [Website developer guide](../../../website/README.md)
 - [Publication and exact final steps](../../../website/PUBLISHING.md)
 - [Website independent handoff](../../../website/CURRENT-STATUS.md)
+- [Website-owned backlog](../../../website/BACKLOG.md)
 - [Intake](intake/README.md)
 - [Disposition log](intake-dispositions.md)
