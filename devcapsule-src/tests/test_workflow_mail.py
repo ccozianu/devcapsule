@@ -38,6 +38,9 @@ def repos(tmp_path: Path) -> tuple[Path, Path, Path]:
     git(seed, "add", "README.md")
     git(seed, "commit", "--quiet", "-m", "seed")
     git(seed, "push", "--quiet", "origin", "HEAD:main")
+    # A branch whose last path component equals the coordination branch's
+    # name must not be mistaken for it when the real branch does not exist.
+    git(seed, "push", "--quiet", "origin", "HEAD:refs/heads/ws-gamma/coordination")
     sender = clone(origin, tmp_path / "sender", "alpha", "v1")
     recipient = clone(origin, tmp_path / "recipient", "beta", "v1")
     return origin, sender, recipient

@@ -216,8 +216,11 @@ def _fetch_tip(git: _Git, remote: str, branch: str) -> str | None:
         "fetch", "--quiet", remote, f"+refs/heads/{branch}:refs/remotes/{remote}/{branch}"
     )
     if completed.returncode != 0:
-        listed = git.run("ls-remote", "--heads", remote, branch)
-        if not listed.strip():
+        # Ask for the exact ref: a bare pattern such as "coordination" would
+        # also match "ws-<name>/coordination", and a fetch failure would then
+        # be misread as an existing branch.
+        listed = git.attempt("ls-remote", "--exit-code", remote, f"refs/heads/{branch}")
+        if listed.returncode == 2:
             return None
         raise WorkflowMailError(f"fetching {remote}/{branch} failed: {completed.stderr.strip()}")
     return git.run("rev-parse", f"refs/remotes/{remote}/{branch}").strip()
