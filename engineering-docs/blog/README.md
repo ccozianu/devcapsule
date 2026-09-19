@@ -32,6 +32,7 @@ published: a GitHub-backed site or an account-storage-backed one.
 
 ## Entries
 
+- [Lessons learned in AI autonomy — Part 2: the AI perspective](2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — Astra's account of the website experiment; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](2026-09-19-lessons-learned-in-ai-autonomy.md) — website experiment retrospective; draft awaiting owner editorial review.
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](2026-09-06-when-should-a-tool-refuse.md)
 - [I asked for user docs](2026-09-16-i-asked-for-user-docs.md) — second entry, first-person version reviewed by the product owner.

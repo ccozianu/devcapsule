@@ -51,6 +51,12 @@ still user-docs work. No product requirement or source-content rewrite was made.
 
 ## Review And Continuation
 
+The owner also requested [Part 2 from the AI's perspective](../../blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md).
+It is an agent-authored draft for editorial review, with independent reflection
+on decision quality, operational assumptions, validation scope and resource use.
+Part 1 is unchanged; both entries remain content-owned here. Blog and root
+indexes include Part 2. No publishing workflow was triggered.
+
 Owner-requested retrospective drafted on 2026-09-19:
 [Lessons learned in AI autonomy over a simple, straightforward task](../../blog/2026-09-19-lessons-learned-in-ai-autonomy.md).
 Written in the owner's voice and explicitly awaiting his editorial review;

@@ -121,6 +121,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Development Blog
 
+- [Lessons learned in AI autonomy — Part 2: the AI perspective](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — agent-authored retrospective; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md) — website autonomy experiment retrospective; draft for owner review.
 - [The DevCapsule development blog](engineering-docs/blog/README.md)
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](engineering-docs/blog/2026-09-06-when-should-a-tool-refuse.md)
