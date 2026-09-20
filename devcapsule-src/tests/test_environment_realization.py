@@ -12,9 +12,13 @@ from devcapsule.components.claude_code import (
 )
 from devcapsule.environment_realization import ensure_local_image, realize_environment
 from devcapsule.materialization import ImageDetails
-from devcapsule.project_configuration import (
+from devcapsule.configuration.storage import (
     ResolvedProject,
+)
+from devcapsule.configuration.authorization import (
     authorization_declarations,
+)
+from devcapsule.configuration.documents import (
     canonical_digest,
 )
 

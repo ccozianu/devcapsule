@@ -10,9 +10,8 @@ import tomllib
 
 import pytest
 
-from devcapsule.configuration import Configuration, Resolution
-from devcapsule.configuration_review import HostAccess
-from devcapsule.project_configuration import ProjectConfigurationError, canonical_digest
+from devcapsule.configuration import Configuration, Resolution, HostAccess, ProjectConfigurationError
+from devcapsule.configuration.documents import canonical_digest
 
 
 @pytest.fixture
@@ -23,7 +22,7 @@ def predecessor_documents():
     literal checkout-path placeholder is a valid identity for this unit test;
     physical path ownership belongs to the file adapter tests.
     """
-    source = Path(__file__).parent / "resources/compat/v0.2.11"
+    source = Path(__file__).parents[1] / "resources/compat/v0.2.11"
     def read(relative):
         return tomllib.loads((source / relative).read_text())
     manifest = read("project/.devcapsule/devcapsule.toml")

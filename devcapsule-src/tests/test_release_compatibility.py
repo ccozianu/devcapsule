@@ -15,7 +15,9 @@ import tomllib
 from unittest.mock import patch
 
 from devcapsule import cli
-from devcapsule.project_configuration import canonical_digest
+from devcapsule.configuration.documents import (
+    canonical_digest,
+)
 
 
 FIXTURES = Path(__file__).parent / "resources" / "compat"

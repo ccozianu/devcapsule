@@ -45,6 +45,51 @@ developer-owned configuration authorizes host access.
   [`docker4pycharm/README.md`](docker4pycharm/README.md).
 - `.devcapsule/` — this project's capability declaration and platform lock.
 
+### Python package boundaries
+
+The source layout follows the responsibilities of the launcher and runtime:
+
+```text
+devcapsule/
+  commands/                 CLI grammar, dispatch and presentation
+  configuration/            Project declarations, local decisions and plans
+    model.py                Configuration value API
+    values.py               Ordinary values, types and omissions
+    bindings.py             Directory and secret-source bindings
+    authorization.py        Host/acquisition consent and base trust
+    nodes.py                Canonical node names and registry
+    review.py               Complete assessment and effective host decisions
+    resolution.py           Derived plan values and serialization
+    manifest.py             Project declaration validation and projection
+    fingerprints.py         Source fingerprints
+    freshness.py            Current and predecessor checkpoint freshness
+    documents.py            Versioned document admission and codecs
+    storage.py              File discovery, ownership and atomic writes
+    execution.py            Admission of a stored checkout for execution
+    operations.py           Initialization and persistent edit orchestration
+    history.py              Successful-run snapshots
+  components/               Trusted component declarations and contributions
+  launch/                   Host-side launch adapters
+    pycharm/                Legacy PyCharm-compatible launch/build interface
+  container_runtime/        In-container plan interpretation and supervision
+```
+
+Use `devcapsule.configuration` for the value API: `Configuration`, `Resolution`,
+`ConfigurationReview`, `HostAccess`, and `ProjectConfigurationError`. File and
+lifecycle adapters use the named `storage`, `execution`, `operations`, and
+`history` modules. The configuration core depends on domains and codecs; it
+does not depend on those adapters, CLI commands, image realization or launch.
+Internal configuration imports are acyclic, including imports inside functions.
+The architecture tests under `devcapsule-src/tests/configuration/` enforce these
+boundaries alongside the configuration laws and representation tests.
+
+`launch/pycharm` retains the existing compatibility interface; its command
+grammar lives in `commands/_pycharm.py`. The former `configurations/` package
+was launcher machinery and is no longer presented as the configuration model.
+The remaining top-level modules retain their existing responsibilities; this
+layout change establishes the configuration boundary without inventing new
+subsystems for unrelated code.
+
 The `-src` suffix is deliberate: in a default clone named `devcapsule`, the
 three layers are `devcapsule/devcapsule-src/devcapsule` (checkout,
 distribution project, import package) rather than three identically named

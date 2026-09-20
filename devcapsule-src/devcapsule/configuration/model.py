@@ -16,81 +16,13 @@ import tomllib
 from typing import Any, Mapping
 
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
-from devcapsule.configuration_documents import Artifact, admit_document, table
-from devcapsule.configuration_resolution import render_resolution
-from devcapsule.configuration_review import ConfigurationReview, HostAccess, review_configuration
-from devcapsule.project import ProjectMountError, normalize_project_mount
-from devcapsule.project_configuration import (
-    ProjectConfigurationError, canonical_digest, locked_base_reference,
-    stale_resolution_inputs, validate_manifest,
-)
 
-
-class Resolution:
-    """A well-formed runtime plan with separate meaning and freshness.
-
-    Decoding establishes a supported plan shape, not execution permission.
-    Only Configuration.accept establishes that this plan belongs to its inputs.
-    """
-
-    def __init__(self, document: Mapping[str, Any]) -> None:
-        admit_document(document, Artifact.resolution, "resolution")
-        self._document = deepcopy(dict(document))
-        runtime = table(self._document, "runtime")
-        component = runtime.get("component")
-        mount = runtime.get("project-mount")
-        memory = runtime.get("memory-limit-bytes")
-        image = runtime.get("image")
-        if (not isinstance(component, str) or component not in INTERACTIVE_SURFACES
-                or not isinstance(mount, str) or not mount.startswith("/") or "\x00" in mount):
-            raise ProjectConfigurationError("Run requires a valid resolved runtime; run 'devcapsule project config resolve'.")
-        try:
-            normalize_project_mount(mount, "resolved-project")
-        except ProjectMountError as exc:
-            raise ProjectConfigurationError(str(exc)) from exc
-        if memory is not None and (type(memory) is not int or memory <= 0):
-            raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
-        if image is not None and (not isinstance(image, str) or not image):
-            raise ProjectConfigurationError("Resolved runtime.image must be a non-empty string.")
-
-    def document(self) -> dict[str, Any]:
-        """Export an owned document for the persistence/launch adapter."""
-        return deepcopy(self._document)
-
-    def same_meaning_as(self, other: Resolution) -> bool:
-        """Compare derived plans, deliberately excluding source fingerprints.
-
-        This is not equality of resolutions: equivalent plans may differ in
-        freshness, which is a separate observation made by Configuration.
-        """
-        return self._meaning() == other._meaning()
-
-    def _meaning(self) -> str:
-        return canonical_digest({k: v for k, v in self._document.items() if k != "sources"})
-
-    @property
-    def component(self) -> str:
-        return self._document["runtime"]["component"]
-
-    @property
-    def project_mount(self) -> str:
-        return self._document["runtime"]["project-mount"]
-
-    @property
-    def base_reference(self) -> str | None:
-        base = table(self._document, "authorization", "base-image")
-        reference = base.get("reference")
-        if reference is not None and (not isinstance(reference, str) or not reference):
-            raise ProjectConfigurationError("Resolved base reference must be a non-empty string.")
-        return reference
-
-    @property
-    def host_access(self) -> HostAccess:
-        authorizations = self._document.get("authorization", {})
-        host_names = {"docker-daemon", "network", "development-sudo", "host-browser", "host-x11"}
-        return HostAccess().overlay(self._document.get("host", {})).overlay({
-            name: value for name, value in authorizations.items() if name in host_names
-        })
+from .authorization import locked_base_reference
+from .documents import Artifact, ProjectConfigurationError, admit_document, table
+from .freshness import stale_resolution_inputs
+from .manifest import validate_manifest
+from .resolution import Resolution, render_resolution
+from .review import ConfigurationReview, review_configuration
 
 
 class Configuration:

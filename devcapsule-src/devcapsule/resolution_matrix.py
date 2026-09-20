@@ -37,7 +37,7 @@ from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from devcapsule.platforms import Platform
-from devcapsule.project_configuration import (
+from devcapsule.configuration.documents import (
     ProjectConfigurationError,
     canonical_digest,
     quote_toml,

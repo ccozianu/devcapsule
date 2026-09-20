@@ -9,8 +9,8 @@ from typing import Any
 import pytest
 
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
-from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions
-from devcapsule.configurations.pycharm._launcher import (
+from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions
+from devcapsule.launch.pycharm._launcher import (
     ContainerLifecycle,
     TempRuntimeFiles,
     build_docker_args,

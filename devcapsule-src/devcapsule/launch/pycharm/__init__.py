@@ -1,4 +1,4 @@
-"""PyCharm IDE configuration package."""
+"""Legacy PyCharm-compatible launch interface."""
 
 from __future__ import annotations
 
@@ -13,14 +13,12 @@ from ._launcher import (
     reject_launcher_owned_docker_options,
     run_pycharm,
 )
-from .configuration import PycharmConfiguration
 
 
 __all__ = [
     "DockerMode",
     "ContainerLifecycle",
     "IdeConfigMode",
-    "PycharmConfiguration",
     "PycharmRunConfig",
     "PycharmRunError",
     "PycharmRunOptions",

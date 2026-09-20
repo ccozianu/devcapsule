@@ -13,13 +13,33 @@ import tomllib
 
 import pytest
 
-from devcapsule.configuration_documents import Artifact, admit_document, render_document, table
-from devcapsule.configuration_review import HostAccess, review_configuration
-from devcapsule.project_configuration import (
-    ProjectConfigurationError, load_toml, stale_resolution_inputs, canonical_digest, atomic_write,
+from devcapsule.configuration.documents import (
+    Artifact,
+    admit_document,
+    render_document,
+    table,
 )
-from devcapsule.project_operations import InitializeRequest, ProvidedAnswer, initialize_project
-from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, build_run_config
+from devcapsule.configuration.review import (
+    HostAccess,
+    review_configuration,
+)
+from devcapsule.configuration.documents import (
+    ProjectConfigurationError,
+    canonical_digest,
+)
+from devcapsule.configuration.storage import (
+    load_toml,
+    atomic_write,
+)
+from devcapsule.configuration.freshness import (
+    stale_resolution_inputs,
+)
+from devcapsule.configuration.operations import (
+    InitializeRequest,
+    ProvidedAnswer,
+    initialize_project,
+)
+from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions, build_run_config
 from tests.test_pycharm import base_env
 from tests.test_upgrade_recovery import checkout, invoke, install_external_fakes
 
@@ -340,7 +360,7 @@ def test_init_and_individual_edits_have_the_same_local_effect(checkout, family, 
 
 def test_init_retains_a_current_local_base_without_reasking(checkout, monkeypatch):
     from devcapsule.materialization import ImageDetails
-    from devcapsule import project_operations
+    from devcapsule.configuration import operations as project_operations
     project, record, resolution = checkout
     image = ImageDetails('my-local-base:old', 'sha256:' + 'd' * 64, {
         'devcapsule.image.managed': 'true', 'devcapsule.metadata.version': '1',
@@ -379,7 +399,10 @@ def test_unsupported_fingerprint_representation_is_refused(checkout, sources):
 
 
 def test_incomplete_assessment_cannot_be_serialized_or_treated_as_compatible(checkout):
-    from devcapsule.configuration_resolution import render_resolution, same_effective_resolution
+    from devcapsule.configuration.resolution import (
+        render_resolution,
+        same_effective_resolution,
+    )
     project, record, resolution = checkout
     manifest = load_toml(project / '.devcapsule/devcapsule.toml')
     lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')

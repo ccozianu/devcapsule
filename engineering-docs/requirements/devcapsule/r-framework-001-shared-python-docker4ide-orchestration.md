@@ -28,7 +28,7 @@ contracts, and host-access authorization; IDE adapters remain thin.
 - `devcapsule-src/pyproject.toml`
 - `devcapsule-src/devcapsule/cli.py`
 - `devcapsule-src/devcapsule/__main__.py`
-- `devcapsule-src/devcapsule/configurations/pycharm/`
+- `devcapsule-src/devcapsule/launch/pycharm/`
 - `devcapsule-src/noxfile.py`
 - `devcapsule-src/devcapsule/commands/`
 - `devcapsule-src/tests/test_cli.py`

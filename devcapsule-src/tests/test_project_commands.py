@@ -11,12 +11,16 @@ import pytest
 
 from devcapsule import cli
 from devcapsule.components.codex import CODEX_CONFIG_SEED
-from devcapsule.configurations.pycharm import DockerMode
+from devcapsule.launch.pycharm import DockerMode
 from devcapsule.materialization import ImageDetails, parse_locked_environment
-from devcapsule.project_configuration import (
+from devcapsule.configuration.documents import (
     ProjectConfigurationError,
     canonical_digest,
+)
+from devcapsule.configuration.authorization import (
     immutable_registry_reference,
+)
+from devcapsule.configuration.storage import (
     registered_checkouts,
 )
 from devcapsule.project import project_namespace
@@ -1597,7 +1601,7 @@ def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id
         }
 
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base,
         ) as inspect_resolved_local:
             assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0

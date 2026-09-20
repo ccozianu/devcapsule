@@ -17,14 +17,27 @@ import pytest
 
 from devcapsule import cli
 from devcapsule.compat import CliError
-from devcapsule.configuration_review import review_configuration
+from devcapsule.configuration.review import (
+    review_configuration,
+)
 from devcapsule.display_client import select_display_transport
 from devcapsule.environment_realization import realize_environment
 from devcapsule.materialization import ImageDetails
-from devcapsule.project_configuration import (
-    AuthorizationChoice, ProjectConfigurationError, authorization_declarations,
-    canonical_digest, checkout_record_paths, load_toml, manifest_for,
-    render_checkout, resolved_checkout_authorizations, review_authorizations,
+from devcapsule.configuration.authorization import (
+    AuthorizationChoice,
+    authorization_declarations,
+    resolved_checkout_authorizations,
+    review_authorizations,
+)
+from devcapsule.configuration.documents import (
+    ProjectConfigurationError,
+    canonical_digest,
+    render_checkout,
+)
+from devcapsule.configuration.storage import (
+    checkout_record_paths,
+    load_toml,
+    manifest_for,
 )
 
 FIXTURE = Path(__file__).parent / "resources/compat/v0.2.11"
@@ -104,7 +117,7 @@ def install_external_fakes(monkeypatch, events, *, contained=True):
 # Persistence adapter law: inspection and execution preserve their input files.
 @pytest.mark.parametrize("operation", [("config", "list"), ("run",)])
 def test_read_only_operations_preserve_configuration_files(checkout, monkeypatch, operation):
-    """Persistence adapter contract; semantic upgrade laws live in test_configuration_adt."""
+    """Persistence adapter contract; semantic upgrade laws live in tests.configuration.test_adt."""
     project, record, resolution = checkout
     paths = [record, resolution, *sorted((project / ".devcapsule").iterdir())]
     before = {p: p.read_bytes() for p in paths}

@@ -35,14 +35,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
-from devcapsule.project_configuration import (
-    CURATED_HOST_RECOMMENDATIONS,
-    ProjectConfigurationError,
-    authorization_declarations,
-    component_secret_inputs,
-    configuration_binding_declarations,
-    configuration_value_declarations,
-)
+from .authorization import CURATED_HOST_RECOMMENDATIONS, authorization_declarations
+from .bindings import component_secret_inputs, configuration_binding_declarations
+from .documents import ProjectConfigurationError
+from .values import configuration_value_declarations
+
 
 __all__ = [
     "CARRIER_FAMILY_AUTHORIZE",

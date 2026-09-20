@@ -34,7 +34,7 @@ This is a boundary the product otherwise declares, inspects, and verifies.
 
 ## Evidence
 
-`devcapsule/configurations/pycharm/_launcher.py`:
+`devcapsule/launch/pycharm/_launcher.py`:
 
 - `write_xauthority` runs `xauth nlist "$DISPLAY"` and re-merges the resulting
   entries with the address family rewritten to the wildcard `ffff`. These are

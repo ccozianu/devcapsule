@@ -16,7 +16,9 @@ from devcapsule.materialization import (
     formation_descriptor,
     parse_locked_environment,
 )
-from devcapsule.project_configuration import ResolvedProject
+from devcapsule.configuration.storage import (
+    ResolvedProject,
+)
 from devcapsule.project_runtime_plan import project_runtime_plan
 from devcapsule_runtime.contract import RuntimePlan as LegacyRuntimePlan
 

@@ -22,47 +22,50 @@ import re
 import sys
 from typing import Any, Mapping, Sequence, TextIO
 
-from devcapsule.configuration_nodes import (
+from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
+from devcapsule.elicitation import SOURCE_EXISTING_RECORD, SOURCE_COMMAND_LINE, SOURCE_PROMPT, AnswerKey, Elicitor
+from devcapsule.environment_realization import required_local_image
+from devcapsule.materialization import validate_base_image
+from devcapsule.project import sanitize_name
+from devcapsule.platforms import Platform, UnsupportedPlatformError
+from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
+
+from .authorization import (
+    AuthorizationDeclaration,
+    CURATED_HOST_RECOMMENDATIONS,
+    authorization_declarations,
+    authorized_base_selection,
+    immutable_registry_reference,
+    normalize_authorization_value,
+    render_authorization_value,
+)
+from .documents import (
+    AuthorizationScalar,
+    ProjectConfigurationError,
+    quote_toml,
+    render_checkout,
+    render_document,
+    render_toml_scalar,
+)
+from .freshness import stale_resolution_inputs
+from .manifest import validate_manifest
+from .model import Configuration
+from .nodes import (
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
     PROVIDER_HOST_DIRECTORY,
     build_node_registry,
 )
-from devcapsule.configuration_review import review_configuration
-from devcapsule.configuration_documents import render_document
-from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
-from devcapsule.components.catalog import INTERACTIVE_SURFACES
-from devcapsule.elicitation import SOURCE_EXISTING_RECORD, SOURCE_COMMAND_LINE, SOURCE_PROMPT, AnswerKey, Elicitor
-from devcapsule.environment_realization import required_local_image
-from devcapsule.materialization import validate_base_image
-from devcapsule.project import sanitize_name
-from devcapsule.project_configuration import (
-    CURATED_HOST_RECOMMENDATIONS,
-    AuthorizationDeclaration,
-    AuthorizationScalar,
-    ProjectConfigurationError,
+from .storage import (
     atomic_write,
-    authorization_declarations,
-    authorized_base_selection,
-    checkout_omitted_values,
     checkout_record_paths,
-    immutable_registry_reference,
-    load_toml,
     load_checkout,
     load_resolution,
+    load_toml,
     lock_for,
     manifest_for,
-    normalize_configuration_value,
-    normalize_authorization_value,
-    quote_toml,
-    render_authorization_value,
-    render_checkout,
-    render_toml_scalar,
-    stale_resolution_inputs,
-    validate_manifest,
 )
-from devcapsule.platforms import Platform, UnsupportedPlatformError
-from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
+from .values import checkout_omitted_values, normalize_configuration_value
 
 
 def _current_matrix() -> ResolutionMatrix:
@@ -192,7 +195,6 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
     checkout = load_checkout(input_path, manifest, root)
-    from devcapsule.configuration import Configuration
     configuration = Configuration(manifest, lock, checkout)
     configuration.review().require_ready(root)
     resolution = configuration.resolve()

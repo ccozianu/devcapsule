@@ -11,21 +11,33 @@ import shutil
 
 import pytest
 
-from devcapsule.configuration_nodes import build_node_registry
-from devcapsule.project_configuration import (
+from devcapsule.configuration.nodes import (
+    build_node_registry,
+)
+from devcapsule.configuration.documents import (
     ProjectConfigurationError,
+)
+from devcapsule.configuration.storage import (
     load_toml,
-    stale_resolution_inputs,
-    normalize_configuration_value,
     checkout_record_paths,
 )
-from devcapsule.project_operations import InitializeRequest, ProvidedAnswer, initialize_project
+from devcapsule.configuration.freshness import (
+    stale_resolution_inputs,
+)
+from devcapsule.configuration.values import (
+    normalize_configuration_value,
+)
+from devcapsule.configuration.operations import (
+    InitializeRequest,
+    ProvidedAnswer,
+    initialize_project,
+)
 from tests.test_upgrade_recovery import (
     checkout,  # The released v0.2.11 fixture, with isolated XDG homes.
     install_external_fakes,
     invoke,
 )
-from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions, build_run_config
+from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions, build_run_config
 from tests.test_pycharm import base_env
 
 

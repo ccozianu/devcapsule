@@ -13,12 +13,14 @@ import shutil
 
 from devcapsule import cli
 from devcapsule.elicitation import ElicitationIncomplete
-from devcapsule.project_operations import (
+from devcapsule.configuration.operations import (
     InitializeRequest,
     ProvidedAnswer,
     initialize_project,
 )
-from devcapsule.project_configuration import ProjectConfigurationError
+from devcapsule.configuration.documents import (
+    ProjectConfigurationError,
+)
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
@@ -51,7 +53,7 @@ def sparse_matrix():
     """Patch the matrix project operations consult to the reduced one."""
 
     return patch(
-        "devcapsule.project_operations.MATRICES",
+        "devcapsule.configuration.operations.MATRICES",
         {Platform.LINUX_AMD64: matrix_without_antigravity_validation()},
     )
 
@@ -669,7 +671,7 @@ def test_init_records_a_local_base_selection_with_less_pedantic(
     identity = f"sha256:{'d' * 64}"
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, identity),
         ) as inspect_local:
             assert (
@@ -707,7 +709,7 @@ def test_init_base_selection_without_less_pedantic_batch_fails(
     selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, f"sha256:{'d' * 64}"),
         ):
             assert (
@@ -746,7 +748,7 @@ def test_init_base_selection_solicits_informed_consent_interactively(
     answers = io.StringIO("https://github.com/example\npython-ide\nno\n\n\n\n\n\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, identity),
         ):
             initialize_project(
@@ -780,7 +782,7 @@ def test_init_base_selection_consent_can_be_declined(tmp_path: Path) -> None:
     answers = io.StringIO("https://github.com/example\npython-ide\nno\n\n\n\n\nno\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, f"sha256:{'d' * 64}"),
         ):
             with pytest.raises(ProjectConfigurationError, match="declined"):

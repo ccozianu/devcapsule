@@ -29,7 +29,7 @@ the PyCharm default profile actively drops capabilities instead.
 - Image: `codium-with-claude:latest`
 - Launcher: `devcapsule codium_with_claude run`
 - Entrypoint: `devcapsule-src/devcapsule/assets/codium_with_claude/entrypoint.sh`
-- Launcher module: `devcapsule-src/devcapsule/configurations/codium_with_claude/_launcher.py`
+- Launcher module: `devcapsule-src/devcapsule/launch/codium_with_claude/_launcher.py`
 
 ## Evidence
 

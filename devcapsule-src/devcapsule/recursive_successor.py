@@ -13,8 +13,8 @@ import time
 from typing import Any, Mapping, Sequence
 
 from devcapsule.build_info import current_build_info
-from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions
-from devcapsule.configurations.pycharm._launcher import (
+from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions
+from devcapsule.launch.pycharm._launcher import (
     ContainerLifecycle,
     PycharmRunError,
     build_docker_args,
@@ -27,9 +27,13 @@ from devcapsule.display_client import display_url, select_display_transport
 from devcapsule.environment_realization import realize_environment
 from devcapsule.materialization import RUNTIME_PLAN_PATH as SUCCESSOR_RUNTIME_PLAN_PATH
 from devcapsule.project import project_namespace
-from devcapsule.project_configuration import (
+from devcapsule.configuration.storage import (
     atomic_write,
+)
+from devcapsule.configuration.bindings import (
     configuration_binding_declarations,
+)
+from devcapsule.configuration.execution import (
     fresh_resolved_project,
 )
 from devcapsule.project_runtime_plan import project_runtime_plan

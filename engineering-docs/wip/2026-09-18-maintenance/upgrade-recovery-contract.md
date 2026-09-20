@@ -56,7 +56,7 @@ broader matrix-update and obsolescence product design is outside this fix.
 ## Verification
 
 The [unit case table](../../../devcapsule-src/tests/test_upgrade_recovery.py)
-is supplemented by the [configuration ADT laws](../../../devcapsule-src/tests/test_configuration_adt.py). The historical inputs were produced by the released
+is supplemented by the [configuration ADT laws](../../../devcapsule-src/tests/configuration/test_adt.py). The historical inputs were produced by the released
 v0.2.11 source, revision `94e798f1d1a7aaab93ae3e47d9636471448a8e66`;
 their [provenance](../../../devcapsule-src/tests/resources/compat/README.md)
 records the commands and the two path-dependent substitutions.

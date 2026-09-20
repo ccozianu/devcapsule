@@ -12,14 +12,14 @@ import pytest
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.components.codex import runtime_template as codex_runtime_template
 from devcapsule.components.codium import runtime_template as codium_runtime_template
-from devcapsule.configurations.pycharm import (
+from devcapsule.launch.pycharm import (
     ContainerLifecycle,
     DockerMode,
     IdeConfigMode,
     PycharmRunOptions,
     build_run_config,
 )
-from devcapsule.configurations.pycharm._launcher import (
+from devcapsule.launch.pycharm._launcher import (
     display_disclosure,
     HostUser,
     PycharmRunError,
@@ -81,8 +81,8 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         env,
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -453,8 +453,8 @@ def test_physical_host_launcher_owns_browser_broker_for_docker_lifetime(
 
     with (
         patch("devcapsule.host_open.in_container", return_value=False),
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value.returncode = 0
         assert run_pycharm(
@@ -511,8 +511,8 @@ def test_selected_codex_state_and_explicit_secret_are_delivered(tmp_path: Path) 
         env,
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -542,8 +542,8 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
     host_user = HostUser(uid=1000, gid=1000, name="developer", group_name="developer")
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.current_host_user", return_value=host_user),
-        patch("devcapsule.configurations.pycharm._launcher.is_socket", return_value=True),
+        patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=host_user),
+        patch("devcapsule.launch.pycharm._launcher.is_socket", return_value=True),
     ):
         config = build_run_config(
             PycharmRunOptions(
@@ -565,7 +565,7 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
             ),
             env,
         )
-        with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
+        with patch("devcapsule.launch.pycharm._launcher.write_xauthority"):
             files = prepare_temp_runtime_files(config, env)
         try:
             assert files.sudoers_file is not None
@@ -616,7 +616,7 @@ def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) 
     host_user = HostUser(uid=1000, gid=1000, name="developer", group_name="developer")
 
     with patch(
-        "devcapsule.configurations.pycharm._launcher.current_host_user",
+        "devcapsule.launch.pycharm._launcher.current_host_user",
         return_value=host_user,
     ):
         config = build_run_config(
@@ -630,7 +630,7 @@ def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) 
             ),
             env,
         )
-        with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
+        with patch("devcapsule.launch.pycharm._launcher.write_xauthority"):
             files = prepare_temp_runtime_files(config, env)
         try:
             assert files.sudoers_file is None
@@ -665,9 +665,9 @@ def test_sudoers_ownership_helper_is_constrained(tmp_path: Path) -> None:
     )
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.os.chown", side_effect=PermissionError),
-        patch("devcapsule.configurations.pycharm._launcher.file_owner_uid", return_value=0),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.os.chown", side_effect=PermissionError),
+        patch("devcapsule.launch.pycharm._launcher.file_owner_uid", return_value=0),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value = SimpleNamespace(returncode=0, stderr="")
         ensure_sudoers_policy_ownership(config, files, {"PATH": "/usr/bin"})
@@ -698,8 +698,8 @@ def test_sudoers_ownership_helper_failure_is_actionable(tmp_path: Path) -> None:
     )
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.os.chown", side_effect=PermissionError),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.os.chown", side_effect=PermissionError),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value = SimpleNamespace(returncode=1, stderr="daemon denied helper")
         with pytest.raises(PycharmRunError, match="daemon denied helper"):
@@ -716,11 +716,11 @@ def test_sudo_banner_is_printed_after_complete_policy_preparation(
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch(
-            "devcapsule.configurations.pycharm._launcher.ensure_sudoers_policy_ownership"
+            "devcapsule.launch.pycharm._launcher.ensure_sudoers_policy_ownership"
         ) as ensure,
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value.returncode = 0
         assert (
@@ -753,13 +753,13 @@ def test_sudo_policy_preparation_failure_cleans_files_without_enabled_banner(
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch(
-            "devcapsule.configurations.pycharm._launcher.ensure_sudoers_policy_ownership",
+            "devcapsule.launch.pycharm._launcher.ensure_sudoers_policy_ownership",
             side_effect=PycharmRunError("sudo policy failed"),
         ),
         patch(
-            "devcapsule.configurations.pycharm._launcher.cleanup_temp_runtime_files",
+            "devcapsule.launch.pycharm._launcher.cleanup_temp_runtime_files",
             wraps=cleanup_temp_runtime_files,
         ) as cleanup,
     ):
@@ -813,8 +813,8 @@ def test_image_process_uses_oci_command_and_cleans_all_temporary_files(tmp_path:
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
     image = "devcapsule-local-pycharm:canonical"
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value.returncode = 0
         assert (
@@ -860,9 +860,9 @@ def test_launch_preparation_failure_cleans_runtime_and_identity_files(tmp_path: 
     env = base_env(tmp_path)
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch(
-            "devcapsule.configurations.pycharm._launcher.cleanup_temp_runtime_files",
+            "devcapsule.launch.pycharm._launcher.cleanup_temp_runtime_files",
             wraps=cleanup_temp_runtime_files,
         ) as cleanup,
     ):
@@ -901,8 +901,8 @@ def test_runtime_plan_serialization_failure_leaves_no_temporary_files(tmp_path: 
         SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan(), display_transport="host-x11"),
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
         patch.object(RuntimePlan, "to_json", side_effect=ValueError("serialization failed")),
     ):
         with pytest.raises(ValueError, match="serialization failed"):
@@ -924,7 +924,7 @@ def test_generated_passwd_home_matches_persistent_container_home(tmp_path: Path)
     config = cast(PycharmRunConfig, SimpleNamespace(host_docker_gid=None, enable_sudo=False))
 
     with patch(
-        "devcapsule.configurations.pycharm._launcher.current_host_user",
+        "devcapsule.launch.pycharm._launcher.current_host_user",
         return_value=HostUser(uid=1000, gid=1000, name="developer", group_name="developer"),
     ):
         write_user_files(config, files)
@@ -1089,7 +1089,7 @@ def test_launcher_owned_docker_options_are_refused_in_passthrough() -> None:
     2026-09-02: launcher-owned single-instance options are refused, repeatable
     ones pass through."""
 
-    from devcapsule.configurations.pycharm import reject_launcher_owned_docker_options
+    from devcapsule.launch.pycharm import reject_launcher_owned_docker_options
 
     for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always"):
         with pytest.raises(PycharmRunError, match="composed by the launcher"):
@@ -1135,8 +1135,8 @@ def test_contained_display_publishes_a_token_gated_port_and_shares_no_x_session(
         "0.0.0.0", 6080, "/run/devcapsule-display-token"
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority") as xauthority,
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority") as xauthority,
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -1167,8 +1167,8 @@ def test_contained_display_under_host_networking_listens_on_host_loopback_direct
         "127.0.0.1", config.display_host_port, "/run/devcapsule-display-token"  # type: ignore[arg-type]
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -1216,8 +1216,8 @@ def test_host_x11_passthrough_still_needs_a_host_display_and_binds_it(tmp_path: 
     assert config.display_transport == "host-x11"
     assert config.runtime_plan is not None and config.runtime_plan.display == DisplayPlan.host_x11()
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority") as xauthority,
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority") as xauthority,
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -1274,10 +1274,10 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
         return SimpleNamespace(returncode=0)
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.allocate_loopback_port", return_value=port),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
-        patch("devcapsule.configurations.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
+        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", return_value=port),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
+        patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
     ):
         try:
             exit_code = run_pycharm(

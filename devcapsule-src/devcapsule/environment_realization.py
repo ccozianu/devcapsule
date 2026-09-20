@@ -20,8 +20,10 @@ from devcapsule.materialization import (
     parse_locked_environment,
     validate_base_image,
 )
-from devcapsule.project_configuration import (
+from devcapsule.configuration.storage import (
     ResolvedProject,
+)
+from devcapsule.configuration.authorization import (
     authorized_base_selection,
     review_authorizations,
 )

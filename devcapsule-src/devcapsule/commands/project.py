@@ -1,7 +1,7 @@
 """Project and checkout command subtree.
 
 Command classes here declare parameters and print operation reports; policy
-and artifact writes live in :mod:`devcapsule.project_operations` and the
+and artifact writes live in :mod:`devcapsule.configuration.operations` and the
 modules it composes.  The configuration grammar is the settled v027 shape:
 every mutation is ``VERB NAME VALUE`` with the node's one canonical name —
 ``set NAME VALUE``, ``bind NAME PROVIDER:VALUE``,
@@ -30,16 +30,23 @@ from devcapsule.commands.framework import (
     carrier_answers,
 )
 from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
-from devcapsule.config_history import record_known_good_configuration
-from devcapsule.configurations.pycharm import (
+from devcapsule.configuration.history import (
+    record_known_good_configuration,
+)
+from devcapsule.launch.pycharm import (
     DockerMode,
     PycharmRunOptions,
     PycharmRunError,
     reject_launcher_owned_docker_options,
     run_pycharm,
 )
-from devcapsule.configuration_review import ExecutionConfiguration, review_configuration
-from devcapsule.configuration_nodes import (
+from devcapsule.configuration.execution import (
+    ExecutionConfiguration,
+)
+from devcapsule.configuration.review import (
+    review_configuration,
+)
+from devcapsule.configuration.nodes import (
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
     PROVIDER_HOST_DIRECTORY,
@@ -49,7 +56,7 @@ from devcapsule.environment_realization import realize_environment, required_loc
 from devcapsule.display_client import select_display_transport
 from devcapsule.materialization import ImageDetails, validate_base_image
 from devcapsule.project import project_namespace
-from devcapsule.project_operations import (
+from devcapsule.configuration.operations import (
     CheckoutRecord,
     InitializeRequest,
     ProvidedAnswer,
@@ -78,35 +85,45 @@ from devcapsule.recursive_successor import (
     inspect_successor,
     launch_successor,
 )
-from devcapsule.project_configuration import (
+from devcapsule.configuration.authorization import (
     AuthorizationChoice,
     AuthorizationDeclaration,
-    ProjectConfigurationError,
     authorization_declarations,
+    immutable_registry_reference,
+    normalize_authorization_value,
+    render_authorization_value,
+    review_authorizations,
+)
+from devcapsule.configuration.documents import (
+    ProjectConfigurationError,
+    render_checkout,
+    render_toml_scalar,
+)
+from devcapsule.configuration.storage import (
     atomic_write,
     checkout_record_paths,
-    configuration_binding_declarations,
-    component_secret_inputs,
-    configuration_value_declarations,
     config_root,
     discover_project,
     find_checkout_record,
-    immutable_registry_reference,
     load_checkout,
     load_resolution,
     lock_for,
     manifest_for,
     named_checkout_record_paths,
+    registered_checkouts,
+)
+from devcapsule.configuration.bindings import (
+    configuration_binding_declarations,
+    component_secret_inputs,
+    resolve_secret_bindings,
+)
+from devcapsule.configuration.values import (
+    configuration_value_declarations,
     memory_size_bytes,
     normalize_configuration_value,
-    normalize_authorization_value,
-    registered_checkouts,
-    render_checkout,
-    render_authorization_value,
-    render_toml_scalar,
-    resolve_secret_bindings,
+)
+from devcapsule.configuration.freshness import (
     stale_resolution_inputs,
-    review_authorizations,
 )
 
 

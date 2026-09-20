@@ -50,12 +50,12 @@ Project ownership of manifest/lock regeneration is retained.
 From `devcapsule-src`:
 
 ```text
-.venv/bin/python -m pytest tests/test_configuration_contract.py --no-cov -q -rx
+.venv/bin/python -m pytest tests/configuration/test_contract.py --no-cov -q -rx
 ```
 
 The original module now has **45 passing cases**, including all ten former
 counterexamples without expected-failure markers. The complementary
-`tests/test_configuration_invariants.py` has **128 passing cases**, partitioned
+`tests/configuration/test_invariants.py` has **128 passing cases**, partitioned
 by schemas, ownership, edits, permissions, runtime admission and compatibility.
 Docker/GUI are substituted only where needed; launcher policy tests execute
 the real configuration builder.

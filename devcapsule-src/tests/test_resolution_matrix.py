@@ -8,11 +8,15 @@ import tomllib
 import pytest
 
 import devcapsule.resolution_matrix as resolution_matrix_module
-from devcapsule.configuration_nodes import build_node_registry
+from devcapsule.configuration.nodes import (
+    build_node_registry,
+)
 from devcapsule.platforms import Platform
-from devcapsule.project_configuration import (
+from devcapsule.configuration.documents import (
     ProjectConfigurationError,
     canonical_digest,
+)
+from devcapsule.configuration.storage import (
     lock_for,
 )
 from devcapsule.resolution_matrix import (

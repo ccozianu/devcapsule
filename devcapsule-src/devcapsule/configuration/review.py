@@ -12,26 +12,11 @@ from pathlib import Path
 import shlex
 from typing import Any, Mapping
 
-from devcapsule.configuration_nodes import build_node_registry
-from devcapsule.configuration_documents import table
-
-from devcapsule.project_configuration import (
-    AuthorizationChoice,
-    AuthorizationReview,
-    AuthorizationScalar,
-    ConfigurationScalar,
-    ProjectConfigurationError,
-    ResolvedProject,
-    manifest_for,
-    lock_for,
-    checkout_record_paths,
-    load_checkout,
-    load_resolution,
-    resolve_configuration_bindings,
-    resolve_configuration_values,
-    resolve_secret_bindings,
-    review_authorizations,
-)
+from .authorization import AuthorizationChoice, AuthorizationReview, review_authorizations
+from .bindings import resolve_configuration_bindings, resolve_secret_bindings
+from .documents import AuthorizationScalar, ConfigurationScalar, ProjectConfigurationError, table
+from .nodes import build_node_registry
+from .values import resolve_configuration_values
 
 
 @dataclass(frozen=True)
@@ -169,31 +154,3 @@ def review_configuration(
         if overlap:
             problems.append("State resources cannot be both adopted and configuration-bound: " + ", ".join(overlap) + ".")
     return ConfigurationReview(values, effects, bindings, secrets, authorizations, tuple(problems), host)
-
-
-@dataclass(frozen=True)
-class ExecutionConfiguration:
-    """The single admission boundary before any project execution effects."""
-    project: ResolvedProject
-    review: ConfigurationReview
-    stale_inputs: tuple[str, ...]
-
-    @classmethod
-    def load(cls, start: Path, *, force: bool = False) -> ExecutionConfiguration:
-        root, manifest = manifest_for(start)
-        lock_path, lock = lock_for(root, manifest)
-        input_path, output_path = checkout_record_paths(manifest, root)
-        if not input_path.is_file() or not output_path.is_file():
-            raise ProjectConfigurationError("Local resolution is missing; run 'devcapsule project config resolve'.")
-        checkout = load_checkout(input_path, manifest, root)
-        resolution = load_resolution(output_path)
-        from devcapsule.configuration import Configuration, Resolution
-        configuration = Configuration(manifest, lock, checkout)
-        plan = Resolution(resolution)
-        review = configuration.review()
-        # Keep the complete, path-qualified recovery advice at the CLI boundary.
-        if force or not configuration.stale_inputs(plan):
-            review.require_ready(root)
-        stale = configuration.accept(plan, force=force)
-        selected = ResolvedProject(root, manifest, lock_path, lock, input_path, checkout, output_path, resolution)
-        return cls(selected, review, stale)
