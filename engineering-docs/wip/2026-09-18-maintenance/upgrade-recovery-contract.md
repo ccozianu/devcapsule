@@ -4,6 +4,12 @@ Scope: the 2026-09-19 upgrade-recovery bug, selected by the owner on
 2026-09-20. This is an implementation contract and verification map, not a
 new configuration product design.
 
+The subsequent owner-requested [full lifecycle contract](configuration-contract.md)
+and [correctness audit](configuration-correctness.md) found additional failures
+outside this repair's assessment boundary, including init consent provenance and
+the lower launcher's treatment of denial. The invariants below describe this
+repair's obligations; they are not a proof of the entire configuration pipeline.
+
 ## Ownership and execution
 
 The trace starts at `cli.main`, through the command framework's project path

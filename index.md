@@ -180,6 +180,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Configuration Contract Is Not Enforced Across Boundaries](engineering-docs/bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md)
 - [Website test publication accepts inconsistent settings — transferred](engineering-docs/bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
 - [Upgrade Configuration Recovery Rejects Its Own Remedy](engineering-docs/bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)
 - [The Resolution Refusal Names Only The Last Base Tried And Offers No Remedy](engineering-docs/bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)

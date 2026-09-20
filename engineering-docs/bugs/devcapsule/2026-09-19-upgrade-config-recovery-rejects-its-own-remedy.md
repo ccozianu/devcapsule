@@ -247,3 +247,10 @@ of the actual upgrade/display experience and PR integration remain outstanding.
 No actual host upgrade or GUI acceptance run was performed here. Reopen after
 eventual closure if a supported upgrade again rejects its prescribed remedy or
 changes effective display behavior without the migration explanation.
+
+The owner's subsequent full-configuration audit found broader composition
+failures, including a lower launcher path that can override a sudo denial.
+They are recorded in the linked
+[configuration lifecycle defect](2026-09-20-configuration-contract-not-enforced-across-boundaries.md).
+The recovery module's complete local coverage must not be read as proof of
+the entire configuration-to-execution contract.
