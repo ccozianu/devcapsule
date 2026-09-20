@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; configuration ADT review follow-up validated, ready for owner review
+State: paused; configuration package layout validated, ready for owner review
 
 Integration target: `main`
 
@@ -40,6 +40,33 @@ not closed or released. Severity and release targets remain untriaged. The owner
 selected this correction ahead of general triage.
 
 ## Current State
+
+2026-09-20 source-layout follow-up: configuration now lives under
+`devcapsule/configuration/`, with an explicit value API and separate domain,
+assessment, resolution, storage, execution and lifecycle modules. The former
+1,477-line `project_configuration.py` is split by responsibility. Internal
+configuration imports are acyclic; the core does not import storage/lifecycle
+adapters or launch machinery. The former `configurations/pycharm` package is
+now `launch/pycharm`, with its CLI grammar under `commands/_pycharm.py`.
+Configuration tests are grouped under `tests/configuration/`; two architecture
+checks guard the dependency direction and absence of cycles, including local
+imports. The developer brief documents the resulting hierarchy and public API.
+
+Validation: **`nox -s build` passed: 910 tests, mypy over 153 source files,
+CLI/PEX smoke and nine packaged-executable tests**. Eighteen host-sensitive
+cases remain deselected and the unrelated expected failure remains. The 30 ADT
+laws and two architecture checks also passed after consolidating the ADT tests'
+public imports. Structural comparison found all 112 moved configuration
+functions/classes unchanged apart from imports. Historical fixture bytes are
+unchanged. All 66 qualified test references and maintenance document links were
+checked. Gate log: `/tmp/configuration-layout-build.log`.
+
+The stray initial test-file character had already been removed by the owner's
+undo before source edits began; no independent user edits were discarded.
+This is a first logical package boundary, not a claim that every remaining
+root-level module has already been reorganized.
+
+### Earlier ADT review checkpoint
 
 2026-09-20 owner-review follow-up: replaced the launch-mechanics compatibility
 claim with an admission/resolution ADT and semantic laws. `Configuration` owns
@@ -113,7 +140,8 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Owner review of the ADT laws and their production boundary, then PR integration
+Owner review of the configuration package boundary, ADT laws and their
+production use, then PR integration
 of `ws-maintenance/triage`, followed by actual
 host upgrade/display/privilege acceptance before closing the two records or
 claiming a release. Review the contract/proof with the implementation and tests.
@@ -143,6 +171,11 @@ was re-fetched and remains `c6296b7`, with no new commits to synchronize. Intake
 
 ### Weighed And Unresolved
 
+- The full configuration contract is still an engineering document. Making it
+  canonical developer-user documentation needs an editorial/publication pass;
+  the preceding review identified that work but did not publish it.
+- This source-layout slice groups configuration and distinguishes launch/CLI
+  adapters. Other top-level subsystems retain their existing locations.
 - General workstation policy/default overlays, lockless-consumer UX, identity
   relocation and a comprehensive historical recipe policy are future product
   boundaries explicitly separated from this V1 correction.
