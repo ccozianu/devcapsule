@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; configuration package layout validated, ready for owner review
+State: paused; recursive E2E passed; dogfood upgrade awaits complete configuration evidence
 
 Integration target: `main`
 
@@ -40,6 +40,41 @@ not closed or released. Severity and release targets remain untriaged. The owner
 selected this correction ahead of general triage.
 
 ## Current State
+
+2026-09-20 recursive acceptance requested by the owner: ran
+`nox -s recursive_dogfood_e2e` against clean source
+`85bec27a9bc79d1334b6ce04218afa666cc1373c`. **Passed: 2 tests, 7 deselected**
+in 95.96 seconds, after successful preflight and staging dry run. These tests
+prove contributor bootstrap in a disposable base container and independent
+local cloning; this session does not launch an upgraded IDE or test migration
+of the host's saved configuration. The disposable container and owned workspaces
+were cleaned by the tests. Log: `/tmp/maintenance-recursive-e2e.log`.
+
+The focused configuration/recovery rerun passed **290 tests**. Existing full-gate
+coverage measures **92% combined statement/branch coverage across configuration/**;
+model, review, resolution, fingerprints and history have 100%, while authorization,
+ordinary/binding validation, serialization, persistence and edit orchestration
+still contain uncovered paths. The documented law/case map is valuable evidence,
+but does not justify the owner's requested whole-configuration "fully tested"
+assurance. Log: `/tmp/maintenance-configuration-check.log`; coverage detail:
+`/tmp/maintenance-configuration-coverage.json`. No source changes in this slice.
+The final required `nox -s build` also passed: 910 tests, one existing expected
+failure, 18 deselected, mypy, CLI smoke and nine packaged-executable tests.
+Log: `/tmp/maintenance-recursive-checkpoint-build.log`. This gate rebuilt only
+the local PEX because these records were dirty; the separately built exact-revision
+`dist/devcapsule.pex` remains unchanged.
+
+Built `devcapsule-src/dist/devcapsule.pex`, reporting **0.2.14.dev0** and the exact
+source revision above. SHA-256:
+`04bd75e63d88e7feaec0cd26bda54075bb619cd5083c47609a7dc1197d295bb9`.
+The current embedded runtime reports **0.2.12**, revision
+`2916c4c09aee13eeed85276c1a32889515ce7b19`. It remains running; no successor was
+launched and no base was repinned. The host's checkout/resolution files are not
+mounted here. A `config list` probe found no capsule-local registration and
+created two empty placeholders; their exact empty contents were verified and
+both files removed. Existing host choices were neither read nor changed.
+
+### Earlier source-layout checkpoint
 
 2026-09-20 source-layout follow-up: configuration now lives under
 `devcapsule/configuration/`, with an explicit value API and separate domain,
@@ -140,8 +175,11 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Owner review of the configuration package boundary, ADT laws and their
-production use, then PR integration
+Close the remaining configuration condition partitions against the contract,
+then validate the actual host-owned 0.2.12 checkout/resolution under the prepared
+0.2.14.dev0 executable before endorsing the dogfood handoff. A passing recursive
+bootstrap session is insufficient evidence for that upgrade. Owner review of the
+configuration package boundary, ADT laws and their production use, then PR integration
 of `ws-maintenance/triage`, followed by actual
 host upgrade/display/privilege acceptance before closing the two records or
 claiming a release. Review the contract/proof with the implementation and tests.
@@ -150,9 +188,11 @@ Remaining maintenance queue prioritization belongs to the next selected slice.
 
 ## External State And Risks
 
-No containers, ports, additional environments, image pulls or GUI sessions were
-created for this work. The existing `devcapsule-src/.venv` ran the required gate.
-`dist/devcapsule-local.pex` is the validation artifact, not a release artifact.
+The recursive session created its Nox environment and a disposable contributor
+container using an existing base; the tests removed their container and owned
+workspaces. No successor/GUI was launched. The existing `devcapsule-src/.venv`
+also ran 290 focused tests and built the revision-bearing local contributor PEX
+recorded above; it is not a published release artifact.
 No change is integrated into remote `main`; under `WORKFLOW-LOCAL.md`, the owner
 opens and merges the PR. The implementation PR should land before any independent
 records-only delivery whose links require its contract documents.
@@ -165,7 +205,9 @@ was re-fetched and remains `c6296b7`, with no new commits to synchronize. Intake
 
 ### Awaiting The Product Owner
 
-- PR review/integration and actual host recovery/display/privilege acceptance.
+- Actual host configuration must be made available for upgrade acceptance; it
+  is not mounted in this capsule. PR review/integration and display/privilege
+  acceptance remain pending.
 - Severity/release triage for the remaining queue, including ownership of fixes
   from workstreams approaching closure.
 
