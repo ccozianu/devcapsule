@@ -451,6 +451,7 @@ def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
         write_formation_lock(project)
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "base-image", "default"]) == 0
 
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
 
@@ -1529,7 +1530,7 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
             encoding="utf-8",
         )
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
-        assert "authorization 'network' is stale" in capsys.readouterr().err
+        assert "network: stale; recorded: host; recommended: host" in capsys.readouterr().err
 
 
 def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id(
@@ -1776,7 +1777,8 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
         lock_path = write_formation_lock(project)
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        # An unconsented formation is inspectable, but cannot be resolved as ready.
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
 
         wrong = f"docker.io/example/devcapsule-base@sha256:{'c' * 64}"
         assert (
@@ -1842,7 +1844,7 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             encoding="utf-8",
         )
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
-        assert "authorization is stale" in capsys.readouterr().err
+        assert "base-image: stale" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

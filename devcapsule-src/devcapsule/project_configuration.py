@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -161,6 +162,11 @@ class AuthorizationDeclaration:
     capability: str | None = None
     subject: str | None = None
 
+    @property
+    def required(self) -> bool:
+        """Selected executables/acquisitions require consent; host access does not."""
+        return self.name == "base-image" or self.kind == "acquisition"
+
 
 @dataclass(frozen=True)
 class AuthorizedBaseSelection:
@@ -173,6 +179,49 @@ class AuthorizedBaseSelection:
     @property
     def is_local(self) -> bool:
         return self.local_image_identity is not None
+
+
+@dataclass(frozen=True)
+class AuthorizationChoice:
+    """An explicit decision, never an instruction to grant permission implicitly."""
+
+    name: str
+    value: str
+    meaning: str
+
+    def command(self, project: Path | None = None) -> str:
+        context = ["--path", str(project)] if project is not None else []
+        return shlex.join(["devcapsule", "project", *context, "config", "authorize", self.name, self.value])
+
+
+@dataclass(frozen=True)
+class AuthorizationReview:
+    """One interpretation of a recorded answer for inspection and resolution.
+
+    A problem prevents resolution. Choices are alternatives, not a script to
+    execute in sequence. A valid denial remains a denial even when the project
+    recommends granting the capability.
+    """
+
+    name: str
+    status: str
+    recorded: str
+    recommended: str
+    description: str
+    value: AuthorizationScalar | None = None
+    problem: str | None = None
+    choices: tuple[AuthorizationChoice, ...] = ()
+
+    def render(self, project: Path | None = None) -> str:
+        lines = [
+            f"{self.name}: {self.status}; recorded: {self.recorded}; recommended: {self.recommended}",
+            f"  {self.description}",
+        ]
+        if self.problem is not None:
+            lines.append(f"  {self.problem}")
+        for choice in self.choices:
+            lines.append(f"  {choice.meaning}: {choice.command(project)}")
+        return "\n".join(lines)
 
 
 @dataclass(frozen=True)
@@ -709,37 +758,155 @@ def normalize_authorization_value(
     return normalized
 
 
+def base_recovery_choices(record: Mapping[str, Any]) -> tuple[AuthorizationChoice, ...]:
+    """Always offer the reviewed pin; renew a local override only by exact ID.
+
+    The old published digest is not an accepted value under the new lock.
+    Replaying a local tag is also wrong: it may now point at different bytes.
+    """
+
+    choices = [AuthorizationChoice("base-image", "default", "Accept the current project recommendation")]
+    identity = record.get("image-id")
+    if (
+        isinstance(identity, str)
+        and identity.startswith("sha256:")
+        and SHA256_PATTERN.fullmatch(identity.removeprefix("sha256:")) is not None
+    ):
+        choices.append(AuthorizationChoice(
+            "base-image", identity, "Keep the exact local image, if still available and valid"
+        ))
+    return tuple(choices)
+
+
+def _authorization_choices(
+    declaration: AuthorizationDeclaration, recorded_value: AuthorizationScalar | None
+) -> tuple[AuthorizationChoice, ...]:
+    """Construct only values accepted by this declaration's own validator."""
+
+    if declaration.kind == "acquisition":
+        # Keeping a declined mandatory acquisition is legitimate, but is not
+        # a recovery action: the selected environment then cannot be built.
+        return (AuthorizationChoice(declaration.name, "true", "Authorize the selected acquisition after review"),)
+    values: list[tuple[AuthorizationScalar, str]] = []
+    if recorded_value is not None:
+        values.append((recorded_value, "Keep the recorded decision after review"))
+    values.append((declaration.recommended_value, "Accept the current recommendation"))
+    deny = authorization_deny_value(declaration)
+    # Base selection has its own choices; all remaining host nodes have a
+    # denial state by the curated authorization contract.
+    assert deny is not None
+    values.append((deny, "Deny this capability"))
+    choices: list[AuthorizationChoice] = []
+    for value, meaning in values:
+        normalized = normalize_authorization_value(declaration, value)
+        rendered = render_authorization_value(normalized)
+        if all(choice.value != rendered for choice in choices):
+            choices.append(AuthorizationChoice(declaration.name, rendered, meaning))
+    return tuple(choices)
+
+
+def review_authorizations(
+    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
+) -> tuple[AuthorizationReview, ...]:
+    """Assess every authorization without writes, Docker calls or early refusal.
+
+    The same result drives inspection and resolution. Missing optional host
+    access is safe; missing base consent or selected vendor acquisition is not
+    run-ready. Stale answers must be renewed, never silently reinterpreted.
+    """
+
+    declarations = authorization_declarations(manifest, lock)
+    records = checkout.get("authorization", {})
+    if not isinstance(records, dict):
+        raise ProjectConfigurationError("Checkout authorization must be a table.")
+    reviews: list[AuthorizationReview] = []
+    for name, declaration in sorted(declarations.items()):
+        record = records.get(name)
+        required = declaration.required
+        recommended = declaration.display_value or render_authorization_value(declaration.recommended_value)
+        recorded = "unanswered"
+        value: AuthorizationScalar | None = None
+        problem: str | None = None
+        choices: tuple[AuthorizationChoice, ...] = ()
+        if name not in records:
+            status = "missing-required" if required else (
+                "missing-recommended" if declaration.project_recommended else "available"
+            )
+            if required:
+                problem = "An explicit decision is required before this environment can run."
+        elif not isinstance(record, dict):
+            status = "invalid"
+            problem = f"Checkout authorization {name!r} must be a table."
+        elif name == "base-image":
+            recorded = str(record.get("reference", "missing reference"))
+            if record.get("image-id") is not None:
+                recorded += f" (local image {record['image-id']})"
+            try:
+                selection = authorized_base_selection(lock, checkout)
+            except ProjectConfigurationError as exc:
+                status = "stale" if (
+                    isinstance(record.get("reference"), str) and record["reference"]
+                    and record.get("lock-digest") != declaration.recommendation_digest
+                ) else "invalid"
+                problem = (
+                    "The recorded base selection was authorized against a different lock. "
+                    "Review the previous selection and current recommendation before choosing."
+                    if status == "stale" else str(exc)
+                )
+            else:
+                assert selection is not None  # required=True either returns a selection or raises
+                status = "authorized-local" if selection.is_local else "authorized"
+                value = selection.reference
+        else:
+            recorded = str(record.get("value", "missing value")).lower() if isinstance(
+                record.get("value"), bool
+            ) else str(record.get("value", "missing value"))
+            try:
+                value = normalize_authorization_value(declaration, record.get("value"))
+            except ProjectConfigurationError as exc:
+                status = "invalid"
+                problem = str(exc)
+            else:
+                if record.get("recommendation-digest") != declaration.recommendation_digest:
+                    status = "stale"
+                    problem = "The recommendation changed; review it and explicitly renew or change your answer."
+                elif value == authorization_deny_value(declaration):
+                    status = "denied"
+                    if required:
+                        problem = (
+                            f"The selected {declaration.subject} acquisition is denied. "
+                            f"Remove {declaration.capability!r} from the project need, or explicitly authorize it."
+                        )
+                else:
+                    status = "authorized"
+        if problem is not None:
+            choices = (
+                base_recovery_choices(record if isinstance(record, dict) else {})
+                if name == "base-image"
+                else _authorization_choices(declaration, value)
+            )
+        reviews.append(AuthorizationReview(
+            name, status, recorded, recommended, declaration.description, value, problem, choices
+        ))
+    for name in sorted(set(records) - set(declarations)):
+        reviews.append(AuthorizationReview(
+            name, "unsupported", "recorded", "not declared", "This node no longer belongs to the project configuration.",
+            problem="Remove the obsolete entry from the checkout authorization table after review.",
+        ))
+    return tuple(reviews)
+
+
 def resolved_checkout_authorizations(
     manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
 ) -> dict[str, AuthorizationScalar]:
-    declarations = authorization_declarations(manifest, lock)
-    authorization = checkout.get("authorization", {})
-    if not isinstance(authorization, dict):
-        raise ProjectConfigurationError("Checkout authorization must be a table.")
-    unknown = sorted(str(name) for name in authorization if name not in declarations)
-    if unknown:
+    reviews = review_authorizations(manifest, lock, checkout)
+    problems = [review for review in reviews if review.problem is not None]
+    if problems:
         raise ProjectConfigurationError(
-            "Checkout contains unsupported authorization entries: " + ", ".join(unknown) + "."
+            "Configuration needs authorization decisions:\n"
+            + "\n".join(review.render() for review in problems)
         )
-
-    resolved: dict[str, AuthorizationScalar] = {}
-    for name, record in authorization.items():
-        declaration = declarations[name]
-        if name == "base-image":
-            selection = authorized_base_selection(lock, checkout)
-            if selection is not None:
-                resolved[name] = selection.reference
-            continue
-        if not isinstance(record, dict):
-            raise ProjectConfigurationError(f"Checkout authorization {name!r} must be a table.")
-        value = normalize_authorization_value(declaration, record.get("value"))
-        if record.get("recommendation-digest") != declaration.recommendation_digest:
-            raise ProjectConfigurationError(
-                f"Checkout authorization {name!r} is stale; review the current recommendation and run "
-                f"'devcapsule project config authorize {name} {render_authorization_value(declaration.recommended_value)}'."
-            )
-        resolved[name] = value
-    return resolved
+    return {review.name: review.value for review in reviews if review.value is not None}
 
 
 def render_authorization_value(value: AuthorizationScalar) -> str:
@@ -1070,10 +1237,11 @@ def authorized_base_selection(
     authorized_lock = authorization.get("lock-digest")
     expected_lock = canonical_digest(lock)
     if authorized_lock != expected_lock:
-        refresh = f"devcapsule project config authorize base-image {authorized_reference}"
+        choices = base_recovery_choices(authorization)
         raise ProjectConfigurationError(
             "The checkout's base-image authorization is stale for the current lock; "
-            f"review the lock and run '{refresh}'."
+            f"previous selection: {authorized_reference}; current recommendation: {locked_reference}. "
+            + " ".join(f"{choice.meaning}: {choice.command()}." for choice in choices)
         )
     local_identity = authorization.get("image-id")
     if authorized_reference == locked_reference:

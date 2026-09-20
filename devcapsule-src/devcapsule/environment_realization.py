@@ -10,7 +10,6 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
-from devcapsule.components.claude_code import CLAUDE_CODE_AUTHORIZATION
 from devcapsule.image_build import BuildxImageBuilder, ImageBuildSpec
 from devcapsule.image_metadata import inspect_local_image
 from devcapsule.materialization import (
@@ -24,7 +23,7 @@ from devcapsule.materialization import (
 from devcapsule.project_configuration import (
     ResolvedProject,
     authorized_base_selection,
-    resolved_checkout_authorizations,
+    review_authorizations,
 )
 from devcapsule.runtime_artifact import runtime_artifact
 
@@ -59,21 +58,20 @@ def realize_environment(
     build: ImageBuild | None = None,
     materialize: Materialize | None = None,
     report: Callable[[str], None] | None = None,
+    prepare_base: Callable[[ImageDetails], None] | None = None,
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
     locked = parse_locked_environment(selected.lock)
-    if any(item.component_id == "claude-code" for item in locked.ancillary_artifacts):
-        authorizations = resolved_checkout_authorizations(
-            selected.manifest, selected.lock, selected.checkout
-        )
-        if authorizations.get(CLAUDE_CODE_AUTHORIZATION) is not True:
-            raise CliError(
-                "Claude Code is selected for direct, local acquisition but this checkout has not "
-                "authorized the download. Review Anthropic's terms and run "
-                f"'devcapsule project config authorize {CLAUDE_CODE_AUTHORIZATION} true', then "
-                "resolve the checkout again."
-            )
+    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout)
+    problems = [
+        item for item in reviews if item.problem is not None
+        and not (item.name == "base-image" and base_override is not None)
+    ]
+    if problems:
+        raise CliError("Configuration needs authorization decisions:\n" + "\n".join(
+            item.render(selected.root) for item in problems
+        ))
     runtime = selected.resolution.get("runtime", {})
     if not isinstance(runtime, dict) or runtime.get("component") != locked.component_id:
         component = runtime.get("component") if isinstance(runtime, dict) else None
@@ -112,6 +110,15 @@ def realize_environment(
         platform=locked.platform,
         expected_identity=expected_base_identity,
     )
+    if report is not None and local_authorization:
+        report(
+            f"Base selection: local override {base_reference} ({base.identity}); "
+            f"the project recommends {locked.base_reference}."
+        )
+    # Display capability is a property of the verified base. Explain and
+    # validate it before any component acquisition or environment build.
+    if prepare_base is not None:
+        prepare_base(base)
 
     selected_cache = (root or cache_root()).expanduser().resolve()
     if build is None:

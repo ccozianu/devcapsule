@@ -879,6 +879,9 @@ def test_materialization_explains_first_and_nearest_formations(tmp_path: Path) -
     messages: list[str] = []
 
     def build(build_spec) -> None:
+        # The explanation must precede the expensive action, not summarize it
+        # afterward. Both first formation and changed-base recovery reach here.
+        assert any("first pycharm formation" in message or "differs from" in message for message in messages)
         plan = build_spec.build_plan()
         built[plan.image] = ImageDetails(
             plan.image,

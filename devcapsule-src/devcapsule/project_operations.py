@@ -26,6 +26,7 @@ from devcapsule.configuration_nodes import (
     PROVIDER_HOST_DIRECTORY,
     build_node_registry,
 )
+from devcapsule.configuration_review import review_configuration
 from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.elicitation import SOURCE_EXISTING_RECORD, AnswerKey, Elicitor
@@ -51,11 +52,7 @@ from devcapsule.project_configuration import (
     render_authorization_value,
     render_checkout,
     render_toml_scalar,
-    resolve_configuration_bindings,
-    resolve_configuration_values,
-    resolve_secret_bindings,
     resolution_source_digests,
-    resolved_checkout_authorizations,
     stale_resolution_inputs,
     validate_manifest,
 )
@@ -197,19 +194,13 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
             "The V1 slice requires a lock selecting a known interactive surface "
             "with either a completed image or formation inputs."
         )
+    review = review_configuration(manifest, lock, checkout)
+    review.require_ready(root)
     state = checkout.get("state", {}).get("adopted", {})
     host = checkout.get("host", {})
-    values, runtime_effects = resolve_configuration_values(manifest, checkout)
-    bindings = resolve_configuration_bindings(lock, checkout)
-    secret_bindings = resolve_secret_bindings(lock, checkout)
-    overlap = sorted(set(state) & set(bindings))
-    if overlap:
-        raise ProjectConfigurationError(
-            "State resources cannot be both adopted and configuration-bound: "
-            + ", ".join(overlap)
-            + "."
-        )
-    authorizations = resolved_checkout_authorizations(manifest, lock, checkout)
+    values, runtime_effects = review.values, review.runtime_effects
+    bindings, secret_bindings = review.bindings, review.secret_bindings
+    authorizations = review.resolved_authorizations()
     sources = resolution_source_digests(manifest, lock, checkout)
     lines = [
         "devcapsule-resolved-schema-version = 1",
@@ -563,6 +554,11 @@ def initialize_project(
 
     for name, _justification in recommendations:
         declaration = declarations[name]
+        if name in record.authorization:
+            # Reading an existing project recommendation is not a new answer
+            # from this developer. In particular, regeneration cannot turn a
+            # recorded denial into a grant or renew stale consent silently.
+            continue
         record.authorization[name] = {
             "value": declaration.recommended_value,
             "recommendation-digest": declaration.recommendation_digest,
@@ -930,7 +926,8 @@ def _elicit_component_acquisitions(
             declaration.name,
             description=f"{declaration.description} Authorize? (yes/no)",
             remedy=f"--authorize {declaration.name} true",
-            existing="yes" if fresh else None,
+            existing=("yes" if existing.get("value") is True else "no")
+            if fresh and isinstance(existing, dict) else None,
             empty_answer="yes",
             validate=_acquisition_validator(declaration.name, "true"),
         )

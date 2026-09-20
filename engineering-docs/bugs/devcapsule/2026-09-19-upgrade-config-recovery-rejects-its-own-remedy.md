@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: untriaged
 target: none
 owner: maintenance
@@ -21,8 +21,9 @@ unexpected, non-instant Docker image build occurred; explicit `host-x11`
 authorization and another resolution restored host-X11 launch.
 
 Confirmed from owner-supplied terminal evidence on 2026-09-19; the incident's
-exact execution date was not supplied. No fix or independent reproduction has
-been performed for this record. Severity and release target await owner triage.
+exact execution date was not supplied. The implementation and deterministic
+regression evidence are recorded below; host acceptance remains pending.
+Severity and release target await owner triage.
 
 This is an end-to-end upgrade/recovery defect, not just an isolated wording
 issue. Individually plausible checks compose into a failed user journey. The
@@ -218,7 +219,31 @@ checkout to maintenance or reopen component-catalog's frozen implementation scop
 
 ## Fix Status
 
-No implementation changes. Owner-provided recovery restored launch; it does not
-close the product defect. Reopen after eventual closure if a later supported
-upgrade again rejects its own prescribed remedy or silently changes the effective
-display experience without the agreed migration explanation.
+2026-09-20: implemented on `ws-maintenance/triage`, selected by the owner.
+The [implementation contract and test map](../../wip/2026-09-18-maintenance/upgrade-recovery-contract.md)
+record the entrypoint-to-launch invariants, historical fixture provenance and
+acceptance boundary.
+
+- Inspection and resolution share one read-only assessment. All pending
+  authorizations appear together, with saved answers and current recommendations.
+- Stale published-base recovery offers the accepted `default` choice. Local
+  overrides remain visible and can be renewed by immutable identity, subject to
+  inspection. Commands select and shell-quote the checkout path.
+- Explicit grants and denials survive recovery. Regeneration cannot silently
+  replace a denial with a recommendation; all selected vendor acquisitions use
+  the same authorization gate.
+- Run validates configuration and run-once options before materialization.
+  Display selection and alternatives are explained before building. Legacy
+  images refuse an explicit X11 denial instead of exposing the host session.
+  A stale resolution cannot revive a removed host permission with `--force`.
+- The full local gate passed: mypy, 704 tests, source smoke, PEX build and nine
+  packaged-executable tests. The 71 new unit cases include complete CLI recovery
+  journeys from v0.2.11 fixtures and separate unchanged-project coverage.
+  The new assessment and authorization-review helpers have 100% statement and
+  branch coverage.
+
+`fixed` records implementation evidence, not closure or release. Owner validation
+of the actual upgrade/display experience and PR integration remain outstanding.
+No actual host upgrade or GUI acceptance run was performed here. Reopen after
+eventual closure if a supported upgrade again rejects its prescribed remedy or
+changes effective display behavior without the migration explanation.

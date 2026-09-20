@@ -208,10 +208,10 @@ def build_node_registry(
                 name=name,
                 family=CARRIER_FAMILY_AUTHORIZE,
                 description=authorization.description,
-                # Only the base image blocks resolution when unanswered; every
-                # other authorization is a recommendation the consumer may
-                # decline.
-                required=name == "base-image",
+                # A selected executable and vendor acquisition require a
+                # decision before realization. Optional host access can stay
+                # unanswered and denied; it is never a requirement to grant it.
+                required=authorization.required,
                 declaration=authorization,
                 accepts_justification=name in CURATED_HOST_RECOMMENDATIONS,
             )

@@ -687,6 +687,8 @@ def test_images_build_environment_requires_immutable_locked_base(capsys) -> None
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},
@@ -716,6 +718,8 @@ def test_images_build_environment_requires_checkout_base_authorization(capsys) -
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},
@@ -749,6 +753,8 @@ def test_images_build_environment_allows_explicit_local_base_override(tmp_path: 
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},

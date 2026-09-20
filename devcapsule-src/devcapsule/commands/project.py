@@ -34,9 +34,11 @@ from devcapsule.config_history import record_known_good_configuration
 from devcapsule.configurations.pycharm import (
     DockerMode,
     PycharmRunOptions,
+    PycharmRunError,
     reject_launcher_owned_docker_options,
     run_pycharm,
 )
+from devcapsule.configuration_review import review_configuration
 from devcapsule.configuration_nodes import (
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
@@ -45,7 +47,7 @@ from devcapsule.configuration_nodes import (
 )
 from devcapsule.environment_realization import realize_environment, required_local_image
 from devcapsule.display_client import select_display_transport
-from devcapsule.materialization import validate_base_image
+from devcapsule.materialization import ImageDetails, validate_base_image
 from devcapsule.project import project_namespace
 from devcapsule.project_operations import (
     CheckoutRecord,
@@ -76,11 +78,10 @@ from devcapsule.recursive_successor import (
     launch_successor,
 )
 from devcapsule.project_configuration import (
-    authorization_deny_value,
+    AuthorizationChoice,
     AuthorizationDeclaration,
     ProjectConfigurationError,
     ResolvedProject,
-    authorized_base_selection,
     authorization_declarations,
     atomic_write,
     checkout_record_paths,
@@ -104,6 +105,7 @@ from devcapsule.project_configuration import (
     render_toml_scalar,
     resolve_secret_bindings,
     stale_resolution_inputs,
+    review_authorizations,
 )
 
 
@@ -322,6 +324,8 @@ class ConfigListCommand(Command):
             ),
         ]
         _print_configuration_rows(rows)
+        print("")
+        print(review_configuration(manifest, lock, checkout).render(root))
         return 0
 
 
@@ -906,6 +910,34 @@ class ProjectRunCommand(Command):
             )
         if stale:
             print(f"WARNING: using stale generated resolution once ({', '.join(stale)}).", file=sys.stderr)
+        review = review_configuration(manifest, lock, checkout)
+        review.require_ready(root)
+        overrides, memory_override = _run_once_answers(arguments, manifest, lock)
+        docker_options = list(arguments.docker_options)
+        if docker_options:
+            try:
+                reject_launcher_owned_docker_options(docker_options)
+            except PycharmRunError as exc:
+                raise ProjectConfigurationError(str(exc)) from exc
+        authorizations = review.resolved_authorizations()
+        host_x11_answer = overrides.get("host-x11", authorizations.get("host-x11"))
+        display_transport: str | None = None
+
+        def prepare_display(base: ImageDetails) -> None:
+            nonlocal display_transport
+            display_transport = _select_display_transport(
+                base.labels, host_x11_answer=host_x11_answer
+            )
+            if host_x11_answer is None:
+                allow = AuthorizationChoice("host-x11", "true", "").command(root)
+                deny = AuthorizationChoice("host-x11", "false", "").command(root)
+                print(
+                    "No explicit host-x11 choice is recorded.\n"
+                    f"To select host X11: {allow}\n"
+                    f"To require the contained desktop: {deny}\n"
+                    "Resolve after changing the choice."
+                )
+
         runtime = resolved.get("runtime", {})
         component = runtime.get("component") if isinstance(runtime, dict) else None
         if not isinstance(runtime, dict) or component not in INTERACTIVE_SURFACES:
@@ -928,7 +960,7 @@ class ProjectRunCommand(Command):
                 resolution_path=output_path,
                 resolution=resolved,
             )
-            realized = realize_environment(selected, report=print)
+            realized = realize_environment(selected, report=print, prepare_base=prepare_display)
             image = realized.image.reference
             image_labels = realized.image.labels
             checkout_runtime_plan = project_runtime_plan(selected, realized.locked)
@@ -963,9 +995,9 @@ class ProjectRunCommand(Command):
             raise ProjectConfigurationError(
                 "Resolved secret.bindings.host-environment must contain environment names."
             )
-        host = resolved.get("host", {})
-        authorization = resolved.get("authorization", {})
-        overrides, memory_override = _run_once_answers(arguments, manifest, lock)
+        host = checkout.get("host", {})
+        # Even --force cannot resurrect consent removed from the checkout.
+        authorization = authorizations
         if memory_override is not None:
             memory_limit = memory_override
         selected_docker_daemon = (
@@ -988,16 +1020,14 @@ class ProjectRunCommand(Command):
                 authorization.get("host-browser", host.get("host-browser", False)),
             )
         )
-        # None when the developer has not answered; the default then depends
-        # on the release stage (see _select_display_transport).
-        host_x11_answer = overrides.get("host-x11", authorization.get("host-x11"))
         if arguments.no_recursive_e2e:
             selected_docker_daemon = "none"
             selected_sudo = False
             selected_network = "bridge"
-        display_transport = _select_display_transport(
-            image_labels, host_x11_answer=host_x11_answer
-        )
+        if display_transport is None:
+            display_transport = _select_display_transport(
+                image_labels, host_x11_answer=host_x11_answer
+            )
         recursive_environment = recursive_e2e_launch_environment(
             root,
             docker_daemon=str(selected_docker_daemon),
@@ -1016,14 +1046,12 @@ class ProjectRunCommand(Command):
                 print(
                     "Recursive E2E readiness: unavailable because host Docker access is not authorized."
                 )
-        docker_options = list(arguments.docker_options)
         if docker_options:
             # Single-instance options the launcher composes are refused —
             # docker would keep the passthrough occurrence and silently
             # override the resolved plan. Everything else is deliberate
             # stepping outside the plan; show exactly what is being handed
             # to docker, once, conspicuously.
-            reject_launcher_owned_docker_options(docker_options)
             print(
                 "WARNING: passing raw docker run options outside the resolved plan: "
                 + " ".join(docker_options),
@@ -1376,73 +1404,17 @@ def _configuration_binding_rows(
 def _configuration_authorization_rows(
     manifest: dict[str, Any], lock: dict[str, Any], checkout: dict[str, Any]
 ) -> list[ConfigurationListRow]:
-    declarations = authorization_declarations(manifest, lock)
-    authorization = checkout.get("authorization", {})
-    if not isinstance(authorization, dict):
-        return [ConfigurationListRow("authorization", "*", "invalid", "authorization is not a table")]
-
-    rows: list[ConfigurationListRow] = []
-    for name, declaration in sorted(declarations.items()):
-        recommended = _authorization_display_value(declaration)
-        record = authorization.get(name)
-        if record is None:
-            if name == "base-image":
-                status = "missing-required"
-            elif declaration.project_recommended:
-                status = "missing-recommended"
-            else:
-                # A workstation capability nobody asked for yet: available to
-                # authorize, not a gap the project expects filled.
-                status = "available"
-            rows.append(ConfigurationListRow("authorization", name, status, recommended))
-            continue
-        if not isinstance(record, dict):
-            rows.append(ConfigurationListRow("authorization", name, "invalid", recommended))
-            continue
-        if name == "base-image":
-            try:
-                selection = authorized_base_selection(
-                    lock,
-                    {"authorization": {"base-image": record}},
-                )
-            except ProjectConfigurationError:
-                digest = record.get("lock-digest")
-                status = "stale" if digest != declaration.recommendation_digest else "invalid"
-                value = str(record.get("reference", recommended))
-            else:
-                if selection is None:  # pragma: no cover - record establishes it.
-                    status = "invalid"
-                    value = recommended
-                else:
-                    status = "authorized-local" if selection.is_local else "authorized"
-                    value = selection.reference
-                    if selection.local_image_identity is not None:
-                        value += f" ({selection.local_image_identity[:19]}...)"
-            rows.append(ConfigurationListRow("authorization", name, status, value))
-            continue
-        raw_value = record.get("value")
-        digest = record.get("recommendation-digest")
-        try:
-            recorded = normalize_authorization_value(declaration, raw_value)
-        except ProjectConfigurationError:
-            rows.append(ConfigurationListRow("authorization", name, "invalid", recommended))
-            continue
-        # The row shows the developer's recorded answer, not the node's
-        # supported value: a denial is a value (owner ruling 2026-09-03) and
-        # must read as one, never as "authorized true".
-        if digest != declaration.recommendation_digest:
-            status = "stale"
-        elif recorded == authorization_deny_value(declaration):
-            status = "denied"
-        else:
-            status = "authorized"
-        rows.append(
-            ConfigurationListRow("authorization", name, status, render_authorization_value(recorded))
+    try:
+        reviews = review_authorizations(manifest, lock, checkout)
+    except ProjectConfigurationError as exc:
+        return [ConfigurationListRow("authorization", "*", "invalid", str(exc))]
+    return [
+        ConfigurationListRow(
+            "authorization", item.name, item.status,
+            item.recommended if item.recorded == "unanswered" else item.recorded,
         )
-    for name, value in sorted(authorization.items(), key=lambda item: str(item[0])):
-        if name not in declarations:
-            rows.append(ConfigurationListRow("authorization", str(name), "unsupported", repr(value)))
-    return rows
+        for item in reviews
+    ]
 
 
 def _configuration_resolution_row(

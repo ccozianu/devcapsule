@@ -20,6 +20,7 @@ from urllib.parse import quote
 import webbrowser
 
 from devcapsule.container_runtime.contract import CONTAINED_DISPLAY_TRANSPORT, HOST_X11_DISPLAY_TRANSPORT
+from devcapsule.compat import CliError
 from devcapsule.host_daemon import in_container
 from devcapsule.image_metadata import CONTAINED_DISPLAY_LABEL_VALUE, DISPLAY_LABEL
 from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenError, open_host_url
@@ -54,6 +55,12 @@ def select_display_transport(image_labels: Mapping[str, str], *, host_x11_answer
     """
 
     if image_labels.get(DISPLAY_LABEL) != CONTAINED_DISPLAY_LABEL_VALUE:
+        if host_x11_answer is False:
+            raise CliError(
+                "Host X11 is explicitly denied, but the selected base has no contained display. "
+                "Select a base with contained-display support, or explicitly authorize host-x11 "
+                "true after reviewing the host-session exposure. No environment will be built or launched."
+            )
         return HOST_X11_DISPLAY_TRANSPORT, (
             "Display: host X11 passthrough; this image predates the contained display "
             "(base recipe 8). Regenerating onto a newer base closes the exposure."
