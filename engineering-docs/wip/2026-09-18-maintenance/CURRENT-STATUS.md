@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; permanent maintenance
+State: paused; upgrade-recovery implementation ready for owner review
 
 Integration target: `main`
 
@@ -21,7 +21,8 @@ uses `multiple-streams` mode. See *The Reserved `maintenance` Workstream* in
 
 ## Branch Association
 
-`ws-maintenance/`; no branch yet. Branches are `ws-maintenance/<bug-or-release-line>`,
+Current branch: `ws-maintenance/triage`, synchronized with remote `main`
+at `c6296b7` on 2026-09-20. Branches are `ws-maintenance/<bug-or-release-line>`,
 one per fix or per maintained release line, forked from `main`. Several pairs
 may work this workstream at once on separate branches.
 
@@ -39,53 +40,75 @@ Read from `main`, not from this file: the bug records under
 `engineering-docs/bugs/` whose `owner` is `maintenance` and whose `status` is
 neither `closed` nor `retired`.
 
-At registration the queue held 12 open bugs, all with `severity: untriaged`,
-because the controlled vocabulary was introduced the same day and the product
-owner has not yet rated them. Three further open bugs are owned elsewhere: one
-by `contained-display` and two by `component-catalog`, each fixed on a branch
-and awaiting the owner's validation.
+At this checkpoint the queue holds 13 open bugs, including the upgrade-recovery
+record now marked `fixed` pending host acceptance. Severity and release targets
+remain untriaged; the owner explicitly selected this fix ahead of general triage.
 
 ## Current State
 
-Registered 2026-09-18 by `workflow-improvements`, in the same round that
-defined the workstream and the bug vocabulary. No fix has been started. The
-`Status note` line in each bug record preserves the free-text status that
-predates the vocabulary; it is evidence, not a second status.
+2026-09-20: the owner selected the upgrade-recovery bug of 2026-09-19 for
+autonomous repair, with contract-led abstraction and reviewable unit coverage.
+Implementation is complete on `ws-maintenance/triage`. Inspection, resolution
+and execution share the authorization assessment; remedies use valid current
+choices; developer decisions survive recovery; display and build consequences
+are explained before materialization. The entrypoint-to-launch contract and
+71-case verification map are in
+[`upgrade-recovery-contract.md`](upgrade-recovery-contract.md).
+
+The full local gate passed: mypy, 704 tests (18 host-sensitive tests deselected,
+one expected failure), source CLI smoke, PEX build and nine packaged tests.
+The new assessment and authorization-review helpers have 100% statement and
+branch coverage. The focused configuration/materialization suite passed 178
+tests. Actual host GUI upgrade acceptance has not been performed.
+
+No mail was sent, per the owner's instruction. The source-built launcher took
+the mailbox before this checkpoint and reported no mail for `maintenance`.
+The intake directory contains no pending items.
 
 ## Planned Next Step
 
-Triage: the product owner rates each of the 12 untriaged bugs `blocking`,
-`major`, or `minor`, and names a `target` release where one applies. Then take
-the highest-severity open bug on the current release line, on a
-`ws-maintenance/<bug>` branch. The owner has said a handful of bugs should be
-fixed for the next release; which handful is the triage's output.
+Owner review and PR integration of the fix, followed by the actual host
+upgrade/display walkthrough specified in the bug's acceptance criteria. Keep
+the bug `fixed`, not `closed`, until that evidence exists. General queue triage
+and release targeting remain after this explicitly selected task.
+
+## External State And Risks
+
+No containers, ports or additional environments were created. The existing
+`devcapsule-src/.venv` ran validation; `dist/devcapsule-local.pex` is the
+uncommitted-build validation artifact, not a release artifact. No change has
+been integrated to `main`. Under `WORKFLOW-LOCAL.md`, the owner opens and merges
+the PR. Records and the working branch are prepared for that handoff; the
+implementation PR must land before any records-only delivery that links its
+new contract document.
 
 ## Open Threads
 
 ### Awaiting The Product Owner
 
-- The triage above. Nothing can be selected on evidence until severities
-  exist.
-- Whether the three bugs marked `fixed` and owned by closing workstreams
-  (`contained-display`, `component-catalog`) should move here for validation
-  and closure once those workstreams conclude.
+- Actual host recovery/display acceptance and PR delivery; automated tests
+  substitute Docker and GUI launch and cannot establish the owner's experience.
+- Remaining queue severity/release triage and ownership of fixed bugs from
+  closing workstreams (`contained-display`, `component-catalog`).
 
 ### Weighed And Unresolved
 
-- Whether the next release is a maintenance release driven here or a feature
-  release driven by another workstream. Depends on the triage and on what else
-  is ready; `project-management` decides if the headline is unclear.
+- The incident's exact old inputs and build log remain unavailable. Preserve
+  explicit display decisions; do not infer X11 consent from an implicit default.
+- Matrix-upgrade product design and the next release's ownership remain with
+  project-management; this fix does not decide either.
 
 ### Deliberately Not Preserved
 
-The 2026-09-18 conversation that created this workstream; its reasoning is in
-`workflow-improvements`' handoff under *Sixteenth Task*.
+No transcript was requested. Contracts, case coverage and remaining acceptance
+work are preserved in the bug and workstream documents.
 
 ## Workstream Document Index
 
 This workstream owns:
 
 - this status file;
+- [`upgrade-recovery-contract.md`](upgrade-recovery-contract.md);
 - [`intake-dispositions.md`](intake-dispositions.md); and
 - its `intake/` directory.
 
