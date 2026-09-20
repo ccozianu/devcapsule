@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; recursive E2E passed; dogfood upgrade awaits complete configuration evidence
+State: paused; graphical 0.2.14.dev0 successor running; independent inspection passed; GUI acceptance pending
 
 Integration target: `main`
 
@@ -40,6 +40,61 @@ not closed or released. Severity and release targets remain untriaged. The owner
 selected this correction ahead of general triage.
 
 ## Current State
+
+2026-09-20 scope correction: the owner requested the graphical recursive
+successor, not only the preliminary Nox suite. Calling that earlier subset
+"recursive E2E passed" overstated completion. The component-catalog acceptance
+record already documents this distinction; future runs must include the existing
+`launch-successor` and independent `inspect-successor` continuation.
+
+**The graphical successor is now running and independently inspected.**
+Used the existing owned local-clone protocol to create an independent clean
+checkout at `a785a332b05d7e25685f46d47a68b0545810488c`, without local origin,
+credentials or copied developer environment. Bootstrapped a fresh contributor
+venv and passed the complete clean-clone `nox -s build` gate (910 tests, one
+existing xfail, 18 deselected, mypy and nine packaging tests), including creation
+of the exact-revision 0.2.14.dev0 PEX.
+
+The actual embedded **0.2.12** CLI authored and resolved the run's isolated
+checkout decisions and bindings. The new **0.2.14.dev0** CLI then admitted,
+materialized and launched those files directly. Both predecessor files remain
+byte-identical after launch and inspection. Home, IDE and agent state are fresh,
+run-owned directories; no personal profile or credentials were copied. The
+explicit recursive scenario decisions enable Docker, host networking, development
+sudo, the inherited host-browser bridge and native X11. No host-global
+configuration was changed. The pinned recipe-9 base was reused per D-0009;
+the materialized environment contains the new launcher's exact executable bytes.
+
+Retained evidence and identity:
+
+- Run `c2c487f429e3403740ebc66f182293eb` beneath
+  `~/.local/share/devcapsule/e2e-workspaces/`.
+- Container `devcapsule-e2e-c2c487f429e3403740ebc66f182293eb-successor`, ID
+  `95b72194b80389b46af6496b8f3289ca24351623e77f5b0f8ac13cc3f517cbb6`.
+- Image `sha256:2eaf3ae53b6b37cd3642c6cdc2bb5f6bc7f3417506ba596980ec1ffb6f5f14e4`;
+  canonical formation `0e6cbaeff005e1db0f58dae5977d4cea5e814ec1d5e5188a02228e9914f6eb3c`.
+- Base `sha256:8221b27a44acbf44e9fb8be74bfaf7d533e80e696b5fff9c81e508a322e5306d`;
+  the committed registry digest remains unchanged.
+- New launcher and embedded runtime SHA-256 both
+  `e74d5fdebba1cfdaa197119ae537292c6aba2e173913552869c5cfb2600e406f`.
+- Public independent inspection passed exact image/formation/container identity,
+  mounts, environment, security/resource/restart settings, supervised PyCharm,
+  runtime-plan read-only mount and digest, run ID and installed tool versions.
+  Additional probes verified the embedded version/revision/checksum, Docker
+  daemon access, noninteractive sudo, and stable identity with zero restarts in
+  a second sample ten seconds later. The original 0.2.12 control remains running.
+
+The owned run retains `candidate-command.py` and its private environment for
+repeat public inspection, the owner marker/manifest/expected plan, predecessor
+snapshots, build/configure/materialization/launch/inspection logs and
+`candidate-runtime-evidence.json`. `gui-exit-code` is written by an independent
+`docker wait` observer when the successor exits. Do not remove the run/state or
+staging while its successor is running. Manual visibility/usability and normal
+GUI exit remain pending; no automatic stop or primary dogfood migration is claimed.
+This is a real 0.2.12-generated test checkout, not a copy of the unavailable
+host-owned configuration. The broader unit-coverage qualification below remains.
+
+### Earlier preliminary-suite checkpoint
 
 2026-09-20 recursive acceptance requested by the owner: ran
 `nox -s recursive_dogfood_e2e` against clean source
@@ -175,7 +230,9 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Close the remaining configuration condition partitions against the contract,
+Complete the running graphical successor’s manual visibility/usability check
+and observe normal GUI exit (or preserve it on explicit handoff direction).
+Then close the remaining configuration condition partitions against the contract,
 then validate the actual host-owned 0.2.12 checkout/resolution under the prepared
 0.2.14.dev0 executable before endorsing the dogfood handoff. A passing recursive
 bootstrap session is insufficient evidence for that upgrade. Owner review of the
@@ -190,7 +247,8 @@ Remaining maintenance queue prioritization belongs to the next selected slice.
 
 The recursive session created its Nox environment and a disposable contributor
 container using an existing base; the tests removed their container and owned
-workspaces. No successor/GUI was launched. The existing `devcapsule-src/.venv`
+workspaces. That preliminary run launched no successor; the subsequent graphical run above
+now retains its successor and owned state. The existing `devcapsule-src/.venv`
 also ran 290 focused tests and built the revision-bearing local contributor PEX
 recorded above; it is not a published release artifact.
 No change is integrated into remote `main`; under `WORKFLOW-LOCAL.md`, the owner
