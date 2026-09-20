@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import shlex
+import tempfile
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,7 +14,10 @@ from typing import Any, Mapping, Sequence
 from urllib.parse import quote
 
 
-from devcapsule.compat import CliError
+from devcapsule.configuration_documents import (
+    Artifact, ProjectConfigurationError, admit_document, table,
+)
+from devcapsule.project import normalize_project_mount, ProjectMountError
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 from devcapsule.components.catalog import (
     COMPONENTS,
@@ -22,10 +25,6 @@ from devcapsule.components.catalog import (
     selected_component_definitions,
     selected_runtime_templates,
 )
-
-
-class ProjectConfigurationError(CliError):
-    """An actionable project configuration failure."""
 
 
 CHECKOUT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -254,17 +253,39 @@ def load_toml(path: Path) -> dict[str, Any]:
     return value
 
 
+def load_checkout(path: Path, manifest: Mapping[str, Any], root: Path) -> dict[str, Any]:
+    document = load_toml(path)
+    admit_document(document, Artifact.checkout, path)
+    recorded = table(document, "checkout").get("path")
+    if not isinstance(recorded, str) or not recorded or Path(recorded).expanduser().resolve() != root:
+        raise ProjectConfigurationError(f"{path} does not match observed checkout {root}.")
+    identity = table(document, "project")
+    if any(identity.get(key) != manifest["project"][key] for key in ("creator", "slug")):
+        raise ProjectConfigurationError(f"{path} does not match the project's creator and slug.")
+    return document
+
+
+def load_resolution(path: Path) -> dict[str, Any]:
+    document = load_toml(path)
+    admit_document(document, Artifact.resolution, path)
+    return document
+
+
 def validate_manifest(value: Mapping[str, Any], path: Path) -> None:
-    version = value.get("devcapsule-schema-version")
-    if version != 1:
-        raise ProjectConfigurationError(
-            f"{path} requires devcapsule-schema-version = 1; found {version!r}."
-        )
+    admit_document(value, Artifact.manifest, path)
     project = value.get("project")
     capabilities = value.get("capabilities")
-    if not isinstance(project, dict) or not all(project.get(key) for key in ("name", "slug", "creator", "mount")):
+    if not isinstance(project, dict) or not all(
+        isinstance(project.get(key), str) and project[key] and "\x00" not in project[key]
+        for key in ("name", "slug", "creator", "mount")
+    ):
         raise ProjectConfigurationError(f"{path} must define project name, slug, creator, and mount.")
-    if not isinstance(capabilities, dict) or not isinstance(capabilities.get("need"), list):
+    try:
+        normalize_project_mount(project["mount"], project["slug"])
+    except ProjectMountError as exc:
+        raise ProjectConfigurationError(f"{path}: {exc}") from exc
+    if (not isinstance(capabilities, dict) or not isinstance(capabilities.get("need"), list)
+            or not all(isinstance(item, str) and item for item in capabilities["need"])):
         raise ProjectConfigurationError(f"{path} must define capabilities.need as an array.")
     configuration_value_declarations(value, source=str(path))
 
@@ -294,7 +315,7 @@ def configuration_value_declarations(
         if not isinstance(declaration, dict):
             raise ProjectConfigurationError(f"{field} must be a table.")
         value_type = declaration.get("type")
-        if value_type not in CONFIGURATION_VALUE_TYPES:
+        if not isinstance(value_type, str) or value_type not in CONFIGURATION_VALUE_TYPES:
             choices = ", ".join(sorted(CONFIGURATION_VALUE_TYPES))
             raise ProjectConfigurationError(f"{field}.type must be one of: {choices}.")
         required = declaration.get("required", False)
@@ -402,37 +423,29 @@ def resolve_configuration_values(
         raise ProjectConfigurationError("Checkout configuration.values must be a table.")
 
     omitted = checkout_omitted_values(checkout)
-    for name in omitted:
-        if name not in declarations:
-            raise ProjectConfigurationError(
-                f"Checkout omits undeclared configuration value {name!r}."
-            )
-        if declarations[name].get("required", False):
-            raise ProjectConfigurationError(
-                f"Configuration value {name!r} is mandatory and cannot be omitted; "
-                f"record a value with 'devcapsule project config set {name} VALUE'."
-            )
-        if name in raw_values:
-            raise ProjectConfigurationError(
-                f"Configuration value {name!r} is both recorded and omitted; "
-                "re-answer it with 'devcapsule project config set' or 'unset'."
-            )
-
+    problems: list[str] = []
     normalized: dict[str, ConfigurationScalar] = {}
     effects: dict[str, int] = {}
-    for name, value in raw_values.items():
-        if not isinstance(name, str):
-            raise ProjectConfigurationError("Checkout configuration value names must be strings.")
-        normalized[name] = normalize_configuration_value(manifest, name, value)
-    missing = sorted(
-        name
-        for name, declaration in declarations.items()
-        if declaration.get("required", False) and name not in normalized
-    )
-    if missing:
-        commands = ", ".join(f"project config set {name} VALUE" for name in missing)
-        raise ProjectConfigurationError(f"Required configuration values are missing: {commands}.")
-
+    for name in sorted(set(raw_values) | set(omitted) | set(declarations)):
+        try:
+            declaration = declarations.get(name)
+            if declaration is None:
+                raise ProjectConfigurationError(f"Checkout answers undeclared configuration value {name!r}.")
+            if name in omitted:
+                if declaration.get("required", False):
+                    raise ProjectConfigurationError(f"Configuration value {name!r} is mandatory and cannot be omitted.")
+                if name in raw_values:
+                    raise ProjectConfigurationError(f"Configuration value {name!r} is both recorded and omitted.")
+            elif name in raw_values:
+                normalized[name] = normalize_configuration_value(manifest, name, raw_values[name])
+            elif declaration.get("required", False):
+                raise ProjectConfigurationError(
+                    f"Required configuration value {name!r} is missing: project config set {name} VALUE."
+                )
+        except ProjectConfigurationError as exc:
+            problems.append(str(exc))
+    if problems:
+        raise ProjectConfigurationError("\n".join(problems))
     for name, value in normalized.items():
         effect = declarations[name].get("runtime-effect")
         if effect == "docker.memory-limit":
@@ -522,27 +535,22 @@ def resolve_secret_bindings(
             "Checkout configuration.bindings.host-environment must be a table."
         )
     resolved: dict[str, str] = {}
-    for name, source in raw.items():
-        declaration = declarations.get(str(name))
+    problems: list[str] = []
+    for name in sorted(set(raw) | set(declarations)):
+        declaration = declarations.get(name)
         if declaration is None:
-            available = ", ".join(sorted(declarations)) or "none"
-            raise ProjectConfigurationError(
-                f"Secret input {name!r} is not declared by the selected components; "
-                f"declared secret inputs: {available}."
-            )
-        if source != declaration.environment_variable:
-            raise ProjectConfigurationError(
-                f"Secret input {name!r} must bind its declared host environment variable "
-                f"{declaration.environment_variable!r}."
-            )
-        resolved[str(name)] = source
-    missing = sorted(
-        name for name, declaration in declarations.items() if declaration.required and name not in resolved
-    )
-    if missing:
-        raise ProjectConfigurationError(
-            "Required secret bindings are missing: " + ", ".join(missing) + "."
-        )
+            problems.append(f"Secret input {name!r} is not declared by the selected components.")
+        elif name not in raw:
+            if declaration.required:
+                problems.append(f"Required secret binding {name!r} is missing: project config bind "
+                                f"{name} host-environment:{declaration.environment_variable}.")
+        elif raw[name] != declaration.environment_variable:
+            problems.append(f"Secret input {name!r} must bind its declared host environment variable "
+                            f"{declaration.environment_variable!r}.")
+        else:
+            resolved[name] = raw[name]
+    if problems:
+        raise ProjectConfigurationError("\n".join(problems))
     return resolved
 
 
@@ -563,23 +571,21 @@ def resolve_configuration_bindings(
         )
 
     resolved: dict[str, str] = {}
+    problems: list[str] = []
     for name, raw_source in host_directories.items():
         if not isinstance(name, str) or name not in declarations:
-            available = ", ".join(sorted(declarations))
-            raise ProjectConfigurationError(
-                f"Configuration binding {name!r} is not declared by the selected component; "
-                f"declared bindings: {available}."
-            )
-        if not isinstance(raw_source, str):
-            raise ProjectConfigurationError(
-                f"Host-directory binding {name!r} must contain a filesystem path string."
-            )
-        source = Path(raw_source).expanduser().resolve()
-        if not source.is_dir():
-            raise ProjectConfigurationError(
-                f"Host-directory binding {name!r} is not an existing directory: {source}"
-            )
-        resolved[name] = str(source)
+            problems.append(f"Configuration binding {name!r} is not declared by the selected component; "
+                            f"declared bindings: {', '.join(sorted(declarations))}.")
+        elif not isinstance(raw_source, str) or not raw_source or "\x00" in raw_source:
+            problems.append(f"Host-directory binding {name!r} must contain a filesystem path string.")
+        else:
+            source = Path(raw_source).expanduser().resolve()
+            if not source.is_dir():
+                problems.append(f"Host-directory binding {name!r} is not an existing directory: {source}")
+            else:
+                resolved[name] = str(source)
+    if problems:
+        raise ProjectConfigurationError("\n".join(problems))
     return resolved
 
 
@@ -672,7 +678,7 @@ def authorization_declarations(
             )
         value = recommendation.get("value")
         justification = recommendation.get("justification")
-        if value != supported_value:
+        if type(value) is not type(supported_value) or value != supported_value:
             raise ProjectConfigurationError(
                 f"Project recommendation {name!r} must use the supported V1 value "
                 f"{supported_value!r}; found {value!r}."
@@ -932,7 +938,10 @@ def canonical_digest(value: Mapping[str, Any]) -> str:
     # The V1 schema currently admits only JSON-native TOML values.  Sorting keys
     # and compact UTF-8 encoding is RFC 8785-equivalent for these strings,
     # integers, booleans, arrays, and objects.
-    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    try:
+        encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    except (TypeError, ValueError) as exc:
+        raise ProjectConfigurationError("Configuration contains an unsupported scalar representation.") from exc
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -983,7 +992,10 @@ def find_checkout_record(
             value = load_toml(candidate)
         except ProjectConfigurationError:
             continue
-        recorded = value.get("checkout", {}).get("path")
+        metadata = value.get("checkout", {})
+        if not isinstance(metadata, dict):
+            raise ProjectConfigurationError(f"{candidate}: checkout must be a table.")
+        recorded = metadata.get("path")
         if recorded and Path(str(recorded)).expanduser().resolve() == expected:
             return candidate
     return None
@@ -1081,10 +1093,18 @@ def render_toml_scalar(value: ConfigurationScalar) -> str:
 
 def atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp-{os.getpid()}")
-    temporary.write_text(content, encoding="utf-8")
-    temporary.chmod(mode)
-    temporary.replace(path)
+    # The staging file is private from creation, not merely after the bytes
+    # have been written. A failed write/replace keeps the previous checkpoint.
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                     prefix=f".{path.name}.", delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            stream.write(content)
+            stream.flush()
+            temporary.chmod(mode)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
 
 def manifest_for(project: Path) -> tuple[Path, dict[str, Any]]:
@@ -1128,10 +1148,12 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
             "The platform lock is authored on the project side and committed with the project."
         )
     value = load_toml(path)
-    if value.get("devcapsule-lock-format-version") != 1:
-        raise ProjectConfigurationError(f"{path} has an unsupported lock format version.")
+    admit_document(value, Artifact.lock, path)
     if "base" in value:
         locked_base_reference(value, source=str(path))
+    # Every public consumer gets the same unambiguous vocabulary.
+    from devcapsule.configuration_nodes import build_node_registry
+    build_node_registry(manifest, value)
     return path, value
 
 
@@ -1297,9 +1319,22 @@ def resolution_source_digests(
     """The exact source digests a fresh generated resolution must record."""
 
     return {
-        "manifest": canonical_digest(manifest),
+        "manifest": canonical_digest(configuration_manifest(manifest)),
         "platform-lock": canonical_digest(lock),
         "checkout-input": canonical_digest(checkout),
+    }
+
+
+def configuration_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    """The manifest projection consumed by environment resolution.
+
+    Workflow and descriptive project metadata cannot change a derived runtime.
+    Authorization fingerprints are independently scoped to their questions.
+    """
+    return {
+        "devcapsule-schema-version": manifest.get("devcapsule-schema-version"),
+        "project": {key: manifest.get("project", {}).get(key) for key in ("creator", "slug", "mount")},
+        **{key: manifest.get(key, {}) for key in ("capabilities", "configuration", "host")},
     }
 
 
@@ -1322,36 +1357,35 @@ def stale_resolution_inputs(
     if not isinstance(actual, dict):
         raise ProjectConfigurationError("Generated resolution sources must be a table.")
     expected = resolution_source_digests(manifest, lock, checkout)
-    return tuple(name for name, digest in expected.items() if actual.get(name) != digest)
+    # Released schema-1 resolutions used a whole-manifest digest. Accept an
+    # exact legacy match without rewriting pins or asking the user to resolve.
+    accepted_manifest = {expected["manifest"]}
+    if actual.get("manifest-scope") is None:
+        try:
+            accepted_manifest.add(canonical_digest(manifest))
+        except ProjectConfigurationError:
+            # An unrelated TOML-native metadata value was not supported by
+            # the old hash; the pure derived-meaning comparison still applies.
+            pass
+    if actual.get("manifest-scope") is None and actual.get("manifest") not in accepted_manifest:
+        # Old checkpoints did not retain a scoped input snapshot. Their
+        # complete derived meaning is the available evidence: compare it with
+        # today's pure derivation while retaining the lock/checkout gates.
+        from devcapsule.configuration_resolution import same_effective_resolution
+        legacy_digest = actual.get("manifest")
+        if isinstance(legacy_digest, str) and same_effective_resolution(manifest, lock, checkout, resolution):
+            accepted_manifest.add(legacy_digest)
+    return tuple(
+        name for name, digest in expected.items()
+        if (actual.get(name) not in accepted_manifest if name == "manifest" else actual.get(name) != digest)
+    )
 
 
 def fresh_resolved_project(project: Path) -> ResolvedProject:
     """Load one checkout and require its generated resolution to be fresh."""
 
-    root, manifest = manifest_for(project)
-    lock_path, lock = lock_for(root, manifest)
-    checkout_path, resolution_path = checkout_record_paths(manifest, root)
-    if not checkout_path.is_file() or not resolution_path.is_file():
-        raise ProjectConfigurationError(
-            "Local resolution is missing; run 'devcapsule project config resolve'."
-        )
-    checkout = load_toml(checkout_path)
-    resolution = load_toml(resolution_path)
-    stale = stale_resolution_inputs(manifest, lock, checkout, resolution)
-    if stale:
-        raise ProjectConfigurationError(
-            f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
-        )
-    return ResolvedProject(
-        root=root,
-        manifest=manifest,
-        lock_path=lock_path,
-        lock=lock,
-        checkout_path=checkout_path,
-        checkout=checkout,
-        resolution_path=resolution_path,
-        resolution=resolution,
-    )
+    from devcapsule.configuration_review import ExecutionConfiguration
+    return ExecutionConfiguration.load(project).project
 
 
 def render_checkout(

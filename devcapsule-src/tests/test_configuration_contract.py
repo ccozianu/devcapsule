@@ -1,8 +1,7 @@
 """Configuration lifecycle proof obligations, independent of branch coverage.
 
-Positive cases establish state transitions through the public CLI. Strict
-expected failures assert the required behavior at known counterexamples; they
-must not be mistaken for passing obligations. G-numbers refer to the maintenance
+Cases establish state transitions through the public CLI and assert the
+required behavior at the original audit counterexamples. G-numbers refer to the maintenance
 configuration-correctness argument. External Docker/GUI effects alone are faked.
 """
 
@@ -156,7 +155,6 @@ def test_unknown_project_schema_is_refused_without_mutation(checkout, artifact, 
     assert {p: p.read_bytes() for p in before} == before
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G1: CheckoutRecord mutation has no schema admission check')
 def test_unknown_checkout_schema_cannot_be_rewritten(checkout):
     project, record, resolution = checkout
     record.write_text(record.read_text().replace('devcapsule-checkout-schema-version = 1',
@@ -166,7 +164,6 @@ def test_unknown_checkout_schema_cannot_be_rewritten(checkout):
     assert (result, record.read_bytes(), resolution.read_bytes()) == (2, *before)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G1: run checks source freshness but not resolution schema')
 def test_unknown_resolution_schema_cannot_be_executed(checkout, monkeypatch):
     project, _, resolution = checkout
     resolution.write_text(resolution.read_text().replace('devcapsule-resolved-schema-version = 1',
@@ -177,7 +174,6 @@ def test_unknown_resolution_schema_cannot_be_executed(checkout, monkeypatch):
     assert (result, events, launch.call_count) == (2, [], 0)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G2: existing recommendations become grants during init')
 def test_init_cannot_treat_repository_recommendations_as_developer_answers(checkout):
     project, record, resolution = checkout
     path = project / '.devcapsule/devcapsule.toml'
@@ -194,7 +190,6 @@ justification = "Repository requests Docker access."
     assert load_toml(record)['authorization'].get('docker-daemon', {}).get('value') != 'host-socket'
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G3: resolution freshness hashes workflow metadata it does not consume')
 def test_workflow_metadata_is_not_a_configuration_dependency(checkout):
     project, record, resolution = checkout
     manifest = load_toml(project / '.devcapsule/devcapsule.toml')
@@ -203,7 +198,6 @@ def test_workflow_metadata_is_not_a_configuration_dependency(checkout):
     assert stale_resolution_inputs(manifest, lock, load_toml(record), load_toml(resolution)) == ()
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G4: registry uniqueness is not enforced by resolve')
 def test_resolution_cannot_publish_an_ambiguous_node_tree(checkout):
     project, _, resolution = checkout
     declare_values(project, '''
@@ -219,7 +213,6 @@ type = "string"
     assert (result, resolution.read_bytes()) == (2, before)
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G5: checkout writers silently discard unknown content')
 def test_edit_must_preserve_unknown_content_or_refuse_without_writing(checkout):
     project, record, _ = checkout
     record.write_text(record.read_text() + '\n[extension]\nretained = "developer data"\n')
@@ -230,7 +223,6 @@ def test_edit_must_preserve_unknown_content_or_refuse_without_writing(checkout):
     )
 
 
-@pytest.mark.xfail(strict=True, raises=ProjectConfigurationError, reason='G6: init never elicits required ordinary nodes')
 def test_init_elicits_a_required_ordinary_value_once(checkout):
     project, record, resolution = checkout
     declare_values(project, '''
@@ -241,18 +233,17 @@ required = true
     record.unlink()
     resolution.unlink()
     output = io.StringIO()
-    # Four optional project host recommendations are answered "none" first;
-    # the base is pre-answered. The remaining required question is the port.
+    # Repository content and the base are already answered. Only the required
+    # local value is asked; init does not re-ask project-authoring questions.
     initialize_project(
         InitializeRequest(directory=project, interactive=True,
                           answers=(ProvidedAnswer('authorize', 'base-image', 'default'),)),
-        input_stream=io.StringIO('\n\n\n\n5432\n'), output_stream=output,
+        input_stream=io.StringIO('5432\n'), output_stream=output,
     )
     assert load_toml(record)['configuration']['values']['service.port'] == 5432
     assert output.getvalue().count('service.port') == 1
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G7: malformed legacy host boolean reaches bool() and grants access')
 def test_legacy_host_values_are_typed_before_authorization(checkout, monkeypatch):
     project, record, _ = checkout
     record.write_text(record.read_text() + '\n[host]\ndevelopment-sudo = "false"\n')
@@ -264,7 +255,6 @@ def test_legacy_host_values_are_typed_before_authorization(checkout, monkeypatch
     assert result == 2
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G8: review shows one invalid ordinary value at a time')
 def test_independent_invalid_values_are_reported_together(checkout, capsys):
     project, record, _ = checkout
     declare_values(project, '''
@@ -277,7 +267,6 @@ type = "integer"
     assert 'editor.theme' in message and 'service.port' in message
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason='G9: legacy launcher environment outranks an explicit sudo denial')
 def test_launcher_environment_cannot_override_explicit_sudo_denial(checkout, tmp_path):
     project, _, _ = checkout
     env = base_env(tmp_path)

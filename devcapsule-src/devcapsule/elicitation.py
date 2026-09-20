@@ -173,6 +173,15 @@ class Elicitor:
 
         return tuple(_display_name(item.name, item.facet) for item in self._missing)
 
+    def child(self, answers: Mapping[AnswerKey, str]) -> Elicitor:
+        """A distinct owner/family namespace sharing this invocation's IO."""
+        return Elicitor(answers, interactive=self._interactive,
+                        input_stream=self._input, output_stream=self._output)
+
+    def include_missing(self, child: Elicitor) -> None:
+        """Batch reachable questions across namespaces without answer aliasing."""
+        self._missing.extend(child._missing)
+
     def finish(self, *, require_all_consumed: bool = True) -> None:
         """Fail once, listing every missing node and every unmatched answer.
 

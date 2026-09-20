@@ -38,7 +38,7 @@ from devcapsule.configurations.pycharm import (
     reject_launcher_owned_docker_options,
     run_pycharm,
 )
-from devcapsule.configuration_review import review_configuration
+from devcapsule.configuration_review import ExecutionConfiguration, review_configuration
 from devcapsule.configuration_nodes import (
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
@@ -54,6 +54,7 @@ from devcapsule.project_operations import (
     InitializeRequest,
     ProvidedAnswer,
     add_capability_need,
+    apply_configuration_answers,
     initialize_project,
     resolve_checkout,
 )
@@ -81,7 +82,6 @@ from devcapsule.project_configuration import (
     AuthorizationChoice,
     AuthorizationDeclaration,
     ProjectConfigurationError,
-    ResolvedProject,
     authorization_declarations,
     atomic_write,
     checkout_record_paths,
@@ -92,7 +92,8 @@ from devcapsule.project_configuration import (
     discover_project,
     find_checkout_record,
     immutable_registry_reference,
-    load_toml,
+    load_checkout,
+    load_resolution,
     lock_for,
     manifest_for,
     named_checkout_record_paths,
@@ -297,7 +298,7 @@ class ConfigListCommand(Command):
                 'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
             )
             print(f"Initialized resolution placeholder: {resolution_path}")
-        checkout = load_toml(input_path)
+        checkout = load_checkout(input_path, manifest, root)
 
         identity = manifest["project"]
         print(f"Project: {identity['creator']}/{identity['slug']}")
@@ -342,31 +343,15 @@ class ConfigSetCommand(Command):
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         name = arguments.node_name
         root, manifest = manifest_for(_project_context(context).start_path())
+        _lock_path, lock = lock_for(root, manifest)
+        build_node_registry(manifest, lock).answerable(name, CARRIER_FAMILY_SET)
         record = CheckoutRecord(manifest, root)
-        if arguments.value.strip().lower() == "none":
-            # The explicit-absence answer (owner ruling 2026-09-03): recorded
-            # as a decision, the node stays absent from the runtime config
-            # unless overridden on the 'project run' command line.
-            _lock_path, lock = lock_for(root, manifest)
-            node = build_node_registry(manifest, lock).node(name)
-            if node.family != CARRIER_FAMILY_SET:
-                raise ProjectConfigurationError(
-                    f"Configuration node {name!r} is a {node.family} node; "
-                    f"answer it through 'config {node.family}'."
-                )
-            if node.required:
-                raise ProjectConfigurationError(
-                    f"Configuration value {name!r} is mandatory and cannot be "
-                    "'none'; record a value instead."
-                )
-            record.omit_value(name)
-            record.write()
+        apply_configuration_answers((ProvidedAnswer("set", name, arguments.value),), manifest, lock, record)
+        record.write()
+        if name in record.omitted_values:
             print(f"Set {name} = none (explicitly absent from the runtime configuration)")
         else:
-            normalized = normalize_configuration_value(manifest, name, arguments.value)
-            record.set_value(name, normalized)
-            record.write()
-            print(f"Set {name} = {render_toml_scalar(normalized)}")
+            print(f"Set {name} = {render_toml_scalar(record.values[name])}")
         print(f"Checkout input: {record.input_path}")
         print("Run 'devcapsule project config resolve' before launch.")
         return 0
@@ -395,18 +380,10 @@ class ConfigBindCommand(Command):
         node = registry.node(name)
 
         record = CheckoutRecord(manifest, root)
-        if name in record.state:
-            raise ProjectConfigurationError(
-                f"State resource {name!r} was already adopted; remove that transitional entry before binding it."
-            )
+        apply_configuration_answers((ProvidedAnswer("bind", name, arguments.value),), manifest, lock, record)
+        record.write()
         if provider == PROVIDER_HOST_DIRECTORY:
-            source = Path(raw_value).expanduser().resolve()
-            if not source.is_dir():
-                raise ProjectConfigurationError(
-                    f"Binding source is not an existing directory: {source}"
-                )
-            record.directory_bindings[name] = str(source)
-            record.write()
+            source = Path(record.directory_bindings[name])
             declaration = node.declaration
             print(
                 f"WARNING: exposing host directory read-write for {name}: {source} -> "
@@ -421,14 +398,6 @@ class ConfigBindCommand(Command):
                 )
             print(f"Bound {name} to host directory: {source}")
         else:
-            secret = node.declaration
-            if raw_value != secret.environment_variable:
-                raise ProjectConfigurationError(
-                    f"Secret input {name!r} must use host environment variable "
-                    f"{secret.environment_variable!r}."
-                )
-            record.environment_bindings[name] = raw_value
-            record.write()
             print(
                 f"WARNING: {raw_value} will be visible to every process in the capsule "
                 "and through Docker container inspection while it runs.",
@@ -487,7 +456,8 @@ class ConfigUnsetCommand(Command):
                 or record.state.pop(name, None)
             )
         else:
-            removed = record.authorization.pop(name, None)
+            legacy = record.host.pop(name, None)
+            removed = record.authorization.pop(name, legacy)
         if removed is None:
             raise ProjectConfigurationError(
                 f"Configuration node {name!r} has no recorded answer for this checkout."
@@ -579,18 +549,7 @@ class ConfigAuthorizeCommand(Command):
 
         record = CheckoutRecord(manifest, root)
         input_path = record.input_path
-        if name == "base-image":
-            record.authorization[name] = {
-                "reference": normalized,
-                "lock-digest": declaration.recommendation_digest,
-            }
-            if local_base_identity is not None:
-                record.authorization[name]["image-id"] = local_base_identity
-        else:
-            record.authorization[name] = {
-                "value": normalized,
-                "recommendation-digest": declaration.recommendation_digest,
-            }
+        record.authorize(declaration, normalized, local_base_identity)
         record.write()
         authorized_value = render_authorization_value(normalized)
         if local_base_identity is None and declaration.display_value is not None:
@@ -894,24 +853,13 @@ class ProjectRunCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        root, manifest = manifest_for(_project_context(context).start_path())
-        _lock_path, lock = lock_for(root, manifest)
-        input_path, output_path = checkout_record_paths(manifest, root)
-        if not input_path.is_file() or not output_path.is_file():
-            raise ProjectConfigurationError(
-                "Local resolution is missing; run 'devcapsule project config resolve'."
-            )
-        checkout = load_toml(input_path)
-        resolved = load_toml(output_path)
-        stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
-        if stale and not arguments.force:
-            raise ProjectConfigurationError(
-                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
-            )
-        if stale:
-            print(f"WARNING: using stale generated resolution once ({', '.join(stale)}).", file=sys.stderr)
-        review = review_configuration(manifest, lock, checkout)
-        review.require_ready(root)
+        admitted = ExecutionConfiguration.load(_project_context(context).start_path(), force=arguments.force)
+        selected, review = admitted.project, admitted.review
+        root, manifest, lock = selected.root, selected.manifest, selected.lock
+        input_path, output_path = selected.checkout_path, selected.resolution_path
+        checkout, resolved = selected.checkout, selected.resolution
+        if admitted.stale_inputs:
+            print(f"WARNING: using stale generated resolution once ({', '.join(admitted.stale_inputs)}).", file=sys.stderr)
         overrides, memory_override = _run_once_answers(arguments, manifest, lock)
         docker_options = list(arguments.docker_options)
         if docker_options:
@@ -920,7 +868,8 @@ class ProjectRunCommand(Command):
             except PycharmRunError as exc:
                 raise ProjectConfigurationError(str(exc)) from exc
         authorizations = review.resolved_authorizations()
-        host_x11_answer = overrides.get("host-x11", authorizations.get("host-x11"))
+        host_access = review.effective_host(overrides)
+        host_x11_answer = host_access.host_x11
         display_transport: str | None = None
 
         def prepare_display(base: ImageDetails) -> None:
@@ -938,28 +887,13 @@ class ProjectRunCommand(Command):
                     "Resolve after changing the choice."
                 )
 
-        runtime = resolved.get("runtime", {})
-        component = runtime.get("component") if isinstance(runtime, dict) else None
-        if not isinstance(runtime, dict) or component not in INTERACTIVE_SURFACES:
-            raise ProjectConfigurationError(
-                "Run requires a resolution selecting a known interactive surface; "
-                "run 'devcapsule project config resolve'."
-            )
+        runtime = resolved["runtime"]
+        component = runtime["component"]
         image = runtime.get("image")
         checkout_runtime_plan = None
         use_image_process = False
         image_labels: Mapping[str, str] = {}
         if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
-            selected = ResolvedProject(
-                root=root,
-                manifest=manifest,
-                lock_path=_lock_path,
-                lock=lock,
-                checkout_path=input_path,
-                checkout=checkout,
-                resolution_path=output_path,
-                resolution=resolved,
-            )
             realized = realize_environment(selected, report=print, prepare_base=prepare_display)
             image = realized.image.reference
             image_labels = realized.image.labels
@@ -972,54 +906,17 @@ class ProjectRunCommand(Command):
                 f"The resolved {component} environment has no runnable image."
             )
         memory_limit = runtime.get("memory-limit-bytes")
-        if memory_limit is not None and (
-            not isinstance(memory_limit, int) or isinstance(memory_limit, bool) or memory_limit <= 0
-        ):
-            raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
-        state_root = resolved.get("state", {})
-        state = dict(state_root.get("adopted", {}))
-        state.update(state_root.get("bindings", {}))
-        secret_root = resolved.get("secret", {})
-        secret_bindings_root = (
-            secret_root.get("bindings", {}) if isinstance(secret_root, dict) else {}
-        )
-        secret_environment = (
-            secret_bindings_root.get("host-environment", {})
-            if isinstance(secret_bindings_root, dict)
-            else {}
-        )
-        if not isinstance(secret_environment, dict) or not all(
-            isinstance(name, str) and isinstance(source, str)
-            for name, source in secret_environment.items()
-        ):
-            raise ProjectConfigurationError(
-                "Resolved secret.bindings.host-environment must contain environment names."
-            )
-        host = checkout.get("host", {})
-        # Even --force cannot resurrect consent removed from the checkout.
-        authorization = authorizations
+        # Bindings convey host access too. --force may retain stale ordinary
+        # runtime choices, but never resurrect a removed mapping or secret.
+        state = dict(checkout.get("state", {}).get("adopted", {}))
+        state.update(review.bindings)
+        secret_environment = review.secret_bindings
         if memory_override is not None:
             memory_limit = memory_override
-        selected_docker_daemon = (
-            overrides.get("docker-daemon")
-            or authorization.get("docker-daemon")
-            or host.get("docker-daemon", "none")
-        )
-        selected_sudo = bool(
-            overrides.get(
-                "development-sudo",
-                authorization.get("development-sudo", host.get("development-sudo", False)),
-            )
-        )
-        selected_network = str(
-            overrides.get("network", authorization.get("network", host.get("network", "bridge")))
-        )
-        selected_host_browser = bool(
-            overrides.get(
-                "host-browser",
-                authorization.get("host-browser", host.get("host-browser", False)),
-            )
-        )
+        selected_docker_daemon = host_access.docker_daemon
+        selected_sudo = host_access.development_sudo
+        selected_network = host_access.network
+        selected_host_browser = host_access.host_browser
         if arguments.no_recursive_e2e:
             selected_docker_daemon = "none"
             selected_sudo = False
@@ -1082,6 +979,7 @@ class ProjectRunCommand(Command):
         exit_code = run_pycharm(
             PycharmRunOptions(
                 project=root,
+                inherit_legacy_configuration=False,
                 project_mount=str(runtime["project-mount"]),
                 image=image,
                 name=arguments.container_name,
@@ -1093,7 +991,7 @@ class ProjectRunCommand(Command):
                 tool_cache=pycharm_state["cache"],
                 interactive_state_mounts=interactive_state_mounts,
                 docker_mode=DockerMode.host if selected_docker_daemon == "host-socket" else DockerMode.none,
-                enable_sudo=bool(selected_sudo),
+                enable_sudo=selected_sudo,
                 network_mode=selected_network,
                 memory_limit_bytes=memory_limit,
                 runtime_plan=checkout_runtime_plan,
@@ -1425,15 +1323,9 @@ def _configuration_resolution_row(
 ) -> ConfigurationListRow:
     if not resolution_path.is_file():
         return ConfigurationListRow("resolution", "generated", "missing", str(resolution_path))
-    resolved = load_toml(resolution_path)
-    if resolved.get("devcapsule-resolved-schema-version") != 1:
-        return ConfigurationListRow(
-            "resolution", "generated", "invalid", "unsupported schema version"
-        )
+    resolved = load_resolution(resolution_path)
     if resolved.get("status") == "unresolved":
         return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path))
-    if not isinstance(resolved.get("sources", {}), dict):
-        return ConfigurationListRow("resolution", "generated", "invalid", "sources is not a table")
     stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
     if stale:
         return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale))
@@ -1491,17 +1383,8 @@ def _authorize_all_recommended(
         print("Authorization cancelled; no changes written.")
         return 1
 
-    for name, declaration in declarations.items():
-        if name == "base-image":
-            record.authorization[name] = {
-                "reference": declaration.recommended_value,
-                "lock-digest": declaration.recommendation_digest,
-            }
-        else:
-            record.authorization[name] = {
-                "value": declaration.recommended_value,
-                "recommendation-digest": declaration.recommendation_digest,
-            }
+    for declaration in declarations.values():
+        record.authorize(declaration, declaration.recommended_value)
     record.write()
     print(f"Authorized {len(declarations)} recommendations for this checkout.")
     print(f"Checkout input: {input_path}")

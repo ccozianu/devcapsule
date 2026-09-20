@@ -15,6 +15,8 @@ ad hoc at each call site.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from copy import deepcopy
+import tomllib
 from pathlib import Path
 import re
 import sys
@@ -27,32 +29,35 @@ from devcapsule.configuration_nodes import (
     build_node_registry,
 )
 from devcapsule.configuration_review import review_configuration
+from devcapsule.configuration_documents import render_document
 from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
-from devcapsule.elicitation import SOURCE_EXISTING_RECORD, AnswerKey, Elicitor
+from devcapsule.elicitation import SOURCE_EXISTING_RECORD, SOURCE_COMMAND_LINE, SOURCE_PROMPT, AnswerKey, Elicitor
 from devcapsule.environment_realization import required_local_image
 from devcapsule.materialization import validate_base_image
 from devcapsule.project import sanitize_name
 from devcapsule.project_configuration import (
     CURATED_HOST_RECOMMENDATIONS,
+    AuthorizationDeclaration,
     AuthorizationScalar,
     ProjectConfigurationError,
     atomic_write,
     authorization_declarations,
     authorized_base_selection,
-    canonical_digest,
     checkout_omitted_values,
     checkout_record_paths,
     immutable_registry_reference,
     load_toml,
+    load_checkout,
+    load_resolution,
     lock_for,
     manifest_for,
     normalize_configuration_value,
+    normalize_authorization_value,
     quote_toml,
     render_authorization_value,
     render_checkout,
     render_toml_scalar,
-    resolution_source_digests,
     stale_resolution_inputs,
     validate_manifest,
 )
@@ -106,27 +111,24 @@ class CheckoutRecord:
     """
 
     def __init__(self, manifest: Mapping[str, Any], root: Path) -> None:
-        self._manifest = manifest
-        self._root = root
         input_path, _resolution_path = checkout_record_paths(manifest, root)
         self.input_path = input_path
-        checkout: dict[str, Any] = load_toml(input_path) if input_path.is_file() else {}
-        recorded_path = checkout.get("checkout", {}).get("path")
-        # A record reached through this project identity must describe this
-        # exact checkout; editing another checkout's record would let one
-        # checkout inherit another's permissions.
-        if recorded_path and Path(str(recorded_path)).expanduser().resolve() != root:
-            raise ProjectConfigurationError(
-                f"{input_path} belongs to another checkout: {recorded_path}"
-            )
-        self.document = checkout
-        self.state = dict(checkout.get("state", {}).get("adopted", {}))
-        self.host = dict(checkout.get("host", {}))
-        self.authorization = dict(checkout.get("authorization", {}))
-        self.values = _checkout_values(checkout)
-        self.omitted_values = set(checkout_omitted_values(checkout))
-        self.directory_bindings = _checkout_host_directory_bindings(checkout)
-        self.environment_bindings = _checkout_host_environment_bindings(checkout)
+        self.document = (
+            load_checkout(input_path, manifest, root) if input_path.is_file()
+            else tomllib.loads(render_checkout(manifest, root, {}, {}))
+        )
+        self._original = deepcopy(self.document)
+        # Each editable collection belongs to the retained document. No
+        # projection/serialization pair can drop an unrelated answer.
+        self.state = self.document.setdefault("state", {}).setdefault("adopted", {})
+        self.host = self.document.setdefault("host", {})
+        self.authorization = self.document.setdefault("authorization", {})
+        configuration = self.document.setdefault("configuration", {})
+        self.values = configuration.setdefault("values", {})
+        self.omitted_values = set(checkout_omitted_values(self.document))
+        bindings = configuration.setdefault("bindings", {})
+        self.directory_bindings = bindings.setdefault("host-directory", {})
+        self.environment_bindings = bindings.setdefault("host-environment", {})
 
     def omit_value(self, name: str) -> None:
         """Record the explicit 'none' answer: keep the node absent at runtime."""
@@ -140,21 +142,35 @@ class CheckoutRecord:
         self.omitted_values.discard(name)
         self.values[name] = value
 
+    def authorize(self, declaration: AuthorizationDeclaration, value: str | bool, image_identity: str | None = None) -> None:
+        """Replace one logical decision, including its obsolete legacy spelling."""
+        name = declaration.name
+        self.host.pop(name, None)
+        if name == "base-image":
+            answer = {"reference": value, "lock-digest": declaration.recommendation_digest}
+            if image_identity is not None:
+                answer["image-id"] = image_identity
+        else:
+            value = normalize_authorization_value(declaration, value)
+            answer = {"value": value, "recommendation-digest": declaration.recommendation_digest}
+        self.authorization[name] = answer
+
     def write(self) -> None:
-        atomic_write(
-            self.input_path,
-            render_checkout(
-                self._manifest,
-                self._root,
-                self.state,
-                self.host,
-                self.authorization,
-                self.values,
-                self.directory_bindings,
-                self.environment_bindings,
-                omitted_values=sorted(self.omitted_values),
-            ),
-        )
+        if self.omitted_values:
+            self.document["configuration"]["omitted-values"] = sorted(self.omitted_values)
+        else:
+            self.document["configuration"].pop("omitted-values", None)
+        def without_new_empty_tables(value: dict[str, Any], original: Mapping[str, Any]) -> dict[str, Any]:
+            result = {}
+            for key, item in value.items():
+                if isinstance(item, dict):
+                    prior = original.get(key, {})
+                    item = without_new_empty_tables(item, prior if isinstance(prior, dict) else {})
+                    if not item and key not in original:
+                        continue
+                result[key] = item
+            return result
+        atomic_write(self.input_path, render_document(without_new_empty_tables(self.document, self._original)))
 
 
 def resolve_checkout(start_path: Path) -> ResolveReport:
@@ -175,15 +191,7 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
     if not input_path.is_file():
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
-    checkout = load_toml(input_path)
-    if checkout.get("devcapsule-checkout-schema-version") != 1:
-        raise ProjectConfigurationError(
-            f"{input_path} has an unsupported checkout schema version."
-        )
-    if Path(str(checkout.get("checkout", {}).get("path", ""))).resolve() != root:
-        raise ProjectConfigurationError(
-            f"{input_path} does not match observed checkout {root}."
-        )
+    checkout = load_checkout(input_path, manifest, root)
     image = lock.get("image", {}).get("reference")
     component = lock.get("components", {}).get("interactive-surface")
     has_formation = isinstance(lock.get("base"), dict) and isinstance(
@@ -196,99 +204,13 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         )
     review = review_configuration(manifest, lock, checkout)
     review.require_ready(root)
-    state = checkout.get("state", {}).get("adopted", {})
-    host = checkout.get("host", {})
-    values, runtime_effects = review.values, review.runtime_effects
-    bindings, secret_bindings = review.bindings, review.secret_bindings
-    authorizations = review.resolved_authorizations()
-    sources = resolution_source_digests(manifest, lock, checkout)
-    lines = [
-        "devcapsule-resolved-schema-version = 1",
-        "",
-        "[sources]",
-        f"manifest = {quote_toml(sources['manifest'])}",
-        f"platform-lock = {quote_toml(sources['platform-lock'])}",
-        f"checkout-input = {quote_toml(sources['checkout-input'])}",
-        'workstation-config = "absent"',
-        "",
-        "[runtime]",
-        f"component = {quote_toml(str(component))}",
-        f"project-mount = {quote_toml(str(manifest['project']['mount']))}",
-    ]
-    lines.extend(
-        f"{key} = {render_toml_scalar(value)}" for key, value in sorted(runtime_effects.items())
-    )
-    if image:
-        lines.append(f"image = {quote_toml(str(image))}")
-    omitted = checkout_omitted_values(checkout)
-    if omitted:
-        # Explicit omissions are inspectable decisions, not silent gaps.
-        rendered_names = ", ".join(quote_toml(name) for name in omitted)
-        lines.extend(["", "[configuration]", f"omitted-values = [{rendered_names}]"])
-    if values:
-        lines.extend(["", "[configuration.values]"])
-        lines.extend(
-            f"{quote_toml(key)} = {render_toml_scalar(value)}"
-            for key, value in sorted(values.items())
-        )
-    if state:
-        lines.extend(["", "[state.adopted]"])
-        lines.extend(
-            f"{quote_toml(str(key))} = {quote_toml(str(value))}"
-            for key, value in sorted(state.items())
-        )
-    if bindings:
-        lines.extend(["", "[state.bindings]"])
-        lines.extend(
-            f"{quote_toml(key)} = {quote_toml(value)}" for key, value in sorted(bindings.items())
-        )
-    if secret_bindings:
-        lines.extend(["", "[secret.bindings.host-environment]"])
-        lines.extend(
-            f"{quote_toml(key)} = {quote_toml(value)}"
-            for key, value in sorted(secret_bindings.items())
-        )
-    if host:
-        lines.extend(["", "[host]"])
-        for key, value in sorted(host.items()):
-            rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
-            lines.append(f"{key} = {rendered}")
-    runtime_authorizations = {
-        key: value for key, value in authorizations.items() if key != "base-image"
-    }
-    if runtime_authorizations:
-        lines.extend(["", "[authorization]"])
-        lines.extend(
-            f"{key} = {render_toml_scalar(value)}"
-            for key, value in sorted(runtime_authorizations.items())
-        )
-    authorized_base = authorizations.get("base-image")
-    if authorized_base is not None:
-        if not isinstance(authorized_base, str):
-            raise ProjectConfigurationError("Resolved base-image authorization must be a string.")
-        base_selection = authorized_base_selection(lock, checkout)
-        if base_selection is None:  # pragma: no cover - authorized_base establishes it.
-            raise ProjectConfigurationError("Resolved base-image authorization is missing.")
-        if base_selection.local_image_identity is not None:
-            # A developer-selected local base must still exist and match the
-            # exact inspected identity the authorization recorded.
-            local_base = required_local_image(base_selection.reference)
-            validate_base_image(
-                local_base,
-                platform=str(lock["platform"]),
-                expected_identity=base_selection.local_image_identity,
-            )
-        lines.extend(
-            [
-                "",
-                "[authorization.base-image]",
-                f"reference = {quote_toml(base_selection.reference)}",
-                f"lock-digest = {quote_toml(canonical_digest(lock))}",
-            ]
-        )
-        if base_selection.local_image_identity is not None:
-            lines.append(f"image-id = {quote_toml(base_selection.local_image_identity)}")
-    atomic_write(output, "\n".join(lines) + "\n")
+    base_selection = authorized_base_selection(lock, checkout) if "base" in lock else None
+    if base_selection is not None and base_selection.local_image_identity is not None:
+        local_base = required_local_image(base_selection.reference)
+        validate_base_image(local_base, platform=str(lock["platform"]),
+                            expected_identity=base_selection.local_image_identity)
+    from devcapsule.configuration_resolution import render_resolution
+    atomic_write(output, render_resolution(manifest, lock, checkout, review))
     return ResolveReport(
         resolution_path=output,
         lock_name=lock_path.name,
@@ -348,8 +270,8 @@ class InitializeReport:
     recommendations: tuple[tuple[str, str, str], ...]
     # Authorization nodes by how this invocation settled them: answered
     # here (a flag or a prompt), carried forward from the existing checkout
-    # record because their digest still matched, or applied to the owner's
-    # checkout because the project recommends them. The report says which,
+    # record because their digest still matched, or explicitly accepted by
+    # this developer while authoring/reviewing the project recommendation. The report says which,
     # so a re-run never reads as if it granted what already stood.
     answered: tuple[str, ...]
     carried: tuple[str, ...]
@@ -478,6 +400,13 @@ def initialize_project(
         # follows from it.
         existing_manifest = load_toml(manifest_path)
         validate_manifest(existing_manifest, manifest_path)
+        if lock_path.is_file():
+            lock_for(root, existing_manifest)
+        input_path, output_path = checkout_record_paths(existing_manifest, root)
+        if input_path.is_file():
+            load_checkout(input_path, existing_manifest, root)
+        if output_path.is_file():
+            load_resolution(output_path)
 
     if existing_manifest is not None and lock_path.is_file() and not request.regenerate:
         if _fully_initialized(root, existing_manifest):
@@ -505,7 +434,10 @@ def initialize_project(
         output_stream=output_stream,
     )
     identity = _elicit_identity(elicitor, root, existing_manifest)
-    recommendations = _elicit_recommendations(elicitor, existing_manifest)
+    recommendations = _elicit_recommendations(
+        elicitor, existing_manifest,
+        authored=frozenset(answer.name for answer in request.answers if answer.justification is not None),
+    )
     # Fail now if identity or capabilities are unanswered: the lock cannot be
     # generated without them, so later questions are unreachable and their
     # supplied answers must not be misreported as unknown.
@@ -550,20 +482,9 @@ def initialize_project(
         platform=str(platform),
         less_pedantic=request.less_pedantic,
     )
+    accepted_recommendations = _elicit_host_answers(elicitor, manifest, lock, record)
+    _elicit_extra_answers(elicitor, request.answers, manifest, lock, record)
     elicitor.finish()
-
-    for name, _justification in recommendations:
-        declaration = declarations[name]
-        if name in record.authorization:
-            # Reading an existing project recommendation is not a new answer
-            # from this developer. In particular, regeneration cannot turn a
-            # recorded denial into a grant or renew stale consent silently.
-            continue
-        record.authorization[name] = {
-            "value": declaration.recommended_value,
-            "recommendation-digest": declaration.recommendation_digest,
-        }
-    _apply_extra_answers(request.answers, manifest, lock, record)
     record.write()
 
     resolve_report = resolve_checkout(root)
@@ -589,7 +510,7 @@ def initialize_project(
         ),
         answered=tuple(settled.answered),
         carried=tuple(settled.carried),
-        recommended=tuple(name for name, _justification in recommendations),
+        recommended=accepted_recommendations,
         checkout_record=record.input_path,
         resolve=resolve_report,
     )
@@ -607,11 +528,9 @@ class _ProjectIdentity:
 def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
     """Map init's dedicated flags and --authorize carriers to elicitation keys.
 
-    ``--set`` and ``--bind`` answers stay out of the elicitor: they are
-    optional extras applied after the lock exists, validated by the node
-    registry, and never prompted for.  Only authorization nodes share the
-    elicitor with the identity flags, and their names cannot collide with the
-    identity keys because the authorization vocabulary is curated.
+    Values and bindings use a separate elicitation namespace once the lock
+    establishes their registry. Ordinary names may coincide with identity
+    names; the owning question, not its spelling alone, selects the answer.
     """
 
     command_line: dict[AnswerKey, str] = {}
@@ -749,9 +668,10 @@ def _yes_no_validator(name: str) -> Any:
 
 
 def _elicit_recommendations(
-    elicitor: Elicitor, existing_manifest: Mapping[str, Any] | None
+    elicitor: Elicitor, existing_manifest: Mapping[str, Any] | None,
+    *, authored: frozenset[str] = frozenset(),
 ) -> list[tuple[str, str]]:
-    """Ask the three curated host-recommendation intent questions.
+    """Ask curated project-authoring questions, separately from local consent.
 
     Interactively each is asked with Enter meaning "none"; noninteractively
     an unflagged question records no recommendation — settled by the product
@@ -771,6 +691,13 @@ def _elicit_recommendations(
             if declared is not None and isinstance(declared.get("value"), (str, bool))
             else None
         )
+        if existing_manifest is not None and name not in authored:
+            # Existing repository content is read-only advice. Host carriers
+            # answer this checkout below. A justification explicitly requests
+            # recommendation authoring; otherwise no owner question is asked.
+            if declared is not None:
+                recommendations.append((name, str(declared.get("justification", ""))))
+            continue
         answer = elicitor.seek(
             name,
             description=f"Recommend {name} = {rendered} for every checkout? ({rendered}/none)",
@@ -818,6 +745,10 @@ def _declared_recommendation(
 def _recommendation_validator(name: str, rendered: str) -> Any:
     def validate(value: str) -> str:
         candidate = value.strip().lower()
+        if candidate == "default":
+            candidate = rendered
+        if rendered == "true" and candidate == "false":
+            candidate = "none"
         if candidate not in {"none", rendered}:
             raise ProjectConfigurationError(
                 f"Recommendation {name!r} accepts exactly {rendered!r} or 'none'."
@@ -857,11 +788,16 @@ def _elicit_acquisitions(
         return _elicit_component_acquisitions(elicitor, declarations, record, settled)
     reference = str(base.recommended_value)
     existing_base = record.authorization.get("base-image")
+    # The saved record's lock binding, rather than equality with today's
+    # recommendation, decides whether a local selection is an existing answer.
     fresh = (
         isinstance(existing_base, dict)
-        and existing_base.get("reference") == reference
+        and isinstance(existing_base.get("reference"), str)
         and existing_base.get("lock-digest") == base.recommendation_digest
     )
+    existing_answer = (
+        "default" if existing_base.get("reference") == reference else existing_base.get("reference")
+    ) if fresh and isinstance(existing_base, dict) else None
     answer = elicitor.seek(
         "base-image",
         description=(
@@ -869,11 +805,14 @@ def _elicit_acquisitions(
             "(Enter accepts; 'no' declines; or name a locally built/pulled image)"
         ),
         remedy=f"--authorize base-image {reference}",
-        existing="default" if fresh else None,
+        existing=existing_answer,
         empty_answer="default",
         validate=_base_answer_validator("base-image", reference),
     )
     if answer is not None:
+        if answer.source == SOURCE_EXISTING_RECORD:
+            settled.settle("base-image", answer.source)
+            return _elicit_component_acquisitions(elicitor, declarations, record, settled)
         if answer.value == "no":
             raise ProjectConfigurationError(
                 "Initialization needs the base authorization to reach a fresh resolution; "
@@ -892,10 +831,7 @@ def _elicit_acquisitions(
             )
             settled.settle("base-image", answer.source)
             return _elicit_component_acquisitions(elicitor, declarations, record, settled)
-        record.authorization["base-image"] = {
-            "reference": reference,
-            "lock-digest": base.recommendation_digest,
-        }
+        record.authorize(base, reference)
         settled.settle("base-image", answer.source)
     return _elicit_component_acquisitions(elicitor, declarations, record, settled)
 
@@ -940,10 +876,7 @@ def _elicit_component_acquisitions(
                 f"authorize with 'devcapsule project config authorize "
                 f"{declaration.name} true'."
             )
-        record.authorization[declaration.name] = {
-            "value": True,
-            "recommendation-digest": declaration.recommendation_digest,
-        }
+        record.authorize(declaration, True)
         settled.settle(declaration.name, answer.source)
     return settled
 
@@ -1076,27 +1009,101 @@ def _record_base_selection(
                 f"Base selection {selection!r} declined; re-run with the "
                 "recommended base or a different selection."
             )
-    record.authorization["base-image"] = {
-        "reference": selection,
-        "lock-digest": declaration.recommendation_digest,
-        "image-id": local_base.identity,
-    }
+    record.authorize(declaration, selection, local_base.identity)
 
 
-def _apply_extra_answers(
+def _elicit_host_answers(
+    elicitor: Elicitor, manifest: Mapping[str, Any], lock: Mapping[str, Any], record: CheckoutRecord,
+) -> tuple[str, ...]:
+    """Only developer answers enter the authorization table; advice never does."""
+    accepted: list[str] = []
+    for name, declaration in authorization_declarations(manifest, lock).items():
+        if declaration.required:
+            continue
+        answer = elicitor.seek(
+            name, description=declaration.description,
+            remedy=f"--authorize {name} VALUE", mandatory=False,
+        )
+        if answer is None or answer.source not in {SOURCE_COMMAND_LINE, SOURCE_PROMPT}:
+            continue
+        value = normalize_authorization_value(declaration, answer.value)
+        if declaration.project_recommended and value == declaration.recommended_value:
+            accepted.append(name)
+        record.authorize(declaration, value)
+
+    return tuple(accepted)
+
+
+def _elicit_extra_answers(
+    elicitor: Elicitor, answers: tuple[ProvidedAnswer, ...], manifest: Mapping[str, Any],
+    lock: Mapping[str, Any], record: CheckoutRecord,
+) -> None:
+    """Use the registry for every ordinary/binding question, including required ones.
+
+    Identity fields and configuration nodes can share a spelling; they must
+    never share an answer cache. Families are checked before any local write.
+    """
+    registry = build_node_registry(manifest, lock)
+    supplied = {(answer.name, "value"): answer.value for answer in answers
+                if answer.family in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND)}
+    for supplied_answer in answers:
+        registry.answerable(supplied_answer.name, supplied_answer.family)
+    questions = elicitor.child(supplied)
+    for family in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND):
+        for node in registry.family(family):
+            existing = None
+            if family == CARRIER_FAMILY_SET:
+                if node.name in record.values and (node.name, "value") not in supplied:
+                    value = normalize_configuration_value(manifest, node.name, record.values[node.name])
+                    existing = value if isinstance(value, str) else render_toml_scalar(value)
+                elif node.name in record.omitted_values:
+                    existing = "none"
+            else:
+                for provider, bindings in ((PROVIDER_HOST_DIRECTORY, record.directory_bindings),
+                                            ("host-environment", record.environment_bindings)):
+                    if node.name in bindings:
+                        existing = f"{provider}:{bindings[node.name]}"
+            def validate(value: str, name: str = node.name, kind: str = family) -> str:
+                # Stage on a copy: rejected prompt attempts cannot partially
+                # edit the real record or consume an earlier valid answer.
+                candidate = deepcopy(record)
+                apply_configuration_answers((ProvidedAnswer(kind, name, value),), manifest, lock, candidate)
+                return value
+            answer = questions.seek(
+                node.name, description=f"{node.name}: {node.description or 'configuration value'}",
+                remedy=f"--{family} {node.name} VALUE", mandatory=node.required,
+                existing=existing, validate=validate,
+            )
+            if answer is not None:
+                apply_configuration_answers((ProvidedAnswer(family, node.name, answer.value),), manifest, lock, record)
+                if family == CARRIER_FAMILY_BIND and answer.source != SOURCE_EXISTING_RECORD:
+                    provider, value = registry.split_bind_value(node.name, answer.value)
+                    if provider == PROVIDER_HOST_DIRECTORY:
+                        print(f"WARNING: exposing host directory read-write for {node.name}: {value} -> "
+                              f"{node.declaration.container_path}; sensitivity: {node.declaration.sensitivity}; "
+                              f"concurrent sharing: {node.declaration.concurrent}.", file=sys.stderr)
+                    else:
+                        print(f"WARNING: {value} will be visible to capsule processes and Docker inspection.",
+                              file=sys.stderr)
+    elicitor.include_missing(questions)
+    if not questions.missing():
+        questions.finish()
+
+
+def apply_configuration_answers(
     answers: tuple[ProvidedAnswer, ...],
     manifest: Mapping[str, Any],
     lock: Mapping[str, Any],
     record: CheckoutRecord,
 ) -> None:
-    """Apply optional --set/--bind answers through the node registry."""
+    """Stage set/bind answers using the same rules for init and individual edits."""
 
-    if not any(answer.family in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND) for answer in answers):
-        return
     registry = build_node_registry(manifest, lock)
     for answer in answers:
+        if answer.family not in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND):
+            raise ProjectConfigurationError(f"Use the authorization operation for {answer.name!r}.")
+        registry.answerable(answer.name, answer.family)
         if answer.family == CARRIER_FAMILY_SET:
-            registry.answerable(answer.name, CARRIER_FAMILY_SET)
             if answer.value.strip().lower() == "none":
                 # The explicit-absence answer (owner ruling 2026-09-03): a
                 # recorded decision to keep the node out of the runtime
@@ -1114,6 +1121,8 @@ def _apply_extra_answers(
                 )
         elif answer.family == CARRIER_FAMILY_BIND:
             provider, value = registry.split_bind_value(answer.name, answer.value)
+            if answer.name in record.state:
+                raise ProjectConfigurationError(f"State resource {answer.name!r} was already adopted.")
             if provider == PROVIDER_HOST_DIRECTORY:
                 source = Path(value).expanduser().resolve()
                 if not source.is_dir():
@@ -1232,10 +1241,8 @@ def _fully_initialized(root: Path, manifest: Mapping[str, Any]) -> bool:
     input_path, output_path = checkout_record_paths(manifest, root)
     if not input_path.is_file() or not output_path.is_file():
         return False
-    checkout = load_toml(input_path)
-    resolution = load_toml(output_path)
-    if resolution.get("devcapsule-resolved-schema-version") != 1:
-        return False
+    checkout = load_checkout(input_path, manifest, root)
+    resolution = load_resolution(output_path)
     if resolution.get("status") == "unresolved":
         return False
     if stale_resolution_inputs(manifest, lock, checkout, resolution):
@@ -1277,8 +1284,9 @@ def _apply_answers_to_standing_checkout(
         platform=str(platform),
         less_pedantic=request.less_pedantic,
     )
+    _elicit_host_answers(elicitor, manifest, lock, record)
+    _elicit_extra_answers(elicitor, request.answers, manifest, lock, record)
     elicitor.finish()
-    _apply_extra_answers(request.answers, manifest, lock, record)
     record.write()
     resolve_report = resolve_checkout(root)
 
@@ -1381,49 +1389,3 @@ def _recommendation_block(name: str, justification: str) -> list[str]:
         f"value = {render_toml_scalar(value)}",
         f"justification = {quote_toml(justification)}",
     ]
-
-
-def _checkout_values(checkout: Mapping[str, Any]) -> dict[str, Any]:
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        raise ProjectConfigurationError("Checkout configuration must be a table.")
-    values = configuration.get("values", {})
-    if not isinstance(values, dict):
-        raise ProjectConfigurationError("Checkout configuration.values must be a table.")
-    return dict(values)
-
-
-def _checkout_host_directory_bindings(checkout: Mapping[str, Any]) -> dict[str, str]:
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        raise ProjectConfigurationError("Checkout configuration must be a table.")
-    bindings = configuration.get("bindings", {})
-    if not isinstance(bindings, dict):
-        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
-    host_directories = bindings.get("host-directory", {})
-    if not isinstance(host_directories, dict) or not all(
-        isinstance(name, str) and isinstance(source, str)
-        for name, source in host_directories.items()
-    ):
-        raise ProjectConfigurationError(
-            "Checkout configuration.bindings.host-directory must contain path strings."
-        )
-    return dict(host_directories)
-
-
-def _checkout_host_environment_bindings(checkout: Mapping[str, Any]) -> dict[str, str]:
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        raise ProjectConfigurationError("Checkout configuration must be a table.")
-    bindings = configuration.get("bindings", {})
-    if not isinstance(bindings, dict):
-        raise ProjectConfigurationError("Checkout configuration.bindings must be a table.")
-    host_environment = bindings.get("host-environment", {})
-    if not isinstance(host_environment, dict) or not all(
-        isinstance(name, str) and isinstance(source, str)
-        for name, source in host_environment.items()
-    ):
-        raise ProjectConfigurationError(
-            "Checkout configuration.bindings.host-environment must contain environment names."
-        )
-    return dict(host_environment)

@@ -52,7 +52,7 @@ release.
 
 ## Implementation
 
-Not implemented. Verified on 2026-08-23 against the current tree:
+Historical assessment, verified on 2026-08-23 against that tree:
 
 - Four artifacts carry a format version, and every gate is exact equality
   against a single accepted value, with no accepted predecessor and no
@@ -76,6 +76,21 @@ Not implemented. Verified on 2026-08-23 against the current tree:
   projects to declare a new manifest field invalidates every existing lock, and
   the remedy the failure prints is `project lock`, which cannot author a V1
   lock.
+
+### 2026-09-20 implementation evidence
+
+The maintenance configuration refactor centralizes artifact admission and supports
+all currently released format-1 representations. New resolution fingerprints are
+scoped to configuration inputs; earlier whole-manifest fingerprints are accepted
+on exact match or interpreted through equality of the complete derived meaning.
+The CLI version is not a freshness/consent dependency, and neither path re-locks
+or replaces developer choices. v026.2, v026-era formation and v0.2.11 fixtures
+remain checked-in predecessor inputs.
+
+See the [configuration contract and correctness map](../../wip/2026-09-18-maintenance/configuration-correctness.md).
+The next format/recipe change still owes predecessor compatibility evidence;
+unspecified future formats are refused. Actual owner upgrade acceptance remains
+required, so this record does not claim universal historical compatibility.
 
 ## Verification
 

@@ -107,6 +107,10 @@ SUDOERS_POLICY = "%ide-sudo ALL=(ALL:ALL) NOPASSWD: ALL\n"
 @dataclass
 class PycharmRunOptions:
     project: Path
+    # Project configuration is complete; only the legacy command inherits
+    # ambient launcher options. Host observations and explicit secret sources
+    # remain available in either mode.
+    inherit_legacy_configuration: bool = True
     profile: str | None = None
     image: str | None = None
     name: str | None = None
@@ -133,7 +137,7 @@ class PycharmRunOptions:
     host_docker_socket: Path | None = None
     debug_native: bool = False
     writable_root: bool = False
-    enable_sudo: bool = False
+    enable_sudo: bool | None = None
     ide_sudo_gid: str | None = None
     ignore_config_lock: bool = False
     network_mode: str = "host"
@@ -329,15 +333,21 @@ def translate_for_external_daemon(
 
 
 def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> PycharmRunConfig:
+    host_environment = env
+    if not options.inherit_legacy_configuration:
+        env = {
+            key: value for key, value in env.items()
+            if not key.startswith(("PYCHARM_", "DOCKER4IDES_"))
+            and key not in {"DEVCAPSULE_HOME_DIR", "IMAGE", "DOCKER_MODE", "DOCKER_IN_DOCKER",
+                            "GITHUB_TOKEN_FILE", "GITHUB_TOKEN_ENV", "GITHUB_USER"}
+        }
     base_data_dir = Path(
         env.get("XDG_DATA_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".local/share")
     ) / "pycharm-docker"
     profile = options.profile or env.get("DOCKER4IDES_PYCHARM_PROFILE", "")
     host_user = current_host_user()
 
-    docker_mode = initial_docker_mode(env)
-    if options.docker_mode is not None:
-        docker_mode = options.docker_mode.value
+    docker_mode = options.docker_mode.value if options.docker_mode is not None else initial_docker_mode(env)
 
     git_identity_from_host = env.get("PYCHARM_GIT_IDENTITY_FROM_HOST", "auto")
     if options.git_identity_from_host is not None:
@@ -353,9 +363,10 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
     if options.ignore_config_lock:
         ignore_config_lock = True
 
-    enable_sudo = parse_bool_env(env.get("PYCHARM_ENABLE_SUDO", "0"), "PYCHARM_ENABLE_SUDO")
-    if options.enable_sudo:
-        enable_sudo = True
+    enable_sudo = (
+        options.enable_sudo if options.enable_sudo is not None
+        else parse_bool_env(env.get("PYCHARM_ENABLE_SUDO", "0"), "PYCHARM_ENABLE_SUDO")
+    )
 
     ide_sudo_gid_text = options.ide_sudo_gid or env.get("PYCHARM_IDE_SUDO_GID", "44000")
     if not ide_sudo_gid_text.isdigit():
@@ -621,7 +632,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             raise PycharmRunError(
                 f"Secret environment variable {name!r} conflicts with component runtime metadata."
             )
-        if name not in env:
+        if name not in host_environment:
             raise PycharmRunError(
                 f"Bound secret environment variable {name!r} is not set on the host."
             )

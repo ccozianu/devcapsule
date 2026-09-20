@@ -1,310 +1,282 @@
 # Configuration correctness argument and test map
 
-Audit target: production code at `6709756` on `ws-maintenance/triage`, after
-the upgrade-remedy fix. This follow-up changes specification, tests and records,
-not production behavior. The specification is
-[`configuration-contract.md`](configuration-contract.md).
+Status: the nine audited gap families are repaired by the configuration refactor.
+The ten former expected failures are ordinary passing regression tests. This
+argument concerns the implemented V1 contract, not unspecified future features.
+See [the complete contract](configuration-contract.md) for node domains,
+ownership, initialization, edits, resolution and upgrade semantics.
 
-**Result: the complete implementation does not yet satisfy the contract.**
-The argument below establishes restricted properties and identifies nine gap
-families with ten executable counterexamples. It does not turn expected test
-failures into accepted behavior. The counterexamples are tracked in the
-[configuration lifecycle bug](../../bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md).
+The owner clarified that the mission includes implementation, and explicitly
+supplied the single-threaded precondition: no concurrent access within one
+process or between processes during an operation. That makes a read/validate/
+replace operation a well-defined transition. We do not add a lock or pretend
+that separate CLI commands form one transaction.
 
-## 1. What counts as evidence
+## 1. The implementation boundary
 
-A proof obligation names a property that must hold at an operation boundary.
-Code inspection explains why its branches preserve that property; tests exercise
-the branches and their composition through public commands. A branch-coverage
-percentage alone establishes neither the specification nor that callers honor
-the callee's preconditions.
+The entry path is `__main__ → cli.main → Command/Group.invoke → project`.
+Argument parsing supplies an explicit command and answers; it does not grant
+permissions. The relevant implementation is organized by responsibility:
 
-We distinguish:
+| Responsibility | Implementation |
+|---|---|
+| Supported artifact representations and complete checkout serialization | [`configuration_documents.py`](../../../devcapsule-src/devcapsule/configuration_documents.py): `Artifact`, `admit_document`, `table`, `render_document` |
+| File ownership, typed domains, source dependencies and authorization questions | [`project_configuration.py`](../../../devcapsule-src/devcapsule/project_configuration.py): manifest/lock/checkout/resolution readers, node validators, `review_authorizations`, freshness |
+| A unique name and runtime effect per node | [`configuration_nodes.py`](../../../devcapsule-src/devcapsule/configuration_nodes.py): `NodeRegistry`, `build_node_registry` |
+| Complete assessment and execution admission | [`configuration_review.py`](../../../devcapsule-src/devcapsule/configuration_review.py): `ConfigurationReview`, `HostAccess`, `ExecutionConfiguration.load` |
+| Pure derived checkpoint and predecessor comparison | [`configuration_resolution.py`](../../../devcapsule-src/devcapsule/configuration_resolution.py): `render_resolution`, `same_effective_resolution` |
+| Local edits and initialization | [`project_operations.py`](../../../devcapsule-src/devcapsule/project_operations.py): `CheckoutRecord`, `apply_configuration_answers`, initialization elicitation |
+| Invocation and final launch options | [`commands/project.py`](../../../devcapsule-src/devcapsule/commands/project.py): project commands and run-once validation |
+| Actual launcher configuration and Docker arguments | [`_launcher.py`](../../../devcapsule-src/devcapsule/configurations/pycharm/_launcher.py): `build_run_config`, `build_docker_args` |
 
-- **Established within stated preconditions:** the implementation follows the
-  argument and the named cases exercise its meaningful partitions.
-- **Refuted:** a concrete supported operation violates the obligation.
-- **Open:** the feature, compatibility policy or sufficiently independent
-  evidence needed for the argument does not exist yet.
+`load_checkout` establishes supported representation, observed checkout path,
+and matching creator/slug before a local record is edited or executed. Every
+lock-dependent command obtains the same unique node registry through `lock_for`;
+the pure review also constructs it, so library callers cannot skip that invariant.
+Creating an empty checkout registration is not an interpretation of its node tree.
 
-Assumptions: configuration files are edited serially, the filesystem provides
-the usual replace semantics, SHA-256 collision resistance is adequate, and
-external Docker/vendor/runtime primitives obey their separately tested
-interfaces. No proof here covers malicious local administrators, arbitrary raw
-Docker passthrough, concurrent configuration writers, remote artifact retention
-or actual GUI quality. Unsupported/malformed input is not assumed away where
-the public interface must reject it.
+`ExecutionConfiguration.load` is shared by `project run` and
+`fresh_resolved_project`. It admits all four artifacts, enforces freshness unless
+force was explicit, requires a complete assessment, validates runtime fields and
+surface consistency, and checks a fresh checkpoint against its derived meaning.
+Only then can the command validate run-once answers and request materialization.
 
-## 2. Entrypoint-to-effect trace
+## 2. Preconditions and limits
 
-This is the execution path, not a list of keyword matches:
+- Configuration access is serialized. Each process sees stable configuration
+  inputs during its operation; the owner explicitly supplied this precondition.
+- Supported released configuration representations are format 1. Unknown
+  formats and unknown checkout structural fields are refused, not guessed.
+  A future schema needs a decoder/migration and predecessor evidence before release.
+- Filesystem replacement has the host OS's atomic-rename semantics. Temporary
+  local records are private from creation; replacement failure retains the old
+  target and cleans up staging. There is no multi-file or power-loss transaction.
+- Docker images, downloaded artifacts, display infrastructure and secret sources
+  can become unavailable. Their external contracts require refusal and retained
+  decisions; unit tests cannot establish host availability.
+- The raw Docker passthrough is an explicit user escape from the modeled plan.
+  Launcher-owned conflicting options are rejected. The argument does not promise
+  isolation against arbitrary deliberate passthrough instructions.
+- General workstation overlays/policy, new provider families, identity relocation
+  and an unspecified historical recipe matrix are not invented by this repair.
+  The contract identifies the currently implemented interface separately.
 
-| Boundary | Implementation | Obligation passed to the next stage |
-|---|---|---|
-| Invocation | `__main__` → `cli.main` → command framework `Group.invoke` / `Command.invoke` | Parse mechanics and carriers, retain explicit project context; report `CliError` as exit 2. |
-| Context | `ProjectCommand.make_context`, `manifest_for`, `discover_project`, `checkout_record_paths` | Select nearest manifest or explicit path and the record for the canonical observed checkout. |
-| Schema / vocabulary | `validate_manifest`, `lock_for`, `build_node_registry` and typed declarations | Supported representations, one name/family, constrained domains; every caller must use these checks. |
-| Initialization | `initialize_project`, `Elicitor`, `_elicit_*` | Distinguish authored recommendations from developer answers; complete missing state without losing existing decisions. |
-| Local editing | `ConfigSet/Bind/Authorize/UnsetCommand` → `CheckoutRecord.write` | Validate before persisting one change; preserve every other owned input. |
-| Assessment | `review_configuration` → value, binding, secret and authorization validators | All independent failures represented, no partial answer map usable as a complete plan. |
-| Resolution | `resolve_checkout` → render + `atomic_write` | Only a complete valid resolution is published; no download/build/launch. |
-| Run preflight | `ProjectRunCommand.run`, `stale_resolution_inputs`, `_run_once_answers` | Supported fresh plan and valid temporary answers; no stale or removed consent revived. |
-| Realization | `realize_environment`, `parse_locked_environment`, base validation, materializer | Exact selected artifacts/identity; acquisition consent checked before external effects; display reviewed before build. |
-| Launch planning | `project_runtime_plan`, `PycharmRunOptions`, `build_run_config`, `build_docker_args` | Preserve upstream decisions in actual mounts, privileges, networking, display and secret delivery. |
-| Completion | `run_pycharm` result → `record_known_good_configuration` | Snapshot on zero exit, deduplicate, preserve sensitive-file permissions; history failure does not fail the run. |
+## 3. Compositional argument
 
-The implementation files are under
-[`devcapsule/`](../../../devcapsule-src/devcapsule/), chiefly
-[`commands/project.py`](../../../devcapsule-src/devcapsule/commands/project.py),
-[`project_operations.py`](../../../devcapsule-src/devcapsule/project_operations.py),
-[`project_configuration.py`](../../../devcapsule-src/devcapsule/project_configuration.py),
-[`configuration_review.py`](../../../devcapsule-src/devcapsule/configuration_review.py)
-and [`configurations/pycharm/_launcher.py`](../../../devcapsule-src/devcapsule/configurations/pycharm/_launcher.py).
+### A. Admission precedes interpretation
 
-## 3. The compositional argument
-
-Let `S = (P, L, C, R)` be the stored state, and let `Answers(C)` include
-ordinary values, explicit omissions, bindings, authorizations and legacy choices.
-These triples are specifications: the braces state preconditions and
-postconditions, not assertions that the code already enforces them everywhere.
-
-### A. Editing preserves the rest of the state
+For artifact `A` and operation `op` that reads it:
 
 ```text
-{supported C; correct checkout; unambiguous node n; valid proposed answer v}
-    edit(n, v)
-{P and L and R unchanged; Answers(C') = Answers(C) with only n updated}
+{A has an unsupported representation}
+    admit(A); op(A)
+{refusal; no interpretation, mutation of A, or launch}
 ```
 
-The operation chooses the appropriate validator, changes the corresponding
-in-memory collection and calls `CheckoutRecord.write`. For modeled valid
-content, the writer serializes every other collection unchanged. This explains
-why ordinary edits do not grant permissions and why a directory binding survives
-an authorization change. It also explains why `none` must be modeled as an
-omission rather than a value that would be overwritten by a default.
+An integer version check distinguishes `1`, `true`, `1.0` and `"1"`. Structural
+tables are checked before chained access. Checkout ownership is checked against
+the observed path and project identity. Init performs this admission before
+regenerating artifacts. `--force` changes freshness policy only.
 
-For independent nodes `a` and `b`, each operation changes a disjoint map entry
-and neither changes the other's declaration. Therefore `edit(a); edit(b)` and
-`edit(b); edit(a)` have the same semantic result. By induction, any sequence of
-valid independent edits preserves all untouched answers. A later refused edit
-does not undo earlier successful commands. This is a sequence of atomic file
-replacements, not a multi-command transaction.
+`config resolve` does not read the old generated checkpoint: it may replace it
+with an output derived from supported input. That is explicitly permitted output
+regeneration, not a migration of unsupported input. This distinction is tested.
 
-**Evidence:** the new ordinary-state table covers absent/value/omitted crossed
-with set/omit/unset; six orderings cover ordinary/binding/authorization edits;
-the failed-second-edit test checks the intermediate durable state. Existing
-tests cover required-node refusal and the individual typed domains/providers.
+### B. An edit has a frame: unrelated answers retain their meaning
 
-**Limits:** G1 admits an unknown checkout schema, G4 bypasses registry uniqueness,
-and G5 discards unmodeled content during serialization. The general triple is
-therefore refuted outside the modeled, admitted subset. Atomic replacement
-cannot repair an incorrect serialized result.
-
-### B. Resolution is a complete checked derivation
+Let `C[n := v]` mean replacing one logical node after domain validation:
 
 ```text
-{supported P, L, C; selected checkout; coherent typed registry}
-    resolve
-{either complete R' derived from those inputs, or old R retained with diagnostics}
+{admitted C; valid answer v for n}
+    edit(n, v); write(C)
+{meaning(C') = meaning(C[n := v]); R unchanged}
+
+{admitted C; invalid proposed answer}
+    edit(n, bad)
+{refusal; saved C and R unchanged}
 ```
 
-`review_configuration` obtains ordinary values/effects, directory bindings,
-secret source names and authorization reviews, then checks state overlap.
-`require_ready` guards consumption; `resolved_authorizations` independently
-refuses consumption of an incomplete review. `resolve_checkout` writes the
-resolution only after this assessment and local-base inspection succeed.
-Thus a stale base cannot be hidden by fixing the first stale host answer,
-and a failed local identity check cannot publish a new plan.
+`CheckoutRecord` retains the admitted document. Values, bindings, state and
+authorizations are views into that document; the writer serializes the entire
+result, including unrelated malformed answers which still need repair. Empty
+answer tables already present are retained. Unknown structural extensions cause
+refusal without rewriting. Formatting/comments are not part of semantic meaning.
 
-**Evidence:** independent family errors, overlap refusal and saved-output
-preservation tests; the complete recovery journeys execute each proposed answer
-and check a strictly decreasing pending-authorization set. With stable inputs,
-each accepted choice removes one pending authorization and does not alter the
-others. The finite set reaches empty, after which resolution succeeds. This is
-the termination argument for recovery, conditional on choosing valid answers
-and on any required local image still being available.
+`apply_configuration_answers` is shared by init and individual set/bind commands.
+The same requiredness, provider and type rules therefore apply to both. A new
+value removes its omission; an omission removes its value. An authorization
+replaces the same logical legacy decision as well; unset removes both spellings.
+Independent edits commute because they change disjoint logical leaves. An invalid
+second CLI command does not undo a successful first command or publish a new R.
 
-**Limits:** G4 means the assumed coherent registry is not checked on this path.
-G7 shows legacy host values escape typed validation. G8 shows that collecting
-one exception per family does not collect every independent invalid node within
-the family. The narrow authorization recovery proof survives; the whole-tree
-completeness claim does not.
+Init stages local answers until validation/elicitation succeeds, then writes C
+and attempts resolution. Its project manifest and lock may already have been
+written; those are repairable initialization checkpoints, not a claimed atomic
+transaction across all four artifacts.
 
-### C. Authorization cannot be created by another owner's data
+### C. Reading project advice cannot create developer authority
 
 ```text
 {no developer answer for host node n}
-    read/inspect/resolve project recommendation n
-{no host grant for n}
+    initialize/inspect/resolve an existing repository
+{no new grant for n}
 ```
 
-The authorization reviewer treats absence as absence, compares each decision
-with its own dependency fingerprint, and retains false/string denial values
-without conflating them with missing answers. Base recovery constructs a current
-accepted value instead of replaying an old published digest. Local-image
-recovery uses the recorded image identity. Selected vendor acquisitions use the
-same required-decision rule as their registry entries.
+Existing recommendations are returned as project metadata, not placed in the
+local answer cache. `_elicit_host_answers` records only command-line or prompted
+developer answers. On a newly authored project an explicit answer may author a
+recommendation and accept it for that checkout in one interaction. Default
+omission does neither. Existing grants/denials retain their dependency fingerprints.
 
-These local properties hold on the normal configuration path. They are not
-enough to establish the triple for **initialization**: `_elicit_recommendations`
-returns recommendations found in the existing manifest, and `initialize_project`
-stores any without an existing local record as authorizations. That is G2.
-Preserving an existing denial fixed one branch, but did not establish that a
-previously unanswered recommendation is safe on another branch.
+Required ordinary and binding questions use a separate elicitation namespace
+from project identity, so `--set creator 7` cannot borrow the project creator
+answer. They are derived from the node registry, not a fixed list of init flags.
+Missing required answers are collected across reachable families. Existing valid
+local-base selections are carried without replacing them with the recommendation
+or asking for consent again; resolution still verifies the recorded identity.
 
-### D. Launch preserves a checked decision
+The owner's instruction to implement this contract supersedes the consent-
+conflating portion of the 2026-09-06 interim init ruling. Project ownership of
+manifest/lock regeneration is retained. The former contradiction is resolved
+explicitly rather than silently reclassified as intended behavior.
+
+### D. Resolution either publishes a complete plan or preserves the old one
 
 ```text
-{valid effective decision for n is deny; no explicit run-once allow}
-    plan and launch
-{the corresponding host capability remains denied}
+{admitted, uniquely named inputs}
+    assess(P, L, C); resolve
+{one complete R = derive(P, L, C), or refusal with old R intact}
 ```
 
-`ProjectRunCommand` reads current authorizations even with `--force`, and
-run-once values are validated before realization. Display selection is checked
-against the verified base before building. The current checkout's decisions,
-rather than stale resolved grants, feed launch options. Tests establish these
-facts at the `PycharmRunOptions` boundary.
+Every ordinary, directory, secret and authorization family is assessed; each
+family gathers independent node errors. Adopted state is validated as a directory
+mapping, and overlap with a binding is refused. Two node names cannot control one
+runtime effect. Legacy host decisions have explicit domains; Python truthiness
+is not an interpreter for permissions.
 
-To complete the proof, every downstream transformation must preserve them.
-`build_run_config` initializes sudo from `PYCHARM_ENABLE_SUDO` and only changes
-it when the supplied option is true; passing false cannot clear the inherited
-true. G9 is a direct counterexample at the next boundary. G7 separately shows
-that `bool("false")` creates an allow from malformed legacy input. Consequently
-the full denial-preservation claim is false even though the options passed by
-the project command are correct for current typed authorizations.
+`render_resolution` is pure and refuses an incomplete assessment. The only
+publication occurs after this assessment and any local-base identity inspection.
+It does not read secret values, download components or start containers. The
+same pure derivation checks fresh output and compares predecessor meaning.
 
-### E. A client upgrade preserves old input meaning
+Recovery has a finite progress measure: the number of pending authorizations.
+With stable dependencies, accepting one offered valid choice settles exactly that
+node and does not unsettle independent nodes. Executable-choice and journey tests
+check that progress, including denial and immutable local-base recovery. Missing
+external images are a stated precondition failure, not a fabricated success.
 
-For every supported released predecessor `v`, we need:
+### E. Denial survives composition into the real launcher
 
 ```text
-interpret(new_client, artifacts_from_v) = previous_configuration_meaning
+{current effective decision is deny; no explicit run-once allow}
+    assess → HostAccess → PycharmRunOptions → build_run_config → Docker arguments
+{the host capability remains denied}
 ```
 
-The actual comparison is values, authority, artifact selection and state—not
-an invariant image ID when the launcher executable intentionally changes.
-The existing historical fixtures test unchanged project/configuration bytes;
-formation tests independently demonstrate that changing the runtime executable
-changes the derived image identity without selecting new components.
+`HostAccess` is immutable. It overlays validated legacy decisions, current
+recorded authorizations, then explicit permitted run-once answers. Both domain
+membership and scalar type are checked: `"false"` and `1` are not boolean grants.
+Absence and false remain distinct. Current bindings and secret source names also
+come from the assessment, even with `--force`; old output cannot restore a
+revoked mapping.
 
-This proves specific unchanged-version-1 cases. It does **not** establish a
-general old-schema interpreter. There is no versioned decoder/migration chain;
-some readers check exactly 1, while mutation/run omit some checks entirely (G1).
-Catalog contracts and materialization recipe acceptance also belong to the
-compatibility surface. A test intentionally rejecting an earlier recipe is
-evidence of a boundary, not proof of the no-user-action upgrade guarantee.
+Project launch sets `inherit_legacy_configuration=False`. The lower builder
+therefore cannot introduce extra state directories, token files, token-variable
+bindings or privileges from its compatibility environment. Platform observations
+and explicitly bound secret sources remain usable. Independently, an explicit
+`enable_sudo=False` overrides legacy environment truth even for the legacy
+launcher; only an absent option inherits that command's environment setting.
 
-A future schema change needs a separate preservation argument for every
-migration edge, followed by composition of those edges. In-memory normalization
-or durable migration could both satisfy the contract. Choosing a mechanism does
-not remove the obligation, and synthetic “old” data generated by new code cannot
-be its only evidence.
+The generated runtime is shape-checked before materialization. A fresh source
+fingerprint is insufficient: the derived content must also match, with typed
+canonical comparison (`true` differs from `1`). A stale forced plan must still
+name the lock's surface and a valid runtime. Display selection occurs against
+the verified base before building, preserving the earlier recovery contract.
+
+### F. A CLI upgrade does not itself require new decisions
+
+```text
+{supported released inputs; unchanged effective configuration}
+    interpret with the new CLI
+{same user values, authority, selected artifacts and state bindings}
+```
+
+No freshness or authorization dependency includes the CLI version. New outputs
+use the scoped manifest projection. A predecessor's unlabelled whole-manifest
+fingerprint is accepted on exact match; on mismatch, its complete derived
+meaning is compared with today's pure derivation while lock/checkout checks
+remain in force. Workflow metadata and display-name changes can therefore remain
+fresh without repinning, rewriting local decisions or prompting for consent.
+
+The v026.2, v026-era formation and v0.2.11 fixtures are checked-in historical
+inputs. They establish the tested supported cases, not a theorem about arbitrary
+future schemas/recipes. Every future representation change must extend admission
+and prove preservation for its released predecessors. D-0009 still permits a new
+matching-runtime image build when launcher bytes change; that is distinct from a
+configuration change or consent renewal and is explained before materialization.
 
 ## 4. Obligation-to-test map
 
-Test paths below are relative to `devcapsule-src`. `test_configuration_contract.py`
-contains the new whole-lifecycle obligations;
-[`test_upgrade_recovery.py`](../../../devcapsule-src/tests/test_upgrade_recovery.py)
-contains the earlier 71-case recovery table. Full node IDs are included so each
-claim can be selected directly with pytest.
+Paths are relative to `devcapsule-src`. Parameterized tests state the condition
+partitions directly. The [earlier recovery case map](upgrade-recovery-contract.md)
+adds the host/base/acquisition/display cross-products and full recovery journeys.
 
-| Obligation / conditions | Evidence | Result and limit |
-|---|---|---|
-| **C1: checkout isolation** — explicit/discovered path, default/named/missing checkout | `tests/test_project_commands.py::test_project_resolve_registers_default_checkout_and_list_uses_registry`; `tests/test_project_commands.py::test_named_checkout_registration_selects_distinct_record_and_reports_missing`; `tests/test_configuration_contract.py::test_second_checkout_cannot_inherit_the_first_checkouts_authority` | Established for valid records; malformed/schema admission is a separate obligation. |
-| **C2: unique family and provider vocabulary** — unknown name, wrong carrier, provider syntax, duplicate names | `tests/test_configuration_nodes.py::test_unknown_node_lists_the_declared_vocabulary`; `tests/test_configuration_nodes.py::test_wrong_carrier_family_names_the_right_spelling`; `tests/test_configuration_nodes.py::test_bind_value_rejects_wrong_or_missing_provider`; `tests/test_configuration_nodes.py::test_a_name_declared_twice_fails_at_construction` | Constructor works; public resolution bypass is refuted by G4. |
-| **C3: ordinary typed values** — valid/invalid strings, integers, booleans, sizes, reserved words | `tests/test_configuration_contract.py::test_scalar_value_domain_partition`; `tests/test_project_commands.py::test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect` | Establishes listed domain partitions and memory derivation; does not claim generic runtime delivery for every declared value. |
-| **C4: edits preserve unrelated input** — absent/value/omitted, nine transitions; six independent edit orders; refused second edit | `tests/test_configuration_contract.py::test_ordinary_node_transition_table`; `tests/test_configuration_contract.py::test_independent_changes_commute_and_require_one_final_resolve`; `tests/test_configuration_contract.py::test_a_failed_second_edit_does_not_undo_the_first_or_publish_it` | Established for modeled content. G1/G5 refute general preservation across unsupported representations/content. |
-| **C5: requiredness and denial are distinct** — required unset/omission refused, optional denial retained | `tests/test_project_commands.py::test_unset_refuses_mandatory_nodes_and_removes_optional_ones`; `tests/test_project_commands.py::test_set_none_records_an_explicit_omission`; `tests/test_project_commands.py::test_authorize_records_denial_as_a_value` | Established for these carriers. Init's missing required ordinary prompts remain G6. |
-| **C6: init reaches a usable checkpoint** — empty/partial/complete, supplied/existing/default/prompt/missing answers | `tests/test_project_init.py::test_noninteractive_init_reaches_the_full_postcondition`; `tests/test_project_init.py::test_repair_completes_a_hand_authored_manifest`; `tests/test_project_init.py::test_repeated_init_without_answers_still_refuses`; `tests/test_elicitation.py::test_command_line_wins_over_every_other_source`; `tests/test_elicitation.py::test_noninteractive_batch_failure_lists_every_missing_answer` | Engine ordering established; not every node is routed through it (G6), and recommendation provenance is lost (G2). |
-| **C7: shared complete assessment** — independent family errors, conflict, invalid/unknown authorization, refusal preserves R | `tests/test_upgrade_recovery.py::test_independent_value_binding_secret_and_authorization_errors_are_collected`; `tests/test_upgrade_recovery.py::test_conflicting_state_bindings_do_not_publish_partial_resolution`; `tests/test_upgrade_recovery.py::test_review_handles_invalid_and_removed_host_nodes` | Established for these partitions. G4/G7/G8 limit whole-tree claims. |
-| **C8: consent validity and recovery progress** — five host nodes × allow/deny × current/stale; ten base states; two vendor acquisitions × four states | `tests/test_upgrade_recovery.py::test_host_answer_state_table_and_executable_choices`; `tests/test_upgrade_recovery.py::test_base_state_table`; `tests/test_upgrade_recovery.py::test_acquisition_decisions_use_the_same_review_contract` | Every offered host alternative is executed. External local-image availability remains conditional. |
-| **C9: whole recovery journey** — manifest/lock/both change × X11 unanswered/true/false; local tag identity; missing local image | `tests/test_upgrade_recovery.py::test_upgrade_recovery_commands_converge_to_the_intended_launch`; `tests/test_upgrade_recovery.py::test_local_base_recovery_keeps_immutable_identity_not_mutable_tag`; `tests/test_upgrade_recovery.py::test_local_recovery_refusal_preserves_the_record` | CLI through realization and launch options, with external effects replaced. It does not prove the lower launcher's treatment of those options (G9). |
-| **C10: freshness respects dependencies** — semantic input change vs formatting/irrelevant metadata; known vs unknown schemas | `tests/test_project_commands.py::test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles`; `tests/test_configuration_contract.py::test_unknown_project_schema_is_refused_without_mutation`; G1/G3 tests below | Current whole-tree freshness and some gates established; scoped-dependency and universal schema-admission claims refuted. |
-| **C11: runtime does not grant or persist extra authority** — run-once invalid input, force after revocation, display six-way partition | `tests/test_upgrade_recovery.py::test_invalid_run_once_choices_cannot_trigger_a_build`; `tests/test_upgrade_recovery.py::test_force_cannot_resurrect_a_revoked_host_permission`; `tests/test_upgrade_recovery.py::test_force_uses_current_legacy_host_decisions`; `tests/test_upgrade_recovery.py::test_display_decision_table`; `tests/test_upgrade_recovery.py::test_display_denial_stops_before_materialization` | Established through project options/base preflight. G7/G9 refute the unrestricted end-to-end claim. |
-| **C12: state and secrets stay developer-owned** — bindings and values survive recovery, values absent from persistence and image plan, late unavailable secret | `tests/test_upgrade_recovery.py::test_recovery_preserves_values_bindings_secrets_and_adopted_state`; `tests/test_project_runtime_plan.py::test_project_runtime_plan_contains_only_in_container_contract`; `tests/test_pycharm.py::test_selected_codex_state_and_explicit_secret_are_delivered`; `tests/test_pycharm.py::test_bound_secret_must_exist_on_host` | Covers declared environment provider and modeled state. Secret availability is a later launch check; not all launch feasibility is proven before building. |
-| **C13: artifact and runtime identity** — cache hit/miss/conflict, wrong base, new launcher bytes | `tests/test_materialization.py::test_materialization_reuses_only_verified_canonical_image`; `tests/test_materialization.py::test_materialization_rejects_conflicting_canonical_tag`; `tests/test_materialization.py::test_validate_base_rejects_wrong_identity`; `tests/test_runtime_artifact.py::test_packaged_launcher_supplies_itself_despite_source_override`; `tests/test_runtime_artifact.py::test_runtime_update_changes_formation_identity_without_changing_components` | Identity mechanism established at unit seams; actual release artifacts and GUI need external validation. |
-| **C14: supported-client upgrade continuity** — v026.2 inspection/resolution; v026-era formation inspection; v0.2.11 unchanged launch planning | `tests/test_release_compatibility.py::test_v0262_checkout_resumes_with_no_user_action`; `tests/test_release_compatibility.py::test_v026_formation_artifacts_are_inspectable_despite_manifest_digest`; `tests/test_upgrade_recovery.py::test_released_checkout_runs_unchanged_under_new_client` | Explicitly partial historical coverage. All use format 1; no cross-format migration theorem follows. |
-| **C15: history records successful configuration only** — zero/nonzero result, deduplication, private snapshots | `tests/test_project_commands.py::test_project_run_records_known_good_configuration_only_on_success`; `tests/test_config_history.py::test_first_success_records_one_private_generation`; `tests/test_config_history.py::test_distinct_content_appends_and_dedup_covers_all_generations` | Establishes trigger, bytes, permissions and deduplication; does not promise reproducibility without run-once choices or under changed external state. |
+| Obligation | Conditions and executable evidence |
+|---|---|
+| C1: checkout isolation | `tests/test_configuration_contract.py::test_second_checkout_cannot_inherit_the_first_checkouts_authority`; `tests/test_project_commands.py::test_named_checkout_registration_selects_distinct_record_and_reports_missing` |
+| C2: schema and ownership admission | `tests/test_configuration_invariants.py::test_schema_admission_distinguishes_version_from_truthiness` (4 artifacts × 8 invalid versions); `tests/test_configuration_invariants.py::test_unsupported_artifact_refuses_without_side_effects` (4 artifacts × 5 public paths); `tests/test_configuration_invariants.py::test_every_edit_admits_checkout_before_replacing_it` (all five edit paths); `tests/test_configuration_invariants.py::test_malformed_checkout_table_is_an_actionable_error` |
+| C3: unique names/effects and typed values | `tests/test_configuration_nodes.py::test_a_name_declared_twice_fails_at_construction`; `tests/test_configuration_contract.py::test_resolution_cannot_publish_an_ambiguous_node_tree`; `tests/test_configuration_invariants.py::test_two_nodes_cannot_control_one_runtime_effect`; `tests/test_configuration_contract.py::test_scalar_value_domain_partition` |
+| C4: edit frame and sequential composition | `tests/test_configuration_contract.py::test_ordinary_node_transition_table` (3 states × 3 operations); `tests/test_configuration_contract.py::test_independent_changes_commute_and_require_one_final_resolve` (all 6 orders); `tests/test_configuration_contract.py::test_a_failed_second_edit_does_not_undo_the_first_or_publish_it` |
+| C5: preservation, privacy, failed writes | `tests/test_configuration_invariants.py::test_unknown_checkout_fields_are_never_discarded`; `tests/test_configuration_invariants.py::test_invalid_unrelated_answers_survive_an_edit_until_repaired`; `tests/test_configuration_invariants.py::test_checkout_writer_round_trips_every_supported_scalar`; `tests/test_configuration_invariants.py::test_checkout_writer_nan_and_unsupported_scalar`; `tests/test_configuration_invariants.py::test_private_atomic_replace_preserves_the_previous_file_on_failure` |
+| C6: initialization and owner provenance | `tests/test_project_init.py::test_noninteractive_init_reaches_the_full_postcondition`; `tests/test_project_init.py::test_repair_completes_a_hand_authored_manifest`; `tests/test_project_init.py::test_repeated_init_without_answers_still_refuses`; `tests/test_configuration_contract.py::test_init_cannot_treat_repository_recommendations_as_developer_answers`; `tests/test_project_init.py::test_init_denial_changes_checkout_without_rewriting_recommendation` |
+| C7: one elicitation through shared carriers | `tests/test_configuration_contract.py::test_init_elicits_a_required_ordinary_value_once`; `tests/test_configuration_invariants.py::test_required_configuration_cannot_inherit_an_identity_answer` (5 identity spellings); `tests/test_configuration_invariants.py::test_init_and_individual_edits_have_the_same_local_effect`; `tests/test_configuration_invariants.py::test_init_retains_a_current_local_base_without_reasking`; `tests/test_configuration_invariants.py::test_missing_required_nodes_are_batched_across_init_families` |
+| C8: complete assessment/publication | `tests/test_configuration_invariants.py::test_invalid_nodes_are_batched_within_and_across_families`; `tests/test_configuration_contract.py::test_independent_invalid_values_are_reported_together`; `tests/test_upgrade_recovery.py::test_conflicting_state_bindings_do_not_publish_partial_resolution`; `tests/test_configuration_invariants.py::test_incomplete_assessment_cannot_be_serialized_or_treated_as_compatible` |
+| C9: authorization dependency/recovery | `tests/test_upgrade_recovery.py::test_host_answer_state_table_and_executable_choices`; `tests/test_upgrade_recovery.py::test_base_state_table`; `tests/test_upgrade_recovery.py::test_acquisition_decisions_use_the_same_review_contract`; `tests/test_upgrade_recovery.py::test_upgrade_recovery_commands_converge_to_the_intended_launch`; `tests/test_upgrade_recovery.py::test_local_base_recovery_keeps_immutable_identity_not_mutable_tag` |
+| C10: typed permission precedence and revocation | `tests/test_configuration_invariants.py::test_permission_precedence_is_typed_and_preserves_denial` (5 nodes, valid/invalid domains and each precedence level); `tests/test_configuration_invariants.py::test_removing_a_decision_cannot_reveal_a_legacy_grant`; `tests/test_configuration_contract.py::test_legacy_host_values_are_typed_before_authorization`; `tests/test_upgrade_recovery.py::test_force_cannot_resurrect_a_revoked_host_permission` |
+| C11: real downstream denial boundary | `tests/test_configuration_invariants.py::test_project_launch_cannot_inherit_unbound_paths_or_credentials`; `tests/test_configuration_invariants.py::test_explicit_sudo_decision_overrides_legacy_environment`; `tests/test_configuration_contract.py::test_launcher_environment_cannot_override_explicit_sudo_denial`; `tests/test_configuration_invariants.py::test_force_cannot_resurrect_directory_or_secret_access` |
+| C12: refuse invalid runtime before effects | `tests/test_configuration_invariants.py::test_invalid_derived_plan_fails_before_materialization`; `tests/test_configuration_invariants.py::test_fresh_source_digests_do_not_authorize_tampered_output`; `tests/test_configuration_invariants.py::test_force_still_requires_a_coherent_execution_plan`; `tests/test_configuration_invariants.py::test_project_mount_is_validated_before_resolution_or_materialization`; `tests/test_upgrade_recovery.py::test_invalid_run_once_choices_cannot_trigger_a_build` |
+| C13: scoped freshness and old encodings | `tests/test_configuration_invariants.py::test_metadata_only_changes_are_fresh_but_runtime_changes_are_stale` (legacy/scoped); `tests/test_configuration_invariants.py::test_unused_toml_native_metadata_does_not_enter_runtime_dependencies`; `tests/test_configuration_invariants.py::test_unsupported_fingerprint_representation_is_refused`; `tests/test_release_compatibility.py::test_v0262_checkout_resumes_with_no_user_action`; `tests/test_upgrade_recovery.py::test_released_checkout_runs_unchanged_under_new_client` |
+| C14: materialization/display identity | `tests/test_materialization.py::test_materialization_reuses_only_verified_canonical_image`; `tests/test_materialization.py::test_validate_base_rejects_wrong_identity`; `tests/test_runtime_artifact.py::test_runtime_update_changes_formation_identity_without_changing_components`; `tests/test_upgrade_recovery.py::test_display_decision_table`; `tests/test_upgrade_recovery.py::test_display_denial_stops_before_materialization` |
+| C15: secret delivery/history boundary | `tests/test_project_runtime_plan.py::test_project_runtime_plan_contains_only_in_container_contract`; `tests/test_pycharm.py::test_bound_secret_must_exist_on_host`; `tests/test_project_commands.py::test_project_run_records_known_good_configuration_only_on_success`; `tests/test_config_history.py::test_first_success_records_one_private_generation` |
 
-## 5. Counterexamples that prevent the full argument
+## 5. Original audit disposition
 
-Each test below asserts the desired contract. It has `xfail(strict=True)` so
-an unexpected pass forces review/removal of the marker. These are **known unmet
-obligations**, not skipped cases and not evidence that the product is correct.
-Failure types are constrained so unrelated setup exceptions do not count as
-the expected counterexample.
+| Gap | Correction and regression |
+|---|---|
+| G1 | Shared artifact admission; unknown checkout/resolution regressions pass. |
+| G2 | Explicit local-answer provenance, separate from existing repository advice. |
+| G3 | Scoped new fingerprints and semantic interpretation of legacy fingerprints. |
+| G4 | Registry invariants enforced by every lock reader and by pure assessment. |
+| G5 | Full admitted-document writer; unsupported structure refused intact. |
+| G6 | Required ordinary/binding nodes participate in registry-driven elicitation. |
+| G7 | Typed legacy decisions; no `bool("false")` permission conversion. |
+| G8 | Error accumulation by node, including binding/secret/adopted-state families. |
+| G9 | Explicit false wins in the actual launcher; project configuration excludes ambient compatibility options. |
 
-| Gap | Counterexample and violated boundary | Executable obligation |
-|---|---|---|
-| **G1 — inconsistent schema admission** | Mutating a version-99 checkout rewrites it as version 1. A fresh resolution relabeled version 99 still reaches launch. Manifest/lock reject 99, so this is path-dependent validation. | `tests/test_configuration_contract.py::test_unknown_checkout_schema_cannot_be_rewritten`; `tests/test_configuration_contract.py::test_unknown_resolution_schema_cannot_be_executed` |
-| **G2 — recommendation becomes consent** | With a repository Docker recommendation and no local record, `init --authorize base-image default` also records `docker-daemon = host-socket`. No Docker answer was supplied. | `tests/test_configuration_contract.py::test_init_cannot_treat_repository_recommendations_as_developer_answers` |
-| **G3 — unrelated metadata invalidates resolution** | Adding workflow metadata makes the saved environment resolution stale although it consumes none of that metadata. Whole-manifest hashing causes it. | `tests/test_configuration_contract.py::test_workflow_metadata_is_not_a_configuration_dependency` |
-| **G4 — registry invariant not enforced by all callers** | Declare ordinary `home`, colliding with the managed-home binding. Registry construction rejects the tree, but `config resolve` writes a successful resolution. | `tests/test_configuration_contract.py::test_resolution_cannot_publish_an_ambiguous_node_tree` |
-| **G5 — local edits erase unmodeled content** | Add an unknown checkout table, then change one authorization. The command succeeds and silently drops that table. It neither preserves it nor refuses unsupported content. | `tests/test_configuration_contract.py::test_edit_must_preserve_unknown_content_or_refuse_without_writing` |
-| **G6 — initialization does not elicit all required nodes** | A hand-authored required integer node and supplied base consent reach resolve with no ordinary-value question, despite interactive input providing the answer. Init refuses after its earlier writes. | `tests/test_configuration_contract.py::test_init_elicits_a_required_ordinary_value_once` |
-| **G7 — untyped legacy authority** | Legacy `[host] development-sudo = "false"` resolves successfully and reaches project launch options as true through `bool("false")`. | `tests/test_configuration_contract.py::test_legacy_host_values_are_typed_before_authorization` |
-| **G8 — serial errors remain within a family** | Two independently invalid ordinary values yield only the first value's error. The new review batches families, not every node. | `tests/test_configuration_contract.py::test_independent_invalid_values_are_reported_together` |
-| **G9 — lower planner overrides denial** | `PycharmRunOptions(enable_sudo=False)` plus `PYCHARM_ENABLE_SUDO=1` produces `PycharmRunConfig(enable_sudo=True)`. Correct upstream options do not imply correct execution. | `tests/test_configuration_contract.py::test_launcher_environment_cannot_override_explicit_sudo_denial` |
+The audit's tests remain in `test_configuration_contract.py`, with no expected-
+failure markers. The refactor additionally closes related consequences of the
+same rules: legacy-grant resurrection on unset, stale host bindings under force,
+ambient path/token injection, duplicate runtime effects, identity-question name
+collisions, saved local-base re-elicitation, tampered generated output, and unsafe
+project-mount representations.
 
-G2 and G9 require priority because they increase authority without the effective
-developer answer required by the contract. G1/G5 threaten configuration
-preservation across schema evolution. The rest prevent a single compositional
-argument, even when a particular normal journey succeeds. No production fixes
-for these follow-up findings are claimed by this audit.
+## 6. Verification and acceptance
 
-G2 overlaps the init/regeneration behavior the owner explicitly accepted as an
-interim compromise on 2026-09-06, recorded in the linked project-management
-handoff. That exception must remain visible: it explains why observed behavior
-can be temporarily accepted while still failing the broader ownership contract.
-This audit does not quietly revoke the interim ruling or adopt it as the final
-security model.
-
-## 6. Why the earlier 100% coverage result was insufficient
-
-The upgrade repair measured statements/branches in `configuration_review.py`
-and its authorization helpers. That measurement remains correct. It says those
-functions executed every instrumented branch in the selected tests.
-
-It does not establish that:
-
-- every public path constructs the registry or validates artifact versions;
-- init preserves the **source** of an answer when moving between owners;
-- serializers retain unknown representations;
-- every family validator accumulates all errors;
-- a downstream launcher honors an explicit false; or
-- a future reader understands an older schema or recipe.
-
-G4 and G9 are particularly useful checks on the method: a correct constructor
-does not help a caller that never invokes it, and a correct argument to a mocked
-callee does not prove the real callee's behavior. The new tests target those
-composition boundaries instead of adding more examples to the already-covered
-recovery branches.
-
-## 7. Validation and the next proof step
-
-The focused audit module has **35 passing cases and ten strict expected
-failures**. All use isolated temporary configuration directories and existing
-test tools. No container, image download or GUI session is needed to reproduce
-the counterexamples. Run from `devcapsule-src`:
+Run the repository gate from `devcapsule-src`:
 
 ```text
-.venv/bin/python -m pytest tests/test_configuration_contract.py --no-cov -q -rx
+.venv/bin/python -m nox -s build
 ```
 
-The full local gate passed: mypy, 739 tests, source CLI smoke, PEX construction
-and nine packaged-executable tests. There are 18 deselected host-sensitive
-tests and 11 expected failures (ten audit obligations plus one pre-existing
-expected failure). Its success means the implementation's existing checks
-remain green and the known failures remain explicitly identified; it does not
-close them. Relative document links and all 61 named test references were also
-checked against the working tree.
+The final validation counts and measured coverage are recorded in the selected
+[status file](CURRENT-STATUS.md). The gate includes compilation, shell syntax,
+pytest, mypy, source CLI smoke, PEX construction and packaged-executable tests.
+Host-sensitive tests are explicitly outside that gate; no container or GUI was
+launched in this work.
 
-To make the full argument true, the next implementation should establish an
-admitted typed configuration at one boundary, retain answer ownership/provenance,
-and pass one effective launch decision into a planner that cannot override it
-through another input path. Each G test must then become an ordinary passing
-test. Schema evolution additionally needs an explicit supported-version policy
-and real predecessor fixtures before a format change ships. Workstation
-precedence, missing-lock handling and regeneration ownership remain the explicit
-product-design boundaries in the contract, not assumptions hidden in the proof.
+Coverage is evidence about executed conditions, not a universal proof. The case
+map and arguments above establish the intended compositions; the new admission,
+assessment/execution and pure-resolution boundaries are measured separately so
+coverage of an isolated helper cannot be mistaken for coverage of its callers.
+The entire CLI is not claimed to have 100% coverage. Future schema changes and
+actual host upgrade/display acceptance retain their stated release obligations.

@@ -1901,7 +1901,7 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         listing = capsys.readouterr().out
         resolution_row = next(line for line in listing.splitlines() if line.startswith("resolution"))
-        assert "stale" in resolution_row
+        assert "fresh" in resolution_row
         assert "manifest" in resolution_row
 
         # The documented remedy reconciles the ordinary change.

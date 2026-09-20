@@ -168,7 +168,15 @@ def build_node_registry(
     """Derive the registry from one project's manifest and platform lock."""
 
     nodes: list[ConfigurationNode] = []
+    effects: dict[str, str] = {}
     for name, value_declaration in configuration_value_declarations(manifest).items():
+        effect = value_declaration.get("runtime-effect")
+        if effect is not None:
+            if effect in effects:
+                raise ProjectConfigurationError(
+                    f"Configuration nodes {effects[effect]!r} and {name!r} both control {effect!r}."
+                )
+            effects[effect] = name
         nodes.append(
             ConfigurationNode(
                 name=name,

@@ -254,3 +254,11 @@ They are recorded in the linked
 [configuration lifecycle defect](2026-09-20-configuration-contract-not-enforced-across-boundaries.md).
 The recovery module's complete local coverage must not be read as proof of
 the entire configuration-to-execution contract.
+
+2026-09-20 continuation: the broader contract refactor is implemented. All ten
+composition counterexamples now pass, with 128 additional invariant cases and
+a full gate of 877 tests plus nine packaged tests. The linked correctness
+argument covers document admission, edit preservation, initialization provenance,
+scoped/legacy fingerprints, current permissions/bindings under force and the
+actual lower launcher. The owner's serialized-access precondition is explicit.
+Host acceptance and PR integration remain outstanding.

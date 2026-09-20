@@ -1,9 +1,16 @@
 # Configuration lifecycle contract
 
-Status: complete contract for review, requested by the owner on 2026-09-20.
-The [correctness argument](configuration-correctness.md) separately assesses
-the implementation. A requirement written here is not a claim that the code
-already satisfies it.
+Status: implemented V1 operational contract, revised after the owner's
+2026-09-20 instruction to carry the audit through into the refactor. The
+[correctness argument and case map](configuration-correctness.md) state the
+implementation evidence and its assumptions. Architecture beyond the current
+V1 interface remains explicitly identified below.
+
+**Execution precondition, supplied by the owner:** configuration access is
+serialized, within and between processes, for the duration of each operation.
+No concurrent writer or reader is assumed. A cooperative lock would be one way
+to support a different deployment; it is unnecessary under this precondition.
+Atomic replacement still protects a file from an interrupted write.
 
 ## 1. What configuration must accomplish
 
@@ -141,9 +148,11 @@ The current ordinary-value implementation accepts declarations and checkout
 answers; it does not implement arbitrary project default values or the general
 workstation overlay. An arbitrary declared value has no magical effect on a
 container: delivery requires defined metadata. The currently implemented
-ordinary runtime effect is `docker.memory-limit`. The lower launcher also
-reads legacy environment settings; those inputs must respect the same authority
-and precedence rules and are part of the correctness audit.
+ordinary runtime effect is `docker.memory-limit`. The legacy launcher command also reads environment settings. Project launches
+explicitly disable that compatibility input channel: inherited launcher settings
+cannot introduce extra host directories, credentials, or privileges. Platform
+observations (such as DISPLAY and the Docker endpoint), XDG storage locations,
+and explicitly selected secret sources remain available.
 
 ## 4. Ordinary values, absence and bindings
 
@@ -212,7 +221,8 @@ an old published digest is not a valid recovery answer under a new lock.
 
 Legacy direct `[host]` decisions are developer-owned input, not project grants.
 They still need type/domain validation. A current explicit denial outranks a
-legacy/workstation allow. No later planner may reinterpret it through Python
+legacy/workstation allow. Replacing or unsetting a node also removes its legacy
+spelling, so an old allow cannot reappear. No later planner may reinterpret it through Python
 truthiness or replace it with an inherited environment value.
 
 ## 6. Starting from zero
@@ -227,6 +237,14 @@ There are three owner-side initialization states:
 3. **Already complete:** ordinary init refuses with the deliberate alternatives.
    The implemented exception accepts supplied checkout answers and resolves
    them; `--regenerate` explicitly asks for a new lock from the current matrix.
+
+On an existing project, init reads recommendations as project advice without
+putting them into the developer's answer cache. A host `--authorize` carrier
+changes the local decision, including denial. An explicit justification requests
+project recommendation authoring; conflicting authored recommendations are
+refused. Ordinary and binding questions use a separate cache from identity
+questions, so a configuration node named `creator` cannot inherit the project
+creator's answer.
 
 When initialization succeeds, valid `P`, usable `L`, this checkout's valid `C`
 and fresh `R` exist. “Runnable” means configuration-complete; registry/network
@@ -263,8 +281,11 @@ environment or a checkout-local capability experiment; see section 11.
 Each `set`, `bind`, `authorize` or `unset` operation validates the relevant
 artifact/schema and proposed answer before replacing `C`. It must preserve
 unrelated answers, grants, denials, bindings and state. Unsupported content
-must be preserved when safely understood, or cause refusal without rewriting;
-silently dropping it is not a migration strategy.
+must be preserved when safely understood, or cause refusal without rewriting.
+The current checkout grammar is closed at the root and structural ownership
+tables: unknown fields there cause refusal. Understood answer tables are retained
+whole, including invalid answers to other nodes that still need repair. Comments
+and formatting are not semantic input. No serializer may silently drop answers.
 
 For several options, perform several such edits and one final `config resolve`.
 Intermediate `C` may be incomplete; it remains inspectable. A sequence of CLI
@@ -314,6 +335,11 @@ values are not implemented.
 
 Normal V1 run refuses missing/stale `R` and names resolve. `--force` is a
 conspicuous one-run stale-output exception, not a permission or schema bypass.
+A normal run also compares the checkpoint's typed derived meaning with a pure
+current derivation; matching source hashes alone cannot validate altered output.
+`--force` must still have a valid runtime shape and matching interactive surface.
+It reads all host decisions, directory bindings and secret bindings from current
+validated input, never from a superseded grant or mapping in `R`.
 Raw Docker options after `--` are an explicit escape from the modeled plan;
 conflicting launcher-owned options are refused. The ordinary configuration
 correctness claim excludes arbitrary deliberate passthrough effects.
@@ -355,10 +381,25 @@ answer is stale.
 | Changed local image behind an accepted tag | Refuse identity mismatch; do not authorize new bytes. |
 
 Fingerprints identify semantic dependencies, not file timestamps or release
-numbers. The current implementation hashes complete parsed `P`, `L` and `C`
-for resolution; that is conservative but violates the narrower scoped-digest
-requirement for irrelevant metadata. Authorization fingerprints are separately
-scoped to their questions, with base trust deliberately covering the lock.
+numbers. New resolutions label their manifest fingerprint
+`manifest-scope = "configuration-v1"`: it covers schema, project identity/mount,
+capabilities, ordinary declarations and host recommendations. Workflow metadata
+and the project's display name do not participate. Lock and checkout fingerprints
+cover their complete interpreted documents. Authorization fingerprints remain
+separately scoped to their questions, with base trust deliberately covering the lock.
+
+A released format-1 resolution without that scope label remains readable. An
+exact legacy whole-manifest digest is accepted. When only that digest differs,
+the reader compares the old checkpoint with today's pure derived configuration,
+excluding source bookkeeping but preserving scalar types. Equal meaning is
+compatible; lock/checkout freshness and authorization checks still apply.
+No pins or local answers are rewritten to change fingerprint algorithms.
+
+An explicit `config resolve` may replace an older/newer generated `R`, because
+it derives a new checkpoint exclusively from admitted `P`, `L`, and `C`; it does
+not interpret the previous output. Reading or executing an unsupported `R`,
+including through `--force` or init repair, is refused. Unsupported input formats
+are never rewritten as a side effect of an edit or regeneration.
 
 ## 10. The schema-evolution obligation
 
@@ -393,29 +434,33 @@ the new client. Using the new client to generate both sides proves nothing
 about migration. A justified exception must be explicit in that release's notes
 under R-COMPAT-001; a generic refusal is not the exception policy.
 
-No successor configuration schema or general migration framework currently
-exists. The version-1 historical fixtures establish specific compatibility
-cases, not this universal future obligation. The code cannot yet supply a
-general proof for a future schema bump.
+All released artifact formats currently have version 1. Admission now lives in
+one artifact-aware boundary that checks integer versions (a boolean `true` is
+not version 1). The historical fixtures and legacy fingerprint interpretation
+establish the supported cases. A successor decoder/migration must be added to
+this boundary with real predecessor fixtures before a new format ships. There
+is no claim to interpret an unspecified future format.
 
 ## 11. Explicit scope limits and unresolved choices
 
-The following remain visible design obligations, not choices made by this audit:
+The following are outside the implemented V1 correction and remain explicit:
 
 - The general workstation overlay/restrictive policy and generic project value
   defaults are adopted architecture without a complete implemented interface.
 - The missing-platform-lock consumer experience and the exact project/local
-  mutation boundary of regeneration require reconciliation with the
-  [existing owner-accepted interim behavior](../../wip/2026-08-09-project-management/intake/2026-09-06-component-catalog-init-regenerate-versus-config-semantics.md).
+  mutation boundary of regeneration retain the project-artifact ownership defined by the
+  [earlier owner-accepted interim behavior](../../wip/2026-08-09-project-management/intake/2026-09-06-component-catalog-init-regenerate-versus-config-semantics.md).
+  The owner's instruction to implement this contract supersedes the part that
+  conflated reading an existing recommendation with local consent.
 - Identity relocation, fully specified retention/restore semantics and the
   supported historical release/recipe matrix are not implemented as one policy.
 - No API can guarantee that a removed registry artifact, missing local image,
   absent display or missing secret becomes available. Correctness requires
   actionable failure while retaining decisions.
-- The argument assumes serialized configuration edits and stable inputs during
-  one operation. The current implementation has per-file atomic replacement,
-  not cross-process transactions, a multi-file commit or a locked snapshot for
-  an entire running session. Concurrent mutation needs a separate contract.
+- Serialized access is the owner's explicit precondition. Per-file replacement
+  uses private staging files and removes them on failure; it is not a multi-file
+  transaction or a power-loss durability guarantee. Changes to P/L during init
+  are repairable partial initialization, as specified above. No lock is added.
 
 These boundaries prevent a proof from depending on a feature that is only a
 proposal, or on an assumption nobody stated.

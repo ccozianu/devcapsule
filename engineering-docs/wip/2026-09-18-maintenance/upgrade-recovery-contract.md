@@ -99,3 +99,13 @@ facts. No actual Docker/GUI upgrade was performed here. The bug remains `fixed`,
 not `closed`, until the owner validates the existing host checkout's recovery,
 display choice and build explanation. Broader upgrade/matrix selection design
 remains with project-management.
+
+## Configuration refactor follow-through
+
+The subsequent [complete contract](configuration-contract.md) and
+[compositional correctness/test map](configuration-correctness.md) now describe
+an implemented refactor, not only an audit. All ten original audit regressions
+pass normally. Shared admission, preserved complete local records, typed host
+permissions and the actual launcher boundary close the earlier composition gaps.
+The owner explicitly supplies serialized configuration access. The full gate
+passes 877 tests and nine packaged tests; actual host acceptance remains pending.

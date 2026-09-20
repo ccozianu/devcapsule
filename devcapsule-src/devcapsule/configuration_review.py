@@ -7,10 +7,14 @@ resolution or stopping at the first independent decision.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 import shlex
 from typing import Any, Mapping
+
+from devcapsule.configuration_nodes import build_node_registry
+from devcapsule.configuration_documents import table
+from devcapsule.project import normalize_project_mount, ProjectMountError
 
 from devcapsule.project_configuration import (
     AuthorizationChoice,
@@ -18,11 +22,51 @@ from devcapsule.project_configuration import (
     AuthorizationScalar,
     ConfigurationScalar,
     ProjectConfigurationError,
+    ResolvedProject,
+    manifest_for,
+    lock_for,
+    checkout_record_paths,
+    load_checkout,
+    load_resolution,
+    stale_resolution_inputs,
     resolve_configuration_bindings,
     resolve_configuration_values,
     resolve_secret_bindings,
     review_authorizations,
 )
+
+
+@dataclass(frozen=True)
+class HostAccess:
+    """Effective host decisions; absence has a safe, explicit interpretation."""
+    docker_daemon: str = "none"
+    network: str = "bridge"
+    development_sudo: bool = False
+    host_browser: bool = False
+    host_x11: bool | None = None
+
+    def overlay(self, answers: Mapping[str, Any]) -> HostAccess:
+        fields = {
+            "docker-daemon": ("docker_daemon", ("none", "host-socket")),
+            "network": ("network", ("bridge", "host")),
+            "development-sudo": ("development_sudo", (False, True)),
+            "host-browser": ("host_browser", (False, True)),
+            "host-x11": ("host_x11", (False, True)),
+        }
+        changes: dict[str, Any] = {}
+        problems: list[str] = []
+        for name, value in answers.items():
+            if name not in fields:
+                problems.append(f"Unknown legacy host decision {name!r}.")
+                continue
+            attribute, domain = fields[name]
+            if not any(type(value) is type(item) and value == item for item in domain):
+                problems.append(f"Host decision {name!r} must be one of {domain!r}; found {value!r}.")
+            else:
+                changes[attribute] = value
+        if problems:
+            raise ProjectConfigurationError("\n".join(problems))
+        return replace(self, **changes)
 
 
 @dataclass(frozen=True)
@@ -33,6 +77,7 @@ class ConfigurationReview:
     secret_bindings: dict[str, str]
     authorizations: tuple[AuthorizationReview, ...]
     problems: tuple[str, ...]
+    legacy_host: HostAccess = field(default_factory=HostAccess)
 
     @property
     def ready(self) -> bool:
@@ -73,16 +118,30 @@ class ConfigurationReview:
             raise ProjectConfigurationError("Cannot consume an incomplete configuration review.")
         return {item.name: item.value for item in self.authorizations if item.value is not None}
 
+    def effective_host(self, overrides: Mapping[str, Any] | None = None) -> HostAccess:
+        answers = {
+            name: value for name, value in self.resolved_authorizations().items()
+            if name in {"docker-daemon", "network", "development-sudo", "host-browser", "host-x11"}
+        }
+        return self.legacy_host.overlay(answers).overlay(overrides or {})
+
 
 def review_configuration(
     manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
 ) -> ConfigurationReview:
+    # No consumer can assess a tree with ambiguous names or runtime effects.
+    build_node_registry(manifest, lock)
     problems: list[str] = []
     values: dict[str, ConfigurationScalar] = {}
     effects: dict[str, int] = {}
     bindings: dict[str, str] = {}
     secrets: dict[str, str] = {}
     authorizations: tuple[AuthorizationReview, ...] = ()
+    host = HostAccess()
+    try:
+        host = host.overlay(table(checkout, "host"))
+    except ProjectConfigurationError as exc:
+        problems.append(str(exc))
     try:
         values, effects = resolve_configuration_values(manifest, checkout)
     except ProjectConfigurationError as exc:
@@ -104,7 +163,63 @@ def review_configuration(
     if not isinstance(adopted, dict):
         problems.append("Checkout state.adopted must be a table.")
     else:
+        try:
+            resolve_configuration_bindings(lock, {"configuration": {"bindings": {"host-directory": adopted}}})
+        except ProjectConfigurationError as exc:
+            problems.append("Adopted state: " + str(exc))
         overlap = sorted(set(adopted) & set(bindings))
         if overlap:
             problems.append("State resources cannot be both adopted and configuration-bound: " + ", ".join(overlap) + ".")
-    return ConfigurationReview(values, effects, bindings, secrets, authorizations, tuple(problems))
+    return ConfigurationReview(values, effects, bindings, secrets, authorizations, tuple(problems), host)
+
+
+@dataclass(frozen=True)
+class ExecutionConfiguration:
+    """The single admission boundary before any project execution effects."""
+    project: ResolvedProject
+    review: ConfigurationReview
+    stale_inputs: tuple[str, ...]
+
+    @classmethod
+    def load(cls, start: Path, *, force: bool = False) -> ExecutionConfiguration:
+        root, manifest = manifest_for(start)
+        lock_path, lock = lock_for(root, manifest)
+        input_path, output_path = checkout_record_paths(manifest, root)
+        if not input_path.is_file() or not output_path.is_file():
+            raise ProjectConfigurationError("Local resolution is missing; run 'devcapsule project config resolve'.")
+        checkout = load_checkout(input_path, manifest, root)
+        resolution = load_resolution(output_path)
+        stale = stale_resolution_inputs(manifest, lock, checkout, resolution)
+        if stale and not force:
+            raise ProjectConfigurationError(
+                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
+            )
+        review = review_configuration(manifest, lock, checkout)
+        review.require_ready(root)
+        runtime = table(resolution, "runtime")
+        from devcapsule.components.catalog import INTERACTIVE_SURFACES
+        component = runtime.get("component")
+        mount = runtime.get("project-mount")
+        memory = runtime.get("memory-limit-bytes")
+        image = runtime.get("image")
+        if (not isinstance(component, str) or component not in INTERACTIVE_SURFACES
+                or not isinstance(mount, str) or not mount.startswith("/") or "\x00" in mount):
+            raise ProjectConfigurationError("Run requires a valid resolved runtime; run 'devcapsule project config resolve'.")
+        try:
+            normalize_project_mount(mount, manifest["project"]["slug"])
+        except ProjectMountError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        if component != lock["components"]["interactive-surface"]:
+            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project config resolve'.")
+        if memory is not None and (type(memory) is not int or memory <= 0):
+            raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
+        if image is not None and (not isinstance(image, str) or not image):
+            raise ProjectConfigurationError("Resolved runtime.image must be a non-empty string.")
+        if not stale:
+            from devcapsule.configuration_resolution import same_effective_resolution
+            if not same_effective_resolution(manifest, lock, checkout, resolution):
+                raise ProjectConfigurationError(
+                    "Generated resolution does not match its inputs; run 'devcapsule project config resolve'."
+                )
+        selected = ResolvedProject(root, manifest, lock_path, lock, input_path, checkout, output_path, resolution)
+        return cls(selected, review, stale)

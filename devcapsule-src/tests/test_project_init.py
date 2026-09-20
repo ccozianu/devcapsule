@@ -561,7 +561,7 @@ def test_fully_initialized_project_fails_loudly_naming_regenerate(
         assert cli.main([*arguments, "--regenerate"]) == 0
 
 
-def test_conflicting_recommendation_answer_is_rejected(tmp_path: Path, capsys) -> None:
+def test_init_denial_changes_checkout_without_rewriting_recommendation(tmp_path: Path, capsys) -> None:
     project = tmp_path / "project"
     project.mkdir()
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
@@ -587,6 +587,8 @@ def test_conflicting_recommendation_answer_is_rejected(tmp_path: Path, capsys) -
             )
             == 0
         )
+        manifest_path = project / ".devcapsule/devcapsule.toml"
+        manifest_before = manifest_path.read_bytes()
         capsys.readouterr()
         assert (
             cli.main(
@@ -601,9 +603,11 @@ def test_conflicting_recommendation_answer_is_rejected(tmp_path: Path, capsys) -
                     "none",
                 ]
             )
-            == 2
+            == 0
         )
-    assert "never" in capsys.readouterr().err
+        assert manifest_path.read_bytes() == manifest_before
+        record = next((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+        assert read_toml(record)["authorization"]["network"]["value"] == "bridge"
 
 
 def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
@@ -1177,7 +1181,7 @@ def test_unknown_authorize_answer_is_reported_not_ignored(tmp_path: Path, capsys
             )
             == 2
         )
-    assert "matched no question" in capsys.readouterr().err
+    assert "not declared" in capsys.readouterr().err
 
 
 def test_set_and_bind_extras_are_applied_through_the_registry(tmp_path: Path) -> None:

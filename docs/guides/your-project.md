@@ -18,10 +18,11 @@ If the project already has a `.devcapsule/devcapsule.toml` file:
 ~/.local/bin/devcapsule project run
 ```
 
-`init` uses the project's declared tools and asks for any local authorizations
-it still needs. Read those prompts: another project's host-access choices may
-be broader than the first exercise's. If this checkout is already initialized,
-skip directly to `project run`.
+`init` uses the project's declared tools and asks for required local values,
+base-image consent, and acquisition authorizations it still needs. Repository
+recommendations do not grant host access. Use `project config list` to review
+them, then explicitly authorize the access you choose. If this checkout is
+already initialized, skip directly to `project run`.
 
 ## Give a project its first capsule
 
@@ -112,6 +113,11 @@ For example, **if you choose to accept the currently recommended base**:
 future versions. A local base override is shown separately; renewing it uses
 its exact image identity and requires that image to remain available.
 
+Workflow metadata and project display-name changes do not require a new
+environment resolution. Changing several local options is a sequence of edits
+followed by one `config resolve`; if an edit fails, earlier successful edits
+remain. A refused resolution leaves the previous generated plan intact.
+
 Launch explains the display choice before building the environment. Existing
 explicit `host-x11` decisions survive recovery. Without one, a base supporting
 the contained desktop uses the browser; an older base uses host X11. If you
@@ -133,6 +139,11 @@ desktop. A project may request host Docker, host networking, administrative
 tools, or host-browser integration; grant each only when your work needs it.
 Changing an authorization does not reconfigure a running container. Stop it,
 change the setting, resolve the configuration, and launch again.
+
+Project launches use these recorded choices and explicit run-once options.
+Legacy launcher environment variables do not add privileges, credential sources,
+or host-directory bindings. `run --force` may use stale ordinary runtime settings,
+but it cannot restore a removed permission, directory binding, or secret binding.
 
 For example, to return from explicit host X11 access to the contained desktop:
 

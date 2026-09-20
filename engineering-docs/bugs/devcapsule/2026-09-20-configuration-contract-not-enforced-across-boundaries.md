@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: untriaged
 target: none
 owner: maintenance
@@ -39,9 +39,11 @@ G2/G9 increase authority without the effective developer answer required by the
 contract. G1/G5 can lose or misinterpret durable configuration. Severity and
 release target have not been assigned by the owner.
 
-G2 overlaps the already recorded interim init/regeneration behavior accepted
-by the owner on 2026-09-06. Its exception and unsettled final semantics are
-preserved in the correctness argument; this record does not revoke that ruling.
+G2 overlapped the interim init/regeneration behavior accepted on 2026-09-06.
+The owner's subsequent instruction to implement the complete contract supersedes
+its consent-conflating portion. Reading repository advice now creates no grant;
+explicit recommendation authoring and local consent remain distinguishable.
+Project ownership of manifest/lock regeneration is retained.
 
 ## Reproduction
 
@@ -51,24 +53,39 @@ From `devcapsule-src`:
 .venv/bin/python -m pytest tests/test_configuration_contract.py --no-cov -q -rx
 ```
 
-There are 35 passing lifecycle/domain cases and ten strict expected failures
-covering G1–G9 (G1 has two boundaries). Each expected-failure test asserts the
-desired behavior and records a counterexample. These markers do not accept the
-defect as correct behavior. Docker/GUI are substituted where needed; G9 runs
-the real launch-configuration builder.
+The original module now has **45 passing cases**, including all ten former
+counterexamples without expected-failure markers. The complementary
+`tests/test_configuration_invariants.py` has **128 passing cases**, partitioned
+by schemas, ownership, edits, permissions, runtime admission and compatibility.
+Docker/GUI are substituted only where needed; launcher policy tests execute
+the real configuration builder.
+
+## Implementation and validation
+
+2026-09-20: refactored on `ws-maintenance/triage`. Shared artifact admission,
+complete local-document serialization, registry enforcement, registry-driven
+elicitation, typed host decisions, a pure checkpoint projection and one execution
+admission boundary replace the inconsistent paths. Init and individual set/bind
+commands share answer operations. Project launch cannot inherit legacy path,
+credential or privilege options. Current bindings and decisions remain effective
+under `--force`; unset cannot revive legacy grants. Local records use private
+staging and atomic replacement. Access is serialized by the owner's explicit
+precondition; no cooperative lock is needed under that assumption.
+
+The full `nox -s build` gate passed: **877 tests, mypy, source CLI smoke, PEX
+construction and nine packaged tests**. Eighteen host-sensitive tests were
+excluded; one unrelated expected failure remains. The document-admission,
+assessment/execution and pure-resolution modules each have 100% statement and
+branch coverage. The proof/test map states the supported conditions and limits;
+this is not a claim of 100% coverage of the entire CLI.
 
 ## Closure conditions
 
-Turn every counterexample into a passing ordinary test, preserve the independent
-positive cases, and revise the correctness argument so its preconditions are
-established at public entrypoints and maintained through actual launch planning.
-Validate supported historical inputs and the relevant real-host privilege/display
-behavior. Establish the schema-evolution release obligations before claiming
-general migration support. Owner-approved splitting may move individually
-resolved obligations into linked records, but none disappears behind a green
-overall test count.
+Implementation and unit proof obligations G1–G9 are met. `fixed` is not a
+release/closure claim: owner PR integration and actual host privilege/display
+acceptance remain. Future schema or recipe changes must meet the release's
+predecessor-compatibility obligation; unspecified future formats are refused.
 
-No production change is made for these findings in this audit. The earlier
-[upgrade-remedy fix](2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)
-remains a bounded repair; its local coverage result is not evidence that this
-broader contract is fulfilled.
+The related [upgrade-remedy fix](2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)
+now composes with these enforced boundaries. Reopen if any supported lifecycle
+again loses an unrelated decision, invents authority, or bypasses admission.
