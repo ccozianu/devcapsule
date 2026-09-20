@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; configuration contract refactor complete, ready for owner PR review
+State: paused; configuration ADT review follow-up validated, ready for owner review
 
 Integration target: `main`
 
@@ -41,6 +41,33 @@ selected this correction ahead of general triage.
 
 ## Current State
 
+2026-09-20 owner-review follow-up: replaced the launch-mechanics compatibility
+claim with an admission/resolution ADT and semantic laws. `Configuration` owns
+its input snapshot; `Resolution` owns the derived plan. Both the real resolve
+operation and execution adapter use this boundary. The distinction between
+plan meaning and freshness is explicit (`same_meaning_as` is not object equality).
+Thirty ADT cases cover predecessor admission/meaning, repeated derivation,
+observation and ownership, dependency scope, security-question changes, force,
+unsupported representations and plan integrity. They invoke no CLI or launcher
+mocks. File-byte preservation is separately checked through the CLI adapter.
+Set/bind/authorize/unset remain the existing edit API; this follow-up does not
+claim to encapsulate those operations in the new ADT.
+
+Validation: final `nox -s build` passed: **907 tests, mypy over 143 source files,
+source CLI smoke, PEX build and nine packaged-executable tests**; 18
+host-sensitive tests deselected and one pre-existing expected failure. The
+final ADT module rerun passed **30 cases**, including the additional absent-base
+observation case added after gate collection. Combined coverage is 100%
+statements/branches for `configuration.py`, `configuration_documents.py`,
+`configuration_review.py` and `configuration_resolution.py` (345 statements,
+112 branches). This is not proof of the entire configuration implementation.
+Logs: `/tmp/configuration-adt-build.log` and `/tmp/configuration-adt-laws.log`.
+The updated proof map separates semantic laws, representation checks and adapter
+checks. Historical 0.2.11 data is still interpreted by current source; no test
+executes original 0.2.12 or reconstructs the incident's unavailable inputs.
+
+### Earlier refactor checkpoint
+
 2026-09-20: completed the owner's instruction to carry the full configuration
 contract through into implementation, rather than stop at the audit. The owner
 explicitly supplies serialized access to the underlying configuration files
@@ -63,10 +90,10 @@ The refactor establishes:
 - scoped manifest freshness and compatible interpretation of released unscoped
   fingerprints, without repinning or rewriting standing user choices.
 
-All nine audit gap families are fixed. The original audit module has 45 passing
+At that checkpoint all nine audit gap families were fixed. The original audit module has 45 passing
 cases, with all ten expected-failure markers removed. The new invariant module
 has 128 passing cases, including the related composition consequences identified
-while implementing the contract. The earlier 71-case recovery table remains.
+while implementing the contract. The recovery journeys remain, with client-only semantics now tested by the ADT laws.
 
 Validation: `nox -s build` passed with **877 tests, mypy, source CLI smoke, PEX
 construction and nine packaged-executable tests**. Eighteen host-sensitive tests
@@ -86,7 +113,8 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Owner review and PR integration of `ws-maintenance/triage`, followed by actual
+Owner review of the ADT laws and their production boundary, then PR integration
+of `ws-maintenance/triage`, followed by actual
 host upgrade/display/privilege acceptance before closing the two records or
 claiming a release. Review the contract/proof with the implementation and tests.
 Do not repeat the investigation or treat the former audit gaps as still open.
