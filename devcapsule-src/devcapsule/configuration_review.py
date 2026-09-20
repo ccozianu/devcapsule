@@ -14,7 +14,6 @@ from typing import Any, Mapping
 
 from devcapsule.configuration_nodes import build_node_registry
 from devcapsule.configuration_documents import table
-from devcapsule.project import normalize_project_mount, ProjectMountError
 
 from devcapsule.project_configuration import (
     AuthorizationChoice,
@@ -28,7 +27,6 @@ from devcapsule.project_configuration import (
     checkout_record_paths,
     load_checkout,
     load_resolution,
-    stale_resolution_inputs,
     resolve_configuration_bindings,
     resolve_configuration_values,
     resolve_secret_bindings,
@@ -189,37 +187,13 @@ class ExecutionConfiguration:
             raise ProjectConfigurationError("Local resolution is missing; run 'devcapsule project config resolve'.")
         checkout = load_checkout(input_path, manifest, root)
         resolution = load_resolution(output_path)
-        stale = stale_resolution_inputs(manifest, lock, checkout, resolution)
-        if stale and not force:
-            raise ProjectConfigurationError(
-                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
-            )
-        review = review_configuration(manifest, lock, checkout)
-        review.require_ready(root)
-        runtime = table(resolution, "runtime")
-        from devcapsule.components.catalog import INTERACTIVE_SURFACES
-        component = runtime.get("component")
-        mount = runtime.get("project-mount")
-        memory = runtime.get("memory-limit-bytes")
-        image = runtime.get("image")
-        if (not isinstance(component, str) or component not in INTERACTIVE_SURFACES
-                or not isinstance(mount, str) or not mount.startswith("/") or "\x00" in mount):
-            raise ProjectConfigurationError("Run requires a valid resolved runtime; run 'devcapsule project config resolve'.")
-        try:
-            normalize_project_mount(mount, manifest["project"]["slug"])
-        except ProjectMountError as exc:
-            raise ProjectConfigurationError(str(exc)) from exc
-        if component != lock["components"]["interactive-surface"]:
-            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project config resolve'.")
-        if memory is not None and (type(memory) is not int or memory <= 0):
-            raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
-        if image is not None and (not isinstance(image, str) or not image):
-            raise ProjectConfigurationError("Resolved runtime.image must be a non-empty string.")
-        if not stale:
-            from devcapsule.configuration_resolution import same_effective_resolution
-            if not same_effective_resolution(manifest, lock, checkout, resolution):
-                raise ProjectConfigurationError(
-                    "Generated resolution does not match its inputs; run 'devcapsule project config resolve'."
-                )
+        from devcapsule.configuration import Configuration, Resolution
+        configuration = Configuration(manifest, lock, checkout)
+        plan = Resolution(resolution)
+        review = configuration.review()
+        # Keep the complete, path-qualified recovery advice at the CLI boundary.
+        if force or not configuration.stale_inputs(plan):
+            review.require_ready(root)
+        stale = configuration.accept(plan, force=force)
         selected = ResolvedProject(root, manifest, lock_path, lock, input_path, checkout, output_path, resolution)
         return cls(selected, review, stale)

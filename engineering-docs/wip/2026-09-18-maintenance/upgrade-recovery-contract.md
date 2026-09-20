@@ -56,14 +56,14 @@ broader matrix-update and obsolescence product design is outside this fix.
 ## Verification
 
 The [unit case table](../../../devcapsule-src/tests/test_upgrade_recovery.py)
-contains 71 cases. The historical inputs were produced by the released
+is supplemented by the [configuration ADT laws](../../../devcapsule-src/tests/test_configuration_adt.py). The historical inputs were produced by the released
 v0.2.11 source, revision `94e798f1d1a7aaab93ae3e47d9636471448a8e66`;
 their [provenance](../../../devcapsule-src/tests/resources/compat/README.md)
 records the commands and the two path-dependent substitutions.
 
 | Partition / obligation | Test evidence |
 |---|---|
-| Unchanged historical project, new client | `test_released_checkout_runs_unchanged_under_new_client`: source and checkout bytes unchanged; legacy X11 and locked base retained. |
+| Unchanged historical project, new client | ADT laws: predecessor needs no new decisions and resolution preserves its meaning. File-byte preservation is separately checked by `test_read_only_operations_preserve_configuration_files`; display behavior belongs to `test_display_decision_table`. |
 | Manifest only / lock only / both changed × unanswered / true / false X11 | `test_upgrade_recovery_commands_converge_to_the_intended_launch`: real CLI refusals, listing, execution of offered commands, shrinking pending set, resolution and launch arguments. |
 | Five host nodes × allow / deny × current / stale | `test_host_answer_state_table_and_executable_choices`: every offered alternative is executed and settles the node. |
 | Missing / malformed / current / stale published and local bases | `test_base_state_table`, immutable-local recovery and unavailable-local refusal tests. No replay of a moved local tag or old published digest. |
@@ -81,7 +81,7 @@ serialization, resolver and realization orchestration. Only external Docker,
 image building and GUI launch are substituted. Assertions cover persisted
 decisions and launch arguments, not just message substrings.
 
-2026-09-20 validation: `nox -s build` passed (mypy; 704 tests passed,
+Historical bounded-fix validation (superseded by the current status): `nox -s build` passed (mypy; 704 tests passed,
 18 deselected host-sensitive tests, one expected failure; source CLI smoke;
 PEX construction and nine packaged-executable tests passed). The focused
 configuration/materialization suite passed 178 tests. Statement and branch
@@ -107,5 +107,5 @@ The subsequent [complete contract](configuration-contract.md) and
 an implemented refactor, not only an audit. All ten original audit regressions
 pass normally. Shared admission, preserved complete local records, typed host
 permissions and the actual launcher boundary close the earlier composition gaps.
-The owner explicitly supplies serialized configuration access. The full gate
-passes 877 tests and nine packaged tests; actual host acceptance remains pending.
+The owner explicitly supplies serialized configuration access. The current gate result is recorded in [the status file](CURRENT-STATUS.md);
+actual host acceptance remains pending.

@@ -112,7 +112,5 @@ def same_effective_resolution(manifest: Mapping[str, Any], lock: Mapping[str, An
     if not review.ready:
         return False
     expected = tomllib.loads(render_resolution(manifest, lock, checkout, review))
-    # Python equality equates True with 1; configuration meaning does not.
-    return canonical_digest({k: v for k, v in expected.items() if k != "sources"}) == canonical_digest({
-        k: v for k, v in resolution.items() if k != "sources"
-    })
+    from devcapsule.configuration import Resolution
+    return Resolution(expected).same_meaning_as(Resolution(resolution))

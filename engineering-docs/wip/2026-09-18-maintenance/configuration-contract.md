@@ -12,6 +12,10 @@ No concurrent writer or reader is assumed. A cooperative lock would be one way
 to support a different deployment; it is unnecessary under this precondition.
 Atomic replacement still protects a file from an interrupted write.
 
+The admission/resolution portion is exposed as owned `Configuration` and
+`Resolution` values. Its [ADT laws and production mapping](configuration-correctness.md#admissionresolution-adt-and-its-laws)
+separate semantic compatibility from persistence and launch adapter checks.
+
 ## 1. What configuration must accomplish
 
 A project describes the environment collaborators should receive. A developer

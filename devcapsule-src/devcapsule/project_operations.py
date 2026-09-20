@@ -192,25 +192,16 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
     checkout = load_checkout(input_path, manifest, root)
-    image = lock.get("image", {}).get("reference")
-    component = lock.get("components", {}).get("interactive-surface")
-    has_formation = isinstance(lock.get("base"), dict) and isinstance(
-        lock.get("materialization"), dict
-    )
-    if component not in INTERACTIVE_SURFACES or (not image and not has_formation):
-        raise ProjectConfigurationError(
-            "The V1 slice requires a lock selecting a known interactive surface "
-            "with either a completed image or formation inputs."
-        )
-    review = review_configuration(manifest, lock, checkout)
-    review.require_ready(root)
+    from devcapsule.configuration import Configuration
+    configuration = Configuration(manifest, lock, checkout)
+    configuration.review().require_ready(root)
+    resolution = configuration.resolve()
     base_selection = authorized_base_selection(lock, checkout) if "base" in lock else None
     if base_selection is not None and base_selection.local_image_identity is not None:
         local_base = required_local_image(base_selection.reference)
         validate_base_image(local_base, platform=str(lock["platform"]),
                             expected_identity=base_selection.local_image_identity)
-    from devcapsule.configuration_resolution import render_resolution
-    atomic_write(output, render_resolution(manifest, lock, checkout, review))
+    atomic_write(output, render_document(resolution.document()))
     return ResolveReport(
         resolution_path=output,
         lock_name=lock_path.name,

@@ -23,7 +23,8 @@ permissions. The relevant implementation is organized by responsibility:
 | Supported artifact representations and complete checkout serialization | [`configuration_documents.py`](../../../devcapsule-src/devcapsule/configuration_documents.py): `Artifact`, `admit_document`, `table`, `render_document` |
 | File ownership, typed domains, source dependencies and authorization questions | [`project_configuration.py`](../../../devcapsule-src/devcapsule/project_configuration.py): manifest/lock/checkout/resolution readers, node validators, `review_authorizations`, freshness |
 | A unique name and runtime effect per node | [`configuration_nodes.py`](../../../devcapsule-src/devcapsule/configuration_nodes.py): `NodeRegistry`, `build_node_registry` |
-| Complete assessment and execution admission | [`configuration_review.py`](../../../devcapsule-src/devcapsule/configuration_review.py): `ConfigurationReview`, `HostAccess`, `ExecutionConfiguration.load` |
+| Configuration ADT: owned inputs, plan values, derivation and admission | [`configuration.py`](../../../devcapsule-src/devcapsule/configuration.py): `Configuration`, `Resolution` |
+| Complete assessment and execution file adapter | [`configuration_review.py`](../../../devcapsule-src/devcapsule/configuration_review.py): `ConfigurationReview`, `HostAccess`, `ExecutionConfiguration.load` |
 | Pure derived checkpoint and predecessor comparison | [`configuration_resolution.py`](../../../devcapsule-src/devcapsule/configuration_resolution.py): `render_resolution`, `same_effective_resolution` |
 | Local edits and initialization | [`project_operations.py`](../../../devcapsule-src/devcapsule/project_operations.py): `CheckoutRecord`, `apply_configuration_answers`, initialization elicitation |
 | Invocation and final launch options | [`commands/project.py`](../../../devcapsule-src/devcapsule/commands/project.py): project commands and run-once validation |
@@ -37,9 +38,56 @@ Creating an empty checkout registration is not an interpretation of its node tre
 
 `ExecutionConfiguration.load` is shared by `project run` and
 `fresh_resolved_project`. It admits all four artifacts, enforces freshness unless
-force was explicit, requires a complete assessment, validates runtime fields and
-surface consistency, and checks a fresh checkpoint against its derived meaning.
+force was explicit, and delegates plan admission to `Configuration.accept`.
+`Resolution` validates runtime shape at construction; admission requires a
+complete assessment, surface consistency, and matching derived meaning for a
+fresh checkpoint.
 Only then can the command validate run-once answers and request materialization.
+
+### Admission/resolution ADT and its laws
+
+`Configuration(P, L, C)` owns a snapshot of admitted inputs. Its observations are
+`review()` and `stale_inputs(R)`; `resolve()` returns a new `Resolution` value;
+`accept(R, force=False)` either admits that plan or refuses. It neither edits
+local choices nor publishes files. `Resolution.document()` is the explicit
+representation boundary for persistence. `same_meaning_as` excludes source
+fingerprints but compares the complete remaining derived plan with typed scalar
+equality. This is a named equivalence relation, not equality of resolutions:
+plans with the same meaning may differ in freshness.
+This lets digest representation evolve without weakening plan integrity.
+
+These types are used by the real resolve/run paths, not by a test-only facade.
+File discovery, physical checkout identity, atomic publication, image inspection
+and launch remain adapter obligations. Set/bind/authorize/unset still use the
+existing edit boundary; this follow-up does not claim to encapsulate that entire
+API inside the new admission/resolution ADT.
+
+The unit laws in `tests/test_configuration_adt.py` are:
+
+| Law | Evidence |
+|---|---|
+| A supported predecessor needs no new decisions | `test_supported_predecessor_needs_no_new_decisions` |
+| Derivation preserves predecessor meaning | `test_resolving_supported_predecessor_preserves_its_meaning`; expected plan was produced by v0.2.11, with explicit base, surface, mount and host-decision observations |
+| Repeated derivation agrees; its output is admitted | `test_resolution_is_repeatable_and_accepted_by_its_configuration` |
+| Observation order cannot change the value | `test_observation_order_cannot_change_configuration` |
+| Descriptive changes have no configuration effect | `test_metadata_changes_preserve_predecessor_meaning` |
+| Ordinary changes require resolution, not renewed consent | `test_ordinary_project_change_requires_resolution_but_not_renewed_consent` |
+| Changed security questions require precisely their affected decisions | `test_changed_security_questions_require_exactly_the_affected_decisions` (base / browser / both) |
+| Force waives only freshness | `test_force_waives_freshness_without_mutating_either_value`; `test_force_cannot_admit_an_invalid_runtime` |
+| Input/output aliases cannot mutate owned state | `test_configuration_owns_its_inputs_and_review`; `test_resolution_owns_its_representation` |
+| Unsupported schemas and transplanted authority are refused intact | `test_unknown_schema_is_refused_without_changing_the_evidence`; `test_checkout_authority_cannot_be_transplanted_to_another_project` |
+| Fingerprints are not authority over plan contents | `test_fresh_fingerprints_do_not_authorize_changed_meaning` (false and integer 1 versus boolean true) |
+| Base observations preserve absence and refuse malformed values | `test_a_plan_without_a_base_selection_reports_absence`; `test_base_observation_refuses_malformed_representations` |
+| A plan needs an executable environment | `test_resolution_requires_an_executable_environment` |
+
+The laws contain no CLI invocation, launcher mocks, call-argument inspection or
+launch event sequence. The fixture decoder alone handles historical documents.
+File-byte preservation remains an explicitly separate adapter obligation:
+`tests/test_upgrade_recovery.py::test_read_only_operations_preserve_configuration_files`.
+Display transport remains a display-policy obligation, not a configuration
+observation: an unanswered host-X11 question is not an implicit stored grant.
+Neither suite executes the original 0.2.12 client or recreates missing incident
+inputs. The evidence is predecessor data interpreted by the current source.
 
 ## 2. Preconditions and limits
 
@@ -235,7 +283,7 @@ adds the host/base/acquisition/display cross-products and full recovery journeys
 | C10: typed permission precedence and revocation | `tests/test_configuration_invariants.py::test_permission_precedence_is_typed_and_preserves_denial` (5 nodes, valid/invalid domains and each precedence level); `tests/test_configuration_invariants.py::test_removing_a_decision_cannot_reveal_a_legacy_grant`; `tests/test_configuration_contract.py::test_legacy_host_values_are_typed_before_authorization`; `tests/test_upgrade_recovery.py::test_force_cannot_resurrect_a_revoked_host_permission` |
 | C11: real downstream denial boundary | `tests/test_configuration_invariants.py::test_project_launch_cannot_inherit_unbound_paths_or_credentials`; `tests/test_configuration_invariants.py::test_explicit_sudo_decision_overrides_legacy_environment`; `tests/test_configuration_contract.py::test_launcher_environment_cannot_override_explicit_sudo_denial`; `tests/test_configuration_invariants.py::test_force_cannot_resurrect_directory_or_secret_access` |
 | C12: refuse invalid runtime before effects | `tests/test_configuration_invariants.py::test_invalid_derived_plan_fails_before_materialization`; `tests/test_configuration_invariants.py::test_fresh_source_digests_do_not_authorize_tampered_output`; `tests/test_configuration_invariants.py::test_force_still_requires_a_coherent_execution_plan`; `tests/test_configuration_invariants.py::test_project_mount_is_validated_before_resolution_or_materialization`; `tests/test_upgrade_recovery.py::test_invalid_run_once_choices_cannot_trigger_a_build` |
-| C13: scoped freshness and old encodings | `tests/test_configuration_invariants.py::test_metadata_only_changes_are_fresh_but_runtime_changes_are_stale` (legacy/scoped); `tests/test_configuration_invariants.py::test_unused_toml_native_metadata_does_not_enter_runtime_dependencies`; `tests/test_configuration_invariants.py::test_unsupported_fingerprint_representation_is_refused`; `tests/test_release_compatibility.py::test_v0262_checkout_resumes_with_no_user_action`; `tests/test_upgrade_recovery.py::test_released_checkout_runs_unchanged_under_new_client` |
+| C13: scoped freshness and old encodings | `tests/test_configuration_invariants.py::test_metadata_only_changes_are_fresh_but_runtime_changes_are_stale` (legacy/scoped); `tests/test_configuration_invariants.py::test_unused_toml_native_metadata_does_not_enter_runtime_dependencies`; `tests/test_configuration_invariants.py::test_unsupported_fingerprint_representation_is_refused`; `tests/test_release_compatibility.py::test_v0262_checkout_resumes_with_no_user_action`; `tests/test_configuration_adt.py::test_supported_predecessor_needs_no_new_decisions`; `tests/test_configuration_adt.py::test_resolving_supported_predecessor_preserves_its_meaning` |
 | C14: materialization/display identity | `tests/test_materialization.py::test_materialization_reuses_only_verified_canonical_image`; `tests/test_materialization.py::test_validate_base_rejects_wrong_identity`; `tests/test_runtime_artifact.py::test_runtime_update_changes_formation_identity_without_changing_components`; `tests/test_upgrade_recovery.py::test_display_decision_table`; `tests/test_upgrade_recovery.py::test_display_denial_stops_before_materialization` |
 | C15: secret delivery/history boundary | `tests/test_project_runtime_plan.py::test_project_runtime_plan_contains_only_in_container_contract`; `tests/test_pycharm.py::test_bound_secret_must_exist_on_host`; `tests/test_project_commands.py::test_project_run_records_known_good_configuration_only_on_success`; `tests/test_config_history.py::test_first_success_records_one_private_generation` |
 

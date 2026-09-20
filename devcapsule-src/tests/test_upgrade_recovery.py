@@ -101,18 +101,17 @@ def install_external_fakes(monkeypatch, events, *, contained=True):
     return launch
 
 
-# Unchanged historical inputs: no rewrite, reconsent or matrix replacement.
-def test_released_checkout_runs_unchanged_under_new_client(checkout, monkeypatch):
+# Persistence adapter law: inspection and execution preserve their input files.
+@pytest.mark.parametrize("operation", [("config", "list"), ("run",)])
+def test_read_only_operations_preserve_configuration_files(checkout, monkeypatch, operation):
+    """Persistence adapter contract; semantic upgrade laws live in test_configuration_adt."""
     project, record, resolution = checkout
     paths = [record, resolution, *sorted((project / ".devcapsule").iterdir())]
     before = {p: p.read_bytes() for p in paths}
-    events = []
-    launch = install_external_fakes(monkeypatch, events, contained=False)
-    assert invoke(project, "config", "list") == 0
-    assert invoke(project, "run") == 0
-    assert launch.call_args.args[0].display_transport == "host-x11"
+    if operation == ("run",):
+        install_external_fakes(monkeypatch, [], contained=False)
+    assert invoke(project, *operation) == 0
     assert {p: p.read_bytes() for p in paths} == before
-    assert events[:3] == ["obtain-base", "display-reviewed", "materialize"]
 
 
 # Show all changed questions; each selected answer makes progress. Unrelated
