@@ -4,9 +4,9 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active 2026-09-19; experiment accepted with A−; website backlog transferred under owner exception; content and parent-integration tasks remain
+State: paused 2026-09-20 at owner request to switch to maintenance; experiment accepted with A−; blog revisions integrated and published; content and parent-integration tasks remain
 
-Branch association: `website/initial-cut`; prefix `website/`
+Branch association: `ws-website/initial-cut`; prefix `ws-website/`
 
 Integration target: DevCapsule `main`. Website PR #1 is merged into its `main`
 at `b55ea0a`, with the same tree as previewed implementation `c508b91`.
@@ -15,6 +15,31 @@ Delivery method: reviewable SSH-pushed branches; the owner creates/merges PRs
 and performs final GitHub backend wiring. The owner has now authorized making
 the site live at `devcapsule.mycodespace.ai` before finishing the review.
 No force-push or mainline implementation is needed.
+
+## Branch Migration And Pause (2026-09-20)
+
+The owner requested the `ws-` branch convention before switching this checkout
+from website to maintenance. All editorial changes through `0658207` are on
+remote main `c6296b7`; the clean working branch fast-forwarded there before
+recording the handoff. The working branch is renamed from `website/initial-cut`
+to `ws-website/initial-cut`. Pause and routing records travel `ws-website/outbox`
+for the owner to merge. The old remote ref remains temporarily as a routing
+alias until that registry update lands; remove it afterward, without losing
+any work. Resume website editing only after main registers the new branch.
+
+The revised articles were read on the production site during the preceding
+review, including the removal of the explicit authorship claim in Part 2.
+Production reported content revision `c6296b7`. Reader evaluation has not been
+reported. No production deployment is part of this branch-management task.
+Local preview availability has not been rechecked and is not required to resume;
+use the restart instructions below. Website mail and intake were empty at pause.
+
+Next website task: consider reader feedback when supplied, or select a bounded
+content/parent-integration task; agree W12-C before content-structure changes.
+The website submodule owns W00–W13. No follow-up implementation is authorized
+by this workstream switch. Validation: the required `nox -s build` gate passed, including all nine
+packaging integration tests. Dirty-tree policy skipped the revision-bearing
+PEX; the local validation artifact passed.
 
 ## Synchronization And Pause (2026-09-18)
 
@@ -447,20 +472,18 @@ W00 remains the highest website priority; this split does not reprioritize it.
 
 ## Open Threads
 
-- Owner has accepted the autonomy experiment: successful, A−. No further verdict
-  request is pending. Workstream closure is deferred at his request for this task
-  inventory; his additional shortcomings and priority corrections remain welcome.
-- Website-owned W00–W13 have moved to the submodule backlog. DevCapsule keeps
-  producer tasks and parent integration, plus the blog draft awaiting review.
-  Cross-repository delivery is via the paired reviewable commits described above.
-  This migration authorizes no implementation or deployment.
-- Existing release/publication decisions stand: authoritative content here,
-  presentation in the website repository, public release candidates, no personal
-  deployment token, manual production approval.
-- No allowance/reset telemetry exists; exact experiment expenditure is unknown.
-  No paid purchase or anticipated budget overrun was identified.
-- Full transcript, duplicate content and speculative implementation plans are not
-  preserved. This is a task inventory and acceptance record, not a session export.
+- Awaiting the owner: reader-test feedback and selection of the next bounded
+  content/parent-integration task. The experiment's A− verdict is settled.
+- Awaiting delivery: merge the website pause/routing outbox, then remove the
+  legacy remote branch alias. The new working branch is `ws-website/initial-cut`.
+- Unresolved: producer-side W12-C and the website contract before content
+  structure changes; closure remains deferred. Website-owned W00–W13 stay in
+  the submodule backlog, with producer obligations retained here.
+- Existing publication decisions stand: content here, presentation in the
+  website repository, public candidates, no personal deployment token, manual
+  production approval. Exact experiment expenditure is unknown.
+- Deliberately not preserved: speculative reader verdicts, a chat transcript,
+  duplicate backlog copies, or an assumption that the old preview still runs.
 
 ## Documents
 
