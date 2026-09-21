@@ -14,11 +14,11 @@ from pathlib import Path
 import shutil
 import time
 import tomllib
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from devcapsule.compat import CliError
 from devcapsule.components.catalog import COMPONENTS, selected_component_definitions
-from devcapsule.configuration.authorization import authorization_declarations, authorized_base_selection
+from devcapsule.configuration.authorization import authorization_declarations, authorized_base_selection, normalize_authorization_value
 from devcapsule.configuration.documents import canonical_digest, render_document, selected_version_lock
 from devcapsule.configuration.model import Configuration
 from devcapsule.configuration.storage import (
@@ -116,11 +116,23 @@ def _restore_artifacts(lock: Mapping[str, Any], state: Path) -> list[str]:
     return missing
 
 
+def _validation(lock: Mapping[str, Any], checkout: Mapping[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    local_base = checkout.get("authorization", {}).get("base-image", {}).get("image-id")
+    if local_base:
+        missing = tuple(f"{name} {metadata.get('version')} on local base {local_base}"
+                        for name, metadata in lock["components"].items() if isinstance(metadata, dict))
+        return (), missing
+    return MATRICES[Platform.current()].validation_evidence(lock)
+
+
 def inspect(start: Path) -> str:
     workspace = Workspace.load(start)
     local = selected_version_lock(workspace.checkout) is not None
     lines = [f"Version set {workspace.identity}", "Origin: " + ("local selection" if local else "project recommendation"),
              f"Platform: {workspace.lock.get('platform')}", f"Base: {workspace.lock.get('base', workspace.lock.get('image'))}"]
+    base_answer = workspace.checkout.get("authorization", {}).get("base-image", {})
+    if isinstance(base_answer, dict) and base_answer.get("image-id"):
+        lines.append(f"Effective local base override: {base_answer['image-id']} (project base above is a recommendation).")
     for name, value in workspace.lock["components"].items():
         if isinstance(value, dict):
             lines.append(f"{name}: {value.get('version', 'base supplied')}")
@@ -131,7 +143,7 @@ def inspect(start: Path) -> str:
             lines.append("Project recommendation: " + ("changed since selection; local set remains intact. Inspect 'versions follow-project' or export a proposal." if diverged else "unchanged since selection"))
         except CliError as exc:
             lines.append(f"Project recommendation unavailable: {exc}; local selection remains intact.")
-    evidence, missing = MATRICES[Platform.current()].validation_evidence(workspace.lock)
+    evidence, missing = _validation(workspace.lock, workspace.checkout)
     lines.extend("DevCapsule validation: " + item for item in evidence)
     lines.extend("Not yet validated: " + item for item in missing)
     known = _known(workspace)
@@ -219,7 +231,7 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
     structural = deepcopy(candidate)
     _placeholder_hashes(structural)
     parse_locked_environment(structural)
-    evidence, missing = matrix.validation_evidence(candidate)
+    evidence, missing = _validation(candidate, workspace.checkout)
     if missing:
         candidate["unverified-combinations"] = "; ".join(missing)
     else:
@@ -229,6 +241,7 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
     identity = canonical_digest(proposal)
     atomic_write(workspace.state / "previews" / f"{identity}.toml", render_document(proposal))
     report(f"Preview {identity}\n{component}: {workspace.lock['components'][component]['version']} -> {selection.metadata['version']}")
+    report(_diff(workspace.lock, candidate))
     report(f"Distribution status: {selection.status} {selection.detail}; this is not validation evidence.")
     report(f"Base: {candidate['base']['reference']}; platform: {candidate['platform']}.")
     report("Other component versions and base are preserved. Dependencies: " + (str(selection.requires) if selection.requires else "no companion change declared"))
@@ -274,7 +287,8 @@ def _pin_artifacts(value: dict[str, Any]) -> None:
 
 
 def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = False,
-               base: Mapping[str, Any] | None = None) -> ResolvedProject:
+               base: Mapping[str, Any] | None = None,
+               acquisitions: Sequence[tuple[str, str]] = ()) -> ResolvedProject:
     checkout = deepcopy(workspace.checkout)
     if follow:
         checkout.pop("version-set", None)
@@ -283,6 +297,16 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
         digest = existing["recommendation-digest"] if existing else canonical_digest(workspace.recommendation())
         checkout["version-set"] = {"format": 1, "lock": render_document(lock), "recommendation-digest": digest}
     declarations = authorization_declarations(workspace.manifest, lock)
+    seen: set[str] = set()
+    for name, value in acquisitions:
+        declaration = declarations.get(name)
+        if declaration is None or declaration.kind != "acquisition" or name in seen:
+            raise CliError(f"{name!r} must name one candidate acquisition decision exactly once; host permissions use 'project config authorize'.")
+        seen.add(name)
+        checkout.setdefault("authorization", {})[name] = {
+            "value": normalize_authorization_value(declaration, value),
+            "recommendation-digest": declaration.recommendation_digest,
+        }
     # Explicit software selection renews ONLY base/formation trust. Current
     # host grants, denials, directory and secret bindings are never replayed.
     # Existing vendor consent is required; changed license questions must be
@@ -298,10 +322,18 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
         reference, image_id = prior_base.reference, prior_base.local_image_identity
     answer: dict[str, Any] = {"reference": reference, "lock-digest": declarations["base-image"].recommendation_digest}
     if image_id:
+        answer["reference"] = image_id
         answer["image-id"] = image_id
     checkout.setdefault("authorization", {})["base-image"] = answer
     config = Configuration(workspace.manifest, lock, checkout)
-    config.review().require_ready(workspace.root)
+    review = config.review()
+    pending_acquisitions = [item for item in review.authorizations
+                            if item.problem and declarations[item.name].kind == "acquisition"]
+    if pending_acquisitions:
+        options = " ".join(f"--authorize {item.name} true" for item in pending_acquisitions)
+        raise CliError(review.render(workspace.root) + "\nTo accept these acquisitions for the target set, repeat this version-set command with "
+                       + options + ". Otherwise the current selection stays intact; no consent is inferred.")
+    review.require_ready(workspace.root)
     resolution = config.resolve().document()
     return ResolvedProject(workspace.root, workspace.manifest, workspace.lock_path, lock,
                            workspace.input_path, checkout, workspace.output_path, resolution)
@@ -315,7 +347,7 @@ def _prepare_activate(workspace: Workspace, selected: ResolvedProject, report: C
     report(f"Selected {effective_set_id(selected.lock, selected.checkout)} for the next ordinary 'project run'. Existing sessions are unchanged.")
 
 
-def select(start: Path, preview_id: str, *, unvalidated: bool = False, report: Callable[[str], None] = print) -> None:
+def select(start: Path, preview_id: str, *, unvalidated: bool = False, acquisitions: Sequence[tuple[str, str]] = (), report: Callable[[str], None] = print) -> None:
     workspace = Workspace.load(start)
     _safe_id(preview_id)
     proposal = load_toml(workspace.state / "previews" / f"{preview_id}.toml")
@@ -329,9 +361,9 @@ def select(start: Path, preview_id: str, *, unvalidated: bool = False, report: C
     # Consent is checked before downloading even metadata-pinned packages.
     structural = deepcopy(lock)
     _placeholder_hashes(structural)
-    _selection(workspace, structural)
+    _selection(workspace, structural, acquisitions=acquisitions)
     _pin_artifacts(lock)
-    selected = _selection(workspace, lock)
+    selected = _selection(workspace, lock, acquisitions=acquisitions)
     _prepare_activate(workspace, selected, report)
 
 
@@ -359,7 +391,12 @@ def _known(workspace: Workspace) -> list[tuple[str, dict[str, Any], dict[str, An
     result = []
     for path in (workspace.state / "known-good").glob("*.toml"):
         document = load_toml(path)
-        lock = tomllib.loads(document["lock"])
+        try:
+            lock = tomllib.loads(document["lock"])
+            if not isinstance(document.get("base"), dict) or not isinstance(document.get("last-success"), (int, float)):
+                raise ValueError("missing base or success timestamp")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise CliError(f"Cannot interpret known-good record {path}: {exc}. Inspect the record; current selection is unchanged.") from exc
         if set_id(lock, document.get("base", {}).get("image-id")) != path.stem:
             raise CliError(f"Known-good record was modified: {path}. Inspect it before recovery.")
         result.append((path.stem, lock, document))
@@ -376,7 +413,7 @@ def history(start: Path) -> str:
 
 
 def rollback(start: Path, identity: str | None = None, *, reacquire: bool = False,
-             report: Callable[[str], None] = print) -> None:
+             acquisitions: Sequence[tuple[str, str]] = (), report: Callable[[str], None] = print) -> None:
     workspace = Workspace.load(start)
     if identity is not None:
         _safe_id(identity)
@@ -385,7 +422,7 @@ def rollback(start: Path, identity: str | None = None, *, reacquire: bool = Fals
     if chosen is None:
         raise CliError("No known-good predecessor matches. Successfully launch a set first; failed or prepared sets are not recovery choices.")
     _, lock, record = chosen
-    selected = _selection(workspace, lock, base=record["base"])
+    selected = _selection(workspace, lock, base=record["base"], acquisitions=acquisitions)
     missing = _restore_artifacts(lock, workspace.state)
     # Reuse the ordinary materializer's full identity checks, including current
     # launcher bytes. With no recovery downloads, missing exact resources fail.
@@ -411,13 +448,13 @@ def rollback(start: Path, identity: str | None = None, *, reacquire: bool = Fals
     report("Software selection restored using current host permissions and state bindings. Vendor state/schema migrations are not reversed.")
 
 
-def follow_project(start: Path, *, apply: bool = False, report: Callable[[str], None] = print) -> None:
+def follow_project(start: Path, *, apply: bool = False, acquisitions: Sequence[tuple[str, str]] = (), report: Callable[[str], None] = print) -> None:
     workspace = Workspace.load(start)
     lock = workspace.recommendation()
     report("Project recommendation diff:\n" + _diff(workspace.lock, lock))
     report("Following the project removes the local selection, retains current personal state and host decisions, and prepares for the next launch.")
     if apply:
-        _prepare_activate(workspace, _selection(workspace, lock, follow=True), report)
+        _prepare_activate(workspace, _selection(workspace, lock, follow=True, acquisitions=acquisitions), report)
     else:
         report("Apply explicitly: devcapsule project versions follow-project --apply")
 
@@ -440,5 +477,8 @@ def proposal(start: Path, output: Path) -> str:
     patch = "".join(difflib.unified_diff(workspace.lock_path.read_text().splitlines(True),
         render_document(workspace.lock).splitlines(True), fromfile="a/" + path, tofile="b/" + path))
     evidence = "# Local zero-exit launch only; not comprehensive DevCapsule validation.\n"
+    base = workspace.checkout.get("authorization", {}).get("base-image", {})
+    if base.get("image-id"):
+        evidence += f"# Local success used base override {base['image-id']}; this run did not prove the proposed project base.\n"
     atomic_write(output, evidence + patch)
     return f"Reviewable proposal: {output}. Review the complete diff (including upstream divergence), then use git apply and your normal PR process. No project files or remote state were changed."

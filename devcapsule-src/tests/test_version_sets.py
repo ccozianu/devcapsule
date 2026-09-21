@@ -24,7 +24,7 @@ from devcapsule.compat import CliError
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.components.channels import ChannelReport, ChannelSelection, ChannelVersion
 from devcapsule.components.codex import CodexComponent
-from devcapsule.components.interface import LockedArtifactDeclaration
+from devcapsule.components.interface import LockedArtifactDeclaration, AcquisitionContract
 from devcapsule.components.npm_channel import NpmChannel
 from devcapsule.configuration.documents import canonical_digest, render_document
 from devcapsule.configuration.execution import ExecutionConfiguration
@@ -73,7 +73,8 @@ class Widget(CodexComponent):
 
 @pytest.fixture(params=["widget", "codex"])
 def journey(tmp_path, monkeypatch, request):
-    component = request.param
+    licensed = request.param == "licensed-widget"
+    component = "widget" if licensed else request.param
     for key, name in (("XDG_CONFIG_HOME", "config"), ("XDG_CACHE_HOME", "cache"),
                       ("XDG_STATE_HOME", "state"), ("XDG_DATA_HOME", "data"), ("HOME", "home")):
         monkeypatch.setenv(key, str(tmp_path / name))
@@ -96,6 +97,8 @@ def journey(tmp_path, monkeypatch, request):
             for suffix in ("", "-linux-x64"):
                 name = "@openai/codex"
                 data = {"name": name, "version": version + suffix, "engines": {"node": ">=16"}}
+                if suffix:
+                    data.update(os=["linux"], cpu=["x64"])
                 if not suffix:
                     data["optionalDependencies"] = {"@openai/codex-linux-x64": f"npm:@openai/codex@{version}-linux-x64"}
                 payload = archive(tmp_path / f"codex-{version}{suffix}.tgz", {"package/package.json": json.dumps(data).encode()})
@@ -109,6 +112,10 @@ def journey(tmp_path, monkeypatch, request):
             def select(self, version, platform):
                 return ChannelSelection(metadata[version], (platform,))
         definition = Widget()
+        if licensed:
+            monkeypatch.setattr(definition, "acquisition", lambda: AcquisitionContract("widget-acquisition", "https://example.test/terms", "Widget", "Example"))
+            for item in metadata.values():
+                item.update({"acquisition-authorization": "widget-acquisition", "terms-url": "https://example.test/terms"})
         monkeypatch.setattr(definition, "distribution_channel", lambda: Channel())
         monkeypatch.setitem(COMPONENTS, "widget", definition)
         lock["components"].pop("codex")
@@ -128,6 +135,8 @@ def journey(tmp_path, monkeypatch, request):
     path = config / "devcapsule.linux-amd64.lock"
     path.write_text(render_document(lock))
     assert invoke(root, "config", "authorize", "base-image", "default") == 0
+    if licensed:
+        assert invoke(root, "config", "authorize", "widget-acquisition", "true") == 0
     assert invoke(root, "config", "authorize", "host-x11", "false") == 0
     assert invoke(root, "config", "resolve") == 0
     selected = ExecutionConfiguration.load(root).project
@@ -378,3 +387,61 @@ def test_committed_activation_recovery_and_personal_state_survive(journey, capsy
     assert credential.read_text() == "test token must not be copied into selection"
     assert work.read_text() == "user work"
     assert "test token" not in s.record.read_text()
+
+
+def test_local_base_rollback_uses_recorded_identity_after_tag_moves(journey, capsys, monkeypatch):
+    from dataclasses import replace
+    s = journey
+    old = replace(s.base, reference="local/base:chosen", identity="sha256:" + "b" * 64)
+    s.images[old.reference] = old
+    s.images[old.identity] = replace(old, reference=old.identity)
+    monkeypatch.setattr("devcapsule.commands.project.required_local_image", s.images.__getitem__)
+    monkeypatch.setattr("devcapsule.configuration.operations.required_local_image", s.images.__getitem__)
+    assert invoke(s.root, "config", "authorize", "base-image", old.reference) == 0
+    assert invoke(s.root, "config", "resolve") == 0
+    assert invoke(s.root, "run") == 0
+    preview_select(s, capsys)
+    s.images[old.reference] = replace(old, identity="sha256:" + "c" * 64)
+    assert invoke(s.root, "versions", "rollback") == 0
+    assert invoke(s.root, "run") == 0
+    assert s.launched[-1][1]["base"]["identity"] == old.identity
+    assert load_toml(s.record)["authorization"]["base-image"]["reference"] == old.identity
+
+
+def test_declared_companion_constraint_prevents_unrelated_silent_change(journey, monkeypatch, capsys):
+    from dataclasses import replace
+    s = journey
+    channel = COMPONENTS[s.component].distribution_channel()
+    original = channel.select
+    monkeypatch.setattr(channel, "select", lambda v, p: replace(original(v, p), requires=(("pycharm", "requires-a-different-version"),)))
+    monkeypatch.setattr(COMPONENTS[s.component], "distribution_channel", lambda: channel)
+    before = s.record.read_bytes()
+    assert invoke(s.root, "versions", "preview", s.component, "2.0.0") == 2
+    assert "requires pycharm" in capsys.readouterr().err
+    assert s.record.read_bytes() == before and not s.built
+
+
+@pytest.mark.parametrize("journey", ["licensed-widget"], indirect=True)
+def test_candidate_acquisition_answers_do_not_renew_host_permissions(journey, capsys):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    identity = preview_select(s, capsys, select=False)
+    before = s.record.read_bytes()
+    assert invoke(s.root, "versions", "select", identity, "--unvalidated") == 2
+    assert s.record.read_bytes() == before
+    assert invoke(s.root, "versions", "select", identity, "--unvalidated", "--authorize", "docker-daemon", "host-socket") == 2
+    assert s.record.read_bytes() == before
+    assert invoke(s.root, "versions", "select", identity, "--unvalidated", "--authorize", "widget-acquisition", "true") == 0
+    assert invoke(s.root, "run") == 0 and launched_version(s) == "2.0.0"
+    assert invoke(s.root, "config", "authorize", "widget-acquisition", "false") == 0
+    assert invoke(s.root, "versions", "rollback") == 2
+    assert load_toml(s.record)["authorization"]["widget-acquisition"]["value"] is False
+    assert invoke(s.root, "versions", "rollback", "--authorize", "widget-acquisition", "true") == 0
+    assert invoke(s.root, "run") == 0 and launched_version(s) == "1.0.0"
+    upstream = load_toml(s.lock)
+    upstream["components"]["widget"] = s.metadata["3.0.0"]
+    s.lock.write_text(render_document(upstream))
+    assert invoke(s.root, "versions", "follow-project", "--apply") == 2
+    assert invoke(s.root, "versions", "follow-project", "--apply", "--authorize", "widget-acquisition", "true") == 0
+    assert invoke(s.root, "run") == 0 and launched_version(s) == "3.0.0"
+    assert s.launched[-1][0].docker_mode.value == "none"

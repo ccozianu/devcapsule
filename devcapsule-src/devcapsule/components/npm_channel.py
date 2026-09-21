@@ -64,6 +64,8 @@ class NpmChannel:
         exact = meta.get("version")
         if not isinstance(exact, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?", exact):
             raise CliError("Malformed npm metadata: expected an exact safe version.")
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?", version) and version != exact:
+            raise CliError("Registry response does not match the requested exact version.")
         engines = meta.get("engines")
         if meta.get("name") != self.package or meta.get("dependencies") or not isinstance(engines, dict) or engines.get("node") != self.node_engine:
             raise CliError("The npm package changed its name, dependencies or Node requirement; a reviewed channel adapter update is needed.")
@@ -73,11 +75,15 @@ class NpmChannel:
         if not isinstance(dependency, str) or not dependency.startswith(prefix):
             raise CliError(f"Missing exact platform dependency {alias!r} in npm metadata.")
         platform_version = dependency[len(prefix):]
-        if not re.fullmatch(re.escape(exact) + r"-[A-Za-z0-9-]+", platform_version):
+        if platform_version != exact + alias.removeprefix(self.package):
             raise CliError(f"Non-exact or mismatched platform dependency {dependency!r}.")
         binary = self._metadata(platform_version)
         if binary.get("name") != self.package or binary.get("version") != platform_version or binary.get("dependencies"):
             raise CliError("Malformed or incompatible platform package metadata.")
+        operating_system, architecture = platform.split("-", 1)
+        npm_arch = {"amd64": "x64", "arm64": "arm64"}.get(architecture)
+        if binary.get("os") != [operating_system] or binary.get("cpu") != [npm_arch]:
+            raise CliError("Platform package OS/CPU does not match the selected platform.")
         metadata = {
             "version": exact, "delivery-policy": "local-materialization", "npm-package": self.package,
             **self._artifact(meta),

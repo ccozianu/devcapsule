@@ -59,5 +59,4 @@ R-PRODUCT-002 and R-COMPAT-001 continue to govern host access and old inputs.
   platform handling, exact pinning and integrity through the acquisition engine.
 - Existing released-input fixtures remain in the configuration and release
   compatibility suites.
-- Host evidence and its practical limits belong in the implementation validation
-  record; passing self-authored tests is not product-owner acceptance.
+- [Host evidence and its practical limits](../../implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md) record the observed Codex upgrade and rollback; passing self-authored tests is not product-owner acceptance.

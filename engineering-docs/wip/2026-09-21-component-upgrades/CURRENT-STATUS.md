@@ -4,7 +4,7 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: active; executing the component upgrade work order
+State: integrating; feature implemented and validated, awaiting owner review and PR delivery
 
 Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
@@ -16,84 +16,98 @@ Branch association: `ws-component-upgrades/v1`
 
 Branch prefix: `ws-component-upgrades/`
 
-Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-COMPAT-001`
+Requirements: `R-UPGRADE-001`, `R-PRODUCT-001`, `R-PRODUCT-002`, `R-COMPAT-001`
 
 ## Goal
 
 Deliver discoverable component upgrades with developer-owned, reproducible
-version sets and proven rollback, using Codex as the first generic-channel
+version sets and operational rollback, using Codex as the first generic-channel
 consumer. Intended for v0.2.14; project-management owns release sequencing.
 
 ## Current State
 
-Resumed at owner request on `ws-component-upgrades/v1`. Remote main remains
-`e4a96dc`, already contained in this branch; synchronization was unnecessary.
-Root workflow commands confirmed current published state, unchanged definition,
-and no mail. Running them from `devcapsule-src` had misleadingly shown no state;
-use the repository root for workflow operations.
+The work order's implementation is ready for owner review. `project versions`
+provides inspection, channel checks, exact previews, preparation/selection,
+successful-use history, rollback, following the project again, proposal export,
+and remembered reminders. Codex uses the typed npm channel; generic orchestration
+also passes the unrelated widget and licensed-widget journeys.
 
-Implemented typed distribution channels (Codex npm first), complete local
-version sets, preview/preparation/activation, rollback, recommendation following,
-proposal export and remembered reminders. The existing materializer is shared.
-Successful-use recording captures inputs before launch. Activation uses a
-recoverable two-file journal; host permissions and personal state are not restored
-from historical snapshots. D-0010 records the owner's work-order direction and
-R-UPGRADE-001 records the contract without rewriting earlier decisions.
+Local selection is a complete checkout-owned version set. Ordinary configuration
+and launch consume it without mixing in later project lock changes. Preparation
+uses the existing acquisition/materialization engine; activation is recoverable.
+Zero-exit history captures inputs before launch. Rollback preserves current host
+permissions, personal state and exact software identities, including moved local
+base tags. Candidate acquisition consent is explicit and cannot grant host access.
+
+D-0010 records the owner's work-order decision and R-UPGRADE-001 the contract.
+User/contributor instructions and permanent validation evidence are indexed below.
+No release, mainline push or PR creation is part of this work order.
+
+Session synchronization: fetched remote main remains `e4a96dc`, already contained
+in the branch, with unchanged workflow definitions. No synchronization was needed.
+Run workflow commands from the repository root: from `devcapsule-src` they report
+state relative to that directory, which initially appeared misleadingly empty.
+Re-running at root confirmed the published handoff. Final mail take found no mail;
+there are no open bugs owned by this workstream.
 
 ## Planned Next Step
 
-Finish the isolated real Codex upgrade/rollback check and user/contributor
-instructions, review the final diff, rerun required checks for final changes,
-and push the reviewable feature branch. Owner opens and merges the GitHub PR.
+Owner reviews the pushed feature and opens its PR against `main`. Address review
+findings on this branch. Once the PR is otherwise ready to merge, perform the
+workflow finishing/archive changes and required checks, then the owner merges.
+Verify remote main contains the finished tree before declaring the workstream
+complete. Do not resume maintenance or cut a release.
 
 ## Validation And External State
 
-The implementation gate passed: 948 tests, 18 deselected, one existing xfail,
-mypy, source smoke, PEX construction and nine packaging tests. The focused
-new suite passed 31 cases, including Codex and an unrelated component through
-real CLI/configuration/acquisition/materialization with controlled Docker/GUI
-boundaries. Existing release fixtures remain passing.
+Final gate: `nox -s build` — 954 tests passed, 18 host-sensitive tests deselected,
+one existing xfail; mypy, source smoke, PEX construction and nine packaged tests.
+The focused channel/upgrade suite passes 37 cases. Earlier released-input fixtures
+remain passing. Whitespace and new documentation links passed; the root index's
+pre-existing absent five-in-a-row sample README remains unrelated.
 
-No open bugs are owned by this workstream; no mail was pending. The live Codex
-registry reported 0.155.1 available and yielded exact meta/platform package
-SHA-512 identities. An explicitly bounded real check is running in the isolated
-`devcapsule-src/dist/component-upgrades-smoke` fixture, with separate XDG trees
-and a tiny fixture IDE that reports Codex's executable version. It uses the
-already local pinned base and the freshly built local PEX. It does not touch the
-everyday checkout configuration, accounts or prior acceptance environments.
+Real ordinary-CLI fixture: Codex **0.153.4 → 0.155.1 → 0.153.4**, unchanged
+project lock, successful proposal export and `git apply --check`, and explicit
+return to following the recommendation. The tiny fixture IDE ran `codex --version`;
+no account or interactive IDE acceptance is claimed. Exact PEX identity and the
+boundary between that run and final source refinements are in the validation record.
 
-Git push is available. Owner GitHub PR creation/merge remains the delivery
-arrangement; no release is authorized.
+The isolated `devcapsule-src/dist/component-upgrades-smoke/` tree retains about
+654 MiB of artifacts/state and sanitized evidence. Its two canonical images are
+retained; no fixture container remains running. The pinned existing base and the
+owner's everyday checkout, accounts and previous environments were not changed.
+No uncommitted work is intentionally left. Git push is available; owner GitHub
+PR creation/merge remains the delivery arrangement.
 
 ## Open Threads
 
 ### Awaiting The Human
 
-None blocks implementation within the work order. The owner reviews the final
-feature/code. Project-management decides the complete v0.2.14 scope and release
-sequence; this workstream does not cut a release or resume maintenance.
+Owner feature/code/UX review and GitHub PR opening/merge. Authenticated agent use
+and full interactive IDE acceptance remain outside the bounded executable probe.
+Project-management owns the complete v0.2.14 scope and release sequence.
 
 ### Weighed And Unresolved
 
-- Exact CLI names, local version-set schema, typed channel interface and
-  bounded reminder policy are implementation choices within the work order.
-- Existing snapshot history is insufficient proof of rollback. Preserve exact
-  launched inputs and current consent while adding an operational recovery path.
-- Distribution availability, DevCapsule validation and local success are
-  distinct. Unvalidated selection must retain structural compatibility checks.
-- Reconcile canonical contracts with the owner's local-selection refinement;
-  preserve decision history. Do not reinterpret local upgrades as shared locks.
-- Executable rollback cannot undo vendor state migrations. Document the limit;
-  do not expand into automatic personal-state backup/restoration.
+No design question blocks review. Retention has no automatic pruning; manual
+removal of both artifacts and images can defeat offline recovery. Vendor state
+migrations are not reversible by executable rollback. Serialized configuration
+access remains required; the journal is not a general locking or power-loss
+solution. Other components explicitly explain their missing distribution channels.
 
 ### Deliberately Not Preserved
 
-No chat transcript was requested. The work order holds the task contract;
-illustrative command spellings are not frozen interfaces. Blog wording and
-maintenance triage are outside the feature deliverable.
+No chat transcript was requested. The work order, canonical decision, requirements,
+and validation record preserve the contract and evidence. Fixture account state
+was never created; transient display tokens are redacted from the retained log.
 
 ## Workstream Document Index
 
-- [Work order](../../work-orders/2026-09-21-component-upgrades.md): mandatory on resume; scope, user experience, invariants, evidence and finish criteria.
-- [Intake dispositions](intake-dispositions.md): decisions on received work.
-- [Intake instructions](intake/README.md): how other workstreams deliver mail.
+- [Work order](../../work-orders/2026-09-21-component-upgrades.md): scope and finish criteria.
+- [User guide](../../../docs/guides/component-upgrades.md): ordinary CLI journey and limits.
+- [D-0010](../../decisions/product/d-0010-developer-owned-version-sets.md): owner decision and historical refinements.
+- [R-UPGRADE-001](../../requirements/product/r-upgrade-001-component-version-sets.md): canonical contract.
+- [Channel/implementation contract](../../implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md): contributor interface and ownership/recovery mechanisms.
+- [Validation record](../../implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md): observed real run, tests, limits and reproduction.
+- [Intake dispositions](intake-dispositions.md): received-work decisions.
+- [Intake instructions](intake/README.md): mail delivery.

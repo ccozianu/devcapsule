@@ -15,11 +15,13 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tarfile
 import tomllib
 
-from devcapsule.configuration.documents import render_document
+from devcapsule.configuration.documents import re
+import shutilnder_document
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
@@ -32,6 +34,8 @@ def main() -> None:
     args = parser.parse_args()
     root = args.root.resolve()
     root.mkdir(parents=True, exist_ok=False)
+    selected_pex = root / "devcapsule-under-test.pex"
+    shutil.copy2(args.pex.resolve(), selected_pex)
     project = root / "project"
     config = project / ".devcapsule"
     config.mkdir(parents=True)
@@ -59,7 +63,7 @@ def main() -> None:
     original = lock_path.read_bytes()
     log = root / "commands.log"
     def run(*command: str) -> str:
-        result = subprocess.run([str(args.pex.resolve()), "project", "--path", str(project), *command],
+        result = subprocess.run([str(selected_pex), "project", "--path", str(project), *command],
                                 env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=300)
         # Display session tokens are transient secrets; keep them out of evidence.
         output = re.sub(r"token=[^\s&]+", "token=REDACTED", result.stdout)
@@ -92,7 +96,7 @@ def main() -> None:
     run("versions", "follow-project", "--apply")
     assert lock_path.read_bytes() == original
     evidence = {"baseline": first, "candidate": second, "rollback": third,
-                "project-lock-unchanged": True, "pex-sha256": hashlib.sha256(args.pex.read_bytes()).hexdigest(),
+                "project-lock-unchanged": True, "pex-sha256": hashlib.sha256(selected_pex.read_bytes()).hexdigest(),
                 "scope": "Real Codex --version through ordinary launch; fixture IDE, no accounts or interactive IDE acceptance."}
     (root / "result.json").write_text(json.dumps(evidence, indent=2) + "\n")
     print(json.dumps(evidence, indent=2))

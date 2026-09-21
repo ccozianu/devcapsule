@@ -122,6 +122,21 @@ python -m piptools compile --strip-extras pyproject.toml --output-file requireme
 python -m piptools compile --strip-extras --extra dev pyproject.toml --output-file dev-requirements.txt
 ```
 
+## Component Version Sets
+
+The v0.2.14 development CLI supports checkout-local component upgrades:
+`devcapsule project versions show`, `check`, `preview COMPONENT VERSION`,
+`select PREVIEW_ID`, `history`, `rollback`, `follow-project`, and `propose PATH`.
+See [the practical upgrade and recovery guide](../docs/guides/component-upgrades.md).
+Local choices preserve a complete version set without changing the committed
+project lock. Only successful ordinary launches become known-good; rollback
+preserves current host permissions and personal state.
+
+Contributors adding a component must supply a distribution channel or document
+why one is omitted. The [channel contract and implementation](../engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)
+describes the typed interface, exact acquisition, validation evidence and tests.
+Codex is the first real channel; no generic upgrade logic names it specially.
+
 ## Distribution Version
 
 The Python distribution version is advanced only by an explicit developer

@@ -22,7 +22,7 @@ def channel(monkeypatch):
     meta = {"name": "@example/tool", "version": "2.0.0", "engines": {"node": ">=16"},
             "optionalDependencies": {"@example/tool-linux-x64": "npm:@example/tool@2.0.0-linux-x64"},
             "dist": {"tarball": "https://registry.npmjs.org/tool.tgz", "integrity": "sha512-" + base64.b64encode(b"x" * 64).decode()}}
-    binary = {"name": "@example/tool", "version": "2.0.0-linux-x64", "dist": deepcopy(meta["dist"])}
+    binary = {"name": "@example/tool", "version": "2.0.0-linux-x64", "os": ["linux"], "cpu": ["x64"], "dist": deepcopy(meta["dist"])}
     docs = {"": {"dist-tags": {"latest": "2.0.0"}, "versions": {"2.0.0": meta}}, "latest": meta, "2.0.0-linux-x64": binary}
     monkeypatch.setattr(channel, "_metadata", lambda version="": deepcopy(docs[version]))
     return channel, docs
@@ -53,7 +53,7 @@ def test_labels_pin_exact_packages_and_status_is_independent_of_validation(chann
         adapter.select("latest", "other-platform")
 
 
-@pytest.mark.parametrize("change", ["engines", "version", "dependency", "url", "integrity", "binary", "dependencies"])
+@pytest.mark.parametrize("change", ["engines", "version", "dependency", "url", "integrity", "binary", "dependencies", "platform"])
 def test_malformed_or_new_structural_contract_refused(channel, change):
     adapter, docs = channel
     meta = docs["latest"]
@@ -69,6 +69,8 @@ def test_malformed_or_new_structural_contract_refused(channel, change):
         meta["dist"]["integrity"] = "sha1-old"
     elif change == "binary":
         docs["2.0.0-linux-x64"]["version"] = "3.0.0"
+    elif change == "platform":
+        docs["2.0.0-linux-x64"]["cpu"] = ["arm64"]
     elif change == "dependencies":
         meta["dependencies"] = {"unexpected": "latest"}
     with pytest.raises(CliError):

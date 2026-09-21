@@ -33,6 +33,9 @@ class VersionsCommand(Command):
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
+        if cls.name in {"select", "rollback", "follow-project"}:
+            parser.add_argument("--authorize", action="append", nargs=2, default=[], metavar=("NAME", "VALUE"),
+                                help="Answer a vendor acquisition question for the target set; never changes host permissions.")
         if cls.name == "preview":
             parser.add_argument("component")
             parser.add_argument("version", help="Exact version or channel label, resolved to immutable artifacts.")
@@ -57,13 +60,13 @@ class VersionsCommand(Command):
         elif cls.name == "preview":
             version_sets.preview(start, arguments.component, arguments.version)
         elif cls.name == "select":
-            version_sets.select(start, arguments.preview, unvalidated=arguments.unvalidated)
+            version_sets.select(start, arguments.preview, unvalidated=arguments.unvalidated, acquisitions=arguments.authorize)
         elif cls.name == "history":
             print(version_sets.history(start))
         elif cls.name == "rollback":
-            version_sets.rollback(start, arguments.identity, reacquire=arguments.reacquire)
+            version_sets.rollback(start, arguments.identity, reacquire=arguments.reacquire, acquisitions=arguments.authorize)
         elif cls.name == "follow-project":
-            version_sets.follow_project(start, apply=arguments.apply)
+            version_sets.follow_project(start, apply=arguments.apply, acquisitions=arguments.authorize)
         elif cls.name == "propose":
             print(version_sets.proposal(start, arguments.output))
         elif cls.name in {"dismiss", "defer"}:

@@ -21,6 +21,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Product documentation](docs/README.md)
 - [Your first DevCapsule session](docs/guides/first-session.md)
 - [Use your own project and add a coding agent](docs/guides/your-project.md)
+- [Try component upgrades and recover](docs/guides/component-upgrades.md)
 - [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
 - [Engineering documentation](engineering-docs/README.md)
 
@@ -44,6 +45,12 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-DOCS-002 Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
 - [R-SETTINGS-001 Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
+
+## Component Upgrades
+
+- [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
+
+- [Distribution channel contract and implementation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)
 
 ## Design Decisions
 
