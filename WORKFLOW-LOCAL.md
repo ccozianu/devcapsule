@@ -81,9 +81,25 @@ checkout needs from the machine, each with its justification: the Docker
 socket to run peer DevCapsule instances during the full test suite, host
 networking for host-bound development services, and development sudo. The
 *Coordination Baseline* in root `CURRENT-STATUS.md` records the hosting
-facts: the canonical repository, and that pull requests are opened and
-merged by the product owner because the agent environment has no GitHub API
-access.
+facts: the canonical repository and owner-operated pull-request delivery.
+The GitHub integration rules below govern agent access and the UI handoff.
+
+## GitHub Integration: Owner Through The UI
+
+Owner direction, 2026-09-21: agents use ordinary Git operations with the
+configured SSH remote for fetch and workstream-branch delivery. The `gh` CLI
+is not an available integration tool. All other GitHub integration is performed
+by the owner through the GitHub UI: opening/updating/merging pull requests,
+dispatching workflows, and changing repository or publication settings.
+
+This is the working arrangement even if a GitHub connector or API appears
+available. Do not probe `gh` availability or connector credentials, or attempt
+API-based integration, as part of delivery. Prepare and validate the concrete
+change, commit and push the workstream branch over SSH, then give the owner a
+concise UI handoff. A request to publish or integrate work follows this arrangement
+unless the owner explicitly changes it. Do not substitute a direct push to main
+for owner PR integration. Re-verify main through an SSH fetch after the owner
+reports the merge. Keep this rule until the owner explicitly changes it.
 
 ## Exceptions
 

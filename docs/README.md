@@ -10,6 +10,7 @@ No contributor setup or AI account is needed for that first exercise.
 | Use an existing repository or start a real project | [Use your own project](guides/your-project.md) |
 | Add Antigravity, Codex or Claude Code | [Add a coding agent](guides/your-project.md#add-a-coding-agent) |
 | Try or recover a component upgrade (v0.2.14 development client) | [Component version sets](guides/component-upgrades.md) |
+| Understand update signals, unknown status and service reliability | [Component freshness](guides/component-freshness.md) |
 | Use Windows | [WSL2: read before installing](guides/windows-wsl2.md) |
 | Return to work or recover a closed browser tab | [Stop and come back](guides/first-session.md#5-stop-and-come-back) |
 | Get past a failed step | [First-session troubleshooting](guides/first-session.md#if-something-gets-in-the-way) |

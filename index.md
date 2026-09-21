@@ -34,6 +34,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Root Requirement Records
 
 - [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
+- [R-UPGRADE-002 Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md)
 
 - [R-PRODUCT-001 Batteries-Included IDE Environments](engineering-docs/requirements/product/r-product-001-batteries-included-ide-environments.md)
 - [R-PRODUCT-002 Explicit Host Boundaries](engineering-docs/requirements/product/r-product-002-explicit-host-boundaries.md)
@@ -48,6 +49,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Component Upgrades
 
+- [How DevCapsule checks component freshness](docs/guides/component-freshness.md)
 - [Component status service contract and operations](component-status/README.md)
 
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)

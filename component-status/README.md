@@ -7,6 +7,10 @@ the interfaces those adapters read. The compatibility service helps installed
 clients explain failures without confusing unavailable metadata with healthy or
 unhealthy installed software.
 
+Start with [How DevCapsule checks component freshness](../docs/guides/component-freshness.md)
+for vendor sources, user decisions and the difference between available releases,
+support, security and observation age. This document is the operator runbook.
+
 ## Publication and stable addresses
 
 The **Component update status** GitHub Action runs daily, on relevant mainline
@@ -24,12 +28,29 @@ this branch. It does not deploy GitHub Pages or replace either existing website.
 No personal token, external server, release tag or change to `main` is needed.
 A denied publication fails visibly and leaves the previous feed in place.
 
-The feed expires after three days. A delayed/disabled schedule or stopped
-publisher therefore becomes visibly stale, not silently healthy. GitHub may
-delay scheduled runs or disable schedules in inactive public repositories;
+The feed expires after three days. Clients reject stale guidance, and readers
+can inspect the page's expiry timestamp; neither behavior alerts an operator.
+GitHub may delay scheduled runs or disable schedules in inactive public repositories;
 operators should watch the workflow and its artifact. See GitHub's
 [schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 and [workflow token permissions](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token).
+
+There is currently no independent monitor or verified owner notification route.
+A component probe failure is published as inconclusive and does **not** fail the
+action. A publication failure fails the action, but this alone does not ensure
+owner email; a job that never starts cannot report failure. The intended V1
+48-hour freshness objective, persistent-failure alerting and independent detection
+are accepted follow-up in
+[R-UPGRADE-002](../engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md).
+The current 72-hour expiry does not satisfy that operational objective.
+
+Until that follow-up is implemented, the owner must inspect action runs and the
+public resources manually. After merging this workflow to main, verify its first
+run and both public URLs; no separate action installation is needed. If the run
+does not start, inspect GitHub Actions settings and dispatch it through the UI.
+For a failed publication, inspect permissions/rules for the generated branch,
+repair through the UI, rerun and confirm the public timestamps and source revision.
+An uploaded artifact alone does not prove that publication succeeded.
 
 Keep the branch and v1 endpoint for all clients that use them. Additive fields
 are allowed. Do not change existing field meanings or add incompatible status
@@ -58,6 +79,12 @@ of them is needed; the initial job probes the current implementation only.
 Maintainers investigate failures and edit `advisories` through ordinary review.
 The initial policy has no diagnoses: all live sources responded during local
 validation. Do not publish hypothetical issues or unreleased fixes as facts.
+
+First distinguish a failed vendor response from a client/network or platform
+problem. Record the symptom and time, compare the public probe observation and
+retry as appropriate. HTTP success with an unexpected shape is still an
+inconclusive check. Do not diagnose a permanent interface change from one timeout.
+
 For a confirmed incident:
 
 1. Record the actual GitHub issue and its actionable workaround discussion.

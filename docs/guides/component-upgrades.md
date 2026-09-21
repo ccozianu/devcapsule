@@ -7,6 +7,9 @@ preparation/selection through this interface; other components explain their
 delivery limits. Base and IDE upgrade delivery and DevCapsule self-update remain
 separate work.
 
+For the meaning of freshness, support and unknown status, the six vendor sources,
+and current operational limits, read [How DevCapsule checks component freshness](component-freshness.md).
+
 ## When update checks fail
 
 `devcapsule project versions check` reads vendor release metadata. Those interfaces
