@@ -4,7 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; fixes merged; owner-requested pre-V1 positioning handoff prepared for project-management
+State: paused; fixes merged; owner-requested pre-V1 positioning handoff delivered to project-management
+
+Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
 Integration target: `main`
 
@@ -49,8 +51,9 @@ selected this correction ahead of general triage.
 including the owner's correction that Windows through WSL2 and Docker works;
 macOS is untested. The owner tentatively considers a blog entry and assigns
 that decision to project-management. Managed agent updates remain a high-priority
-owner concern, but making them a 0.2.14 gate has not been accepted. Mail delivery
-is the current handoff task; no blog publication is authorized.
+owner concern, but making them a 0.2.14 gate has not been accepted. Mail `2026-09-21-maintenance-pre-v1-adopter-story-and-blog-decision.md`
+was delivered on coordination at `8b90338f5cc4`, linking the assessment at
+`4185f16`. No blog publication is authorized.
 
 Acknowledged the workflow transition notice. Current main and the changed
 definition were read, mail was taken, and live publication is part of this
@@ -293,7 +296,10 @@ The implementation and earlier records delivery are integrated into remote
 `7d1df73` for the changed workflow definition before preparing the handoff. Mail retrieval found no maintenance mail;
 intake contains only its README. The new live list initially had no published
 workstream state, so the fetched mainline registry supplied the routing fallback.
-No mail was sent.
+The owner-requested project-management handoff was sent at `8b90338f5cc4`.
+The final mailbox check was empty. Required `nox -s build` passed: 917 tests,
+one existing xfail, 18 deselected, mypy and nine packaging tests. Assessment
+links and `git diff --check` passed. Log: `/tmp/maintenance-adopter-handoff-build.log`.
 
 ## Open Threads
 
