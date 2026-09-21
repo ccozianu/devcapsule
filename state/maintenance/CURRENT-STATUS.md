@@ -55,9 +55,10 @@ upgrade feature. Retired-outbox verification/deletion remains accepted follow-up
 The last completed gate passed 917 tests, one existing xfail, 18 deselected,
 mypy and nine packaging tests. The blog website build checked 19 pages and
 646 links/assets/anchors. The source tree has not changed in this rebase;
-only the merged records and coverage badge advanced. A new shared gate is
-running for the fresh-session work-order handoff, with results to be recorded
-by the selected new workstream. No source edits or container launches were
+only the merged records and coverage badge advanced. The fresh-session handoff gate also passed: 917 tests, one existing xfail,
+18 deselected, mypy, and nine packaging tests. The local validation artifact
+is `dist/devcapsule-local.pex`; the build deliberately did not replace the
+distributable PEX while documentation changes were uncommitted. No source edits or container launches were
 made for this transition. Mail retrieval found no maintenance mail.
 
 The stopped graphical successor and run-owned acceptance evidence are recorded
