@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; fixes merged; owner-requested pre-V1 positioning handoff delivered to project-management
+State: paused for owner blog review; bug triage proposal preserved for resumption
 
 Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
@@ -45,6 +45,29 @@ not closed or released. Severity and release targets remain untriaged. The owner
 selected this correction ahead of general triage.
 
 ## Current State
+
+2026-09-21 blog drafting: the owner explicitly requested turning the earlier
+adopter/contributor opinion into a blog entry for a friend's inquiry. This
+supersedes the earlier wait for project-management to decide whether to draft.
+The [blog draft](../../blog/2026-09-21-why-try-devcapsule-before-v1.md) emphasizes
+real work today, Windows through WSL2 and Docker, macOS as untested, and a
+polished WOW experience as the V1 ambition. It labels 0.2.14 as in preparation
+and managed updates as unfinished. The blog and repository indexes include it;
+no production deployment has been performed.
+
+Validation: website build/check passed (19 HTML pages and 646 local
+links/assets/anchors), including the new article. Required `nox -s build`
+passed (917 tests, one existing xfail, 18 deselected, mypy and nine packaging
+tests). `git diff --check` passed. Logs:
+`/tmp/maintenance-early-adopter-website.log` and
+`/tmp/maintenance-early-adopter-blog-build.log`. Final mailbox check was empty.
+
+The owner said the bug list makes sense and then asked to return to it later.
+The [proposed triage](2026-09-21-note-proposed-bug-triage.md) preserves all 14
+ratings/dispositions and the current `run-image` host-network finding. Bug
+frontmatter and release targets remain unchanged. No new containers were
+launched for triage.
+
 
 2026-09-21 owner-requested positioning handoff: saved the
 [pre-V1 adopter/contributor assessment](2026-09-21-note-pre-v1-adopter-and-contributor-case.md),
@@ -277,11 +300,11 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Project-management decides whether and when to turn the delivered assessment
-into a blog entry or adopter invitation. In maintenance's next selected slice,
-reconcile the two fixed records with merged implementation and live-use
-acceptance, triage remaining bugs, and finish retired-outbox cleanup. Broader
-configuration coverage and the 0.2.14 update-feature gate remain undecided.
+Owner reviews the requested blog draft. Then resume the saved bug triage,
+apply the settled ratings/dispositions, and pause maintenance for
+project-management to shape 0.2.14. The owner has not decided whether managed
+agent updates gate that release. Retired-outbox cleanup remains accepted
+follow-up work after the owner-selected slice.
 
 ## External State And Risks
 
@@ -305,11 +328,11 @@ links and `git diff --check` passed. Log: `/tmp/maintenance-adopter-handoff-buil
 
 ### Awaiting The Product Owner
 
-- Project-management decides on the tentative blog and adopter invitation.
-  The owner has not decided whether managed updates gate 0.2.14. Successful
-  live use is owner-reported; exact host configuration bytes remain unavailable.
-- Severity/release triage for the remaining queue, including ownership of fixes
-  from workstreams approaching closure.
+- Owner review of the requested blog draft; production publication remains
+  separate. Resume the saved bug triage afterward. Managed updates as a
+  0.2.14 gate remain undecided. Exact host configuration bytes are unavailable.
+- Apply the reviewed severity/disposition proposal when the owner resumes it;
+  project-management then shapes release scope and sequencing.
 
 ### Weighed And Unresolved
 
@@ -336,6 +359,8 @@ implementation evidence.
 ## Workstream Document Index
 
 - this status file;
+- [proposed bug triage](2026-09-21-note-proposed-bug-triage.md): open when resuming severity/disposition review; not yet applied;
+- [early-adopter blog draft](../../blog/2026-09-21-why-try-devcapsule-before-v1.md): open for owner editorial review; permanent blog location, not deployed;
 - [pre-V1 adopter/contributor assessment](2026-09-21-note-pre-v1-adopter-and-contributor-case.md): open for the owner-requested project-management/blog decision;
 - [upgrade recovery contract](upgrade-recovery-contract.md);
 - [configuration lifecycle contract](configuration-contract.md);
