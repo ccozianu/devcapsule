@@ -187,7 +187,11 @@ def test_project_resolve_registers_default_checkout_and_list_uses_registry(
 def test_named_checkout_registration_selects_distinct_record_and_reports_missing(
     tmp_path: Path,
     capsys,
+    monkeypatch,
 ) -> None:
+    # The launcher fixture owns this cwd; do not select the enclosing dogfood
+    # capsule's actual project when exercising the global list command.
+    monkeypatch.chdir(tmp_path)
     first = tmp_path / "first"
     second = tmp_path / "second"
     first.mkdir()
@@ -230,7 +234,8 @@ def test_named_checkout_registration_selects_distinct_record_and_reports_missing
         assert "missing" in output
 
 
-def test_project_list_does_not_scan_unregistered_source_trees(tmp_path: Path, capsys) -> None:
+def test_project_list_does_not_scan_unregistered_source_trees(tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
     project = tmp_path / "unregistered"
     project.mkdir()
     config_home = tmp_path / "config"

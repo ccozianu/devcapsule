@@ -21,6 +21,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Product documentation](docs/README.md)
 - [Your first DevCapsule session](docs/guides/first-session.md)
 - [Use your own project and add a coding agent](docs/guides/your-project.md)
+- [Try component upgrades and recover](docs/guides/component-upgrades.md)
 - [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
 - [Engineering documentation](engineering-docs/README.md)
 
@@ -31,6 +32,9 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Website-owned backlog and producer dependencies](website/BACKLOG.md)
 
 ## Root Requirement Records
+
+- [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
+- [R-UPGRADE-002 Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md)
 
 - [R-PRODUCT-001 Batteries-Included IDE Environments](engineering-docs/requirements/product/r-product-001-batteries-included-ide-environments.md)
 - [R-PRODUCT-002 Explicit Host Boundaries](engineering-docs/requirements/product/r-product-002-explicit-host-boundaries.md)
@@ -43,7 +47,18 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-SETTINGS-001 Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
 
+## Component Upgrades
+
+- [How DevCapsule checks component freshness](docs/guides/component-freshness.md)
+- [Component status service contract and operations](component-status/README.md)
+
+- [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
+
+- [Distribution channel contract and implementation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)
+
 ## Design Decisions
+
+- [D-0010 Developer-Owned Component Version Sets And Recovery](engineering-docs/decisions/product/d-0010-developer-owned-version-sets.md)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)
@@ -62,6 +77,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Component upgrades and recoverable version sets](engineering-docs/work-orders/2026-09-21-component-upgrades.md)
+
 - [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)
 
 ## Workstream Status
@@ -70,6 +87,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Recursive dogfood E2E successful archive](engineering-docs/archive/2026-08-06-recursive-e2e/CURRENT-STATUS.md)
 - [Project management current status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md)
 - [Workflow improvements current status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md)
+- [Component upgrades current status](engineering-docs/wip/2026-09-21-component-upgrades/CURRENT-STATUS.md)
 - [Maintenance current status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md)
 - [Sample demo projects current status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md)
 - [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)

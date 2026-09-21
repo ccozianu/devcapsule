@@ -12,6 +12,10 @@ superseded-by:
 
 # D-0008: Known-Good Checkout Configuration History
 
+Component upgrade refinement, 2026-09-21: [D-0010](d-0010-developer-owned-version-sets.md)
+records the owner's complete local version-set selection and operational software
+recovery direction. The accepted historical text below is preserved.
+
 ## Context
 
 A checkout's configuration — the developer-authored

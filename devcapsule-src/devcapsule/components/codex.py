@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from devcapsule.compat import CliError
+from devcapsule.components.npm_channel import NpmChannel
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
 from devcapsule.components import (
     ComponentDefinition,
@@ -68,6 +69,9 @@ use_legacy_landlock = true
 
 class CodexComponent(ComponentDefinition):
     """Trusted Codex component implementation."""
+
+    def distribution_channel(self) -> NpmChannel:
+        return NpmChannel(CODEX_PACKAGE, {"linux-amd64": "@openai/codex-linux-x64"})
 
     @property
     def id(self) -> str:

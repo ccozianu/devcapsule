@@ -7,6 +7,8 @@ slots mean.
 
 from __future__ import annotations
 
+from devcapsule.components.discovery import JetBrainsDiscovery
+
 from collections.abc import Mapping
 
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
@@ -20,6 +22,12 @@ from devcapsule.components import (
 
 class PyCharmComponent(ComponentDefinition):
     """Trusted PyCharm component implementation."""
+
+    def discovery_channel(self) -> JetBrainsDiscovery:
+        return JetBrainsDiscovery()
+
+    def channel_omission_reason(self) -> str:
+        return 'IDE upgrades are outside the component-upgrade slice.'
 
     @property
     def id(self) -> str:

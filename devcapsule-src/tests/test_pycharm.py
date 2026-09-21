@@ -1300,3 +1300,34 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
     assert url.startswith(f"http://127.0.0.1:{port}/vnc.html?autoconnect=1&resize=remote&path=websockify%3Ftoken%3D")
     captured = capsys.readouterr()
     assert f"Contained display: {url}" in captured.err
+
+
+def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_only(tmp_path):
+    import json
+    from devcapsule.runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
+    project = tmp_path / "project"
+    project.mkdir()
+    records = tmp_path / "records"
+    records.mkdir()
+    document = {"format": 1, "launcher-root": str(project), "runtime-root": "/workspace/project",
+                "checkout-file": "devcapsule.checkout.toml", "running": {"identity": "captured-at-launch"}}
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = build_run_config(PycharmRunOptions(
+        project=project, project_mount="/workspace/project", docker_mode=DockerMode.none,
+        runtime_plan=external_runtime_plan(), use_image_process=True,
+        launch_configuration=LaunchConfiguration(records, document),
+    ), env)
+    with patch("devcapsule.launch.pycharm._launcher.write_xauthority"), patch("devcapsule.launch.pycharm._launcher.write_user_files"):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.launch_context_file is not None
+        assert files.launch_context_file.stat().st_mode & 0o777 == 0o600
+        assert json.loads(files.launch_context_file.read_text()) == document
+        args = build_docker_args(config, files, env)
+        assert f"type=bind,src={records},dst={CONFIGURATION_PATH},ro" in args
+        assert f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro" in args
+        assert not any("src=" + str(records / "devcapsule.checkout.toml") in arg for arg in args)
+    finally:
+        cleanup_temp_runtime_files(files)
+    assert not files.launch_context_file.exists()

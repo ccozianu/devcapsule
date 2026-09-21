@@ -11,7 +11,7 @@ from urllib.parse import quote
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 
 from .authorization import locked_base_reference
-from .documents import Artifact, ProjectConfigurationError, admit_document, table
+from .documents import Artifact, ProjectConfigurationError, admit_document, table, selected_version_lock, render_document
 from .manifest import validate_manifest
 from .nodes import build_node_registry
 
@@ -63,6 +63,7 @@ def load_toml(path: Path) -> dict[str, Any]:
 
 
 def load_checkout(path: Path, manifest: Mapping[str, Any], root: Path) -> dict[str, Any]:
+    recover_activation(path)
     document = load_toml(path)
     admit_document(document, Artifact.checkout, path)
     recorded = table(document, "checkout").get("path")
@@ -238,7 +239,7 @@ def manifest_for(project: Path) -> tuple[Path, dict[str, Any]]:
     return root, value
 
 
-def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
+def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
     """Load the committed platform lock for this host's platform.
 
     The lock is the project-side record of one resolution: the version set and
@@ -277,3 +278,61 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
     # Every public consumer gets the same unambiguous vocabulary.
     build_node_registry(manifest, value)
     return path, value
+
+
+def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
+    """Effective software selection, independently of current host decisions."""
+    record = find_checkout_record(manifest, root)
+    if record is not None:
+        checkout = load_checkout(record, manifest, root)
+        selected = selected_version_lock(checkout)
+        if selected is not None:
+            if selected.get("platform") != str(Platform.current()):
+                raise ProjectConfigurationError("Local version set is for another platform; follow the project explicitly.")
+            locked_base_reference(selected)
+            build_node_registry(manifest, selected)
+            return root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock", selected
+    return recommendation_lock_for(root, manifest)
+
+
+def recover_activation(input_path: Path) -> None:
+    """Finish or undo an interrupted two-file activation under serialized access.
+
+    Checkout replacement is the commit point. No old authorization snapshot is
+    used after the transaction: a later edit that differs from both endpoints
+    causes refusal, never resurrection of a historical permission.
+    """
+    journal = input_path.with_suffix(".activation.toml")
+    if not journal.exists():
+        return
+    transaction = load_toml(journal)
+    current = input_path.read_text()
+    if current == transaction["after-checkout"]:
+        resolution = transaction["after-resolution"]
+    elif current == transaction["before-checkout"]:
+        resolution = transaction["before-resolution"]
+    else:
+        raise ProjectConfigurationError(f"Interrupted activation conflicts with a later edit; inspect {journal}. No choices were replaced.")
+    atomic_write(resolved_record_path(input_path), resolution)
+    journal.unlink()
+
+
+def activate_configuration(input_path: Path, checkout: Mapping[str, Any], resolution: Mapping[str, Any]) -> None:
+    """Publish a prepared choice and its derived plan recoverably."""
+    recover_activation(input_path)
+    output = resolved_record_path(input_path)
+    journal = input_path.with_suffix(".activation.toml")
+    transaction = {
+        "before-checkout": input_path.read_text(),
+        "before-resolution": output.read_text() if output.exists() else "",
+        "after-checkout": render_document(checkout),
+        "after-resolution": render_document(resolution),
+    }
+    atomic_write(journal, render_document(transaction))
+    try:
+        atomic_write(output, transaction["after-resolution"])
+        atomic_write(input_path, transaction["after-checkout"])
+    except OSError:
+        recover_activation(input_path)
+        raise
+    journal.unlink()

@@ -17,6 +17,10 @@ superseded-by:
 
 # D-0001: Capability-First CLI Model
 
+Component upgrade refinement, 2026-09-21: [D-0010](d-0010-developer-owned-version-sets.md)
+records the owner's complete local version-set selection and operational software
+recovery direction. The accepted historical text below is preserved.
+
 ## Context
 
 DevCapsule currently asks users to pick a product configuration by name:

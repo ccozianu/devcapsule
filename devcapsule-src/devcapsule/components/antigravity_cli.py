@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from devcapsule.components.discovery import AntigravityDiscovery
 from devcapsule.compat import CliError
 from devcapsule.components import (
     AcquisitionContract,
@@ -41,6 +42,12 @@ ANTIGRAVITY_TERMS_URL = "https://antigravity.google/terms/"
 
 class AntigravityCliComponent(ComponentDefinition):
     """Antigravity CLI acquired directly from Google during local materialization."""
+
+    def discovery_channel(self) -> AntigravityDiscovery:
+        return AntigravityDiscovery()
+
+    def channel_omission_reason(self) -> str:
+        return 'A checksum-pinned distribution adapter has not been implemented.'
 
     @property
     def id(self) -> str:

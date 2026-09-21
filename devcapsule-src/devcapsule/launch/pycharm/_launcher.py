@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import grp
+import json
 import os
 import pwd
 import re
@@ -50,6 +51,7 @@ from ...host_open import (
     host_open_bridge,
 )
 from ...materialization import RUNTIME_PLAN_PATH
+from ...runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
 from ...project import ProjectMountError
 from ...runtime import (
     plan_shared_runtime,
@@ -98,6 +100,7 @@ class TempRuntimeFiles:
     token_file: Path | None = None
     runtime_plan_file: Path | None = None
     display_token_file: Path | None = None
+    launch_context_file: Path | None = None
 
 
 SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
@@ -143,6 +146,7 @@ class PycharmRunOptions:
     network_mode: str = "host"
     memory_limit_bytes: int | None = None
     runtime_plan: RuntimePlan | None = None
+    launch_configuration: LaunchConfiguration | None = None
     use_image_process: bool = False
     # When non-empty, the interactive surface's state comes from these
     # runtime-plan-declared slot mounts and the named PyCharm state fields
@@ -198,6 +202,7 @@ class PycharmRunConfig:
     memory_limit_bytes: int | None
     runtime_plan: RuntimePlan | None
     use_image_process: bool
+    launch_configuration: LaunchConfiguration | None = None
     host_browser_socket: Path | None = None
     display_transport: str = HOST_X11_DISPLAY_TRANSPORT
     # Contained display only: the host loopback port Docker publishes (or the
@@ -421,6 +426,12 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         raise PycharmRunError(str(exc)) from exc
 
     project = runtime_plan.project
+    if options.launch_configuration is not None:
+        snapshot = options.launch_configuration
+        if (snapshot.document.get("launcher-root") != str(project)
+                or snapshot.document.get("runtime-root") != runtime_plan.project_mount
+                or not snapshot.directory.is_dir()):
+            raise PycharmRunError("Launch configuration must describe this project's host and runtime paths and an existing configuration directory.")
     if not project.is_dir():
         raise PycharmRunError(f"Project directory does not exist: {project}")
 
@@ -671,6 +682,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         network_mode=options.network_mode,
         memory_limit_bytes=options.memory_limit_bytes,
         runtime_plan=selected_runtime_plan,
+        launch_configuration=options.launch_configuration,
         use_image_process=options.use_image_process,
         host_browser_socket=host_browser_socket,
         display_transport=options.display_transport,
@@ -915,6 +927,13 @@ def build_docker_args(
                 f"type=bind,src={files.runtime_plan_file},dst={RUNTIME_PLAN_PATH},ro",
             ]
         )
+    if config.launch_configuration is not None:
+        if files.launch_context_file is None:
+            raise PycharmRunError("Project launch requires its captured configuration context.")
+        args.extend([
+            "--mount", f"type=bind,src={config.launch_configuration.directory},dst={CONFIGURATION_PATH},ro",
+            "--mount", f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro",
+        ])
     if config.git_user_name:
         args.extend(["--env", f"GIT_USER_NAME={config.git_user_name}"])
     if config.git_user_email:
@@ -1177,6 +1196,10 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
             files.runtime_plan_file = make_temp(runtime_parent, "devcapsule-runtime-plan.")
             files.runtime_plan_file.write_text(config.runtime_plan.to_json() + "\n", encoding="utf-8")
             files.runtime_plan_file.chmod(0o644)
+        if config.launch_configuration is not None:
+            files.launch_context_file = make_temp(runtime_parent, "devcapsule-launch-context.")
+            files.launch_context_file.write_text(json.dumps(config.launch_configuration.document) + "\n", encoding="utf-8")
+            files.launch_context_file.chmod(0o600)
         return files
     except BaseException:
         cleanup_temp_runtime_files(files)
@@ -1355,6 +1378,7 @@ def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
         files.token_file,
         files.runtime_plan_file,
         files.display_token_file,
+        files.launch_context_file,
     ]:
         if path:
             path.unlink(missing_ok=True)

@@ -52,6 +52,28 @@ and before integration. The [developer brief](DEVELOPING.md) describes the
 environment, the individual sessions, and the host-sensitive end-to-end runs
 that are not part of the gate.
 
+## Reasoning And Code Navigation
+
+Start with the behavior's contract: ownership, inputs, preconditions, invariants
+and postconditions. State what is known and the specific uncertainty the next
+code read must resolve. Navigate from the responsible entry point through its
+types, imports and calls, reading enough surrounding implementation to understand
+the behavior. Use direct file navigation and exact-name lookup where needed.
+
+Use regular-expression searches only as a last resort, when reasoned navigation
+and literal lookup cannot locate the relevant implementation. Explain that gap
+before searching. Search matches are navigation aids, never evidence that a
+contract is satisfied; do not substitute repeated pattern searches for reasoning.
+
+## Component Status Publication Ref
+
+`component-status` is a project-owned generated publication branch. The
+`component-status.yml` action may create and advance it through fast-forward
+commits containing the compatibility feed and GitHub-rendered status page.
+It is never selected as an editing workstream, merged into main, or force-pushed.
+Authored policy and implementation follow ordinary workstream PR delivery.
+See [service operations](component-status/README.md).
+
 ## Host Capabilities
 
 The `[host.*]` tables in `.devcapsule/devcapsule.toml` declare what this
@@ -59,9 +81,25 @@ checkout needs from the machine, each with its justification: the Docker
 socket to run peer DevCapsule instances during the full test suite, host
 networking for host-bound development services, and development sudo. The
 *Coordination Baseline* in root `CURRENT-STATUS.md` records the hosting
-facts: the canonical repository, and that pull requests are opened and
-merged by the product owner because the agent environment has no GitHub API
-access.
+facts: the canonical repository and owner-operated pull-request delivery.
+The GitHub integration rules below govern agent access and the UI handoff.
+
+## GitHub Integration: Owner Through The UI
+
+Owner direction, 2026-09-21: agents use ordinary Git operations with the
+configured SSH remote for fetch and workstream-branch delivery. The `gh` CLI
+is not an available integration tool. All other GitHub integration is performed
+by the owner through the GitHub UI: opening/updating/merging pull requests,
+dispatching workflows, and changing repository or publication settings.
+
+This is the working arrangement even if a GitHub connector or API appears
+available. Do not probe `gh` availability or connector credentials, or attempt
+API-based integration, as part of delivery. Prepare and validate the concrete
+change, commit and push the workstream branch over SSH, then give the owner a
+concise UI handoff. A request to publish or integrate work follows this arrangement
+unless the owner explicitly changes it. Do not substitute a direct push to main
+for owner PR integration. Re-verify main through an SSH fetch after the owner
+reports the merge. Keep this rule until the owner explicitly changes it.
 
 ## Exceptions
 
