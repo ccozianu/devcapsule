@@ -4,7 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating; owner reports successful live use; branch prepared for owner GitHub merge
+State: paused; fixes merged; owner-requested pre-V1 positioning handoff delivered to project-management
+
+Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
 Integration target: `main`
 
@@ -24,10 +26,9 @@ Workstream* in `WORKFLOW.md`.
 
 ## Branch Association
 
-Current branch: `ws-maintenance/triage`, synchronized by a clean merge with
-remote `main` at `4b186bb` on 2026-09-21. The previous records delivery landed
-through PR #116. The merged workflow retires the outbox; current records are
-published with `devcapsule workflow publish`.
+Current branch: `ws-maintenance/triage`, fast-forwarded to `origin/main` at
+`7d1df73` on 2026-09-21. PR #117 merged the fixes at `d2386bb`; no maintenance
+implementation commits remain unintegrated. Live records use `workflow publish`.
 
 ## Adoption Exception
 
@@ -44,6 +45,22 @@ not closed or released. Severity and release targets remain untriaged. The owner
 selected this correction ahead of general triage.
 
 ## Current State
+
+2026-09-21 owner-requested positioning handoff: saved the
+[pre-V1 adopter/contributor assessment](2026-09-21-note-pre-v1-adopter-and-contributor-case.md),
+including the owner's correction that Windows through WSL2 and Docker works;
+macOS is untested. The owner tentatively considers a blog entry and assigns
+that decision to project-management. Managed agent updates remain a high-priority
+owner concern, but making them a 0.2.14 gate has not been accepted. Mail `2026-09-21-maintenance-pre-v1-adopter-story-and-blog-decision.md`
+was delivered on coordination at `8b90338f5cc4`, linking the assessment at
+`4185f16`. No blog publication is authorized.
+
+Acknowledged the workflow transition notice. Current main and the changed
+definition were read, mail was taken, and live publication is part of this
+checkpoint. Remaining retired-outbox cleanup is accepted after this handoff;
+check that every record landed before deleting any ref. No further workstream
+is selected by this acceptance.
+
 
 2026-09-21 integration handoff: the owner reports that we are now running with
 the fixes and that they worked well, and explicitly requests a branch push for
@@ -260,11 +277,11 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Owner opens/merges `ws-maintenance/triage` into `main` on GitHub. After that,
-fetch and verify the finished tree on remote main, then reconcile the two fixed
-bug records with the recorded live-use acceptance. Remaining configuration
-coverage partitions and maintenance queue prioritization are separate follow-up
-slices; they do not block this owner-requested integration. No release is claimed.
+Project-management decides whether and when to turn the delivered assessment
+into a blog entry or adopter invitation. In maintenance's next selected slice,
+reconcile the two fixed records with merged implementation and live-use
+acceptance, triage remaining bugs, and finish retired-outbox cleanup. Broader
+configuration coverage and the 0.2.14 update-feature gate remain undecided.
 
 ## External State And Risks
 
@@ -274,19 +291,23 @@ workspaces. That preliminary run launched no successor; the subsequent graphical
 now retains its stopped successor and owned state after accepted normal GUI exit. The existing `devcapsule-src/.venv`
 also ran 290 focused tests and built the revision-bearing local contributor PEX
 recorded above; it is not a published release artifact.
-The implementation is not yet integrated into remote `main`; the owner opens and
-merges the PR. Its earlier records-only delivery has landed. Main was fetched at
-`4b186bb` and merged without conflicts. Mail retrieval found no maintenance mail;
+The implementation and earlier records delivery are integrated into remote
+`main`; PR #117 is verified at `d2386bb`. This checkout fast-forwarded to
+`7d1df73` for the changed workflow definition before preparing the handoff. Mail retrieval found no maintenance mail;
 intake contains only its README. The new live list initially had no published
 workstream state, so the fetched mainline registry supplied the routing fallback.
-No mail was sent.
+The owner-requested project-management handoff was sent at `8b90338f5cc4`.
+The final mailbox check was empty. Required `nox -s build` passed: 917 tests,
+one existing xfail, 18 deselected, mypy and nine packaging tests. Assessment
+links and `git diff --check` passed. Log: `/tmp/maintenance-adopter-handoff-build.log`.
 
 ## Open Threads
 
 ### Awaiting The Product Owner
 
-- GitHub PR review/merge remains with the owner. Successful live use is now
-  owner-reported; exact host configuration bytes remain unavailable here.
+- Project-management decides on the tentative blog and adopter invitation.
+  The owner has not decided whether managed updates gate 0.2.14. Successful
+  live use is owner-reported; exact host configuration bytes remain unavailable.
 - Severity/release triage for the remaining queue, including ownership of fixes
   from workstreams approaching closure.
 
@@ -307,12 +328,15 @@ No mail was sent.
 
 ### Deliberately Not Preserved
 
-No transcript was requested. The contract, correctness case map, tests, bug
-records and this checkpoint retain the consequential decisions and evidence.
+No verbatim transcript was requested. The owner explicitly requested saving
+the adopter/contributor opinion; the linked assessment preserves that discussion
+and the Windows correction. The contract, tests and bug records retain the
+implementation evidence.
 
 ## Workstream Document Index
 
 - this status file;
+- [pre-V1 adopter/contributor assessment](2026-09-21-note-pre-v1-adopter-and-contributor-case.md): open for the owner-requested project-management/blog decision;
 - [upgrade recovery contract](upgrade-recovery-contract.md);
 - [configuration lifecycle contract](configuration-contract.md);
 - [configuration correctness and test map](configuration-correctness.md);

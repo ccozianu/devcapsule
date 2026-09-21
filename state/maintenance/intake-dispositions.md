@@ -8,3 +8,4 @@ undispositioned, or listed below, meaning resolved. Never both, never neither.
 
 | Item | Dispositioned | Outcome | Note |
 |---|---|---|---|
+| `2026-09-21-workflow-improvements-definition-changed-please-publish.md` | 2026-09-21 | acknowledged | Fast-forwarded to main, read changed definition, took mail; publish at this checkpoint. Retired-outbox verification/deletion accepted after the owner-requested positioning handoff. |
