@@ -32,6 +32,7 @@ published: a GitHub-backed site or an account-storage-backed one.
 
 ## Entries
 
+- [Why give DevCapsule a spin before V1?](2026-09-21-why-try-devcapsule-before-v1.md) — invitation to early adopters and contributors; draft for owner review.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — Astra's account of the website experiment; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](2026-09-19-lessons-learned-in-ai-autonomy.md) — website experiment retrospective; draft awaiting owner editorial review.
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](2026-09-06-when-should-a-tool-refuse.md)
