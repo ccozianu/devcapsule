@@ -212,8 +212,12 @@ remain understood as synonyms for one release and are then retired.
   is the project's status file. Not the workstream list, and not a bug's
   status. The older name was "handoff".
 - **Open-work directory**: `engineering-docs/wip/<start-date>-<name>/`,
-  holding a workstream's status file, intake, decision log, and temporary
-  documents. The directory keeps its short name `wip`.
+  holding a workstream's status file, intake, decision log, and dated
+  documents by kind; see *The Open-Work Directory*. The directory keeps its
+  short name `wip`.
+- **Record**: a dated document under the open-work directory holding history
+  shed from the status file, a checkpoint, or a custody account. Read for
+  retrospection, never required for work.
 - **Archive**: `engineering-docs/archive/<start-date>-<name>/`, where an ended
   workstream's directory moves unchanged.
 - **Intake**: a workstream's `intake/` directory on its working branch, the
@@ -312,6 +316,10 @@ There is no 0.2.13. Rules changed since 0.2.12:
   table names the definition, its version, and the mode; the frontmatter of
   this file carries the same version. Migration: add the table; a definition
   refresh writes it.
+- **The open-work directory has a fixed shape.** *The Open-Work Directory*:
+  a bounded status file that sheds history into dated records, dated
+  documents by kind, and an index that says when to open each. No
+  migration: existing documents keep their names; new ones follow the form.
 - **Coordination leaves `main`'s pull-request queue.** *The Coordination
   Branch*: intake items travel one shared `coordination` branch on the
   remote, sent and taken with `devcapsule workflow mail`, and are decided on
@@ -819,6 +827,37 @@ branch. Existing branches that predate adoption require an explicit migration
 exception in their workstream status. An inactive legacy branch does not become
 an open workstream merely because the ref still exists; register and associate
 its continuation on `main` before committing new work to it.
+
+### The Open-Work Directory
+
+`engineering-docs/wip/<start-date>-<name>/` is everything a workstream keeps
+while it runs. Its contents are fixed in kind, so that a reader knows what to
+open and an agent knows what not to load:
+
+- **`CURRENT-STATUS.md`, the status file.** Bounded: what the workstream is,
+  its state and branch, what it is doing now, what is next, its open threads,
+  and an index of the directory's other documents. It is read in full at
+  every session start, so it stays short, roughly what a person reads in ten
+  minutes. Anything that has stopped changing leaves it.
+- **`intake/` and `intake-dispositions.md`**, the queue and the decision log.
+- **Dated documents**, `YYYY-MM-DD-<kind>-<slug>.md`, one per topic, opened
+  only when the task needs them. The kinds are **design**, a design
+  discussion or spike; **note**, evidence or analysis; and **record**, history
+  shed from the status file, a checkpoint, or a custody record. A project may
+  add kinds in its local workflow file. A living document with no date, such
+  as a backlog or a ledger, is allowed and is named for what it is.
+- Nothing else. Deliverable content never lives here; see *Publishing Before
+  Integration*.
+
+**The status file sheds history.** At each pause, and whenever a task's
+narrative is finished, its account moves verbatim into a dated record and the
+status file keeps one line pointing at it. What the status file says about the
+past is where to look, not what happened.
+
+**Every document is listed once, with when to open it**, in the status file's
+document index. The index is how a reader decides what to load; the documents
+are how a workstream's size stays out of every session's context. At
+conclusion the directory moves to `engineering-docs/archive/` unchanged.
 
 ### Selecting Work At Session Start
 

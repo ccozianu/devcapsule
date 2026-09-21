@@ -16,7 +16,9 @@ project's live state. In single-stream mode, `CURRENT-STATUS.md` is the active
 status file. In multiple-streams mode, it is the mainline workstream list: select the one
 workstream associated with the user's request and current branch, then read its
 `engineering-docs/wip/YYYY-MM-DD-NAME/CURRENT-STATUS.md` and `intake/`.
-Do not mix two workstreams' unfinished state in one checkout.
+Read that status file in full and open the documents its index lists only
+when the task needs them. Do not mix two workstreams' unfinished state in one
+checkout.
 
 After reading, tell the user that you understand the project and state the
 recorded next step before proceeding. Explicit user direction may reprioritize

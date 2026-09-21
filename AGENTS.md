@@ -147,8 +147,10 @@ rationale, and wait for a specific instruction. Returning is another change
 and requires another instruction. Treat a branch-to-list mismatch as
 invalid routing and stop rather than guessing.
 
-Pay special attention to the selected status file's current stage, current state,
-and planned next step. Then read any target-specific documents referenced
+Read the selected status file in full and open the documents its index lists
+only when the task needs them; see *The Open-Work Directory* in
+`WORKFLOW.md`. Pay special attention to the selected status file's current
+stage, current state, and planned next step. Then read any target-specific documents referenced
 there and any declared cross-workstream dependency needed for the selected
 slice.
 
