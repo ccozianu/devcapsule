@@ -65,6 +65,15 @@ and literal lookup cannot locate the relevant implementation. Explain that gap
 before searching. Search matches are navigation aids, never evidence that a
 contract is satisfied; do not substitute repeated pattern searches for reasoning.
 
+## Component Status Publication Ref
+
+`component-status` is a project-owned generated publication branch. The
+`component-status.yml` action may create and advance it through fast-forward
+commits containing the compatibility feed and GitHub-rendered status page.
+It is never selected as an editing workstream, merged into main, or force-pushed.
+Authored policy and implementation follow ordinary workstream PR delivery.
+See [service operations](component-status/README.md).
+
 ## Host Capabilities
 
 The `[host.*]` tables in `.devcapsule/devcapsule.toml` declare what this

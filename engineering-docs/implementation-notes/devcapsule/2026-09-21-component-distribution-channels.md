@@ -5,6 +5,21 @@ Decision: [D-0010](../../decisions/product/d-0010-developer-owned-version-sets.m
 
 ## Add a channel
 
+Read-only availability can precede installation support: definitions may override
+`discovery_channel()` with a `DiscoveryChannel` that implements only `check`.
+The default returns `distribution_channel()`. PyCharm, VSCodium, Claude Code,
+Antigravity CLI and PostgreSQL now use read-only vendor discovery; Codex retains
+its complete channel. Discovery-only candidates are visible in explicit checks
+but never offered as executable upgrade choices or preview reminders.
+
+`discovery_adapter_id()` identifies the shipped metadata contract independently
+of the CLI version. Override/bump it when changing parsing, endpoint or semantics
+so maintained diagnoses can address older adapters precisely. Generic check
+failures consult the fixed DevCapsule compatibility feed once per check and keep
+last-successful evidence. Backend probes use the same component declarations.
+The [service contract](../../../component-status/README.md) defines this maintained
+v1 API, publication and operator responsibilities.
+
 `ComponentDefinition.distribution_channel()` returns a trusted installed adapter
 implementing `DistributionChannel` in `components/channels.py`. No metadata
 response is executed as Python, shell or npm installer code.

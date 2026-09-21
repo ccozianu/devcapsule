@@ -1,0 +1,79 @@
+name: Component update status
+
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - component-status/**
+      - devcapsule-src/devcapsule/components/**
+      - devcapsule-src/devcapsule/component_status*.py
+      - .github/workflows/component-status.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: component-status
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'ccozianu/devcapsule' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read previous publication
+        shell: bash
+        run: |
+          if git ls-remote --exit-code origin refs/heads/component-status > "$RUNNER_TEMP/status-ref"; then
+            git fetch --depth=1 origin refs/heads/component-status
+            git rev-parse FETCH_HEAD > "$RUNNER_TEMP/status-parent"
+            git show FETCH_HEAD:compatibility-v1.json > "$RUNNER_TEMP/previous-status.json"
+          else
+            result=$?
+            if [ "$result" != 2 ]; then exit "$result"; fi
+          fi
+      - name: Probe vendors and generate feed and status page
+        working-directory: devcapsule-src
+        run: >-
+          python -m devcapsule.component_status_publisher
+          --policy ../component-status/policy-v1.json
+          --previous "$RUNNER_TEMP/previous-status.json"
+          --output "$RUNNER_TEMP/component-status"
+          --revision "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: component-status
+          path: ${{ runner.temp }}/component-status/
+          retention-days: 30
+      - name: Publish together without changing main or the website
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          export GIT_INDEX_FILE="$RUNNER_TEMP/component-status-index"
+          parent_args=()
+          if [ -f "$RUNNER_TEMP/status-parent" ]; then
+            parent=$(cat "$RUNNER_TEMP/status-parent")
+            git read-tree "$parent"
+            parent_args=(-p "$parent")
+          else
+            git read-tree --empty
+          fi
+          for name in compatibility-v1.json README.md; do
+            blob=$(git hash-object -w "$RUNNER_TEMP/component-status/$name")
+            git update-index --add --cacheinfo "100644,$blob,$name"
+          done
+          tree=$(git write-tree)
+          commit=$(git commit-tree "$tree" "${parent_args[@]}" -m "Refresh component discovery status")
+          git push origin "$commit:refs/heads/component-status"
+          cat "$RUNNER_TEMP/component-status/README.md" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "advisories": [],
+  "probes": [
+    {"component": "pycharm", "platform": "linux-amd64", "version": "2026.2.0.1"},
+    {"component": "codium", "platform": "linux-amd64", "version": "1.126.04524"},
+    {"component": "codex", "platform": "linux-amd64", "version": "0.153.4"},
+    {"component": "claude-code", "platform": "linux-amd64", "version": "2.1.261"},
+    {"component": "antigravity-cli", "platform": "linux-amd64", "version": "1.1.24"},
+    {"component": "postgresql-client", "platform": "linux-amd64", "version": "16"}
+  ]
+}

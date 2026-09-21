@@ -54,7 +54,8 @@ def materialize_v0262(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     return project, env
 
 
-def test_v0262_checkout_resumes_with_no_user_action(tmp_path: Path, capsys) -> None:
+def test_v0262_checkout_resumes_with_no_user_action(tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
     project, env = materialize_v0262(tmp_path)
     with patch.dict(os.environ, env, clear=False):
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0

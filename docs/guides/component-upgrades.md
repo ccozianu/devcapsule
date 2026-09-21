@@ -1,8 +1,34 @@
 # Try a component upgrade and recover
 
 Available in the v0.2.14 development client. Run these commands from your project
-checkout in a normal host terminal. Codex is the first component with an update
-channel; base and IDE upgrades and DevCapsule self-update are separate work.
+checkout in a normal host terminal. Update discovery covers PyCharm, VSCodium,
+Codex, Claude Code, Antigravity CLI and PostgreSQL client. Codex currently supports
+preparation/selection through this interface; other components explain their
+delivery limits. Base and IDE upgrade delivery and DevCapsule self-update remain
+separate work.
+
+## When update checks fail
+
+`devcapsule project versions check` reads vendor release metadata. Those interfaces
+can change independently of your installed DevCapsule version. When a check is
+inconclusive, DevCapsule also consults its maintained compatibility feed and
+[component status page](https://github.com/ccozianu/devcapsule/tree/component-status).
+It can identify a released CLI fix, or point to a known issue and workarounds.
+This restores guidance without changing your selected software.
+
+A failed check does not mean your component is healthy, unhealthy or current.
+The last successful result, when available, is labelled historical. If our
+status service is unavailable, cached guidance retains its original timestamp;
+expired metadata cannot recommend an upgrade. Without a matching current
+diagnosis, the CLI says status remains unknown. Ordinary offline launch still
+works. `--no-update-check` and noninteractive launch make no automatic status
+requests. The feed receives no project configuration or installed-version query.
+
+Updating DevCapsule to repair a check does not itself update the component.
+PostgreSQL is supplied by the pinned base: major-version support dates can be
+reported, but the current major-only lock cannot tell whether the installed minor
+is behind upstream or carries distribution backports. Clients predating this
+fallback need a normal CLI upgrade before they can consult it.
 
 A **version set** contains the exact platform, base, components and recipe used
 to build an environment. The project recommends one in its committed platform

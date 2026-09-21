@@ -73,6 +73,12 @@ class Widget(CodexComponent):
 
 @pytest.fixture(params=["widget", "codex"])
 def journey(tmp_path, monkeypatch, request):
+    from devcapsule.components.discovery import JetBrainsDiscovery
+    monkeypatch.setattr(JetBrainsDiscovery, "check", lambda self, current, platform:
+                        ChannelReport(self.source, ChannelVersion(current, "available"), ()))
+    def status_unavailable(*args, **kwargs):
+        raise OSError("fixture status service offline")
+    monkeypatch.setattr("devcapsule.component_status.read_metadata", status_unavailable)
     licensed = request.param == "licensed-widget"
     component = "widget" if licensed else request.param
     for key, name in (("XDG_CONFIG_HOME", "config"), ("XDG_CACHE_HOME", "cache"),
@@ -643,6 +649,49 @@ def test_interactive_offline_first_launch_continues_without_assuming_current(jou
     assert launched_version(s) == "1.0.0"
     out = capsys.readouterr().out
     assert "check unavailable" in out and "Choose upgrade" not in out
+
+
+def test_cli_check_uses_maintained_diagnosis_and_preserves_selection_and_last_success(journey, monkeypatch, capsys):
+    from datetime import datetime, timedelta, timezone
+    from devcapsule.component_status import REPOSITORY
+    s = journey
+    before = s.record.read_bytes(), s.resolution.read_bytes(), s.lock.read_bytes()
+    assert invoke(s.root, "versions", "check") == 0
+    capsys.readouterr()
+    saved = load_toml(version_sets.state_directory(s.root) / "check.toml")
+    success = next(item for item in saved["successful-checks"] if item["component"] == s.component)
+    channel = COMPONENTS[s.component].distribution_channel()
+    def broken(*args):
+        raise KeyError("vendor changed its schema")
+    monkeypatch.setattr(channel, "check", broken)
+    monkeypatch.setattr(COMPONENTS[s.component], "distribution_channel", lambda: channel)
+    now = datetime.now(timezone.utc)
+    feed = {"format": 1, "generated_at": now.isoformat(), "expires_at": (now + timedelta(days=2)).isoformat(),
+            "advisories": [{"id": "fixture", "component": s.component,
+                            "adapters": [COMPONENTS[s.component].discovery_adapter_id()], "cli_versions": ["*"],
+                            "platforms": ["linux-amd64"], "status": "cli-update-required", "fixed_in": "0.2.15",
+                            "message": "A reviewed fix restores discovery.", "issue_url": REPOSITORY + "/issues/123",
+                            "reviewed_at": now.isoformat(), "expires_at": (now + timedelta(days=30)).isoformat()}]}
+    monkeypatch.setattr("devcapsule.component_status.read_metadata", lambda *a, **k: json.dumps(feed).encode())
+    assert invoke(s.root, "versions", "check") == 0
+    output = capsys.readouterr().out
+    assert "check unavailable" in output and "Update DevCapsule to 0.2.15" in output
+    assert "Last successful check:" in output and "historical, not current" in output
+    assert "2.0.0" in output and "/issues/123" in output
+    saved = load_toml(version_sets.state_directory(s.root) / "check.toml")
+    assert next(item for item in saved["successful-checks"] if item["component"] == s.component) == success
+    assert before == (s.record.read_bytes(), s.resolution.read_bytes(), s.lock.read_bytes())
+
+
+def test_discovery_only_candidate_does_not_offer_an_unimplemented_upgrade(journey, monkeypatch, capsys):
+    from devcapsule.components.discovery import JetBrainsDiscovery
+    monkeypatch.setattr(JetBrainsDiscovery, "check", lambda self, current, platform:
+                        ChannelReport(self.source, ChannelVersion(current, "unknown"),
+                                      (ChannelVersion("2026.2.3", "available"),)))
+    assert invoke(journey.root, "versions", "check") == 0
+    output = capsys.readouterr().out
+    assert "Candidate 2026.2.3" in output and "Discovery only" in output
+    assert "pycharm@2026.2.3" not in version_sets.reminder(journey.root)
 
 
 def runtime_view(s, monkeypatch, tmp_path):

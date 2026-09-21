@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from devcapsule.components.discovery import ClaudeDiscovery
 from devcapsule.compat import CliError
 from devcapsule.components import (
     AcquisitionContract,
@@ -27,6 +28,9 @@ CLAUDE_CODE_TERMS_URL = "https://www.anthropic.com/legal/commercial-terms"
 
 class ClaudeCodeComponent(ComponentDefinition):
     """Claude Code acquired directly from Anthropic during local materialization."""
+
+    def discovery_channel(self) -> ClaudeDiscovery:
+        return ClaudeDiscovery()
 
     def channel_omission_reason(self) -> str:
         return 'A checksum-pinned distribution adapter has not been implemented.'

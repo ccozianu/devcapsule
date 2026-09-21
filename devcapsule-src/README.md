@@ -135,7 +135,10 @@ preserves current host permissions and personal state.
 Contributors adding a component must supply a distribution channel or document
 why one is omitted. The [channel contract and implementation](../engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)
 describes the typed interface, exact acquisition, validation evidence and tests.
-Codex is the first real channel; no generic upgrade logic names it specially.
+All six curated components have read-only discovery; Codex is the first complete
+selection channel. No generic upgrade logic names it specially. Failed checks
+consult the maintained [component status service](../component-status/README.md)
+for applicable CLI fixes or known issues while preserving offline launch.
 
 ## Distribution Version
 

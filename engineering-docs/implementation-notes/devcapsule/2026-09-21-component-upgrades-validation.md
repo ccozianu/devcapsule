@@ -148,8 +148,8 @@ not imply the full earlier upgrade smoke was rerun.
 
 ## Limits retained for review
 
-Codex is the only implemented distribution channel. Other definitions explain
-omission. Candidate acquisition consent is explicit through `--authorize` and
+Codex is the only implemented selection channel. All six catalog components now
+have read-only discovery; other definitions explain their installation limits. Candidate acquisition consent is explicit through `--authorize` and
 cannot grant host permissions; the licensed-widget journey verifies selection,
 revocation, recovery and following a changed recommendation. Companion
 requirements are checked and reported, not solved by silently upgrading tools.
@@ -164,3 +164,49 @@ configuration access remains a precondition. The activation journal protects
 interrupted file replacement, not arbitrary concurrent writers or guaranteed
 power-loss durability. Release publication and GitHub PR creation/merge remain
 with the owner under this work order.
+
+## Vendor discovery and compatibility service extension
+
+Owner-approved 2026-09-21. A source-form publisher run against live primary
+vendor metadata succeeded for all six components. It observed PyCharm 2026.2.3,
+VSCodium 1.135.06055, Codex 0.155.1, Claude Code latest 2.1.278 and Antigravity CLI
+1.2.7. PostgreSQL 16's feed reported 16.15 and support through 2028-11-09;
+the major-only lock cannot establish the installed minor or distro backports.
+No executable payload, installer, account or container was used by this probe.
+Generated local preview: `/tmp/devcapsule-component-status-preview/` (JSON and
+GitHub-renderable Markdown). This was an uncommitted source-tree observation;
+the revision argument is not evidence of an exact released executable.
+
+Focused suite: 115 passing cases across component status, distribution channels
+and version sets. Cases include fixed-version guidance, known issues, exact
+adapter/CLI/platform applicability, unknown format, invalid URLs/control text,
+expired/future feed timestamps, expired diagnoses, 404 and truncated-HTTP fallback,
+offline cache, and preservation of the selected lock/configuration and the prior
+successful-check timestamp through the ordinary CLI. Existing offline and
+noninteractive launch cases still pass. Discovery-only candidates do not become
+executable preview/upgrade choices. Backend partial failure preserves other
+observations and last-successful times without authoring a diagnosis.
+
+The actual publication shell from the workflow was executed twice against a
+local bare Git remote. It created and fast-forwarded only `component-status`,
+published the generated files together, and left `main` and the working branch
+unchanged. This validates Git mechanics, not GitHub permissions or scheduling.
+The standard-library publisher runs with `python -S`; no site packages are
+needed by the hosted probe job.
+
+The first full gate found three launcher-list tests depended on the enclosing
+capsule cwd and its now-real configuration mount. A broad fixture override was
+rejected when it changed a mount-path assertion. The final correction gives only
+those three launcher tests their own temporary cwd. All four affected tests
+(including the runtime mount contract) passed before the full gate was rerun.
+
+No hosted action was dispatched and no status branch, release, production site
+or GitHub issue was published. Owner PR merge enables the prepared action;
+first hosted run and a released client's retrieval of its public endpoint remain
+acceptance work. Source policy has no invented diagnoses or hypothetical fixes.
+
+Final extension gate: `nox -s build` succeeded with 1,033 tests passed,
+18 host-sensitive cases deselected, one existing xfail; mypy checked 165 files;
+source smoke, local PEX construction/smoke and nine packaged tests passed.
+Build log: `/tmp/component-status-build.log`. The dirty-tree gate intentionally
+built `dist/devcapsule-local.pex`, not a revision-bearing public release artifact.

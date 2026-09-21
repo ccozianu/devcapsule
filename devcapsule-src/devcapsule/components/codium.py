@@ -7,6 +7,8 @@ consumes the declaration without knowing what the slots mean.
 
 from __future__ import annotations
 
+from devcapsule.components.discovery import CodiumDiscovery
+
 from collections.abc import Mapping
 
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
@@ -20,6 +22,9 @@ from devcapsule.components import (
 
 class CodiumComponent(ComponentDefinition):
     """Trusted VSCodium component implementation."""
+
+    def discovery_channel(self) -> CodiumDiscovery:
+        return CodiumDiscovery()
 
     def channel_omission_reason(self) -> str:
         return 'IDE upgrades are outside the component-upgrade slice.'

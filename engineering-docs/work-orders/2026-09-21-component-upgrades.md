@@ -230,6 +230,16 @@ integration, release tagging or remote publication is authorized here.
 
 ## Scope Boundary And Fresh Start
 
+Owner extension, 2026-09-21, after initial delivery review: implement the researched
+read-only vendor signals for all six catalog components, plus the DevCapsule-owned
+compatibility feed/status page, scheduled GitHub probes, and client fallback
+guidance on inconclusive checks. Preserve the distinction between observations,
+maintained diagnoses and software health. The owner accepted this design and
+instructed implementation. This overrides the Codex-only discovery boundary
+below; it does not add other components' installation, launcher self-update or
+release publication. The prepared backend publishes after normal owner PR merge.
+See [service contract](../../component-status/README.md).
+
 This slice delivers component upgrades using Codex first. It does not deliver
 DevCapsule launcher self-update, base/IDE upgrade delivery, an in-capsule
 host-control broker, a universal package manager, background automatic

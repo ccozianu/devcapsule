@@ -48,6 +48,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Component Upgrades
 
+- [Component status service contract and operations](component-status/README.md)
+
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
 
 - [Distribution channel contract and implementation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)

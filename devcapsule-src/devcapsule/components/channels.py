@@ -48,6 +48,9 @@ class ChannelSelection:
     detail: str = ""
 
 
-class DistributionChannel(Protocol):
+class DiscoveryChannel(Protocol):
     def check(self, current: str, platform: str) -> ChannelReport: ...
+
+
+class DistributionChannel(DiscoveryChannel, Protocol):
     def select(self, version: str, platform: str) -> ChannelSelection: ...

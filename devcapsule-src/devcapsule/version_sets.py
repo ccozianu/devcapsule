@@ -30,6 +30,8 @@ from devcapsule.materialization import ArtifactSpec, acquire_artifact, cache_roo
 from devcapsule.platforms import Platform, XdgHomes
 from devcapsule.resolution_matrix import MATRICES
 from devcapsule import runtime_configuration
+from devcapsule.build_info import current_build_info
+from devcapsule.component_status import CompatibilityLookup
 
 
 @dataclass
@@ -188,17 +190,29 @@ def check(start: Path) -> str:
     lines: list[str] = []
     candidates: list[str] = []
     notices: list[dict[str, Any]] = []
+    successes: list[dict[str, Any]] = []
+    compatibility = CompatibilityLookup(workspace.state / "compatibility-v1.json", current_build_info().version)
     interactive, ancillary = selected_component_definitions(workspace.lock)
     for definition in (interactive, *ancillary):
-        channel = definition.distribution_channel()
+        channel = definition.discovery_channel()
         if channel is None:
             lines.append(f"{definition.id}: updates not checked — {definition.channel_omission_reason() or 'contributor must declare a channel or omission reason'}")
             continue
         version = str(workspace.lock["components"][definition.id]["version"])
         try:
             report = channel.check(version, str(workspace.lock["platform"]))
-        except (CliError, OSError) as exc:
+        except Exception as exc:
+            # A shipped adapter can break on a new vendor schema. Contain that
+            # optional discovery failure; interrupts still propagate normally.
             lines.append(f"{definition.id}: check unavailable — {exc}")
+            lines.append(compatibility.explain(definition.id, definition.discovery_adapter_id(), str(workspace.lock["platform"])))
+            prior = next((item for item in previous.get("successful-checks", [])
+                          if item["component"] == definition.id and item["current"] == version
+                          and item["platform"] == workspace.lock["platform"]), None)
+            if prior:
+                successes.append(prior)
+                checked = datetime.fromtimestamp(prior["checked-at"], timezone.utc).isoformat()
+                lines.append(f"  Last successful check: {checked} (historical, not current). {prior['report']}")
             # Failed refresh is not evidence that a previously reported issue
             # disappeared. Applicability and its original age remain explicit.
             notices.extend(item for item in previous.get("notices", [])
@@ -208,17 +222,23 @@ def check(start: Path) -> str:
         lines.append(f"{definition.id} {version}: {report.current.status} {report.current.detail}; source: {report.source}")
         available = [item.version for item in report.candidates
                      if item.status == "available" and not item.notices and item.version != version]
+        installable = definition.distribution_channel() is not None
+        successes.append({"component": definition.id, "current": version, "platform": workspace.lock["platform"],
+                          "checked-at": time.time(), "report": f"{report.current.status}; candidates: {', '.join(available) or 'none'}; source: {report.source}"})
+        if not installable:
+            lines.append(f"  Discovery only: {definition.channel_omission_reason()}")
         for notice in report.current.notices:
             lines.append(f"  Critical {notice.kind} notice: {notice.detail}")
             notices.append({"component": definition.id, "current": version, "platform": workspace.lock["platform"],
                             "identity": notice.identity, "kind": notice.kind, "detail": notice.detail,
-                            "source": report.source, "checked-at": time.time(), "candidates": available})
+                            "source": report.source, "checked-at": time.time(), "candidates": available if installable else []})
         for candidate in report.candidates:
             lines.append(f"  Candidate {candidate.version}: {candidate.status} {candidate.detail}; availability is not DevCapsule validation.")
-            if candidate.status == "available":
+            if candidate.status == "available" and installable:
                 candidates.append(f"{definition.id}@{candidate.version}")
     atomic_write(path, render_document({"checked-at": time.time(), "set": workspace.identity,
-                                       "candidates": candidates, "notices": notices, "report": "\n".join(lines)}))
+                                       "candidates": candidates, "notices": notices, "successful-checks": successes,
+                                       "report": "\n".join(lines)}))
     return "\n".join(lines)
 
 

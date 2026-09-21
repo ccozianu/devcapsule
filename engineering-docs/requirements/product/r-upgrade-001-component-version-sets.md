@@ -71,6 +71,22 @@ is documented under R-PRODUCT-002.
 
 ## Authority And Scope
 
+Owner extension, 2026-09-21: vendor discovery covers all curated components even
+when upgrade delivery is not implemented. Vendor interfaces are maintained
+integrations, not promises of stable third-party APIs. DevCapsule owns a stable,
+versioned compatibility feed and human status page, published by a scheduled
+GitHub Action independently of CLI releases. A failed vendor check may consult
+that feed for a diagnosis applicable to the installed adapter, CLI and platform:
+released CLI fix, known issue/workarounds, or no known diagnosis. Discovery
+failure does not establish installed-component health. Metadata never installs
+code, changes channels or selects software. Feed and diagnosis freshness remain
+explicit; stale/unavailable/malformed guidance cannot become a current upgrade
+recommendation. Preserve last successful local checks and offline launches.
+Backend observations and maintained diagnoses are separate. An isolated probe
+failure never automatically creates an upgrade recommendation. The feed contract
+must remain available to old clients across future schema changes. This extends
+the original discovery scope, not the base/IDE installation scope.
+
 [D-0010](../../decisions/product/d-0010-developer-owned-version-sets.md) records
 the owner's direction. The [work order](../../work-orders/2026-09-21-component-upgrades.md)
 sets the first slice: Codex through the generic channel contract, without base
@@ -78,6 +94,13 @@ or IDE upgrade delivery, launcher self-update or account/state migrations.
 R-PRODUCT-002 and R-COMPAT-001 continue to govern host access and old inputs.
 
 ## Verification
+
+- `tests/test_component_status.py` covers adapter/CLI/platform matching, unknown
+  schemas, invalid metadata, freshness, offline cache, vendor signals and partial
+  backend failures. `tests/test_version_sets.py` verifies the ordinary CLI
+  fallback preserves software selection and prior successful-check evidence.
+- [Status service contract and operations](../../../component-status/README.md)
+  defines publication, schema compatibility and maintained diagnosis review.
 
 - `tests/test_version_sets.py` drives production commands through configuration,
   acquisition, materialization and controlled external Docker/GUI boundaries,
