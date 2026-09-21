@@ -1169,17 +1169,17 @@ workstreams publish, since the live view then comes from their working trees.
 
 ## Next Resumable Task
 
-Everything through the published-state round is merged. The owner triages
-the twelve untriaged bugs in the `maintenance` workstream, which is where the
-next release's handful comes from; that is that workstream's task, not this
-one's.
-
-Then begin *What Adopters Inherit*, item 14, with its first phase: the
+Begin *What Adopters Inherit*, item 14, with its first phase: the
 evidence and gap inventory across DevCapsule and the three sample projects,
 reading their own histories and installed copies rather than reconstructing
 conversations, and recording each finding with its source revision and a
 recommended action. The freeze question under *Open Threads* is answered by
 the owner's direction to proceed.
+
+Everything through the published-state round is merged. The owner triages
+the twelve untriaged bugs in the `maintenance` workstream, which is where the
+next release's handful comes from; that is that workstream's task, not this
+one's.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
 actionable and unclaimed.
