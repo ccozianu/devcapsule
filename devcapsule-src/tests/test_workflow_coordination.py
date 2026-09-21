@@ -7,8 +7,11 @@ import pytest
 
 from devcapsule import cli, workflow_coordination as workflow_mail
 from devcapsule.workflow_coordination import (
+    Claim,
     WorkflowMailError,
+    brief,
     check,
+    claim,
     list_state,
     publish,
     send,
@@ -314,3 +317,76 @@ def test_send_all_fans_out_to_every_published_workstream(repos) -> None:
     # A comma-separated list works the same way, and a repeat is a no-op.
     tip = send(sender, "beta,alpha", item(sender, "2026-09-21-alpha-notice.md", "hello all\n"))
     assert tip == git(origin, "rev-parse", "coordination").strip()
+
+
+def test_claim_is_shown_live_expires_and_releases(repos) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    _origin, sender, recipient = repos
+    status_file(sender, "alpha", "active", "x")
+    publish(sender, "alpha")
+
+    assert claim(sender, "alpha", "the config fix") is not None
+    assert claim(sender, "alpha", "the config fix") is None  # unchanged: no commit
+    row = list_state(recipient)[0]
+    assert row.claim is not None
+    assert row.claim.who == "alpha" and row.claim.branch == "ws-alpha/v1"
+    assert row.claim.slice == "the config fix" and not row.claim.expired()
+    assert row.published is not None
+    assert "claimed by alpha on ws-alpha/v1: the config fix (since" in workflow_mail.render_list([row])
+
+    old = datetime.now(timezone.utc) - timedelta(hours=30)
+    claim(sender, "alpha", "stale work", now=old)
+    row = list_state(recipient)[0]
+    assert row.claim is not None and row.claim.expired()
+    assert "(EXPIRED)" in workflow_mail.render_list([row])
+
+    assert claim(sender, "alpha", None, release=True) is not None
+    assert claim(sender, "alpha", None, release=True) is None
+    assert list_state(recipient)[0].claim is None
+    with pytest.raises(WorkflowMailError, match="needs a slice"):
+        claim(sender, "alpha", None)
+
+
+def test_brief_prints_the_session_context(repos, capsys) -> None:
+    _origin, sender, recipient = repos
+    (sender / "WORKFLOW.md").write_text(
+        "# W\n\n### Changes\n\n- **First rule.** x\n\n## Rest\n", encoding="utf-8"
+    )
+    git(sender, "add", "WORKFLOW.md")
+    git(sender, "commit", "--quiet", "-m", "definition")
+    git(sender, "push", "--quiet", "origin", "HEAD:refs/heads/main")
+    git(sender, "push", "--quiet", "origin", "ws-alpha/v1")
+    git(recipient, "pull", "--quiet", "--ff-only", "origin", "main")
+    status_file(sender, "alpha", "active", "Ship it.")
+    status_file(recipient, "beta", "active", "Review it.")
+    publish(sender, "alpha")
+    publish(recipient, "beta")
+    claim(recipient, "beta", "reviewing alpha")
+    send(recipient, "alpha", item(recipient, "2026-09-21-beta-hello.md"))
+
+    text = brief(sender, "alpha")
+
+    assert text.startswith("# alpha\nstate: active\nbranch: `ws-alpha/v1`\nnext: Ship it.\n")
+    assert "- beta: beta on ws-beta/v1, reviewing alpha" in text
+    assert "## Mail: 1 waiting" in text and "- 2026-09-21-beta-hello.md" in text
+    assert "## Definition: nothing new since last read" in text
+    assert "- suggested: nothing to synchronize" in text
+
+    # main gains a rule the workstream has not read: the brief names it.
+    (recipient / "WORKFLOW.md").write_text(
+        "# W\n\n### Changes\n\n- **Second rule.** y\n- **First rule.** x\n\n## Rest\n",
+        encoding="utf-8",
+    )
+    git(recipient, "commit", "--quiet", "-am", "second rule")
+    git(recipient, "push", "--quiet", "origin", "HEAD:refs/heads/main")
+    text = brief(sender, "alpha")
+    assert "## Definition changes not yet read\n- Second rule.\n" in text
+    assert "must synchronize" in text
+
+    assert cli.main(["workflow", "brief", "--project", str(sender)]) == 0
+    assert "# alpha" in capsys.readouterr().out
+    assert cli.main(["workflow", "claim", "--project", str(sender), "writing the brief"]) == 0
+    assert "claim recorded for 12 h" in capsys.readouterr().out
+    assert cli.main(["workflow", "claim", "--project", str(sender), "--release"]) == 0
+    assert "claim released" in capsys.readouterr().out

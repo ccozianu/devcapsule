@@ -182,6 +182,9 @@ remain understood as synonyms for one release and are then retired.
 - **Mail**: an intake item in flight, as a file under `mail/<recipient>/` on
   the coordination branch. Not an intake item yet: it becomes one when the
   recipient takes it.
+- **Claim**: a workstream's `state/<name>/claim` on the coordination branch,
+  saying who is working on it, on which branch, on what, until when. It
+  informs; it never refuses. Not a lock.
 - **Published state**: the live copy of a workstream's status file and
   decision log under `state/<name>/` on the coordination branch, pushed by
   the workstream from its working branch. The truth while the workstream is
@@ -320,6 +323,11 @@ There is no 0.2.13. Rules changed since 0.2.12:
   a bounded status file that sheds history into dated records, dated
   documents by kind, and an index that says when to open each. No
   migration: existing documents keep their names; new ones follow the form.
+- **Claims and the brief.** *The Coordination Branch*: `workflow claim`
+  says who is on what, shown live and expiring, never refusing; `workflow
+  brief` prints the session's context in one command; `status` shows when
+  each workstream last published. *Resuming* ends with a claim and
+  *Pausing* with its release. No migration.
 - **The session-start synchronization judgment.** *Resuming* step 2 and
   *Staying Current With `main`*: the agent proposes whether to synchronize,
   from facts the tool reports, and a changed definition or local workflow
@@ -1197,6 +1205,24 @@ the two identical whenever it runs, so they can lag but never disagree; if
 they ever do, the published copy is newer and the working branch is where to
 fix it.
 
+**Claims say who is on what, and never refuse.** `devcapsule workflow claim
+"<slice>"` writes who, which branch, which slice, and an expiry, twelve hours
+by default, to `state/<name>/claim`; `status` and `brief` show live claims
+and mark expired ones; `claim --release` removes it, and so do pausing and
+finishing. A claim is information for the other checkouts, human or agent:
+a pair about to start on a claimed workstream sees it, tells its human, and
+chooses to wait, take another slice, take another workstream, or proceed
+knowingly. Nothing is locked, because locking source control is the failure
+git exists to end; a crashed session's claim simply expires.
+
+**The brief is the session in one command.** `devcapsule workflow brief`
+prints, for the selected workstream, its row and next task, who is working
+on what, its waiting mail, the titles of the *Changes* entries it has not
+read since its stamp, and the synchronization facts with a suggested
+verdict. It is what a session reads first, before the status file; the
+judgment it suggests remains the agent's to propose and the human's to
+accept.
+
 **Records reach `main` with the deliverable, never alone.** A workstream edits
 its status file, decision log, intake, and its own row in the workstream list
 on its working branch, and they land on `main` inside its ordinary
@@ -1394,6 +1420,8 @@ Before leaving a workstream:
    blocked, name the blocker and what would clear it, and tell whoever can
    clear it — through their intake if it is another workstream. A blocked
    workstream nobody was told about is indistinguishable from an abandoned one.
+7. Release your claim, and publish once more so the state others read is the
+   state you left.
 
 #### Open Threads
 
@@ -1441,7 +1469,8 @@ construction.
      or integration.
    The judgment is proposed, not executed: the human may say wait. Tooling
    supplies the facts, the agent weighs them, the human decides only when
-   the weighing says it matters.
+   the weighing says it matters. `devcapsule workflow brief` prints the
+   facts and a suggested verdict.
 3. Read *Open Threads* before planning the session, not after. It is the
    difference between knowing what is next and knowing why it is next.
 4. Re-verify what the status file asserts about external state. Status Files record
@@ -1451,6 +1480,8 @@ construction.
 5. Put unanswered questions from *Open Threads* to the human early, before
    doing work whose shape depends on the answers.
 6. Update the workstream-list row to `active`.
+7. Before editing, claim the slice you are about to work on, so other
+   checkouts see it; see *The Coordination Branch*.
 
 A workstream resumed without its *Open Threads* read is resumed at the level of
 tasks and not of reasoning, which is how a settled question gets reopened and a

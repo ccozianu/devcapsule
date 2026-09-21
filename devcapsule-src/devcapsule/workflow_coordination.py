@@ -25,6 +25,7 @@ directory and stages them, which is the whole point of taking.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 import subprocess
@@ -35,6 +36,8 @@ MAIL_ROOT = "mail"
 STATE_ROOT = "state"
 STATE_FILES = ("CURRENT-STATUS.md", "intake-dispositions.md")
 DEFINITION_FILES = ("WORKFLOW.md", "WORKFLOW-LOCAL.md")
+CLAIM_FILE = "claim"
+DEFAULT_CLAIM_HOURS = 12
 DEFINITION_READ_KEY = "Definition read"
 ALL_RECIPIENTS = "all"
 DEFAULT_ATTEMPTS = 5
@@ -52,13 +55,13 @@ merged into the integration branch. Nobody resets or force-pushes it.
   recipient deletes only its own files after copying them into its intake
   directory.
 - `state/<name>/`: the live copy of each open workstream's status file and
-  decision log, pushed by that workstream from its working branch. While a
-  workstream is open this is the truth; the copies on the integration branch
+  decision log, pushed by that workstream from its working branch, and its
+  claim: who is working on it, on what, until when. While a workstream is
+  open this is the truth; the copies on the integration branch
   are the record as of its last integration.
 
-Read and write it with `devcapsule workflow mail check|send|take`,
-`devcapsule workflow publish`, and `devcapsule workflow status`, or with plain
-git: `git fetch origin coordination` and `git show origin/coordination:<path>`.
+Read and write it with `devcapsule workflow brief`, `status`, `claim`,
+`publish`, and `mail check|send|take`, or with plain git: `git fetch origin coordination` and `git show origin/coordination:<path>`.
 See *The Coordination Branch* in `WORKFLOW.md`.
 """
 
@@ -242,9 +245,46 @@ def take(
 
 
 @dataclass(frozen=True)
+class Claim:
+    """A soft claim: who is working on a workstream, where, on what, and until
+    when. It informs and never refuses; an expired claim is shown as such."""
+
+    who: str
+    branch: str
+    slice: str
+    since: datetime
+    expires: datetime
+
+    def expired(self, now: datetime | None = None) -> bool:
+        return (now or datetime.now(timezone.utc)) >= self.expires
+
+    def render(self) -> str:
+        lines = [f"who: {self.who}", f"branch: {self.branch}", f"slice: {self.slice}",
+                 f"since: {self.since.isoformat(timespec='seconds')}",
+                 f"expires: {self.expires.isoformat(timespec='seconds')}"]
+        return "\n".join(lines) + "\n"
+
+    @classmethod
+    def parse(cls, text: str) -> "Claim | None":
+        fields: dict[str, str] = {}
+        for line in text.splitlines():
+            key, sep, value = line.partition(":")
+            if sep:
+                fields[key.strip()] = value.strip()
+        try:
+            return cls(
+                fields["who"], fields["branch"], fields["slice"],
+                datetime.fromisoformat(fields["since"]), datetime.fromisoformat(fields["expires"]),
+            )
+        except (KeyError, ValueError):
+            return None
+
+
+@dataclass(frozen=True)
 class WorkstreamState:
     """One workstream's live row, read from its published status file, with
-    the two facts the session-start synchronization judgment needs."""
+    the facts the session-start synchronization judgment needs, its claim,
+    and when it last published."""
 
     name: str
     state: str
@@ -259,6 +299,59 @@ class WorkstreamState:
     differ from the stamp and changed on the integration branch since the
     workstream's branch diverged from it. A workstream that is itself editing
     the definition is not flagged. ``None`` when there is no stamp."""
+    claim: Claim | None = None
+    published: datetime | None = None
+    """When the status file was last published, from the branch's history."""
+
+
+def claim(
+    root: Path,
+    name: str,
+    slice_: str | None,
+    *,
+    remote: str = "origin",
+    branch: str = COORDINATION_BRANCH,
+    hours: float = DEFAULT_CLAIM_HOURS,
+    release: bool = False,
+    now: datetime | None = None,
+    attempts: int = DEFAULT_ATTEMPTS,
+) -> str | None:
+    """Write, replace, or with ``release`` remove ``state/<name>/claim``.
+
+    A claim names the git user, the checkout's current branch, the slice, and
+    an expiry ``hours`` from now. Returns the commit made, or ``None`` when
+    the branch already held exactly this claim (or, releasing, none).
+    """
+    _require_name(name, "workstream name")
+    git = _Git(root)
+    path = f"{STATE_ROOT}/{name}/{CLAIM_FILE}"
+    wanted: str | None = None
+    if not release:
+        if not slice_:
+            raise WorkflowMailError("a claim needs a slice: what you are working on")
+        who = git.attempt("config", "user.name").stdout.strip() or "unknown"
+        current = git.attempt("symbolic-ref", "--short", "HEAD").stdout.strip() or "(detached)"
+        start = now or datetime.now(timezone.utc)
+        wanted = git.run(
+            "hash-object", "-w", "--stdin",
+            stdin=Claim(who, current, slice_, start, start + timedelta(hours=hours)).render(),
+        ).strip()
+    for _ in range(attempts):
+        tip = _fetch_tip(git, remote, branch)
+        entries = _tree_entries(git, tip) if tip else {README_PATH: _readme_blob(git)}
+        if entries.get(path) == wanted:
+            return None
+        if wanted is None:
+            entries.pop(path, None)
+        else:
+            entries[path] = wanted
+        verb = "released" if release else "claimed"
+        commit = _commit(git, entries, tip, f"claim: {name} {verb}")
+        if _push(git, remote, branch, commit, tip):
+            return commit
+    raise WorkflowMailError(
+        f"could not push to {remote}/{branch} after {attempts} attempts; the branch keeps moving"
+    )
 
 
 def publish(
@@ -389,6 +482,8 @@ def list_state(
                 k not in stamped for k in current_definition
             )
             changed = differs and _main_moved_definition(git, branch_ref, main_ref)
+        claim_blob = _tree_entries(git, tip).get(f"{STATE_ROOT}/{name}/{CLAIM_FILE}")
+        found = Claim.parse(git.run("cat-file", "-p", claim_blob)) if claim_blob else None
         rows.append(
             WorkstreamState(
                 parsed.name,
@@ -397,9 +492,32 @@ def list_state(
                 parsed.next_step,
                 _behind(git, branch_ref, main_ref),
                 changed,
+                found,
+                _published_at(git, tip, path),
             )
         )
     return rows
+
+
+def _published_at(git: _Git, tip: str, path: str) -> datetime | None:
+    completed = git.attempt("log", "-1", "--format=%cI", tip, "--", path)
+    stamp = completed.stdout.strip()
+    if completed.returncode != 0 or not stamp:
+        return None
+    return datetime.fromisoformat(stamp)
+
+
+def _ago(then: datetime, now: datetime | None = None) -> str:
+    delta = (now or datetime.now(timezone.utc)) - then
+    minutes = int(delta.total_seconds() // 60)
+    if minutes < 1:
+        return "just now"
+    if minutes < 60:
+        return f"{minutes} min ago"
+    hours = minutes // 60
+    if hours < 48:
+        return f"{hours} h ago"
+    return f"{hours // 24} days ago"
 
 
 def _branch_ref(git: _Git, remote: str, association: str) -> str | None:
@@ -484,11 +602,118 @@ def render_list(rows: list[WorkstreamState]) -> str:
             facts.append("definition: CHANGED since last read")
         else:
             facts.append("definition: current")
+        if row.published is not None:
+            facts.append(f"published {_ago(row.published)}")
         out.append(f"{'':<{width}}  branch: {row.branch}")
         out.append(f"{'':<{width}}  {'; '.join(facts)}")
+        if row.claim is not None:
+            state = "EXPIRED" if row.claim.expired() else f"since {_ago(row.claim.since)}"
+            out.append(
+                f"{'':<{width}}  claimed by {row.claim.who} on {row.claim.branch}: "
+                f"{row.claim.slice} ({state})"
+            )
         if row.next_step:
             out.append(f"{'':<{width}}  next: {row.next_step}")
     return "\n".join(out) + "\n"
+
+
+def brief(
+    root: Path,
+    name: str,
+    *,
+    remote: str = "origin",
+    branch: str = COORDINATION_BRANCH,
+    integration_branch: str = "main",
+) -> str:
+    """Everything a session needs before acting, for one workstream: its
+    row, who else is working on what, its mail, the definition changes it
+    has not read, and the synchronization facts with a suggested verdict.
+    The judgment stays the agent's; this prints the facts and nothing more."""
+    _require_name(name, "workstream name")
+    rows = list_state(root, remote=remote, branch=branch, integration_branch=integration_branch)
+    mine = next((row for row in rows if row.name == name), None)
+    out: list[str] = [f"# {name}"]
+    if mine is None:
+        out.append("not published: run `devcapsule workflow publish` so others can see this workstream")
+    else:
+        out.append(f"state: {mine.state}")
+        out.append(f"branch: {mine.branch}")
+        if mine.next_step:
+            out.append(f"next: {mine.next_step}")
+    others = [row for row in rows if row.name != name and row.claim and not row.claim.expired()]
+    out.append("")
+    out.append("## Who is working on what")
+    if others:
+        for row in others:
+            assert row.claim is not None
+            out.append(f"- {row.name}: {row.claim.who} on {row.claim.branch}, {row.claim.slice}")
+    else:
+        out.append("- nobody has a live claim")
+    waiting = check(root, name, remote=remote, branch=branch)
+    out.append("")
+    out.append(f"## Mail: {len(waiting)} waiting" + ("" if waiting else ", nothing to take"))
+    for item in waiting:
+        out.append(f"- {item.name}")
+    git = _Git(root)
+    unread = _unread_changes(git, mine, f"refs/remotes/{remote}/{integration_branch}") if mine else []
+    out.append("")
+    out.append("## Definition changes not yet read" if unread else "## Definition: nothing new since last read")
+    for line in unread:
+        out.append(f"- {line}")
+    out.append("")
+    out.append("## Synchronization facts")
+    if mine is None or mine.behind_main is None:
+        out.append("- branch not on the remote, or not published; distance unknown")
+    else:
+        out.append(f"- behind {integration_branch}: {mine.behind_main}")
+    if mine is not None and mine.definition_changed:
+        verdict = "must synchronize: the definition or local workflow file changed"
+    elif mine is not None and mine.behind_main:
+        verdict = "should synchronize if the task touches files main changed; otherwise may defer, recording why"
+    else:
+        verdict = "nothing to synchronize"
+    out.append(f"- suggested: {verdict}")
+    return "\n".join(out) + "\n"
+
+
+def _unread_changes(git: _Git, row: WorkstreamState, main_ref: str) -> list[str]:
+    """Titles of *Changes* bullets in the integration branch's definition that
+    the stamped copy lacks: what this workstream has not read."""
+    completed = git.attempt("rev-parse", "--verify", "--quiet", f"{main_ref}:{DEFINITION_FILES[0]}")
+    if completed.returncode != 0:
+        return []
+    current = git.run("cat-file", "-p", completed.stdout.strip())
+    stamp = _parse_stamp_from_state(git, row.name)
+    if stamp is None or DEFINITION_FILES[0] not in stamp:
+        return _change_titles(current)
+    old = git.attempt("cat-file", "-p", stamp[DEFINITION_FILES[0]])
+    seen = set(_change_titles(old.stdout)) if old.returncode == 0 else set()
+    return [title for title in _change_titles(current) if title not in seen]
+
+
+def _parse_stamp_from_state(git: _Git, name: str) -> dict[str, str] | None:
+    tip = git.attempt("rev-parse", f"refs/remotes/origin/{COORDINATION_BRANCH}").stdout.strip()
+    if not tip:
+        return None
+    blob = _tree_entries(git, tip).get(f"{STATE_ROOT}/{name}/{STATE_FILES[0]}")
+    return _parse_stamp(git.run("cat-file", "-p", blob)) if blob else None
+
+
+def _change_titles(text: str) -> list[str]:
+    """The bold titles of the bullets under the *Changes* section."""
+    titles: list[str] = []
+    in_changes = False
+    for line in text.splitlines():
+        if line.startswith("### "):
+            in_changes = line.strip() == "### Changes"
+            continue
+        if in_changes and line.startswith("## "):
+            break
+        if in_changes and line.startswith("- **"):
+            end = line.find("**", 4)
+            if end > 4:
+                titles.append(line[4:end])
+    return titles
 
 
 def current_workstream_name(root: Path) -> str | None:

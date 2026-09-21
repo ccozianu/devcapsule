@@ -199,6 +199,61 @@ class StatusCommand(Command):
         return 0
 
 
+class ClaimCommand(Command):
+    name = "claim"
+    help = "Say what you are working on, so other checkouts see it; soft, never refusing."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+        _add_name_option(parser)
+        parser.add_argument("slice", nargs="?", help="What you are working on, in a few words.")
+        parser.add_argument(
+            "--hours", type=float, default=workflow_mail.DEFAULT_CLAIM_HOURS,
+            help="How long the claim stays live (default 12).",
+        )
+        parser.add_argument("--release", action="store_true", help="Remove the claim instead.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = _resolve_name(arguments)
+        try:
+            commit = workflow_mail.claim(
+                arguments.project_path, name, arguments.slice,
+                remote=arguments.remote, branch=arguments.branch,
+                hours=arguments.hours, release=arguments.release,
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        if commit is None:
+            print(f"{name}: claim already " + ("released" if arguments.release else "current"))
+        else:
+            print(f"{name}: claim " + ("released" if arguments.release else f"recorded for {arguments.hours:g} h"))
+        return 0
+
+
+class BriefCommand(Command):
+    name = "brief"
+    help = "Everything a session needs before acting, for the selected workstream."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+        _add_name_option(parser)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = _resolve_name(arguments)
+        try:
+            text = workflow_mail.brief(
+                arguments.project_path, name, remote=arguments.remote, branch=arguments.branch
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        print(text, end="")
+        return 0
+
+
 class WorkflowCommand(Group):
     name = "workflow"
     help = "Multiple-stream workflow operations."
@@ -209,6 +264,8 @@ class WorkflowCommand(Group):
             MailCommand.name: MailCommand,
             PublishCommand.name: PublishCommand,
             StatusCommand.name: StatusCommand,
+            ClaimCommand.name: ClaimCommand,
+            BriefCommand.name: BriefCommand,
         }
 
 

@@ -147,8 +147,11 @@ rationale, and wait for a specific instruction. Returning is another change
 and requires another instruction. Treat a branch-to-list mismatch as
 invalid routing and stop rather than guessing.
 
-Read the selected status file in full and open the documents its index lists
-only when the task needs them; see *The Open-Work Directory* in
+Run `devcapsule workflow brief` first: it prints the selected workstream's
+row and next task, who is working on what, waiting mail, the definition
+changes not yet read, and the synchronization facts. Then read the selected
+status file in full and open the documents its index lists only when the
+task needs them; see *The Open-Work Directory* in
 `WORKFLOW.md`. Pay special attention to the selected status file's current
 stage, current state, and planned next step. Then read any target-specific documents referenced
 there and any declared cross-workstream dependency needed for the selected
@@ -161,7 +164,9 @@ task will touch changed on `main` is a should, otherwise it may wait until the
 next stage boundary with the reason recorded. `devcapsule workflow status`
 shows the facts: commits behind `main`, and whether the definition changed
 since the status file's `Definition read:` stamp, which `publish` writes.
-Synchronize normally by rebasing. To
+Synchronize normally by rebasing. Before editing, `devcapsule workflow claim
+"<slice>"` so other checkouts see what you are on, and release it when you
+pause; a claim informs and never refuses. To
 send an intake item to another workstream, deliver it by mail on the
 coordination branch, `devcapsule workflow mail send <recipient> <file>`,
 never through `main` and never by editing the recipient's directory. Take
