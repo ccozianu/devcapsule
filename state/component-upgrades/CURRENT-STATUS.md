@@ -4,9 +4,9 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: integrating; discovery and compatibility service validated, awaiting owner PR review and delivery
+State: blocked; checkpoint ready for owner GitHub UI integration; V1 operational follow-up retained
 
-Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@2103fb7c230c
+Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@30cf289b573e
 
 Integration target: `main`
 
@@ -16,7 +16,7 @@ Branch association: `ws-component-upgrades/v1`
 
 Branch prefix: `ws-component-upgrades/`
 
-Requirements: `R-UPGRADE-001`, `R-PRODUCT-001`, `R-PRODUCT-002`, `R-COMPAT-001`
+Requirements: `R-UPGRADE-001`, `R-UPGRADE-002`, `R-PRODUCT-001`, `R-PRODUCT-002`, `R-COMPAT-001`
 
 ## Goal
 
@@ -25,6 +25,22 @@ version sets and operational rollback, using Codex as the first generic-channel
 consumer. Intended for v0.2.14; project-management owns release sequencing.
 
 ## Current State
+
+Owner requested publication of the current slice and a user/developer write-up.
+The component freshness guide explains vendor sources, interpretation, user
+actions, client/backend responsibilities and today's operational limits.
+R-UPGRADE-002 captures accepted V1 follow-up: 48-hour observation freshness,
+persistent vendor-failure handling, independent monitoring, verified notification
+delivery and failure drills. These are not implemented or newly imposed release
+gates. The workstream remains open for this follow-up after checkpoint integration.
+Portfolio sequencing request delivered to project-management through coordination
+mail as `2026-09-21-component-upgrades-v1-status-reliability.md` at `a0ffbec8cdcf`.
+
+The owner reiterated that all GitHub integration beyond SSH Git operations is
+theirs through the UI. WORKFLOW-LOCAL.md now explicitly prohibits probing gh or
+using API/connector integration even when available. Before this correction the
+agent made read-only GitHub API inquiries; it created no PR or hosted publication.
+Subsequent delivery follows SSH branch push and owner UI handoff.
 
 Owner extension implemented: all six curated components have read-only vendor
 update discovery. Codex retains installation/selection; discovery-only candidates
@@ -56,14 +72,25 @@ Workflow commands run from the repository root, not `devcapsule-src`.
 
 ## Planned Next Step
 
-Owner reviews the pushed extension and opens the feature PR against `main`. After merge, inspect the first
+Owner reviews the pushed checkpoint and opens/merges its PR against `main` in
+the GitHub UI. After owner confirmation, fetch main over SSH and verify it contains
+the checkpoint. The owner inspects the first
 **Component update status** action, public raw feed and rendered status page;
 GitHub token/branch policy and public-endpoint client acceptance remain external
-checks. No release or direct-main integration is authorized. Before workstream
-closure, complete archive/finishing work and verify remote main contains the tree.
-Do not resume maintenance automatically.
+checks. No release or direct-main integration is authorized. Then scope the
+R-UPGRADE-002 operational slice with the owner: monitor and independent alert
+routes, incident ownership, thresholds and supported adapter inventory. Do not
+archive while that accepted follow-up remains; do not resume maintenance automatically.
 
 ## Validation And External State
+
+Documentation/rules checkpoint gate: `nox -s build` passed again (1,033 tests,
+18 deselected, one existing xfail; mypy 165 files and nine packaged tests).
+Log: `/tmp/component-freshness-docs-build.log`. Local documentation links and
+whitespace checked; only the previously recorded unrelated missing sample README
+in the root index remains. No production code changed in this checkpoint.
+The dirty-tree build produced the local validation PEX, not a revision-stamped
+release artifact. Mail was empty before handoff.
 
 Latest gate for compatibility service: `nox -s build` passed 1,033 tests,
 18 host-sensitive cases deselected, one existing xfail, mypy on 165 files,
@@ -110,6 +137,8 @@ PR creation/merge remains the delivery arrangement.
 Owner PR review/opening/merge and first hosted publication acceptance. Older
 clients predating fallback support need one normal CLI upgrade. Authenticated
 agent/interactive IDE acceptance and release sequencing remain with the owner.
+The V1 monitor/provider, notification routes, operational owner and alert timing
+need owner decisions before external services are configured.
 
 ### Weighed And Unresolved
 
@@ -117,6 +146,9 @@ GitHub-rendered branch page avoids coupling status to the existing Pages sites.
 Current probes do not certify every old adapter; maintained diagnoses retain
 explicit old IDs and review deadlines. No independent vulnerability feed,
 additional installation adapter or "upgrade all" command is claimed here.
+The current 72-hour metadata expiry is not a 48-hour freshness guarantee.
+Probe failures do not fail the action; no independent monitor or verified email
+route exists. R-UPGRADE-002 preserves the intended operational work explicitly.
 Vendor state migrations and manually deleted recovery resources retain earlier
 rollback limitations. No product decision blocks review.
 
@@ -128,6 +160,8 @@ not deployed service evidence.
 
 ## Workstream Document Index
 
+- [Freshness explanation](../../../docs/guides/component-freshness.md): user/developer signals, actions and current limits.
+- [R-UPGRADE-002](../../requirements/product/r-upgrade-002-status-operational-reliability.md): accepted V1 operational follow-up.
 - [Status service](../../../component-status/README.md): v1 contract, publication and maintenance operations.
 - [Work order](../../work-orders/2026-09-21-component-upgrades.md): scope and finish criteria.
 - [User guide](../../../docs/guides/component-upgrades.md): ordinary CLI journey and limits.
