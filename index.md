@@ -22,6 +22,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Your first DevCapsule session](docs/guides/first-session.md)
 - [Use your own project and add a coding agent](docs/guides/your-project.md)
 - [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
+- [Work in workstreams with humans and agents](docs/guides/working-in-workstreams.md)
 - [Engineering documentation](engineering-docs/README.md)
 
 ## Website
