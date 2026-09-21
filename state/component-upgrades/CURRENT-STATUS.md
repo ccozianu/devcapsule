@@ -4,9 +4,9 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: blocked; checkpoint ready for owner GitHub UI integration; V1 operational follow-up retained
+State: paused; checkpoint merged and first hosted publication verified; V1 operational follow-up retained
 
-Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@30cf289b573e
+Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
 
 Integration target: `main`
 
@@ -57,8 +57,9 @@ The scheduled/main-change/manual GitHub Action generates the feed and a
 GitHub-rendered status page on the dedicated `component-status` branch. The
 backend records observations separately from authored diagnoses and never invents
 an incident or renews its review date. No website Pages deployment is changed.
-The first live publication waits for owner PR merge; no remote status branch was
-created in this session. The source policy currently contains no diagnoses.
+Owner merged PR #122 at `fa44a2f`; first hosted publication is commit `c23ed99`
+on `component-status`. Public feed and README were fetched and verified against
+that commit on 2026-09-21. The source policy currently contains no diagnoses.
 
 The original version-set journey, critical prompts and read-only runtime
 introspection remain implemented; earlier evidence is in the validation record.
@@ -66,23 +67,48 @@ The full gate exposed three launcher tests reading this restarted dogfood
 capsule's ambient context. Their fixtures now use their own temporary working
 directory; production runtime dispatch and mounts are unchanged.
 
-Session synchronization: fetched `origin/main` remains `e4a96dc`, already in this
-branch. No synchronization needed. Mail and owned open bug queues were empty.
-Workflow commands run from the repository root, not `devcapsule-src`.
+Session synchronization: fetched `origin/main` at `9bf2711`, verified it contains
+`29fe42a`, and fast-forwarded this workstream through `git rebase origin/main`.
+The updated workflow definition adds brief/claim operations; read and applied.
+Mail and owned open bug queues were empty. Workflow commands run from the root.
 
 ## Planned Next Step
 
-Owner reviews the pushed checkpoint and opens/merges its PR against `main` in
-the GitHub UI. After owner confirmation, fetch main over SSH and verify it contains
-the checkpoint. The owner inspects the first
-**Component update status** action, public raw feed and rendered status page;
-GitHub token/branch policy and public-endpoint client acceptance remain external
-checks. No release or direct-main integration is authorized. Then scope the
-R-UPGRADE-002 operational slice with the owner: monitor and independent alert
-routes, incident ownership, thresholds and supported adapter inventory. Do not
-archive while that accepted follow-up remains; do not resume maintenance automatically.
+Scope the R-UPGRADE-002 operational slice with the owner: independent monitor
+and alert routes, incident ownership, thresholds and supported adapter inventory.
+The current checkpoint is on main and its public endpoint passed client acceptance.
+Do not archive while accepted follow-up remains, begin external service setup
+without those decisions, or resume maintenance automatically.
 
 ## Validation And External State
+
+First hosted publication acceptance, 2026-09-21 around 21:50 UTC:
+- Owner-supplied artifact URL returned HTTP 403 because its signed access expired
+  at 21:36:13 UTC. The ZIP itself could not be inspected or compared; its signed
+  URL is deliberately not retained.
+- Both public raw files returned HTTP 200 and byte-matched `origin/component-status`
+  at `c23ed99`. Feed SHA-256:
+  `afe4cb969bf826413ab39fd1f693c5789621058d04cf65d8e8b6fab904da211f`.
+- Format 1 parsed with the production `StatusFeed` parser and was current.
+  Generated 2026-09-21 20:50:57 UTC; expiry 2026-09-24 20:50:57 UTC.
+  Source revision `fa44a2f` is the merged checkpoint and an ancestor of main.
+- All six expected Linux amd64 probes were `ok`, had zero consecutive failures
+  and matching check/last-success times. PyCharm advertised 2026.2.3; PostgreSQL
+  reported supported major 16, latest minor 16.15 and EOL 2028-11-09 without
+  inventing an installed minor or upgrade candidate. Maintained diagnoses are empty.
+- Production `CompatibilityLookup` fetched, parsed and cached the real public
+  feed in a temporary directory and correctly returned no matching diagnosis.
+  No simulated incident was published and no installed client configuration changed.
+- The generated README was inspected as Markdown. Browser rendering was not
+  independently verified. This proves current publication/client consumption,
+  not future schedule reliability, alert delivery or the V1 48-hour objective.
+
+
+Hosted-acceptance record checkpoint: required `nox -s build` passed after main
+synchronization (1,035 tests, 18 deselected, one existing xfail, mypy and nine
+packaged tests); `/tmp/component-status-hosted-acceptance-build.log`. Only status
+records changed. These records travel with the next deliverable; no records-only
+PR is needed.
 
 Documentation/rules checkpoint gate: `nox -s build` passed again (1,033 tests,
 18 deselected, one existing xfail; mypy 165 files and nine packaged tests).
@@ -134,8 +160,7 @@ PR creation/merge remains the delivery arrangement.
 
 ### Awaiting The Human
 
-Owner PR review/opening/merge and first hosted publication acceptance. Older
-clients predating fallback support need one normal CLI upgrade. Authenticated
+Older clients predating fallback support need one normal CLI upgrade. Authenticated
 agent/interactive IDE acceptance and release sequencing remain with the owner.
 The V1 monitor/provider, notification routes, operational owner and alert timing
 need owner decisions before external services are configured.
@@ -155,8 +180,8 @@ rollback limitations. No product decision blocks review.
 ### Deliberately Not Preserved
 
 No chat transcript or accounts were created. Contracts, operator instructions and
-validation records retain the decisions. Local metadata previews are observations,
-not deployed service evidence.
+validation records retain the decisions. Earlier local previews remain observations; the hosted acceptance above is
+separate deployed-service evidence. The expired signed artifact URL is not retained.
 
 ## Workstream Document Index
 
