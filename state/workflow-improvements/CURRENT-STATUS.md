@@ -5,6 +5,8 @@ Mnemonic: `workflow-improvements`
 Start date: 2026-08-09
 
 State: active; published live on the coordination branch; every 2026-09-19
+
+Definition read: WORKFLOW.md@3b6b13860d21, WORKFLOW-LOCAL.md@488eed5a6c05
 round merged. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
@@ -58,7 +60,19 @@ the outbox's history are in the
 
 ## Last Task And Status
 
-Last task: impose a structure on the workflow's size. The owner asked on
+Last task: the session-start synchronization judgment, and the facts that
+feed it. The owner's rule of 2026-09-21: tooling supplies facts, the agent
+proposes whether to synchronize with `main` and why, the human decides only
+when it matters, and a changed definition or local workflow file is a must.
+Done: *Resuming* step 2 and *Staying Current With `main`* in both definition
+copies and both agent files; `publish` stamps a `Definition read:` line with
+the definition files' content ids; `list` shows commits behind `main` and
+whether the definition changed since that stamp; `mail send` takes a
+comma-separated list or `all`, the fan-out the owner judged elegant enough,
+with no shared channel; tests for each. A notice went by fan-out to the eight
+other open workstreams, the one announcement the transition needs.
+
+Before that: impose a structure on the workflow's size. The owner asked on
 2026-09-21 what the workflow still lacks and for the answer to be kept as a
 design discussion under this directory, with a convention in the definition
 for what an open-work directory holds. Done: the
