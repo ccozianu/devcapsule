@@ -1174,9 +1174,12 @@ the twelve untriaged bugs in the `maintenance` workstream, which is where the
 next release's handful comes from; that is that workstream's task, not this
 one's.
 
-Then decide the last intake item, *One Workflow, Many Projects*, which waits
-on the owner's answers under *Open Threads*, and start item 13 or that
-review, whichever the answer puts first.
+Then begin *What Adopters Inherit*, item 14, with its first phase: the
+evidence and gap inventory across DevCapsule and the three sample projects,
+reading their own histories and installed copies rather than reconstructing
+conversations, and recording each finding with its source revision and a
+recommended action. The freeze question under *Open Threads* is answered by
+the owner's direction to proceed.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
 actionable and unclaimed.
@@ -1293,6 +1296,14 @@ the product owner should see that rather than discover it. See *Open Threads*.
 
 ### Decided 2026-09-21
 
+**One Workflow, Many Projects** (`project-management`, 2026-09-11, at the
+product owner's explicit direction). Acknowledged, and given the title the
+owner asked for: **What Adopters Inherit**. It absorbs item 13, the
+component's shape, as its product rather than its precondition: the
+reusable-versus-conditional classification and the installation inventory
+the review produces are the component's shape, so doing them apart would be
+doing them twice. Item 14 of *Acknowledged Work*; the intake is empty.
+
 **You own the workflow component, which is now in V1** (`project-management`,
 2026-08-18, recording the product owner's decision). Acknowledged on the
 owner's direction: this workstream owns the component's final shape. Item 13
@@ -1402,17 +1413,23 @@ can be reordered.
 11. ~~Mail off `main`.~~ Built and drafted 2026-09-19. See *Twentieth Task*.
 12. ~~Published state; the outbox retired; rows have owners.~~ Built and
     drafted 2026-09-19. See *Twenty-First Task*.
-13. **The shape of the workflow component.** Acknowledged 2026-09-21. Done
-    means, from the 2026-08-18 item and the V1 ledger row: what the component
-    consists of; how an adopter obtains it, declines it, or installs a
-    different workflow, with the product working in each case; the product's
-    real dependency on the workflow stated (`AGENTS.md`, the declaration, the
-    `engineering-docs/` layout, and now `WORKFLOW-LOCAL.md`); whether
-    verification tooling is part of it, with `devcapsule workflow` as the
-    evidence that some now is; V1 acceptance criteria completed; and the
-    evidence being a fresh project in each configuration. Position: after the
-    owner answers whether *One Workflow, Many Projects* subsumes it as a
-    phase or follows it.
+13. ~~The shape of the workflow component.~~ Folded into item 14 on
+    2026-09-21 as its product.
+14. **What Adopters Inherit.** Acknowledged 2026-09-21, the review
+    `project-management` sent on 2026-09-11 as *One Workflow, Many Projects*,
+    retitled by the owner. Done means its five deliverables, each with the
+    acceptance the item states: an evidence and gap inventory across
+    DevCapsule and the three sample projects, with source revisions and a
+    recommended action per finding; a boundary and installation table
+    classifying every mechanism as common, conditional, or project-specific,
+    which is the component's shape; a proposed document structure with
+    reading paths for humans and agents and a migration map; walkthroughs for
+    a new human and a fresh agent across both modes and two sample contexts;
+    and an implementation plan presented for owner review before any broad
+    migration. Already delivered ahead of it: the local workflow file
+    (question 3), the glossary (question 5's vocabulary), and the declaration
+    with version handling (part of question 4). Phase 1 is the evidence
+    inventory.
 
 ## Assessment Of The Queue
 
@@ -1598,16 +1615,11 @@ resume changed every question. Short by design.
 
 ### Awaiting The Product Owner
 
-- **Review of the `maintenance` workstream, the bug vocabulary, and the
-  backfilled records.** The pull request waits on it; the triage of twelve
-  untriaged bugs follows it, in the `maintenance` workstream.
-- **Whether the freeze lifts for the last item and item 13.** The 2026-08-30
-  freeze runs until the release-candidate check, which is now. The owner has
-  lifted it for every slice so far. Both change rules.
-- **Whether *One Workflow, Many Projects* (2026-09-11) subsumes the structural
-  sequence** of information model, component shape, coordination off `main`,
-  and mail transport as its first phase, which its text implies, or runs after
-  them.
+- **Review of the mechanical requirement-priority mapping** made on
+  2026-09-19: `MVP` to `gating`, `current` and `current stabilization` to
+  `wanted`. Reversible; the V1 ledger stays authoritative for what gates V1.
+- **The bug triage** belongs to the `maintenance` workstream, not here, and
+  is recorded there.
 
 ### Weighed And Unresolved
 
