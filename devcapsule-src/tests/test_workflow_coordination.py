@@ -5,8 +5,15 @@ import subprocess
 
 import pytest
 
-from devcapsule import cli, workflow_mail
-from devcapsule.workflow_mail import WorkflowMailError, check, send, take
+from devcapsule import cli, workflow_coordination as workflow_mail
+from devcapsule.workflow_coordination import (
+    WorkflowMailError,
+    check,
+    list_state,
+    publish,
+    send,
+    take,
+)
 
 
 def git(root: Path, *args: str, stdin: str | None = None) -> str:
@@ -149,3 +156,92 @@ def test_cli_infers_the_workstream_from_the_branch(repos, capsys) -> None:
     assert "took 1 item(s)" in capsys.readouterr().out
     assert cli.main(["workflow", "mail", "check", "--project", str(recipient)]) == 0
     assert "no mail for beta" in capsys.readouterr().out
+
+
+def status_file(root: Path, name: str, state: str, next_step: str) -> Path:
+    path = root / "engineering-docs" / "wip" / f"2026-09-19-{name}" / "CURRENT-STATUS.md"
+    path.write_text(
+        f"# Workstream Current Status: {name}\n\nName: `{name}`\n\nState: {state}\n\n"
+        f"Branch association: `ws-{name}/v1`\n\n## Planned Next Step\n\n{next_step}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_publish_pushes_live_state_and_list_reads_it(repos) -> None:
+    origin, sender, recipient = repos
+    status_file(sender, "alpha", "active", "Ship the thing.")
+    (sender / "engineering-docs/wip/2026-09-19-alpha/intake-dispositions.md").write_text(
+        "| Item |\n", encoding="utf-8"
+    )
+    status_file(recipient, "beta", "paused 2026-09-19; waiting", "Resume after alpha ships.")
+
+    first = publish(sender, "alpha")
+    assert first is not None
+    assert publish(sender, "alpha") is None  # nothing changed: no commit
+    publish(recipient, "beta")
+
+    tree = git(origin, "ls-tree", "-r", "--name-only", "coordination").split()
+    assert "state/alpha/CURRENT-STATUS.md" in tree
+    assert "state/alpha/intake-dispositions.md" in tree
+    assert "state/beta/CURRENT-STATUS.md" in tree
+    rows = list_state(recipient)
+    assert [(row.name, row.state, row.branch) for row in rows] == [
+        ("alpha", "active", "`ws-alpha/v1`"),
+        ("beta", "paused 2026-09-19; waiting", "`ws-beta/v1`"),
+    ]
+    assert rows[0].next_step == "Ship the thing."
+    # Publishing reads the working tree: an uncommitted edit is what goes live.
+    status_file(sender, "alpha", "blocked; needs beta", "Wait.")
+    publish(sender, "alpha")
+    assert list_state(sender)[0].state == "blocked; needs beta"
+    # The sender's checkout is untouched beyond its own files.
+    assert git(sender, "symbolic-ref", "--short", "HEAD").strip() == "ws-alpha/v1"
+
+
+def test_retire_removes_published_state_and_mail_survives(repos) -> None:
+    origin, sender, recipient = repos
+    status_file(sender, "alpha", "active", "x")
+    publish(sender, "alpha")
+    send(recipient, "alpha", item(recipient, "2026-09-19-beta-note.md"))
+
+    assert publish(sender, "alpha", retire=True) is not None
+    assert publish(sender, "alpha", retire=True) is None
+
+    tree = git(origin, "ls-tree", "-r", "--name-only", "coordination").split()
+    assert tree == ["README.md", "mail/alpha/2026-09-19-beta-note.md"]
+    assert list_state(sender) == []
+
+
+def test_publish_requires_a_status_file(repos) -> None:
+    _origin, sender, _recipient = repos
+    with pytest.raises(WorkflowMailError, match="nothing to publish"):
+        publish(sender, "alpha")
+
+
+def test_cli_publish_and_list(repos, capsys) -> None:
+    _origin, sender, recipient = repos
+    status_file(sender, "alpha", "active", "Do it.")
+
+    assert cli.main(["workflow", "publish", "--project", str(sender)]) == 0
+    assert "alpha: published to coordination" in capsys.readouterr().out
+    assert cli.main(["workflow", "list", "--project", str(recipient)]) == 0
+    out = capsys.readouterr().out
+    assert "alpha  active" in out and "next: Do it." in out
+    assert cli.main(["workflow", "publish", "--project", str(sender), "--retire"]) == 0
+    assert "retired" in capsys.readouterr().out
+
+
+def test_list_reads_headed_branch_association_and_joins_wrapped_paragraphs(repos) -> None:
+    _origin, sender, _recipient = repos
+    path = sender / "engineering-docs/wip/2026-09-19-alpha/CURRENT-STATUS.md"
+    path.write_text(
+        "# Status\n\nState: active\n\n## Branch Association\n\n`ws-alpha/v2`, forked\n"
+        "from `main`.\n\n## Next Resumable Task\n\nFinish the first\nslice.\n\nThen rest.\n",
+        encoding="utf-8",
+    )
+    publish(sender, "alpha")
+
+    row = list_state(sender)[0]
+    assert row.branch == "`ws-alpha/v2`, forked from `main`."
+    assert row.next_step == "Finish the first slice."

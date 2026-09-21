@@ -162,14 +162,17 @@ never through `main` and never by editing the recipient's directory. Take
 your own mail at session start and before pausing, `devcapsule workflow mail
 take`, then commit the taken items on the working branch; decide each with a
 decision-log entry and the file's deletion in one commit. Registrations, your
-own row in the workstream list, and your records still travel your
-`ws-<name>/outbox`, reset from `main` only when its previous send has landed.
-See *The Coordination Branch*, *The Outbox Branch*, and *Staying Current With
-`main`* in `WORKFLOW.md`.
+own row in the workstream list, and your records are edited on your
+working branch, and reach `main` inside your ordinary integration; publish
+them live with `devcapsule workflow publish` at each checkpoint, before
+pausing, and at finish, and read every workstream's live state with
+`devcapsule workflow list` before selecting work. No pull request ever exists
+for a record alone. See *The Coordination Branch*, *Publishing Before
+Integration*, and *Staying Current With `main`* in `WORKFLOW.md`.
 
 The workflow claims only the refs it names: `main`, or the integration branch
 `WORKFLOW-LOCAL.md` names instead; `ws-<name>/<sub>`
-for a workstream branch, with `ws-<name>/outbox` reserved; and
+for a workstream branch; `coordination` for mail and published state; and
 `release-<version>` for a release branch, with its `v<version>` tags. Every
 other ref is the project's: do not create, rename, delete, rebase, or select
 one unless `WORKFLOW-LOCAL.md` or the user directs it. Release refs are not
@@ -179,14 +182,13 @@ whose branch association names a release branch means that workstream is
 driving a release: work on that branch, land fixes only there, and merge it to
 `main` before each candidate tag. See *Releases* in `WORKFLOW.md`.
 
-The outbox also carries the workstream's own records — its status file and its
-decision log — when something on `main` refers to them or when the workstream
-pauses, so that a rule naming a per-workstream path does not point at a file
-only a branch can see. Send the branch's current copy verbatim. The
-deliverable never travels the outbox, because merging one publishes everything
-on it without the review a deliverable is owed; a finished slice of the
-deliverable may still reach `main` early through an ordinary pull request. See
-*Publishing Before Integration* in `WORKFLOW.md`.
+Published state is the live view: `devcapsule workflow publish` pushes the
+working tree's status file and decision log to the coordination branch, and
+while a workstream is open that copy is the truth for routing and resumption;
+the copy on `main` is the record as of its last integration. The deliverable
+never travels the coordination branch, which carries records and mail only; a
+finished slice of the deliverable may still reach `main` early through an
+ordinary pull request. See *Publishing Before Integration* in `WORKFLOW.md`.
 
 In `multiple-streams` mode, also read the selected workstream's `intake/`
 directory beside its status file. It holds work other workstreams have delivered
@@ -197,16 +199,15 @@ Every item ends one of two ways. Either the workstream **acknowledges** it,
 making it a requirement or task in its own status file, or it **forwards** it to
 `project-management` with a reason. Deferral is not a third outcome; an item
 accepted for later is acknowledged with its position recorded. Either outcome
-is recorded in the workstream's `intake-dispositions.md` in the same outbox
-commit that removes the item, so that on `main` every delivered item is either
-still in `intake/` or in that log — which is how a sender learns what happened
-to what it sent. Items sent by
+is recorded in the workstream's `intake-dispositions.md` in the same commit
+that removes the item, on the working branch, so that every item ever sent is
+in exactly one of the mailbox, the intake, or the published log — which is how
+a sender learns what happened to what it sent. Items sent by
 `project-management` cannot be forwarded, because that workstream is
 authoritative for what is worked on, by whom, and in what order; raise genuine
-disagreement with the human instead. Either way, the recipient deletes the item
-from `main` through its outbox, and no workstream may be concluded while items
-remain in its intake. Follow `WORKFLOW.md` for how items are written,
-delivered, and decided.
+disagreement with the human instead. No workstream may be concluded while
+items remain in its mailbox or its intake. Follow `WORKFLOW.md` for how items
+are written, delivered, and decided.
 
 After reading the required documents, acknowledge to the user that you
 understand what the project is about, including the requirements and
@@ -223,7 +224,7 @@ If the selected status file does not define a planned next step, remind the user
 through the agent or IDE plugin to help choose the next step to work on.
 
 When leaving a workstream, pause it deliberately rather than simply stopping:
-commit everything, update the status file, send anything owed through the outbox,
+commit everything, update the status file, send anything owed by mail, publish,
 and write *Open Threads* — questions awaiting the human, options weighed but
 unresolved, and what is deliberately not preserved. Only the pair stopping work
 knows whether a thread finished or was suspended, and only while they are still
