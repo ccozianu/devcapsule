@@ -4,7 +4,7 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: paused; work order prepared for implementation in a fresh session
+State: active; executing the component upgrade work order
 
 Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
@@ -26,47 +26,44 @@ consumer. Intended for v0.2.14; project-management owns release sequencing.
 
 ## Current State
 
-The owner requested rebasing maintenance on origin/main, opening this feature
-workstream, and writing its working order for a fresh session. Maintenance was
-rebased onto `e4a96dc`, deliberately paused, committed at `357c5ce`, pushed,
-and published on coordination. Its bug triage remains deferred.
+Resumed at owner request on `ws-component-upgrades/v1`. Remote main remains
+`e4a96dc`, already contained in this branch; synchronization was unnecessary.
+Root workflow commands confirmed current published state, unchanged definition,
+and no mail. Running them from `devcapsule-src` had misleadingly shown no state;
+use the repository root for workflow operations.
 
-This branch starts at `origin/main` (`e4a96dc`) with registration and the work
-order only. Feature implementation has not started. The work order records the
-settled product direction, bounded implementation freedom, evidence gaps,
-acceptance checks and scope exclusions. User-selected upgrades belong in user
-configuration; upstream contribution is optional and deliberate.
-
-Registration follows Beginning A Workstream step 6: the initial registration
-commit belongs on the first branch forked from main and is published live on
-coordination; its mainline row arrives with ordinary integration. The earlier
-wording about creation on main is treated as the starting baseline, not an
-instruction to commit or push registration directly to main.
+Implemented typed distribution channels (Codex npm first), complete local
+version sets, preview/preparation/activation, rollback, recommendation following,
+proposal export and remembered reminders. The existing materializer is shared.
+Successful-use recording captures inputs before launch. Activation uses a
+recoverable two-file journal; host permissions and personal state are not restored
+from historical snapshots. D-0010 records the owner's work-order direction and
+R-UPGRADE-001 records the contract without rewriting earlier decisions.
 
 ## Planned Next Step
 
-In the fresh session, read the work order and Open Threads; fetch and
-synchronize this branch under current policy, take mail, and trace component
-acquisition, configuration ownership and known-good recording into a bounded
-implementation plan. Then implement the agreed journey autonomously through
-reviewable feature/code and tests. Do not wait for a registration-only PR.
+Finish the isolated real Codex upgrade/rollback check and user/contributor
+instructions, review the final diff, rerun required checks for final changes,
+and push the reviewable feature branch. Owner opens and merges the GitHub PR.
 
 ## Validation And External State
 
-The preparation gate on the unchanged source baseline passed: 917 tests,
-18 deselected, one existing xfail, mypy, and nine packaging tests. The local
-artifact is `devcapsule-src/dist/devcapsule-local.pex`; the build did not replace
-the distributable PEX while documentation changes were uncommitted.
-The existing seven history-focused tests prove snapshots, not version-set
-rollback. No feature code or new tests were written during preparation.
+The implementation gate passed: 948 tests, 18 deselected, one existing xfail,
+mypy, source smoke, PEX construction and nine packaging tests. The focused
+new suite passed 31 cases, including Codex and an unrelated component through
+real CLI/configuration/acquisition/materialization with controlled Docker/GUI
+boundaries. Existing release fixtures remain passing.
 
-No open bugs are currently owned by `component-upgrades`; mail retrieval
-found no pending items. New documentation links and whitespace checks passed.
+No open bugs are owned by this workstream; no mail was pending. The live Codex
+registry reported 0.155.1 available and yielded exact meta/platform package
+SHA-512 identities. An explicitly bounded real check is running in the isolated
+`devcapsule-src/dist/component-upgrades-smoke` fixture, with separate XDG trees
+and a tiny fixture IDE that reports Codex's executable version. It uses the
+already local pinned base and the freshly built local PEX. It does not touch the
+everyday checkout configuration, accounts or prior acceptance environments.
 
-No containers were launched or environments provisioned for this handoff.
-Maintenance's older retained acceptance environment is historical evidence,
-not a prerequisite or permission to alter it. Git push is available; owner
-GitHub PR creation/merge remains the delivery arrangement.
+Git push is available. Owner GitHub PR creation/merge remains the delivery
+arrangement; no release is authorized.
 
 ## Open Threads
 

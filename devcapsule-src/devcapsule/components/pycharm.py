@@ -21,6 +21,9 @@ from devcapsule.components import (
 class PyCharmComponent(ComponentDefinition):
     """Trusted PyCharm component implementation."""
 
+    def channel_omission_reason(self) -> str:
+        return 'IDE upgrades are outside the component-upgrade slice.'
+
     @property
     def id(self) -> str:
         return "pycharm"

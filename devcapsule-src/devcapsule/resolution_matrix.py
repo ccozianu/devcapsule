@@ -182,6 +182,40 @@ class ResolutionMatrix:
         self._ancillary_capabilities = dict(ancillary_capabilities)
         self._materialization = materialization
 
+    def base_family(self, lock: Mapping[str, Any]) -> str | None:
+        reference = lock.get("base", {}).get("reference")
+        return next((base.base_family for base in self._bases
+                     if base.lock_table.get("reference") == reference), None)
+
+    def validation_evidence(self, lock: Mapping[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """Describe accumulated evidence, without inventing whole-set testing."""
+        family = self.base_family(lock)
+        evidence, missing = [], []
+        components = lock.get("components", {})
+        for name, metadata in components.items():
+            if not isinstance(metadata, dict):
+                continue
+            version = metadata.get("version")
+            edge = self._verified.get((name, str(version), family)) if family is not None else None
+            pins = self._components.get(name, ())
+            # Version text alone cannot certify different executable bytes.
+            pin = next((pin for pin in pins if pin.version == version), None)
+            def identity(value: Mapping[str, Any]) -> dict[str, Any]:
+                return {key: identity(item) if isinstance(item, dict) else item
+                        for key, item in value.items() if key not in {"url", "integrity"}}
+            if edge is not None and pin is not None and identity(metadata) == identity(pin.lock_table):
+                evidence.append(f"{name} {version}: {edge.evidence}")
+            else:
+                missing.append(f"{name} {version} on base {lock.get('base', {}).get('reference')}")
+        for coupling in self._couplings:
+            if coupling.first_id in components and coupling.second_id in components:
+                pair = (components[coupling.first_id]["version"], components[coupling.second_id]["version"])
+                if pair in coupling.verified:
+                    evidence.append(coupling.evidence)
+                else:
+                    missing.append(f"{coupling.first_id} {pair[0]} with {coupling.second_id} {pair[1]}")
+        return tuple(evidence), tuple(missing)
+
     def capabilities(self) -> tuple[str, ...]:
         """The complete capability vocabulary this matrix can resolve."""
 

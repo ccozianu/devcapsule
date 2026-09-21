@@ -28,6 +28,9 @@ CLAUDE_CODE_TERMS_URL = "https://www.anthropic.com/legal/commercial-terms"
 class ClaudeCodeComponent(ComponentDefinition):
     """Claude Code acquired directly from Anthropic during local materialization."""
 
+    def channel_omission_reason(self) -> str:
+        return 'A checksum-pinned distribution adapter has not been implemented.'
+
     @property
     def id(self) -> str:
         return "claude-code"

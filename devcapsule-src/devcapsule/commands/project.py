@@ -30,6 +30,9 @@ from devcapsule.commands.framework import (
     carrier_answers,
 )
 from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
+from devcapsule.commands._versions import VersionsGroup
+from devcapsule import version_sets
+from devcapsule.compat import CliError
 from devcapsule.configuration.history import (
     record_known_good_configuration,
 )
@@ -875,6 +878,15 @@ class ProjectRunCommand(Command):
         root, manifest, lock = selected.root, selected.manifest, selected.lock
         input_path, output_path = selected.checkout_path, selected.resolution_path
         checkout, resolved = selected.checkout, selected.resolution
+        # Capture before launching: a later session completion cannot certify
+        # edits or a successor selection made while this session was running.
+        captured_files = {input_path.name: input_path.read_bytes(), output_path.name: output_path.read_bytes()}
+        try:
+            notice = version_sets.reminder(root)
+            if notice:
+                print(notice)
+        except (OSError, CliError):
+            pass  # Optional cached reminders never gate an offline launch.
         if admitted.stale_inputs:
             print(f"WARNING: using stale generated resolution once ({', '.join(admitted.stale_inputs)}).", file=sys.stderr)
         overrides, memory_override = _run_once_answers(arguments, manifest, lock)
@@ -910,6 +922,7 @@ class ProjectRunCommand(Command):
         checkout_runtime_plan = None
         use_image_process = False
         image_labels: Mapping[str, str] = {}
+        realized = None
         if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
             realized = realize_environment(selected, report=print, prepare_base=prepare_display)
             image = realized.image.reference
@@ -1036,9 +1049,12 @@ class ProjectRunCommand(Command):
             # Recording failure must never fail the successful run.
             try:
                 recorded = record_known_good_configuration(
-                    manifest, input_path, output_path
+                    manifest, input_path, output_path, captured_files=captured_files
                 )
-            except OSError as exc:
+                version_sets.record_success(selected, realized)
+                if "version-set" in checkout:
+                    print("Local use succeeded. Optionally prepare an upstream proposal with 'project versions propose PATH'.")
+            except (OSError, CliError) as exc:
                 print(
                     f"Warning: could not record the known-good configuration: {exc}",
                     file=sys.stderr,
@@ -1196,6 +1212,7 @@ class ProjectCommand(Group):
             ProjectInitCommand.name: ProjectInitCommand,
             CheckoutGroup.name: CheckoutGroup,
             ConfigGroup.name: ConfigGroup,
+            VersionsGroup.name: VersionsGroup,
             StateGroup.name: StateGroup,
             RecursiveE2EGroup.name: RecursiveE2EGroup,
             ProjectRunCommand.name: ProjectRunCommand,

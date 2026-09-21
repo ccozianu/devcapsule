@@ -13,6 +13,7 @@ from enum import Enum
 import hashlib
 import json
 import math
+import tomllib
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -71,10 +72,11 @@ def admit_document(document: Mapping[str, Any], artifact: Artifact, source: obje
         if sources.get("manifest-scope") not in (None, "configuration-v1"):
             raise ProjectConfigurationError(f"{source}: unsupported manifest fingerprint scope; left intact.")
     if artifact is Artifact.checkout:
+        selected_version_lock(document)
         # This file is an input, not a plugin extension point. Refusing unknown
         # fields protects both their meaning and their bytes during an edit.
         shapes = {
-            (): {artifact.value, "project", "checkout", "configuration", "state", "host", "authorization"},
+            (): {artifact.value, "project", "checkout", "configuration", "state", "host", "authorization", "version-set"},
             ("project",): {"creator", "slug"},
             ("checkout",): {"path"},
             ("configuration",): {"values", "omitted-values", "bindings"},
@@ -242,3 +244,21 @@ def render_checkout(
             if image_identity:
                 lines.append(f"image-id = {quote_toml(str(image_identity))}")
     return "\n".join(lines) + "\n"
+
+
+def selected_version_lock(checkout: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The complete developer-owned selection; never overlay a moving lock."""
+    if "version-set" not in checkout:
+        return None
+    selection = table(checkout, "version-set")
+    if (type(selection.get("format")) is not int or selection["format"] != 1
+            or not isinstance(selection.get("lock"), str)
+            or not isinstance(selection.get("recommendation-digest"), str)
+            or set(selection) != {"format", "lock", "recommendation-digest"}):
+        raise ProjectConfigurationError("Unsupported local version-set record; left intact.")
+    try:
+        lock = tomllib.loads(selection["lock"])
+    except tomllib.TOMLDecodeError as exc:
+        raise ProjectConfigurationError(f"Malformed local version-set lock: {exc}") from exc
+    admit_document(lock, Artifact.lock, "local version set")
+    return lock

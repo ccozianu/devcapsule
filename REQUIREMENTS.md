@@ -84,6 +84,8 @@ Current release/stabilization reality:
 
 ### Developer Experience And Persistence
 
+- `R-UPGRADE-001` — [Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
+
 - `R-SETTINGS-001` — [Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 
 ### Product Adoption And Positioning

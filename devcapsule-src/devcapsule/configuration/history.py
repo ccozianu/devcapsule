@@ -48,6 +48,8 @@ def record_known_good_configuration(
     generated_resolution: Path,
     env: Mapping[str, str] | None = None,
     now: datetime | None = None,
+    *,
+    captured_files: Mapping[str, bytes] | None = None,
 ) -> Path | None:
     """Record the configuration a successful launch just proved, once.
 
@@ -57,7 +59,7 @@ def record_known_good_configuration(
     metadata, so hand-pruned or hand-edited history stays honest.
     """
 
-    files = {
+    files = dict(captured_files) if captured_files is not None else {
         checkout_record.name: checkout_record.read_bytes(),
         generated_resolution.name: generated_resolution.read_bytes(),
     }

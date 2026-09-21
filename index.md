@@ -32,6 +32,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Root Requirement Records
 
+- [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
+
 - [R-PRODUCT-001 Batteries-Included IDE Environments](engineering-docs/requirements/product/r-product-001-batteries-included-ide-environments.md)
 - [R-PRODUCT-002 Explicit Host Boundaries](engineering-docs/requirements/product/r-product-002-explicit-host-boundaries.md)
 - [R-PRODUCT-003 Durable Human/Agent Project Memory](engineering-docs/requirements/product/r-product-003-durable-human-agent-project-memory.md)
@@ -44,6 +46,8 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
 
 ## Design Decisions
+
+- [D-0010 Developer-Owned Component Version Sets And Recovery](engineering-docs/decisions/product/d-0010-developer-owned-version-sets.md)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)

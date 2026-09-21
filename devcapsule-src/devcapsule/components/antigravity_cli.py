@@ -42,6 +42,9 @@ ANTIGRAVITY_TERMS_URL = "https://antigravity.google/terms/"
 class AntigravityCliComponent(ComponentDefinition):
     """Antigravity CLI acquired directly from Google during local materialization."""
 
+    def channel_omission_reason(self) -> str:
+        return 'A checksum-pinned distribution adapter has not been implemented.'
+
     @property
     def id(self) -> str:
         return "antigravity-cli"

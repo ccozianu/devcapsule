@@ -11,6 +11,8 @@ from pathlib import Path
 import re
 import shutil
 import tempfile
+import base64
+import binascii
 import tarfile
 from typing import Any, Callable, Iterator, Mapping
 from urllib.error import URLError
@@ -59,6 +61,7 @@ class ArtifactSpec:
     # Surfaces without a lock-recorded variant (VSCodium) carry None; the
     # ancillary-acquisition path reuses this field as a cache discriminator.
     variant: str | None = "professional"
+    integrity: str | None = None
 
 
 @dataclass(frozen=True)
@@ -160,24 +163,36 @@ def cache_root(env: Mapping[str, str] | None = None) -> Path:
 
 
 def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
-    expected = _validated_sha256(spec.sha256, "Artifact SHA-256")
-    destination = root / "artifacts" / "sha256" / expected
+    algorithm = "sha256"
+    expected = spec.sha256
+    if not expected and spec.integrity is not None:
+        try:
+            prefix, encoded = spec.integrity.split("-", 1)
+            decoded = base64.b64decode(encoded, validate=True)
+            if prefix != "sha512" or len(decoded) != 64:
+                raise ValueError("requires SHA-512")
+            algorithm, expected = "sha512", decoded.hex()
+        except (ValueError, binascii.Error) as exc:
+            raise CliError("Invalid artifact integrity; expected SHA-512 SRI.") from exc
+    else:
+        expected = _validated_sha256(expected, "Artifact SHA-256")
+    destination = root / "artifacts" / algorithm / expected
     lock = root / "locks" / "artifacts" / f"{expected}.lock"
     with _exclusive_lock(lock):
         if destination.is_file():
-            if sha256_file(destination) == expected:
+            if _file_digest(destination, algorithm) == expected:
                 return Acquisition(destination, False)
             destination.unlink()
 
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary_path: Path | None = None
-        digest = hashlib.sha256()
+        digest = hashlib.new(algorithm)
         try:
             with tempfile.NamedTemporaryFile(
                 prefix=f".{destination.name}.", suffix=".download", dir=destination.parent, delete=False
             ) as output:
                 temporary_path = Path(output.name)
-                with urlopen(spec.url) as response:  # noqa: S310 - project-lock-pinned URL
+                with urlopen(spec.url, timeout=60) as response:  # noqa: S310 - project-lock-pinned URL
                     while chunk := response.read(1024 * 1024):
                         digest.update(chunk)
                         output.write(chunk)
@@ -191,6 +206,11 @@ def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
             if temporary_path is not None:
                 temporary_path.unlink(missing_ok=True)
         return Acquisition(destination, True)
+
+
+def _file_digest(path: Path, algorithm: str) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, algorithm).hexdigest()
 
 
 def sha256_file(path: Path) -> str:

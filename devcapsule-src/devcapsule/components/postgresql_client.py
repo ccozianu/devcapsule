@@ -30,6 +30,9 @@ POSTGRESQL_CLIENT_LICENSE = "PostgreSQL"
 class PostgresqlClientComponent(ComponentDefinition):
     """PostgreSQL command-line client provided by the pinned DevCapsule base."""
 
+    def channel_omission_reason(self) -> str:
+        return 'Distributed with the base; update through a reviewed base release.'
+
     @property
     def id(self) -> str:
         return "postgresql-client"

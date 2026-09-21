@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
+from devcapsule.components.channels import DistributionChannel
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,14 @@ class ComponentDefinition(ABC):
     @abstractmethod
     def capability(self) -> str:
         """Project-facing capability implemented by this component."""
+
+    def distribution_channel(self) -> DistributionChannel | None:
+        """Optional discovery/selection adapter; omission never breaks old locks."""
+        return None
+
+    def channel_omission_reason(self) -> str | None:
+        """Contributors must document why updates cannot be checked."""
+        return None
 
     def acquisition(self) -> AcquisitionContract | None:
         """The vendor acquisition this component requires, if any.
