@@ -4,7 +4,8 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active; published live on the coordination branch. Resumed 2026-09-16 by the product owner at the release-candidate
+State: active; published live on the coordination branch; every 2026-09-19
+round merged. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
 `maintenance` workstream with the bug vocabulary, then the `ws-` branch
@@ -14,6 +15,8 @@ needed. Eight intake items remain undispositioned; see *Next Resumable Task*.
 Integration target: `main`
 
 Delivery method: pull request
+
+Branch association: `ws-workflow-improvements/v1`
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-004`, `R-PRODUCT-005`,
 `R-PRODUCT-006`
@@ -1152,6 +1155,13 @@ instructions, answered by mail the same day: sound, one broken link, and the
 migration of its pending outbox send. Both decided on this branch under the
 new rule; the mailbox is empty.
 
+**Merged.** The product owner merged the published-state round as
+[`PR #112`](https://github.com/ccozianu/devcapsule/pull/112) on 2026-09-21;
+`git cherry` found nothing unique and the branch was reset to `main`. The tool
+is now on `main`, so every other workstream can publish and retire its outbox
+at its next session. `maintenance` had meanwhile delivered a send through an
+outbox of its own (`PR #116`), the last such merge the project should see.
+
 **Left to their owners.** The other open workstreams publish once at their
 next session and delete their outbox branches; the two stranded pause records
 on `sample-projects` and `component-catalog` become moot the moment those
@@ -1159,9 +1169,10 @@ workstreams publish, since the live view then comes from their working trees.
 
 ## Next Resumable Task
 
-Everything drafted on 2026-09-18 is merged. The owner triages the twelve
-untriaged bugs in the `maintenance` workstream, which is where the next
-release's handful comes from; that is that workstream's task, not this one's.
+Everything through the published-state round is merged. The owner triages
+the twelve untriaged bugs in the `maintenance` workstream, which is where the
+next release's handful comes from; that is that workstream's task, not this
+one's.
 
 Then decide the remaining three intake items, which wait on the owner's
 answers under *Open Threads*.
