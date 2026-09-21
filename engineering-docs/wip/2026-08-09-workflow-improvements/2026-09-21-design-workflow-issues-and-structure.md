@@ -96,7 +96,7 @@ Each is small. Together they are the structure.
 - **History has a home and stays there.** Session records, shed narratives,
   and the blog are layer 4 by definition; nothing in layers 1 to 3 may
   depend on reading them.
-- **Tooling prints the start context.** `devcapsule workflow list` already
+- **Tooling prints the start context.** `devcapsule workflow status` already
   shows every workstream's next step; a `brief` verb that prints exactly the
   layer-1 set for the selected workstream, and nothing more, would make the
   budget visible and enforceable.

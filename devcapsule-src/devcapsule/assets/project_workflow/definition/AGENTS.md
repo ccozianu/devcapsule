@@ -33,7 +33,7 @@ state, and next steps in repository files rather than only in chat. Update the
 selected status file at meaningful checkpoints and before pausing. In
 multiple-streams mode, follow `WORKFLOW.md` for branch routing, synchronization,
 intake decisions, publishing, and integration. At session start read the
-live workstream list with `devcapsule workflow list`, take your mail with
+live workstream list with `devcapsule workflow status`, take your mail with
 `devcapsule workflow mail take`, and propose whether to synchronize with
 `main` now, from the list's facts: a changed definition or local workflow
 file is a must, otherwise weigh it and say why; send items with `devcapsule workflow mail
