@@ -4,9 +4,9 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: integrating; runtime introspection correction validated, awaiting owner review and PR delivery
+State: integrating; discovery and compatibility service validated, awaiting owner PR review and delivery
 
-Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
+Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@2103fb7c230c
 
 Integration target: `main`
 
@@ -26,57 +26,55 @@ consumer. Intended for v0.2.14; project-management owns release sequencing.
 
 ## Current State
 
-The owner-approved runtime correction is implemented. Ordinary launch supplies
-a read-only configuration directory and an immutable session snapshot. Inside
-the capsule, `versions show` distinguishes running software from the current
-next-launch selection, and `config list` reads recorded settings without host
-path validation or recovery writes. Mutation/state-dependent commands point to
-the launcher. Older capsules need a relaunch to receive the mounts. The mount
-uses the selected record's existing parent directory; sibling checkout records
-can be readable under that shared layout, as documented. The contract-first
-navigation rule is in WORKFLOW-LOCAL.md.
+Owner extension implemented: all six curated components have read-only vendor
+update discovery. Codex retains installation/selection; discovery-only candidates
+are not offered as installable. PostgreSQL major-only base locks report upstream
+support/latest minor without inventing an installed minor or missing update.
 
-The original work order and the owner's review refinement are implemented.
-Security/end-of-support notices now elicit decisions during interactive launch
-through the existing Elicitor: review/upgrade, later, keep or stop. Confirmed
-selection is used by that launch, with separate acquisition consent, accurate
-success history and the existing recovery path. Daily best-effort checks use
-cached offline fallback; noninteractive launch never checks or prompts.
-The final focused suite and full repository gate pass. `project versions`
-provides inspection, channel checks, exact previews, preparation/selection,
-successful-use history, rollback, following the project again, proposal export,
-and remembered reminders. Codex uses the typed npm channel; generic orchestration
-also passes the unrelated widget and licensed-widget journeys.
+Failed checks consult a versioned DevCapsule compatibility feed, matching adapter,
+CLI version and platform locally. Maintained diagnoses identify released fixes or
+known issue/workaround links. Feed and diagnosis expiry, unknown metadata and
+unavailable service/cache remain explicit. Last-successful checks and existing
+notices survive failure; software selection and offline launch remain intact.
 
-Local selection is a complete checkout-owned version set. Ordinary configuration
-and launch consume it without mixing in later project lock changes. Preparation
-uses the existing acquisition/materialization engine; activation is recoverable.
-Zero-exit history captures inputs before launch. Rollback preserves current host
-permissions, personal state and exact software identities, including moved local
-base tags. Candidate acquisition consent is explicit and cannot grant host access.
+The scheduled/main-change/manual GitHub Action generates the feed and a
+GitHub-rendered status page on the dedicated `component-status` branch. The
+backend records observations separately from authored diagnoses and never invents
+an incident or renews its review date. No website Pages deployment is changed.
+The first live publication waits for owner PR merge; no remote status branch was
+created in this session. The source policy currently contains no diagnoses.
 
-D-0010 records the owner's work-order decision and R-UPGRADE-001 the contract.
-User/contributor instructions and permanent validation evidence are indexed below.
-No release, mainline push or PR creation is part of this work order.
+The original version-set journey, critical prompts and read-only runtime
+introspection remain implemented; earlier evidence is in the validation record.
+The full gate exposed three launcher tests reading this restarted dogfood
+capsule's ambient context. Their fixtures now use their own temporary working
+directory; production runtime dispatch and mounts are unchanged.
 
-Session synchronization: fetched remote main remains `e4a96dc`, already contained
-in the branch, with unchanged mainline workflow definitions. No synchronization was needed.
-The local workflow was then updated with the owner's navigation rule; the generic
-definition and declared workflow version were not changed.
-Run workflow commands from the repository root: from `devcapsule-src` they report
-state relative to that directory, which initially appeared misleadingly empty.
-Re-running at root confirmed the published handoff. Final mail take found no mail;
-there are no open bugs owned by this workstream.
+Session synchronization: fetched `origin/main` remains `e4a96dc`, already in this
+branch. No synchronization needed. Mail and owned open bug queues were empty.
+Workflow commands run from the repository root, not `devcapsule-src`.
 
 ## Planned Next Step
 
-Owner reviews the pushed feature, including runtime introspection and the critical-upgrade launch UX, and
-opens its PR against `main`. Address review findings on this branch. Once the PR is otherwise ready to merge, perform the
-workflow finishing/archive changes and required checks, then the owner merges.
-Verify remote main contains the finished tree before declaring the workstream
-complete. Do not resume maintenance or cut a release.
+Owner reviews the pushed extension and opens the feature PR against `main`. After merge, inspect the first
+**Component update status** action, public raw feed and rendered status page;
+GitHub token/branch policy and public-endpoint client acceptance remain external
+checks. No release or direct-main integration is authorized. Before workstream
+closure, complete archive/finishing work and verify remote main contains the tree.
+Do not resume maintenance automatically.
 
 ## Validation And External State
+
+Latest gate for compatibility service: `nox -s build` passed 1,033 tests,
+18 host-sensitive cases deselected, one existing xfail, mypy on 165 files,
+source/PEX smoke and nine packaged tests. Focused suite: 115 passed. Six live
+metadata probes passed without executable downloads. The workflow publication
+shell passed against a local bare remote, including successive fast-forward
+updates and unchanged main. Logs: `/tmp/component-status-build.log`,
+`/tmp/component-status-focused.log`; generated local metadata/page preview at
+`/tmp/devcapsule-component-status-preview/`. No hosted deployment was performed.
+
+Previous checkpoint evidence:
 
 Final gate after runtime introspection: `nox -s build` — 1,009 tests passed, 18 host-sensitive tests deselected,
 one existing xfail; mypy, source smoke, PEX construction and nine packaged tests.
@@ -109,31 +107,28 @@ PR creation/merge remains the delivery arrangement.
 
 ### Awaiting The Human
 
-Owner feature/code/UX review and GitHub PR opening/merge. The implementation
-uses explicit component-channel notices. The optional question about adding an
-independent security feed received no answer; the stated default confines this
-slice to channel notices. A separate feed can be scoped later if desired. Authenticated agent use
-and full interactive IDE acceptance remain outside the bounded executable probe.
-Project-management owns the complete v0.2.14 scope and release sequence.
+Owner PR review/opening/merge and first hosted publication acceptance. Older
+clients predating fallback support need one normal CLI upgrade. Authenticated
+agent/interactive IDE acceptance and release sequencing remain with the owner.
 
 ### Weighed And Unresolved
 
-No design question blocks review. npm deprecation is the implemented support
-signal; security notices are typed adapter data, with no independent vulnerability
-feed or claim of complete security coverage. Retention has no automatic pruning; manual
-removal of both artifacts and images can defeat offline recovery. Vendor state
-migrations are not reversible by executable rollback. Serialized configuration
-access remains required; the journal is not a general locking or power-loss
-solution. Other components explicitly explain their missing distribution channels.
+GitHub-rendered branch page avoids coupling status to the existing Pages sites.
+Current probes do not certify every old adapter; maintained diagnoses retain
+explicit old IDs and review deadlines. No independent vulnerability feed,
+additional installation adapter or "upgrade all" command is claimed here.
+Vendor state migrations and manually deleted recovery resources retain earlier
+rollback limitations. No product decision blocks review.
 
 ### Deliberately Not Preserved
 
-No chat transcript was requested. The work order, canonical decision, requirements,
-and validation record preserve the contract and evidence. Fixture account state
-was never created; transient display tokens are redacted from the retained log.
+No chat transcript or accounts were created. Contracts, operator instructions and
+validation records retain the decisions. Local metadata previews are observations,
+not deployed service evidence.
 
 ## Workstream Document Index
 
+- [Status service](../../../component-status/README.md): v1 contract, publication and maintenance operations.
 - [Work order](../../work-orders/2026-09-21-component-upgrades.md): scope and finish criteria.
 - [User guide](../../../docs/guides/component-upgrades.md): ordinary CLI journey and limits.
 - [D-0010](../../decisions/product/d-0010-developer-owned-version-sets.md): owner decision and historical refinements.
