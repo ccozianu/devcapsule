@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active. Resumed 2026-09-16 by the product owner at the release-candidate
+State: active; published live on the coordination branch. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
 `maintenance` workstream with the bug vocabulary, then the `ws-` branch
@@ -1103,13 +1103,67 @@ owners' to resend.
 **Verification.** Mail, CLI, and framework tests pass (52 passed); syntax and
 typecheck gates pass. The wider suite was not run.
 
+### Twenty-First Task: Published State, And The Outbox Retired
+
+The owner's principle, stated on 2026-09-19 after being asked to merge an
+outbox pull request: no bureaucratic item may need a pull request, ever, even
+one nobody reviews; and `main` remains the publication of record. The owner's
+own resolution, refined together: records ride the workstream's regular pull
+request, and a side channel carries them live before that. Built the same
+day as the second half of backlog item 3.
+
+**Built.** `publish` and `list` in `devcapsule workflow`, on the same
+plumbing as mail, in `devcapsule/workflow_coordination.py` (renamed from
+`workflow_mail.py`). `publish` pushes the working tree's status file and
+decision log to `state/<name>/` on the coordination branch, replacing what
+was there, without a branch switch, and is a no-op when nothing changed;
+`publish --retire` removes the directory at conclusion. `list` renders every
+published workstream's state, branch association, and next step. Tests cover
+publish, idempotence, working-tree reads, retire with mail surviving, and the
+CLI.
+
+**Protocol.** Records are edited on the working branch like everything else
+and reach `main` inside the ordinary integration; nothing is merged for a
+record alone. Published state is the live view and the truth while a
+workstream is open; the copy on `main` is the record as of the last
+integration and becomes permanent at conclusion; the tool keeps them
+identical so they lag but never disagree. The live workstream list is read
+from the coordination branch at session start, the table on `main` being the
+fallback and the record. Registration is a commit on the first working branch
+plus a publish. A workstream edits only its own row, which decides the
+2026-08-18 registry-rows item: rows have owners, as restriction 11's third
+carve-out now says. *The Outbox Branch* is removed with credit in *Changes*,
+restriction 13 restated, *Publishing Before Integration* rewritten, and every
+outbox mention in the definition, both agent files, and the root list's prose
+replaced.
+
+**Applied to this workstream.** The pending outbox send was folded in: the
+row edit is on this branch, the user-docs item was re-sent by mail, and the
+outbox branch is deleted. This workstream published itself, the first
+`state/` entry on the coordination branch.
+
+**First mail received.** Two items arrived on the coordination branch from
+the other checkout before this round was even merged, both sent with the
+plain-git equivalent: `website` reporting five passages still contradicting
+the mail protocol, all reconciled here (the outbox section, the decision log,
+senders append-only, judgment gaps by mail, and `main` no longer "the
+medium"), and `project-management` asking for a review of its local blog
+instructions, answered by mail the same day: sound, one broken link, and the
+migration of its pending outbox send. Both decided on this branch under the
+new rule; the mailbox is empty.
+
+**Left to their owners.** The other open workstreams publish once at their
+next session and delete their outbox branches; the two stranded pause records
+on `sample-projects` and `component-catalog` become moot the moment those
+workstreams publish, since the live view then comes from their working trees.
+
 ## Next Resumable Task
 
 Everything drafted on 2026-09-18 is merged. The owner triages the twelve
 untriaged bugs in the `maintenance` workstream, which is where the next
 release's handful comes from; that is that workstream's task, not this one's.
 
-Then decide the remaining four intake items, which wait on the owner's
+Then decide the remaining three intake items, which wait on the owner's
 answers under *Open Threads*.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
@@ -1243,6 +1297,12 @@ the second step after mail: the workstream list and the records move to the
 coordination branch, retiring the outbox. Position: after the owner's
 freeze answer for the remaining items.
 
+**Registry rows have de facto owners and no stated ones**
+(`project-management`, 2026-08-18). Acknowledged and implemented: a workstream
+edits only its own row, on its working branch, as restriction 11's third
+carve-out; the live list is read from published state, so the table on `main`
+is no longer a merge target for routing. See *Twenty-First Task*.
+
 **Define the workflow's information model, minimally** (`project-management`,
 2026-08-18, at the product owner's direction). Acknowledged and implemented
 as the *Glossary* in `WORKFLOW.md`, with six prose renames, milestone and
@@ -1314,6 +1374,8 @@ can be reordered.
 10. ~~The information model.~~ Drafted 2026-09-19 as the glossary. See
     *Nineteenth Task*.
 11. ~~Mail off `main`.~~ Built and drafted 2026-09-19. See *Twentieth Task*.
+12. ~~Published state; the outbox retired; rows have owners.~~ Built and
+    drafted 2026-09-19. See *Twenty-First Task*.
 
 ## Assessment Of The Queue
 
@@ -1400,8 +1462,8 @@ session-start tooling on `project-management`'s backlog, since the check is
 one fetch and one comparison. Design after the transport decision; it is the
 first consumer that needs a write from an agent without a human in the loop.
 
-**3. Move the workstream list and the records onto the coordination branch.**
-Priority: `wanted`. Acknowledged 2026-09-19 from the 2026-08-19 item. Done
+**3. ~~Move the workstream list and the records onto the coordination branch.~~**
+Done 2026-09-19 as published state; see *Twenty-First Task*. Was priority `wanted`. Acknowledged 2026-09-19 from the 2026-08-19 item. Done
 means: the workstream list, status files, and decision logs live on the
 `coordination` branch under a state directory, written by the tool without
 a branch switch; registration is a mail to nobody in particular, a push of
@@ -1502,9 +1564,9 @@ resume changed every question. Short by design.
 - **Review of the `maintenance` workstream, the bug vocabulary, and the
   backfilled records.** The pull request waits on it; the triage of twelve
   untriaged bugs follows it, in the `maintenance` workstream.
-- **Whether the freeze lifts for the remaining four items.** The 2026-08-30
+- **Whether the freeze lifts for the remaining three items.** The 2026-08-30
   freeze runs until the release-candidate check, which is now. The owner has
-  lifted it for every slice so far. All four remaining items change rules.
+  lifted it for every slice so far. All three remaining items change rules.
 - **Whether *One Workflow, Many Projects* (2026-09-11) subsumes the structural
   sequence** of information model, component shape, coordination off `main`,
   and mail transport as its first phase, which its text implies, or runs after

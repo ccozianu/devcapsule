@@ -1,14 +1,15 @@
 # Current Status
 
 DevCapsule uses `workflow-type = "multiple-streams"`. On `main`, this file is
-the compact workstream list of workstreams that have begun but not ended. Detailed
-state belongs in each linked workstream status file.
+the record of workstreams that have begun but not ended, as of each one's last
+integration. The live list is `devcapsule workflow list`, read from the
+coordination branch. Detailed state belongs in each linked status file.
 
 ## Open Workstreams
 
 | Name | Started | Goal | State | Branch association | Status file |
 |---|---|---|---|---|---|
-| `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | active 2026-09-18; release rule merged; `maintenance` workstream, bug vocabulary, `ws-` branch vocabulary, workflow declaration, and local workflow merged; glossary and off-`main` mail drafted for owner review; four intake items remain | `ws-workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
+| `workflow-improvements` | 2026-08-09 | Improve the multiple-stream workflow from concrete dogfood findings during the recursive E2E cycle | active 2026-09-19; release rule, `maintenance`, `ws-` names, declaration, local workflow, and glossary merged; coordination branch with mail and published state built, outbox retired, awaiting merge; three intake items remain | `ws-workflow-improvements/v1` | [workstream status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md) |
 | `project-management` | 2026-08-09 | Maintain project-wide priorities, sequencing, dependencies, and lifecycle coordination | active 2026-09-18 at owner request; synchronized with origin and main; pending coordination decisions and intake remain | `project-management/coordination` | [workstream status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md) |
 | `maintenance` | 2026-09-18 | Own the defects no open workstream covers, on `main` and on maintained release lines, and drive maintenance releases | paused 2026-09-21; graphical 0.2.14.dev0 successor accepted on 0.2.12-generated config; normal GUI exit 0 verified; primary dogfood migration pending | `ws-maintenance/triage`; `ws-maintenance/outbox` | [workstream status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md) |
 | `sample-projects` | 2026-08-14 | Provide realistic sample projects as submodules that demonstrate ordinary adopter development inside DevCapsule | paused 2026-08-21 after adding human-authorized workstream-change rules; labeled fixtures are next | `sample-projects/fastapi-webapp` | [workstream status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md) |
@@ -36,9 +37,10 @@ The workflow transition reached `main` through
 [`PR #8`](https://github.com/ccozianu/devcapsule/pull/8) at merge revision
 `b648623`; its date-prefixed layout and checkout-selection refinements reached
 `main` through [`PR #9`](https://github.com/ccozianu/devcapsule/pull/9) at merge
-revision `ed30a58`. Later workstreams must be registered on current `main`
-first, use `ws-<mnemonic>/` as the branch prefix, and use an immutable
-ISO-start-date and mnemonic directory name for WIP and archive records.
+revision `ed30a58`. Later workstreams register on their first `ws-<name>/` branch and publish to
+the coordination branch, use `ws-<name>/` as the branch prefix, and use an
+immutable ISO-start-date and name directory name for open-work and archive
+records; the row here follows with the workstream's first integration.
 Branches named under the older `<mnemonic>/` prefix are renamed by their own
 workstreams before the next release candidate is tagged, per *Changes* in
 `WORKFLOW.md`; after that they are outside the workflow.
