@@ -289,6 +289,13 @@ def test_publish_stamps_the_definition_and_list_reports_the_facts(repos) -> None
     publish(sender, "alpha")
     row = list_state(sender)[0]
     assert row.behind_main == 0 and row.definition_changed is False
+    # The author of a definition change is not told the definition changed:
+    # its branch edits the file, main has not moved it since they diverged.
+    (sender / "WORKFLOW.md").write_text("# definition v3, by alpha\n", encoding="utf-8")
+    git(sender, "commit", "--quiet", "-am", "alpha edits the definition")
+    git(sender, "push", "--quiet", "--force", "origin", "ws-alpha/v1")
+    publish(sender, "alpha")
+    assert list_state(sender)[0].definition_changed is False
 
 
 def test_send_all_fans_out_to_every_published_workstream(repos) -> None:

@@ -254,9 +254,11 @@ class WorkstreamState:
     """Commits on the integration branch that the workstream's branch lacks;
     ``None`` when the branch is not on the remote."""
     definition_changed: bool | None = None
-    """Whether the definition or the local workflow file on the integration
-    branch differs from what the status file says was last read; ``None``
-    when the status file carries no stamp."""
+    """Whether the integration branch has moved the definition or the local
+    workflow file past what the status file says was last read: the files
+    differ from the stamp and changed on the integration branch since the
+    workstream's branch diverged from it. A workstream that is itself editing
+    the definition is not flagged. ``None`` when there is no stamp."""
 
 
 def publish(
@@ -378,30 +380,57 @@ def list_state(
         text = git.run("cat-file", "-p", blob)
         parsed = _parse_status(name, text)
         stamped = _parse_stamp(text)
-        changed = None if stamped is None else any(
-            current_definition.get(k) != v for k, v in stamped.items()
-        ) or any(k not in stamped for k in current_definition)
+        branch_ref = _branch_ref(git, remote, parsed.branch)
+        changed: bool | None
+        if stamped is None:
+            changed = None
+        else:
+            differs = any(current_definition.get(k) != v for k, v in stamped.items()) or any(
+                k not in stamped for k in current_definition
+            )
+            changed = differs and _main_moved_definition(git, branch_ref, main_ref)
         rows.append(
             WorkstreamState(
                 parsed.name,
                 parsed.state,
                 parsed.branch,
                 parsed.next_step,
-                _behind(git, remote, parsed.branch, main_ref),
+                _behind(git, branch_ref, main_ref),
                 changed,
             )
         )
     return rows
 
 
-def _behind(git: _Git, remote: str, association: str, main_ref: str) -> int | None:
-    """Commits on the integration branch that the first ``ws-`` branch named
-    in the association lacks, or ``None`` when no such branch is on the
-    remote."""
+def _branch_ref(git: _Git, remote: str, association: str) -> str | None:
+    """The remote-tracking ref of the first ``ws-`` branch the association
+    names, when the remote has it."""
     match = re.search(r"`(ws-[^`\s]+)`", association)
     if match is None:
         return None
-    completed = git.attempt("rev-list", "--count", f"refs/remotes/{remote}/{match.group(1)}..{main_ref}")
+    ref = f"refs/remotes/{remote}/{match.group(1)}"
+    return ref if git.attempt("rev-parse", "--verify", "--quiet", ref).returncode == 0 else None
+
+
+def _main_moved_definition(git: _Git, branch_ref: str | None, main_ref: str) -> bool:
+    """Whether the integration branch changed a definition file since the
+    workstream's branch diverged from it. Without a branch to compare, any
+    difference counts."""
+    if branch_ref is None:
+        return True
+    base = git.attempt("merge-base", branch_ref, main_ref)
+    if base.returncode != 0:
+        return True
+    diff = git.attempt("diff", "--quiet", base.stdout.strip(), main_ref, "--", *DEFINITION_FILES)
+    return diff.returncode != 0
+
+
+def _behind(git: _Git, branch_ref: str | None, main_ref: str) -> int | None:
+    """Commits on the integration branch that the workstream's branch lacks,
+    or ``None`` when the branch is not on the remote."""
+    if branch_ref is None:
+        return None
+    completed = git.attempt("rev-list", "--count", f"{branch_ref}..{main_ref}")
     if completed.returncode != 0:
         return None
     return int(completed.stdout.strip() or 0)
