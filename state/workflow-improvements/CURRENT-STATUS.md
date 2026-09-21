@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active; published live on the coordination branch; every 2026-09-19
 
-Definition read: WORKFLOW.md@3b6b13860d21, WORKFLOW-LOCAL.md@488eed5a6c05
+Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 round merged. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
@@ -223,6 +223,56 @@ a new row; the outbox is retired with credit; links between `main` and the
 branch follow one convention; and the two-homes trial, if any, has a date
 by which one home wins. It also unblocks backlog item 2, soft claims, which
 needs the same write path.
+
+**4. `devcapsule workflow brief`: the session in one command.** Priority:
+`wanted`, target 0.2.15 toward V1. Added 2026-09-21 by the product owner
+from this workstream's proposal. Done means: for the selected workstream,
+one command prints its row and next task, its waiting mail, who is working
+on what now (item 5), the *Changes* entries since the status file's stamp,
+and the synchronization judgment's facts already weighed; nothing else. A
+human reads it in a minute; an agent starts the session from it.
+
+**5. Soft claims, shown live.** Priority: `wanted`, target 0.2.15 toward V1.
+Item 2 above, now with its shape: `workflow claim` writes who, which
+branch, which slice, since when, to `state/<name>/claim`; `status` and
+`brief` show it; claims expire and are cleared at pause and finish; a claim
+informs and never refuses.
+
+**6. `workflow ask`: polls and questions as a first-class act.** Priority:
+`wanted`, target V1. Done means: a question fans out by mail to named
+workstreams or all, answers return as items to the asker under a
+recognizable name, and `status` shows who has not answered.
+
+**7. `workflow digest --since <date>`: what happened, written for you.**
+Priority: `wanted`, target V1. Done means: the coordination branch's history,
+who published, who sent what to whom, claims taken and released, rendered as
+a readable digest for a period. The retrospective principle with a face, and
+the blog's raw material.
+
+**8. `workflow doctor`: the verifier with a friendly name.** Priority:
+`wanted`, target V1, and strategic item 1 of the design discussion. Done
+means: one run grades a project's workflow health: unpublished state,
+waiting mail, definition changed since last read, an old branch name, an
+intake item missing from the log, a bug record without frontmatter, a
+declaration disagreeing with the definition. Reports, never refuses.
+Shared with `project-management`'s pre-commit invariants entry; whichever
+workstream builds it, the checks are one list.
+
+**9. A live project board with zero infrastructure.** Priority: `wanted`,
+target V1. Done means: a page on the project website rendered from the
+coordination branch, every workstream's state, mail in flight, claims, with
+no service and no login. The data contract is this workstream's; the page is
+`website`'s, to be sent as an item once items 4 and 5 fix the contract.
+
+**10. Agent review of pull requests, optional and contained.** Priority:
+`wanted`, target V1. Added 2026-09-21 from the product owner's proposal: for
+a feature, one agent runs with it and another reviews, with human sign-off
+optional. Done means: a *Review* section in the definition, review as a
+mail-borne act that needs no host credentials, independence rules, a review
+record format, the local-policy knobs for who may approve and merge, and the
+host-capability declaration for optional GitHub glue with least-privilege
+scopes. Shape proposed to the owner on 2026-09-21; see the design
+discussion.
 
 The earlier item — making `project-management` a mandatory permanent workstream
 — was completed on 2026-08-16. Its done-criteria were met as follows:
