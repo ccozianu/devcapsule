@@ -149,6 +149,17 @@ right. Two levels, each in priority order.
 8. **Packaged-versus-root definition drift** beyond the sections edited
    together, to be listed by the review's phase 1.
 
+## V1 Items Added 2026-09-21
+
+The owner asked what would add to the workflow's appeal for V1 and took the
+proposals as items on this workstream, backlog items 4 to 10: `brief`, soft
+claims shown live, `ask`, `digest`, `doctor`, the live board, and agent
+review of pull requests. They share one property: each makes something the
+workflow already does visible in one motion, and each keeps the whole thing
+git and markdown all the way down. The headline pairing is `brief` and the
+board: any agent or human runs one command and knows what to do, and anyone
+opens a page and watches the team do it, both from the coordination branch.
+
 ## Open Questions For The Owner
 
 - Whether the 10,000-word target for layer 1 is the right order of magnitude,
