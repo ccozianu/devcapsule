@@ -63,13 +63,14 @@ will retain it. Choose another exact version deliberately if needed.
 
 ## Repository evidence
 
-Final `nox -s build`: 954 tests passed, 18 deselected, one existing xfail;
+Original work-order gate: 954 tests passed. After the owner's interactive
+critical-upgrade refinement, `nox -s build`: 988 tests passed, 18 deselected, one existing xfail;
 nine packaged-executable tests passed.
 It includes compilation, shell syntax, mypy, the full non-host suite, source
 CLI smoke, PEX construction and nine packaged-executable tests. Existing
 released-input fixtures remain passing.
 
-The 37 focused cases in `test_version_sets.py` and
+The 71 focused cases in `test_version_sets.py` and
 `test_distribution_channels.py` cover:
 
 - Real Codex metadata adaptation and an unrelated widget through the same
@@ -91,11 +92,25 @@ The 37 focused cases in `test_version_sets.py` and
   is explicit; proposal export requires successful local use and writes a patch.
 - Remembered dismissal, seven-day quiet periods, a newly discovered candidate,
   offline launch and refusal of an unsatisfied companion-version constraint.
+- Ordinary launch with a controlled terminal and channel-reported security or
+  support notice: review, confirmation, acquisition consent where required,
+  same-launch B, accurate success history, then rollback and ordinary launch A.
+- Decline, stop, Enter and EOF; remembered later/keep; missing replacement;
+  failed preparation followed by an explicit decision to launch the old set;
+  noninteractive input never being consumed as consent.
+- Daily discovery, the explicit refresh skip, offline first launch, retained
+  prior notice and timestamp after a failed refresh, new critical notices after
+  ordinary dismissal, and no duplicate routine reminder after a decision.
+- Actual npm adapter consuming fixture deprecation metadata and driving the
+  prompt; no notice invented from missing versions or unsupported platforms.
 
 These cases retain production configuration and materialization logic while
 substituting Docker image operations and the launched process. They establish
 contract behavior across those boundaries, not the subjective quality of an
 upgrade experience. The real CLI check above supplies separate delivery evidence.
+The new prompting cases use the production `Elicitor` with a controlled terminal
+stream; no new real Docker/account session or live security advisory is claimed
+for this refinement. The earlier real Codex journey predates it.
 
 ## Limits retained for review
 
@@ -104,7 +119,10 @@ omission. Candidate acquisition consent is explicit through `--authorize` and
 cannot grant host permissions; the licensed-widget journey verifies selection,
 revocation, recovery and following a changed recommendation. Companion
 requirements are checked and reported, not solved by silently upgrading tools.
-Only metadata checks are online; normal launches use cached reminders.
+Interactive launches attempt a daily channel refresh with cached offline fallback;
+noninteractive launches never check online. The npm adapter reports vendor
+deprecation, not independently sourced security advisories. No vulnerability
+database integration or comprehensive security/support coverage is claimed.
 
 Personal state is never backed up or automatically migrated. Manual deletion
 of both retained artifacts and images can defeat offline recovery. Serialized

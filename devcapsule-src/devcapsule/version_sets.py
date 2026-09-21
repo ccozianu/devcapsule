@@ -18,7 +18,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from devcapsule.compat import CliError
 from devcapsule.components.catalog import COMPONENTS, selected_component_definitions
-from devcapsule.configuration.authorization import authorization_declarations, authorized_base_selection, normalize_authorization_value
+from devcapsule.configuration.authorization import AuthorizationReview, authorization_declarations, authorized_base_selection, normalize_authorization_value
 from devcapsule.configuration.documents import canonical_digest, render_document, selected_version_lock
 from devcapsule.configuration.model import Configuration
 from devcapsule.configuration.storage import (
@@ -154,7 +154,11 @@ def inspect(start: Path) -> str:
 
 def check(start: Path) -> str:
     workspace = Workspace.load(start)
-    lines, candidates = [], []
+    path = workspace.state / "check.toml"
+    previous = load_toml(path) if path.exists() else {}
+    lines: list[str] = []
+    candidates: list[str] = []
+    notices: list[dict[str, Any]] = []
     interactive, ancillary = selected_component_definitions(workspace.lock)
     for definition in (interactive, *ancillary):
         channel = definition.distribution_channel()
@@ -164,16 +168,62 @@ def check(start: Path) -> str:
         version = str(workspace.lock["components"][definition.id]["version"])
         try:
             report = channel.check(version, str(workspace.lock["platform"]))
-        except CliError as exc:
+        except (CliError, OSError) as exc:
             lines.append(f"{definition.id}: check unavailable — {exc}")
+            # Failed refresh is not evidence that a previously reported issue
+            # disappeared. Applicability and its original age remain explicit.
+            notices.extend(item for item in previous.get("notices", [])
+                           if item["component"] == definition.id and item["current"] == version
+                           and item["platform"] == workspace.lock["platform"])
             continue
         lines.append(f"{definition.id} {version}: {report.current.status} {report.current.detail}; source: {report.source}")
+        available = [item.version for item in report.candidates
+                     if item.status == "available" and not item.notices and item.version != version]
+        for notice in report.current.notices:
+            lines.append(f"  Critical {notice.kind} notice: {notice.detail}")
+            notices.append({"component": definition.id, "current": version, "platform": workspace.lock["platform"],
+                            "identity": notice.identity, "kind": notice.kind, "detail": notice.detail,
+                            "source": report.source, "checked-at": time.time(), "candidates": available})
         for candidate in report.candidates:
             lines.append(f"  Candidate {candidate.version}: {candidate.status} {candidate.detail}; availability is not DevCapsule validation.")
             if candidate.status == "available":
                 candidates.append(f"{definition.id}@{candidate.version}")
-    atomic_write(workspace.state / "check.toml", render_document({"checked-at": time.time(), "candidates": candidates, "report": "\n".join(lines)}))
+    atomic_write(path, render_document({"checked-at": time.time(), "set": workspace.identity,
+                                       "candidates": candidates, "notices": notices, "report": "\n".join(lines)}))
     return "\n".join(lines)
+
+
+def launch_notices(start: Path, *, refresh: bool, report: Callable[[str], None] = print) -> list[dict[str, Any]]:
+    """Best-effort daily discovery on interactive launch; offline cached fallback."""
+    workspace = Workspace.load(start)
+    path = workspace.state / "check.toml"
+    saved = load_toml(path) if path.exists() else {}
+    if refresh and (saved.get("set") != workspace.identity or time.time() - saved.get("checked-at", 0) >= 86400):
+        report("Checking component channels for security or support notices…")
+        result = check(start)
+        if "check unavailable" in result:
+            report(result)
+        saved = load_toml(path)
+    return [notice for notice in saved.get("notices", [])
+            if notice["platform"] == workspace.lock["platform"]
+            and workspace.lock["components"].get(notice["component"], {}).get("version") == notice["current"]
+            and notice["kind"] in {"security", "end-of-support"}]
+
+
+def notice_key(notice: Mapping[str, Any]) -> str:
+    # A new advisory, revised explanation or new remedy deserves a new decision.
+    return "critical-" + canonical_digest({key: value for key, value in notice.items() if key != "checked-at"})
+
+
+def notice_decision(start: Path, notice: Mapping[str, Any], *, action: str | None = None) -> bool:
+    """Return whether a notice is due; persist explicit choices only."""
+    path = state_directory(start) / "reminders.toml"
+    choices = load_toml(path) if path.exists() else {}
+    key = notice_key(notice)
+    if action is not None:
+        choices[key] = -1 if action == "dismiss" else time.time() + 7 * 86400
+        atomic_write(path, render_document(choices))
+    return choices.get(key, 0) != -1 and choices.get(key, 0) <= time.time()
 
 
 def reminder(start: Path, *, action: str | None = None) -> str:
@@ -186,13 +236,19 @@ def reminder(start: Path, *, action: str | None = None) -> str:
     choices = load_toml(choices_path) if choices_path.exists() else {}
     now = time.time()
     pending = []
+    critical_candidates = {f"{notice['component']}@{version}" for notice in report.get("notices", [])
+                           if workspace.lock.get("components", {}).get(notice["component"], {}).get("version") == notice["current"]
+                           for version in notice["candidates"]}
+    if action:
+        for notice in report.get("notices", []):
+            choices[notice_key(notice)] = -1 if action == "dismiss" else now + 7 * 86400
     for candidate in report.get("candidates", []):
         name, version = candidate.rsplit("@", 1)
         if workspace.lock.get("components", {}).get(name, {}).get("version") == version:
             continue
         if action:
             choices[candidate] = -1 if action == "dismiss" else now + 7 * 86400
-        elif choices.get(candidate, 0) != -1 and choices.get(candidate, 0) <= now:
+        elif candidate not in critical_candidates and choices.get(candidate, 0) != -1 and choices.get(candidate, 0) <= now:
             pending.append(candidate)
             choices[candidate] = now + 7 * 86400
     atomic_write(choices_path, render_document(choices))
@@ -288,7 +344,8 @@ def _pin_artifacts(value: dict[str, Any]) -> None:
 
 def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = False,
                base: Mapping[str, Any] | None = None,
-               acquisitions: Sequence[tuple[str, str]] = ()) -> ResolvedProject:
+               acquisitions: Sequence[tuple[str, str]] = (),
+               authorize: Callable[[AuthorizationReview], bool] | None = None) -> ResolvedProject:
     checkout = deepcopy(workspace.checkout)
     if follow:
         checkout.pop("version-set", None)
@@ -329,6 +386,16 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
     review = config.review()
     pending_acquisitions = [item for item in review.authorizations
                             if item.problem and declarations[item.name].kind == "acquisition"]
+    if pending_acquisitions and authorize is not None:
+        for item in pending_acquisitions:
+            if not authorize(item):
+                raise CliError("Candidate acquisition declined; the current selection is unchanged.")
+            checkout.setdefault("authorization", {})[item.name] = {
+                "value": True, "recommendation-digest": declarations[item.name].recommendation_digest,
+            }
+        config = Configuration(workspace.manifest, lock, checkout)
+        review = config.review()
+        pending_acquisitions = []
     if pending_acquisitions:
         options = " ".join(f"--authorize {item.name} true" for item in pending_acquisitions)
         raise CliError(review.render(workspace.root) + "\nTo accept these acquisitions for the target set, repeat this version-set command with "
@@ -347,7 +414,8 @@ def _prepare_activate(workspace: Workspace, selected: ResolvedProject, report: C
     report(f"Selected {effective_set_id(selected.lock, selected.checkout)} for the next ordinary 'project run'. Existing sessions are unchanged.")
 
 
-def select(start: Path, preview_id: str, *, unvalidated: bool = False, acquisitions: Sequence[tuple[str, str]] = (), report: Callable[[str], None] = print) -> None:
+def select(start: Path, preview_id: str, *, unvalidated: bool = False, acquisitions: Sequence[tuple[str, str]] = (),
+           authorize: Callable[[AuthorizationReview], bool] | None = None, report: Callable[[str], None] = print) -> None:
     workspace = Workspace.load(start)
     _safe_id(preview_id)
     proposal = load_toml(workspace.state / "previews" / f"{preview_id}.toml")
@@ -361,9 +429,12 @@ def select(start: Path, preview_id: str, *, unvalidated: bool = False, acquisiti
     # Consent is checked before downloading even metadata-pinned packages.
     structural = deepcopy(lock)
     _placeholder_hashes(structural)
-    _selection(workspace, structural, acquisitions=acquisitions)
+    prepared = _selection(workspace, structural, acquisitions=acquisitions, authorize=authorize)
+    declarations = authorization_declarations(workspace.manifest, structural)
+    accepted = [(name, "true" if prepared.checkout["authorization"][name]["value"] else "false")
+                for name, declaration in declarations.items() if declaration.kind == "acquisition"]
     _pin_artifacts(lock)
-    selected = _selection(workspace, lock, acquisitions=acquisitions)
+    selected = _selection(workspace, lock, acquisitions=accepted)
     _prepare_activate(workspace, selected, report)
 
 

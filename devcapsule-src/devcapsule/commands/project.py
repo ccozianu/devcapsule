@@ -31,6 +31,7 @@ from devcapsule.commands.framework import (
 )
 from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
 from devcapsule.commands._versions import VersionsGroup
+from devcapsule.commands._upgrade_prompt import offer_upgrades
 from devcapsule import version_sets
 from devcapsule.compat import CliError
 from devcapsule.configuration.history import (
@@ -869,11 +870,27 @@ class ProjectRunCommand(Command):
             help="Disable DevCapsule recursive-E2E readiness for this launch.",
         )
         parser.add_argument("--name", dest="container_name")
+        parser.add_argument("--no-update-check", action="store_true",
+                            help="Skip the daily interactive distribution refresh; cached critical notices still allow a decision.")
         add_carrier_options(parser, families=("set", "authorize"))
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         admitted = ExecutionConfiguration.load(_project_context(context).start_path(), force=arguments.force)
+        # Reject invalid launch overrides before an optional upgrade can change
+        # selection. Reload afterward so this launch and its success record use
+        # exactly the version set the developer has just chosen.
+        overrides, memory_override = _run_once_answers(arguments, admitted.project.manifest, admitted.project.lock)
+        docker_options = list(arguments.docker_options)
+        if docker_options:
+            try:
+                reject_launcher_owned_docker_options(docker_options)
+            except PycharmRunError as exc:
+                raise ProjectConfigurationError(str(exc)) from exc
+        if not offer_upgrades(admitted.project.root, refresh=not arguments.no_update_check):
+            print("Launch cancelled; no session was started.")
+            return 1
+        admitted = ExecutionConfiguration.load(admitted.project.root, force=arguments.force)
         selected, review = admitted.project, admitted.review
         root, manifest, lock = selected.root, selected.manifest, selected.lock
         input_path, output_path = selected.checkout_path, selected.resolution_path
@@ -889,13 +906,6 @@ class ProjectRunCommand(Command):
             pass  # Optional cached reminders never gate an offline launch.
         if admitted.stale_inputs:
             print(f"WARNING: using stale generated resolution once ({', '.join(admitted.stale_inputs)}).", file=sys.stderr)
-        overrides, memory_override = _run_once_answers(arguments, manifest, lock)
-        docker_options = list(arguments.docker_options)
-        if docker_options:
-            try:
-                reject_launcher_owned_docker_options(docker_options)
-            except PycharmRunError as exc:
-                raise ProjectConfigurationError(str(exc)) from exc
         authorizations = review.resolved_authorizations()
         host_access = review.effective_host(overrides)
         host_x11_answer = host_access.host_x11

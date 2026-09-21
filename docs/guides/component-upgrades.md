@@ -9,6 +9,46 @@ to build an environment. The project recommends one in its committed platform
 lock. Your local selection belongs to your checkout configuration and stays
 complete even if the project recommendation changes.
 
+## Decide about a critical upgrade when launching
+
+Run `devcapsule project run` as usual. In an interactive terminal, the launcher
+checks component channels at most once per day for the selected version set.
+An explicit security or end-of-support notice brings the decision into launch:
+
+```text
+Security notice for tool 1.0.0: <vendor explanation>
+Source: <distribution channel>
+Last checked: <date and time>; cached metadata may be stale.
+Choose upgrade (review first), later (seven days), keep (silence this notice), or stop launch [later]:
+```
+
+This example illustrates a channel-reported security notice, not a current
+advisory about Codex. Codex's npm channel currently supplies vendor deprecation
+notices; DevCapsule shows their wording under end-of-support/vendor deprecation.
+It does not query an independent vulnerability database or infer vulnerabilities
+from age, registry removal or deprecation wording.
+
+Choose `upgrade` to see the exact changes, downloads, validation gaps and recovery
+options. Confirm to prepare the candidate and use it **in this launch**. Missing
+DevCapsule validation is disclosed in that confirmation. Any new vendor
+acquisition consent is asked separately; neither question grants host access.
+An available candidate is not automatically proof of a security fix.
+
+`later` (also Enter) keeps your current version and asks again after seven days.
+`keep` silences this notice for this version and candidate; a new notice, revised
+explanation or new candidate can prompt again. `stop` or end-of-input cancels
+launch. Declining the preview defers the notice for seven days. If preparation
+fails, the launcher explains the failure and asks before continuing with the
+selected set. With no available replacement, it explains that limit and offers
+later, keep or stop. Recovery still requires a previously successful set.
+
+Network failure does not prevent ordinary launch. A failed refresh retains a
+previously reported notice with its original check time. To skip refresh for a
+launch, use `devcapsule project run --no-update-check`; cached notices can still
+prompt. Noninteractive launches do not refresh, read answers or select upgrades:
+they report any unsilenced cached critical notice and use the selected set.
+Ordinary new-version notices remain quiet, remembered reminders.
+
 ## Inspect and check
 
 ```sh
@@ -130,13 +170,15 @@ devcapsule project versions defer
 devcapsule project versions dismiss
 ```
 
-Checks are explicit. Ordinary launches use only the last saved check and never
-contact update services. A checked candidate is mentioned at most once per seven
-days. `defer` starts a fresh seven-day quiet period; `dismiss` silences those
-candidate versions permanently. A different candidate discovered by a later
-check can be mentioned. Reminders describe their metadata as previously checked
-and potentially stale. A selected candidate is no longer mentioned as an update.
-These choices do not suppress notices owned by Codex or another vendor.
+`check` refreshes immediately; interactive launch also performs the daily check
+described above. An ordinary checked candidate is mentioned at most once per
+seven days. `defer` starts a fresh seven-day quiet period; `dismiss` silences the
+checked candidates and critical notices. A different candidate or critical
+notice can be surfaced later. A critical decision suppresses the duplicate
+ordinary reminder. Previously dismissing an ordinary update does not silence a
+new security/support notice. Cached metadata is labelled with its limits; a
+selected candidate is no longer mentioned as an update. These choices do not
+suppress notices owned by Codex or another vendor.
 
 For commands outside the checkout, put `--path` before `versions`, for example
 `devcapsule project --path /path/to/project versions show`.

@@ -9,7 +9,7 @@ from urllib.parse import quote, urlparse
 from urllib.request import urlopen
 
 from devcapsule.compat import CliError
-from devcapsule.components.channels import ChannelReport, ChannelSelection, ChannelVersion
+from devcapsule.components.channels import ChannelNotice, ChannelReport, ChannelSelection, ChannelVersion
 
 
 class NpmChannel:
@@ -48,7 +48,10 @@ class NpmChannel:
             if not isinstance(data, dict):
                 raise CliError(f"Malformed npm version {version!r}.")
             deprecated = data.get("deprecated")
-            return ChannelVersion(version, "unsupported" if deprecated else "available", str(deprecated or ""))
+            if deprecated is not None and not isinstance(deprecated, str):
+                raise CliError(f"Malformed npm deprecation notice for {version!r}.")
+            notices = (ChannelNotice("npm-deprecation", "end-of-support", deprecated),) if deprecated else ()
+            return ChannelVersion(version, "unsupported" if deprecated else "available", deprecated or "", notices)
         latest = tags["latest"]
         if latest not in versions:
             raise CliError("Malformed npm metadata: latest is not a published version.")

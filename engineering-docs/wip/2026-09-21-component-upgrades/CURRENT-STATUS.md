@@ -4,7 +4,7 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: integrating; feature implemented and validated, awaiting owner review and PR delivery
+State: integrating; interactive critical-upgrade refinement validated, awaiting owner review and PR delivery
 
 Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
@@ -26,7 +26,13 @@ consumer. Intended for v0.2.14; project-management owns release sequencing.
 
 ## Current State
 
-The work order's implementation is ready for owner review. `project versions`
+The original work order and the owner's review refinement are implemented.
+Security/end-of-support notices now elicit decisions during interactive launch
+through the existing Elicitor: review/upgrade, later, keep or stop. Confirmed
+selection is used by that launch, with separate acquisition consent, accurate
+success history and the existing recovery path. Daily best-effort checks use
+cached offline fallback; noninteractive launch never checks or prompts.
+The final focused suite and full repository gate pass. `project versions`
 provides inspection, channel checks, exact previews, preparation/selection,
 successful-use history, rollback, following the project again, proposal export,
 and remembered reminders. Codex uses the typed npm channel; generic orchestration
@@ -52,17 +58,19 @@ there are no open bugs owned by this workstream.
 
 ## Planned Next Step
 
-Owner reviews the pushed feature and opens its PR against `main`. Address review
-findings on this branch. Once the PR is otherwise ready to merge, perform the
+Owner reviews the pushed feature, including the critical-upgrade launch UX, and
+opens its PR against `main`. Address review findings on this branch. Once the PR is otherwise ready to merge, perform the
 workflow finishing/archive changes and required checks, then the owner merges.
 Verify remote main contains the finished tree before declaring the workstream
 complete. Do not resume maintenance or cut a release.
 
 ## Validation And External State
 
-Final gate: `nox -s build` — 954 tests passed, 18 host-sensitive tests deselected,
+Final gate after the prompt refinement: `nox -s build` — 988 tests passed, 18 host-sensitive tests deselected,
 one existing xfail; mypy, source smoke, PEX construction and nine packaged tests.
-The focused channel/upgrade suite passes 37 cases. Earlier released-input fixtures
+The focused channel/upgrade suite passes 71 cases, including production terminal
+elicitation with controlled channels, Docker and launched process boundaries.
+No new real Docker/account acceptance is claimed for the prompting refinement. Earlier released-input fixtures
 remain passing. Whitespace and new documentation links passed; the root index's
 pre-existing absent five-in-a-row sample README remains unrelated.
 
@@ -83,13 +91,18 @@ PR creation/merge remains the delivery arrangement.
 
 ### Awaiting The Human
 
-Owner feature/code/UX review and GitHub PR opening/merge. Authenticated agent use
+Owner feature/code/UX review and GitHub PR opening/merge. The implementation
+uses explicit component-channel notices. The optional question about adding an
+independent security feed received no answer; the stated default confines this
+slice to channel notices. A separate feed can be scoped later if desired. Authenticated agent use
 and full interactive IDE acceptance remain outside the bounded executable probe.
 Project-management owns the complete v0.2.14 scope and release sequence.
 
 ### Weighed And Unresolved
 
-No design question blocks review. Retention has no automatic pruning; manual
+No design question blocks review. npm deprecation is the implemented support
+signal; security notices are typed adapter data, with no independent vulnerability
+feed or claim of complete security coverage. Retention has no automatic pruning; manual
 removal of both artifacts and images can defeat offline recovery. Vendor state
 migrations are not reversible by executable rollback. Serialized configuration
 access remains required; the journal is not a general locking or power-loss

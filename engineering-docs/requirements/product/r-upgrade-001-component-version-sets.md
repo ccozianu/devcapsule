@@ -28,6 +28,24 @@ and artifact integrity remain enforced. Components declare a channel or explain
 why checks are unavailable. Offline launches need no online update check.
 Reminders can be deferred/dismissed and remember that choice.
 
+Owner refinement, 2026-09-21: when a component channel explicitly reports a
+security or end-of-support notice affecting the selected version, ordinary
+interactive launch elicits the developer's decision. Offer an exact preview and
+confirmed upgrade for that launch, a remembered deferral/dismissal, and stopping
+launch. Confirmation discloses validation gaps; changed acquisition consent is
+separate. Failed preparation preserves the usable selection and asks before
+continuing. A notice without a replacement still offers a decision.
+
+Discovery must not require the developer to run a separate command first:
+interactive launch attempts a daily refresh, with an explicit skip option and
+cached fallback. Noninteractive launch neither prompts nor upgrades and performs
+no automatic channel request. A failed refresh does not clear known notices or
+claim the installed version is current. Applicability, source and check time
+remain visible. Routine reminders do not duplicate a critical decision; new
+notices can surface despite an older routine dismissal. The initial implementation
+consumes typed notices from installed channel adapters; an independent security
+feed is not included. Version age and availability alone are not security facts.
+
 Preparation and activation preserve the prior usable choice on failure. Only
 zero-exit ordinary launches establish known-good use, from inputs captured before
 launch. An old session finishing after a newer selection cannot certify the
@@ -55,6 +73,9 @@ R-PRODUCT-002 and R-COMPAT-001 continue to govern host access and old inputs.
   for Codex and an unrelated component. It verifies exact ordinary launch inputs,
   failed/interrupted preparation, repeated recovery, artifact loss, upstream
   divergence, proposal export, remembered reminders and current permissions.
+- The same suite exercises terminal decisions through the shared `Elicitor`,
+  automatic discovery, same-launch selection and recovery, failed preparation,
+  declined consent, EOF, no replacement, offline fallback and noninteractive use.
 - `tests/test_distribution_channels.py` covers metadata admission, omission,
   platform handling, exact pinning and integrity through the acquisition engine.
 - Existing released-input fixtures remain in the configuration and release

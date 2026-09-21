@@ -12,6 +12,12 @@ response is executed as Python, shell or npm installer code.
 - `check(current, platform)` returns the source, current version/status and
   candidates. Status is availability/support, never DevCapsule validation.
   Raise `CliError` with the unavailable resource and a useful retry action.
+- `ChannelVersion.notices` optionally carries typed `ChannelNotice` values:
+  stable advisory identity, `security` or `end-of-support`, and the vendor's
+  explanation. The report's source and check time are retained for launch.
+  Adapters own applicability to the exact current version. Change the notice
+  identity for a new issue; do not classify from version age or free-form
+  keyword guesses. Candidates carrying notices are not offered as remedies.
 - `select(version_or_label, platform)` returns a `ChannelSelection`: exact
   component lock metadata, applicable platforms, optional exact companion
   requirements, supported base families and distribution status. Preserve the
@@ -35,6 +41,10 @@ contract requires a reviewed adapter update. It installs no package while
 checking metadata. The ordinary materializer retains offline npm installation
 with scripts disabled. Distribution details live in the adapter/component;
 `version_sets.py` has no Codex-specific branch.
+The npm adapter maps its existing vendor-deprecation support status to a typed
+notice and preserves the vendor wording. Missing versions and unsupported
+platforms do not invent support/security notices. It has no independent security
+advisory feed; no security coverage is implied by a successful registry check.
 
 Additional adapters requiring vendor consent must retain the ordinary acquisition
 contract. Selection does not infer acceptance of a changed acquisition question.
@@ -43,6 +53,33 @@ The first implemented update channel is freely redistributable Codex.
 `--authorize NAME VALUE` acquisition answers. They apply the ordinary typed
 contract to the target metadata and refuse host-permission nodes. Missing/stale
 or denied acquisition answers cannot trigger preparation without explicit consent.
+The launch flow supplies an optional acquisition-authorization callback to the
+same selection engine, using `Elicitor`. The callback receives only pending
+acquisition reviews and cannot grant host permissions. Decline/EOF never downloads
+the candidate. Successfully elicited consent is stored only with activation.
+
+## Critical notices during launch
+
+`commands/_upgrade_prompt.py` handles presentation and uses the shared `Elicitor`.
+`version_sets.launch_notices` performs a best-effort check once per day per
+effective version set on interactive launch. `--no-update-check` disables that
+refresh; noninteractive launches never refresh. Checks retain previously known
+notices on channel failure, bound to component/current version/platform with the
+original timestamp. A successful report may clear a notice. Old check files with
+no notices remain valid. No network success is required to launch.
+
+Explicit later/keep decisions live beside existing reminders, keyed by the notice
+and remedy rather than the check time. They do not suppress newly reported issues.
+Noninteractive warnings do not consume a future interactive decision. Ordinary
+reminders exclude candidates already covered by an applicable critical notice.
+No replacement means no upgrade choice, but the user can defer, keep or stop.
+
+After preview, a separate affirmative answer accepts the exact set and disclosed
+validation gaps. Preparation reuses `select`; failures ask before continuing.
+`project run` reloads admission after this flow, then captures the chosen inputs
+before launch so zero-exit history certifies the set actually used. Multiple
+notices for a version already upgraded are skipped. No general unattended update
+policy or independent vulnerability service is introduced.
 
 ## Selection, activation and history
 

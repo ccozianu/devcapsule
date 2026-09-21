@@ -61,6 +61,23 @@ pre-launch version sets, while existing configuration snapshots remain readable.
 D-0008's zero-exit trigger and D-0007's accumulated validation model stand.
 Accepted Decision and Rationale text in earlier records is preserved.
 
+### Owner refinement: critical upgrade decisions during launch
+
+On 2026-09-21, after reviewing the first implementation, the owner directed that
+security and end-of-support upgrades use DevCapsule's interactive prompting
+apparatus during launch, so the developer need not navigate a command sequence
+after a warning. The launcher offers review/upgrade, remembered later/keep, and
+stop; an approved upgrade is prepared and used in that launch. Validation gaps
+and new acquisition consent remain explicit, with current host boundaries intact.
+
+The initial implementation consumes explicit notices from component channels,
+with daily best-effort interactive discovery and cached offline fallback.
+Noninteractive launch reports cached notices without prompting, checking online
+or selecting software. Absence of a notice is not a security assurance. An
+independent vulnerability feed is outside this refinement; npm vendor deprecation
+is the first real support signal. This paragraph records the later refinement,
+not an implication that the original command-driven implementation included it.
+
 ## Rationale
 
 Personal experimentation should be useful before the developer decides to

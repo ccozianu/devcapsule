@@ -41,7 +41,10 @@ def test_labels_pin_exact_packages_and_status_is_independent_of_validation(chann
     assert checked.current.status == "withdrawn"
     assert checked.candidates[0].status == "available"
     docs[""]["versions"]["2.0.0"]["deprecated"] = "vendor no longer supports this"
-    assert adapter.check("2.0.0", "linux-amd64").current.status == "unsupported"
+    current = adapter.check("2.0.0", "linux-amd64").current
+    assert current.status == "unsupported"
+    assert current.notices[0].kind == "end-of-support"
+    assert current.notices[0].detail == "vendor no longer supports this"
     selected = adapter.select("latest", "linux-amd64")
     assert selected.metadata["version"] == "2.0.0"
     assert selected.metadata["artifacts"]["linux-amd64"]["npm-package"] == "@example/tool-linux-x64"
@@ -51,6 +54,15 @@ def test_labels_pin_exact_packages_and_status_is_independent_of_validation(chann
     assert adapter.check("2.0.0", "other-platform").current.status == "unsupported"
     with pytest.raises(CliError, match="no distribution"):
         adapter.select("latest", "other-platform")
+
+
+def test_npm_does_not_infer_security_or_support_notices_from_missing_versions(channel):
+    adapter, docs = channel
+    assert adapter.check("1.0.0", "linux-amd64").current.notices == ()
+    assert adapter.check("2.0.0", "other-platform").current.notices == ()
+    docs[""]["versions"]["2.0.0"]["deprecated"] = {"unexpected": "metadata"}
+    with pytest.raises(CliError, match="Malformed npm deprecation"):
+        adapter.check("2.0.0", "linux-amd64")
 
 
 @pytest.mark.parametrize("change", ["engines", "version", "dependency", "url", "integrity", "binary", "dependencies", "platform"])

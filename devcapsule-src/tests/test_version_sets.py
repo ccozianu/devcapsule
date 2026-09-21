@@ -445,3 +445,201 @@ def test_candidate_acquisition_answers_do_not_renew_host_permissions(journey, ca
     assert invoke(s.root, "versions", "follow-project", "--apply", "--authorize", "widget-acquisition", "true") == 0
     assert invoke(s.root, "run") == 0 and launched_version(s) == "3.0.0"
     assert s.launched[-1][0].docker_mode.value == "none"
+
+
+class TerminalInput(io.StringIO):
+    def isatty(self):
+        return True
+
+
+def critical_channel(s, monkeypatch, *, kind="security", candidates=True):
+    """An upstream fact, independent of the launch prompt implementation."""
+    from devcapsule.components.channels import ChannelNotice
+    original = COMPONENTS[s.component].distribution_channel()
+    calls = []
+    class Channel:
+        def check(self, current, platform):
+            calls.append((current, platform))
+            notices = (ChannelNotice("vendor-issue-123", kind, "Vendor requires an upgrade of this version"),) if current == "1.0.0" else ()
+            return ChannelReport("https://vendor.example/advisory/123", ChannelVersion(current, "unsupported", notices=notices),
+                                 (ChannelVersion("2.0.0", "available"),) if candidates else ())
+        def select(self, version, platform):
+            return original.select(version, platform)
+    monkeypatch.setattr(COMPONENTS[s.component], "distribution_channel", lambda: Channel())
+    return calls
+
+
+def test_critical_prompt_upgrades_same_launch_and_preserves_recovery(journey, monkeypatch, capsys):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    old = s.launched[-1][1]
+    calls = critical_channel(s, monkeypatch)
+    monkeypatch.setattr("sys.stdin", TerminalInput("upgrade\nyes\n"))
+    assert invoke(s.root, "run") == 0
+    assert calls == [("1.0.0", "linux-amd64")]
+    assert launched_version(s) == "2.0.0"
+    assert s.lock.read_bytes() == s.original
+    out = capsys.readouterr().out
+    assert "Security notice" in out and "Source: https://vendor.example/advisory/123" in out
+    assert "Not yet validated:" in out
+    assert "Prepare and launch this exact version set" in out
+    known = version_sets.Workspace.load(s.root)
+    assert (known.state / "known-good" / f"{known.identity}.toml").is_file()
+    assert invoke(s.root, "versions", "rollback") == 0
+    monkeypatch.setattr("sys.stdin", TerminalInput("later\n"))
+    assert invoke(s.root, "run", "--no-update-check") == 0
+    assert s.launched[-1][1] == old
+
+
+@pytest.mark.parametrize("answer,days,due", [("later", 6, False), ("later", 8, True), ("keep", 8, False)])
+def test_critical_decisions_remembered_across_launches(journey, monkeypatch, capsys, answer, days, due):
+    s = journey
+    critical_channel(s, monkeypatch, kind="end-of-support")
+    now = 2000000000.0
+    monkeypatch.setattr(version_sets.time, "time", lambda: now)
+    monkeypatch.setattr("sys.stdin", TerminalInput(answer + "\n"))
+    assert invoke(s.root, "run") == 0
+    assert launched_version(s) == "1.0.0"
+    assert "End-of-support" in capsys.readouterr().out
+    now += days * 86400
+    monkeypatch.setattr("sys.stdin", TerminalInput("later\n"))
+    assert invoke(s.root, "run") == 0
+    assert ("Choose upgrade" in capsys.readouterr().out) == due
+
+
+@pytest.mark.parametrize("answer,exit_code", [("upgrade\nno\n", 0), ("upgrade\n\n", 0), ("stop\n", 1), ("", 1), ("upgrade\n", 1)])
+def test_critical_decline_stop_and_eof_never_select(journey, monkeypatch, answer, exit_code):
+    s = journey
+    critical_channel(s, monkeypatch)
+    before = s.record.read_bytes(), s.resolution.read_bytes()
+    monkeypatch.setattr("sys.stdin", TerminalInput(answer))
+    assert invoke(s.root, "run") == exit_code
+    assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
+    if exit_code:
+        assert not s.launched and not s.built
+    else:
+        assert launched_version(s) == "1.0.0"
+
+
+def test_noninteractive_and_skip_check_never_query_channels(journey, monkeypatch, capsys):
+    s = journey
+    calls = critical_channel(s, monkeypatch)
+    monkeypatch.setattr("sys.stdin", io.StringIO("upgrade\nyes\n"))
+    assert invoke(s.root, "run") == 0
+    assert not calls
+    assert invoke(s.root, "versions", "check") == 0
+    assert len(calls) == 1
+    assert invoke(s.root, "run") == 0
+    assert len(calls) == 1 and launched_version(s) == "1.0.0"
+    assert "No interactive decision is possible" in capsys.readouterr().out
+    monkeypatch.setattr("sys.stdin", TerminalInput("upgrade\nyes\n"))
+    assert invoke(s.root, "run", "--no-update-check") == 0
+    assert len(calls) == 1 and launched_version(s) == "2.0.0"
+
+
+def test_daily_refresh_and_unavailable_check_preserve_cached_notice(journey, monkeypatch, capsys):
+    s = journey
+    now = 2000000000.0
+    monkeypatch.setattr(version_sets.time, "time", lambda: now)
+    calls = critical_channel(s, monkeypatch)
+    assert invoke(s.root, "versions", "check") == 0
+    assert len(calls) == 1
+    monkeypatch.setattr("sys.stdin", TerminalInput("stop\n"))
+    assert invoke(s.root, "run") == 1
+    assert len(calls) == 1
+    now += 86401
+    def offline(*args):
+        calls.append("offline")
+        raise CliError("network offline")
+    channel = COMPONENTS[s.component].distribution_channel()
+    monkeypatch.setattr(channel, "check", offline)
+    monkeypatch.setattr(COMPONENTS[s.component], "distribution_channel", lambda: channel)
+    monkeypatch.setattr("sys.stdin", TerminalInput("later\n"))
+    assert invoke(s.root, "run") == 0
+    assert len(calls) == 2
+    out = capsys.readouterr().out
+    assert "network offline" in out and "Security notice" in out
+    assert "2033-05-18" in out  # The original check time, not the failed refresh.
+    assert invoke(s.root, "run") == 0
+    assert len(calls) == 2
+
+
+def test_no_replacement_is_disclosed_and_launch_can_be_stopped(journey, monkeypatch, capsys):
+    s = journey
+    critical_channel(s, monkeypatch, candidates=False)
+    monkeypatch.setattr("sys.stdin", TerminalInput("stop\n"))
+    assert invoke(s.root, "run") == 1
+    assert "No available replacement" in capsys.readouterr().out
+    assert not s.launched
+
+
+def test_failed_critical_upgrade_requires_decision_to_continue(journey, monkeypatch, capsys):
+    s = journey
+    assert invoke(s.root, "run") == 0  # Retained usable baseline.
+    critical_channel(s, monkeypatch)
+    s.fail_build = True
+    monkeypatch.setattr("sys.stdin", TerminalInput("upgrade\nyes\nyes\n"))
+    assert invoke(s.root, "run") == 0
+    assert launched_version(s) == "1.0.0"
+    assert "Upgrade could not finish" in capsys.readouterr().out
+    assert s.lock.read_bytes() == s.original
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_real_npm_deprecation_drives_launch_prompt(journey, monkeypatch, capsys):
+    s = journey
+    s.metadata["1.0.0"]["deprecated"] = "This release is no longer maintained"
+    monkeypatch.setattr("sys.stdin", TerminalInput("upgrade\nyes\n"))
+    assert invoke(s.root, "run") == 0
+    assert launched_version(s) == "2.0.0"
+    assert "This release is no longer maintained" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("journey", ["licensed-widget"], indirect=True)
+@pytest.mark.parametrize("consent,version", [("yes", "2.0.0"), ("no", "1.0.0")])
+def test_guided_upgrade_separately_elicits_changed_terms(journey, monkeypatch, capsys, consent, version):
+    s = journey
+    critical_channel(s, monkeypatch)
+    monkeypatch.setattr("sys.stdin", TerminalInput(f"upgrade\nyes\n{consent}\nyes\n"))
+    assert invoke(s.root, "run") == 0
+    assert launched_version(s) == version
+    out = capsys.readouterr().out
+    assert "https://example.test/terms" in out
+    assert "Widget 2.0.0" in out
+    assert "Authorize this candidate acquisition?" in out
+    assert s.launched[-1][0].docker_mode.value == "none"
+    assert s.lock.read_bytes() == s.original
+
+
+def test_routine_dismissal_does_not_hide_new_critical_notice(journey, monkeypatch, capsys):
+    s = journey
+    assert invoke(s.root, "versions", "check") == 0
+    assert invoke(s.root, "versions", "dismiss") == 0
+    critical_channel(s, monkeypatch)
+    assert invoke(s.root, "versions", "check") == 0
+    monkeypatch.setattr("sys.stdin", TerminalInput("keep\n"))
+    assert invoke(s.root, "run") == 0
+    assert "Choose upgrade" in capsys.readouterr().out
+    assert version_sets.reminder(s.root) == ""  # No second nag after deciding.
+    path = version_sets.state_directory(s.root) / "check.toml"
+    saved = load_toml(path)
+    saved["notices"][0]["identity"] = "new-vendor-issue-456"
+    path.write_text(render_document(saved))
+    monkeypatch.setattr("sys.stdin", TerminalInput("stop\n"))
+    assert invoke(s.root, "run") == 1
+    assert "Choose upgrade" in capsys.readouterr().out
+
+
+def test_interactive_offline_first_launch_continues_without_assuming_current(journey, monkeypatch, capsys):
+    s = journey
+    critical_channel(s, monkeypatch)
+    channel = COMPONENTS[s.component].distribution_channel()
+    def offline(*args):
+        raise CliError("offline fixture")
+    monkeypatch.setattr(channel, "check", offline)
+    monkeypatch.setattr(COMPONENTS[s.component], "distribution_channel", lambda: channel)
+    monkeypatch.setattr("sys.stdin", TerminalInput(""))
+    assert invoke(s.root, "run") == 0
+    assert launched_version(s) == "1.0.0"
+    out = capsys.readouterr().out
+    assert "check unavailable" in out and "Choose upgrade" not in out
