@@ -27,6 +27,9 @@ def clone(origin: Path, where: Path, name: str, branch: str) -> Path:
     git(origin.parent, "clone", "--quiet", str(origin), str(where))
     git(where, "config", "user.name", name)
     git(where, "config", "user.email", f"{name}@example.invalid")
+    # The bare origin's HEAD names a branch that never existed, so the clone
+    # checks nothing out; start the workstream branch from main explicitly.
+    git(where, "checkout", "--quiet", "main")
     git(where, "checkout", "--quiet", "-b", f"ws-{name}/{branch}")
     intake = where / "engineering-docs" / "wip" / f"2026-09-19-{name}" / "intake"
     intake.mkdir(parents=True)
@@ -245,3 +248,69 @@ def test_list_reads_headed_branch_association_and_joins_wrapped_paragraphs(repos
     row = list_state(sender)[0]
     assert row.branch == "`ws-alpha/v2`, forked from `main`."
     assert row.next_step == "Finish the first slice."
+
+
+def test_publish_stamps_the_definition_and_list_reports_the_facts(repos) -> None:
+    origin, sender, recipient = repos
+    (sender / "WORKFLOW.md").write_text("# definition v1\n", encoding="utf-8")
+    git(sender, "add", "WORKFLOW.md")
+    git(sender, "commit", "--quiet", "-m", "definition")
+    git(sender, "push", "--quiet", "origin", "HEAD:refs/heads/main")
+    git(sender, "push", "--quiet", "origin", "ws-alpha/v1")
+    git(recipient, "pull", "--quiet", "--ff-only", "origin", "main")
+    status_file(sender, "alpha", "active", "x")
+
+    publish(sender, "alpha")
+
+    stamped = (sender / "engineering-docs/wip/2026-09-19-alpha/CURRENT-STATUS.md").read_text(
+        encoding="utf-8"
+    )
+    assert "\nDefinition read: WORKFLOW.md@" in stamped
+    row = list_state(sender)[0]
+    assert row.behind_main == 0 and row.definition_changed is False
+
+    # main moves: the definition changes and two unrelated commits land.
+    (recipient / "WORKFLOW.md").write_text("# definition v2\n", encoding="utf-8")
+    git(recipient, "commit", "--quiet", "-am", "definition v2")
+    (recipient / "other.txt").write_text("x\n", encoding="utf-8")
+    git(recipient, "add", "other.txt")
+    git(recipient, "commit", "--quiet", "-m", "unrelated")
+    git(recipient, "push", "--quiet", "origin", "HEAD:refs/heads/main")
+
+    row = list_state(sender)[0]
+    assert row.behind_main == 2 and row.definition_changed is True
+    # Rebasing and republishing clears both facts. The stamp is a working-tree
+    # edit, so commit it first as a pair would at a checkpoint.
+    git(sender, "add", "-A")
+    git(sender, "commit", "--quiet", "-m", "checkpoint")
+    git(sender, "fetch", "--quiet", "origin")
+    git(sender, "rebase", "--quiet", "origin/main")
+    git(sender, "push", "--quiet", "--force", "origin", "ws-alpha/v1")
+    publish(sender, "alpha")
+    row = list_state(sender)[0]
+    assert row.behind_main == 0 and row.definition_changed is False
+    # The author of a definition change is not told the definition changed:
+    # its branch edits the file, main has not moved it since they diverged.
+    (sender / "WORKFLOW.md").write_text("# definition v3, by alpha\n", encoding="utf-8")
+    git(sender, "commit", "--quiet", "-am", "alpha edits the definition")
+    git(sender, "push", "--quiet", "--force", "origin", "ws-alpha/v1")
+    publish(sender, "alpha")
+    assert list_state(sender)[0].definition_changed is False
+
+
+def test_send_all_fans_out_to_every_published_workstream(repos) -> None:
+    origin, sender, recipient = repos
+    status_file(sender, "alpha", "active", "x")
+    status_file(recipient, "beta", "active", "y")
+    publish(sender, "alpha")
+    publish(recipient, "beta")
+
+    send(sender, "all", item(sender, "2026-09-21-alpha-notice.md", "hello all\n"))
+
+    tree = git(origin, "ls-tree", "-r", "--name-only", "coordination").split()
+    assert "mail/alpha/2026-09-21-alpha-notice.md" in tree
+    assert "mail/beta/2026-09-21-alpha-notice.md" in tree
+    assert len([entry for entry in check(recipient, "beta")]) == 1
+    # A comma-separated list works the same way, and a repeat is a no-op.
+    tip = send(sender, "beta,alpha", item(sender, "2026-09-21-alpha-notice.md", "hello all\n"))
+    assert tip == git(origin, "rev-parse", "coordination").strip()

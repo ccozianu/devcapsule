@@ -6,6 +6,8 @@ Start date: `{{START_DATE}}`
 
 State: active; permanent coordination
 
+Definition read: stamped by `devcapsule workflow publish`
+
 Branch association: `ws-project-management/coordination`
 
 ## Goal
