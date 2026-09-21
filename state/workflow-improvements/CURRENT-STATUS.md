@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active; published live on the coordination branch; every 2026-09-19
 
-Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
+Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@488eed5a6c05
 round merged. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
@@ -60,7 +60,18 @@ the outbox's history are in the
 
 ## Last Task And Status
 
-Last task: the session-start synchronization judgment, and the facts that
+Last task: `brief` and claims, backlog items 4 and 5, plus when each
+workstream last published. `workflow claim "<slice>"` writes who, branch,
+slice, and a twelve-hour expiry to `state/<name>/claim`; `status` shows live
+and expired claims and the publish age; `claim --release`, pausing, and
+retiring remove it. `workflow brief` prints the selected workstream's row
+and next task, who is working on what, waiting mail, the *Changes* titles
+not yet read since the stamp, and the synchronization facts with a suggested
+verdict. *Resuming* ends with a claim, *Pausing* with its release; both
+agent files start the session with the brief. Tests cover claim, expiry,
+release, and the brief before and after a definition change on `main`.
+
+Before that: the session-start synchronization judgment, and the facts that
 feed it. The owner's rule of 2026-09-21: tooling supplies facts, the agent
 proposes whether to synchronize with `main` and why, the human decides only
 when it matters, and a changed definition or local workflow file is a must.
@@ -224,15 +235,16 @@ branch follow one convention; and the two-homes trial, if any, has a date
 by which one home wins. It also unblocks backlog item 2, soft claims, which
 needs the same write path.
 
-**4. `devcapsule workflow brief`: the session in one command.** Priority:
-`wanted`, target 0.2.15 toward V1. Added 2026-09-21 by the product owner
+**4. ~~`devcapsule workflow brief`: the session in one command.~~** Built
+2026-09-21; see *Last Task And Status*. Was priority `wanted`. Added 2026-09-21 by the product owner
 from this workstream's proposal. Done means: for the selected workstream,
 one command prints its row and next task, its waiting mail, who is working
 on what now (item 5), the *Changes* entries since the status file's stamp,
 and the synchronization judgment's facts already weighed; nothing else. A
 human reads it in a minute; an agent starts the session from it.
 
-**5. Soft claims, shown live.** Priority: `wanted`, target 0.2.15 toward V1.
+**5. ~~Soft claims, shown live.~~** Built 2026-09-21 with item 4. Was priority
+`wanted`.
 Item 2 above, now with its shape: `workflow claim` writes who, which
 branch, which slice, since when, to `state/<name>/claim`; `status` and
 `brief` show it; claims expire and are cleared at pause and finish; a claim
