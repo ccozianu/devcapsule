@@ -1,0 +1,18 @@
+devcapsule-resolved-schema-version = 1
+
+[sources]
+manifest = "fcdb31d161eb78cae8a116b08ebc0bc48bab199c3bf373d7b57c9dce31f26d8b"
+platform-lock = "f83e2c9e8958716214a946d554ad054b383d836ed7325ebb3477b7dc48f0acd3"
+checkout-input = "@CHECKOUT_INPUT_DIGEST@"
+workstation-config = "absent"
+
+[runtime]
+component = "pycharm"
+project-mount = "/workspace/project"
+
+[authorization]
+host-browser = true
+
+[authorization.base-image]
+reference = "docker.io/mycodespaceai/devcapsule-base@sha256:4bb691b556a2cb9acffa4c0adddd9ada66864ee3c81f4f00ca35e9df9056bf9c"
+lock-digest = "f83e2c9e8958716214a946d554ad054b383d836ed7325ebb3477b7dc48f0acd3"

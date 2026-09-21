@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from devcapsule.configuration_nodes import (
+from devcapsule.configuration.nodes import (
     CARRIER_FAMILY_AUTHORIZE,
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
@@ -12,7 +12,9 @@ from devcapsule.configuration_nodes import (
     PROVIDER_HOST_ENVIRONMENT,
     build_node_registry,
 )
-from devcapsule.project_configuration import ProjectConfigurationError
+from devcapsule.configuration.documents import (
+    ProjectConfigurationError,
+)
 
 
 def example_manifest() -> dict:

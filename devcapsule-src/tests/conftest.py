@@ -19,7 +19,7 @@ def host_launch_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """
 
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.requires_translation",
+        "devcapsule.launch.pycharm._launcher.requires_translation",
         lambda _env: False,
     )
 

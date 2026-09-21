@@ -10,7 +10,9 @@ import re
 import tomllib
 from typing import Mapping
 
-from devcapsule.project_configuration import atomic_write
+from devcapsule.configuration.storage import (
+    atomic_write,
+)
 
 
 WORKFLOW_TYPES = frozenset({"single-stream", "multiple-streams"})

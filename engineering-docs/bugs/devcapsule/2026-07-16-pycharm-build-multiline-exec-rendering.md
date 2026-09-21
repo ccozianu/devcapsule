@@ -80,7 +80,7 @@ or execution in the real Docker build path.
 
 - `devcapsule-src/devcapsule/image_build.py`
 - `devcapsule-src/devcapsule/image_tooling.py`
-- `devcapsule-src/devcapsule/configurations/pycharm/_image_build.py`
+- `devcapsule-src/devcapsule/launch/pycharm/_image_build.py`
 
 ## Likely Fix Direction
 

@@ -19,6 +19,7 @@ from urllib.parse import quote
 
 from devcapsule.platforms import XdgHomes
 
+
 __all__ = ["history_directory", "record_known_good_configuration"]
 
 _SNAPSHOT_METADATA = "snapshot.toml"

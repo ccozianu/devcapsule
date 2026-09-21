@@ -1,4 +1,4 @@
-"""PyCharm configuration public interface."""
+"""Legacy PyCharm CLI grammar and command adapters."""
 
 from __future__ import annotations
 
@@ -10,14 +10,14 @@ from devcapsule.commands.framework import Command, Group, UsageError
 from devcapsule.compat import CliError
 from devcapsule.compat import run_script
 
-from ._launcher import (
+from devcapsule.launch.pycharm._launcher import (
     DockerMode,
     IdeConfigMode,
     PycharmRunError,
     PycharmRunOptions,
     run_pycharm,
 )
-from ._image_build import build_pycharm_image, parse_pycharm_build_options
+from devcapsule.launch.pycharm._image_build import build_pycharm_image, parse_pycharm_build_options
 
 
 class PycharmRunCommand(Command):

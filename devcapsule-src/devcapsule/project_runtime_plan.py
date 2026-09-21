@@ -12,7 +12,9 @@ from devcapsule.container_runtime.contract import (
     RuntimePlan,
 )
 from devcapsule.materialization import LockedEnvironment
-from devcapsule.project_configuration import ResolvedProject
+from devcapsule.configuration.storage import (
+    ResolvedProject,
+)
 
 
 def project_runtime_plan(

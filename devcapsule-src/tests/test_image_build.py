@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from devcapsule.compat import CliError
-from devcapsule.configurations.pycharm._image_build import (
+from devcapsule.launch.pycharm._image_build import (
     PycharmImageBuildOptions,
     build_pycharm_image_spec,
     parse_pycharm_build_options,

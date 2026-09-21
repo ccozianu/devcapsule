@@ -40,7 +40,7 @@ shared runtime planner are implemented.
 
 - `devcapsule-src/README.md`
 - `devcapsule-src/devcapsule/commands/`
-- `devcapsule-src/devcapsule/configurations/`
+- `devcapsule-src/devcapsule/launch/`
 
 ## Verification
 

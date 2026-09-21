@@ -417,7 +417,7 @@ devcapsule project config unset      NAME
   passthrough, and its persistent relaxation remains a project-recommended
   decision.
 - Uniqueness of node names is enforced by construction in the node registry
-  (`devcapsule/configuration_nodes.py`); a name that means two things would
+  (`devcapsule/configuration/nodes.py`); a name that means two things would
   make the grammar and the prompt ambiguous.
 
 Two subsidiary decisions of the same date: the CLI parses with a small owned
@@ -1074,7 +1074,7 @@ repository-owned Python plan is intentionally auditable:
 
 - [`base_image.py`](../../../devcapsule-src/devcapsule/base_image.py) defines the base
   recipes, root images, labels, embedded PEX, and generic OCI process contract.
-- [`_image_build.py`](../../../devcapsule-src/devcapsule/configurations/pycharm/_image_build.py)
+- [`_image_build.py`](../../../devcapsule-src/devcapsule/launch/pycharm/_image_build.py)
   currently contains `BASE_APT_PACKAGES`, the exact shared Ubuntu package
   baseline. Its transitional location does not add PyCharm to the base.
 - [`image_tooling.py`](../../../devcapsule-src/devcapsule/image_tooling.py) contains

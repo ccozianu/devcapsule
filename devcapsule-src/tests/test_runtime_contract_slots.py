@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from devcapsule.components.catalog import COMPONENTS
-from devcapsule.configurations.pycharm._launcher import prepare_home_mount_points
+from devcapsule.launch.pycharm._launcher import prepare_home_mount_points
 from devcapsule.container_runtime.contract import (
     ComponentRuntimeTemplate,
     Identity,

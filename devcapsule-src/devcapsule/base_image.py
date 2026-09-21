@@ -11,7 +11,7 @@ import urllib.request
 
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 from devcapsule.compat import CliError
-from devcapsule.configurations.pycharm._image_build import BASE_APT_PACKAGES
+from devcapsule.launch.pycharm._image_build import BASE_APT_PACKAGES
 from devcapsule.image_build import (
     AptPackagesComponent,
     BaseImageComponent,

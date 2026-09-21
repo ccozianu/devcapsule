@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from devcapsule.configurations.pycharm.configuration import PycharmConfiguration
+from devcapsule.commands._pycharm import PycharmConfiguration
 
 COMMAND = PycharmConfiguration

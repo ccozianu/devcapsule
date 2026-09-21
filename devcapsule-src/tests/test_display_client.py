@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
+from devcapsule.compat import CliError
 from devcapsule.display_client import (
     accepts_connections,
     allocate_loopback_port,
@@ -101,7 +102,8 @@ def test_transport_selection_is_shared_and_stage_aware() -> None:
 
     contained = {"devcapsule.base.display": "contained"}
     assert select_display_transport({}, host_x11_answer=None)[0] == "host-x11"
-    assert "predates" in select_display_transport({}, host_x11_answer=False)[1]
+    with pytest.raises(CliError, match="Host X11 is explicitly denied"):
+        select_display_transport({}, host_x11_answer=False)
     assert select_display_transport(contained, host_x11_answer=True)[0] == "host-x11"
     assert select_display_transport(contained, host_x11_answer=False) == (
         "contained",

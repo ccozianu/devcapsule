@@ -24,7 +24,9 @@ from devcapsule.compat import CliError
 from devcapsule.environment_realization import optional_local_image, realize_environment
 from devcapsule.image_metadata import LocalImageRecord, inspect_local_image, list_local_images
 from devcapsule.materialization import ImageDetails
-from devcapsule.project_configuration import fresh_resolved_project
+from devcapsule.configuration.execution import (
+    fresh_resolved_project,
+)
 
 
 class ImagesListCommand(Command):

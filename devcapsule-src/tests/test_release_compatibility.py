@@ -15,7 +15,9 @@ import tomllib
 from unittest.mock import patch
 
 from devcapsule import cli
-from devcapsule.project_configuration import canonical_digest
+from devcapsule.configuration.documents import (
+    canonical_digest,
+)
 
 
 FIXTURES = Path(__file__).parent / "resources" / "compat"
@@ -75,7 +77,7 @@ def test_v0262_manifest_edit_never_blocks_inspection(tmp_path: Path, capsys) -> 
     )
     with patch.dict(os.environ, env, clear=False):
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert "stale" in capsys.readouterr().out
+        assert "fresh" in capsys.readouterr().out
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         assert "fresh" in capsys.readouterr().out

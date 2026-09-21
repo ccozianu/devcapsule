@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import stat
 
-from devcapsule.config_history import (
+from devcapsule.configuration.history import (
     history_directory,
     record_known_good_configuration,
 )

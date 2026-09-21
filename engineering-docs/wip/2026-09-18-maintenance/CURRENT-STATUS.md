@@ -4,11 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; graphical 0.2.14.dev0 recursive acceptance complete; normal GUI exit verified
+State: integrating; owner reports successful live use; branch prepared for owner GitHub merge
 
 Integration target: `main`
 
 Delivery method: pull request
+
+Designated integration branch: `ws-maintenance/triage`. Published branches absorb
+`main` by merge; the owner opens and merges the GitHub PR. The agent pushes the
+branch only, as explicitly requested on 2026-09-21.
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -20,10 +24,10 @@ Workstream* in `WORKFLOW.md`.
 
 ## Branch Association
 
-Current branch: `ws-maintenance/triage`, synchronized with remote `main`
-at `c6296b7`, rechecked on 2026-09-21. `ws-maintenance/outbox` carries only this workstream's
-records and own workstream-list row. Its previous send has not landed; append
-rather than reset until delivery is confirmed.
+Current branch: `ws-maintenance/triage`, synchronized by a clean merge with
+remote `main` at `4b186bb` on 2026-09-21. The previous records delivery landed
+through PR #116. The merged workflow retires the outbox; current records are
+published with `devcapsule workflow publish`.
 
 ## Adoption Exception
 
@@ -40,6 +44,22 @@ not closed or released. Severity and release targets remain untriaged. The owner
 selected this correction ahead of general triage.
 
 ## Current State
+
+2026-09-21 integration handoff: the owner reports that we are now running with
+the fixes and that they worked well, and explicitly requests a branch push for
+the owner to merge on GitHub. This supersedes the pending primary-dogfood
+acceptance next step below at the level of reported successful live use; it
+does not establish exact host configuration bytes or exhaustive condition coverage.
+The branch absorbed current main without conflicts. No source changes were
+needed for this delivery. The maintenance workstream remains open.
+
+Validation after synchronization: `nox -s build` passed with **915 tests**, one
+existing expected failure and 18 host-sensitive cases deselected, mypy, source
+CLI smoke, local PEX construction and **nine packaged-executable tests**.
+Log: `/tmp/maintenance-integration-build.log`. The gate built the local validation
+artifact; revision-bearing packaging was skipped because handoff records were
+being updated. `git diff --check` passed. No additional GUI run was needed for
+this records-only handoff beyond the owner's live-use confirmation.
 
 2026-09-21 graphical acceptance complete: the owner confirmed, "Yes, everything
 went fine." Independent Docker inspection records the exact successor as
@@ -240,16 +260,11 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Close the remaining configuration condition partitions against the contract,
-then validate the actual host-owned 0.2.12 checkout/resolution under the prepared
-0.2.14.dev0 executable before endorsing the dogfood handoff. A passing recursive
-bootstrap session is insufficient evidence for that upgrade. Owner review of the
-configuration package boundary, ADT laws and their production use, then PR integration
-of `ws-maintenance/triage`, followed by actual
-host upgrade/display/privilege acceptance before closing the two records or
-claiming a release. Review the contract/proof with the implementation and tests.
-Do not repeat the investigation or treat the former audit gaps as still open.
-Remaining maintenance queue prioritization belongs to the next selected slice.
+Owner opens/merges `ws-maintenance/triage` into `main` on GitHub. After that,
+fetch and verify the finished tree on remote main, then reconcile the two fixed
+bug records with the recorded live-use acceptance. Remaining configuration
+coverage partitions and maintenance queue prioritization are separate follow-up
+slices; they do not block this owner-requested integration. No release is claimed.
 
 ## External State And Risks
 
@@ -259,21 +274,19 @@ workspaces. That preliminary run launched no successor; the subsequent graphical
 now retains its stopped successor and owned state after accepted normal GUI exit. The existing `devcapsule-src/.venv`
 also ran 290 focused tests and built the revision-bearing local contributor PEX
 recorded above; it is not a published release artifact.
-No change is integrated into remote `main`; under `WORKFLOW-LOCAL.md`, the owner
-opens and merges the PR. The implementation PR should land before any independent
-records-only delivery whose links require its contract documents.
-
-No mail was sent, per the owner's instruction. Mailbox retrieval reported no
-maintenance mail at both resumption and the final pre-pause check. Remote main
-was re-fetched and remains `c6296b7`, with no new commits to synchronize. Intake contains only its README and no pending item.
+The implementation is not yet integrated into remote `main`; the owner opens and
+merges the PR. Its earlier records-only delivery has landed. Main was fetched at
+`4b186bb` and merged without conflicts. Mail retrieval found no maintenance mail;
+intake contains only its README. The new live list initially had no published
+workstream state, so the fetched mainline registry supplied the routing fallback.
+No mail was sent.
 
 ## Open Threads
 
 ### Awaiting The Product Owner
 
-- Actual host configuration must be made available for upgrade acceptance; it
-  is not mounted in this capsule. PR review/integration and primary dogfood migration
-  remain pending; the isolated graphical successor acceptance is complete.
+- GitHub PR review/merge remains with the owner. Successful live use is now
+  owner-reported; exact host configuration bytes remain unavailable here.
 - Severity/release triage for the remaining queue, including ownership of fixes
   from workstreams approaching closure.
 

@@ -409,7 +409,7 @@ The repository-owned Python build plan is the inspectable source of truth:
 - [`devcapsule/base_image.py`](devcapsule/base_image.py) defines the curated
   `ubuntu-24.04` and WIP `nvidia-cuda-devel` recipes, root images, managed-image
   labels, and independent tool-installation contributions.
-- [`devcapsule/configurations/pycharm/_image_build.py`](devcapsule/configurations/pycharm/_image_build.py)
+- [`devcapsule/launch/pycharm/_image_build.py`](devcapsule/launch/pycharm/_image_build.py)
   currently owns `BASE_APT_PACKAGES`, the exact Ubuntu package list shared by
   the Python-owned base planner. Despite that transitional module location,
   the base remains JetBrains-free.

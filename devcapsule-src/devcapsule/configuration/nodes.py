@@ -35,14 +35,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
-from devcapsule.project_configuration import (
-    CURATED_HOST_RECOMMENDATIONS,
-    ProjectConfigurationError,
-    authorization_declarations,
-    component_secret_inputs,
-    configuration_binding_declarations,
-    configuration_value_declarations,
-)
+from .authorization import CURATED_HOST_RECOMMENDATIONS, authorization_declarations
+from .bindings import component_secret_inputs, configuration_binding_declarations
+from .documents import ProjectConfigurationError
+from .values import configuration_value_declarations
+
 
 __all__ = [
     "CARRIER_FAMILY_AUTHORIZE",
@@ -168,7 +165,15 @@ def build_node_registry(
     """Derive the registry from one project's manifest and platform lock."""
 
     nodes: list[ConfigurationNode] = []
+    effects: dict[str, str] = {}
     for name, value_declaration in configuration_value_declarations(manifest).items():
+        effect = value_declaration.get("runtime-effect")
+        if effect is not None:
+            if effect in effects:
+                raise ProjectConfigurationError(
+                    f"Configuration nodes {effects[effect]!r} and {name!r} both control {effect!r}."
+                )
+            effects[effect] = name
         nodes.append(
             ConfigurationNode(
                 name=name,
@@ -208,10 +213,10 @@ def build_node_registry(
                 name=name,
                 family=CARRIER_FAMILY_AUTHORIZE,
                 description=authorization.description,
-                # Only the base image blocks resolution when unanswered; every
-                # other authorization is a recommendation the consumer may
-                # decline.
-                required=name == "base-image",
+                # A selected executable and vendor acquisition require a
+                # decision before realization. Optional host access can stay
+                # unanswered and denied; it is never a requirement to grant it.
+                required=authorization.required,
                 declaration=authorization,
                 accepts_justification=name in CURATED_HOST_RECOMMENDATIONS,
             )

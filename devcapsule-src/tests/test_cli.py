@@ -10,11 +10,13 @@ import zipfile
 import pytest
 
 from devcapsule import cli, compat
-from devcapsule.configurations.pycharm._image_build import PycharmImageBuildOptions
+from devcapsule.launch.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.environment_realization import RealizedEnvironment
 from devcapsule.image_metadata import LocalImageRecord
 from devcapsule.materialization import ImageDetails, parse_locked_environment
-from devcapsule.project_configuration import canonical_digest
+from devcapsule.configuration.documents import (
+    canonical_digest,
+)
 
 
 def test_top_level_help_returns_success(capsys) -> None:
@@ -51,8 +53,8 @@ def test_run_pycharm_uses_translated_python_launcher(tmp_path: Path) -> None:
     data_home = tmp_path / "data"
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
         patch.dict(
             os.environ,
             {
@@ -90,8 +92,8 @@ def test_run_image_uses_pycharm_persistence_adapter(tmp_path: Path) -> None:
     project_state = tmp_path / "project-state"
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
         patch.dict(
             os.environ,
             {
@@ -140,8 +142,8 @@ def test_run_pycharm_defaults_project_to_current_directory(tmp_path: Path, monke
     monkeypatch.chdir(project)
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
         patch.dict(
             os.environ,
             {
@@ -204,7 +206,7 @@ def test_build_pycharm_uses_python_buildx_builder(tmp_path: Path) -> None:
     (source / "bin").mkdir(parents=True)
     (source / "bin" / "pycharm.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
 
-    with patch("devcapsule.configurations.pycharm.configuration.build_pycharm_image") as build_image:
+    with patch("devcapsule.commands._pycharm.build_pycharm_image") as build_image:
         build_image.return_value = 0
         result = cli.main(
             [
@@ -237,7 +239,7 @@ def test_build_pycharm_accepts_host_network(tmp_path: Path) -> None:
     (source / "bin").mkdir(parents=True)
     (source / "bin" / "pycharm.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
 
-    with patch("devcapsule.configurations.pycharm.configuration.build_pycharm_image") as build_image:
+    with patch("devcapsule.commands._pycharm.build_pycharm_image") as build_image:
         build_image.return_value = 0
         result = cli.main(["pycharm", "build", "--pycharm", str(source), "--network", "host"])
 
@@ -378,8 +380,8 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
 
         with (
-            patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-            patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+            patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+            patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
         ):
             run.return_value.returncode = 0
             assert cli.main(
@@ -687,6 +689,8 @@ def test_images_build_environment_requires_immutable_locked_base(capsys) -> None
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},
@@ -716,6 +720,8 @@ def test_images_build_environment_requires_checkout_base_authorization(capsys) -
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},
@@ -749,6 +755,8 @@ def test_images_build_environment_allows_explicit_local_base_override(tmp_path: 
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},
