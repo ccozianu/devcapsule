@@ -34,6 +34,9 @@ COORDINATION_BRANCH = "coordination"
 MAIL_ROOT = "mail"
 STATE_ROOT = "state"
 STATE_FILES = ("CURRENT-STATUS.md", "intake-dispositions.md")
+DEFINITION_FILES = ("WORKFLOW.md", "WORKFLOW-LOCAL.md")
+DEFINITION_READ_KEY = "Definition read"
+ALL_RECIPIENTS = "all"
 DEFAULT_ATTEMPTS = 5
 WORKSTREAM_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 ITEM_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*\.md$")
@@ -114,7 +117,6 @@ def send(
     is a no-op that returns the current tip. Delivering a different file
     under a name already in flight is refused: senders never rewrite mail.
     """
-    _require_name(recipient, "recipient")
     if not item.is_file():
         raise WorkflowMailError(f"{item} is not a file")
     if ITEM_NAME.match(item.name) is None:
@@ -123,25 +125,56 @@ def send(
         )
     git = _Git(root)
     blob = git.run("hash-object", "-w", str(item)).strip()
-    destination = f"{MAIL_ROOT}/{recipient}/{item.name}"
     for _ in range(attempts):
         tip = _fetch_tip(git, remote, branch)
         entries = _tree_entries(git, tip) if tip else {README_PATH: _readme_blob(git)}
-        existing = entries.get(destination)
-        if existing == blob:
+        recipients = _recipients(recipient, entries)
+        changed = False
+        for name in recipients:
+            destination = f"{MAIL_ROOT}/{name}/{item.name}"
+            existing = entries.get(destination)
+            if existing == blob:
+                continue
+            if existing is not None:
+                raise WorkflowMailError(
+                    f"{destination} is already in flight with different content; "
+                    "senders never rewrite mail, so choose another item name"
+                )
+            entries[destination] = blob
+            changed = True
+        if not changed:
             return tip or ""
-        if existing is not None:
-            raise WorkflowMailError(
-                f"{destination} is already in flight with different content; "
-                "senders never rewrite mail, so choose another item name"
-            )
-        entries[destination] = blob
-        commit = _commit(git, entries, tip, f"mail: {recipient} <- {item.name}")
+        label = recipient if len(recipients) == 1 else f"{len(recipients)} workstreams"
+        commit = _commit(git, entries, tip, f"mail: {label} <- {item.name}")
         if _push(git, remote, branch, commit, tip):
             return commit
     raise WorkflowMailError(
         f"could not push to {remote}/{branch} after {attempts} attempts; the branch keeps moving"
     )
+
+
+def _recipients(recipient: str, entries: dict[str, str]) -> list[str]:
+    """One workstream name, a comma-separated list, or ``all``: every
+    workstream with published state, which is the live list."""
+    if recipient == ALL_RECIPIENTS:
+        owners = [owner for owner in (_state_owner(path) for path in entries) if owner]
+        if not owners:
+            raise WorkflowMailError("no workstream has published state; nothing to send to")
+        return sorted(set(owners))
+    names = [part.strip() for part in recipient.split(",") if part.strip()]
+    for name in names:
+        _require_name(name, "recipient")
+    if not names:
+        raise WorkflowMailError("no recipient given")
+    return names
+
+
+def _state_owner(path: str) -> str | None:
+    head, _, rest = path.partition("/")
+    if head != STATE_ROOT or not rest.endswith("/" + STATE_FILES[0]):
+        return None
+    name = rest[: -len("/" + STATE_FILES[0])]
+    return None if "/" in name else name
 
 
 def check(
@@ -210,12 +243,20 @@ def take(
 
 @dataclass(frozen=True)
 class WorkstreamState:
-    """One workstream's live row, read from its published status file."""
+    """One workstream's live row, read from its published status file, with
+    the two facts the session-start synchronization judgment needs."""
 
     name: str
     state: str
     branch: str
     next_step: str
+    behind_main: int | None = None
+    """Commits on the integration branch that the workstream's branch lacks;
+    ``None`` when the branch is not on the remote."""
+    definition_changed: bool | None = None
+    """Whether the definition or the local workflow file on the integration
+    branch differs from what the status file says was last read; ``None``
+    when the status file carries no stamp."""
 
 
 def publish(
@@ -239,10 +280,12 @@ def publish(
     wanted: dict[str, str] = {}
     if not retire:
         directory = _workstream_directory(root, name)
+        status = directory / STATE_FILES[0]
+        if not status.is_file():
+            raise WorkflowMailError(f"{status} does not exist; nothing to publish")
+        _stamp_definition_read(git, status)
         for file_name in STATE_FILES:
             source = directory / file_name
-            if file_name == STATE_FILES[0] and not source.is_file():
-                raise WorkflowMailError(f"{source} does not exist; nothing to publish")
             if source.is_file():
                 wanted[f"{STATE_ROOT}/{name}/{file_name}"] = git.run(
                     "hash-object", "-w", str(source)
@@ -266,25 +309,102 @@ def publish(
     )
 
 
+def _definition_blobs(git: _Git, revision: str) -> dict[str, str]:
+    """Blob ids of the definition files at ``revision``; absent files are
+    left out, so a project without a local file still stamps cleanly."""
+    blobs: dict[str, str] = {}
+    for file_name in DEFINITION_FILES:
+        completed = git.attempt("rev-parse", "--verify", "--quiet", f"{revision}:{file_name}")
+        if completed.returncode == 0:
+            blobs[file_name] = completed.stdout.strip()[:12]
+    return blobs
+
+
+def _stamp_definition_read(git: _Git, status: Path) -> None:
+    """Write ``Definition read: WORKFLOW.md@<blob>, ...`` into the status
+    file, from the checkout's HEAD, which is what the pair has read.
+    Inserted after the ``State:`` line on first use, replaced afterwards."""
+    blobs = _definition_blobs(git, "HEAD")
+    if not blobs:
+        return
+    stamp = f"{DEFINITION_READ_KEY}: " + ", ".join(f"{k}@{v}" for k, v in blobs.items())
+    lines = status.read_text(encoding="utf-8").split("\n")
+    for index, line in enumerate(lines):
+        if line.startswith(DEFINITION_READ_KEY + ":"):
+            if line == stamp:
+                return
+            lines[index] = stamp
+            break
+    else:
+        anchor = next((i for i, line in enumerate(lines) if line.startswith("State:")), 0)
+        lines[anchor + 1 : anchor + 1] = ["", stamp]
+    status.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _parse_stamp(text: str) -> dict[str, str] | None:
+    for line in text.splitlines():
+        if line.startswith(DEFINITION_READ_KEY + ":"):
+            stamped: dict[str, str] = {}
+            for part in line.partition(":")[2].split(","):
+                file_name, _, blob = part.strip().partition("@")
+                if file_name and blob:
+                    stamped[file_name] = blob
+            return stamped
+    return None
+
+
 def list_state(
-    root: Path, *, remote: str = "origin", branch: str = COORDINATION_BRANCH
+    root: Path,
+    *,
+    remote: str = "origin",
+    branch: str = COORDINATION_BRANCH,
+    integration_branch: str = "main",
 ) -> list[WorkstreamState]:
     """Every workstream with a published status file, read live from the
-    remote, in name order."""
+    remote, in name order, with how far its branch is behind the integration
+    branch and whether the definition changed since it last read it."""
     git = _Git(root)
     tip = _fetch_tip(git, remote, branch)
     if tip is None:
         return []
+    git.attempt("fetch", "--quiet", remote)
+    main_ref = f"refs/remotes/{remote}/{integration_branch}"
+    current_definition = _definition_blobs(git, main_ref)
     rows: list[WorkstreamState] = []
     for path, blob in sorted(_tree_entries(git, tip).items()):
-        head, _, rest = path.partition("/")
-        if head != STATE_ROOT or not rest.endswith("/" + STATE_FILES[0]):
+        name = _state_owner(path)
+        if name is None:
             continue
-        name = rest[: -len("/" + STATE_FILES[0])]
-        if "/" in name:
-            continue
-        rows.append(_parse_status(name, git.run("cat-file", "-p", blob)))
+        text = git.run("cat-file", "-p", blob)
+        parsed = _parse_status(name, text)
+        stamped = _parse_stamp(text)
+        changed = None if stamped is None else any(
+            current_definition.get(k) != v for k, v in stamped.items()
+        ) or any(k not in stamped for k in current_definition)
+        rows.append(
+            WorkstreamState(
+                parsed.name,
+                parsed.state,
+                parsed.branch,
+                parsed.next_step,
+                _behind(git, remote, parsed.branch, main_ref),
+                changed,
+            )
+        )
     return rows
+
+
+def _behind(git: _Git, remote: str, association: str, main_ref: str) -> int | None:
+    """Commits on the integration branch that the first ``ws-`` branch named
+    in the association lacks, or ``None`` when no such branch is on the
+    remote."""
+    match = re.search(r"`(ws-[^`\s]+)`", association)
+    if match is None:
+        return None
+    completed = git.attempt("rev-list", "--count", f"refs/remotes/{remote}/{match.group(1)}..{main_ref}")
+    if completed.returncode != 0:
+        return None
+    return int(completed.stdout.strip() or 0)
 
 
 def _parse_status(name: str, text: str) -> WorkstreamState:
@@ -326,7 +446,17 @@ def render_list(rows: list[WorkstreamState]) -> str:
     out = []
     for row in rows:
         out.append(f"{row.name:<{width}}  {row.state}")
+        facts = []
+        if row.behind_main is not None:
+            facts.append(f"behind main: {row.behind_main}")
+        if row.definition_changed is None:
+            facts.append("definition: never stamped")
+        elif row.definition_changed:
+            facts.append("definition: CHANGED since last read")
+        else:
+            facts.append("definition: current")
         out.append(f"{'':<{width}}  branch: {row.branch}")
+        out.append(f"{'':<{width}}  {'; '.join(facts)}")
         if row.next_step:
             out.append(f"{'':<{width}}  next: {row.next_step}")
     return "\n".join(out) + "\n"

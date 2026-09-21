@@ -53,7 +53,11 @@ class MailSendCommand(Command):
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
         _add_mail_options(parser)
-        parser.add_argument("recipient", help="Workstream name of the recipient.")
+        parser.add_argument(
+            "recipient",
+            help="Recipient workstream name, a comma-separated list, or 'all' for every "
+            "workstream with published state.",
+        )
         parser.add_argument("item", type=Path, help="Item file, named YYYY-MM-DD-<sender>-<slug>.md.")
 
     @classmethod

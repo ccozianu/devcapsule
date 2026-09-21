@@ -154,10 +154,14 @@ stage, current state, and planned next step. Then read any target-specific docum
 there and any declared cross-workstream dependency needed for the selected
 slice.
 
-In `multiple-streams` mode, synchronize the selected workstream's branch with
-`main` before planning the session's work, normally by rebasing. `main` is how
-intake, registrations, and repository-wide coordination facts reach a
-workstream, and a stale branch cannot act on items it can nonetheless see. To
+In `multiple-streams` mode, before planning the session's work, propose
+whether the selected workstream's branch should synchronize with `main` now
+and say why: a changed definition or local workflow file is a must, files the
+task will touch changed on `main` is a should, otherwise it may wait until the
+next stage boundary with the reason recorded. `devcapsule workflow list`
+shows the facts: commits behind `main`, and whether the definition changed
+since the status file's `Definition read:` stamp, which `publish` writes.
+Synchronize normally by rebasing. To
 send an intake item to another workstream, deliver it by mail on the
 coordination branch, `devcapsule workflow mail send <recipient> <file>`,
 never through `main` and never by editing the recipient's directory. Take

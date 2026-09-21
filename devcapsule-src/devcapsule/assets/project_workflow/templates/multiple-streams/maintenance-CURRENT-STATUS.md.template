@@ -6,6 +6,8 @@ Start date: `{{MAINTENANCE_START_DATE}}`
 
 State: active; permanent maintenance
 
+Definition read: stamped by `devcapsule workflow publish`
+
 Branch association: `ws-maintenance/`; no branch yet
 
 ## Goal
