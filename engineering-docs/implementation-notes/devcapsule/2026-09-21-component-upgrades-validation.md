@@ -63,14 +63,15 @@ will retain it. Choose another exact version deliberately if needed.
 
 ## Repository evidence
 
-Original work-order gate: 954 tests passed. After the owner's interactive
-critical-upgrade refinement, `nox -s build`: 988 tests passed, 18 deselected, one existing xfail;
+Original work-order gate: 954 tests passed; interactive critical-upgrade gate:
+988 passed. After the runtime-inspection correction, `nox -s build`:
+1,009 tests passed, 18 deselected, one existing xfail;
 nine packaged-executable tests passed.
 It includes compilation, shell syntax, mypy, the full non-host suite, source
 CLI smoke, PEX construction and nine packaged-executable tests. Existing
 released-input fixtures remain passing.
 
-The 71 focused cases in `test_version_sets.py` and
+The 91 cases in `test_version_sets.py` and
 `test_distribution_channels.py` cover:
 
 - Real Codex metadata adaptation and an unrelated widget through the same
@@ -111,6 +112,39 @@ upgrade experience. The real CLI check above supplies separate delivery evidence
 The new prompting cases use the production `Elicitor` with a controlled terminal
 stream; no new real Docker/account session or live security advisory is claimed
 for this refinement. The earlier real Codex journey predates it.
+
+## Runtime inspection correction
+
+The owner reported that `versions show` inside dogfood tried to read the host's
+checkout record from the runtime's XDG home. The fix supplies a read-only record
+directory and a separate launch snapshot, with explicit runtime dispatch.
+Additional tests cover different host/runtime paths, exact named-checkout
+selection, A running while B is selected, host atomic replacement, host path
+disclosure without filesystem validation, mutation refusal, identity mismatch,
+old-capsule relaunch guidance and inspection during interrupted activation without
+performing recovery. Launcher tests check directory/snapshot read-only mounts,
+private snapshot permissions and cleanup. Released-input tests remain unchanged.
+
+A bounded Docker probe also passed with networking disabled, using the retained
+baseline image `devcapsule-local-pycharm:9b4f99e2dfd17f772fbf` and a copy of the
+fixture configuration. The packaged CLI showed running **0.153.4**, initially the
+same next-launch set, then next-launch **0.155.1** after host atomic replacement
+with retained candidate metadata. `config list` worked, `versions rollback` was
+refused with a launcher command, and a direct write failed with the kernel's
+read-only filesystem error. This probe tested inspection and mount semantics;
+it did not perform another upgrade, IDE session or account acceptance.
+
+Retained evidence: `devcapsule-src/dist/runtime-configuration-smoke-2/`, including
+`result.json`, `probe.py`, the private fixture records, immutable context and
+`evidence/{before,after,config,mutation,write}.txt`. The tested PEX is retained there;
+SHA-256: `4d6b9ed8c82d9728dca05797b2edcb94ca7d843c1f591ad9fae2c949bd5a3684`.
+The probe's only container was removed. No everyday configuration was mounted.
+Its initial attempt stopped before CLI execution because the test tmpfs was
+non-executable; allowing execution in that disposable tmpfs resolved it.
+
+Code review also found and repaired a pre-existing corrupted import in
+`scripts/smoke-component-upgrades.py`; its `--help` now passes. That repair does
+not imply the full earlier upgrade smoke was rerun.
 
 ## Limits retained for review
 

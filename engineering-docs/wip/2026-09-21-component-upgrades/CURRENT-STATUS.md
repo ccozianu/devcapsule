@@ -4,7 +4,7 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: integrating; interactive critical-upgrade refinement validated, awaiting owner review and PR delivery
+State: integrating; runtime introspection correction validated, awaiting owner review and PR delivery
 
 Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
@@ -25,6 +25,16 @@ version sets and operational rollback, using Codex as the first generic-channel
 consumer. Intended for v0.2.14; project-management owns release sequencing.
 
 ## Current State
+
+The owner-approved runtime correction is implemented. Ordinary launch supplies
+a read-only configuration directory and an immutable session snapshot. Inside
+the capsule, `versions show` distinguishes running software from the current
+next-launch selection, and `config list` reads recorded settings without host
+path validation or recovery writes. Mutation/state-dependent commands point to
+the launcher. Older capsules need a relaunch to receive the mounts. The mount
+uses the selected record's existing parent directory; sibling checkout records
+can be readable under that shared layout, as documented. The contract-first
+navigation rule is in WORKFLOW-LOCAL.md.
 
 The original work order and the owner's review refinement are implemented.
 Security/end-of-support notices now elicit decisions during interactive launch
@@ -50,7 +60,9 @@ User/contributor instructions and permanent validation evidence are indexed belo
 No release, mainline push or PR creation is part of this work order.
 
 Session synchronization: fetched remote main remains `e4a96dc`, already contained
-in the branch, with unchanged workflow definitions. No synchronization was needed.
+in the branch, with unchanged mainline workflow definitions. No synchronization was needed.
+The local workflow was then updated with the owner's navigation rule; the generic
+definition and declared workflow version were not changed.
 Run workflow commands from the repository root: from `devcapsule-src` they report
 state relative to that directory, which initially appeared misleadingly empty.
 Re-running at root confirmed the published handoff. Final mail take found no mail;
@@ -58,7 +70,7 @@ there are no open bugs owned by this workstream.
 
 ## Planned Next Step
 
-Owner reviews the pushed feature, including the critical-upgrade launch UX, and
+Owner reviews the pushed feature, including runtime introspection and the critical-upgrade launch UX, and
 opens its PR against `main`. Address review findings on this branch. Once the PR is otherwise ready to merge, perform the
 workflow finishing/archive changes and required checks, then the owner merges.
 Verify remote main contains the finished tree before declaring the workstream
@@ -66,10 +78,10 @@ complete. Do not resume maintenance or cut a release.
 
 ## Validation And External State
 
-Final gate after the prompt refinement: `nox -s build` — 988 tests passed, 18 host-sensitive tests deselected,
+Final gate after runtime introspection: `nox -s build` — 1,009 tests passed, 18 host-sensitive tests deselected,
 one existing xfail; mypy, source smoke, PEX construction and nine packaged tests.
-The focused channel/upgrade suite passes 71 cases, including production terminal
-elicitation with controlled channels, Docker and launched process boundaries.
+The channel/upgrade suite now contains 91 passing cases, including production
+terminal elicitation and runtime inspection with controlled external boundaries.
 No new real Docker/account acceptance is claimed for the prompting refinement. Earlier released-input fixtures
 remain passing. Whitespace and new documentation links passed; the root index's
 pre-existing absent five-in-a-row sample README remains unrelated.
@@ -84,7 +96,13 @@ The isolated `devcapsule-src/dist/component-upgrades-smoke/` tree retains about
 654 MiB of artifacts/state and sanitized evidence. Its two canonical images are
 retained; no fixture container remains running. The pinned existing base and the
 owner's everyday checkout, accounts and previous environments were not changed.
-No uncommitted work is intentionally left. Git push is available; owner GitHub
+A separate real Docker probe verified packaged runtime inspection, live atomic
+replacement, mutation refusal and kernel-enforced read-only configuration.
+The evidence and exact tested PEX are retained at
+`devcapsule-src/dist/runtime-configuration-smoke-2/`; its container was removed.
+No everyday configuration was mounted. The initial failed probe directory was
+removed after correcting its non-executable tmpfs. No uncommitted work is
+intentionally left. Git push is available; owner GitHub
 PR creation/merge remains the delivery arrangement.
 
 ## Open Threads

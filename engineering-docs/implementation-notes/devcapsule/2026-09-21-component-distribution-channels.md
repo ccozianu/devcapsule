@@ -131,7 +131,33 @@ family and declared coupling evidence are checked independently; provisional
 entries retain their original qualified evidence text. Local zero-exit history
 is never promoted into matrix validation automatically.
 
-## Validation
+## Runtime inspection
+
+`runtime_configuration.py` captures a launch descriptor from the admitted
+`ResolvedProject`, and reads runtime configuration through a separate adapter.
+Ordinary `project run` passes that capture to the launcher, which mounts its
+private JSON file at `/etc/devcapsule/launch-context.json` and the record's parent
+directory at `/etc/devcapsule/checkout`, both read-only. Directory mounting follows
+the launcher's atomic file replacements; a file bind would pin the old inode.
+The existing shared layout can expose sibling checkout records in that directory.
+Host paths in configuration are disclosed metadata; their referenced resources
+are not mounted by this feature.
+
+The descriptor identifies creator/slug, the exact record filename, host/runtime
+checkout paths, and the running lock/origin/base/version-set identity. The runtime
+reader checks those identities without resolving the host path in the container,
+and without invoking `load_checkout`'s recovery writes. A present activation
+journal makes next-launch state temporarily unavailable; the running snapshot
+remains inspectable. `config list` presents records without attempting host
+filesystem readiness checks. Host loader admission/recovery stays unchanged.
+
+Project command dispatch refuses unsupported runtime operations before effects
+and supplies a shell-quoted launcher command. Explicit recursive-dogfood commands
+retain their contract, and a separate project remains eligible for nested launcher
+use. Capsules predating the mount receive relaunch guidance. Global registry
+listing in older/nested launcher capsules retains its existing behavior.
+
+## Validation commands
 
 Run `tests/test_distribution_channels.py` and `tests/test_version_sets.py`, then
 `nox -s build`. The latter includes old released-input fixtures and packaging.

@@ -78,6 +78,18 @@ independent vulnerability feed is outside this refinement; npm vendor deprecatio
 is the first real support signal. This paragraph records the later refinement,
 not an implication that the original command-driven implementation included it.
 
+### Owner refinement: runtime configuration introspection
+
+On 2026-09-21 the owner reported `versions show` failing inside dogfood because
+it sought the launcher-owned checkout record in the container's home. The owner
+approved explicit runtime/launcher adaptation and a read-only configuration-tree
+mount, with a captured running version set distinguished from the current
+next-launch selection. Runtime inspection must not reinterpret host paths or
+perform recovery writes; configuration changes remain launcher operations.
+The existing project record-directory layout, including sibling checkout records
+where present, is mounted read-only and documented. This implements introspection,
+not an in-capsule broker that changes the host's selection.
+
 ## Rationale
 
 Personal experimentation should be useful before the developer decides to

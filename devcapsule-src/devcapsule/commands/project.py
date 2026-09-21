@@ -33,6 +33,7 @@ from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
 from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
 from devcapsule import version_sets
+from devcapsule import runtime_configuration
 from devcapsule.compat import CliError
 from devcapsule.configuration.history import (
     record_known_good_configuration,
@@ -153,6 +154,17 @@ class ProjectListCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        # Without a supplied runtime context this is still the workstation's
+        # registry enumeration, including in older/nested launcher capsules.
+        runtime_context = (runtime_configuration.for_project(_project_context(context).start_path())
+                           if runtime_configuration.CONTEXT_PATH.is_file() else None)
+        if runtime_context is not None:
+            identity = runtime_context.document["project"]
+            print(f"Runtime project: {identity['creator']}/{identity['slug']}")
+            print(f"Runtime checkout: {runtime_context.root}")
+            print(f"Launcher checkout: {runtime_context.document['launcher-root']}")
+            print("Only this capsule's checkout is selected here; list other checkouts through the launcher.")
+            return 0
         records = registered_checkouts()
         if not records:
             print(f"No registered DevCapsule project checkouts found in {config_root() / 'projects'}.")
@@ -307,6 +319,10 @@ class ConfigListCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        runtime_context = runtime_configuration.for_project(_project_context(context).start_path())
+        if runtime_context is not None:
+            print(runtime_context.configuration_report())
+            return 0
         root, manifest = manifest_for(_project_context(context).start_path())
         _lock_path, lock = lock_for(root, manifest)
         input_path, resolution_path = checkout_record_paths(manifest, root)
@@ -1035,6 +1051,7 @@ class ProjectRunCommand(Command):
                 network_mode=selected_network,
                 memory_limit_bytes=memory_limit,
                 runtime_plan=checkout_runtime_plan,
+                launch_configuration=runtime_configuration.LaunchConfiguration.capture(selected, version_sets.effective_set_id(lock, checkout)),
                 use_image_process=use_image_process,
                 additional_state_mounts=_component_state_mounts(
                     root,
@@ -1213,7 +1230,17 @@ class ProjectCommand(Group):
 
     @classmethod
     def make_context(cls, arguments: argparse.Namespace, parent: object | None) -> object | None:
-        return ProjectCommandContext(arguments.selected_path)
+        context = ProjectCommandContext(arguments.selected_path)
+        tokens = arguments.rest
+        # Help and the explicit recursive-dogfood interface retain their own
+        # contracts. Other operations on this capsule's project must declare
+        # an implemented read-only runtime path, or run through its launcher.
+        parsed_tokens = tokens[:tokens.index("--")] if "--" in tokens else tokens
+        if tokens and not any(token in {"-h", "--help"} for token in parsed_tokens):
+            read_only = tuple(tokens[:2]) in {("versions", "show"), ("config", "list")}
+            if not read_only and tokens[0] not in {"recursive-e2e", "list"} and len(tokens) >= (2 if tokens[0] in {"versions", "config", "state", "checkout"} else 1):
+                runtime_configuration.require_launcher(context.start_path(), tokens)
+        return context
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:

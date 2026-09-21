@@ -9,6 +9,42 @@ to build an environment. The project recommends one in its committed platform
 lock. Your local selection belongs to your checkout configuration and stays
 complete even if the project recommendation changes.
 
+## Inspect from inside the capsule
+
+Inside a capsule launched with the updated client, these commands work without
+registering another checkout in the container's home:
+
+```sh
+devcapsule project versions show
+devcapsule project config list
+```
+
+`versions show` distinguishes the **running session's version set**, captured
+when it launched, from the **current selection for the next launch**. Changing
+the selection outside the capsule does not change its running software.
+`config list` shows the launcher's recorded configuration; host paths and
+permissions are not reinterpreted as container paths or current-session grants.
+
+The launcher mounts the directory containing the selected checkout's local
+configuration read-only. The existing layout can place sibling checkout records
+in that directory; those records are readable too, but the CLI selects only the
+checkout identified by the launcher. The mount is not your entire user
+configuration tree, and directory/credential references in the records do not
+mount their targets. A separate read-only launch snapshot preserves the session's
+software identity. Directory mounting makes atomic host-side replacements visible.
+
+Commands that change configuration, select software, or need launcher-owned
+upgrade history/cache give an outside-the-capsule command with the correct
+launcher checkout path. They do not create competing configuration inside the
+runtime. A different project can still be managed by a nested launcher.
+
+Existing running capsules lack these mounts. **Relaunch from outside the capsule
+with the updated launcher** to enable introspection; replacing the executable
+inside an existing capsule cannot add its missing mounts. If host activation is
+unfinished or a record is unavailable, `versions show` still reports the captured
+running set and explains why the next-launch selection cannot be read. Runtime
+inspection never repairs the launcher's records.
+
 ## Decide about a critical upgrade when launching
 
 Run `devcapsule project run` as usual. In an interactive terminal, the launcher

@@ -52,6 +52,19 @@ and before integration. The [developer brief](DEVELOPING.md) describes the
 environment, the individual sessions, and the host-sensitive end-to-end runs
 that are not part of the gate.
 
+## Reasoning And Code Navigation
+
+Start with the behavior's contract: ownership, inputs, preconditions, invariants
+and postconditions. State what is known and the specific uncertainty the next
+code read must resolve. Navigate from the responsible entry point through its
+types, imports and calls, reading enough surrounding implementation to understand
+the behavior. Use direct file navigation and exact-name lookup where needed.
+
+Use regular-expression searches only as a last resort, when reasoned navigation
+and literal lookup cannot locate the relevant implementation. Explain that gap
+before searching. Search matches are navigation aids, never evidence that a
+contract is satisfied; do not substitute repeated pattern searches for reasoning.
+
 ## Host Capabilities
 
 The `[host.*]` tables in `.devcapsule/devcapsule.toml` declare what this

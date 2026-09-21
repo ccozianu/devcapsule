@@ -20,8 +20,7 @@ import subprocess
 import tarfile
 import tomllib
 
-from devcapsule.configuration.documents import re
-import shutilnder_document
+from devcapsule.configuration.documents import render_document
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 

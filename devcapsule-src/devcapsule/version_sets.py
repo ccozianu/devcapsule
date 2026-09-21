@@ -29,6 +29,7 @@ from devcapsule.environment_realization import RealizedEnvironment, realize_envi
 from devcapsule.materialization import ArtifactSpec, acquire_artifact, cache_root, parse_locked_environment, sha256_file
 from devcapsule.platforms import Platform, XdgHomes
 from devcapsule.resolution_matrix import MATRICES
+from devcapsule import runtime_configuration
 
 
 @dataclass
@@ -126,6 +127,9 @@ def _validation(lock: Mapping[str, Any], checkout: Mapping[str, Any]) -> tuple[t
 
 
 def inspect(start: Path) -> str:
+    runtime_context = runtime_configuration.for_project(start)
+    if runtime_context is not None:
+        return _inspect_runtime(runtime_context)
     workspace = Workspace.load(start)
     local = selected_version_lock(workspace.checkout) is not None
     lines = [f"Version set {workspace.identity}", "Origin: " + ("local selection" if local else "project recommendation"),
@@ -149,6 +153,31 @@ def inspect(start: Path) -> str:
     known = _known(workspace)
     lines.append("Local use: " + ("zero-exit launch recorded (not comprehensive validation)" if any(identity == workspace.identity for identity, _, _ in known) else "no successful launch recorded"))
     lines.append("Check distributions explicitly: devcapsule project versions check")
+    return "\n".join(lines)
+
+
+def _inspect_runtime(context: runtime_configuration.RuntimeConfiguration) -> str:
+    running = context.document["running"]
+    def describe(lock: Mapping[str, Any], base: Mapping[str, Any]) -> list[str]:
+        lines = [f"Platform: {lock.get('platform')}", f"Base: {base.get('image-id') or base.get('reference') or lock.get('base', lock.get('image'))}"]
+        lines.extend(f"{name}: {metadata.get('version', 'base supplied')}"
+                     for name, metadata in lock["components"].items() if isinstance(metadata, dict))
+        return lines
+    lines = ["Runtime context: configuration is mounted read-only.",
+             f"Running session — version set {running['identity']}", f"Origin at launch: {running['origin']}",
+             *describe(running["lock"], running["base"])]
+    try:
+        _, lock, checkout = context.current()
+        identity = effective_set_id(lock, checkout)
+        lines.extend(["", f"Selected for next launch — version set {identity}",
+                      "Origin: " + ("local selection" if selected_version_lock(checkout) else "project recommendation"),
+                      *describe(lock, checkout.get("authorization", {}).get("base-image", {})),
+                      "Same software selection as this session." if identity == running["identity"]
+                      else "Selection has changed; this running session remains on its launch-time version set."])
+    except CliError as exc:
+        lines.extend(["", f"Next-launch selection unavailable: {exc}"])
+    lines.append("\nSuccessful-use history and launch readiness are owned by the launcher; this session is not yet certified successful.")
+    lines.append("Inspect or change the selection outside this capsule: " + context.launcher_command(["versions", "show"]))
     return "\n".join(lines)
 
 

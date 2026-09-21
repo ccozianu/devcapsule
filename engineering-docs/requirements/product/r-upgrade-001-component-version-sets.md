@@ -58,6 +58,17 @@ Following the project recommendation again and exporting a reviewable upstream
 proposal are explicit operations. Export qualifies local-use evidence and does
 not commit, publish or open a PR.
 
+Owner refinement after dogfood inspection, 2026-09-21: the CLI distinguishes
+launcher and runtime contexts. The launcher supplies a read-only configuration
+directory mount with the selected checkout identity and host/runtime path mapping.
+Runtime `versions show` reports the immutable running-session set separately from
+the live next-launch selection; `config list` reads recorded configuration without
+host filesystem validation or recovery writes. Mutations and operations requiring
+launcher-owned state give an actionable launcher command. Old capsules lacking the
+mount receive relaunch guidance rather than raw missing-XDG-file errors. Nested
+launchers remain usable for other projects. The shared record-directory exposure
+is documented under R-PRODUCT-002.
+
 ## Authority And Scope
 
 [D-0010](../../decisions/product/d-0010-developer-owned-version-sets.md) records

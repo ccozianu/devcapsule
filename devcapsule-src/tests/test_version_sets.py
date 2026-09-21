@@ -643,3 +643,154 @@ def test_interactive_offline_first_launch_continues_without_assuming_current(jou
     assert launched_version(s) == "1.0.0"
     out = capsys.readouterr().out
     assert "check unavailable" in out and "Choose upgrade" not in out
+
+
+def runtime_view(s, monkeypatch, tmp_path):
+    """Model the two read-only mounts and a different in-container project path."""
+    from devcapsule import runtime_configuration
+    snapshot = deepcopy(s.launched[-1][0].launch_configuration.document)
+    runtime_root = tmp_path / "inside" / "project"
+    shutil.copytree(s.root, runtime_root)
+    snapshot["runtime-root"] = str(runtime_root)
+    context = tmp_path / "launch-context.json"
+    context.write_text(json.dumps(snapshot))
+    monkeypatch.setattr(runtime_configuration, "CONTEXT_PATH", context)
+    monkeypatch.setattr(runtime_configuration, "CONFIGURATION_PATH", s.record.parent)
+    monkeypatch.setenv("PROJECT_PATH", str(runtime_root))
+    monkeypatch.setenv("DEVCAPSULE_CONTAINER_NAME", "runtime-fixture")
+    return runtime_root, snapshot, context
+
+
+def test_runtime_show_tracks_running_and_next_sets_without_local_registration(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    running_id = version_sets.Workspace.load(s.root).identity
+    runtime_root, snapshot, _ = runtime_view(s, monkeypatch, tmp_path)
+    # A different root remains a launcher, even inside a capsule (nested use).
+    preview_select(s, capsys)
+    next_id = version_sets.Workspace.load(s.root).identity
+    assert next_id != running_id
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "empty-runtime-config"))
+    before = s.record.read_bytes(), s.resolution.read_bytes()
+    assert invoke(runtime_root, "versions", "show") == 0
+    out = capsys.readouterr().out
+    assert f"Running session — version set {running_id}" in out
+    assert f"Selected for next launch — version set {next_id}" in out
+    assert f"{s.component}: 1.0.0" in out and f"{s.component}: 2.0.0" in out
+    assert "Selection has changed" in out
+    assert str(s.root) in out  # Launcher remedy uses host identity, not runtime path.
+    assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
+    assert not (tmp_path / "empty-runtime-config").exists()
+    assert snapshot["running"]["lock"]["components"][s.component]["version"] == "1.0.0"
+    # A directory mount follows atomic replacement; an individual file mount
+    # would keep the old inode and continue reporting B here.
+    from devcapsule.configuration.storage import atomic_write
+    current = load_toml(s.record)
+    current.pop("version-set")
+    atomic_write(s.record, render_document(current))
+    assert invoke(runtime_root, "versions", "show") == 0
+    out = capsys.readouterr().out
+    assert f"Selected for next launch — version set {running_id}" in out
+    assert f"{s.component}: 2.0.0" not in out
+
+
+@pytest.mark.parametrize("operation", [
+    ("versions", "check"), ("versions", "preview", "codex", "latest"),
+    ("versions", "select", "a" * 64), ("versions", "rollback"),
+    ("config", "resolve"), ("config", "authorize", "host-x11", "true"),
+    ("config", "set", "anything", "value"), ("init", "--regenerate"), ("run",),
+])
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_commands_requiring_launcher_are_refused_before_effects(journey, monkeypatch, capsys, tmp_path, operation):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
+    before = s.record.read_bytes(), s.resolution.read_bytes(), s.lock.read_bytes()
+    assert invoke(runtime_root, *operation) == 2
+    err = capsys.readouterr().err
+    assert "configuration is read-only" in err and "Run outside the capsule:" in err
+    assert str(s.root) in err
+    assert (s.record.read_bytes(), s.resolution.read_bytes(), s.lock.read_bytes()) == before
+    assert len(s.launched) == 1
+
+
+def test_runtime_config_list_is_read_only_and_does_not_assess_host_paths(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
+    checkout = load_toml(s.record)
+    checkout.setdefault("configuration", {})["bindings"] = {"host-directory": {"home": "/only/on/the/host"}}
+    s.record.write_text(render_document(checkout))
+    before = s.record.read_bytes(), s.resolution.read_bytes()
+    assert invoke(runtime_root, "config", "list") == 0
+    out = capsys.readouterr().out
+    assert "/only/on/the/host" in out
+    assert "recorded choices" in out and "not an existing directory" not in out
+    assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
+
+
+def test_runtime_never_repairs_activation_and_keeps_running_snapshot(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, snapshot, _ = runtime_view(s, monkeypatch, tmp_path)
+    journal = s.record.with_suffix(".activation.toml")
+    journal.write_text('"unfinished" = true\n')
+    before = s.record.read_bytes(), s.resolution.read_bytes(), journal.read_bytes()
+    assert invoke(runtime_root, "versions", "show") == 0
+    out = capsys.readouterr().out
+    assert snapshot["running"]["identity"] in out
+    assert "Next-launch selection unavailable" in out and "never repairs host records" in out
+    assert (s.record.read_bytes(), s.resolution.read_bytes(), journal.read_bytes()) == before
+    assert invoke(runtime_root, "config", "list") == 2
+    assert journal.exists()
+
+
+def test_older_capsule_gets_relaunch_guidance_not_missing_xdg_file(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, _, context = runtime_view(s, monkeypatch, tmp_path)
+    context.unlink()
+    assert invoke(runtime_root, "versions", "show") == 2
+    err = capsys.readouterr().err
+    assert "Relaunch this project from outside" in err
+    assert "No such file" not in err
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+@pytest.mark.parametrize("mismatch", ["path", "project"])
+def test_runtime_rejects_another_checkout_without_hiding_running_versions(journey, monkeypatch, capsys, tmp_path, mismatch):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
+    record = load_toml(s.record)
+    if mismatch == "path":
+        record["checkout"]["path"] = "/another/checkout"
+    else:
+        record["project"]["slug"] = "another-project"
+    s.record.write_text(render_document(record))
+    assert invoke(runtime_root, "versions", "show") == 0
+    out = capsys.readouterr().out
+    assert "Running session" in out and "does not match this launch" in out
+    assert "Selected for next launch" not in out
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    named = s.record.parent / "checkouts" / "dogfood.checkout.toml"
+    named.parent.mkdir()
+    s.record.rename(named)
+    resolution = named.with_name("dogfood.resolved.toml")
+    s.resolution.rename(resolution)
+    s.record, s.resolution = named, resolution
+    assert invoke(s.root, "run") == 0
+    runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
+    # A sibling does not become the active selection merely by being visible.
+    wrong = load_toml(named)
+    wrong["checkout"]["path"] = "/another/checkout"
+    (named.parent / "other.checkout.toml").write_text(render_document(wrong))
+    assert invoke(runtime_root, "versions", "show") == 0
+    assert "Same software selection" in capsys.readouterr().out
+    assert invoke(runtime_root, "list") == 0
+    out = capsys.readouterr().out
+    assert str(s.root) in out and "/another/checkout" not in out
