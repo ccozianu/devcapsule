@@ -222,13 +222,13 @@ def test_publish_requires_a_status_file(repos) -> None:
         publish(sender, "alpha")
 
 
-def test_cli_publish_and_list(repos, capsys) -> None:
+def test_cli_publish_and_status(repos, capsys) -> None:
     _origin, sender, recipient = repos
     status_file(sender, "alpha", "active", "Do it.")
 
     assert cli.main(["workflow", "publish", "--project", str(sender)]) == 0
     assert "alpha: published to coordination" in capsys.readouterr().out
-    assert cli.main(["workflow", "list", "--project", str(recipient)]) == 0
+    assert cli.main(["workflow", "status", "--project", str(recipient)]) == 0
     out = capsys.readouterr().out
     assert "alpha  active" in out and "next: Do it." in out
     assert cli.main(["workflow", "publish", "--project", str(sender), "--retire"]) == 0

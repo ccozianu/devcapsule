@@ -332,7 +332,7 @@ There is no 0.2.13. Rules changed since 0.2.12:
   remote, sent and taken with `devcapsule workflow mail`, and are decided on
   the recipient's working branch. Each workstream's status file and decision
   log are published live to the same branch with `devcapsule workflow
-  publish`, read with `devcapsule workflow list`, and reach `main` only
+  publish`, read with `devcapsule workflow status`, and reach `main` only
   inside the workstream's ordinary integration. The outbox is retired: its
   one-way flow was right, and it put the buffer under the wrong owner and
   the records behind a pull request nobody reviewed. A workstream edits only
@@ -871,7 +871,7 @@ conclusion the directory moves to `engineering-docs/archive/` unchanged.
 Workstream discovery and checkout selection are related but distinct:
 
 - The live workstream list is read from the coordination branch,
-  `devcapsule workflow list`, which shows every open workstream's published
+  `devcapsule workflow status`, which shows every open workstream's published
   state, branch, and next step as of its last publish. The table in root
   `CURRENT-STATUS.md` on the locally accepted mainline ref is the record as
   of each workstream's last integration and the fallback when the remote
@@ -1137,7 +1137,7 @@ without conflict.
 **Published state is the live view of every workstream.** `devcapsule
 workflow publish` pushes the working tree's current status file and decision
 log to `state/<name>/`, without a branch switch, replacing what was there.
-`devcapsule workflow list` renders every open workstream's state, branch,
+`devcapsule workflow status` renders every open workstream's state, branch,
 and next step from it. Publish at each checkpoint, before pausing, and at
 finish; `publish --retire` removes the directory when the workstream
 concludes. What is published is what the pair is looking at, committed or
@@ -1380,7 +1380,7 @@ construction.
    list from it, then the status file and intake.
 2. **Propose the synchronization judgment.** Before planning, say whether
    the branch should synchronize with `main` now, and why, from four facts
-   in this order, the first two of which `devcapsule workflow list` reports:
+   in this order, the first two of which `devcapsule workflow status` reports:
    - the definition or the local workflow file changed on `main` since this
      workstream last read them: **must** synchronize, and read the *Changes*
      entries since; the rules the session is about to follow are the ones

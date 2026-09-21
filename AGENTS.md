@@ -158,7 +158,7 @@ In `multiple-streams` mode, before planning the session's work, propose
 whether the selected workstream's branch should synchronize with `main` now
 and say why: a changed definition or local workflow file is a must, files the
 task will touch changed on `main` is a should, otherwise it may wait until the
-next stage boundary with the reason recorded. `devcapsule workflow list`
+next stage boundary with the reason recorded. `devcapsule workflow status`
 shows the facts: commits behind `main`, and whether the definition changed
 since the status file's `Definition read:` stamp, which `publish` writes.
 Synchronize normally by rebasing. To
@@ -172,7 +172,7 @@ own row in the workstream list, and your records are edited on your
 working branch, and reach `main` inside your ordinary integration; publish
 them live with `devcapsule workflow publish` at each checkpoint, before
 pausing, and at finish, and read every workstream's live state with
-`devcapsule workflow list` before selecting work. No pull request ever exists
+`devcapsule workflow status` before selecting work. No pull request ever exists
 for a record alone. See *The Coordination Branch*, *Publishing Before
 Integration*, and *Staying Current With `main`* in `WORKFLOW.md`.
 

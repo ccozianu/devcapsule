@@ -179,8 +179,8 @@ class PublishCommand(Command):
         return 0
 
 
-class ListCommand(Command):
-    name = "list"
+class StatusCommand(Command):
+    name = "status"
     help = "Show every open workstream's live state from the coordination branch."
 
     @classmethod
@@ -208,7 +208,7 @@ class WorkflowCommand(Group):
         return {
             MailCommand.name: MailCommand,
             PublishCommand.name: PublishCommand,
-            ListCommand.name: ListCommand,
+            StatusCommand.name: StatusCommand,
         }
 
 

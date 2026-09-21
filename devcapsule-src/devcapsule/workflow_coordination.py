@@ -57,7 +57,7 @@ merged into the integration branch. Nobody resets or force-pushes it.
   are the record as of its last integration.
 
 Read and write it with `devcapsule workflow mail check|send|take`,
-`devcapsule workflow publish`, and `devcapsule workflow list`, or with plain
+`devcapsule workflow publish`, and `devcapsule workflow status`, or with plain
 git: `git fetch origin coordination` and `git show origin/coordination:<path>`.
 See *The Coordination Branch* in `WORKFLOW.md`.
 """
