@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused; graphical 0.2.14.dev0 successor running; independent inspection passed; GUI acceptance pending
+State: paused; graphical 0.2.14.dev0 recursive acceptance complete; normal GUI exit verified
 
 Integration target: `main`
 
@@ -21,7 +21,7 @@ Workstream* in `WORKFLOW.md`.
 ## Branch Association
 
 Current branch: `ws-maintenance/triage`, synchronized with remote `main`
-at `c6296b7` on 2026-09-20. `ws-maintenance/outbox` carries only this workstream's
+at `c6296b7`, rechecked on 2026-09-21. `ws-maintenance/outbox` carries only this workstream's
 records and own workstream-list row. Its previous send has not landed; append
 rather than reset until delivery is confirmed.
 
@@ -41,13 +41,23 @@ selected this correction ahead of general triage.
 
 ## Current State
 
+2026-09-21 graphical acceptance complete: the owner confirmed, "Yes, everything
+went fine." Independent Docker inspection records the exact successor as
+`exited`, code **0**, `OOMKilled=false`, zero restarts, finished
+`2026-09-21T00:16:49.505703772Z`. The separate `docker wait` observer also
+returned **0**. No agent stop/kill was issued. The original 0.2.12 control remains
+running. The graphical 0.2.12-configuration → 0.2.14.dev0 successor scenario is
+accepted; the stopped test container and owned run remain as evidence, including
+`candidate-gui-acceptance.json`. This acceptance does not claim that the primary
+host checkout has been migrated or that remaining unit-coverage gaps vanished.
+
 2026-09-20 scope correction: the owner requested the graphical recursive
 successor, not only the preliminary Nox suite. Calling that earlier subset
 "recursive E2E passed" overstated completion. The component-catalog acceptance
 record already documents this distinction; future runs must include the existing
 `launch-successor` and independent `inspect-successor` continuation.
 
-**The graphical successor is now running and independently inspected.**
+**The graphical successor launched and passed independent inspection; GUI acceptance and normal exit are now verified above.**
 Used the existing owned local-clone protocol to create an independent clean
 checkout at `a785a332b05d7e25685f46d47a68b0545810488c`, without local origin,
 credentials or copied developer environment. Bootstrapped a fresh contributor
@@ -88,9 +98,9 @@ The owned run retains `candidate-command.py` and its private environment for
 repeat public inspection, the owner marker/manifest/expected plan, predecessor
 snapshots, build/configure/materialization/launch/inspection logs and
 `candidate-runtime-evidence.json`. `gui-exit-code` is written by an independent
-`docker wait` observer when the successor exits. Do not remove the run/state or
-staging while its successor is running. Manual visibility/usability and normal
-GUI exit remain pending; no automatic stop or primary dogfood migration is claimed.
+`docker wait` observer and now contains `0`. The stopped container, run/state
+and staging are retained as acceptance evidence. Manual visibility/usability and
+normal GUI exit are complete; no primary dogfood migration is claimed.
 This is a real 0.2.12-generated test checkout, not a copy of the unavailable
 host-owned configuration. The broader unit-coverage qualification below remains.
 
@@ -230,9 +240,7 @@ The selected status and document revisions supersede the audit-only handoff.
 
 ## Planned Next Step
 
-Complete the running graphical successor’s manual visibility/usability check
-and observe normal GUI exit (or preserve it on explicit handoff direction).
-Then close the remaining configuration condition partitions against the contract,
+Close the remaining configuration condition partitions against the contract,
 then validate the actual host-owned 0.2.12 checkout/resolution under the prepared
 0.2.14.dev0 executable before endorsing the dogfood handoff. A passing recursive
 bootstrap session is insufficient evidence for that upgrade. Owner review of the
@@ -248,7 +256,7 @@ Remaining maintenance queue prioritization belongs to the next selected slice.
 The recursive session created its Nox environment and a disposable contributor
 container using an existing base; the tests removed their container and owned
 workspaces. That preliminary run launched no successor; the subsequent graphical run above
-now retains its successor and owned state. The existing `devcapsule-src/.venv`
+now retains its stopped successor and owned state after accepted normal GUI exit. The existing `devcapsule-src/.venv`
 also ran 290 focused tests and built the revision-bearing local contributor PEX
 recorded above; it is not a published release artifact.
 No change is integrated into remote `main`; under `WORKFLOW-LOCAL.md`, the owner
@@ -264,8 +272,8 @@ was re-fetched and remains `c6296b7`, with no new commits to synchronize. Intake
 ### Awaiting The Product Owner
 
 - Actual host configuration must be made available for upgrade acceptance; it
-  is not mounted in this capsule. PR review/integration and display/privilege
-  acceptance remain pending.
+  is not mounted in this capsule. PR review/integration and primary dogfood migration
+  remain pending; the isolated graphical successor acceptance is complete.
 - Severity/release triage for the remaining queue, including ownership of fixes
   from workstreams approaching closure.
 
