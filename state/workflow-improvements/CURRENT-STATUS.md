@@ -1174,8 +1174,9 @@ the twelve untriaged bugs in the `maintenance` workstream, which is where the
 next release's handful comes from; that is that workstream's task, not this
 one's.
 
-Then decide the remaining three intake items, which wait on the owner's
-answers under *Open Threads*.
+Then decide the last intake item, *One Workflow, Many Projects*, which waits
+on the owner's answers under *Open Threads*, and start item 13 or that
+review, whichever the answer puts first.
 
 The backlog's adopter-facing merge-strategy document for `docs/` remains
 actionable and unclaimed.
@@ -1290,6 +1291,25 @@ remainder. It is defensible because all four are protocol and this workstream
 is the protocol owner, but *done* is now visibly further away than it was, and
 the product owner should see that rather than discover it. See *Open Threads*.
 
+### Decided 2026-09-21
+
+**You own the workflow component, which is now in V1** (`project-management`,
+2026-08-18, recording the product owner's decision). Acknowledged on the
+owner's direction: this workstream owns the component's final shape. Item 13
+of *Acknowledged Work*. Its sequencing condition, the information model
+first, is met by the glossary.
+
+**Stage 7 is ready for the resource-ownership convention** (`recursive-e2e`,
+2026-08-22). Forwarded to `project-management` with the original text. The
+owner directed on 2026-09-21 that Stage 7 is done away with and has no work
+in progress, which the 2026-08-27 dissolution had already made true; the
+outcome the item waits on is `project-management`'s reaping entry, and the
+requester is archived. This workstream releases the convention with it: item
+4 of *Acknowledged Work* is closed as handed on, with the analysis that
+whoever implements reaping, plausibly `maintenance` through the
+detached-successor bug it owns, should write the convention narrowly as part
+of that work.
+
 ### Acknowledged 2026-09-19
 
 **The off-`main` mail transport** (`project-management`, 2026-08-30, the
@@ -1364,14 +1384,9 @@ can be reordered.
 3. ~~Intake acknowledgement and staleness.~~ Done 2026-08-17. Acknowledgement
    implemented as the disposition log; staleness deliberately left unspecified
    and routed to `project-management`. See *Tenth Task* and *Eleventh Task*.
-4. **An external-resource ownership convention.** Largest, needs product
-   knowledge, and its main consumer is not ready. Done means: how a resource
-   derives its owning workstream and run identity; how names avoid collision by
-   construction rather than by discipline; how an agent enumerates what is held
-   and by whom; and what an agent may and may not remove. Its requester,
-   `recursive-e2e`, told this workstream on 2026-08-22 that Stage 7 was ready,
-   and has since concluded and been archived; the convention needs a new
-   consumer or an explicit decision to drop it.
+4. ~~An external-resource ownership convention.~~ Released 2026-09-21 with
+   the forwarded Stage 7 item; written by whoever implements reaping, if
+   anyone. See *Decided 2026-09-21*.
 5. ~~Release refs are not workstream branches.~~ Done 2026-09-16, merged as
    `PR #88`. See *Fifteenth Task*.
 6. ~~A workstream takes a release over.~~ Done 2026-09-16 with item 5.
@@ -1387,6 +1402,17 @@ can be reordered.
 11. ~~Mail off `main`.~~ Built and drafted 2026-09-19. See *Twentieth Task*.
 12. ~~Published state; the outbox retired; rows have owners.~~ Built and
     drafted 2026-09-19. See *Twenty-First Task*.
+13. **The shape of the workflow component.** Acknowledged 2026-09-21. Done
+    means, from the 2026-08-18 item and the V1 ledger row: what the component
+    consists of; how an adopter obtains it, declines it, or installs a
+    different workflow, with the product working in each case; the product's
+    real dependency on the workflow stated (`AGENTS.md`, the declaration, the
+    `engineering-docs/` layout, and now `WORKFLOW-LOCAL.md`); whether
+    verification tooling is part of it, with `devcapsule workflow` as the
+    evidence that some now is; V1 acceptance criteria completed; and the
+    evidence being a fresh project in each configuration. Position: after the
+    owner answers whether *One Workflow, Many Projects* subsumes it as a
+    phase or follows it.
 
 ## Assessment Of The Queue
 
@@ -1575,15 +1601,13 @@ resume changed every question. Short by design.
 - **Review of the `maintenance` workstream, the bug vocabulary, and the
   backfilled records.** The pull request waits on it; the triage of twelve
   untriaged bugs follows it, in the `maintenance` workstream.
-- **Whether the freeze lifts for the remaining three items.** The 2026-08-30
+- **Whether the freeze lifts for the last item and item 13.** The 2026-08-30
   freeze runs until the release-candidate check, which is now. The owner has
-  lifted it for every slice so far. All three remaining items change rules.
+  lifted it for every slice so far. Both change rules.
 - **Whether *One Workflow, Many Projects* (2026-09-11) subsumes the structural
   sequence** of information model, component shape, coordination off `main`,
   and mail transport as its first phase, which its text implies, or runs after
   them.
-- **A home for the external-resource ownership convention** now that
-  `recursive-e2e`, which asked for it, is archived.
 
 ### Weighed And Unresolved
 
