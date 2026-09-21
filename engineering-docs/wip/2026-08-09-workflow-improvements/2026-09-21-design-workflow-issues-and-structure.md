@@ -117,9 +117,8 @@ right. Two levels, each in priority order.
 2. **Adoption across the other eight workstreams.** Publish once, rename
    branches, retire outboxes, decide stranded items. Cheap each; until done
    the live list has one row.
-3. **Soft claims.** The original itch. The write path exists at
-   `state/<name>/claim`; the design is short; it needs the verifier to
-   surface claims at session start.
+3. ~~**Soft claims.**~~ Built 2026-09-21 with `brief`; `status` and `brief`
+   surface them.
 4. **What Adopters Inherit, phase 1**, starting by refreshing the three
    sample projects: the first real test of versioning, migration entries, and
    the local file, and most of the review's evidence.
@@ -136,7 +135,8 @@ right. Two levels, each in priority order.
 
 1. **The status-file rule, applied to this workstream first.** Done 2026-09-21
    for the rule; the shedding follows in the same round.
-2. **Age on the live list**: when each workstream last published.
+2. ~~**Age on the live list**: when each workstream last published.~~ Done
+   2026-09-21.
 3. **Branch protection on `coordination`**: no force-push, pushes open.
    Owner's to set; unknown whether done.
 4. **The table on `main` rendered from published state** at integration, or
@@ -148,6 +148,17 @@ right. Two levels, each in priority order.
    Stage 7 that no longer exists. Project-management's entry.
 8. **Packaged-versus-root definition drift** beyond the sections edited
    together, to be listed by the review's phase 1.
+
+## V1 Items Added 2026-09-21
+
+The owner asked what would add to the workflow's appeal for V1 and took the
+proposals as items on this workstream, backlog items 4 to 10: `brief`, soft
+claims shown live, `ask`, `digest`, `doctor`, the live board, and agent
+review of pull requests. They share one property: each makes something the
+workflow already does visible in one motion, and each keeps the whole thing
+git and markdown all the way down. The headline pairing is `brief` and the
+board: any agent or human runs one command and knows what to do, and anyone
+opens a page and watches the team do it, both from the coordination branch.
 
 ## Open Questions For The Owner
 

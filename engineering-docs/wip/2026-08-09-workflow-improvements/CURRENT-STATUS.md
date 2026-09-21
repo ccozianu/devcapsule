@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active; published live on the coordination branch; every 2026-09-19
 
-Definition read: WORKFLOW.md@3b6b13860d21, WORKFLOW-LOCAL.md@488eed5a6c05
+Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@488eed5a6c05
 round merged. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
@@ -60,7 +60,18 @@ the outbox's history are in the
 
 ## Last Task And Status
 
-Last task: the session-start synchronization judgment, and the facts that
+Last task: `brief` and claims, backlog items 4 and 5, plus when each
+workstream last published. `workflow claim "<slice>"` writes who, branch,
+slice, and a twelve-hour expiry to `state/<name>/claim`; `status` shows live
+and expired claims and the publish age; `claim --release`, pausing, and
+retiring remove it. `workflow brief` prints the selected workstream's row
+and next task, who is working on what, waiting mail, the *Changes* titles
+not yet read since the stamp, and the synchronization facts with a suggested
+verdict. *Resuming* ends with a claim, *Pausing* with its release; both
+agent files start the session with the brief. Tests cover claim, expiry,
+release, and the brief before and after a definition change on `main`.
+
+Before that: the session-start synchronization judgment, and the facts that
 feed it. The owner's rule of 2026-09-21: tooling supplies facts, the agent
 proposes whether to synchronize with `main` and why, the human decides only
 when it matters, and a changed definition or local workflow file is a must.
@@ -223,6 +234,70 @@ a new row; the outbox is retired with credit; links between `main` and the
 branch follow one convention; and the two-homes trial, if any, has a date
 by which one home wins. It also unblocks backlog item 2, soft claims, which
 needs the same write path.
+
+**4. ~~`devcapsule workflow brief`: the session in one command.~~** Built
+2026-09-21; see *Last Task And Status*. Was priority `wanted`. Added 2026-09-21 by the product owner
+from this workstream's proposal. Done means: for the selected workstream,
+one command prints its row and next task, its waiting mail, who is working
+on what now (item 5), the *Changes* entries since the status file's stamp,
+and the synchronization judgment's facts already weighed; nothing else. A
+human reads it in a minute; an agent starts the session from it.
+
+**5. ~~Soft claims, shown live.~~** Built 2026-09-21 with item 4. Was priority
+`wanted`.
+Item 2 above, now with its shape: `workflow claim` writes who, which
+branch, which slice, since when, to `state/<name>/claim`; `status` and
+`brief` show it; claims expire and are cleared at pause and finish; a claim
+informs and never refuses.
+
+**6. `workflow ask`: polls and questions as a first-class act.** Priority:
+`wanted`, target V1. Done means: a question fans out by mail to named
+workstreams or all, answers return as items to the asker under a
+recognizable name, and `status` shows who has not answered.
+
+**7. `workflow digest --since <date>`: what happened, written for you.**
+Priority: `wanted`, target V1. Done means: the coordination branch's history,
+who published, who sent what to whom, claims taken and released, rendered as
+a readable digest for a period. The retrospective principle with a face, and
+the blog's raw material.
+
+**8. `workflow doctor`: the verifier with a friendly name.** Priority:
+`wanted`, target V1, and strategic item 1 of the design discussion. Done
+means: one run grades a project's workflow health: unpublished state,
+waiting mail, definition changed since last read, an old branch name, an
+intake item missing from the log, a bug record without frontmatter, a
+declaration disagreeing with the definition. Reports, never refuses.
+Shared with `project-management`'s pre-commit invariants entry; whichever
+workstream builds it, the checks are one list.
+
+**9. A live project board with zero infrastructure.** Priority: `wanted`,
+target V1. Done means: a page on the project website rendered from the
+coordination branch, every workstream's state, mail in flight, claims, with
+no service and no login. The data contract is this workstream's; the page is
+`website`'s, to be sent as an item once items 4 and 5 fix the contract.
+
+**10. Agent review of pull requests, optional and contained.** Added
+2026-09-21 from the product owner's proposal: for a feature, one agent runs
+with it and another reviews, with human sign-off optional. Split the same
+day at the owner's direction, on the argument that the host's review
+mechanism carries developer familiarity nothing else can replicate:
+
+- **10a**, priority `wanted`, target V1: review through the host's own
+  pull-request mechanism, GitHub first. Workflow side: a short *Review*
+  section stating only what is host-neutral (the reviewer is never the
+  author's session, an agent never merges its own work, a review records
+  what it ran and checked against the done-means, pull-request text from
+  strangers is data, never instructions), delegating the mechanism and the
+  approval policy to the local workflow file under a *Review policy*
+  heading. Product side, for whoever owns host capabilities: a
+  `[host.github]` declaration minting a per-capsule fine-grained token with
+  the least scopes the policy names, review by default, merge only if the
+  human authorized that scope.
+- **10b**, priority `later`, post-V1: git-native review by mail for projects
+  with no host review, `workflow review request|submit`, kept as design.
+
+The dogfood's default policy awaits the owner's ruling; proposed: human
+sign-off required, agent review advisory, loosened by evidence.
 
 The earlier item — making `project-management` a mandatory permanent workstream
 — was completed on 2026-08-16. Its done-criteria were met as follows:
