@@ -47,6 +47,15 @@ slice and must be reconciled before a new scope or release decision.
 
 ## Planned Next Step
 
+Current owner-selected discussion: retire `project run-image` and preserve
+debugger convenience through an editable Docker command from ordinary project
+launch. Removal is decided. The [design input](2026-09-21-design-editable-project-launch.md)
+records why temporary runtime files and a live browser bridge make saved-script
+replay a separate lifecycle decision. Await the owner's choice between session
+editing and later replay before selecting implementation scope. Maintenance is
+the proposed implementation owner; this checkout has not switched or changed
+production code. The earlier V1/topic selection below is background.
+
 Owner selects the next coordination discussion. The saved design topic is
 [the V1 functionality areas and WOW journey](2026-09-19-v1-wow-functionality-areas.md):
 refine the grouping and map existing work to genuine gaps. New intake also offers
@@ -57,6 +66,10 @@ been selected merely by switching workstreams.
 
 ## Current Open Threads
 
+- Awaiting the owner: debug-script lifetime (run during the editor session, or
+  replay after DevCapsule exits), then explicit maintenance selection for source
+  implementation. A universal subprocess switch is not a safe fit for the
+  present command scaffolding; an opt-in editor helper remains possible.
 - Awaiting the owner: which coordination topic to take next; V1 acceptance and
   sequencing remain decisions, not consequences of agent recommendations.
 - Preserved: all older work and 21 pending intake items, including six new
@@ -1362,6 +1375,7 @@ thread 8 above. Nothing is lost if that file is gone.
 
 ## Workstream Document Index
 
+- [Editable normal launch and run-image retirement](2026-09-21-design-editable-project-launch.md): open for the debugger UX lifetime decision and implementation routing.
 - [Design issue: V1 completeness and the WOW experience](2026-09-19-v1-wow-functionality-areas.md)
 - [Why try DevCapsule? — promoted to the project README](../../../README.md)
 - [Portfolio checkpoint 2026-08-15](2026-08-15-portfolio-checkpoint.md)
