@@ -4,13 +4,72 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-18 at owner request; synchronized with origin and main; permanent coordination
+State: active 2026-09-21 at owner request; synchronized with main; awaiting owner selection of the next coordination decision
+
+Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@d82ff8d81968
+
+Branch association: `project-management/coordination`
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
+
+## Resumed (2026-09-21)
+
+Owner explicitly switched this checkout from the paused `component-upgrades`
+workstream to project-management. Rebased the three independent documentation
+commits onto fetched `origin/main` at `20336d8`, without conflicts, preserving
+blog instructions, the review request record, and the V1 WOW design issue.
+The website submodule's apparent change on the old branch was only its older
+recorded pointer; synchronization resolved it without changing submodule files.
+The checkout had no source edits to transfer between workstreams.
+
+Read the current workflow definition/local rules, full handoff and all intake.
+There was no published project-management state; this session establishes it.
+The grandfathered branch name remains registered; workflow commands need explicit
+`--workstream project-management` until its separately queued migration.
+GitHub integration remains owner-operated through the UI; Git uses SSH.
+
+Took and committed six messages from coordination. There are 21 pending intake
+items, including those new arrivals. Receipt and this resumption do not decide
+or reprioritize them. No open bug record names project-management as owner.
+The older "intake is empty" and pending-delivery statements below are history;
+the current queue and verified mainline facts govern.
+
+The component-upgrades checkpoint has merged and its first hosted publication
+has passed client acceptance. The owner paused that workstream and deferred
+operational detailing toward V1. R-UPGRADE-002 stays with component-upgrades;
+its new intake asks this workstream to account for it in V1 sequencing, not to
+resume implementation here. Earlier upgrade/adopter intake predates the delivered
+slice and must be reconciled before a new scope or release decision.
+
+## Planned Next Step
+
+Owner selects the next coordination discussion. The saved design topic is
+[the V1 functionality areas and WOW journey](2026-09-19-v1-wow-functionality-areas.md):
+refine the grouping and map existing work to genuine gaps. New intake also offers
+0.2.14 release/early-adopter input, alongside release-runbook alignment, remaining
+upgrade/evidence decisions, resource ownership, and workflow migration.
+No release, new implementation, publication campaign or routing decision has
+been selected merely by switching workstreams.
+
+## Current Open Threads
+
+- Awaiting the owner: which coordination topic to take next; V1 acceptance and
+  sequencing remain decisions, not consequences of agent recommendations.
+- Preserved: all older work and 21 pending intake items, including six new
+  messages. Pending outbox migration and branch renaming require their own
+  reconciliation before deletion or disposition; no branch was deleted here.
+- Deliberately not preserved: no chat transcript or new session record. Historical
+  sections below are retained; they are not a current release/readiness assessment.
+
+Validation: the implementation, scripts and Actions files are unchanged from
+`9bf2711`, whose required build gate passed earlier in this session with 1,035
+tests, 18 deselected, one existing xfail, mypy and nine packaged tests. Reused
+that evidence for this documentation/receipt checkpoint rather than repeat an
+identical gate. Rebase completed cleanly; whitespace and mainline ancestry checked.
 
 ## V1 WOW Design Issue Saved (2026-09-19)
 
