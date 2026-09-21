@@ -4,7 +4,7 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: paused; work order prepared for implementation in a fresh session
+State: active; executing the component upgrade work order
 
 Definition read: WORKFLOW.md@ee9065a1b3ab, WORKFLOW-LOCAL.md@488eed5a6c05
 
@@ -25,6 +25,16 @@ version sets and proven rollback, using Codex as the first generic-channel
 consumer. Intended for v0.2.14; project-management owns release sequencing.
 
 ## Current State
+
+Resumed at owner request. Remote main remains `e4a96dc`, already contained in
+this branch; no synchronization is needed. No owned open bugs or mail.
+`workflow status` reports no published state and the fetched coordination tree
+is empty, contradicting the earlier publication claim; use the committed
+work order and publish this workstream only, without reconstructing other state.
+
+Implementation plan: typed distribution channels; complete checkout-owned
+version sets; recoverable preparation/activation; pre-launch snapshots and
+artifact retention; ordinary CLI recovery tests; user/contributor docs and gate.
 
 The owner requested rebasing maintenance on origin/main, opening this feature
 workstream, and writing its working order for a fresh session. Maintenance was
