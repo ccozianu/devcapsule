@@ -262,3 +262,9 @@ argument covers document admission, edit preservation, initialization provenance
 scoped/legacy fingerprints, current permissions/bindings under force and the
 actual lower launcher. The owner's serialized-access precondition is explicit.
 Host acceptance and PR integration remain outstanding.
+
+2026-09-21 acceptance update: the owner reports running successfully with these
+fixes and requests branch delivery for GitHub merge. The isolated graphical
+0.2.12-configuration successor also passed and exited normally. Earlier pending
+live-use acceptance notes are superseded by that report; exact host configuration
+bytes remain unavailable. Status remains `fixed` pending PR integration.

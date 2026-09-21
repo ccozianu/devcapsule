@@ -89,3 +89,9 @@ predecessor-compatibility obligation; unspecified future formats are refused.
 The related [upgrade-remedy fix](2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)
 now composes with these enforced boundaries. Reopen if any supported lifecycle
 again loses an unrelated decision, invents authority, or bypasses admission.
+
+2026-09-21 acceptance update: the owner reports running successfully with these
+fixes and requests branch delivery for GitHub merge. The isolated graphical
+0.2.12-configuration successor also passed and exited normally. Earlier pending
+live-use acceptance notes are superseded by that report; exact host configuration
+bytes remain unavailable. Status remains `fixed` pending PR integration.
