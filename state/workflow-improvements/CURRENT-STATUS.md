@@ -4,15 +4,13 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active; published live on the coordination branch; every 2026-09-19
+State: paused 2026-09-22 so the pair can work another workstream. Every round
+through 2026-09-21 is merged; the patch-handoff rule is held on the branch
+until after the 0.2.14 cut. Resumed 2026-09-16 by the product owner at the
+release-candidate check the 2026-08-30 freeze scheduled; since then the owner
+directed each slice and lifted the freeze for it.
 
 Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@ed70f3147563
-round merged. Resumed 2026-09-16 by the product owner at the release-candidate
-check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
-owner chose the release-related intake first and, on 2026-09-18, the reserved
-`maintenance` workstream with the bug vocabulary, then the `ws-` branch
-vocabulary and the workflow declaration, granting the freeze exception each
-needed. Eight intake items remain undispositioned; see *Next Resumable Task*.
 
 Integration target: `main`
 
