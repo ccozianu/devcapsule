@@ -4,11 +4,12 @@
 
 Reviewed: 2026-09-22 at release branch `8e7cc21`, against RC0 source `d078b87`
 and freshly fetched main `e50b9f1`. Runtime and test sources match RC0.
-19 tracked records: 17 open (nine reported/confirmed, eight fixed but not closed)
-and two retired after verifying their command/implementation was removed.
+19 tracked records: 15 open (nine reported/confirmed, six fixed but not closed),
+two closed with owner acceptance and verified integration, and two retired
+after verifying their command/implementation was removed.
 All have workstream owners. All currently have `target: none`; 16 have
-`severity: untriaged`, three have `severity: minor`; among the 17 open records,
-14 are untriaged and three are minor.
+`severity: untriaged`, three have `severity: minor`; among the 15 open records,
+12 are untriaged and three are minor.
 
 Owner decision, 2026-09-22: none of this current list blocks starting the
 release. The owner further confirmed that the bug list itself does not prevent
@@ -39,7 +40,7 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Codium runtime-option parity](../../bugs/devcapsule/2026-07-13-codium-run-option-parity.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Codium ambient passwordless sudo](../../bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Multiline Dockerfile quoting](../../bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md) | maintenance | confirmed | untriaged | Deferred — unless it recurs during the release E2E campaign | Owner decision 2026-09-22. Current recipes build; generic rendering defect remains. After this release, redesign component image composition around documented, unit-testable contracts; see bug for evidence and scope. |
-| [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | confirmed | untriaged | Undecided | **Propose fix:** safe default plus explicit host choice on the retained legacy command. CLI probe confirms ambient host networking today; see scope below. |
+| [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | confirmed | untriaged | Undecided | **Propose retirement of legacy pycharm run:** owner raised this alternative; assessment below prefers it over extending the legacy CLI. Command remains present pending decision. |
 | [Codex ACP missing CODEX_HOME](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md) | maintenance | fixed | untriaged | Undecided | **Propose verify:** fresh component state, one actual PyCharm ACP exchange, then relaunch. CLI use alone does not exercise ACP. |
 | [Component tooling missing from PATH](../../bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md) | maintenance | confirmed | untriaged | Undecided | **Propose verify, likely resolved:** base PATH export and generic environment inheritance exist. Check node/npm/npx by name in the IDE terminal and a child build process. |
 | [Manual ecosystem setup for fresh clones](../../bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md) | maintenance | confirmed | untriaged | Undecided | **Propose defer:** multi-ecosystem bootstrap needs product/consent/lifecycle design. Keep setup instructions usable; reopen release scope if the documented onboarding cannot reach useful work. |
@@ -51,20 +52,39 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Base-image consent versus selection](../../bugs/devcapsule/2026-09-02-authorize-base-image-conflates-consent-with-selection.md) | maintenance | fixed | untriaged | Undecided | **Propose verify, likely resolved:** exercise current local-reference selection and consent UX; reconcile superseded yes/no instructions before closure. |
 | [Formation entrypoint and image lifecycle](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md) | component-catalog | confirmed | untriaged | Undecided | **Propose verify/split:** inspect actual image boot configuration against descriptor, then repeat launch for reuse. Defer remaining superseded-image cleanup separately; do not close the combined record wholesale. |
 | [Incomplete Codex installation](../../bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md) | component-catalog | fixed | untriaged | Undecided | **Propose verify:** fresh npm-based installation and state; actual agent edit/shell/test turn. Owner accepted the capsule as sandbox; --version or an obsolete sandbox command is insufficient. |
-| [Upgrade recovery rejects its own remedy](../../bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md) | maintenance | fixed | untriaged | Undecided | **Propose close:** PR #117 is in main and RC0; recorded owner and graphical acceptance supersede the pending integration note. Retain RC acceptance for later regressions. |
-| [Configuration contract across boundaries](../../bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md) | maintenance | fixed | untriaged | Undecided | **Propose close repaired scope:** G1–G9 have implementation, regression, integration and recorded owner/GUI evidence. Broader future contracts are not established by this closure. |
+| [Upgrade recovery rejects its own remedy](../../bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md) | maintenance | closed | untriaged | Closed — owner accepted 2026-09-22 | PR #117 is in main and RC0; recorded owner and graphical acceptance supersede the pending integration note. Retain RC acceptance for later regressions. |
+| [Configuration contract across boundaries](../../bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md) | maintenance | closed | untriaged | Closed — owner accepted 2026-09-22 | G1–G9 have implementation, regression, integration and recorded owner/GUI evidence. Broader future contracts are not established by this closure. |
 | [Nested-directory coordination data loss](../../bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md) | workflow-improvements | fixed | untriaged | Undecided | **Propose verify first:** downloaded RC0, disposable bare remote, nested/relative paths; compare unrelated blob IDs after every mutation. Existing test checks names, not all unchanged bytes. |
 | [Flaky claim lifecycle test](../../bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md) | workflow-improvements | confirmed | minor | Undecided | **Propose defer repair:** preserve owner-requested xfail and contract/design review. Verify intended claim operations in the isolated candidate journey; XPASS cannot establish lifecycle coverage. |
 
 ## Proposed Calls From The 2026-09-22 Review
 
-These are recommendations requested by the owner, not accepted dispositions:
-**one bounded fix, two closures, eight targeted verifications, and five
-deferrals** across the 16 undecided records. The accepted image-composition
-deferral and two retirements remain unchanged. Canonical bug metadata and
-other workstreams' records have not been edited by this review.
+The initial review proposed one bounded fix, two closures, eight targeted
+verifications and five deferrals. **The owner accepted both closures on
+2026-09-22; they are now applied.** Fourteen rows remain undecided: the legacy
+command decision, eight targeted verifications and five deferrals. The accepted
+image-composition deferral and two retirements remain unchanged. Other
+workstreams' records have not been edited.
 
 ### First Fix Candidate: Legacy Networking
+
+**Updated recommendation after the owner's retirement question:** prefer
+retiring the public `pycharm run` command over adding more legacy options.
+Normal `project run` calls the shared `run_pycharm` implementation directly;
+it does not depend on `PycharmRunCommand`. Keep that shared backend, and leave
+`pycharm build` / `check-runtime` outside this proposed removal's scope.
+Removing the public bypass also removes its ambient host-X11 entry path.
+
+Retirement has a compatibility cost: this is still a documented command with
+raw-image, profile/state and Docker-in-Docker options, not a proven exact alias
+of configured `project run`. A release-specific exception and migration guidance
+under R-COMPAT-001 must explain the new path and unsupported legacy-only uses.
+Correct README examples, CLI/PEX smoke checks and shared-launcher diagnostics
+that still prescribe the retired command. Give old invocations an actionable
+migration error with no launch, and verify normal project launch is preserved.
+The owner has asked for this assessment; no command removal is implemented or
+treated as approved here. The narrower networking patch below is the fallback
+if the legacy command must remain supported.
 
 The retained [CLI adapter](../../../devcapsule-src/devcapsule/commands/_pycharm.py)
 constructs `PycharmRunOptions` without a network choice. The

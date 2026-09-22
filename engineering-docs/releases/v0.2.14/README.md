@@ -26,18 +26,20 @@ status, ownership and technical evidence.
 
 ## Next Work
 
-The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) proposes one
-bounded fix, two closures, eight targeted verifications and five deferrals
-for the remaining undecided records. Review these calls, then use its grouped
-acceptance journeys; proposals have not changed canonical bug dispositions.
+The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records
+the two owner-approved configuration-bug closures. Fourteen rows still need
+decisions: legacy PyCharm command retirement versus repair, eight targeted
+verifications and five deferrals. Review these calls, then use the grouped
+acceptance journeys.
 The image-composition redesign is already deferred unless its defect recurs
 during the E2E campaign.
 
 Work through selected undecided rows in [bug triage](bugs.md) and the acceptance
 journeys below, recording fixes, obsolete findings and explicit deferrals. Two
 old Codium-specific records are retired after checking the removed command and
-implementation against RC0; 17 bugs remain open. No runtime fix was needed for
-those retirements. Candidate fixes produce RC1 or later; never move RC0.
+implementation against RC0; with the two accepted closures, 15 bugs remain
+open. No runtime change was needed for these dispositions. Candidate fixes
+produce RC1 or later; never move RC0.
 
 ## Preparation And Publication
 

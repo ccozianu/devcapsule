@@ -44,17 +44,21 @@ the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
 [working bug table](../../releases/v0.2.14/bugs.md) retains all 19 rows, now
-17 open and two retired. No runtime code changed during this slice.
+15 open, two closed and two retired. On 2026-09-22 the owner accepted closure
+of the upgrade-recovery and configuration-contract bugs; their records now
+link the owner/graphical acceptance and verified PR #117 integration. No
+runtime code changed during these record updates.
 
 ## Planned Next Step
 
-Review the owner's requested bug-combing recommendations in the
-[release bug table](../../releases/v0.2.14/bugs.md): one bounded legacy-network
-fix, two configuration-bug closures supported by recorded acceptance and
-verified integration, eight targeted verifications, and five deferrals.
-These are proposals; canonical bug statuses and release dispositions remain
-unchanged. If accepted, apply the individual decisions and run the grouped
-candidate journeys recorded there. No implementation was started by this review.
+The two owner-approved configuration closures are applied. Discuss the legacy
+`pycharm run` retirement the owner raised: assessment favors removing that
+public bypass while retaining the shared launcher used by `project run`, with
+explicit compatibility/migration guidance and corrected diagnostics. No
+removal has been authorized or implemented. Fourteen rows remain undecided
+in the [release bug table](../../releases/v0.2.14/bugs.md), including eight
+targeted verifications and five deferrals; use its grouped candidate journeys
+as decisions are accepted.
 
 Owner deferred the confirmed multiline execution-rendering bug for 0.2.14
 unless it recurs during the release E2E campaign. Watch for that recurrence
@@ -105,10 +109,14 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Owner review of the 16 proposed bug dispositions remains; the full rationale
+- Owner review of the 14 remaining bug dispositions remains; the full rationale
   and grouped acceptance observations are in the release bug table. Resolve
   legacy host-X11 scope before blanket closure of the display exposure record;
   distinguish repaired formation boot behavior from remaining image cleanup.
+- A pre-existing local edit in the legacy-network bug removes one word and
+  leaves trailing whitespace. It was preserved verbatim and excluded from
+  the configuration-closure commit; retirement assessment is in the release
+  tracker, with no edit to that dirty bug file.
 - Image composition redesign is deferred beyond 0.2.14 unless the confirmed
   multiline-rendering defect recurs during the release E2E campaign; preserve
   its documented-contract and unit-testing scope when scheduling the work.
