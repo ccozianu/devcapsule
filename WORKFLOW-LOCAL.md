@@ -101,6 +101,32 @@ unless the owner explicitly changes it. Do not substitute a direct push to main
 for owner PR integration. Re-verify main through an SSH fetch after the owner
 reports the merge. Keep this rule until the owner explicitly changes it.
 
+## Commit Authorship
+
+Owner direction, 2026-09-22: commits made with an agent retain the human's Git
+author identity and add a `Co-authored-by` trailer for the contributing agent.
+Pushing credentials and the person merging a PR do not replace commit authorship.
+Before committing, check `git var GIT_AUTHOR_IDENT`; use the human's intended
+name and GitHub-associated email, not an inherited container placeholder. Set
+checkout-specific corrections with `git config --local user.name` and
+`git config --local user.email`, leaving other developers' identities alone.
+
+For Codex, the co-author display name is the actual model name followed by
+`Codex`, using this project's attribution address `noreply@openai.com`:
+
+```text
+Co-authored-by: GPT-6 Astra Codex <noreply@openai.com>
+```
+
+That is an example, not a model pin. Read the active session's model identity;
+do not infer it solely from a configured default or copy a prior session's name.
+If the actual model cannot be established, ask the human for the displayed model
+before claiming a specific identity. Credit only agents that contributed.
+Separate trailers from the message body with a blank line and verify the saved
+commit's author and trailers before pushing. Preserve trailers when composing a
+squash commit. This applies to future commits; do not rewrite merged history to
+add attribution. No change to SSH credentials or PR merge permissions is needed.
+
 ## Exceptions
 
 - **The root `WORKFLOW.md` is the source, not an installed copy.** The
