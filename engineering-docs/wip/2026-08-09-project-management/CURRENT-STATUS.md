@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-22; run-image retirement and diagnostic print contract decided; maintenance implementation handoff ready
+State: active 2026-09-22; tested run-image replacement patch delivered to maintenance; source restored; workflow recovery proposal delivered
 
 Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@d82ff8d81968
 
@@ -53,10 +53,12 @@ with comments identifying temporary resources. Stdout is reserved for shell text
 progress goes to stderr. No editor, replay support or new resource lifetime is
 wanted. The [contract](2026-09-21-design-editable-project-launch.md) records the
 accepted boundary, normal preparation effects, and protection against recording
-command generation as successful use. Maintenance is assigned the bounded task;
-this checkout remains project-management until the owner explicitly selects it.
-Current main remains `20336d8`; no new definition or source changes require another
-synchronization. Earlier editor/lifetime questions are resolved and superseded.
+command generation as successful use. Maintenance now has a tested implementation
+patch to review, apply and integrate; delivery details are below. This checkout
+remains project-management with its source restored. No workstream switch is needed
+to complete this handoff. Current fetched main remains `20336d8`; no new definition
+or source changes required another synchronization. Earlier editor/lifetime
+questions are resolved and superseded.
 
 Owner selects the next coordination discussion. The saved design topic is
 [the V1 functionality areas and WOW journey](2026-09-19-v1-wow-functionality-areas.md):
@@ -68,8 +70,10 @@ been selected merely by switching workstreams.
 
 ## Current Open Threads
 
-- Awaiting the owner: explicit switch to maintenance for the decided removal and
-  print-command implementation. Product scope is settled; source work has not begun.
+- Awaiting maintenance: review, application and integration of the delivered patch.
+  No implementation was committed on project-management; source is restored.
+- Awaiting workflow-improvements: decision on the proposed diff-handoff recovery
+  rule. This case used explicit owner direction, not a silently changed definition.
 - Awaiting the owner: which coordination topic to take next; V1 acceptance and
   sequencing remain decisions, not consequences of agent recommendations.
 - Preserved: all older work and 21 pending intake items, including six new
@@ -83,6 +87,49 @@ Validation: the implementation, scripts and Actions files are unchanged from
 tests, 18 deselected, one existing xfail, mypy and nine packaged tests. Reused
 that evidence for this documentation/receipt checkpoint rather than repeat an
 identical gate. Rebase completed cleanly; whitespace and mainline ancestry checked.
+
+## Tested Patch Handoff And Source Restoration (2026-09-22)
+
+The owner requested a diff handoff for accidentally misplaced work, or finishing
+here only if committed changes were too entangled to separate. Inspection found
+no implementation commit: `44166eb` contains the design/assignment checkpoint.
+Under the owner's explicit direction, prepared and tested the bounded replacement
+as uncommitted changes, sent the full patch, then reversed exactly those edits.
+Verified the remote mail bytes and patch checksum before reversal. The checkout
+was clean again at `44166eb`; no branch switch, history reset, source commit or
+change to maintenance's branch occurred.
+
+[Maintenance patch mail](https://github.com/ccozianu/devcapsule/blob/93d794a418826d8696ae6d13d4fe30cc286e5c0b/mail/maintenance/2026-09-22-project-management-run-image-tested-patch.md)
+was delivered at `93d794a41882`, superseding
+`2026-09-22-project-management-retire-run-image-print-command.md` at
+`3231b2dcd7f5`. Sent mail is append-only, so the older assignment was not deleted.
+Patch SHA-256: `79794674807cbd3c1784599ac1ed0ae8e03995c0958917fb0e4347e60b0cbea9`.
+It applies cleanly to fetched main `20336d8`, verified with a temporary index.
+Maintenance owns review/application and ordinary PR integration; neither mail
+receipt nor passing tests means the feature is shipped. The legacy `pycharm run`
+shared host-network default remains outside this patch; removal alone does not
+close that whole defect.
+
+[Workflow recovery proposal](https://github.com/ccozianu/devcapsule/blob/f0b43c6da0c8/mail/workflow-improvements/2026-09-22-project-management-diff-handoff-recovery.md)
+was delivered at `f0b43c6da0c8`, with a concrete proposed `WORKFLOW.md` diff.
+The gap is how useful uncommitted work can move to its owner without a branch
+switch or an inappropriate source commit. The existing definition also says
+coordination carries mail/records, never work; allowing a proposed patch in mail
+needs a narrow express exception. The owner's direction authorized this instance.
+The proposal keeps application and integration on the receiving branch, verifies
+delivery before cleanup, preserves unrelated work, and leaves unsafe/muddled
+recovery to the human. No normative workflow or declared version was changed here.
+
+Validation of the handed-off patch: focused checks 71 passed; required
+`nox -s build` passed with 1,041 tests, 18 deselected, one existing xfail, mypy on
+167 files, shell checks, local PEX smoke and nine packaged tests. The first gate
+caught obsolete run-image smoke expectations; those now check rejection and the
+complete gate was rerun. No new real Docker environment was launched. The public
+revision-bearing artifact was skipped under the existing dirty-tree policy; the
+ignored local validation artifact represents the patch, not restored source.
+Restored source is byte-identical to the previously validated baseline; this
+checkpoint changes only project-management's records. No new mail was waiting
+at the final mailbox check; the 21 existing intake items remain undecided.
 
 ## V1 WOW Design Issue Saved (2026-09-19)
 

@@ -1,7 +1,8 @@
 # Retire run-image and print the normal Docker launch
 
-Status: owner-approved direction, simplified on 2026-09-22. Assigned to
-maintenance for implementation. No production code has changed in this workstream.
+Status: owner-approved direction, simplified on 2026-09-22. Tested patch sent
+to maintenance for review/application and integration. No implementation committed
+on project-management; its temporary source changes were restored after delivery.
 
 ## Decision
 
@@ -101,7 +102,12 @@ gate; do not launch a new real environment merely to test text generation.
 ## Ownership And Next Step
 
 Maintenance owns the existing run-image network/parity defect and receives this
-bounded replacement task for 0.2.14 preparation. It should implement the owner’s
-simplification without reopening replay/editor scope. Project-management records
-this decision and routes it; source implementation requires the owner to select
-maintenance for this checkout under the explicit workstream-change rule.
+bounded replacement task for 0.2.14 preparation. Under the owner's explicit
+diff-handoff direction, project-management prepared and validated the patch without
+committing source, delivered it as
+`2026-09-22-project-management-run-image-tested-patch.md` at coordination
+`93d794a41882`, and restored its checkout after verifying delivery. Maintenance
+should review/apply it and own source commits and integration, without reopening
+replay/editor scope. The status file records validation, checksum and the separate
+workflow proposal. This is an owner-authorized recovery, not an autonomous switch
+or a generic workflow rule already adopted.
