@@ -68,6 +68,15 @@ workstreams' records have not been edited.
 
 ### First Fix Candidate: Legacy Networking
 
+Owner follow-up: preserve all potentially retiring capabilities for future
+releases in the [V1-blocking work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+It records the full inventory and requires explicit migrate/already-covered/drop
+decisions, including the open question of an image-oriented launch for directories
+without DevCapsule configuration. The owner confirms that current users are only
+ourselves and everyday dogfood already uses `project run`; do not assume an
+external installed-user migration burden. This future gate is not a new 0.2.14
+implementation requirement.
+
 **Updated recommendation after the owner's retirement question:** prefer
 retiring the public `pycharm run` command over adding more legacy options.
 Normal `project run` calls the shared `run_pycharm` implementation directly;
