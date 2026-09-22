@@ -1,10 +1,13 @@
 # Workstream Current Status: User Documentation
 
-Mnemonic: `user-docs`
+Name: `user-docs`
 
 Start date: `2026-09-12`
 
-State: paused 2026-09-16; website experiment brief prepared; human will select website in a fresh context
+State: active 2026-09-22; resumed by the product owner to refresh the adopter
+documentation for the next release; migrated to the current workflow
+
+Branch association: `ws-user-docs/first-session`
 
 Integration target: `main`
 
@@ -51,8 +54,11 @@ tests and newly written tests that may encode unvalidated product assumptions.
 
 ## Branch And Checkout
 
-Selected branch: `user-docs/first-session`, created from accepted main `a09e09d`.
-`user-docs/outbox` carries intake dispositions and workstream records.
+Selected branch: `ws-user-docs/first-session`, created 2026-09-22 from
+current `main` under the `ws-` form; the earlier `user-docs/first-session`,
+`user-docs/outbox`, and the temporary agent-guidance branch held nothing
+`main` lacked and were deleted. Records travel this branch and are published
+live on the coordination branch; there is no outbox.
 Project-management was deliberately paused before switching; its pause record
 is pushed through `project-management/outbox`, awaiting the owner's merge.
 The owner's unrelated local host settings were saved on local-only
