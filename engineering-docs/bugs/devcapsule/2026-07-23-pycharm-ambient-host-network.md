@@ -11,6 +11,16 @@ requirements: [R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, R-PRODUCT-002]
 
 ## Current scope (2026-09-22)
 
+Owner-selected resolution: **retire the public `pycharm run` command** rather
+than extend its networking options. Removal is pending, so this bug remains
+`confirmed`; it is not yet a verified retirement. Preserve the shared launcher
+used by normal `project run`, update references to the old command, and verify
+that the retired invocation cannot launch a container before dispositioning
+the bug as retired. The capability inventory and future migrate/drop decisions
+are preserved in the
+[V1-blocking work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+Those future product decisions do not require preserving the legacy entrypoint.
+
 The owner retired `project run-image` and chose diagnostic
 `project run --print-command` using the ordinary configured launch. The maintenance
 patch removes the former command rather than adding its previously proposed parity
@@ -20,8 +30,8 @@ below; retain them as historical evidence.
 This record remains confirmed because the legacy `pycharm run` path still inherits
 `PycharmRunOptions.network_mode = "host"`. Normal `project run` supplies the reviewed
 network choice explicitly. Removing run-image therefore resolves its command-specific
-exposure but does not prove the shared legacy default safe. Any remaining legacy
-network change and its acceptance require a separate bounded task; no Docker-daemon
+exposure but does not prove the shared legacy default safe. The selected
+retirement supersedes adding a legacy network option; no Docker-daemon
 acceptance is claimed by the diagnostic-output tests.
 
 Date opened: 2026-07-23

@@ -27,9 +27,9 @@ status, ownership and technical evidence.
 ## Next Work
 
 The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records
-the two owner-approved configuration-bug closures. Fourteen rows still need
-decisions: legacy PyCharm command retirement versus repair, eight targeted
-verifications and five deferrals. Review these calls, then use the grouped
+the two owner-approved configuration-bug closures and selected retirement of
+legacy `pycharm run` (removal pending). Thirteen rows still need decisions:
+eight targeted verifications and five deferrals. Review these calls, then use the grouped
 acceptance journeys.
 The image-composition redesign is already deferred unless its defect recurs
 during the E2E campaign.

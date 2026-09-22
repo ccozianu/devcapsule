@@ -40,7 +40,7 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Codium runtime-option parity](../../bugs/devcapsule/2026-07-13-codium-run-option-parity.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Codium ambient passwordless sudo](../../bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Multiline Dockerfile quoting](../../bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md) | maintenance | confirmed | untriaged | Deferred — unless it recurs during the release E2E campaign | Owner decision 2026-09-22. Current recipes build; generic rendering defect remains. After this release, redesign component image composition around documented, unit-testable contracts; see bug for evidence and scope. |
-| [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | confirmed | untriaged | Undecided | **Propose retirement of legacy pycharm run:** owner raised this alternative; assessment below prefers it over extending the legacy CLI. Command remains present pending decision. |
+| [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | confirmed | untriaged | Retire legacy command — removal pending | Owner-selected resolution: remove pycharm run instead of extending it. Preserve shared project-run launcher; decide future capabilities in the [V1-blocking work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md). Close/retire the bug only after removal is verified. |
 | [Codex ACP missing CODEX_HOME](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md) | maintenance | fixed | untriaged | Undecided | **Propose verify:** fresh component state, one actual PyCharm ACP exchange, then relaunch. CLI use alone does not exercise ACP. |
 | [Component tooling missing from PATH](../../bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md) | maintenance | confirmed | untriaged | Undecided | **Propose verify, likely resolved:** base PATH export and generic environment inheritance exist. Check node/npm/npx by name in the IDE terminal and a child build process. |
 | [Manual ecosystem setup for fresh clones](../../bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md) | maintenance | confirmed | untriaged | Undecided | **Propose defer:** multi-ecosystem bootstrap needs product/consent/lifecycle design. Keep setup instructions usable; reopen release scope if the documented onboarding cannot reach useful work. |
@@ -61,12 +61,13 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 
 The initial review proposed one bounded fix, two closures, eight targeted
 verifications and five deferrals. **The owner accepted both closures on
-2026-09-22; they are now applied.** Fourteen rows remain undecided: the legacy
-command decision, eight targeted verifications and five deferrals. The accepted
+2026-09-22; they are now applied.** Retirement of legacy `pycharm run` is also
+selected, with implementation pending. Thirteen rows remain undecided:
+eight targeted verifications and five deferrals. The accepted
 image-composition deferral and two retirements remain unchanged. Other
 workstreams' records have not been edited.
 
-### First Fix Candidate: Legacy Networking
+### Selected Resolution: Retire Legacy PyCharm Run
 
 Owner follow-up: preserve all potentially retiring capabilities for future
 releases in the [V1-blocking work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
@@ -77,8 +78,8 @@ ourselves and everyday dogfood already uses `project run`; do not assume an
 external installed-user migration burden. This future gate is not a new 0.2.14
 implementation requirement.
 
-**Updated recommendation after the owner's retirement question:** prefer
-retiring the public `pycharm run` command over adding more legacy options.
+**Owner-selected resolution:** retire the public `pycharm run` command
+instead of adding more legacy options. Implementation remains pending.
 Normal `project run` calls the shared `run_pycharm` implementation directly;
 it does not depend on `PycharmRunCommand`. Keep that shared backend, and leave
 `pycharm build` / `check-runtime` outside this proposed removal's scope.
@@ -91,9 +92,8 @@ under R-COMPAT-001 must explain the new path and unsupported legacy-only uses.
 Correct README examples, CLI/PEX smoke checks and shared-launcher diagnostics
 that still prescribe the retired command. Give old invocations an actionable
 migration error with no launch, and verify normal project launch is preserved.
-The owner has asked for this assessment; no command removal is implemented or
-treated as approved here. The narrower networking patch below is the fallback
-if the legacy command must remain supported.
+No command removal is implemented yet. The narrower networking patch below
+is retained as historical analysis, superseded by the retirement decision.
 
 The retained [CLI adapter](../../../devcapsule-src/devcapsule/commands/_pycharm.py)
 constructs `PycharmRunOptions` without a network choice. The
@@ -103,7 +103,7 @@ substituting only `run_pycharm`, returned 0 and observed `network_mode='host'`
 for `pycharm run --project <temporary-directory> --image triage:unused`.
 It launched no container. The source path is identical to RC0.
 
-Recommend a bounded correction while this command remains supported: bridge
+The initial, now-superseded proposal was a bounded correction: bridge
 by default and an explicit host-network selection for users who need it,
 with CLI-to-plan checks and one actual default/explicit-host Docker inspection.
 Preserve normal configured `project run` choices and the retired run-image
