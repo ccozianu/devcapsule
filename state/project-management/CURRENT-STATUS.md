@@ -87,45 +87,35 @@ The marker and bug await owner PR integration.
 
 ## Planned Next Step
 
-PR #124 is verified on fetched main at `388ee50`; this branch fast-forwarded
-to it. The merged tree is identical to the previously validated `f87c110` tree,
-so the full gate result remains applicable. No new mail or PM-owned open bugs
-were found. No `release-0.2.14` branch or `v0.2.14*` tag exists on the remote.
+Work from the [0.2.14 release overview](../../releases/v0.2.14/README.md) and
+[bug triage table](../../releases/v0.2.14/bugs.md), created at the owner's request
+so the release has a maintained document workspace rather than repeated chat
+inventories. The overview holds scope, cut, candidate and acceptance progress;
+the table holds per-release dispositions and links to authoritative bug records.
+Maintenance is the selected driver and will maintain them during the release.
+The existing sibling JSON remains the machine-checked final acceptance record.
 
-Finish 0.2.14 readiness: record the release scope, reconcile release-blocking bug triage with its owner, and establish
-validation/acceptance for the chosen cut. The owner selected maintenance as the 0.2.14 driver on 2026-09-22;
-no release branch or tag has been created and the cut remains unselected.
-The generic-definition correction is with workflow-improvements; the owner's
-local exception makes the new propagation methods usable in this project now.
+Next: settle the undecided bug dispositions and release scope with the owner,
+then proceed to the approved cut through maintenance. This checkout remains
+project-management; creating the working directory does not select a release
+branch or change bug targets. No cut or candidate has been created here.
+The claim-test quarantine and these working documents await PR integration.
+The generic-definition correction is with workflow-improvements; the integrated
+owner exception already permits reasoned alternatives to a release merge.
 
-The owner requested the open-bug inventory before proceeding. Maintenance
-was assigned the release-driving task by coordination mail
-`2026-09-22-project-management-drive-0-2-14-release.md`. This checkout remains
-in project-management for the requested inventory; assigning a driver did not
-create the release branch or change individual bug targets/severities.
-
-The bounded readiness review found 18 nonterminal bug records: eight fixed,
-six confirmed and four reported; 16 remain untriaged. Counts are not blockers.
-Maintenance's saved triage already proposes closing the integrated configuration
-fixes on existing owner/graphical acceptance. Its older run-image networking
-recommendation is superseded; the separate legacy `pycharm run` host-network
-default remains confirmed and needs an explicit 0.2.14 disposition. Candidate
-acceptance should exercise predecessor configuration recovery, actual launch,
-`project run --print-command`, and nested-directory coordination preservation.
-
-Before RC0, reconcile the remaining old branch associations under the existing
-migration deadline. Some renamed remote refs already exist, so inspect each
-owner's state before renaming anything; this review changed no branch names.
-This is a pre-candidate requirement, not a reason to delay the stabilization
-branch. Routine version bump, build and candidate acceptance happen in the
-release process. The generic workflow correction and unrelated V1 backlog need
-not delay the cut because the local owner exception is already integrated.
-
-The saved V1 functionality/WOW discussion, operational objectives, resource
-ownership, and workflow migration remain queued. The run-image and authorship
-fixes are integrated; neither is an outstanding release dependency.
+The remaining 20 intake items, V1 functionality/WOW discussion, operational
+objectives and resource ownership remain queued. Legacy branch migration is a
+pre-RC0 checklist item in the overview. Run-image and attribution are integrated.
 
 ## Validation And External State
+
+Release-workspace setup changes documentation only; relative links, all 19 bug
+rows against committed metadata, and whitespace were checked. Reuse the full
+build result recorded above for the unchanged runtime/test tree. A pre-existing
+working-tree edit changes the Codium sudo bug's opening delimiter from `---`
+to `--`; it was left untouched and excluded from this delivery. The inventory
+uses the committed record rather than silently dropping that malformed file.
+
 
 The required `.venv/bin/python -m nox -s build` passed on the synchronized
 source: 1,045 tests, 18 deselected, one existing xfail, mypy across 167 source
@@ -161,6 +151,9 @@ submodules were changed.
   workflow and release runbook.
 
 ## Workstream Document Index
+
+- [0.2.14 release overview](../../releases/v0.2.14/README.md): maintained release checklist and evidence.
+- [0.2.14 bug triage](../../releases/v0.2.14/bugs.md): release dispositions and next actions; canonical bug records remain linked.
 
 - [Prior coordination status](2026-09-22-record-prior-coordination-status.md): full historical handoff, decisions, open-thread context and external-state claims; read when reconciling a specific prior topic.
 - [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains the 20 pending items.
