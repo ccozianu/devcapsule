@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-22; release policy integrated in PR #124; 0.2.14 readiness assessed; awaiting driver/scope and cut instruction
+State: active 2026-09-22; release policy integrated in PR #124; 0.2.14 readiness assessed; maintenance selected as driver; scope/triage and cut instruction pending
 
 Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@031c167690c0
 
@@ -73,12 +73,17 @@ to it. The merged tree is identical to the previously validated `f87c110` tree,
 so the full gate result remains applicable. No new mail or PM-owned open bugs
 were found. No `release-0.2.14` branch or `v0.2.14*` tag exists on the remote.
 
-Finish 0.2.14 readiness: confirm the driving workstream and
-scope, reconcile release-blocking bug triage with its owner, and establish
-validation/acceptance for the chosen cut. Maintenance is the proposed driver;
+Finish 0.2.14 readiness: record the release scope, reconcile release-blocking bug triage with its owner, and establish
+validation/acceptance for the chosen cut. The owner selected maintenance as the 0.2.14 driver on 2026-09-22;
 no release branch or tag has been created and the cut remains unselected.
 The generic-definition correction is with workflow-improvements; the owner's
 local exception makes the new propagation methods usable in this project now.
+
+The owner requested the open-bug inventory before proceeding. Maintenance
+was assigned the release-driving task by coordination mail
+`2026-09-22-project-management-drive-0-2-14-release.md`. This checkout remains
+in project-management for the requested inventory; assigning a driver did not
+create the release branch or change individual bug targets/severities.
 
 The bounded readiness review found 18 nonterminal bug records: eight fixed,
 six confirmed and four reported; 16 remain untriaged. Counts are not blockers.
@@ -120,7 +125,7 @@ submodules were changed.
 
 ## Open Threads
 
-- Awaiting the owner: 0.2.14 driver and scope,
+- Awaiting the owner: 0.2.14 scope and bug dispositions,
   and eventual release-cut instruction. Existing per-candidate main disposition
   timing remains operative unless the owner changes it.
 - Awaiting workflow-improvements: replace the generic merge-only prohibition
