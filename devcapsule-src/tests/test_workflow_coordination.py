@@ -390,3 +390,23 @@ def test_brief_prints_the_session_context(repos, capsys) -> None:
     assert "claim recorded for 12 h" in capsys.readouterr().out
     assert cli.main(["workflow", "claim", "--project", str(sender), "--release"]) == 0
     assert "claim released" in capsys.readouterr().out
+
+
+def test_stamp_lands_after_a_wrapped_state_paragraph(repos) -> None:
+    _origin, sender, _recipient = repos
+    # A stamp needs a definition to name; without WORKFLOW.md in the checkout
+    # there is nothing to stamp and the file is left alone.
+    (sender / "WORKFLOW.md").write_text("# definition\n", encoding="utf-8")
+    git(sender, "add", "WORKFLOW.md")
+    git(sender, "commit", "--quiet", "-m", "definition")
+    path = sender / "engineering-docs/wip/2026-09-19-alpha/CURRENT-STATUS.md"
+    path.write_text(
+        "# Status\n\nState: active; a long state that\nwraps onto a second line.\n\n"
+        "Branch association: `ws-alpha/v1`\n",
+        encoding="utf-8",
+    )
+    publish(sender, "alpha")
+
+    text = path.read_text(encoding="utf-8")
+    assert "wraps onto a second line.\n\nDefinition read: " in text
+    assert "State: active; a long state that\nwraps" in text
