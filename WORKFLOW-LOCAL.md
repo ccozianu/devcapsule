@@ -40,8 +40,8 @@ The [operator guide for releasing a new version](engineering-docs/implementation
 owned by `project-management`, is this project's release policy. It uses the
 default ref spelling, `release-X.Y.Z` with `vX.Y.Z-rcN` and `vX.Y.Z` tags;
 builds and publishes candidates through GitHub Actions; gates each candidate
-on mainline integration by ancestry, with a documented exception record for a
-maintenance release that cannot merge; requires downloaded-artifact smoke
+on a resolved main disposition, using ancestry, patch equivalence or the
+documented evidence record described in the guide; requires downloaded-artifact smoke
 evidence for acceptance; and keeps the acceptance record under
 `engineering-docs/releases/`.
 
@@ -146,6 +146,18 @@ add attribution. No change to SSH credentials or PR merge permissions is needed.
 
 ## Exceptions
 
+- **Release-fix propagation uses engineering judgment.** Owner direction,
+  2026-09-22, supersedes the generic release rule's blanket merge-only and
+  no-cherry-pick restrictions. Main stays open to other workstreams. Merge a
+  release fix when that produces a correct result on main without holding
+  unrelated work back; otherwise cherry-pick it, adapt its reasoning to main's
+  implementation, or establish with evidence that main does not have the bug.
+  A conflict alone is not proof that merging is unsuitable, and ancestry alone
+  is not proof that the fix works. Record the main disposition and its evidence
+  with the bug. Routine method selection needs no new owner approval. The
+  [release runbook](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+  describes the existing gate's evidence paths. Ends when the generic definition
+  incorporates this owner decision; its revision is routed to workflow-improvements.
 - **The root `WORKFLOW.md` is the source, not an installed copy.** The
   packaged definition under `devcapsule-src/devcapsule/assets/project_workflow/definition/`
   is derived from it and need not be byte-identical; the asset README says

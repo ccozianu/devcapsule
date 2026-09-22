@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-22 at owner request; synchronized with main; awaiting selection of the next coordination topic
+State: active 2026-09-22; owner release-fix propagation rule recorded; release runbook aligned; preparing PR delivery
 
 Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@6a8a24825838
 
@@ -35,72 +35,89 @@ bug remains with maintenance; the coordination data-loss fix remains with
 workflow-improvements. The recovered mail and source patch are historical
 custody evidence, not outstanding delivery tasks.
 
-Merged current main `0d13111` into this published project-management branch.
-Synchronization was required because the generic definition and local workflow
-had changed. Read the new misplaced-patch handoff rule and commit-attribution
-convention. Resolved the sole conflict in the registry mechanically: retained
-main's other workstream rows and recorded this workstream's explicit resumption.
-The existing blog instructions and design documents remain on this branch;
-there was no source work to discard or transfer. Local and remote branch agreed
-before synchronization. The legacy branch name is still registered; commands
-use explicit `--workstream project-management` until the queued rename is done.
+Synchronized with main through `2c1a503` (PR #129), including the coordination
+nested-directory and claim-preservation repair. Existing project-management
+blog instructions and design documents remain on this branch. The legacy
+branch remains registered; use explicit `--workstream project-management`.
 
-Read the prior status in full, its current and historical open threads, the
-published live state, and all 21 pending intake items. No new mail was waiting,
-and no open bug on main names project-management as owner. Reading the queue
-is not a disposition. Older counts, delivery warnings and release claims in the
-[prior status record](2026-09-22-record-prior-coordination-status.md) are historical;
-reconcile them against current evidence when their topic is selected.
+The owner selected 0.2.14 release readiness, then challenged the generic
+merge-only rule. The 2026-09-22 decision is now in `WORKFLOW-LOCAL.md` and the
+canonical release runbook: main stays open; merge when suitable, otherwise
+cherry-pick, adapt the correction, or establish that main is unaffected.
+Record the inspected revisions and proportionate evidence with the bug.
+Method selection needs no further owner approval. Git topology alone is not
+proof that the correction works. The same judgment permits selective transfer
+of a main-first fix onto the release line.
+
+The decision changes propagation methods. Existing before-each-candidate timing
+is retained; the optional timing question has not received a separate owner
+decision. An unresolved main bug still needs an explicit owner decision before
+deferral. The existing candidate gate accepts ancestry/patch equivalence;
+adapted or unaffected-main outcomes use its existing evidence record under the
+standing owner direction. No release gate implementation changed.
+
+Acknowledged the 2026-09-16 runbook-alignment intake: the guide now follows
+current release branch selection, driver and version rules, with the owner's
+new propagation rule superseding the intake's merge-only instruction. The
+remaining 20 intake items are undecided; the maintenance-release and branch
+migration items still need their other requested coordination decisions.
+Generic-rule revision was delivered to workflow-improvements as
+`2026-09-22-project-management-release-fix-propagation.md` on coordination commit
+`5d47a901d22d`; that includes clarifying routing for selective mainline delivery.
+No other workstream's records or generic workflow source were edited.
 
 ## Planned Next Step
 
-The owner selects the next coordination discussion. The saved topic is
-[V1 functionality areas and the WOW journey](2026-09-19-v1-wow-functionality-areas.md):
-refine the grouping and map delivered work to remaining gaps. Other pending
-choices include 0.2.14 release sequencing and early-adopter scope, release-runbook
-alignment, component-upgrade operational objectives for V1, resource ownership,
-and workflow migration. No release or implementation task was selected by this
-workstream switch.
+Integrate the prepared project-management documentation through the owner's
+GitHub UI PR. Then finish 0.2.14 readiness: confirm the driving workstream and
+scope, reconcile release-blocking bug triage with its owner, and establish
+validation/acceptance for the chosen cut. Maintenance is the proposed driver;
+no release branch or tag has been created and the cut remains unselected.
+The generic-definition correction is with workflow-improvements; the owner's
+local exception makes the new propagation methods usable in this project now.
 
-The run-image handoff is complete through PR #125, and the proposed diff-handoff
-rule has landed through PR #126. They no longer block the next discussion.
-The component-upgrades checkpoint and first hosted publication were already
-accepted; R-UPGRADE-002 operational detailing remains that workstream's scope.
-Reconcile older upgrade and adopter intake against those deliveries before
-making a new scope decision. All 21 intake items remain for decisions here.
+The saved V1 functionality/WOW discussion, operational objectives, resource
+ownership, and workflow migration remain queued. The run-image and authorship
+fixes are integrated; neither is an outstanding release dependency.
 
 ## Validation And External State
 
-The synchronized runtime, tests, build scripts and GitHub Actions files are
-byte-identical to fetched main. Reused this session's already passing full gate
-on that implementation: 1,042 tests, 18 deselected, one existing xfail, mypy,
-shell/CLI checks, local PEX build/smoke and nine packaged checks. This resumption
-changes records only; whitespace and the merge were checked. No runtime or
-release acceptance is newly claimed.
+The required `.venv/bin/python -m nox -s build` passed on the synchronized
+source: 1,045 tests, 18 deselected, one existing xfail, mypy across 167 source
+files, shell/CLI checks, local PEX build/smoke and nine packaged checks. Reviewed
+the guide against the release gate implementation and checked whitespace. The
+working-tree build produced the local validation artifact; no release artifact
+or downloaded-candidate acceptance is claimed by these documentation changes.
 
 The Git author is Costin Cozianu and this session's recorded model is
-`gpt-6-astra`; new commits use the integrated model-first Codex trailer. Git
-uses SSH; all GitHub PR and publication operations remain owner-operated via UI.
-Coordination commands run from the repository root with an absolute `--project`
-as the recorded workaround for the unresolved nested-directory defect.
-No containers, ports, host settings or submodules were changed during this switch.
+`gpt-6-astra`; new authored commits use the model-first Codex trailer. Git uses
+SSH; all GitHub PR and publication operations remain owner-operated via UI.
+Coordination commands ran from the repository root with an absolute `--project`;
+the nested-directory repair is now on main, but these commands do not constitute
+its next real nested-directory acceptance run. No containers, host settings or
+submodules were changed.
 
 ## Open Threads
 
-- Awaiting the owner: next coordination topic, V1 acceptance and release sequencing.
-- Preserved: 21 undecided intake items; prior blog decisions and review; V1 scope
+- Awaiting the owner: review/integration of this branch, 0.2.14 driver and scope,
+  and eventual release-cut instruction. Existing per-candidate main disposition
+  timing remains operative unless the owner changes it.
+- Awaiting workflow-improvements: replace the generic merge-only prohibition
+  with the evidenced outcome rule and clarify selective-delivery routing.
+- Preserved: 20 undecided intake items; prior blog decisions and review; V1 scope
   proposals; component-upgrade operations; resource ownership and cleanup decisions.
 - Branch rename and retired-outbox reconciliation remain queued. Inspect unlanded
-  records before any deletion; no old branch was deleted during this switch.
+  records before any deletion; no old branch was deleted.
 - Historic host settings remain on `project-management/local-host-settings-20260915`;
   do not restore them over a newer lock without review. No restoration requested.
 - Deliberately not preserved: no chat transcript or session record. Prior status
-  was moved verbatim to a dated record so history no longer obscures current work.
+  remains in the dated historical record; canonical policy is in the local
+  workflow and release runbook.
 
 ## Workstream Document Index
 
 - [Prior coordination status](2026-09-22-record-prior-coordination-status.md): full historical handoff, decisions, open-thread context and external-state claims; read when reconciling a specific prior topic.
-- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains the 21 pending items.
+- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains the 20 pending items.
 
 - [Diagnostic print-command and run-image retirement](2026-09-21-design-editable-project-launch.md): accepted simplified contract and maintenance implementation scope.
 - [Design issue: V1 completeness and the WOW experience](2026-09-19-v1-wow-functionality-areas.md)
