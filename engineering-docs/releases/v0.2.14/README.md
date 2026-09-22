@@ -32,7 +32,7 @@ An open bug does not automatically block this release.
 - [x] Integrate the claim-test quarantine and bug record (PR #131).
 - [x] Record the approved baseline and cut `release-0.2.14`.
 - [x] Set source version `0.2.14` in the first release commit.
-- [ ] Run the release-source build gate.
+- [x] Run the release-source build gate at `36fa74e`.
 - [ ] Integrate the initial release preparation PR before RC0.
 - [ ] Before RC0: reconcile remaining legacy workstream branch associations.
 - [ ] Account for release fixes on main before each candidate.
@@ -51,9 +51,16 @@ checksum and evidence. Proposed coverage for the changed behavior:
 - [ ] Nested-directory coordination preserves unrelated mail, state and claims.
 - [ ] Any further acceptance selected during bug triage.
 
-Local evidence available: the source at `43b0f87` passed the full build with
-1,044 tests passed, 18 deselected, one existing xfail and the quarantined claim
-test XPASS; mypy and nine packaged checks passed. This is not RC acceptance.
+Release-source evidence: the full build passed on clean commit
+`36fa74e4934622b3bdb993b3ccbef86729661046`: 1,044 tests passed, 18 deselected,
+one existing xfail and the quarantined claim test XPASS; mypy and nine packaged
+checks passed. Both local and revision-bearing PEX artifacts were built and
+smoke-tested. `dist/devcapsule.pex version --json` reports version `0.2.14`
+and that exact source revision. This is not downloaded-RC acceptance.
+
+The subsequent checkpoint records these results only; runtime/test inputs are
+unchanged. Next: owner integrates the initial release preparation PR, then
+verify main's disposition and complete pre-RC0 coordination before tagging.
 
 ## Candidates And Completion
 

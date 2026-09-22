@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; owner-approved cut created; initial build and PR delivery in progress
+State: active; releasing 0.2.14; owner-approved cut created; initial build passed; awaiting owner preparation PR integration
 
-Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@0f44773f837c
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
 Integration target: `main`
 
@@ -51,8 +51,8 @@ live/RC acceptance, rather than implementation.
 
 ## Planned Next Step
 
-Complete the release-source build, push the release branch, then deliver its
-initial preparation PR for the owner's GitHub UI merge. Before RC0, verify
+The release-source build passed. Deliver the initial preparation PR for the
+owner's GitHub UI merge, then fetch and verify main. Before RC0, verify
 main contains the applicable release delta and reconcile the legacy branch-name
 migration with project-management. Work through fixes, closure evidence and
 explicit deferrals in the release bug table during stabilization. Candidate
@@ -61,9 +61,13 @@ Do not tag an RC before the current main-disposition gate is satisfied.
 
 ## Validation And External State
 
-Initial release build is pending. Baseline implementation passed the prior
-full build with 1,044 tests, one xfail and this claim test XPASS, mypy and nine
-packaged checks; a release-source build is still required after the bump.
+The full build passed on clean first release commit
+`36fa74e4934622b3bdb993b3ccbef86729661046`: 1,044 tests passed, 18 deselected,
+one existing xfail and the quarantined claim test XPASS; mypy and nine packaged
+checks passed. Built and smoke-tested local and revision-bearing PEX artifacts.
+The latter reports version 0.2.14 and exact source revision 36fa74e. The next
+checkpoint changes validation records only, with identical runtime/test inputs.
+Relative release-document links, version, baseline parent and routing were checked.
 No candidate tag, release acceptance JSON or final tag has been created.
 GitHub PR operations remain owner-operated through the UI; Git pushes use SSH.
 
@@ -77,7 +81,7 @@ changed. No transcript/session record was requested.
 
 ## Open Threads
 
-- Initial release build and owner PR integration; then RC0 and artifact acceptance.
+- Owner preparation PR integration; then RC0 and downloaded-artifact acceptance.
 - Resolve or explicitly defer bugs as work proceeds; none of the current list
   blocks the cut under the owner's ruling. Their individual records remain open.
 - Project-management retains legacy branch migration coordination before RC0.
