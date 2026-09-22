@@ -193,6 +193,13 @@ pass. No runtime tests or installations were repeated for this prose delivery.
 
 ## Last Task And Planned Next Step
 
+Planned next step, on the owner's return here (the session record follows): verify the website merge and
+whether the parent pin should move; fix R-DOCS-003's reference to the blog
+README, since `main` moved the blog conventions into `WORKFLOW-LOCAL.md`;
+then resume UD-001, the AI-first first sessions. The migration of front
+matter and the versions manifest into `docs/` waits for the website's
+implementing revision and travels in the same parent change as its pin.
+
 Session of 2026-09-22, at the owner's direction, on the website rather than
 the guides. Read the publishing mechanism end to end and recorded it in
 [How the website is published, and what it still lacks](../../implementation-notes/website/2026-09-22-website-publishing-contract.md):
@@ -224,15 +231,11 @@ filled in, and its former agent instructions kept as a section. The parent
 pin stays at `78b7b7f` until that merge. Merged `main` into this branch
 without conflict and pushed.
 
-Planned next step, on the owner's return here: verify the website merge and
-whether the parent pin should move; fix R-DOCS-003's reference to the blog
-README, since `main` moved the blog conventions into `WORKFLOW-LOCAL.md`;
-then resume UD-001, the AI-first first sessions. The migration of front
-matter and the versions manifest into `docs/` waits for the website's
-implementing revision and travels in the same parent change as its pin.
-
 ## Open Threads
 
+- `main` moved ten commits past this branch minutes after the merge, through
+  PR #133 from `release-0.2.14`, including a definition change in `b44a559`.
+  Synchronize first on resume; not merged before pausing.
 - Two decisions for the owner, both recorded as open in R-DOCS-003: whether
   documentation-only fixes for a released version land on its retained
   release branch, and what `/docs/current/` shows before 0.2.14 goes final.
