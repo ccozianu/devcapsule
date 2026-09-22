@@ -7,7 +7,7 @@ Start date: `2026-09-12`
 State: paused 2026-09-22; website content contract delivered as R-DOCS-003 and
 handed to the website project; owner switching to the website repository
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
 Branch association: `ws-user-docs/first-session`
 
