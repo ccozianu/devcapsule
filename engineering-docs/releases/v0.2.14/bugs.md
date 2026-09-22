@@ -2,10 +2,15 @@
 
 [Release overview](README.md)
 
-Reconciled: 2026-09-22 against committed bug records at `43b0f87`.
+Reconciled: 2026-09-22 against integrated bug records at cut `2137108`.
 19 open records: 11 reported/confirmed, eight fixed but not closed.
 All have workstream owners. All currently have `target: none`; 16 have
 `severity: untriaged`, three have `severity: minor`.
+
+Owner decision, 2026-09-22: none of this current list blocks starting the
+release. Resolve or defer bugs during stabilization. Rows remain undecided
+until their individual disposition is recorded; this is not blanket closure
+or a decision that every bug must be fixed in 0.2.14.
 
 ## How We Use This List
 
@@ -56,5 +61,4 @@ removal. Its legacy `pycharm run` concern remains in the updated bug record.
 
 The owner explicitly chose xfail plus a design-review bug for the flaky claim
 test, not a quick timing fix. Its release target remains undecided. The marker
-and bug are on the project-management branch awaiting integration as of this
-reconciliation; do not mistake their presence here for verification on main.
+and bug are integrated in PR #131 and included in the release baseline.

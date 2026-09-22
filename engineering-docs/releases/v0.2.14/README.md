@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-22. Stage: preparation; the release branch has not been cut.
+Updated: 2026-09-22. Stage: stabilization; release branch cut at the owner's direction.
 Driver: **maintenance**, selected by the owner. Product owner: Costin Cozianu.
 
 Start with [bug triage](bugs.md). Update these files as decisions and evidence
@@ -10,12 +10,17 @@ automatically refreshed dashboard.
 
 ## Scope And Next Action
 
-Proposed baseline: current main at the approved cut. Proposed headline:
-configuration/upgrade recovery fixes, with the already-integrated workflow,
-component and diagnostic-command changes. Final scope and cut await the owner.
+Baseline: preparation merge `21371084f7137624aed6c0581b12495a04b04fbb` (PR #131).
+The release includes the integrated configuration/upgrade recovery fixes,
+workflow, component and diagnostic-command changes. Later main `c8ae736` changes
+only the generated coverage badge. Maintenance drives stabilization from this cut.
 
-Next: work through the undecided rows in [bug triage](bugs.md), settle what
-0.2.14 must fix or validate, then record the cut. Existing source changes and
+Owner decision, 2026-09-22: start the release now; none of the currently listed
+bugs is a showstopper. Fix or defer them as work proceeds. Individual fixes,
+closure and deferral decisions will be recorded in the bug table.
+
+Next: validate and deliver the initial release preparation PR, then work
+through the undecided rows in [bug triage](bugs.md) during stabilization. Existing source changes and
 owner acceptance may justify closing stale records without another experiment.
 An open bug does not automatically block this release.
 
@@ -23,14 +28,17 @@ An open bug does not automatically block this release.
 
 - [x] Select maintenance as the driver.
 - [x] Integrate the release-fix propagation policy and aligned runbook (PR #124).
-- [ ] Decide the release scope and applicable bug dispositions.
-- [ ] Integrate the claim-test quarantine and bug record (prepared at `43b0f87`).
-- [ ] Record the approved baseline and cut `release-0.2.14`.
-- [ ] Set/confirm source version `0.2.14` and run the build gate.
+- [x] Approve the cut and integrated baseline; decide bug fixes/deferrals as we go.
+- [x] Integrate the claim-test quarantine and bug record (PR #131).
+- [x] Record the approved baseline and cut `release-0.2.14`.
+- [x] Set source version `0.2.14` in the first release commit.
+- [ ] Run the release-source build gate.
+- [ ] Integrate the initial release preparation PR before RC0.
 - [ ] Before RC0: reconcile remaining legacy workstream branch associations.
 - [ ] Account for release fixes on main before each candidate.
 
-Baseline SHA: not selected. Release branch: not created. Candidate: none.
+Baseline SHA: `21371084f7137624aed6c0581b12495a04b04fbb`.
+Release branch: `release-0.2.14`. Candidate: none.
 
 ## Candidate Acceptance
 
