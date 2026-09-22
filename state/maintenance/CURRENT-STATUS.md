@@ -62,11 +62,11 @@ Delivered the complete work item by coordination mail
 project-management's acknowledgement/ledger update remains pending. Links,
 all 13 inventory rows and the permanent documentation index were checked.
 
-The two owner-approved configuration closures are applied. Discuss the legacy
-`pycharm run` retirement the owner raised: assessment favors removing that
-public bypass while retaining the shared launcher used by `project run`, with
-explicit compatibility/migration guidance and corrected diagnostics. No
-removal has been authorized or implemented. Fourteen rows remain undecided
+The two owner-approved configuration closures are applied. Legacy `pycharm run`
+retirement is now the selected resolution, with removal pending. Retain the
+shared launcher used by `project run`, and correct guidance and diagnostics.
+The release row and canonical bug distinguish this decision from completed
+removal; no runtime change was made in this record update. Thirteen rows remain undecided
 in the [release bug table](../../releases/v0.2.14/bugs.md), including eight
 targeted verifications and five deferrals; use its grouped candidate journeys
 as decisions are accepted.
@@ -124,7 +124,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   is already covered, migrate selected capabilities, design an image-oriented
   mode only if justified, or explicitly drop them. The work order preserves
   the findings; project-management owns scheduling and ledger registration.
-- Owner review of the 14 remaining bug dispositions remains; the full rationale
+- Owner review of the 13 remaining bug dispositions remains; the full rationale
   and grouped acceptance observations are in the release bug table. Resolve
   legacy host-X11 scope before blanket closure of the display exposure record;
   distinguish repaired formation boot behavior from remaining image cleanup.
