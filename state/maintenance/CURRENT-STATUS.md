@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: paused 2026-09-22; attribution fix validated, awaiting owner GitHub display acceptance and PR integration
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@0f44773f837c
 
 Integration target: `main`
 
