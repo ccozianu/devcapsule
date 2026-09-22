@@ -19,8 +19,9 @@ Owner decision, 2026-09-22: start the release now; none of the currently listed
 bugs is a showstopper. Fix or defer them as work proceeds. Individual fixes,
 closure and deferral decisions will be recorded in the bug table.
 
-Next: validate and deliver the initial release preparation PR, then work
-through the undecided rows in [bug triage](bugs.md) during stabilization. Existing source changes and
+PR #132 is verified merged at `e50b9f1`; all of release tip `d078b87` is on main.
+Next: resolve the pre-RC0 branch-migration deadline, publish the candidate, and
+work through the undecided rows in [bug triage](bugs.md) during stabilization. Existing source changes and
 owner acceptance may justify closing stale records without another experiment.
 An open bug does not automatically block this release.
 
@@ -33,9 +34,10 @@ An open bug does not automatically block this release.
 - [x] Record the approved baseline and cut `release-0.2.14`.
 - [x] Set source version `0.2.14` in the first release commit.
 - [x] Run the release-source build gate at `36fa74e`.
-- [ ] Integrate the initial release preparation PR before RC0.
+- [x] Integrate the initial release preparation PR before RC0 (PR #132, `e50b9f1`).
 - [ ] Before RC0: reconcile remaining legacy workstream branch associations.
-- [ ] Account for release fixes on main before each candidate.
+- [x] Account for RC0 source on main: candidate integration check reports no missing commits.
+- [ ] Repeat main-disposition review for later candidate fixes.
 
 Baseline SHA: `21371084f7137624aed6c0581b12495a04b04fbb`.
 Release branch: `release-0.2.14`. Candidate: none.
@@ -59,8 +61,8 @@ smoke-tested. `dist/devcapsule.pex version --json` reports version `0.2.14`
 and that exact source revision. This is not downloaded-RC acceptance.
 
 The subsequent checkpoint records these results only; runtime/test inputs are
-unchanged. Next: owner integrates the initial release preparation PR, then
-verify main's disposition and complete pre-RC0 coordination before tagging.
+unchanged. Main integration is verified; pre-RC0 branch-name coordination
+still needs completion or the requested owner deferral before tagging.
 
 ## Local Builds Before RC0
 
@@ -84,11 +86,30 @@ project environment image was also intended; that clarification is pending.
 These are local builds, not tagged candidate artifacts. No project environment
 image or runtime acceptance is claimed.
 
-Prepared initial PR title/body locally in `/tmp/release-0.2.14-pr-body.md`.
-Agent PR creation needs the requested one-time exception to the owner-UI rule;
-no answer has arrived. Under the existing arrangement the owner creates/merges
-it. RC0 tagging waits for the main disposition and pre-RC0 coordination already
-listed above. No candidate tag has been created or pushed.
+PR #132 merged at `e50b9f1`. The owner clarified that neither `gh` nor the SSO
+credential is available in this environment; GitHub UI operations remain with
+the owner. The earlier question about an agent-side PR exception is resolved;
+do not probe credentials or ask for that exception again.
+
+Refreshed both local artifacts from planned RC0 source
+`d078b879469c1790647e32db75005d0fa4369b27` after verifying integration:
+
+- PEX: `devcapsule-src/dist/devcapsule.pex`, SHA-256
+  `f0f95ee1937c7f6b13cd4b8a5f9fd564b74f25b597820e2a11b63ee0f145e9ba`.
+- Docker base: `devcapsule-base:0.2.14-local-d078b87`, image ID
+  `sha256:3b614dadc3151e4b80b5bb3a0f00f705d75dff74cf3a27da28f26cb1480c917b`.
+- Both report the planned source revision; CLI smoke passed. Code/test/build
+  inputs are identical to the validated first release commit. Base build used
+  the previously successful host-network option and reused cached layers.
+
+The candidate integration check passes with method `mainline` and no missing
+commits. RC0 has not been tagged: WORKFLOW-LOCAL.md's legacy branch-name
+exception ends before the next candidate tag, and old associations remain
+(including project-management, sample-projects, contained-display and
+component-catalog; website has newer refs but an older registry association).
+Asked the owner to defer this administrative migration and publish RC0; that
+answer is pending. Maintenance cannot rename other workstreams autonomously.
+This documentation checkpoint does not change planned candidate source d078b87.
 
 ## Candidates And Completion
 

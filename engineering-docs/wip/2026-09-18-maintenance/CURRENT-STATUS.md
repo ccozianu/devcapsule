@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; owner-approved cut created; local PEX and Docker base built; initial PR creation/integration and RC0 pending
+State: active; releasing 0.2.14; owner-approved cut created; PR #132 integrated; local artifacts refreshed; RC0 awaits branch-migration decision
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
@@ -51,28 +51,27 @@ live/RC acceptance, rather than implementation.
 
 ## Planned Next Step
 
-The owner requested initial PR creation, tagging and local builds. Built the
-current tip's exact-source PEX and Docker base; identities/checksums/evidence
-are in the release overview. Nine packaged checks passed. Default build-network
-DNS failed, so stopped that owned build and used the documented host-network
-build option successfully. No runtime containers were launched for acceptance.
-The local build request is treated as PEX plus base pending the owner's answer
-about whether a project environment image is intended too.
+PR #132 is verified at `e50b9f1`; main contains release tip
+`d078b879469c1790647e32db75005d0fa4369b27`. The integration gate returns
+`mainline` with no missing commits. This is the planned RC0 source, with
+unchanged code/test/build inputs since the validated first release commit.
+Local PEX and Docker base were refreshed from this exact source; identities,
+checksums and evidence are in the release overview.
 
-PR text is prepared in `/tmp/release-0.2.14-pr-body.md`. Asked for the one-time
-exception needed to create the PR through tools under WORKFLOW-LOCAL.md's
-explicit owner-UI arrangement; no answer yet. No GitHub credential/connector
-probe was made. If the arrangement stays, owner creates and merges the PR.
-No RC tag is created while the release preparation remains absent from main.
+The owner clarified that `gh` and SSO credentials are absent. GitHub UI PR
+operations remain with the owner, so the previous permission question is
+resolved without credential probes. Tagging via ordinary Git remains authorized.
 
-
-The release-source build passed. Deliver the initial preparation PR for the
-owner's GitHub UI merge, then fetch and verify main. Before RC0, verify
-main contains the applicable release delta and reconcile the legacy branch-name
-migration with project-management. Work through fixes, closure evidence and
-explicit deferrals in the release bug table during stabilization. Candidate
-acceptance uses the downloaded artifact and the checklist in the overview.
-Do not tag an RC before the current main-disposition gate is satisfied.
+One explicit administrative deadline remains: WORKFLOW-LOCAL.md requires old
+workstream names to migrate before the next candidate tag. Current main/live
+state still names legacy branches. Asked to defer that migration and publish
+RC0; no answer yet. Do not infer approval from elapsed time or rename other
+workstreams from maintenance. Project-management owns the reconciliation.
+On approval, tag the planned source d078b87, preserving this later record-only
+checkpoint; use a clean checkout of the candidate source if building tagged
+artifacts. Then validate the published candidate and continue fix/deferral
+work in the bug table. The local build request is treated as PEX plus base;
+a project environment build has not been separately clarified.
 
 ## Validation And External State
 
@@ -96,8 +95,10 @@ changed. No transcript/session record was requested.
 
 ## Open Threads
 
-- Owner answer on PR creation exception and intended local image targets;
-  preparation PR integration, then RC0 and downloaded-artifact acceptance.
+- Owner decision to defer the legacy branch-name deadline or complete that
+  coordination before RC0. Then candidate tagging and artifact acceptance.
+- Local artifact request is satisfied as PEX plus Docker base; clarify only if
+  the owner also wants a project environment image.
 - Resolve or explicitly defer bugs as work proceeds; none of the current list
   blocks the cut under the owner's ruling. Their individual records remain open.
 - Project-management retains legacy branch migration coordination before RC0.
