@@ -431,8 +431,15 @@ def _stamp_definition_read(git: _Git, status: Path) -> None:
             lines[index] = stamp
             break
     else:
-        anchor = next((i for i, line in enumerate(lines) if line.startswith("State:")), 0)
-        lines[anchor + 1 : anchor + 1] = ["", stamp]
+        # After the State paragraph, which may wrap over several lines: the
+        # first blank line following the "State:" line, or the title if there
+        # is no State line.
+        anchor = next((i for i, line in enumerate(lines) if line.startswith("State:")), None)
+        if anchor is None:
+            lines[1:1] = ["", stamp]
+        else:
+            end = next((i for i in range(anchor, len(lines)) if not lines[i].strip()), len(lines))
+            lines[end:end] = ["", stamp]
     status.write_text("\n".join(lines), encoding="utf-8")
 
 
