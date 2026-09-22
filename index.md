@@ -36,6 +36,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Website development and preview](website/README.md)
 - [Website publication](website/PUBLISHING.md)
 - [Website-owned backlog and producer dependencies](website/BACKLOG.md)
+- [How the website is published, and what it still lacks](engineering-docs/implementation-notes/website/2026-09-22-website-publishing-contract.md)
 
 ## Root Requirement Records
 
@@ -50,6 +51,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-PRODUCT-006 Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - [R-DOCS-001 Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - [R-DOCS-002 Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
+- [R-DOCS-003 Website Content Carries Explicit Front Matter And A Versions Manifest](engineering-docs/requirements/product/r-docs-003-website-content-carries-front-matter.md)
 - [R-SETTINGS-001 Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
 
