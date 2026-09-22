@@ -66,6 +66,25 @@ Generic-rule revision was delivered to workflow-improvements as
 `5d47a901d22d`; that includes clarifying routing for selective mainline delivery.
 No other workstream's records or generic workflow source were edited.
 
+## Claim Test Quarantine (2026-09-22)
+
+The owner reported inconsistent CI results at one revision for the claim
+lifecycle test. A disposable-local-remote probe confirmed the assertion depends
+on two real-clock calls remaining in the same second. On explicit owner
+instruction, this release-readiness slice marks the existing test non-strict
+xfail without changing its assertions or runtime behavior. The owner rejected
+a quick fix and requested review of the testing approach. The confirmed minor
+bug is `engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md`,
+owned by workflow-improvements, with no release target yet. Its scope is the
+claim/renewal/expiry contract and reliable tests; the combined test's assertion
+coverage is temporarily quarantined. This adds one bug to the earlier inventory
+(19 nonterminal records now). The full build passed: 1,044 tests passed,
+18 deselected, one existing xfail and this test XPASS; mypy and nine packaged
+checks passed. The owner-requested marker is the only test/source change;
+no quick repair was made. Bug/design handoff delivered by coordination mail
+`2026-09-22-project-management-claim-test-design.md` at `f263535437cb`.
+The marker and bug await owner PR integration.
+
 ## Planned Next Step
 
 PR #124 is verified on fetched main at `388ee50`; this branch fast-forwarded
@@ -128,7 +147,8 @@ submodules were changed.
 - Awaiting the owner: 0.2.14 scope and bug dispositions,
   and eventual release-cut instruction. Existing per-candidate main disposition
   timing remains operative unless the owner changes it.
-- Awaiting workflow-improvements: replace the generic merge-only prohibition
+- Awaiting workflow-improvements: review and repair the quarantined claim test
+  under its temporal contract; replace the generic merge-only prohibition
   with the evidenced outcome rule and clarify selective-delivery routing.
 - Preserved: 20 undecided intake items; prior blog decisions and review; V1 scope
   proposals; component-upgrade operations; resource ownership and cleanup decisions.
