@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: minor
 target: none
 owner: maintenance
 opened: 2026-09-22
+closed: 2026-09-22
 requirements: []
 ---
 
@@ -30,7 +31,9 @@ Added a durable rule to `WORKFLOW-LOCAL.md` requiring agent trailers, active-mod
 verification and preservation through squash merges. This session's recorded
 model is `gpt-6-astra`; its trailer uses
 `GPT-6 Astra Codex <noreply@openai.com>`. The address is a project attribution
-convention; a linked GitHub profile/avatar has not been independently verified.
+convention. On 2026-09-22 the owner confirmed that the GitHub display shows
+the expected attribution on the pushed fix. This is manual acceptance of the
+desired display, not a separate assertion about account ownership.
 
 [GitHub's multi-author documentation](https://docs.github.com/en/pull-requests/how-tos/commit-changes/creating-a-commit-with-multiple-authors)
 defines the trailer format and account-email association. The current
@@ -39,9 +42,12 @@ did not establish a co-author configuration toggle; the repository instruction
 sets the required commit behavior. No global hook attributes unrelated human
 or other-agent commits to Codex. Existing merged commits are left intact.
 
-## Close criteria
+## Closure and reopen criteria
 
-Inspect the fix commit's primary author and parsed trailer, push it, and have
-the owner confirm the desired co-author display in GitHub. Keep this record
-`fixed` until that UI acceptance. Reopen if a future agent commit loses the
-trailer, uses another session's model name, or inherits a placeholder author.
+Closed after the author and parsed trailer were verified on pushed commit
+`1fbe6fa` and the owner confirmed the expected GitHub display on 2026-09-22.
+The repository policy still awaits owner PR integration; this closure records
+acceptance of the working fix, not an unverified mainline delivery.
+
+Reopen if a future agent commit loses the trailer, uses another session's model
+name, or inherits a placeholder author.
