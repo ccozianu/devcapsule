@@ -26,6 +26,13 @@ status, ownership and technical evidence.
 
 ## Next Work
 
+The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) proposes one
+bounded fix, two closures, eight targeted verifications and five deferrals
+for the remaining undecided records. Review these calls, then use its grouped
+acceptance journeys; proposals have not changed canonical bug dispositions.
+The image-composition redesign is already deferred unless its defect recurs
+during the E2E campaign.
+
 Work through selected undecided rows in [bug triage](bugs.md) and the acceptance
 journeys below, recording fixes, obsolete findings and explicit deferrals. Two
 old Codium-specific records are retired after checking the removed command and

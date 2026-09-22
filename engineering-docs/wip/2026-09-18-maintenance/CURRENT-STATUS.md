@@ -48,6 +48,14 @@ triage recommendation; it does not claim complete VSCodium acceptance. The
 
 ## Planned Next Step
 
+Review the owner's requested bug-combing recommendations in the
+[release bug table](../../releases/v0.2.14/bugs.md): one bounded legacy-network
+fix, two configuration-bug closures supported by recorded acceptance and
+verified integration, eight targeted verifications, and five deferrals.
+These are proposals; canonical bug statuses and release dispositions remain
+unchanged. If accepted, apply the individual decisions and run the grouped
+candidate journeys recorded there. No implementation was started by this review.
+
 Owner deferred the confirmed multiline execution-rendering bug for 0.2.14
 unless it recurs during the release E2E campaign. Watch for that recurrence
 during acceptance and reconsider the deferral if observed. After this release,
@@ -66,6 +74,15 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Bug-combing review at `8e7cc21`: fetched main remains `e50b9f1`; PR #117 merge
+`d2386bb` is in main and RC0. Runtime/test sources match RC0. A CLI probe with
+only the launcher substituted confirms legacy `pycharm run` still passes host
+networking without an explicit choice. 243 focused existing checks passed;
+the earlier image review passed 45. No Docker or provider acceptance was run
+for this review. The release table distinguishes prior evidence from proposed
+candidate checks, including the incomplete byte-preservation assertion in the
+nested-directory regression. No branch synchronization or runtime change.
 
 RC0's integration gate passed by mainline ancestry with zero missing commits.
 Local RC0 PEX and Docker base were built from a disposable exact-tag worktree,
@@ -88,6 +105,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Owner review of the 16 proposed bug dispositions remains; the full rationale
+  and grouped acceptance observations are in the release bug table. Resolve
+  legacy host-X11 scope before blanket closure of the display exposure record;
+  distinguish repaired formation boot behavior from remaining image cleanup.
 - Image composition redesign is deferred beyond 0.2.14 unless the confirmed
   multiline-rendering defect recurs during the release E2E campaign; preserve
   its documented-contract and unit-testing scope when scheduling the work.
