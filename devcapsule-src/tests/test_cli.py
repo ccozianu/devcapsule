@@ -84,56 +84,10 @@ def test_run_pycharm_uses_translated_python_launcher(tmp_path: Path) -> None:
     assert not any(arg.endswith(",dst=/ide-global-settings/home/.gemini") for arg in command)
 
 
-def test_run_image_uses_pycharm_persistence_adapter(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-    global_settings = tmp_path / "global-settings"
-    plugins = tmp_path / "plugins"
-    project_state = tmp_path / "project-state"
-
-    with (
-        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
-        patch.dict(
-            os.environ,
-            {
-                "DISPLAY": ":1",
-                "HOME": str(tmp_path / "host-home"),
-                "XDG_DATA_HOME": str(tmp_path / "data"),
-                "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
-            },
-            clear=False,
-        ),
-    ):
-        run.return_value.returncode = 0
-        result = cli.main(
-            [
-                "project",
-                "--path",
-                str(project),
-                "run-image",
-                "mycodespace.ai/pycharm:debug-v017",
-                "--project-mount",
-                "/workspace/existing-checkout",
-                "--global-settings",
-                str(global_settings),
-                "--plugins",
-                str(plugins),
-                "--project-state",
-                str(project_state),
-            ]
-        )
-
-    assert result == 0
-    command = run.call_args.args[0]
-    assert "mycodespace.ai/pycharm:debug-v017" in command
-    assert "--pull=never" in command
-    assert "--workdir" in command
-    assert command[command.index("--workdir") + 1] == "/workspace/existing-checkout"
-    assert f"type=bind,src={project.resolve()},dst=/workspace/existing-checkout" in command
-    assert f"type=bind,src={(global_settings / 'home').resolve()},dst=/home/devcapsule" in command
-    assert f"type=bind,src={(global_settings / 'config').resolve()},dst=/ide-config" in command
-    assert f"type=bind,src={plugins.resolve()},dst=/ide-plugins" in command
+def test_project_run_image_is_retired(tmp_path, capsys) -> None:
+    assert cli.main(["project", "--path", str(tmp_path), "--help"]) == 0
+    assert "run-image" not in capsys.readouterr().out
+    assert cli.main(["project", "--path", str(tmp_path), "run-image", "unused"]) != 0
 
 
 def test_run_pycharm_defaults_project_to_current_directory(tmp_path: Path, monkeypatch) -> None:

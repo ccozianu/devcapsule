@@ -21,8 +21,9 @@ import os
 import sys
 import termios
 import tty
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
+from devcapsule.launch.command_output import preparation_diagnostics
 from devcapsule.commands.framework import (
     Command,
     Group,
@@ -888,10 +889,27 @@ class ProjectRunCommand(Command):
         parser.add_argument("--name", dest="container_name")
         parser.add_argument("--no-update-check", action="store_true",
                             help="Skip the daily interactive distribution refresh; cached critical notices still allow a decision.")
+        parser.add_argument("--print-command", action="store_true",
+                            help="Prepare the selected environment and print the Docker command instead of launching; comments identify transient dependencies.")
         add_carrier_options(parser, families=("set", "authorize"))
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        if not arguments.print_command:
+            return cls._run(arguments, context)
+        commands: list[str] = []
+        # Keep both Python narration and inherited child-process output off
+        # stdout. Emit only after preparation and its cleanup have succeeded.
+        with preparation_diagnostics():
+            result = cls._run(arguments, context, command_report=commands.append)
+        if result == 0:
+            for command in commands:
+                sys.stdout.write(command)
+        return result
+
+    @classmethod
+    def _run(cls, arguments: argparse.Namespace, context: object | None,
+             command_report: Callable[[str], None] | None = None) -> int:
         admitted = ExecutionConfiguration.load(_project_context(context).start_path(), force=arguments.force)
         # Reject invalid launch overrides before an optional upgrade can change
         # selection. Reload afterward so this launch and its success record use
@@ -903,7 +921,7 @@ class ProjectRunCommand(Command):
                 reject_launcher_owned_docker_options(docker_options)
             except PycharmRunError as exc:
                 raise ProjectConfigurationError(str(exc)) from exc
-        if not offer_upgrades(admitted.project.root, refresh=not arguments.no_update_check):
+        if command_report is None and not offer_upgrades(admitted.project.root, refresh=not arguments.no_update_check):
             print("Launch cancelled; no session was started.")
             return 1
         admitted = ExecutionConfiguration.load(admitted.project.root, force=arguments.force)
@@ -1036,6 +1054,7 @@ class ProjectRunCommand(Command):
             PycharmRunOptions(
                 project=root,
                 inherit_legacy_configuration=False,
+                command_report=command_report,
                 project_mount=str(runtime["project-mount"]),
                 image=image,
                 name=arguments.container_name,
@@ -1070,6 +1089,8 @@ class ProjectRunCommand(Command):
                 display_transport=display_transport,
             )
         )
+        if command_report is not None:
+            return exit_code  # Printing is never evidence of successful use.
         if exit_code == 0:
             # D-0008: a zero exit proves this configuration; record it as a
             # known-good generation unless identical content already exists.
@@ -1149,72 +1170,6 @@ def _run_once_answers(
     return overrides, memory_override
 
 
-class ProjectRunImageCommand(Command):
-    name = "run-image"
-    help = (
-        "Run a local PyCharm-compatible image without project lock resolution. "
-        "Everything after '--' is handed verbatim to 'docker run'."
-    )
-    passthrough_dest = "docker_options"
-    passthrough_metavar = "DOCKER-RUN-OPTIONS"
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("image")
-        parser.add_argument("--project-mount", help="Absolute in-container project path.")
-        parser.add_argument("--home", type=Path)
-        parser.add_argument("--global-settings", type=Path)
-        parser.add_argument("--plugins", type=Path)
-        parser.add_argument("--project-state", type=Path)
-        parser.add_argument(
-            "--docker-daemon", choices=["none", "host-socket"], default="none"
-        )
-        parser.add_argument("--development-sudo", action="store_true")
-        parser.add_argument(
-            "--host-browser",
-            action=argparse.BooleanOptionalAction,
-            default=False,
-            help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
-        )
-        parser.add_argument("--name", dest="container_name")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        candidate = _project_context(context).start_path()
-        try:
-            project = discover_project(candidate)
-        except ProjectConfigurationError:
-            project = candidate.expanduser().resolve()
-        if not project.is_dir():
-            raise ProjectConfigurationError(f"Project directory does not exist: {project}")
-        docker_mode = (
-            DockerMode.host if arguments.docker_daemon == "host-socket" else DockerMode.none
-        )
-        docker_options = list(arguments.docker_options)
-        if docker_options:
-            reject_launcher_owned_docker_options(docker_options)
-            print(
-                "WARNING: passing raw docker run options: " + " ".join(docker_options),
-                file=sys.stderr,
-            )
-        return run_pycharm(
-            PycharmRunOptions(
-                project=project,
-                project_mount=arguments.project_mount,
-                image=arguments.image,
-                name=arguments.container_name,
-                persistent_home=arguments.home,
-                global_settings=arguments.global_settings,
-                project_state=arguments.project_state,
-                plugins=arguments.plugins,
-                docker_mode=docker_mode,
-                enable_sudo=arguments.development_sudo,
-                enable_host_browser=arguments.host_browser,
-                extra_docker_args=["--pull=never", *docker_options],
-            )
-        )
-
-
 class ProjectCommand(Group):
     name = "project"
     help = "Initialize, list, configure, and run DevCapsule project checkouts."
@@ -1253,7 +1208,6 @@ class ProjectCommand(Group):
             StateGroup.name: StateGroup,
             RecursiveE2EGroup.name: RecursiveE2EGroup,
             ProjectRunCommand.name: ProjectRunCommand,
-            ProjectRunImageCommand.name: ProjectRunImageCommand,
         }
 
 
