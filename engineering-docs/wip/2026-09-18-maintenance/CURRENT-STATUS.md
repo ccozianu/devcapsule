@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active; releasing 0.2.14; RC0 public and verified; end-user acceptance and selected bug triage next
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@77b593f70215
 
 Integration target: `main`
 
