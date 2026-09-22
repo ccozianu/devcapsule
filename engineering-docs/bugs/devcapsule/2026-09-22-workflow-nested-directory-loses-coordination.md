@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: untriaged
 target: none
 owner: workflow-improvements
@@ -51,3 +51,13 @@ and that the intended operation alone changes the tree. Check retries too.
 
 Workflow-improvements owns the implementation. Severity and release targeting
 remain its triage decision; restoration of this incident is not a code fix.
+
+## Fix
+
+Fixed 2026-09-22 on `ws-workflow-improvements/nested-cwd-fix`: `_Git` resolves the
+repository top level from any directory and runs every command there; the
+tree listing is `--full-tree`; `publish` and `take` locate the workstream
+directory from that top level. A regression test sends, publishes, claims, and
+takes from a nested directory against a bare remote and asserts every
+pre-existing entry survives. Validation pending: the owner's next session from
+a nested directory against the shared remote, or the release candidate.
