@@ -48,6 +48,14 @@ triage recommendation; it does not claim complete VSCodium acceptance. The
 
 ## Planned Next Step
 
+Owner deferred the confirmed multiline execution-rendering bug for 0.2.14
+unless it recurs during the release E2E campaign. Watch for that recurrence
+during acceptance and reconsider the deferral if observed. After this release,
+the accepted follow-up is a clean redesign of component image composition
+around documented, unit-testable contracts; the bug and release table record
+the scope. This records-only slice leaves the release branch unsynchronized
+as required for release refs; no runtime change or new candidate is needed.
+
 Use downloaded RC0 for the release overview's end-user acceptance journeys:
 fresh project, predecessor upgrade/recovery, IDE/agent work and resume,
 graphical/login behavior, diagnostic command and isolated coordination scenario.
@@ -80,6 +88,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Image composition redesign is deferred beyond 0.2.14 unless the confirmed
+  multiline-rendering defect recurs during the release E2E campaign; preserve
+  its documented-contract and unit-testing scope when scheduling the work.
 - RC0 is published; end-user acceptance and selected further bug dispositions remain.
 - Project-management coordinates renames after 0.2.14 publication, before
   substantive next-release work. This no longer holds 0.2.14 candidates.
