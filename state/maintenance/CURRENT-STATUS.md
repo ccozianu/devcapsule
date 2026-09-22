@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-22; attribution fix validated, awaiting owner GitHub display acceptance and PR integration
+State: paused 2026-09-22; attribution bug closed after owner GitHub acceptance; policy PR integration pending
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@0f44773f837c
+Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@0f44773f837c
 
 Integration target: `main`
 
@@ -39,7 +39,8 @@ Owner treats missing Codex co-authorship as a bug and requires the actual model
 name first, then Codex. Corrected this checkout's placeholder Git identity to
 Costin Cozianu's name/email already used on owner merge commits. This session's
 recorded model is `gpt-6-astra`. The [attribution bug](../../bugs/devcapsule/2026-09-22-codex-commit-attribution.md)
-records evidence and UI acceptance still needed. The generic workflow is silent
+records evidence and owner-confirmed GitHub display acceptance on 2026-09-22;
+the bug is closed. The generic workflow is silent
 on co-authorship; used its local-workflow extension point to record the owner's
 project convention in `WORKFLOW-LOCAL.md`. No generic definition refresh or
 historical commit rewrite is needed. A reusable-policy consideration was
@@ -48,9 +49,8 @@ at coordination `b16003cf563f`; its coordination data-loss fix stays there.
 
 ## Planned Next Step
 
-Owner checks the pushed attribution fix for the human author and
-`GPT-6 Astra Codex <noreply@openai.com>` co-author display, then integrates this
-local-policy fix through a PR. Fetch and verify main after the owner reports merge. After this
+Owner integrates the accepted attribution policy through a PR from
+`ws-maintenance/triage`. GitHub co-author display is manually validated. Fetch and verify main after the owner reports merge. After this
 bounded delivery, resume saved triage with the owner; retired-outbox verification
 remains accepted follow-up. Run-image implementation is already integrated;
 the legacy PyCharm networking issue remains open.
@@ -62,7 +62,13 @@ xfail, mypy, CLI/shell checks, local PEX build/smoke and nine packaged checks.
 The revision-bearing PEX was skipped under the existing dirty-tree policy.
 Commit `1fbe6fa` was pushed with Costin Cozianu as author/committer and the
 verified, parsed `GPT-6 Astra Codex` trailer. No runtime source changed in this
-slice; GitHub UI acceptance remains pending.
+slice. The owner confirmed the expected GitHub display on 2026-09-22.
+Before recording acceptance, merged main `c93476b` without conflicts because
+the generic definition changed. Read the new misplaced-patch handoff rule.
+The attribution commits remain absent from main; PR integration is still pending.
+The required full build passed again after synchronization, including 1,043
+tests and nine packaged checks; no further runtime validation is needed for
+this owner-acceptance record. Mailbox and intake remain empty.
 The effective Git author and committer now match the owner; this checkout-local
 configuration persists in `.git/config` and does not travel with the PR. Other
 checkouts must verify their own identity under the new local-workflow rule.
@@ -70,10 +76,10 @@ No containers, ports, or historical commits were changed.
 
 ## Open Threads
 
-- Awaiting GitHub display acceptance and PR integration of the commit-attribution rule;
+- Awaiting only PR integration of the accepted commit-attribution rule;
   run-image replacement is integrated in PR #125.
-- Awaiting workflow-improvements: fix the nested-directory coordination bug and
-  decide the separately proposed diff-handoff rule. Use the root-cwd workaround.
+- Awaiting workflow-improvements: fix the nested-directory coordination bug.
+  Use the root-cwd workaround. The separate diff-handoff rule is now on main.
 - Preserved: 14-item triage, remaining legacy host-network issue, broader
   configuration evidence/docs, release sequencing and retired-outbox verification.
 - Production blog deployment and incident-era exact host bytes remain unverified;
