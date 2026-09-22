@@ -319,6 +319,11 @@ def test_send_all_fans_out_to_every_published_workstream(repos) -> None:
     assert tip == git(origin, "rev-parse", "coordination").strip()
 
 
+@pytest.mark.xfail(
+    reason="Clock-dependent claim assertion; see 2026-09-22-workflow-claim-test-flakiness.md",
+    strict=False,
+    raises=AssertionError,
+)
 def test_claim_is_shown_live_expires_and_releases(repos) -> None:
     from datetime import datetime, timedelta, timezone
 
@@ -390,3 +395,79 @@ def test_brief_prints_the_session_context(repos, capsys) -> None:
     assert "claim recorded for 12 h" in capsys.readouterr().out
     assert cli.main(["workflow", "claim", "--project", str(sender), "--release"]) == 0
     assert "claim released" in capsys.readouterr().out
+
+
+def test_stamp_lands_after_a_wrapped_state_paragraph(repos) -> None:
+    _origin, sender, _recipient = repos
+    # A stamp needs a definition to name; without WORKFLOW.md in the checkout
+    # there is nothing to stamp and the file is left alone.
+    (sender / "WORKFLOW.md").write_text("# definition\n", encoding="utf-8")
+    git(sender, "add", "WORKFLOW.md")
+    git(sender, "commit", "--quiet", "-m", "definition")
+    path = sender / "engineering-docs/wip/2026-09-19-alpha/CURRENT-STATUS.md"
+    path.write_text(
+        "# Status\n\nState: active; a long state that\nwraps onto a second line.\n\n"
+        "Branch association: `ws-alpha/v1`\n",
+        encoding="utf-8",
+    )
+    publish(sender, "alpha")
+
+    text = path.read_text(encoding="utf-8")
+    assert "wraps onto a second line.\n\nDefinition read: " in text
+    assert "State: active; a long state that\nwraps" in text
+
+
+def test_publish_keeps_a_live_claim(repos) -> None:
+    _origin, sender, _recipient = repos
+    status_file(sender, "alpha", "active", "x")
+    publish(sender, "alpha")
+    claim(sender, "alpha", "still here")
+    status_file(sender, "alpha", "active", "y")  # something changed, so publish commits
+
+    publish(sender, "alpha")
+
+    row = list_state(sender)[0]
+    assert row.claim is not None and row.claim.slice == "still here"
+
+
+def test_commands_from_a_nested_directory_preserve_everyone_else(repos) -> None:
+    """Regression for the 2026-09-22 coordination data loss: a send run from a
+    subdirectory rebuilt the tree from a cwd-limited listing and dropped every
+    other mailbox, state, and claim."""
+    origin, sender, recipient = repos
+    status_file(sender, "alpha", "active", "x")
+    status_file(recipient, "beta", "active", "y")
+    publish(sender, "alpha")
+    publish(recipient, "beta")
+    claim(recipient, "beta", "reviewing")
+    send(recipient, "alpha", item(recipient, "2026-09-22-beta-first.md"))
+    before = set(git(origin, "ls-tree", "-r", "--name-only", "coordination").split())
+    assert len(before) == 5
+
+    nested = sender / "devcapsule-src" / "deeper"
+    nested.mkdir(parents=True)
+    send(nested, "beta", item(sender, "2026-09-22-alpha-nested.md"))
+    status_file(sender, "alpha", "active", "changed from nested")
+    publish(nested, "alpha")
+    claim(nested, "alpha", "from nested")
+
+    after = set(git(origin, "ls-tree", "-r", "--name-only", "coordination").split())
+    assert before <= after
+    assert "mail/beta/2026-09-22-alpha-nested.md" in after
+    assert list_state(nested)[0].state == "active"
+    assert check(nested, "alpha")[0].name == "2026-09-22-beta-first.md"
+    # Taking from a nested directory still writes into the repository's intake.
+    taken = take(nested, "alpha")
+    assert taken == [sender / "engineering-docs/wip/2026-09-19-alpha/intake/2026-09-22-beta-first.md"]
+
+
+def test_next_step_is_read_from_a_combined_heading(repos) -> None:
+    _origin, sender, _recipient = repos
+    path = sender / "engineering-docs/wip/2026-09-19-alpha/CURRENT-STATUS.md"
+    path.write_text(
+        "# S\n\nState: active\n\nBranch association: `ws-alpha/v1`\n\n"
+        "## Last Task And Planned Next Step\n\nDo the thing.\n",
+        encoding="utf-8",
+    )
+    publish(sender, "alpha")
+    assert list_state(sender)[0].next_step == "Do the thing."

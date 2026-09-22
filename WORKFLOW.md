@@ -1,6 +1,6 @@
 ---
 definition: devcapsule
-version: 0.2.14.dev0
+version: 0.2.14
 ---
 
 # Human / Agent Iteration Workflow
@@ -323,6 +323,11 @@ There is no 0.2.13. Rules changed since 0.2.12:
   a bounded status file that sheds history into dated records, dated
   documents by kind, and an index that says when to open each. No
   migration: existing documents keep their names; new ones follow the form.
+- **A misplaced change travels as a patch.** *Publishing Before
+  Integration*: work found to belong to another workstream is sent to it as
+  a diff in an ordinary intake item and reverted from the sender's checkout,
+  never committed on the wrong branch; the recipient owns application and
+  integration. No migration.
 - **Claims and the brief.** *The Coordination Branch*: `workflow claim`
   says who is on what, shown live and expiring, never refusing; `workflow
   brief` prints the session's context in one command; `status` shows when
@@ -1268,10 +1273,35 @@ the working tree holds, so the published copy and the branch's copy are
 identical at every publish and the copy on `main` is one of them, older. Two
 versions of one record is the failure this whole mechanism exists to avoid.
 
-**This is not a way to put deliverable content anywhere early.** The test is
+**This is not a way to integrate deliverable content early.** The test is
 whether anyone would review it as part of the workstream's work. If yes, it is
-deliverable, and it travels the working branch under review; the coordination
-branch carries records and mail, never work.
+deliverable, and it travels the owning workstream's branch under review. Mail
+may carry a proposed patch under the recovery rule below; sending a patch is
+neither applying it nor integrating anything.
+
+**A misplaced change travels to its owner as a patch.** When a pair finds
+that a bounded change it has been making belongs to another workstream, it
+stops expanding that work. If the change is separable and uncommitted, the
+pair sends the owning workstream an ordinary intake item carrying the diff,
+its base revision, the paths affected, new files in full, the reason for the
+handoff, and what validation was done or is still missing. The human may
+authorize finishing the bounded change first; nothing here permits starting
+another workstream's implementation on purpose.
+
+Verify delivery before removing anything, then restore the sender's checkout
+by reverting only what the delivered patch represents, preserving unrelated
+work, and record the handoff in the sender's status file. Do not switch
+workstreams for it, do not commit the source change on the sender's branch,
+and do not rewrite shared history to manufacture a clean handoff. If the
+change is already committed or cannot be separated safely, ask the human to
+choose the recovery, which may be to finish on the current branch.
+
+The recipient decides the item through ordinary intake, reviews the patch,
+checks that it applies to its current branch, and owns any application,
+validation, source commit, and integration. A patch is a proposal, not
+evidence that the recipient accepted or shipped the change. A later patch
+supersedes an earlier one by a new item that says so; sent mail stays
+append-only.
 
 **The deliverable may still land in slices.** Integrating a finished slice
 through an ordinary pull request before the workstream is done is permitted

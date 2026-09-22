@@ -26,6 +26,11 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Work in workstreams with humans and agents](docs/guides/working-in-workstreams.md)
 - [Engineering documentation](engineering-docs/README.md)
 
+## Releases
+
+- [0.2.14 release work and checklist](engineering-docs/releases/v0.2.14/README.md)
+- [0.2.14 bug triage](engineering-docs/releases/v0.2.14/bugs.md)
+
 ## Website
 
 - [Website development and preview](website/README.md)
@@ -201,6 +206,10 @@ history; record current decisions in the active documents above.
 - [Merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md)
 
 ## Bugs
+
+- [Claim lifecycle test depends on wall-clock timing](engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md)
+- [Nested-directory workflow commands lose coordination files](engineering-docs/bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md)
+- [Codex commit authorship and model attribution](engineering-docs/bugs/devcapsule/2026-09-22-codex-commit-attribution.md)
 
 - [Configuration Contract Is Not Enforced Across Boundaries](engineering-docs/bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md)
 - [Website test publication accepts inconsistent settings — transferred](engineering-docs/bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)

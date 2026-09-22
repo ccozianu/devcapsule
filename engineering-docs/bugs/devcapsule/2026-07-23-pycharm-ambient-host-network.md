@@ -9,6 +9,21 @@ requirements: [R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, R-PRODUCT-002]
 
 # Bug: PyCharm Run-Image Network And Docker-Option Parity
 
+## Current scope (2026-09-22)
+
+The owner retired `project run-image` and chose diagnostic
+`project run --print-command` using the ordinary configured launch. The maintenance
+patch removes the former command rather than adding its previously proposed parity
+options. That decision supersedes the run-image-specific remedies and close criteria
+below; retain them as historical evidence.
+
+This record remains confirmed because the legacy `pycharm run` path still inherits
+`PycharmRunOptions.network_mode = "host"`. Normal `project run` supplies the reviewed
+network choice explicitly. Removing run-image therefore resolves its command-specific
+exposure but does not prove the shared legacy default safe. Any remaining legacy
+network change and its acceptance require a separate bounded task; no Docker-daemon
+acceptance is claimed by the diagnostic-output tests.
+
 Date opened: 2026-07-23
 
 Status note (pre-vocabulary, kept as evidence): reopened; open pending an explicit network option and broader

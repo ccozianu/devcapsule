@@ -186,7 +186,7 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "project", "config", "bind", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "authorize", "--help")
     session.run("python", "-m", "devcapsule", "project", "run", "--help")
-    session.run("python", "-m", "devcapsule", "project", "run-image", "--help")
+    session.run("python", "-m", "devcapsule", "project", "run-image", "--help", success_codes=[2])
     session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "preflight", "--help")
     session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "run", "--help")
     session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "launch-successor", "--help")
@@ -255,7 +255,7 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "project", "config", "bind", "--help", external=True)
     session.run(str(path), "project", "config", "authorize", "--help", external=True)
     session.run(str(path), "project", "run", "--help", external=True)
-    session.run(str(path), "project", "run-image", "--help", external=True)
+    session.run(str(path), "project", "run-image", "--help", success_codes=[2], external=True)
     session.run(
         str(path), "project", "recursive-e2e", "preflight", "--help", external=True
     )

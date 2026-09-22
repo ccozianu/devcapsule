@@ -50,6 +50,7 @@ from ...host_open import (
     HostOpenError,
     host_open_bridge,
 )
+from ..command_output import render_command
 from ...materialization import RUNTIME_PLAN_PATH
 from ...runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
 from ...project import ProjectMountError
@@ -114,6 +115,7 @@ class PycharmRunOptions:
     # ambient launcher options. Host observations and explicit secret sources
     # remain available in either mode.
     inherit_legacy_configuration: bool = True
+    command_report: Callable[[str], None] | None = None
     profile: str | None = None
     image: str | None = None
     name: str | None = None
@@ -249,6 +251,9 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                 command = ["docker", "run", *docker_args, config.image]
                 if not config.use_image_process:
                     command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
+                if options.command_report is not None:
+                    options.command_report(describe_run_command(command, config, files))
+                    return 0  # Cleanup still runs; no container or display watcher.
                 stop_watching = Event()
                 if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
                     assert config.display_host_port is not None
@@ -275,6 +280,36 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                 cleanup_temp_runtime_files(files)
     except HostOpenError as exc:
         raise PycharmRunError(str(exc)) from exc
+
+
+def describe_run_command(command: list[str], config: PycharmRunConfig,
+                         files: TempRuntimeFiles) -> str:
+    comments = [
+        "Diagnostic Docker command; the project container has NOT been started.",
+        "Preparation may have acquired/built the selected image and prepared state directories.",
+        "This is not a standalone replay script. Review dependencies before manual execution.",
+        "Use the same host and Docker context/environment (including DOCKER_HOST if set).",
+        "Project and persistent-state mounts refer to existing host paths; edits can change host access.",
+        "The following local staging files are removed when this command returns.",
+        "Bind sources in the command may be translated to external Docker-daemon host paths.",
+    ]
+    for label, path in (
+        ("Xauthority", files.xauth_file if config.display_transport != CONTAINED_DISPLAY_TRANSPORT else None),
+        ("User identity", files.passwd_file), ("Group identity", files.group_file),
+        ("Shadow file", files.shadow_file), ("Sudo policy", files.sudoers_file),
+        ("Git token file", files.token_file), ("Runtime plan", files.runtime_plan_file),
+        ("Display token", files.display_token_file), ("Launch context", files.launch_context_file),
+    ):
+        if path is not None:
+            comments.append(f"Temporary {label}: {path}")
+    if config.host_browser_socket is not None:
+        comments.append("Host-browser socket requires a live broker; a broker owned by this invocation stops on return.")
+    if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
+        comments.append("Contained display needs its temporary token file; the chosen host port is not reserved for later use.")
+    if config.secret_environment:
+        comments.append("Required environment variables (values omitted): " + ", ".join(config.secret_environment))
+    comments.append("No successful-use history was recorded. Manual execution and any edits are your responsibility.")
+    return render_command(command, comments)
 
 
 def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
