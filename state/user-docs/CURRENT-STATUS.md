@@ -120,6 +120,14 @@ match the release they claim to support. The later OpenCode setup requirement
 below remains accepted after the first-session scoping; it is not forgotten
 or an immediate installation task.
 
+5. **UD-005 — Explain the workflow's terms for humans.** Accepted 2026-09-22
+   from `workflow-improvements`' 2026-09-19 item. A `docs/` page explaining
+   the workflow's concepts, how they fit, with examples, against the glossary
+   in `WORKFLOW.md`: every term under its glossary name, none defined here;
+   a term that needs explaining but is not in the glossary is a glossary
+   defect to send back. Owns `docs/guides/working-in-workstreams.md` from the
+   same date.
+
 ## Accepted Later Requirement: OpenCode Setup
 
 Owner direction, 2026-09-15: user-docs will test and document an adopter setup
