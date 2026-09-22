@@ -7,6 +7,7 @@ import json
 import os
 import pwd
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -1539,19 +1540,20 @@ def current_host_user() -> HostUser:
 
 
 def config_lock_message(ide_config: Path, project: Path, project_state: Path) -> str:
+    inspect = shlex.join(["devcapsule", "project", "--path", str(project), "config", "list"])
     return f"""PyCharm config directory appears to be locked:
   {ide_config / ".lock"}
+Project state:
+  {project_state}
 
-The default shared config directory can only be used by one live PyCharm
-process at a time. For concurrent sessions against different projects, launch
-the second IDE with:
-  devcapsule pycharm run --project "{project}" --project-config
+One IDE configuration directory can only be used by one live PyCharm process
+at a time. Inspect this checkout's 'pycharm/config' binding with:
+  {inspect}
 
-That stores JetBrains idea.config.path under the per-project state directory:
-  {project_state / "config"}
-
-If you are sure this is a stale lock from a crashed IDE, remove the lock file
-or rerun with --ignore-config-lock to let PyCharm decide."""
+For concurrent sessions, bind 'pycharm/config' to a separate directory with
+'project config bind', then run 'project config resolve' before launching.
+If the lock is stale, confirm no IDE is using that directory before removing
+its .lock file and retrying 'devcapsule project run'."""
 
 
 def print_storage_summary(config: PycharmRunConfig) -> None:
@@ -1634,43 +1636,43 @@ Display:
 
 
 def print_host_docker_warning(config: PycharmRunConfig) -> None:
+    no_docker = shlex.join([
+        "devcapsule", "project", "--path", str(config.project), "run",
+        "--authorize", "docker-daemon", "none",
+    ])
     print(
         f"""========================================================================
-HOST DOCKER DAEMON IS CONNECTED TO THIS PYCHARM CONTAINER.
+HOST DOCKER DAEMON IS CONNECTED TO THIS CAPSULE.
 
 The launcher is mounting the host Docker socket:
   {config.host_docker_socket}
 
-Docker commands inside PyCharm/Codex operate on the host daemon. This is the
-default local-development convenience mode, but it gives tools inside the IDE
+Docker commands inside the capsule operate on the host daemon, giving tools
 broad control over host Docker images, containers, networks, and bind mounts.
 
-For an isolated inner daemon, run:
-  devcapsule pycharm run --project "{config.project}" --docker-in-docker
-
-For a higher-isolation session with no Docker access, run:
-  devcapsule pycharm run --project "{config.project}" --no-docker
+For a project session with no Docker access, run:
+  {no_docker}
 ========================================================================""",
         file=sys.stderr,
     )
 
 
 def print_dind_warning(config: PycharmRunConfig) -> None:
+    project_run = ["devcapsule", "project", "--path", str(config.project), "run"]
+    host_docker = shlex.join([*project_run, "--authorize", "docker-daemon", "host-socket"])
+    no_docker = shlex.join([*project_run, "--authorize", "docker-daemon", "none"])
     print(
         f"""========================================================================
-DOCKER-IN-DOCKER IS ENABLED FOR THIS PYCHARM CONTAINER.
+DOCKER-IN-DOCKER IS ENABLED FOR THIS CAPSULE.
 
-The launcher is starting this IDE container with --privileged, a writable
-root filesystem, and an inner Docker daemon. Use this when you want separate
-Docker images, containers, and volumes inside the PyCharm environment.
-The inner daemon does not manage bridge/iptables networking; use --network host
-for inner builds that need network access.
+This launch uses --privileged, a writable root filesystem, and an inner Docker
+daemon with separate Docker images, containers, and volumes. The inner daemon
+does not manage bridge/iptables networking; inner builds needing network access
+must explicitly select host networking.
 
-To use the default host Docker daemon instead, run:
-  devcapsule pycharm run --project "{config.project}" --docker
-
-To turn Docker off for a higher-isolation session, run:
-  devcapsule pycharm run --project "{config.project}" --no-docker
+Ordinary project launch supports host-daemon access or no Docker access:
+  {host_docker}
+  {no_docker}
 ========================================================================""",
         file=sys.stderr,
     )

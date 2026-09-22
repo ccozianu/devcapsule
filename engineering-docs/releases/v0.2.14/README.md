@@ -28,7 +28,7 @@ status, ownership and technical evidence.
 
 The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records
 the two owner-approved configuration-bug closures and selected retirement of
-legacy `pycharm run` (removal pending). Thirteen rows still need decisions:
+legacy `pycharm run` (removed on the branch; integration pending). Thirteen rows still need decisions:
 eight targeted verifications and five deferrals. Review these calls, then use the grouped
 acceptance journeys.
 The image-composition redesign is already deferred unless its defect recurs
@@ -37,9 +37,36 @@ during the E2E campaign.
 Work through selected undecided rows in [bug triage](bugs.md) and the acceptance
 journeys below, recording fixes, obsolete findings and explicit deferrals. Two
 old Codium-specific records are retired after checking the removed command and
-implementation against RC0; with the two accepted closures, 15 bugs remain
-open. No runtime change was needed for these dispositions. Candidate fixes
-produce RC1 or later; never move RC0.
+implementation against RC0; with the two accepted closures and the legacy
+networking retirement, 14 bugs remain open. The legacy command removal changes
+runtime source after RC0 and requires integration and RC1 or later; never move RC0.
+
+## Legacy PyCharm Launch Retirement
+
+Owner-authorized 0.2.14 compatibility exception: retire `pycharm run`. We are
+currently our only users and everyday dogfood already uses `project run`.
+The removed adapter supplied ambient host networking and host-X11 defaults
+outside the project configuration path. The command is absent from help;
+old invocations return a retirement error before launch or state preparation.
+Use `devcapsule project run`, or `devcapsule project --path DIRECTORY run`;
+initialize an unconfigured directory with `project --path DIRECTORY init`.
+Raw-image/profile options are not translated, and no direct-image replacement
+is introduced. The [V1 capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md)
+preserves future product decisions. Shared project launch and the separate
+`pycharm build` / `check-runtime` utilities remain.
+
+The legacy networking/parity bug was marked retired first at the owner's
+request, then its launch adapter and unused CLI option helpers were removed.
+Other PyCharm/component bugs retain their independently applicable scope.
+Validation: 115 focused checks and the full `nox -s build` passed (1,046 tests,
+18 deselected, one xfail, one quarantined XPASS; mypy, source/PEX smokes and
+nine packaged integrations). Direct checks of `dist/devcapsule-local.pex`
+reject bare/help/legacy-option launches with the retirement message and create
+no checkout state. Log: `/tmp/maintenance-retire-pycharm-run-build.log`.
+The dirty-checkout gate deliberately skipped revision-bearing packaging;
+RC0 artifacts remain unchanged. No Docker/GUI acceptance was added by this
+slice. Merge the release branch through the owner PR workflow, verify main
+contains the change, then publish and accept the next immutable candidate.
 
 ## Preparation And Publication
 

@@ -239,7 +239,7 @@ Run the artifact directly:
 
 ```bash
 devcapsule-src/dist/devcapsule.pex --help
-devcapsule-src/dist/devcapsule.pex pycharm run --help
+devcapsule-src/dist/devcapsule.pex project run --help
 devcapsule-src/dist/devcapsule.pex pycharm build --help
 ```
 
@@ -803,8 +803,7 @@ is unchanged.
 External hyperlinks use a separate, opt-in host integration. Authorize
 `host-browser` persistently with `devcapsule project config authorize
 host-browser true`, or for one launch with `project run --authorize
-host-browser true` (`pycharm run` keeps its dedicated
-`--host-browser` flag) to let `xdg-open` inside the capsule ask a
+host-browser true` to let `xdg-open` inside the capsule ask a
 launcher-owned Unix-socket broker to open an absolute HTTP(S) URL in the
 physical host's default browser. The protocol does not expose the host
 desktop session bus, accept commands or filesystem paths, or invoke a shell.
@@ -988,40 +987,34 @@ Use `devcapsule project --path /path/to/checkout SUBCOMMAND` when operating
 outside a checkout. Otherwise project commands discover the nearest
 `.devcapsule/devcapsule.toml` upward from the current directory.
 
-DevCapsule uses a configuration-first command model:
-
-```text
-devcapsule CONFIGURATION ACTION [options]
-```
-
-`CONFIGURATION` names a legacy launch tree; `pycharm` is the remaining
-implemented configuration. The active public-default image builds bundle
-pinned Node.js/npm but no ambient AI-agent CLI. The transitional
-`codium_with_claude` and `vscode_with_claude` trees were retired on
-2026-08-31: VSCodium is now the neutral `codium` interactive-surface
-component, selected by the `frontend-ide` capability and launched through
-the ordinary `devcapsule project run` path.
-
-End users should be able to:
-
-- discover available configurations with `devcapsule --help`;
-- build or update a configuration image when that configuration supports
-  `build`;
-- run a configuration against a selected project with `run`;
-- pass configuration-specific options without exposing unrelated host state;
-- use the same command shape from source installs and from the PEX artifact.
+Run PyCharm and other selected IDE surfaces through the configured project:
 
 ```bash
 python -m devcapsule --help
-devcapsule pycharm run --project /path/to/project
-devcapsule pycharm run
-devcapsule pycharm run --project /path/to/project --config-mode project
-devcapsule pycharm run --profile codex --project-state-root /path/to/workspace/.state
+devcapsule project run
+devcapsule project --path /path/to/project run
 devcapsule project --path /path/to/project run --print-command > launch.sh
+```
+
+For a directory without DevCapsule configuration, start with
+`devcapsule project --path /path/to/project init`. Select the required
+capabilities and review the developer-owned authorizations before running.
+
+`pycharm run` is retired in 0.2.14. It no longer launches a container or
+accepts legacy image/profile options; use the project path above. This is an
+intentional release compatibility exception: the sole current user already
+uses `project run`, and the old entrypoint bypassed configured host-access
+choices. There is no replacement direct-image launch command in this release.
+Future capability decisions are tracked in the
+[V1 work item](../engineering-docs/work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+The earlier `codium_with_claude` and `vscode_with_claude` command trees are
+also retired; VSCodium is selected through the `frontend-ide` capability.
+
+PyCharm image utilities remain available:
+
+```bash
 devcapsule pycharm build --pycharm /path/to/pycharm.tar.gz
 devcapsule pycharm check-runtime
-devcapsule bootstrap
-devcapsule bootstrap project --project /path/to/project
 ```
 
 ### Project Workflow Bootstrap
@@ -1047,74 +1040,19 @@ See the repository's
 [`project workflow bootstrap specification`](../engineering-docs/specifications/product/project-workflow-bootstrap.md)
 for the definition/instance boundary and idempotency contract.
 
-`pycharm build` and `codium_with_claude build` use Ubuntu 24.04 and install
-Python plus a pinned Node.js archive under `/opt/node/node-{version}`, expose
-that runtime through `/opt/node/current` and `/usr/local/bin`. The Codium image also installs
-VSCodium plus `xterm` for basic X11 validation and `strace` for process-level
-diagnostics. Update the pinned versions in source when intentionally advancing
-the public-default tooling baseline. Use
-`--image`, `--base-image`,
-`--network`, and repeatable `--extra-apt-package` options to customize a build.
-Pass `--ide-archive PATH` to install VSCodium from a local `.tar.gz` (or other
-tar format recognized by Python) containing an executable `bin/codium`. In
-that mode the build does not configure or contact the VSCodium apt repository;
-the archive is installed under `/opt/codium`. The pinned Node.js archive and
-checksum file are still fetched during the image build from their configured
-upstream source.
+`pycharm build` uses Ubuntu 24.04 and installs Python and pinned Node.js/npm
+alongside the supplied PyCharm archive or directory. Customize it with
+`--image`, `--base-image`, `--network`, and repeatable `--extra-apt-package`.
+This retained image-building utility does not replace project initialization
+or the configured environment materialization used by `project run`.
 
-`codium_with_claude run` currently targets Linux X11. It mounts the selected
-project at `/workspace/project` by default, a persistent VSCodium/Claude home
-(by default `~/.config/devcapsule/codium-with-claude`) at
-`/ide-global-settings`, a project-local state directory (by default
-`.devcapsule/codium-state`) at `/ide-project-state`, and the host X11 socket
-read-only. `--profile NAME` moves the shared global state under
-`~/.config/devcapsule-codium-with-claude-NAME/state`. `--project-state-root
-DIR` mirrors per-project state outside the source tree, and `--project-mount`
-overrides the in-container project path explicitly. It passes `DISPLAY` and
-uses ordinary Docker bridge networking so VSCodium and Claude Code can reach
-their services. It does not mount the Docker socket, SSH agent, host home,
-devices, or other credentials by default. Claude authentication written under
-its container home persists in the explicit global state directory. No
-agent-specific host credential/state directory is mounted automatically.
-Use `--debug-shell` to run interactive Bash through the normal image
-entrypoint with the same project, state, and X11 mounts instead of starting
-VSCodium.
-Use `--network MODE` to select an explicit Docker network mode for either the
-normal IDE or `--debug-shell` path. The default remains Docker bridge
-networking. `--network host` is useful for host-bound development services and
-debugging, but shares the host network namespace and therefore weakens network
-isolation.
-Normal launches execute VSCodium's Electron binary directly so it remains the
-foreground container process. They do not use the `bin/codium` CLI wrapper,
-which detaches the GUI and exits before the IDE session ends.
-
-The local-archive build path restores root ownership and mode `4755` on
-VSCodium's Chromium sandbox helper after safe archive extraction strips the
-setuid bit. This path and foreground launching were manually validated on
-2026-07-13. Do not adopt `--no-sandbox` as a normal workaround. The evidence
-and validation record are documented in
-`../engineering-docs/completed-tasks/devcapsule/2026-07-13-vscodium-sandbox-and-foreground-launch.md`.
-
-Known parity gap: `codium_with_claude run` now shares `--profile`,
-`--project-state-root`, and `--project-mount` with the common runtime-layout
-model, but it still lacks many of the Git credential, Docker capability,
-debugging, sudo, and additional filesystem options available from
-`pycharm run`. The intended shared versus IDE-specific behavior is tracked in
-`../engineering-docs/bugs/devcapsule/2026-07-13-codium-run-option-parity.md`.
-
-`pycharm run` defaults `--project` to the current directory. Its default
-persistent home is checkout-scoped beneath `$XDG_DATA_HOME/devcapsule/` and is
-mounted at `/home/devcapsule`; standard IDE, agent, and shell state beneath
-`HOME` naturally persists there. `--home DIR` or `DEVCAPSULE_HOME_DIR`
-selects a developer-owned alternative. The developer's actual host home is
-never mounted as the container home.
-
-PyCharm config and plugins are durable component state. PyCharm system data and
-tool caches use `$XDG_CACHE_HOME/devcapsule/`, while logs use
-`$XDG_STATE_HOME/devcapsule/`. For the current dogfood migration, existing
-`--global-settings`, `--plugins`, and `--project-state` values are adopted in
-place: their `home`, `config`, `plugins`, `system`, `log`, and `home/.cache`
-subdirectories are mounted independently at the new container destinations.
+Project launch preserves home and IDE state through declared bindings, including
+`home`, `pycharm/config`, `pycharm/plugins`, `pycharm/system`, `pycharm/log`, and
+`pycharm/cache`. Use `project config list` to inspect them and
+`project config bind NAME host-directory:/path/to/directory` to select an
+explicit location, then `project config resolve`. Separate concurrent PyCharm
+sessions must use separate IDE configuration directories. Legacy profile and
+state-root flags are no longer a public launch interface.
 
 ### Inspect the Docker launch command
 

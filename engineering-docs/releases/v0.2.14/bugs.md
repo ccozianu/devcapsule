@@ -2,14 +2,16 @@
 
 [Release overview](README.md)
 
-Reviewed: 2026-09-22 at release branch `8e7cc21`, against RC0 source `d078b87`
-and freshly fetched main `e50b9f1`. Runtime and test sources match RC0.
-19 tracked records: 15 open (nine reported/confirmed, six fixed but not closed),
-two closed with owner acceptance and verified integration, and two retired
-after verifying their command/implementation was removed.
+Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
+main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
+and integration state are recorded in the release overview.
+19 tracked records: 14 open (eight reported/confirmed, six fixed but not closed),
+two closed with owner acceptance and verified integration, and three retired.
+The legacy-network record was retired by owner decision ahead of command
+removal; removal is now implemented on the release branch. RC0 is unchanged.
 All have workstream owners. All currently have `target: none`; 16 have
-`severity: untriaged`, three have `severity: minor`; among the 15 open records,
-12 are untriaged and three are minor.
+`severity: untriaged`, three have `severity: minor`; among the 14 open records,
+11 are untriaged and three are minor.
 
 Owner decision, 2026-09-22: none of this current list blocks starting the
 release. The owner further confirmed that the bug list itself does not prevent
@@ -40,7 +42,7 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Codium runtime-option parity](../../bugs/devcapsule/2026-07-13-codium-run-option-parity.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Codium ambient passwordless sudo](../../bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Multiline Dockerfile quoting](../../bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md) | maintenance | confirmed | untriaged | Deferred — unless it recurs during the release E2E campaign | Owner decision 2026-09-22. Current recipes build; generic rendering defect remains. After this release, redesign component image composition around documented, unit-testable contracts; see bug for evidence and scope. |
-| [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | confirmed | untriaged | Retire legacy command — removal pending | Owner-selected resolution: remove pycharm run instead of extending it. Preserve shared project-run launcher; decide future capabilities in the [V1-blocking work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md). Close/retire the bug only after removal is verified. |
+| [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | retired | untriaged | Retired — launch command removed | Legacy adapter/helpers removed; rejected invocations cannot launch or prepare state. Shared project launch remains. [V1 capability decisions](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md) stay open. Integration and next candidate pending; RC0 still contains the command. |
 | [Codex ACP missing CODEX_HOME](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md) | maintenance | fixed | untriaged | Undecided | **Propose verify:** fresh component state, one actual PyCharm ACP exchange, then relaunch. CLI use alone does not exercise ACP. |
 | [Component tooling missing from PATH](../../bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md) | maintenance | confirmed | untriaged | Undecided | **Propose verify, likely resolved:** base PATH export and generic environment inheritance exist. Check node/npm/npx by name in the IDE terminal and a child build process. |
 | [Manual ecosystem setup for fresh clones](../../bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md) | maintenance | confirmed | untriaged | Undecided | **Propose defer:** multi-ecosystem bootstrap needs product/consent/lifecycle design. Keep setup instructions usable; reopen release scope if the documented onboarding cannot reach useful work. |
@@ -48,7 +50,7 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [JetBrains embedded-browser preview](../../bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md) | maintenance | fixed | untriaged | Undecided | **Propose verify:** Markdown/SVG preview with fresh IDE settings, no AppArmor remedy prompt, existing disclosure and outer isolation retained. |
 | [PyCharm native-launcher warning](../../bugs/devcapsule/2026-08-03-jetbrains-native-launcher.md) | maintenance | reported | minor | Undecided | **Propose defer:** changing launcher affects signals, restart and lifecycle; no functional failure reported. Investigate if normal close/restart fails. |
 | [Exited containers not cleaned up](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md) | maintenance | reported | untriaged | Undecided | **Propose defer:** retained recursive successors need an owned cleanup policy; ordinary foreground runs already use --rm. Preserve diagnostic evidence; record retained objects during acceptance. |
-| [X11 host-session credential exposure](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md) | contained-display | fixed | untriaged | Undecided | **Propose verify scope:** confirm contained project launch shares no host X socket/cookie and explicit passthrough is disclosed. Legacy pycharm run still defaults to host X11; avoid blanket closure. |
+| [X11 host-session credential exposure](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md) | contained-display | fixed | untriaged | Undecided | **Propose verify scope:** confirm contained project launch shares no host X socket/cookie and explicit passthrough is disclosed. Legacy bypass removed; old-base fallback in project launch remains. Avoid blanket closure. |
 | [Base-image consent versus selection](../../bugs/devcapsule/2026-09-02-authorize-base-image-conflates-consent-with-selection.md) | maintenance | fixed | untriaged | Undecided | **Propose verify, likely resolved:** exercise current local-reference selection and consent UX; reconcile superseded yes/no instructions before closure. |
 | [Formation entrypoint and image lifecycle](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md) | component-catalog | confirmed | untriaged | Undecided | **Propose verify/split:** inspect actual image boot configuration against descriptor, then repeat launch for reuse. Defer remaining superseded-image cleanup separately; do not close the combined record wholesale. |
 | [Incomplete Codex installation](../../bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md) | component-catalog | fixed | untriaged | Undecided | **Propose verify:** fresh npm-based installation and state; actual agent edit/shell/test turn. Owner accepted the capsule as sandbox; --version or an obsolete sandbox command is insufficient. |
@@ -62,12 +64,22 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 The initial review proposed one bounded fix, two closures, eight targeted
 verifications and five deferrals. **The owner accepted both closures on
 2026-09-22; they are now applied.** Retirement of legacy `pycharm run` is also
-selected, with implementation pending. Thirteen rows remain undecided:
+selected and implemented on the release branch. Thirteen rows remain undecided:
 eight targeted verifications and five deferrals. The accepted
 image-composition deferral and two retirements remain unchanged. Other
 workstreams' records have not been edited.
 
 ### Selected Resolution: Retire Legacy PyCharm Run
+
+Pre-removal bug comb, 2026-09-22: only the legacy networking/parity record is
+wholly retired by this change. The Codium records were already retired.
+Multiline rendering still affects the shared builder; native-launcher and
+preview behavior still affect the modern PyCharm component; formation and
+container cleanup are independent. Keep the broader X11 record pending its
+project-launch scope/acceptance review: explicit passthrough and fallback on
+pre-contained-display bases remain in `select_display_transport`. Removing
+the legacy CLI does not establish that every supported project launch avoids
+host-session exposure. No other bug is retired merely for naming PyCharm.
 
 Owner follow-up: preserve all potentially retiring capabilities for future
 releases in the [V1-blocking work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
@@ -79,7 +91,8 @@ external installed-user migration burden. This future gate is not a new 0.2.14
 implementation requirement.
 
 **Owner-selected resolution:** retire the public `pycharm run` command
-instead of adding more legacy options. Implementation remains pending.
+instead of adding more legacy options. The adapter and CLI-only helpers are
+now removed; a non-launching retirement diagnostic handles old invocations.
 Normal `project run` calls the shared `run_pycharm` implementation directly;
 it does not depend on `PycharmRunCommand`. Keep that shared backend, and leave
 `pycharm build` / `check-runtime` outside this proposed removal's scope.
@@ -92,8 +105,8 @@ under R-COMPAT-001 must explain the new path and unsupported legacy-only uses.
 Correct README examples, CLI/PEX smoke checks and shared-launcher diagnostics
 that still prescribe the retired command. Give old invocations an actionable
 migration error with no launch, and verify normal project launch is preserved.
-No command removal is implemented yet. The narrower networking patch below
-is retained as historical analysis, superseded by the retirement decision.
+Removal is implemented; integration and the next candidate are pending. The
+narrower networking patch below is historical analysis, superseded by retirement.
 
 The retained [CLI adapter](../../../devcapsule-src/devcapsule/commands/_pycharm.py)
 constructs `PycharmRunOptions` without a network choice. The
@@ -113,11 +126,10 @@ Do not silently remove the legacy command or redesign its entire option model.
 If compatibility work expands substantially, return the scoped tradeoff to the
 owner before turning it into a release refactor. A source fix needs RC1.
 
-The same legacy options also default to host-X11 transport. Contained-display
-acceptance for normal `project run` cannot certify that separate path. Before
-closing the X11 record, make its supported-path scope and any remaining legacy
-exposure explicit with its owner; do not bundle a display redesign into the
-networking patch.
+The removed legacy adapter also selected host-X11 transport. The broader X11
+record still needs scoped acceptance for project launch, including its fallback
+on older bases and explicit user selection. No display-policy redesign is
+included in this command retirement.
 
 ### Evidence Supporting Closure Or Verification
 
@@ -185,7 +197,7 @@ networking patch.
    bug while the quarantined lifecycle test remains a separate design task.
 
 These are proposed campaign checks, not completed E2E evidence. Add the
-bounded legacy-network inspection if that fix is selected. Stop each check
+retirement rejection check to the next candidate acceptance. Stop each check
 when its stated observation is established; investigate failures that change
 the release decision rather than broadening into a new feature campaign.
 

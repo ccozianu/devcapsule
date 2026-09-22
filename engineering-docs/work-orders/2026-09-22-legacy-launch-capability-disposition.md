@@ -33,6 +33,13 @@ it remains present; the retirement implementation and release timing are
 separate from preserving these future decisions. The shared launcher is still
 used by modern project launch and must not be deleted with the legacy adapter.
 
+2026-09-22 implementation follow-up: the owner subsequently authorized removal
+in 0.2.14. Maintenance has removed the public launch adapter and its CLI-only
+helpers, preserving the shared project launcher and the two image utilities.
+See the [release retirement record](../releases/v0.2.14/README.md#legacy-pycharm-launch-retirement)
+for validation and integration state. This does not settle any L1–L13 future
+capability decision below; their source inventory remains historical evidence.
+
 ## Evidence And Limits
 
 Source inspected during 0.2.14 triage: RC0 `d078b87`; the runtime source is
