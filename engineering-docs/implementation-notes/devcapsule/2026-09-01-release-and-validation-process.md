@@ -23,6 +23,21 @@ the recorded local exception, pending the generic definition's correction.
 
 Requirements: `R-PRODUCT-006`.
 
+## Release Working Documents
+
+Maintain `engineering-docs/releases/vX.Y.Z/README.md` as the release overview,
+checklist and candidate history, with `bugs.md` for bug dispositions and next
+actions. Update these files as work proceeds; chat should highlight changes
+and decisions rather than repeatedly reproduce the inventory. Add further
+evidence files only when needed. See the [0.2.14 working directory](../../releases/v0.2.14/README.md).
+
+Linked bug records remain authoritative for status, severity, target, ownership
+and technical evidence; keep their working-table summaries reconciled. The
+driving workstream maintains these release documents, while its status file
+links here for resumption. Retain them after release. The existing sibling
+`vX.Y.Z.json` remains the machine-checked acceptance record, created only when
+an exact candidate is accepted; the working directory does not replace it.
+
 ## Operator Checklist
 
 The commands below use v0.2.11 as the worked example. For a new release,
