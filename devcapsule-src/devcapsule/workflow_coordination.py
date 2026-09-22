@@ -82,10 +82,23 @@ class MailItem:
 
 
 class _Git:
-    """The few git invocations this module needs, run in one repository."""
+    """The few git invocations this module needs, run in one repository.
+
+    ``root`` may be any directory inside the checkout; every command runs at
+    the repository's top level, so a nested working directory never narrows
+    what git sees. That narrowing is what once made a send from a
+    subdirectory rebuild the coordination tree without everyone else's files.
+    """
 
     def __init__(self, root: Path) -> None:
-        self.root = root
+        completed = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            raise WorkflowMailError(f"{root} is not inside a git repository")
+        self.root = Path(completed.stdout.strip())
 
     def run(self, *args: str, stdin: str | None = None) -> str:
         completed = subprocess.run(
@@ -215,7 +228,7 @@ def take(
     items = _items_for(_tree_entries(git, tip), name)
     if not items:
         return []
-    intake = _intake_directory(root, name)
+    intake = _intake_directory(git.root, name)
     written: list[Path] = []
     for item in items:
         content = git.run("cat-file", "-p", item.blob)
@@ -374,7 +387,7 @@ def publish(
     git = _Git(root)
     wanted: dict[str, str] = {}
     if not retire:
-        directory = _workstream_directory(root, name)
+        directory = _workstream_directory(git.root, name)
         status = directory / STATE_FILES[0]
         if not status.is_file():
             raise WorkflowMailError(f"{status} does not exist; nothing to publish")
@@ -390,6 +403,11 @@ def publish(
         tip = _fetch_tip(git, remote, branch)
         entries = _tree_entries(git, tip) if tip else {README_PATH: _readme_blob(git)}
         current = {path: blob for path, blob in entries.items() if path.startswith(prefix)}
+        if not retire:
+            # A live claim is not a record; publishing must not drop it.
+            claim_path = prefix + CLAIM_FILE
+            if claim_path in current:
+                wanted = {**wanted, claim_path: current[claim_path]}
         if current == wanted:
             return None
         for path in current:
@@ -578,7 +596,7 @@ def _parse_status(name: str, text: str) -> WorkstreamState:
             heading = line[3:].strip()
             if heading == "Branch Association" and not branch:
                 branch = _first_paragraph(lines, index + 1)
-            elif heading in ("Planned Next Step", "Next Resumable Task") and not next_step:
+            elif ("Next Step" in heading or "Next Resumable Task" in heading) and not next_step:
                 next_step = _first_paragraph(lines, index + 1)
     return WorkstreamState(name, state, branch, next_step)
 
@@ -759,7 +777,7 @@ def _fetch_tip(git: _Git, remote: str, branch: str) -> str | None:
 def _tree_entries(git: _Git, commit: str) -> dict[str, str]:
     """Every blob in the commit's tree, as path -> blob sha."""
     entries: dict[str, str] = {}
-    for line in git.run("ls-tree", "-r", "-z", commit).split("\0"):
+    for line in git.run("ls-tree", "-r", "-z", "--full-tree", commit).split("\0"):
         if not line:
             continue
         meta, _, path = line.partition("\t")
