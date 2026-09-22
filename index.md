@@ -83,6 +83,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Legacy launch capability decisions — blocks V1](engineering-docs/work-orders/2026-09-22-legacy-launch-capability-disposition.md)
+
 - [Component upgrades and recoverable version sets](engineering-docs/work-orders/2026-09-21-component-upgrades.md)
 
 - [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)

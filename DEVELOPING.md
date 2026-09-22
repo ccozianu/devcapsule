@@ -70,7 +70,7 @@ devcapsule/
     history.py              Successful-run snapshots
   components/               Trusted component declarations and contributions
   launch/                   Host-side launch adapters
-    pycharm/                Legacy PyCharm-compatible launch/build interface
+    pycharm/                Shared host launcher and PyCharm image utilities
   container_runtime/        In-container plan interpretation and supervision
 ```
 
@@ -83,8 +83,10 @@ Internal configuration imports are acyclic, including imports inside functions.
 The architecture tests under `devcapsule-src/tests/configuration/` enforce these
 boundaries alongside the configuration laws and representation tests.
 
-`launch/pycharm` retains the existing compatibility interface; its command
-grammar lives in `commands/_pycharm.py`. The former `configurations/` package
+`launch/pycharm` contains the shared host launcher used by `project run` and
+the retained PyCharm image utilities. The legacy `pycharm run` CLI is retired;
+`commands/_pycharm.py` owns build/check-runtime grammar and the retirement
+diagnostic. The former `configurations/` package
 was launcher machinery and is no longer presented as the configuration model.
 The remaining top-level modules retain their existing responsibilities; this
 layout change establishes the configuration boundary without inventing new

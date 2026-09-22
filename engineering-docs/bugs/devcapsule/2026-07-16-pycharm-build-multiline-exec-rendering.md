@@ -1,5 +1,5 @@
 ---
-status: reported
+status: confirmed
 severity: untriaged
 target: none
 owner: maintenance
@@ -13,9 +13,41 @@ Date: 2026-07-16
 
 Status note (pre-vocabulary, kept as evidence): open
 
+## Release Disposition And Required Follow-Up — 2026-09-22
+
+Owner decision: **deferred for 0.2.14 unless the defect recurs during the
+release E2E campaign**. A recurrence reopens the release disposition for
+investigation and repair. Successful base and derived image builds support
+the current recipes; they do not establish that generic execution rendering
+is correct. The bug remains open, with no fix version assigned.
+
+Current renderer-only reproduction: applying
+`ExecComponent(("sh", "-c", "echo first\necho second"))` preserves the arguments
+in the plan but emits a shell-form `RUN` containing the literal newline.
+The renderer therefore still allows script contents to cross Dockerfile
+instruction boundaries. No new Docker build was run for this reproduction.
+The current tooling recipes join commands on one line and avoid this trigger.
+
+The follow-up is due a clean redesign of how images are composed from
+components, including `image_build.py` and its collaborating modules, around
+**documented, unit-testable contracts**. Document valid inputs, argument
+preservation and explicit shell interpretation, composition and operation
+ordering, contribution/export boundaries, and context ownership, cleanup and
+failure behavior. Public contracts and relevant explanatory comments must
+make those semantics explicit; dataclass fields and type annotations alone
+do not do so. Establish focused contract tests before restructuring the code,
+and retain real-build validation for the supported recipes.
+
+This is broader than a quoting patch or a comment-only cleanup. The existing
+recipe tests do not sufficiently protect those shared contracts; 45 relevant
+image-build, base-image and materialization unit tests passed during review,
+despite the rendering defect above. Defer the redesign to work after this
+release to avoid expanding stabilization into an inadequately protected
+refactor, subject to the E2E recurrence condition.
+
 ## Summary
 
-The active Python-owned PyCharm image-build path now emits a generated
+At the original 2026-07-16 report, the Python-owned PyCharm image-build path emitted a generated
 Dockerfile `RUN` line that embeds a multiline shell script as a single
 shell-quoted argument list:
 
@@ -26,7 +58,7 @@ apt-get install -y --no-install-recommends nodejs
 ...
 ```
 
-This fails during Docker build after the recent developer-tooling change that
+This failed during Docker build after the developer-tooling change that
 bundles Node.js/npm plus Codex, Claude Code, and Gemini CLI in the PyCharm
 image.
 
@@ -46,7 +78,7 @@ Dockerfile:21
 
 ## Reproduction Evidence
 
-Rendering the current PyCharm build spec produces:
+Rendering the PyCharm build spec at the time of the original report produced:
 
 ```text
 RUN 'bash' '-euxo' 'pipefail' '-c' 'curl -fsSL https://deb.nodesource.com/setup_current.x | bash -
@@ -82,7 +114,11 @@ or execution in the real Docker build path.
 - `devcapsule-src/devcapsule/image_tooling.py`
 - `devcapsule-src/devcapsule/launch/pycharm/_image_build.py`
 
-## Likely Fix Direction
+## Historical Fix Suggestions
+
+These original suggestions are retained as investigation history. The
+contract-led redesign above supersedes them as the follow-up direction;
+flattening arbitrary scripts with `&&` or `;` can change their semantics.
 
 One of these should be done:
 
@@ -98,8 +134,10 @@ strings.
 
 ## Verification Needed After Fix
 
-1. Rendered Dockerfile no longer contains raw multiline single-quoted shell
-   bodies in `RUN`.
-2. `devcapsule pycharm build ...` succeeds on a real host Docker build.
-3. The resulting image contains working `node`, `npm`, `codex`, `claude`, and
-   `gemini` commands.
+1. Document the composition and execution contracts and test their guarantees,
+   including literal argument preservation for multiline and quoted inputs.
+2. Verify the generated context and Dockerfile implement those contracts,
+   with supported base and derived recipes succeeding in real Docker builds.
+3. Validate tools appropriate to each selected recipe. The original Gemini
+   installation above is historical evidence, not a current requirement;
+   agent-neutral bases and explicitly selected agent components still apply.

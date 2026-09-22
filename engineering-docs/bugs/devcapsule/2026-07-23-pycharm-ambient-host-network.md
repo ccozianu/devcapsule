@@ -1,9 +1,10 @@
 ---
-status: confirmed
+status: retired
 severity: untriaged
 target: none
 owner: maintenance
 opened: 2026-07-23
+closed: 2026-09-22
 requirements: [R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, R-PRODUCT-002]
 ---
 
@@ -11,17 +12,51 @@ requirements: [R-SCOPE-001, R-DOCKER-001, R-FRAMEWORK-001, R-PRODUCT-002]
 
 ## Current scope (2026-09-22)
 
+Owner-selected resolution: **retire the public `pycharm run` command** rather
+than extend its networking options. At the owner's direction, mark this bug
+retired before implementing removal: its legacy option-parity requirements
+will not be implemented. Removal and verification are the current maintenance
+task; this disposition alone is not evidence that released RC0 lacks the command.
+Preserve the shared launcher used by normal `project run`, update references
+to the old command, and verify the retired invocation cannot launch a container.
+The capability inventory and future migrate/drop decisions
+are preserved in the
+[V1-blocking work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+Those future product decisions do not require preserving the legacy entrypoint.
+
+### Removal Evidence — 2026-09-22
+
+Removal is implemented on `release-0.2.14`: `PycharmRunCommand` and its three
+CLI-only option translators are deleted. PyCharm help lists only `build` and
+`check-runtime`; old run invocations return an actionable usage error before
+launch or state preparation. Normal `project run` still calls the shared
+launcher with explicit configured choices. Diagnostics and current usage
+documentation no longer recommend the removed launch command.
+
+115 focused CLI/project/launcher checks passed. The full `nox -s build` passed:
+1,046 tests, 18 deselected, one existing xfail and the quarantined claim-test
+XPASS; mypy over 167 files, source/PEX smokes and nine packaged integration
+checks. Log: `/tmp/maintenance-retire-pycharm-run-build.log`. Direct checks of
+the built local PEX rejected bare, `--help` and legacy image/DinD invocations
+with the retirement message and created no checkout state. Source regression
+tests also assert no launcher or subprocess call occurs.
+
+The validated artifact is `devcapsule-src/dist/devcapsule-local.pex`; the gate
+skipped revision-bearing packaging because the checkout carries edits. Main
+integration and RC1 or later remain pending. Published RC0 is unchanged and
+still contains the legacy command. No new Docker/GUI acceptance is claimed.
+
 The owner retired `project run-image` and chose diagnostic
 `project run --print-command` using the ordinary configured launch. The maintenance
 patch removes the former command rather than adding its previously proposed parity
 options. That decision supersedes the run-image-specific remedies and close criteria
 below; retain them as historical evidence.
 
-This record remains confirmed because the legacy `pycharm run` path still inherits
+Before removal, the legacy `pycharm run` path inherits
 `PycharmRunOptions.network_mode = "host"`. Normal `project run` supplies the reviewed
 network choice explicitly. Removing run-image therefore resolves its command-specific
-exposure but does not prove the shared legacy default safe. Any remaining legacy
-network change and its acceptance require a separate bounded task; no Docker-daemon
+exposure but does not prove the shared legacy default safe. The selected
+retirement supersedes adding a legacy network option; no Docker-daemon
 acceptance is claimed by the diagnostic-output tests.
 
 Date opened: 2026-07-23

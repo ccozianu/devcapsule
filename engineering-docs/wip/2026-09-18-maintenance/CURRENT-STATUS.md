@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; owner-approved cut created; local PEX and Docker base built; initial PR creation/integration and RC0 pending
+State: active; releasing 0.2.14; RC0 public; legacy PyCharm launch removed; integration and next candidate pending
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@77b593f70215
 
 Integration target: `main`
 
@@ -24,92 +24,157 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-The owner directed starting the release under maintenance on 2026-09-22:
-fix or defer bugs as stabilization proceeds; none of the currently listed bugs
-is a showstopper for starting. This does not close bugs or silently assign
-individual release targets. Work is tracked in the
-[release overview](../../releases/v0.2.14/README.md) and
-[bug triage table](../../releases/v0.2.14/bugs.md), not repeated chat inventories.
+Owner-authorized retirement of `pycharm run` is implemented on the release
+branch. The old adapter and CLI-only option helpers are gone; old invocations
+fail before launch/state preparation and are absent from help. Shared project
+launch and the image utilities remain. User guidance, diagnostics and packaged
+smokes reflect the retirement. This changes source after RC0 and needs main
+integration and the next immutable candidate.
 
-Cut `release-0.2.14` at preparation merge
-`21371084f7137624aed6c0581b12495a04b04fbb` (PR #131), containing the release
-working documents and claim-test xfail. Fetched main `c8ae736` differs only in
-its later generated coverage badge. All maintenance implementation was already
-integrated. Its remaining private checkpoint was records only: synchronized
-it with main by rebase, resolved the registry conflict by retaining other
-mainline rows, and carried its own attribution checkpoint/status into the
-release branch. No source patch was omitted or duplicated. The old working
-branch is now closed for modification; release source will not be rebased.
+Published `v0.2.14-rc0` at `d078b879469c1790647e32db75005d0fa4369b27`, already
+integrated through PR #132 at `e50b9f1`. Tag push was verified through remote
+refs; public PEX, checksum and manifest were downloaded without credentials.
+Checksum, version 0.2.14rc0, tag mnemonic and exact source identity agree.
+The downloaded executable passed clean-machine validation with no Python or
+network. Full evidence, artifact locations and the acceptance checklist are in
+[release work](../../releases/v0.2.14/README.md).
 
-The first release commit sets source version 0.2.14 through the existing bump
-command and registers maintenance as the release driver. Took and acknowledged
-both project-management handoffs in the same commit as their deletion. Mailbox
-and intake are empty. Claim-test design repair stays with workflow-improvements;
-its xfail is integrated. The run-image and attribution fixes are integrated.
-The nested-directory coordination repair is integrated and awaits applicable
-live/RC acceptance, rather than implementation.
+The owner explicitly deferred legacy branch renames through 0.2.14 publication,
+before substantive work on the next release. WORKFLOW-LOCAL.md records this;
+project-management received `2026-09-22-maintenance-rename-deadline-deferred.md`
+on coordination at `4013fca06a54`, superseding the earlier pre-RC0 deadline.
+The owner says known bugs do not prevent publication on bug grounds; fix or
+verify a selected few and validate major end-user journeys before final acceptance.
+
+Retired the two old codium_with_claude option-parity and ambient-sudo records:
+the exact candidate lacks the old command module, launcher and entrypoint, and
+both local and downloaded RC0 reject the command. This implements the saved
+triage recommendation; it does not claim complete VSCodium acceptance. The
+[working bug table](../../releases/v0.2.14/bugs.md) retains all 19 rows, now
+14 open, two closed and three retired. On 2026-09-22 the owner accepted closure
+of the upgrade-recovery and configuration-contract bugs; their records now
+link the owner/graphical acceptance and verified PR #117 integration. No
+runtime code changed during those earlier record updates. The subsequent
+legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
-The owner requested initial PR creation, tagging and local builds. Built the
-current tip's exact-source PEX and Docker base; identities/checksums/evidence
-are in the release overview. Nine packaged checks passed. Default build-network
-DNS failed, so stopped that owned build and used the documented host-network
-build option successfully. No runtime containers were launched for acceptance.
-The local build request is treated as PEX plus base pending the owner's answer
-about whether a project environment image is intended too.
+Deliver the release-branch diff for owner PR integration, then verify main
+contains the retirement before the next candidate. RC0 still contains the old
+command; do not move its tag. Continue the grouped acceptance journeys and
+remaining bug decisions after the updated candidate is available.
 
-PR text is prepared in `/tmp/release-0.2.14-pr-body.md`. Asked for the one-time
-exception needed to create the PR through tools under WORKFLOW-LOCAL.md's
-explicit owner-UI arrangement; no answer yet. No GitHub credential/connector
-probe was made. If the arrangement stays, owner creates and merges the PR.
-No RC tag is created while the release preparation remains absent from main.
+The owner requested and received a permanent
+[V1-blocking legacy capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+It preserves the full inventory, existing project-run equivalents and the
+undecided image-oriented/non-DevCapsule-directory alternative. Project-management
+is to register the owner's V1 gate and sequence future-release decisions and
+implementation; this is not a new 0.2.14 implementation commitment.
+Delivered the complete work item by coordination mail
+`2026-09-22-maintenance-v1-legacy-launch-capabilities.md` at `5df12452fba6`;
+project-management's acknowledgement/ledger update remains pending. Links,
+all 13 inventory rows and the permanent documentation index were checked.
 
+The two owner-approved configuration closures are applied. The networking bug
+was marked retired before removal as requested, and its command is now removed.
+Thirteen rows remain undecided in the [release bug table](../../releases/v0.2.14/bugs.md),
+including eight targeted verifications and five deferrals. Other records still
+have independent scope: shared image rendering, modern PyCharm behavior,
+project display policy, and resource lifecycle do not disappear with the CLI.
 
-The release-source build passed. Deliver the initial preparation PR for the
-owner's GitHub UI merge, then fetch and verify main. Before RC0, verify
-main contains the applicable release delta and reconcile the legacy branch-name
-migration with project-management. Work through fixes, closure evidence and
-explicit deferrals in the release bug table during stabilization. Candidate
-acceptance uses the downloaded artifact and the checklist in the overview.
-Do not tag an RC before the current main-disposition gate is satisfied.
+Owner deferred the confirmed multiline execution-rendering bug for 0.2.14
+unless it recurs during the release E2E campaign. Watch for that recurrence
+during acceptance and reconsider the deferral if observed. After this release,
+the accepted follow-up is a clean redesign of component image composition
+around documented, unit-testable contracts; the bug and release table record
+the scope. The release branch remains unsynchronized as required for release refs;
+the command removal, unlike the earlier records-only decisions, needs a new candidate.
+
+Use downloaded RC0 for the release overview's end-user acceptance journeys:
+fresh project, predecessor upgrade/recovery, IDE/agent work and resume,
+graphical/login behavior, diagnostic command and isolated coordination scenario.
+Pick further bugs from the table, fix, verify obsolete, or explicitly defer.
+Capture the actual platform/surface/agent and user-visible outcome. Neither
+unit coverage nor executable portability alone completes release acceptance.
+New source fixes require the next immutable candidate and a main disposition.
+Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
-The full build passed on clean first release commit
-`36fa74e4934622b3bdb993b3ccbef86729661046`: 1,044 tests passed, 18 deselected,
-one existing xfail and the quarantined claim test XPASS; mypy and nine packaged
-checks passed. Built and smoke-tested local and revision-bearing PEX artifacts.
-The latter reports version 0.2.14 and exact source revision 36fa74e. The next
-checkpoint changes validation records only, with identical runtime/test inputs.
-Relative release-document links, version, baseline parent and routing were checked.
-No candidate tag, release acceptance JSON or final tag has been created.
-GitHub PR operations remain owner-operated through the UI; Git pushes use SSH.
+Legacy-command removal: 115 focused checks passed, followed by successful
+`nox -s build`: 1,046 tests, 18 deselected, one existing xfail and one
+quarantined claim XPASS, mypy over 167 source files, source/PEX smokes and
+nine packaged integrations. Log: `/tmp/maintenance-retire-pycharm-run-build.log`.
+Direct built-PEX checks reject bare/help/legacy-option invocations, show only
+retained utilities in PyCharm help, and create no checkout state. Source tests
+also prove no launcher/subprocess call. Validated artifact:
+`devcapsule-src/dist/devcapsule-local.pex`. The gate skipped revision-bearing
+packaging due to checkout edits; no fresh Docker/GUI run was necessary for
+this command removal, and no such acceptance is claimed. Main integration
+and the next candidate are pending. The pre-existing local bug-file edit
+remains unstaged and is excluded from delivery.
 
-Project-management was paused and published before this switch at source
-checkpoint `c5a011d`. Its own row and pause record reach main through its next
-ordinary integration; published state is the live handoff. A pre-existing
-one-character Codium sudo bug edit was preserved as
-`.git/codex-preserved-codium-sudo-edit.patch` before the clean switch; it is not
-part of the release. No containers, host settings or retained evidence were
-changed. No transcript/session record was requested.
+Bug-combing review at `8e7cc21`: fetched main remains `e50b9f1`; PR #117 merge
+`d2386bb` is in main and RC0. At that review runtime/test sources matched RC0. A CLI probe with
+only the launcher substituted confirms legacy `pycharm run` still passes host
+networking without an explicit choice. 243 focused existing checks passed;
+the earlier image review passed 45. No Docker or provider acceptance was run
+for this review. The release table distinguishes prior evidence from proposed
+candidate checks, including the incomplete byte-preservation assertion in the
+nested-directory regression. No branch synchronization or runtime change.
+
+RC0's integration gate passed by mainline ancestry with zero missing commits.
+Local RC0 PEX and Docker base were built from a disposable exact-tag worktree,
+which was removed after the build; this checkout remains on release-0.2.14.
+Nine packaged assertions/checks passed: eight in the first run, then the
+identity check after using the harness's canonical artifact filename. No code
+was changed to satisfy that filename check. Local and downloaded PEX each
+passed the networkless/no-Python clean-machine check. The locally built base
+retains tag devcapsule-base:0.2.14-rc0-local and is not published to a registry.
+
+Prior full source gate: 1,044 passed, 18 deselected, one existing xfail and one
+quarantined XPASS, mypy and packaged checks. RC0 has identical runtime/test
+inputs. That gate describes RC0, not the subsequent removal. The old claim-test
+xfail remains; the retirement has its own validation below.
+
+GitHub PR/workflow UI operations stay with the owner; neither gh nor SSO is
+available here. No credential probes or API operations were attempted. Public
+asset downloads verify publication; no credentialed Actions-run inspection is
+claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Owner answer on PR creation exception and intended local image targets;
-  preparation PR integration, then RC0 and downloaded-artifact acceptance.
-- Resolve or explicitly defer bugs as work proceeds; none of the current list
-  blocks the cut under the owner's ruling. Their individual records remain open.
-- Project-management retains legacy branch migration coordination before RC0.
-- Workflow-improvements owns claim-test design repair and the generic release
+- Legacy launch capabilities now have an owner-directed V1 gate: decide what
+  is already covered, migrate selected capabilities, design an image-oriented
+  mode only if justified, or explicitly drop them. The work order preserves
+  the findings; project-management owns scheduling and ledger registration.
+- Owner review of the 13 remaining bug dispositions remains; the full rationale
+  and grouped acceptance observations are in the release bug table. Review
+  project-launch old-base/X11 scope before closure of the display exposure record;
+  distinguish repaired formation boot behavior from remaining image cleanup.
+- A pre-existing local edit in the legacy-network bug removes one word and
+  leaves trailing whitespace. It was preserved verbatim and excluded from
+  all agent commits. Agent-authored retirement notes in that same file are
+  staged separately from the pre-existing edit.
+- Image composition redesign is deferred beyond 0.2.14 unless the confirmed
+  multiline-rendering defect recurs during the release E2E campaign; preserve
+  its documented-contract and unit-testing scope when scheduling the work.
+- RC0 is published; end-user acceptance and selected further bug dispositions remain.
+- Project-management coordinates renames after 0.2.14 publication, before
+  substantive next-release work. This no longer holds 0.2.14 candidates.
+- Workflow-improvements owns the claim-test design repair and generic release
   propagation rule revision; the local owner exception already governs here.
-- Preserve the old maintenance triage, configuration contracts and validation
-  limits, retired-outbox follow-up, and historical host/blog acceptance gaps.
-- The preserved local delimiter edit can be restored with `git apply` of the
-  patch above if the owner wants it. It was not corrected or discarded silently.
+- Preserve retired-outbox follow-up, configuration contracts/coverage limits,
+  and historical host/blog acceptance gaps; no unrelated cleanup was done.
+- The pre-existing Codium delimiter edit remains saved at
+  `.git/codex-preserved-codium-sudo-edit.patch`; its intent was never inferred.
+  The canonical bug record now records retirement, so review before applying it.
+- No transcript/session record was requested; canonical decisions live in the
+  release documents and bug records.
 
 ## Workstream Document Index
 
+- [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
 - [Release bug triage](../../releases/v0.2.14/bugs.md): maintained dispositions and evidence.
 

@@ -47,112 +47,43 @@ def test_runtime_command_forwards_arguments_to_container_entrypoint() -> None:
     runtime_main.assert_called_once_with(["plan.json", "--future-option", "value"])
 
 
-def test_run_pycharm_uses_translated_python_launcher(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-    data_home = tmp_path / "data"
-
+@pytest.mark.parametrize("options", [
+    [], ["--help"], ["--no-docker"],
+    ["--image", "legacy:unused", "--docker-in-docker"],
+    ["--project-config", "--shared-config"],
+])
+def test_pycharm_run_is_retired_without_launch_or_state_changes(
+    tmp_path: Path, monkeypatch, capsys, options: list[str],
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "state"))
     with (
-        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
-        patch.dict(
-            os.environ,
-            {
-                "DISPLAY": ":1",
-                "XDG_DATA_HOME": str(data_home),
-                "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
-            },
-            clear=False,
-        ),
+        patch("devcapsule.launch.pycharm._launcher.run_pycharm") as launch,
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as process,
     ):
-        run.return_value.returncode = 0
+        assert cli.main(["pycharm", "run", *options]) == 2
+    launch.assert_not_called()
+    process.assert_not_called()
+    assert list(tmp_path.iterdir()) == []
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "was retired" in output.err
+    assert "devcapsule project --path DIRECTORY run" in output.err
+    assert "devcapsule project --path DIRECTORY init" in output.err
 
-        result = cli.main(["pycharm", "run", "--project", str(project), "--no-docker"])
 
-    assert result == 0
-    command = run.call_args.args[0]
-    assert command[:2] == ["docker", "run"]
-    assert "docker4pycharm/run-pycharm-container.sh" not in command[0]
-    assert any(arg.startswith(f"type=bind,src={project.resolve()},dst=") for arg in command)
-    assert "--cap-drop" in command
-    assert "--read-only" in command
-    assert "HOME=/home/devcapsule" in command
-    assert any(arg.endswith(",dst=/home/devcapsule") for arg in command)
-    assert any(arg.endswith(",dst=/ide-project-state/system") for arg in command)
-    assert any(arg.endswith(",dst=/ide-project-state/log") for arg in command)
-    assert any(arg.endswith(",dst=/home/devcapsule/.cache") for arg in command)
-    assert not any(arg.endswith(",dst=/ide-global-settings/home/.gemini") for arg in command)
+def test_pycharm_help_lists_only_retained_image_utilities(capsys) -> None:
+    assert cli.main(["pycharm", "--help"]) == 0
+    output = capsys.readouterr().out
+    assert "build" in output
+    assert "check-runtime" in output
+    assert not any(line.split()[:1] == ["run"] for line in output.splitlines())
 
 
 def test_project_run_image_is_retired(tmp_path, capsys) -> None:
     assert cli.main(["project", "--path", str(tmp_path), "--help"]) == 0
     assert "run-image" not in capsys.readouterr().out
     assert cli.main(["project", "--path", str(tmp_path), "run-image", "unused"]) != 0
-
-
-def test_run_pycharm_defaults_project_to_current_directory(tmp_path: Path, monkeypatch) -> None:
-    project = tmp_path / "current-project"
-    project.mkdir()
-    monkeypatch.chdir(project)
-
-    with (
-        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
-        patch.dict(
-            os.environ,
-            {
-                "DISPLAY": ":1",
-                "XDG_DATA_HOME": str(tmp_path / "data"),
-                "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
-            },
-            clear=False,
-        ),
-    ):
-        run.return_value.returncode = 0
-
-        result = cli.main(["pycharm", "run", "--no-docker"])
-
-    assert result == 0
-    command = run.call_args.args[0]
-    assert any(arg.startswith(f"type=bind,src={project.resolve()},dst=") for arg in command)
-
-
-def test_run_pycharm_rejects_conflicting_config_mode_options(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-
-    result = cli.main(
-        [
-            "pycharm",
-            "run",
-            "--project",
-            str(project),
-            "--config-mode",
-            "shared",
-            "--ide-config",
-            str(tmp_path / "custom-config"),
-        ]
-    )
-
-    assert result == 2
-
-
-def test_run_pycharm_rejects_multiple_config_shorthands(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-
-    result = cli.main(
-        [
-            "pycharm",
-            "run",
-            "--project",
-            str(project),
-            "--project-config",
-            "--shared-config",
-        ]
-    )
-
-    assert result == 2
 
 
 def test_build_pycharm_uses_python_buildx_builder(tmp_path: Path) -> None:
