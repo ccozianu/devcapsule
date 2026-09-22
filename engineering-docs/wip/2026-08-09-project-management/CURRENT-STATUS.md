@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-22; owner release-fix propagation rule recorded; release runbook aligned; preparing PR delivery
+State: active 2026-09-22; owner release-fix propagation rule recorded; release runbook aligned; awaiting owner PR integration
 
-Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@6a8a24825838
+Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@031c167690c0
 
 Branch association: `project-management/coordination`
 
