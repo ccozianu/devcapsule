@@ -60,7 +60,9 @@ the legacy PyCharm networking issue remains open.
 The required `nox -s build` passed: 1,041 tests, 18 deselected, one existing
 xfail, mypy, CLI/shell checks, local PEX build/smoke and nine packaged checks.
 The revision-bearing PEX was skipped under the existing dirty-tree policy.
-No runtime source changed in this slice; GitHub UI acceptance remains pending.
+Commit `1fbe6fa` was pushed with Costin Cozianu as author/committer and the
+verified, parsed `GPT-6 Astra Codex` trailer. No runtime source changed in this
+slice; GitHub UI acceptance remains pending.
 The effective Git author and committer now match the owner; this checkout-local
 configuration persists in `.git/config` and does not travel with the PR. Other
 checkouts must verify their own identity under the new local-workflow rule.
