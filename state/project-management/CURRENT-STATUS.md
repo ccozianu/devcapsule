@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-22; tested run-image replacement patch delivered to maintenance; source restored; workflow recovery proposal delivered
+State: paused 2026-09-22 at owner request to switch to maintenance; tested patch and workflow proposal delivered
 
 Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@d82ff8d81968
 
@@ -44,6 +44,14 @@ operational detailing toward V1. R-UPGRADE-002 stays with component-upgrades;
 its new intake asks this workstream to account for it in V1 sequencing, not to
 resume implementation here. Earlier upgrade/adopter intake predates the delivered
 slice and must be reconciled before a new scope or release decision.
+
+## Paused For Maintenance (2026-09-22)
+
+The owner explicitly selected maintenance after the completed patch handoff.
+All project-management records are committed and pushed; no source edits remain.
+Both outgoing messages are delivered, no new mail is waiting, and the open threads
+below preserve the pending coordination decisions. No session-owned containers or
+ports were created. Resume here only when the owner selects project-management.
 
 ## Planned Next Step
 
