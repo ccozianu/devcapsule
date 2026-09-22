@@ -200,6 +200,9 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Nested-directory workflow commands lose coordination files](engineering-docs/bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md)
+- [Codex commit authorship and model attribution](engineering-docs/bugs/devcapsule/2026-09-22-codex-commit-attribution.md)
+
 - [Configuration Contract Is Not Enforced Across Boundaries](engineering-docs/bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md)
 - [Website test publication accepts inconsistent settings — transferred](engineering-docs/bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
 - [Upgrade Configuration Recovery Rejects Its Own Remedy](engineering-docs/bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)

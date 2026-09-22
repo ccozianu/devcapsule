@@ -42,17 +42,15 @@ devcapsule
 │   ├── config set|bind|authorize|resolve ...
 │   ├── state ...
 │   ├── lock ...
-│   ├── run ...
-│   └── run-image IMAGE ...
+│   └── run [--print-command] ...
 └── images
     ├── list
     └── build --type base|environment ...
 ```
 
 The `project` tree owns declarations, registered checkouts, developer
-configuration and state, locks, and execution. This includes the expert,
-lock-independent `run-image` path because it still operates on project source,
-state, and host choices. The `images` tree owns the workstation's managed image
+configuration and state, locks, and execution. Diagnostic `run --print-command`
+exposes the ordinary launch for inspection. The `images` tree owns the workstation's managed image
 inventory and image formation.
 
 ## Four Things With Different Owners
@@ -403,8 +401,7 @@ devcapsule project config unset      NAME
   stops modeling docker's option surface; raw options are conspicuously
   reported as a deviation from the resolved plan. The bespoke run flags
   (`--docker-daemon`, `--development-sudo`, `--host-browser`) are dropped
-  from `run`; `run-image` keeps its dedicated flags because it deliberately
-  reads no lock and therefore has no node registry.
+  from `run`. The former arbitrary-image `run-image` path is retired.
 - `host-browser`, `docker-daemon`, and `development-sudo` are proper
   authorization nodes (settled 2026-08-24) that exist on every project as
   workstation capabilities: denial stays the default, a project
@@ -1285,11 +1282,13 @@ fully pinned, materialized under a distinct identity, and shown conspicuously
 as a deviation from the committed default. The representation and support
 contract for local alternatives remain an open V1 design question.
 
-`devcapsule project [--path PATH] run-image IMAGE` remains the expert escape
-hatch for an arbitrary local image. It does not claim to reproduce the
-committed environment and does not read the project lock. When a declaration
-is discoverable, it may use declared project defaults; otherwise the selected
-path or current directory is used directly as the source directory.
+Owner refinement, 2026-09-22: retire `project run-image`. Debuggers can use
+`devcapsule project [--path PATH] run --print-command` to inspect the normal
+prepared Docker invocation, with comments identifying temporary files, live
+helpers and environment dependencies. Stdout is shell text; preparation diagnostics
+use stderr. No editor integration or replay-resource lifetime is promised. Printing
+neither launches a project session nor records successful use. Arbitrary-image
+experiments remain Docker operations.
 
 ## Human And Agent Work Resume Together
 
@@ -1312,8 +1311,8 @@ from the transitional implementation.
 Available in the current dogfood path:
 
 - the `project [--path PATH]` subtree for `list`, `init`, named checkout
-  registration, `config resolve`, `state adopt`, `lock`, `run`, and
-  `run-image`, with no top-level compatibility aliases;
+  registration, `config resolve`, `state adopt`, `lock`, and `run` (including
+  diagnostic `--print-command`), with no top-level compatibility aliases;
 - XDG registry listing with `ready`, `missing`, and `uninitialized` status;
 - clean-checkout creation of the default developer record during the first
   `project config resolve`;

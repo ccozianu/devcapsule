@@ -803,7 +803,7 @@ is unchanged.
 External hyperlinks use a separate, opt-in host integration. Authorize
 `host-browser` persistently with `devcapsule project config authorize
 host-browser true`, or for one launch with `project run --authorize
-host-browser true` (`run-image` and `pycharm run` keep their dedicated
+host-browser true` (`pycharm run` keeps its dedicated
 `--host-browser` flag) to let `xdg-open` inside the capsule ask a
 launcher-owned Unix-socket broker to open an absolute HTTP(S) URL in the
 physical host's default browser. The protocol does not expose the host
@@ -1017,7 +1017,7 @@ devcapsule pycharm run --project /path/to/project
 devcapsule pycharm run
 devcapsule pycharm run --project /path/to/project --config-mode project
 devcapsule pycharm run --profile codex --project-state-root /path/to/workspace/.state
-devcapsule project --path /path/to/project run-image pycharm-isolated:latest
+devcapsule project --path /path/to/project run --print-command > launch.sh
 devcapsule pycharm build --pycharm /path/to/pycharm.tar.gz
 devcapsule pycharm check-runtime
 devcapsule bootstrap
@@ -1116,34 +1116,30 @@ tool caches use `$XDG_CACHE_HOME/devcapsule/`, while logs use
 place: their `home`, `config`, `plugins`, `system`, `log`, and `home/.cache`
 subdirectories are mounted independently at the new container destinations.
 
-`run-image IMAGE` is the expert, lock-independent PyCharm-compatible image path
-for construction and diagnosis. It passes `--pull=never` to Docker, so a
-missing local image fails instead of pulling or resolving another image. It
-defaults to no Docker-daemon access. Use
-`--docker-daemon host-socket` and `--development-sudo` only as explicit
-run-once relaxations. `--host-browser` is a separate run-once capability for
-opening HTTP(S) hyperlinks in the physical host browser; it does not imply
-Docker, network, sudo, or credential access. The broader capability-first
-state-management CLI remains under development.
-
-The first dogfood validation intentionally supplies the existing directories
-once, before the planned `state adopt` command persists those mappings:
+### Inspect the Docker launch command
 
 ```bash
-./dist/devcapsule.pex project --path "$HOST_PROJECT_ROOT" \
-  run-image mycodespace.ai/pycharm:debug-v018 \
-  --global-settings ~/.config/docker-pycharm-codex/state/ \
-  --plugins ~/.config/docker-pycharm-codex/plugins \
-  --project-mount /workspace/301e4208ef81-ChatGPT_Codex \
-  --project-state "$PROJECT_STATE" \
-  --docker-daemon host-socket \
-  --development-sudo
+devcapsule project --path /path/to/project run --print-command > launch.sh
 ```
 
-The explicit project mount preserves the absolute path already stored in the
-adopted PyCharm workspace and interpreter configuration. Omitting it during
-this migration makes saved paths such as
-`/workspace/301e4208ef81-ChatGPT_Codex/.venv/bin/python` appear missing.
+This prepares the currently selected environment through ordinary configuration
+and authorization checks, then prints the actual shell-quoted Docker command.
+It may acquire/build the image and prepare state; it does not launch the project
+container, open a desktop, check/select component updates or record successful use.
+Preparation messages go to stderr, keeping stdout suitable for a file or editor.
+Run-once configuration choices and accepted Docker passthrough options still apply.
+
+The output is for inspection and manual editing, **not a standalone replay script**.
+Comments identify temporary runtime files removed on return, helper sockets that
+require a live service, and environment dependencies. Persistent mounts still point
+at real project/IDE state. The developer must provide missing resources before
+manual execution and owns any changes to the command. Secret environment bindings
+remain variable names; their values are not copied into the output. Do not share
+output without reviewing its host paths and any raw arguments you supplied.
+
+The former `project run-image` arbitrary-image convenience command is removed.
+For an arbitrary image, use Docker directly; use the print option to inspect what
+DevCapsule would execute for a configured project.
 
 Unsupported command shapes such as top-level `devcapsule run`,
 `devcapsule run-image`, `devcapsule config`, `devcapsule state`, and

@@ -1,10 +1,15 @@
 # Workstream Current Status: User Documentation
 
-Mnemonic: `user-docs`
+Name: `user-docs`
 
 Start date: `2026-09-12`
 
-State: paused 2026-09-16; website experiment brief prepared; human will select website in a fresh context
+State: active 2026-09-22; resumed by the product owner to refresh the adopter
+
+Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
+documentation for the next release; migrated to the current workflow
+
+Branch association: `ws-user-docs/first-session`
 
 Integration target: `main`
 
@@ -51,8 +56,11 @@ tests and newly written tests that may encode unvalidated product assumptions.
 
 ## Branch And Checkout
 
-Selected branch: `user-docs/first-session`, created from accepted main `a09e09d`.
-`user-docs/outbox` carries intake dispositions and workstream records.
+Selected branch: `ws-user-docs/first-session`, created 2026-09-22 from
+current `main` under the `ws-` form; the earlier `user-docs/first-session`,
+`user-docs/outbox`, and the temporary agent-guidance branch held nothing
+`main` lacked and were deleted. Records travel this branch and are published
+live on the coordination branch; there is no outbox.
 Project-management was deliberately paused before switching; its pause record
 is pushed through `project-management/outbox`, awaiting the owner's merge.
 The owner's unrelated local host settings were saved on local-only
@@ -111,6 +119,14 @@ release-specific limitations are clearly identified, and the published steps
 match the release they claim to support. The later OpenCode setup requirement
 below remains accepted after the first-session scoping; it is not forgotten
 or an immediate installation task.
+
+5. **UD-005 — Explain the workflow's terms for humans.** Accepted 2026-09-22
+   from `workflow-improvements`' 2026-09-19 item. A `docs/` page explaining
+   the workflow's concepts, how they fit, with examples, against the glossary
+   in `WORKFLOW.md`: every term under its glossary name, none defined here;
+   a term that needs explaining but is not in the glossary is a glossary
+   defect to send back. Owns `docs/guides/working-in-workstreams.md` from the
+   same date.
 
 ## Accepted Later Requirement: OpenCode Setup
 
