@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active; published live on the coordination branch; every 2026-09-19
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@ed70f3147563
 round merged. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
