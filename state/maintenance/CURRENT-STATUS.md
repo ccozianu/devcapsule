@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-22; attribution bug closed after owner GitHub acceptance; policy PR integration pending
+State: paused 2026-09-22 at owner request to switch to project-management; PR #128 integration verified
 
 Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@0f44773f837c
 
@@ -27,57 +27,36 @@ Its 2026-09-18 start is the recorded adoption exception.
 Run-image replacement and incident recovery evidence are preserved in the
 [completed-slice checkpoint](2026-09-22-record-run-image-replacement.md).
 
-## Current Slice: Commit Attribution
+## Last Task
 
-Verified owner-reported PR #125 integration at `f0d6901`: main contains the
-run-image replacement `1c6d2c9`; the fetched tree differs only in the generated
-coverage badge. Fast-forwarded this clean branch to main `223b8c4` before the
-new slice. Definition/local rules had not changed; synchronization was appropriate
-at this delivery boundary. Maintenance mailbox and intake were empty.
-
-Owner treats missing Codex co-authorship as a bug and requires the actual model
-name first, then Codex. Corrected this checkout's placeholder Git identity to
-Costin Cozianu's name/email already used on owner merge commits. This session's
-recorded model is `gpt-6-astra`. The [attribution bug](../../bugs/devcapsule/2026-09-22-codex-commit-attribution.md)
-records evidence and owner-confirmed GitHub display acceptance on 2026-09-22;
-the bug is closed. The generic workflow is silent
-on co-authorship; used its local-workflow extension point to record the owner's
-project convention in `WORKFLOW-LOCAL.md`. No generic definition refresh or
-historical commit rewrite is needed. A reusable-policy consideration was
-mailed to workflow-improvements as `2026-09-22-maintenance-agent-coauthorship.md`
-at coordination `b16003cf563f`; its coordination data-loss fix stays there.
+Verified PR #128 merged at `ca3f1d3`; `git cherry origin/main HEAD` reported no
+unintegrated commits and the tree differed only in the generated coverage badge.
+Fast-forwarded to fetched main `0d13111`. The attribution policy and closed bug
+are integrated; owner-confirmed GitHub display and full-gate evidence are in the
+[attribution checkpoint](2026-09-22-record-commit-attribution.md). No code changed
+for this handoff, so the passing validation of the delivered tree remains sufficient.
+The owner explicitly directed switching this clean checkout to project-management.
+Maintenance mailbox and intake are empty; all owed mail was delivered.
 
 ## Planned Next Step
 
-Owner integrates the accepted attribution policy through a PR from
-`ws-maintenance/triage`. GitHub co-author display is manually validated. Fetch and verify main after the owner reports merge. After this
-bounded delivery, resume saved triage with the owner; retired-outbox verification
-remains accepted follow-up. Run-image implementation is already integrated;
-the legacy PyCharm networking issue remains open.
+Resume the saved bug triage with the owner when maintenance is selected again.
+Retired-outbox verification remains accepted follow-up. Run-image replacement
+and commit attribution are integrated; the legacy PyCharm networking issue remains
+open. Do not reopen either completed delivery merely because older records say
+integration was pending.
 
 ## Validation And External State
 
-The required `nox -s build` passed: 1,041 tests, 18 deselected, one existing
-xfail, mypy, CLI/shell checks, local PEX build/smoke and nine packaged checks.
-The revision-bearing PEX was skipped under the existing dirty-tree policy.
-Commit `1fbe6fa` was pushed with Costin Cozianu as author/committer and the
-verified, parsed `GPT-6 Astra Codex` trailer. No runtime source changed in this
-slice. The owner confirmed the expected GitHub display on 2026-09-22.
-Before recording acceptance, merged main `c93476b` without conflicts because
-the generic definition changed. Read the new misplaced-patch handoff rule.
-The attribution commits remain absent from main; PR integration is still pending.
-The required full build passed again after synchronization, including 1,042
-tests and nine packaged checks; no further runtime validation is needed for
-this owner-acceptance record. Mailbox and intake remain empty.
-The effective Git author and committer now match the owner; this checkout-local
-configuration persists in `.git/config` and does not travel with the PR. Other
-checkouts must verify their own identity under the new local-workflow rule.
-No containers, ports, or historical commits were changed.
+No new runtime validation is required for this integration-verification record.
+The checkout-local human Git identity remains configured; future agent commits
+must follow the integrated model-first attribution rule. No session-owned
+containers or ports were created, and retained historical containers were untouched.
 
 ## Open Threads
 
-- Awaiting only PR integration of the accepted commit-attribution rule;
-  run-image replacement is integrated in PR #125.
+- Awaiting the owner: select maintenance again to resume the preserved triage.
+  Run-image and attribution deliveries are integrated in PRs #125 and #128.
 - Awaiting workflow-improvements: fix the nested-directory coordination bug.
   Use the root-cwd workaround. The separate diff-handoff rule is now on main.
 - Preserved: 14-item triage, remaining legacy host-network issue, broader
@@ -88,6 +67,8 @@ No containers, ports, or historical commits were changed.
   remains in intake history and coordination history after disposition.
 
 ## Workstream Document Index
+
+- [Attribution checkpoint](2026-09-22-record-commit-attribution.md): integrated authorship convention, owner acceptance and build evidence.
 
 - [Run-image replacement checkpoint](2026-09-22-record-run-image-replacement.md): merged implementation, validation and coordination recovery evidence; open only for those details.
 - [Prior checkpoint record](2026-09-21-record-maintenance-before-component-upgrades.md): historical implementation, tests and graphical evidence; open only for those details.
