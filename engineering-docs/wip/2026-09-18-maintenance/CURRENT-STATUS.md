@@ -4,15 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-22; attribution bug closed after owner GitHub acceptance; policy PR integration pending
+State: active; releasing 0.2.14; owner-approved cut created; local PEX and Docker base built; initial PR creation/integration and RC0 pending
 
-Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@0f44773f837c
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
 Integration target: `main`
 
 Delivery method: pull request; agent pushes the branch, owner opens and merges on GitHub
 
-Branch association: `ws-maintenance/triage`
+Branch association: `release-0.2.14`
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -24,70 +24,96 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-Run-image replacement and incident recovery evidence are preserved in the
-[completed-slice checkpoint](2026-09-22-record-run-image-replacement.md).
+The owner directed starting the release under maintenance on 2026-09-22:
+fix or defer bugs as stabilization proceeds; none of the currently listed bugs
+is a showstopper for starting. This does not close bugs or silently assign
+individual release targets. Work is tracked in the
+[release overview](../../releases/v0.2.14/README.md) and
+[bug triage table](../../releases/v0.2.14/bugs.md), not repeated chat inventories.
 
-## Current Slice: Commit Attribution
+Cut `release-0.2.14` at preparation merge
+`21371084f7137624aed6c0581b12495a04b04fbb` (PR #131), containing the release
+working documents and claim-test xfail. Fetched main `c8ae736` differs only in
+its later generated coverage badge. All maintenance implementation was already
+integrated. Its remaining private checkpoint was records only: synchronized
+it with main by rebase, resolved the registry conflict by retaining other
+mainline rows, and carried its own attribution checkpoint/status into the
+release branch. No source patch was omitted or duplicated. The old working
+branch is now closed for modification; release source will not be rebased.
 
-Verified owner-reported PR #125 integration at `f0d6901`: main contains the
-run-image replacement `1c6d2c9`; the fetched tree differs only in the generated
-coverage badge. Fast-forwarded this clean branch to main `223b8c4` before the
-new slice. Definition/local rules had not changed; synchronization was appropriate
-at this delivery boundary. Maintenance mailbox and intake were empty.
-
-Owner treats missing Codex co-authorship as a bug and requires the actual model
-name first, then Codex. Corrected this checkout's placeholder Git identity to
-Costin Cozianu's name/email already used on owner merge commits. This session's
-recorded model is `gpt-6-astra`. The [attribution bug](../../bugs/devcapsule/2026-09-22-codex-commit-attribution.md)
-records evidence and owner-confirmed GitHub display acceptance on 2026-09-22;
-the bug is closed. The generic workflow is silent
-on co-authorship; used its local-workflow extension point to record the owner's
-project convention in `WORKFLOW-LOCAL.md`. No generic definition refresh or
-historical commit rewrite is needed. A reusable-policy consideration was
-mailed to workflow-improvements as `2026-09-22-maintenance-agent-coauthorship.md`
-at coordination `b16003cf563f`; its coordination data-loss fix stays there.
+The first release commit sets source version 0.2.14 through the existing bump
+command and registers maintenance as the release driver. Took and acknowledged
+both project-management handoffs in the same commit as their deletion. Mailbox
+and intake are empty. Claim-test design repair stays with workflow-improvements;
+its xfail is integrated. The run-image and attribution fixes are integrated.
+The nested-directory coordination repair is integrated and awaits applicable
+live/RC acceptance, rather than implementation.
 
 ## Planned Next Step
 
-Owner integrates the accepted attribution policy through a PR from
-`ws-maintenance/triage`. GitHub co-author display is manually validated. Fetch and verify main after the owner reports merge. After this
-bounded delivery, resume saved triage with the owner; retired-outbox verification
-remains accepted follow-up. Run-image implementation is already integrated;
-the legacy PyCharm networking issue remains open.
+The owner requested initial PR creation, tagging and local builds. Built the
+current tip's exact-source PEX and Docker base; identities/checksums/evidence
+are in the release overview. Nine packaged checks passed. Default build-network
+DNS failed, so stopped that owned build and used the documented host-network
+build option successfully. No runtime containers were launched for acceptance.
+The local build request is treated as PEX plus base pending the owner's answer
+about whether a project environment image is intended too.
+
+PR text is prepared in `/tmp/release-0.2.14-pr-body.md`. Asked for the one-time
+exception needed to create the PR through tools under WORKFLOW-LOCAL.md's
+explicit owner-UI arrangement; no answer yet. No GitHub credential/connector
+probe was made. If the arrangement stays, owner creates and merges the PR.
+No RC tag is created while the release preparation remains absent from main.
+
+
+The release-source build passed. Deliver the initial preparation PR for the
+owner's GitHub UI merge, then fetch and verify main. Before RC0, verify
+main contains the applicable release delta and reconcile the legacy branch-name
+migration with project-management. Work through fixes, closure evidence and
+explicit deferrals in the release bug table during stabilization. Candidate
+acceptance uses the downloaded artifact and the checklist in the overview.
+Do not tag an RC before the current main-disposition gate is satisfied.
 
 ## Validation And External State
 
-The required `nox -s build` passed: 1,041 tests, 18 deselected, one existing
-xfail, mypy, CLI/shell checks, local PEX build/smoke and nine packaged checks.
-The revision-bearing PEX was skipped under the existing dirty-tree policy.
-Commit `1fbe6fa` was pushed with Costin Cozianu as author/committer and the
-verified, parsed `GPT-6 Astra Codex` trailer. No runtime source changed in this
-slice. The owner confirmed the expected GitHub display on 2026-09-22.
-Before recording acceptance, merged main `c93476b` without conflicts because
-the generic definition changed. Read the new misplaced-patch handoff rule.
-The attribution commits remain absent from main; PR integration is still pending.
-The required full build passed again after synchronization, including 1,042
-tests and nine packaged checks; no further runtime validation is needed for
-this owner-acceptance record. Mailbox and intake remain empty.
-The effective Git author and committer now match the owner; this checkout-local
-configuration persists in `.git/config` and does not travel with the PR. Other
-checkouts must verify their own identity under the new local-workflow rule.
-No containers, ports, or historical commits were changed.
+The full build passed on clean first release commit
+`36fa74e4934622b3bdb993b3ccbef86729661046`: 1,044 tests passed, 18 deselected,
+one existing xfail and the quarantined claim test XPASS; mypy and nine packaged
+checks passed. Built and smoke-tested local and revision-bearing PEX artifacts.
+The latter reports version 0.2.14 and exact source revision 36fa74e. The next
+checkpoint changes validation records only, with identical runtime/test inputs.
+Relative release-document links, version, baseline parent and routing were checked.
+No candidate tag, release acceptance JSON or final tag has been created.
+GitHub PR operations remain owner-operated through the UI; Git pushes use SSH.
+
+Project-management was paused and published before this switch at source
+checkpoint `c5a011d`. Its own row and pause record reach main through its next
+ordinary integration; published state is the live handoff. A pre-existing
+one-character Codium sudo bug edit was preserved as
+`.git/codex-preserved-codium-sudo-edit.patch` before the clean switch; it is not
+part of the release. No containers, host settings or retained evidence were
+changed. No transcript/session record was requested.
 
 ## Open Threads
 
-- Awaiting only PR integration of the accepted commit-attribution rule;
-  run-image replacement is integrated in PR #125.
-- Awaiting workflow-improvements: fix the nested-directory coordination bug.
-  Use the root-cwd workaround. The separate diff-handoff rule is now on main.
-- Preserved: 14-item triage, remaining legacy host-network issue, broader
-  configuration evidence/docs, release sequencing and retired-outbox verification.
-- Production blog deployment and incident-era exact host bytes remain unverified;
-  no new live acceptance or cleanup is claimed.
-- Deliberately not preserved: no transcript/session record; the received diff
-  remains in intake history and coordination history after disposition.
+- Owner answer on PR creation exception and intended local image targets;
+  preparation PR integration, then RC0 and downloaded-artifact acceptance.
+- Resolve or explicitly defer bugs as work proceeds; none of the current list
+  blocks the cut under the owner's ruling. Their individual records remain open.
+- Project-management retains legacy branch migration coordination before RC0.
+- Workflow-improvements owns claim-test design repair and the generic release
+  propagation rule revision; the local owner exception already governs here.
+- Preserve the old maintenance triage, configuration contracts and validation
+  limits, retired-outbox follow-up, and historical host/blog acceptance gaps.
+- The preserved local delimiter edit can be restored with `git apply` of the
+  patch above if the owner wants it. It was not corrected or discarded silently.
 
 ## Workstream Document Index
+
+- [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
+- [Release bug triage](../../releases/v0.2.14/bugs.md): maintained dispositions and evidence.
+
+- [Attribution checkpoint](2026-09-22-record-commit-attribution.md): integrated authorship convention, owner acceptance and build evidence.
 
 - [Run-image replacement checkpoint](2026-09-22-record-run-image-replacement.md): merged implementation, validation and coordination recovery evidence; open only for those details.
 - [Prior checkpoint record](2026-09-21-record-maintenance-before-component-upgrades.md): historical implementation, tests and graphical evidence; open only for those details.
