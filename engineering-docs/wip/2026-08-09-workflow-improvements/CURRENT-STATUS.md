@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active; published live on the coordination branch; every 2026-09-19
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@488eed5a6c05
+Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
 round merged. Resumed 2026-09-16 by the product owner at the release-candidate
 check the 2026-08-30 freeze scheduled: v0.2.11 and v0.2.12 have shipped. The
 owner chose the release-related intake first and, on 2026-09-18, the reserved
@@ -100,12 +100,13 @@ each under its own heading.
 
 ## Next Resumable Task
 
-Begin *What Adopters Inherit*, item 14, with its first phase: the
-evidence and gap inventory across DevCapsule and the three sample projects,
-reading their own histories and installed copies rather than reconstructing
-conversations, and recording each finding with its source revision and a
-recommended action. The freeze question under *Open Threads* is answered by
-the owner's direction to proceed.
+Build `workflow doctor`, item 1 of *Plate, In Order*: one run that reports
+unpublished state, waiting mail, definition changed since last read, an old
+branch name, an intake item missing from the decision log, a bug record
+without frontmatter, and a declaration disagreeing with the definition;
+reports, never refuses. Build the checks as one list `project-management`'s
+pre-commit entry can reuse. Then item 2, the *Review* section with the
+proposed default policy; then phase 1 of *What Adopters Inherit*.
 
 Everything through the published-state round is merged. The owner triages
 the twelve untriaged bugs in the `maintenance` workstream, which is where the
@@ -171,6 +172,37 @@ can be reordered.
     with version handling (part of question 4). Phase 1 is the evidence
     inventory.
 
+## Plate, In Order
+
+One list, reconciled on 2026-09-22 from the backlog below and the design
+discussion's two levels. "Next release" is whichever release
+`project-management` cuts next; an item merged before the cut ships in it.
+Owner "ours" means this workstream builds it alone; the rest are others'
+and listed so they are not forgotten.
+
+| # | Item | Target | Owner | State |
+|---|---|---|---|---|
+| 1 | `workflow doctor`, backlog 8: the checks that make the rules hold | next release | ours | next |
+| 2 | *Review* section for agent review through the host, backlog 10a, workflow half | next release | ours | after 1 |
+| 3 | *What Adopters Inherit* phase 1: refresh the three sample projects, evidence inventory (ack. work 14) | V1 | ours | after 2, runs underneath |
+| 4 | `workflow ask`, backlog 6 | V1 | ours | queued |
+| 5 | `workflow digest`, backlog 7 | V1 | ours | queued |
+| 6 | Live project board, backlog 9: data contract ours, page `website`'s | V1 | ours then website | after 1 fixes the contract |
+| 7 | Definition split, core plus per-operation, after the phrasing experiment | V1 | ours | after 3's structure phase |
+| 8 | Adopter merge-strategy page in `docs/`, backlog 1, folded with a release page | V1 | ours | queued |
+| 9 | Upgrade guide for adopters, once 3 has done a real upgrade | V1 | ours | after 3 |
+| 10 | Table on `main` rendered from published state | later | ours | queued |
+| 11 | Git-native review by mail, backlog 10b | later | ours | design only |
+| 12 | Host-capability token for agent review, backlog 10a product half | V1 | host-capabilities owner, tbd by PM | sent as input |
+| 13 | Adoption: six workstreams publish once, retire outboxes | now | each workstream | notice sent 2026-09-21 |
+| 14 | Operator guide aligned with the release rule | before the cut | `project-management` | in its mailbox |
+| 15 | Bug triage: severities and targets | before the cut | `maintenance` | its next task |
+| 16 | First-session guide refreshed to the release | after the cut | `user-docs` | in its mailbox |
+| 17 | Requirement-priority mapping review | any time | owner | open thread |
+| 18 | Branch protection on `coordination`, no force-push | any time | owner | unknown |
+| 19 | Two retained successor containers on the owner's host | any time | `project-management` | its backlog |
+| 20 | Packaged-versus-root definition drift | V1 | ours, via 3 | listed by 3 |
+
 ## Backlog
 
 **1. Bring merge strategy and commit identity into end-user documentation.**
@@ -195,8 +227,8 @@ Documentation Protocol* and *Draft User Documentation* in `WORKFLOW.md`.
 This is actionable now and depends on nothing external, which is why this
 workstream is paused rather than blocked.
 
-**2. Soft claims on workstreams, so pairs stop colliding without locks.**
-Priority: `wanted`. Added 2026-09-19 by the product owner, from a collision
+**2. ~~Soft claims on workstreams, so pairs stop colliding without locks.~~**
+Built 2026-09-21 as item 5. Was priority `wanted`. Added 2026-09-19 by the product owner, from a collision
 that day: the owner sent one agent in one checkout to work on
 `project-management` and realized that nothing told another agent in another
 checkout, or another human in a multi-human project, that the workstream was
