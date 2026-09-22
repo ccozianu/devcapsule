@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-22; release policy integrated in PR #124; 0.2.14 readiness assessed; maintenance selected as driver; scope/triage and cut instruction pending
+State: paused 2026-09-22 at owner direction; maintenance takes over the approved 0.2.14 release cut
 
 Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@031c167690c0
 
@@ -87,34 +87,35 @@ The marker and bug await owner PR integration.
 
 ## Planned Next Step
 
-Work from the [0.2.14 release overview](../../releases/v0.2.14/README.md) and
-[bug triage table](../../releases/v0.2.14/bugs.md), created at the owner's request
-so the release has a maintained document workspace rather than repeated chat
-inventories. The overview holds scope, cut, candidate and acceptance progress;
-the table holds per-release dispositions and links to authoritative bug records.
-Maintenance is the selected driver and will maintain them during the release.
-The existing sibling JSON remains the machine-checked final acceptance record.
+The owner approved cutting 0.2.14 under maintenance and ruled that none of the
+current bugs stops the cut; fix or defer them during stabilization. PR #131
+integrated the working release documents and test quarantine at `2137108`;
+main advanced only its coverage badge afterward to `c8ae736`. All prepared
+release content is integrated. The integrated preparation merge `2137108`
+is the selected baseline. This checkout now pauses project-management and
+moves to maintenance to cut and operate the release.
 
-Next: settle the undecided bug dispositions and release scope with the owner,
-then proceed to the approved cut through maintenance. This checkout remains
-project-management; creating the working directory does not select a release
-branch or change bug targets. No cut or candidate has been created here.
-The claim-test quarantine and these working documents await PR integration.
-The generic-definition correction is with workflow-improvements; the integrated
-owner exception already permits reasoned alternatives to a release merge.
+Work from the [release overview](../../releases/v0.2.14/README.md) and
+[bug triage table](../../releases/v0.2.14/bugs.md). Maintenance maintains these
+while releasing. The existing JSON remains the final acceptance record.
+No individual bug is closed or broadly deferred by the permission to cut.
 
-The remaining 20 intake items, V1 functionality/WOW discussion, operational
-objectives and resource ownership remain queued. Legacy branch migration is a
-pre-RC0 checklist item in the overview. Run-image and attribution are integrated.
+On a later explicit return to project-management, resume the remaining 20
+intake decisions and cross-workstream coordination. Legacy branch migration
+before RC0 remains project-management's coordination responsibility. The V1
+functionality/WOW discussion, operational objectives and resource ownership
+remain queued. No transcript/session record was requested.
 
 ## Validation And External State
 
 Release-workspace setup changes documentation only; relative links, all 19 bug
 rows against committed metadata, and whitespace were checked. Reuse the full
 build result recorded above for the unchanged runtime/test tree. A pre-existing
-working-tree edit changes the Codium sudo bug's opening delimiter from `---`
-to `--`; it was left untouched and excluded from this delivery. The inventory
-uses the committed record rather than silently dropping that malformed file.
+working-tree edit changed the Codium sudo bug's opening delimiter from `---`
+to `--`. Before switching workstreams, preserved its exact diff in
+`.git/codex-preserved-codium-sudo-edit.patch` and restored the committed file
+for a clean switch. The edit can be recovered with `git apply` of that patch;
+it has not been incorporated into release source.
 
 
 The required `.venv/bin/python -m nox -s build` passed on the synchronized
@@ -134,9 +135,8 @@ submodules were changed.
 
 ## Open Threads
 
-- Awaiting the owner: 0.2.14 scope and bug dispositions,
-  and eventual release-cut instruction. Existing per-candidate main disposition
-  timing remains operative unless the owner changes it.
+- Handed to maintenance: approved 0.2.14 cut, progressive bug triage and
+  candidate acceptance. No current bug blocks starting stabilization.
 - Awaiting workflow-improvements: review and repair the quarantined claim test
   under its temporal contract; replace the generic merge-only prohibition
   with the evidenced outcome rule and clarify selective-delivery routing.
