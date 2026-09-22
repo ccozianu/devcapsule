@@ -51,6 +51,17 @@ runtime code changed during these record updates.
 
 ## Planned Next Step
 
+The owner requested and received a permanent
+[V1-blocking legacy capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+It preserves the full inventory, existing project-run equivalents and the
+undecided image-oriented/non-DevCapsule-directory alternative. Project-management
+is to register the owner's V1 gate and sequence future-release decisions and
+implementation; this is not a new 0.2.14 implementation commitment.
+Delivered the complete work item by coordination mail
+`2026-09-22-maintenance-v1-legacy-launch-capabilities.md` at `5df12452fba6`;
+project-management's acknowledgement/ledger update remains pending. Links,
+all 13 inventory rows and the permanent documentation index were checked.
+
 The two owner-approved configuration closures are applied. Discuss the legacy
 `pycharm run` retirement the owner raised: assessment favors removing that
 public bypass while retaining the shared launcher used by `project run`, with
@@ -109,6 +120,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Legacy launch capabilities now have an owner-directed V1 gate: decide what
+  is already covered, migrate selected capabilities, design an image-oriented
+  mode only if justified, or explicitly drop them. The work order preserves
+  the findings; project-management owns scheduling and ledger registration.
 - Owner review of the 14 remaining bug dispositions remains; the full rationale
   and grouped acceptance observations are in the release bug table. Resolve
   legacy host-X11 scope before blanket closure of the display exposure record;
@@ -135,6 +150,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Workstream Document Index
 
+- [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
 - [Release bug triage](../../releases/v0.2.14/bugs.md): maintained dispositions and evidence.
 
