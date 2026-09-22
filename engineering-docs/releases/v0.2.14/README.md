@@ -62,6 +62,34 @@ The subsequent checkpoint records these results only; runtime/test inputs are
 unchanged. Next: owner integrates the initial release preparation PR, then
 verify main's disposition and complete pre-RC0 coordination before tagging.
 
+## Local Builds Before RC0
+
+Built from release tip `07fd1143fcaf5a2195128a3b2854495b91ad4613` on 2026-09-22:
+
+| Artifact | Local location / identity | Verification |
+|---|---|---|
+| PEX | `devcapsule-src/dist/devcapsule.pex` | Version 0.2.14, exact source revision, nine packaged checks passed. |
+| Docker base | `devcapsule-base:0.2.14-local-07fd114` | Recipe ubuntu-24.04@9; OCI source revision matches the PEX. |
+
+PEX SHA-256: `61d2d2e8645373d55fcc68edf2988fe421f5cbc73b13d8f6556f52a4af4336c3`.
+Image ID: `sha256:85e679728e0c0790ac1631aa8e20cdae58a1de3bc8bd2a69d13b4717974ddab8`.
+Machine-readable local evidence: `devcapsule-src/dist/release-0.2.14-local-builds.json`.
+The first build's default Docker network could not resolve Ubuntu mirrors;
+that owned build was stopped and the documented `--network host` retry succeeded.
+This selects build-time networking, not project runtime networking.
+
+The owner requested PR creation, tagging and local builds. Interpreted the
+ambiguous local build request as PEX plus Docker base while asking whether a
+project environment image was also intended; that clarification is pending.
+These are local builds, not tagged candidate artifacts. No project environment
+image or runtime acceptance is claimed.
+
+Prepared initial PR title/body locally in `/tmp/release-0.2.14-pr-body.md`.
+Agent PR creation needs the requested one-time exception to the owner-UI rule;
+no answer has arrived. Under the existing arrangement the owner creates/merges
+it. RC0 tagging waits for the main disposition and pre-RC0 coordination already
+listed above. No candidate tag has been created or pushed.
+
 ## Candidates And Completion
 
 No candidate has been published for this release. Append each candidate's tag,

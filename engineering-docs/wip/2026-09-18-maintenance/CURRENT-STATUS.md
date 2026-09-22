@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; owner-approved cut created; initial build passed; awaiting owner preparation PR integration
+State: active; releasing 0.2.14; owner-approved cut created; local PEX and Docker base built; initial PR creation/integration and RC0 pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
@@ -51,6 +51,21 @@ live/RC acceptance, rather than implementation.
 
 ## Planned Next Step
 
+The owner requested initial PR creation, tagging and local builds. Built the
+current tip's exact-source PEX and Docker base; identities/checksums/evidence
+are in the release overview. Nine packaged checks passed. Default build-network
+DNS failed, so stopped that owned build and used the documented host-network
+build option successfully. No runtime containers were launched for acceptance.
+The local build request is treated as PEX plus base pending the owner's answer
+about whether a project environment image is intended too.
+
+PR text is prepared in `/tmp/release-0.2.14-pr-body.md`. Asked for the one-time
+exception needed to create the PR through tools under WORKFLOW-LOCAL.md's
+explicit owner-UI arrangement; no answer yet. No GitHub credential/connector
+probe was made. If the arrangement stays, owner creates and merges the PR.
+No RC tag is created while the release preparation remains absent from main.
+
+
 The release-source build passed. Deliver the initial preparation PR for the
 owner's GitHub UI merge, then fetch and verify main. Before RC0, verify
 main contains the applicable release delta and reconcile the legacy branch-name
@@ -81,7 +96,8 @@ changed. No transcript/session record was requested.
 
 ## Open Threads
 
-- Owner preparation PR integration; then RC0 and downloaded-artifact acceptance.
+- Owner answer on PR creation exception and intended local image targets;
+  preparation PR integration, then RC0 and downloaded-artifact acceptance.
 - Resolve or explicitly defer bugs as work proceeds; none of the current list
   blocks the cut under the owner's ruling. Their individual records remain open.
 - Project-management retains legacy branch migration coordination before RC0.
