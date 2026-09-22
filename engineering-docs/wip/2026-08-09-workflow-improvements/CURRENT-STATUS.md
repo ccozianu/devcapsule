@@ -60,7 +60,18 @@ the outbox's history are in the
 
 ## Last Task And Status
 
-Last task: `brief` and claims, backlog items 4 and 5, plus when each
+Last task: the patch-handoff rule, from `project-management`'s 2026-09-22
+item relaying the owner's proposal. A bounded change found to belong to
+another workstream travels to it as a diff in an ordinary intake item, with
+base revision, paths, new files, reason, and validation status; the sender
+verifies delivery, reverts only what the patch represents, and records the
+handoff; the recipient owns review, application, and integration; a patch is
+a proposal, not acceptance. Written under *Publishing Before Integration* in
+both definition copies with short forms in both agent files, decided in one
+commit, and **held on this branch unmerged at the owner's direction so the
+0.2.14 scope stays as cut**.
+
+Before that: `brief` and claims, backlog items 4 and 5, plus when each
 workstream last published. `workflow claim "<slice>"` writes who, branch,
 slice, and a twelve-hour expiry to `state/<name>/claim`; `status` shows live
 and expired claims and the publish age; `claim --release`, pausing, and
@@ -372,6 +383,9 @@ resume changed every question. Short by design.
 
 ### Weighed And Unresolved
 
+- **Do not merge this branch before the 0.2.14 cut.** Owner's direction of
+  2026-09-22: the release's scope is not enlarged from here. Everything on
+  the branch from that date waits for the cut.
 - **Whether a releasing workstream needs its own state.** Decided no for now;
   see *Fifteenth Task*. Reopen if a resume during a release goes wrong for
   lack of it.
