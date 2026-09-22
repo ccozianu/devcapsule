@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-22; owner release-fix propagation rule recorded; release runbook aligned; awaiting owner PR integration
+State: active 2026-09-22; release policy integrated in PR #124; 0.2.14 readiness assessed; maintenance selected as driver; scope/triage and cut instruction pending
 
 Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@031c167690c0
 
@@ -66,15 +66,60 @@ Generic-rule revision was delivered to workflow-improvements as
 `5d47a901d22d`; that includes clarifying routing for selective mainline delivery.
 No other workstream's records or generic workflow source were edited.
 
+## Claim Test Quarantine (2026-09-22)
+
+The owner reported inconsistent CI results at one revision for the claim
+lifecycle test. A disposable-local-remote probe confirmed the assertion depends
+on two real-clock calls remaining in the same second. On explicit owner
+instruction, this release-readiness slice marks the existing test non-strict
+xfail without changing its assertions or runtime behavior. The owner rejected
+a quick fix and requested review of the testing approach. The confirmed minor
+bug is `engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md`,
+owned by workflow-improvements, with no release target yet. Its scope is the
+claim/renewal/expiry contract and reliable tests; the combined test's assertion
+coverage is temporarily quarantined. This adds one bug to the earlier inventory
+(19 nonterminal records now). The full build passed: 1,044 tests passed,
+18 deselected, one existing xfail and this test XPASS; mypy and nine packaged
+checks passed. The owner-requested marker is the only test/source change;
+no quick repair was made. Bug/design handoff delivered by coordination mail
+`2026-09-22-project-management-claim-test-design.md` at `f263535437cb`.
+The marker and bug await owner PR integration.
+
 ## Planned Next Step
 
-Integrate the prepared project-management documentation through the owner's
-GitHub UI PR. Then finish 0.2.14 readiness: confirm the driving workstream and
-scope, reconcile release-blocking bug triage with its owner, and establish
-validation/acceptance for the chosen cut. Maintenance is the proposed driver;
+PR #124 is verified on fetched main at `388ee50`; this branch fast-forwarded
+to it. The merged tree is identical to the previously validated `f87c110` tree,
+so the full gate result remains applicable. No new mail or PM-owned open bugs
+were found. No `release-0.2.14` branch or `v0.2.14*` tag exists on the remote.
+
+Finish 0.2.14 readiness: record the release scope, reconcile release-blocking bug triage with its owner, and establish
+validation/acceptance for the chosen cut. The owner selected maintenance as the 0.2.14 driver on 2026-09-22;
 no release branch or tag has been created and the cut remains unselected.
 The generic-definition correction is with workflow-improvements; the owner's
 local exception makes the new propagation methods usable in this project now.
+
+The owner requested the open-bug inventory before proceeding. Maintenance
+was assigned the release-driving task by coordination mail
+`2026-09-22-project-management-drive-0-2-14-release.md`. This checkout remains
+in project-management for the requested inventory; assigning a driver did not
+create the release branch or change individual bug targets/severities.
+
+The bounded readiness review found 18 nonterminal bug records: eight fixed,
+six confirmed and four reported; 16 remain untriaged. Counts are not blockers.
+Maintenance's saved triage already proposes closing the integrated configuration
+fixes on existing owner/graphical acceptance. Its older run-image networking
+recommendation is superseded; the separate legacy `pycharm run` host-network
+default remains confirmed and needs an explicit 0.2.14 disposition. Candidate
+acceptance should exercise predecessor configuration recovery, actual launch,
+`project run --print-command`, and nested-directory coordination preservation.
+
+Before RC0, reconcile the remaining old branch associations under the existing
+migration deadline. Some renamed remote refs already exist, so inspect each
+owner's state before renaming anything; this review changed no branch names.
+This is a pre-candidate requirement, not a reason to delay the stabilization
+branch. Routine version bump, build and candidate acceptance happen in the
+release process. The generic workflow correction and unrelated V1 backlog need
+not delay the cut because the local owner exception is already integrated.
 
 The saved V1 functionality/WOW discussion, operational objectives, resource
 ownership, and workflow migration remain queued. The run-image and authorship
@@ -99,10 +144,11 @@ submodules were changed.
 
 ## Open Threads
 
-- Awaiting the owner: review/integration of this branch, 0.2.14 driver and scope,
+- Awaiting the owner: 0.2.14 scope and bug dispositions,
   and eventual release-cut instruction. Existing per-candidate main disposition
   timing remains operative unless the owner changes it.
-- Awaiting workflow-improvements: replace the generic merge-only prohibition
+- Awaiting workflow-improvements: review and repair the quarantined claim test
+  under its temporal contract; replace the generic merge-only prohibition
   with the evidenced outcome rule and clarify selective-delivery routing.
 - Preserved: 20 undecided intake items; prior blog decisions and review; V1 scope
   proposals; component-upgrade operations; resource ownership and cleanup decisions.

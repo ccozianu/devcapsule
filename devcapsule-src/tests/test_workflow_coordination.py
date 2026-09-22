@@ -319,6 +319,11 @@ def test_send_all_fans_out_to_every_published_workstream(repos) -> None:
     assert tip == git(origin, "rev-parse", "coordination").strip()
 
 
+@pytest.mark.xfail(
+    reason="Clock-dependent claim assertion; see 2026-09-22-workflow-claim-test-flakiness.md",
+    strict=False,
+    raises=AssertionError,
+)
 def test_claim_is_shown_live_expires_and_releases(repos) -> None:
     from datetime import datetime, timedelta, timezone
 

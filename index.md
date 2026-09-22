@@ -200,6 +200,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Claim lifecycle test depends on wall-clock timing](engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md)
 - [Nested-directory workflow commands lose coordination files](engineering-docs/bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md)
 - [Codex commit authorship and model attribution](engineering-docs/bugs/devcapsule/2026-09-22-codex-commit-attribution.md)
 
