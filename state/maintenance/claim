@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: release-0.2.14
+slice: Retire legacy PyCharm run and its networking defect; preserve configured launch
+since: 2026-09-22T22:42:11+00:00
+expires: 2026-09-23T10:42:11+00:00
