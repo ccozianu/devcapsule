@@ -1,100 +1,107 @@
-# Retire run-image and expose an editable normal launch
+# Retire run-image and print the normal Docker launch
 
-Status: owner decided to remove `project run-image`; replacement lifetime and
-implementation routing remain to be settled. This is a design input, not shipped
-behavior or a command already available to users.
+Status: owner-approved direction, simplified on 2026-09-22. Assigned to
+maintenance for implementation. No production code has changed in this workstream.
 
-## Owner Direction
+## Decision
 
-The separate arbitrary-image command does not earn its conceptual and maintenance
-cost. Remove it while preserving debugger convenience: generate the Docker run
-command equivalent to an ordinary `devcapsule project run`, open it in `$EDITOR`,
-and let the developer save or explicitly execute it. Consider a shared switch
-only if doing so does not introduce surprising effects in other commands.
+Remove `devcapsule project run-image`. Preserve debugger convenience through a
+print-only option on ordinary `project run`: render the actual Docker invocation
+on stdout, with explanatory shell comments, then return without launching the
+project container. The user owns redirection, editing and manual execution.
 
-## Implementation Evidence
+The owner explicitly chose this over editor integration and saved-script replay
+support. This is diagnostic output. Generated runtime files may already have been
+removed when the developer runs it manually; identify those dependencies rather
+than retaining files, supervising helpers or promising a standalone replay script.
+Do not add a new resource bundle, editor protocol or debugging-session lifecycle.
+The earlier editor/lifetime alternatives are superseded.
 
-At main `20336d8`, `commands/project.py:ProjectRunCommand.run` admits project
-configuration, applies run-once choices, offers upgrades, materializes the image,
-and passes a complete `PycharmRunOptions` to the launcher. After a zero return it
-records configuration and version-set success. Returning the editor's exit code
-through that existing success path would incorrectly certify an unrun environment.
+## CLI And Output Contract
 
-`launch/pycharm/_launcher.py:run_pycharm` owns a host-browser broker context,
-creates runtime files, builds Docker arguments, translates bind paths for an
-external daemon, starts display-readiness observation, and finally invokes Docker.
-Its `finally` removes generated files. The command references generated identity,
-runtime-plan, launch-context, display-token and optional sudo/Xauthority/token
-files. The host-browser socket can require a live broker. Arguments alone do not
-represent the lifetime of a runnable launch.
+Implementation spelling: `devcapsule project run --print-command`.
 
-`commands/framework.py` owns argument parsing and command dispatch. It has no
-universal external-command plan or preparation/cleanup contract. Intercepting all
-subprocess calls would also intercept builds, inspections and the helper Docker
-invocation that prepares sudo policy ownership. It is the wrong abstraction.
+- Use the same admitted project configuration, run-once options, image selection,
+  Docker argument builder and external-daemon path translation as normal launch.
+  Do not introduce a second configuration model or intercept arbitrary subprocesses.
+- Print only shell-comment lines and the quoted command to stdout, suitable for
+  redirection or piping to an editor. Preparation progress, warnings and errors
+  go to stderr, including output from child processes. Prompts must not corrupt
+  the generated text or consume a downstream editor's input.
+- Describe actual arguments, including flags the ordinary launcher composes.
+  Use standard shell quoting for every argument; preserve spaces, quotes, dollar
+  signs, newlines and other metacharacters as data.
+- Put comments on separate lines before the continued command. A `#` comment
+  inserted between backslash-continued argument lines can terminate or corrupt
+  the command. Prefer plain valid shell syntax over clever inline-comment tricks.
+- Identify temporary identity/runtime-plan/launch-context files, display token or
+  Xauthority files, optional sudo/token files, live browser-bridge sockets and
+  ephemeral port choices when present. Distinguish persistent project/state
+  mounts from resources DevCapsule cleans up. Explain environment-variable
+  dependencies and host path translation where relevant.
+- Never dump the process environment or turn secret bindings into literal secret
+  values. Preserve Docker `--env NAME` references and explain that manual execution
+  needs those variables. Comments must also avoid credential values.
+- Generating the command is not a successful session. Do not record known-good
+  configuration or version-set success, start the project container, or start a
+  display-readiness watcher waiting for a container that was never launched.
+  Keep normal cleanup; printed resource paths are not leases on those resources.
+- Print the currently selected software. Do not offer/select an upgrade or perform
+  automatic update checks merely to emit diagnostic output. Normal explicit
+  configuration admission and acquisition authorization remain in force.
+- Normal preparation can require image acquisition/materialization and temporary
+  runtime-file setup, including existing helper operations. Document this clearly:
+  it prints the final launch instead of executing it; it is not a side-effect-free
+  dry run of all preparation. Do not invent mount paths or claim preparation took
+  place if it failed. Fail with diagnostics rather than emit a partial usable-looking
+  command when preparation fails.
 
-Current scripts and Actions contain no direct `run-image` invocation. Its direct
-CLI test covers the historical PyCharm state-adoption scenario; documentation
-still advertises it. This does not prove that no external adopter uses it.
+An optional reusable rendering helper is appropriate. A universal command-tree
+switch is unnecessary: the current framework has no shared external-command or
+resource-lifetime contract. Start with the one command whose behavior is defined.
 
-## Proposed Bounded Shape
+## Why This Boundary Fits The Code
 
-An explicit option on `project run` (working spelling: `--edit-run`) reaches the
-same final Docker argument builder as normal launch. Reuse a small editor/script
-helper if useful; commands must opt into a defined launch lifecycle rather than
-acquire a universal subprocess-interception mode. Do not create a second runtime
-configuration model to replace the removed one.
+At main `20336d8`, `commands/project.py:ProjectRunCommand.run` admits configuration,
+materializes the selected image, and calls the shared launcher. It then records
+successful configuration and version-set use for a zero return. A printed command
+must take a distinct outcome/path so that a successful print is not mistaken for
+successful use.
 
-Separate preparing, editing and executing in the result contract. Opening or
-closing an editor must never launch the capsule implicitly or record known-good
-use. The developer explicitly executes the displayed command; edits are an expert
-experiment, not validation of the original version set. The ordinary launch path
-retains its existing execution and success-recording behavior.
+`launch/pycharm/_launcher.py:run_pycharm` owns the host-browser bridge, prepares
+runtime files, calls `build_docker_args`, translates bind paths and finally invokes
+Docker. Cleanup removes generated files. Rendering belongs at the final invocation
+boundary, using those same arguments and reporting their dependencies honestly.
 
-Preparation may require normal authorized image acquisition/materialization and
-runtime-file preparation. State these effects accurately; do not market this as
-a pure dry run. Editor validation should precede expensive preparation. Decide
-whether update prompting belongs in this debugging mode before implementation.
+`commands/framework.py` owns parsing and dispatch. A global subprocess hook would
+also intercept builds, inspections and the Docker helper that prepares sudo policy
+ownership. That broad behavior is outside the chosen task.
 
-Render from the actual argument vector with shell-safe quoting, preserving spaces,
-quotes and shell metacharacters. Invoke the configured editor as an argument
-vector, with documented support for arguments and a waiting editor invocation;
-do not evaluate `$EDITOR` through a shell. Preserve required process environment
-semantics without dumping the whole environment or embedding secret values.
-Secret environment bindings currently use Docker `--env NAME` references.
+Current scripts and Actions have no direct `run-image` invocation. Its direct CLI
+test preserves the historical PyCharm state-adoption scenario and documentation
+still advertises it; this is not proof that no external adopter uses it.
 
-## Lifetime Decision Awaiting The Owner
+## Removal And Verification
 
-Two materially different deliverables:
+Remove public command registration/help, obsolete usage documentation and dedicated
+legacy tests. Update current design guidance to point debugger users to the print
+option. Retain historical evidence as history. Check the remaining callers of the
+shared host-network default before retiring the networking defect; command removal
+alone cannot establish that the whole defect is resolved.
 
-- **Session-scoped editing.** DevCapsule keeps generated files and helpers alive
-  while the editor waits and the user executes synchronously from it. Saving is
-  allowed, but the saved command is an inspection artifact, not a promise of later
-  replay. Editor return, detached editor processes and background containers need
-  an explicit lifetime contract; do not clean up underneath a claimed live session.
-- **Later replay.** The saved script must retain or regenerate its supporting
-  files and restore any required helper services. It needs a named ownership and
-  cleanup model, fresh/expired credential handling and clear same-host assumptions.
-  Keeping old temporary files alone does not satisfy this contract. This is larger
-  than a command-printing switch; no mechanism has been selected yet.
+Verify the rendered command round-trips to the ordinary launch argv, stdout stays
+valid shell text, comments accurately identify transient dependencies, and shell
+syntax handles hostile-looking paths/values without evaluating them. Prove that
+print mode neither launches nor certifies a project session and ordinary launch
+success/failure behavior remains unchanged. Cover representative PyCharm and
+VSCodium launches, contained display/host X11, secret environment bindings and
+external-daemon path translation at controlled boundaries. Run the required build
+gate; do not launch a new real environment merely to test text generation.
 
-The owner's answer is required before choosing one. Do not quietly narrow a
-promise of a saved runnable script to a session-only command.
+## Ownership And Next Step
 
-## Verification And Routing
-
-Meaningful checks should prove the generated argv matches normal launch under
-controlled inputs; hostile path/value quoting round-trips; opening/cancelling or
-failing the editor never launches or certifies a session; ordinary success and
-failure recording remains correct; and runtime files/helpers live for the promised
-execution period and are cleaned according to their owner. Later replay, if
-selected, requires exercising the saved script after the original process exits.
-
-Removal also drops public registration/help/docs and obsolete dedicated tests.
-Review remaining callers of the shared host-network default before retiring the
-network bug; removing one entry point alone does not fix the shared launcher.
-
-Implementation is proposed for `maintenance`, which owns the run-image networking
-defect. This checkout remains project-management. The explicit workstream-change
-rule requires an owner instruction before switching; no source implementation or
-new cross-workstream assignment has been performed by this design note.
+Maintenance owns the existing run-image network/parity defect and receives this
+bounded replacement task for 0.2.14 preparation. It should implement the owner’s
+simplification without reopening replay/editor scope. Project-management records
+this decision and routes it; source implementation requires the owner to select
+maintenance for this checkout under the explicit workstream-change rule.
