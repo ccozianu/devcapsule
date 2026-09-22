@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC0 public and verified; end-user acceptance and selected bug triage next
+State: active; releasing 0.2.14; RC0 public; legacy PyCharm launch removed; integration and next candidate pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@77b593f70215
 
@@ -23,6 +23,13 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+Owner-authorized retirement of `pycharm run` is implemented on the release
+branch. The old adapter and CLI-only option helpers are gone; old invocations
+fail before launch/state preparation and are absent from help. Shared project
+launch and the image utilities remain. User guidance, diagnostics and packaged
+smokes reflect the retirement. This changes source after RC0 and needs main
+integration and the next immutable candidate.
 
 Published `v0.2.14-rc0` at `d078b879469c1790647e32db75005d0fa4369b27`, already
 integrated through PR #132 at `e50b9f1`. Tag push was verified through remote
@@ -44,12 +51,18 @@ the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
 [working bug table](../../releases/v0.2.14/bugs.md) retains all 19 rows, now
-15 open, two closed and two retired. On 2026-09-22 the owner accepted closure
+14 open, two closed and three retired. On 2026-09-22 the owner accepted closure
 of the upgrade-recovery and configuration-contract bugs; their records now
 link the owner/graphical acceptance and verified PR #117 integration. No
-runtime code changed during these record updates.
+runtime code changed during those earlier record updates. The subsequent
+legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+Deliver the release-branch diff for owner PR integration, then verify main
+contains the retirement before the next candidate. RC0 still contains the old
+command; do not move its tag. Continue the grouped acceptance journeys and
+remaining bug decisions after the updated candidate is available.
 
 The owner requested and received a permanent
 [V1-blocking legacy capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
@@ -62,22 +75,20 @@ Delivered the complete work item by coordination mail
 project-management's acknowledgement/ledger update remains pending. Links,
 all 13 inventory rows and the permanent documentation index were checked.
 
-The two owner-approved configuration closures are applied. Legacy `pycharm run`
-retirement is now the selected resolution, with removal pending. Retain the
-shared launcher used by `project run`, and correct guidance and diagnostics.
-The release row and canonical bug distinguish this decision from completed
-removal; no runtime change was made in this record update. Thirteen rows remain undecided
-in the [release bug table](../../releases/v0.2.14/bugs.md), including eight
-targeted verifications and five deferrals; use its grouped candidate journeys
-as decisions are accepted.
+The two owner-approved configuration closures are applied. The networking bug
+was marked retired before removal as requested, and its command is now removed.
+Thirteen rows remain undecided in the [release bug table](../../releases/v0.2.14/bugs.md),
+including eight targeted verifications and five deferrals. Other records still
+have independent scope: shared image rendering, modern PyCharm behavior,
+project display policy, and resource lifecycle do not disappear with the CLI.
 
 Owner deferred the confirmed multiline execution-rendering bug for 0.2.14
 unless it recurs during the release E2E campaign. Watch for that recurrence
 during acceptance and reconsider the deferral if observed. After this release,
 the accepted follow-up is a clean redesign of component image composition
 around documented, unit-testable contracts; the bug and release table record
-the scope. This records-only slice leaves the release branch unsynchronized
-as required for release refs; no runtime change or new candidate is needed.
+the scope. The release branch remains unsynchronized as required for release refs;
+the command removal, unlike the earlier records-only decisions, needs a new candidate.
 
 Use downloaded RC0 for the release overview's end-user acceptance journeys:
 fresh project, predecessor upgrade/recovery, IDE/agent work and resume,
@@ -90,8 +101,21 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Legacy-command removal: 115 focused checks passed, followed by successful
+`nox -s build`: 1,046 tests, 18 deselected, one existing xfail and one
+quarantined claim XPASS, mypy over 167 source files, source/PEX smokes and
+nine packaged integrations. Log: `/tmp/maintenance-retire-pycharm-run-build.log`.
+Direct built-PEX checks reject bare/help/legacy-option invocations, show only
+retained utilities in PyCharm help, and create no checkout state. Source tests
+also prove no launcher/subprocess call. Validated artifact:
+`devcapsule-src/dist/devcapsule-local.pex`. The gate skipped revision-bearing
+packaging due to checkout edits; no fresh Docker/GUI run was necessary for
+this command removal, and no such acceptance is claimed. Main integration
+and the next candidate are pending. The pre-existing local bug-file edit
+remains unstaged and is excluded from delivery.
+
 Bug-combing review at `8e7cc21`: fetched main remains `e50b9f1`; PR #117 merge
-`d2386bb` is in main and RC0. Runtime/test sources match RC0. A CLI probe with
+`d2386bb` is in main and RC0. At that review runtime/test sources matched RC0. A CLI probe with
 only the launcher substituted confirms legacy `pycharm run` still passes host
 networking without an explicit choice. 243 focused existing checks passed;
 the earlier image review passed 45. No Docker or provider acceptance was run
@@ -110,8 +134,8 @@ retains tag devcapsule-base:0.2.14-rc0-local and is not published to a registry.
 
 Prior full source gate: 1,044 passed, 18 deselected, one existing xfail and one
 quarantined XPASS, mypy and packaged checks. RC0 has identical runtime/test
-inputs. Current edits are policy and bug/release records only; links, frontmatter,
-row counts and whitespace were verified. The old claim-test xfail remains.
+inputs. That gate describes RC0, not the subsequent removal. The old claim-test
+xfail remains; the retirement has its own validation below.
 
 GitHub PR/workflow UI operations stay with the owner; neither gh nor SSO is
 available here. No credential probes or API operations were attempted. Public
@@ -125,13 +149,13 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   mode only if justified, or explicitly drop them. The work order preserves
   the findings; project-management owns scheduling and ledger registration.
 - Owner review of the 13 remaining bug dispositions remains; the full rationale
-  and grouped acceptance observations are in the release bug table. Resolve
-  legacy host-X11 scope before blanket closure of the display exposure record;
+  and grouped acceptance observations are in the release bug table. Review
+  project-launch old-base/X11 scope before closure of the display exposure record;
   distinguish repaired formation boot behavior from remaining image cleanup.
 - A pre-existing local edit in the legacy-network bug removes one word and
   leaves trailing whitespace. It was preserved verbatim and excluded from
-  the configuration-closure commit; retirement assessment is in the release
-  tracker, with no edit to that dirty bug file.
+  all agent commits. Agent-authored retirement notes in that same file are
+  staged separately from the pre-existing edit.
 - Image composition redesign is deferred beyond 0.2.14 unless the confirmed
   multiline-rendering defect recurs during the release E2E campaign; preserve
   its documented-contract and unit-testing scope when scheduling the work.
