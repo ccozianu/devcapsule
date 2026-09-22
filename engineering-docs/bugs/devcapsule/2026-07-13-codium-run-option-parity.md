@@ -1,17 +1,44 @@
 ---
-status: confirmed
+status: retired
 severity: untriaged
 target: none
 owner: maintenance
+closed: 2026-09-22
 opened: 2026-07-13
 requirements: [R-PYTHON-MVP-003, R-FRAMEWORK-001, R-SCOPE-001, R-DOCKER-001]
 ---
 
 # Bug: Codium Run Lacks Shared Developer Runtime Options
 
+## Retirement: Removed Command And Implementation
+
+Retired during 0.2.14 stabilization on 2026-09-22. This record concerns
+option parity on the former `codium_with_claude run` launcher. The referenced command and its dedicated launcher/assets have been
+removed; the proposed repair to that implementation no longer applies.
+
+Evidence from candidate source `d078b879469c1790647e32db75005d0fa4369b27` and
+both the locally built and downloaded published `v0.2.14-rc0` PEX:
+
+- `codium_with_claude run --help` exits 2 with an unknown-command error.
+- The candidate tree has no `devcapsule/commands/codium_with_claude.py`,
+  `devcapsule/launch/codium_with_claude/`, or
+  `devcapsule/assets/codium_with_claude/` beneath `devcapsule-src`.
+- CLI dispatch loads top-level command modules directly; it cannot route this
+  old command to a hidden compatibility implementation.
+
+This implements the saved maintenance triage's proposed retirement under the
+owner's instruction to verify obsolete bugs during release stabilization. It
+is not a claim that every capability of today's VSCodium surface has received
+fresh end-user acceptance. Specific current-surface gaps or privilege failures
+need their own evidence and records. No production code changed and no old
+container image was modified or removed. Release E2E acceptance remains open.
+
+The remainder is the historical report, preserved for provenance; its old
+current-state and close-criteria statements do not describe the released CLI.
+
 Date opened: 2026-07-13
 
-Status note (pre-vocabulary, kept as evidence): accepted parity gap; first shared state-layout slice implemented, broader parity still pending
+Historical status note (superseded by retirement): accepted parity gap; first shared state-layout slice implemented, broader parity still pending
 
 Requirements: R-PYTHON-MVP-003, R-FRAMEWORK-001, R-SCOPE-001, R-DOCKER-001
 

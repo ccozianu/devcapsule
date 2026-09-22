@@ -168,5 +168,9 @@ add attribution. No change to SSH credentials or PR merge permissions is needed.
   2026-09-18 under the adoption exception the definition provides. Both are
   recorded in root `CURRENT-STATUS.md`. Neither ends.
 - **Branch names outside the `ws-` vocabulary.** Open workstreams registered
-  before 2026-09-18 keep their old branch names until they rename them, which
-  each does before the next release candidate is tagged. Ends then.
+  before 2026-09-18 keep their old branch names until they rename them. Owner
+  direction, 2026-09-22, defers the former pre-candidate deadline through the
+  0.2.14 release: publish 0.2.14, then complete the migration before beginning
+  substantive work on the next release. RC0 and later 0.2.14 candidates are not
+  held for this migration. Each workstream still owns its rename. Ends when
+  those renames are complete.

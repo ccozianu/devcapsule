@@ -3,12 +3,16 @@
 [Release overview](README.md)
 
 Reconciled: 2026-09-22 against integrated bug records at cut `2137108`.
-19 open records: 11 reported/confirmed, eight fixed but not closed.
+19 tracked records: 17 open (nine reported/confirmed, eight fixed but not closed)
+and two retired after verifying their command/implementation was removed.
 All have workstream owners. All currently have `target: none`; 16 have
-`severity: untriaged`, three have `severity: minor`.
+`severity: untriaged`, three have `severity: minor`; among the 17 open records,
+14 are untriaged and three are minor.
 
 Owner decision, 2026-09-22: none of this current list blocks starting the
-release. Resolve or defer bugs during stabilization. Rows remain undecided
+release. The owner further confirmed that the bug list itself does not prevent
+publication: fix or verify a selected few while validating major end-user E2E
+journeys. Resolve or defer bugs during stabilization. Rows remain undecided
 until their individual disposition is recorded; this is not blanket closure
 or a decision that every bug must be fixed in 0.2.14.
 
@@ -31,8 +35,8 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 
 | Bug | Owner | Recorded status | Recorded severity | 0.2.14 disposition | Next action / evidence |
 |---|---|---|---|---|---|
-| [Codium runtime-option parity](../../bugs/devcapsule/2026-07-13-codium-run-option-parity.md) | maintenance | confirmed | untriaged | Undecided | Review proposed retirement: offending path removed. |
-| [Codium ambient passwordless sudo](../../bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md) | maintenance | confirmed | untriaged | Undecided | Review proposed retirement: offending launcher removed. |
+| [Codium runtime-option parity](../../bugs/devcapsule/2026-07-13-codium-run-option-parity.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
+| [Codium ambient passwordless sudo](../../bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Multiline Dockerfile quoting](../../bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md) | maintenance | reported | untriaged | Undecided | Narrow to any remaining generic multiline-rendering failure. |
 | [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | confirmed | untriaged | Undecided | Decide whether legacy `pycharm run` needs a fix for 0.2.14; run-image replacement is complete. |
 | [Codex ACP missing CODEX_HOME](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md) | maintenance | fixed | untriaged | Undecided | Reconcile fresh-state ACP exchange and persistence acceptance. |

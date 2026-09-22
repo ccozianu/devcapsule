@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; owner-approved cut created; PR #132 integrated; local artifacts refreshed; RC0 awaits branch-migration decision
+State: active; releasing 0.2.14; RC0 public and verified; end-user acceptance and selected bug triage next
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
@@ -24,90 +24,74 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-The owner directed starting the release under maintenance on 2026-09-22:
-fix or defer bugs as stabilization proceeds; none of the currently listed bugs
-is a showstopper for starting. This does not close bugs or silently assign
-individual release targets. Work is tracked in the
-[release overview](../../releases/v0.2.14/README.md) and
-[bug triage table](../../releases/v0.2.14/bugs.md), not repeated chat inventories.
+Published `v0.2.14-rc0` at `d078b879469c1790647e32db75005d0fa4369b27`, already
+integrated through PR #132 at `e50b9f1`. Tag push was verified through remote
+refs; public PEX, checksum and manifest were downloaded without credentials.
+Checksum, version 0.2.14rc0, tag mnemonic and exact source identity agree.
+The downloaded executable passed clean-machine validation with no Python or
+network. Full evidence, artifact locations and the acceptance checklist are in
+[release work](../../releases/v0.2.14/README.md).
 
-Cut `release-0.2.14` at preparation merge
-`21371084f7137624aed6c0581b12495a04b04fbb` (PR #131), containing the release
-working documents and claim-test xfail. Fetched main `c8ae736` differs only in
-its later generated coverage badge. All maintenance implementation was already
-integrated. Its remaining private checkpoint was records only: synchronized
-it with main by rebase, resolved the registry conflict by retaining other
-mainline rows, and carried its own attribution checkpoint/status into the
-release branch. No source patch was omitted or duplicated. The old working
-branch is now closed for modification; release source will not be rebased.
+The owner explicitly deferred legacy branch renames through 0.2.14 publication,
+before substantive work on the next release. WORKFLOW-LOCAL.md records this;
+project-management received `2026-09-22-maintenance-rename-deadline-deferred.md`
+on coordination at `4013fca06a54`, superseding the earlier pre-RC0 deadline.
+The owner says known bugs do not prevent publication on bug grounds; fix or
+verify a selected few and validate major end-user journeys before final acceptance.
 
-The first release commit sets source version 0.2.14 through the existing bump
-command and registers maintenance as the release driver. Took and acknowledged
-both project-management handoffs in the same commit as their deletion. Mailbox
-and intake are empty. Claim-test design repair stays with workflow-improvements;
-its xfail is integrated. The run-image and attribution fixes are integrated.
-The nested-directory coordination repair is integrated and awaits applicable
-live/RC acceptance, rather than implementation.
+Retired the two old codium_with_claude option-parity and ambient-sudo records:
+the exact candidate lacks the old command module, launcher and entrypoint, and
+both local and downloaded RC0 reject the command. This implements the saved
+triage recommendation; it does not claim complete VSCodium acceptance. The
+[working bug table](../../releases/v0.2.14/bugs.md) retains all 19 rows, now
+17 open and two retired. No runtime code changed during this slice.
 
 ## Planned Next Step
 
-PR #132 is verified at `e50b9f1`; main contains release tip
-`d078b879469c1790647e32db75005d0fa4369b27`. The integration gate returns
-`mainline` with no missing commits. This is the planned RC0 source, with
-unchanged code/test/build inputs since the validated first release commit.
-Local PEX and Docker base were refreshed from this exact source; identities,
-checksums and evidence are in the release overview.
-
-The owner clarified that `gh` and SSO credentials are absent. GitHub UI PR
-operations remain with the owner, so the previous permission question is
-resolved without credential probes. Tagging via ordinary Git remains authorized.
-
-One explicit administrative deadline remains: WORKFLOW-LOCAL.md requires old
-workstream names to migrate before the next candidate tag. Current main/live
-state still names legacy branches. Asked to defer that migration and publish
-RC0; no answer yet. Do not infer approval from elapsed time or rename other
-workstreams from maintenance. Project-management owns the reconciliation.
-On approval, tag the planned source d078b87, preserving this later record-only
-checkpoint; use a clean checkout of the candidate source if building tagged
-artifacts. Then validate the published candidate and continue fix/deferral
-work in the bug table. The local build request is treated as PEX plus base;
-a project environment build has not been separately clarified.
+Use downloaded RC0 for the release overview's end-user acceptance journeys:
+fresh project, predecessor upgrade/recovery, IDE/agent work and resume,
+graphical/login behavior, diagnostic command and isolated coordination scenario.
+Pick further bugs from the table, fix, verify obsolete, or explicitly defer.
+Capture the actual platform/surface/agent and user-visible outcome. Neither
+unit coverage nor executable portability alone completes release acceptance.
+New source fixes require the next immutable candidate and a main disposition.
+Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
-The full build passed on clean first release commit
-`36fa74e4934622b3bdb993b3ccbef86729661046`: 1,044 tests passed, 18 deselected,
-one existing xfail and the quarantined claim test XPASS; mypy and nine packaged
-checks passed. Built and smoke-tested local and revision-bearing PEX artifacts.
-The latter reports version 0.2.14 and exact source revision 36fa74e. The next
-checkpoint changes validation records only, with identical runtime/test inputs.
-Relative release-document links, version, baseline parent and routing were checked.
-No candidate tag, release acceptance JSON or final tag has been created.
-GitHub PR operations remain owner-operated through the UI; Git pushes use SSH.
+RC0's integration gate passed by mainline ancestry with zero missing commits.
+Local RC0 PEX and Docker base were built from a disposable exact-tag worktree,
+which was removed after the build; this checkout remains on release-0.2.14.
+Nine packaged assertions/checks passed: eight in the first run, then the
+identity check after using the harness's canonical artifact filename. No code
+was changed to satisfy that filename check. Local and downloaded PEX each
+passed the networkless/no-Python clean-machine check. The locally built base
+retains tag devcapsule-base:0.2.14-rc0-local and is not published to a registry.
 
-Project-management was paused and published before this switch at source
-checkpoint `c5a011d`. Its own row and pause record reach main through its next
-ordinary integration; published state is the live handoff. A pre-existing
-one-character Codium sudo bug edit was preserved as
-`.git/codex-preserved-codium-sudo-edit.patch` before the clean switch; it is not
-part of the release. No containers, host settings or retained evidence were
-changed. No transcript/session record was requested.
+Prior full source gate: 1,044 passed, 18 deselected, one existing xfail and one
+quarantined XPASS, mypy and packaged checks. RC0 has identical runtime/test
+inputs. Current edits are policy and bug/release records only; links, frontmatter,
+row counts and whitespace were verified. The old claim-test xfail remains.
+
+GitHub PR/workflow UI operations stay with the owner; neither gh nor SSO is
+available here. No credential probes or API operations were attempted. Public
+asset downloads verify publication; no credentialed Actions-run inspection is
+claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Owner decision to defer the legacy branch-name deadline or complete that
-  coordination before RC0. Then candidate tagging and artifact acceptance.
-- Local artifact request is satisfied as PEX plus Docker base; clarify only if
-  the owner also wants a project environment image.
-- Resolve or explicitly defer bugs as work proceeds; none of the current list
-  blocks the cut under the owner's ruling. Their individual records remain open.
-- Project-management retains legacy branch migration coordination before RC0.
-- Workflow-improvements owns claim-test design repair and the generic release
+- RC0 is published; end-user acceptance and selected further bug dispositions remain.
+- Project-management coordinates renames after 0.2.14 publication, before
+  substantive next-release work. This no longer holds 0.2.14 candidates.
+- Workflow-improvements owns the claim-test design repair and generic release
   propagation rule revision; the local owner exception already governs here.
-- Preserve the old maintenance triage, configuration contracts and validation
-  limits, retired-outbox follow-up, and historical host/blog acceptance gaps.
-- The preserved local delimiter edit can be restored with `git apply` of the
-  patch above if the owner wants it. It was not corrected or discarded silently.
+- Preserve retired-outbox follow-up, configuration contracts/coverage limits,
+  and historical host/blog acceptance gaps; no unrelated cleanup was done.
+- The pre-existing Codium delimiter edit remains saved at
+  `.git/codex-preserved-codium-sudo-edit.patch`; its intent was never inferred.
+  The canonical bug record now records retirement, so review before applying it.
+- No transcript/session record was requested; canonical decisions live in the
+  release documents and bug records.
 
 ## Workstream Document Index
 
