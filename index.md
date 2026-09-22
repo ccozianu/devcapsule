@@ -26,6 +26,11 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Work in workstreams with humans and agents](docs/guides/working-in-workstreams.md)
 - [Engineering documentation](engineering-docs/README.md)
 
+## Releases
+
+- [0.2.14 release work and checklist](engineering-docs/releases/v0.2.14/README.md)
+- [0.2.14 bug triage](engineering-docs/releases/v0.2.14/bugs.md)
+
 ## Website
 
 - [Website development and preview](website/README.md)
