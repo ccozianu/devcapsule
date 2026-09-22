@@ -66,7 +66,7 @@ slice. The owner confirmed the expected GitHub display on 2026-09-22.
 Before recording acceptance, merged main `c93476b` without conflicts because
 the generic definition changed. Read the new misplaced-patch handoff rule.
 The attribution commits remain absent from main; PR integration is still pending.
-The required full build passed again after synchronization, including 1,043
+The required full build passed again after synchronization, including 1,042
 tests and nine packaged checks; no further runtime validation is needed for
 this owner-acceptance record. Mailbox and intake remain empty.
 The effective Git author and committer now match the owner; this checkout-local
