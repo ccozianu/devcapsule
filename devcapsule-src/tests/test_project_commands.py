@@ -2024,3 +2024,83 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
     assert rows["host-x11"][2:4] == ["denied", "false"]
     assert rows["host-browser"][2:4] == ["authorized", "true"]
     assert rows["development-sudo"][2:4] == ["available", "true"]
+
+
+@pytest.mark.parametrize('surface,needs', [('pycharm', ['python', 'python-ide']), ('codium', ['node', 'frontend-ide'])])
+@pytest.mark.parametrize('display', ['contained', 'host-x11'])
+def test_print_command_uses_real_launch_builder_without_launch_or_success(
+    tmp_path, monkeypatch, capfd, surface, needs, display,
+):
+    import shlex
+    import subprocess
+    from devcapsule.commands import project as command
+    from devcapsule.launch.pycharm import _launcher as launcher
+    from devcapsule.configuration.execution import ExecutionConfiguration
+
+    project = tmp_path / 'project'
+    project.mkdir()
+    monkeypatch.chdir(project)
+    for key, leaf in [('HOME', 'home'), ('XDG_CONFIG_HOME', 'config'), ('XDG_DATA_HOME', 'data'),
+                      ('XDG_STATE_HOME', 'state'), ('XDG_RUNTIME_DIR', 'runtime')]:
+        monkeypatch.setenv(key, str(tmp_path / leaf))
+    monkeypatch.setenv('DISPLAY', ':fixture')
+    monkeypatch.setenv('PRINT_TEST_SECRET', 'do-not-render-this-value')
+    need_arguments = [arg for need in needs for arg in ('--need', need)]
+    assert cli.main(['project', 'init', *need_arguments, '--creator', 'https://example.test',
+                     '--unverified', '--authorize', 'base-image', 'default']) == 0
+    assert cli.main(['project', 'config', 'authorize', 'host-x11', str(display == 'host-x11').lower()]) == 0
+    assert cli.main(['project', 'config', 'resolve']) == 0
+    selected = ExecutionConfiguration.load(project).project
+    locked = parse_locked_environment(selected.lock)
+    realized = SimpleNamespace(image=SimpleNamespace(labels={'devcapsule.base.display': 'contained'},
+                                 reference='devcapsule-local-' + surface + ':fixture'), created=False, locked=locked)
+    before = {p: p.read_bytes() for p in (selected.checkout_path, selected.resolution_path)}
+    def forbidden(*args, **kwargs):
+        pytest.fail('print mode must not launch, offer updates, watch display, or record successful use')
+    monkeypatch.setattr(command, 'offer_upgrades', forbidden)
+    monkeypatch.setattr(command, 'record_known_good_configuration', forbidden)
+    monkeypatch.setattr(command.version_sets, 'record_success', forbidden)
+    def realize(*args, **kwargs):
+        print('Python preparation progress')
+        os.write(1, b'Child-style preparation progress\n')
+        return realized
+    monkeypatch.setattr(command, 'realize_environment', realize)
+    monkeypatch.setattr(launcher, 'requires_translation', lambda env: False)
+    monkeypatch.setattr(launcher, 'write_xauthority', lambda path, env: None)
+    monkeypatch.setattr(launcher, 'apply_host_git_identity', lambda mode, name, email: (name, email))
+    monkeypatch.setattr(launcher, 'watch_display_ready', forbidden)
+    original_run = launcher.run_pycharm
+    # Supply a secret name at the actual launcher boundary, without changing
+    # selected checkout authorization or the production argument builder.
+    def run(options):
+        options.secret_environment = ('PRINT_TEST_SECRET',)
+        return original_run(options)
+    monkeypatch.setattr(command, 'run_pycharm', run)
+    captured = {}
+    original_build = launcher.build_docker_args
+    def build(config, files, env):
+        args = original_build(config, files, env)
+        captured.update(args=args, image=config.image, files=files)
+        return args
+    monkeypatch.setattr(launcher, 'build_docker_args', build)
+    # A synthetic external-daemon translation proves rendering sees the final
+    # host-side bind paths rather than an earlier intermediate plan.
+    monkeypatch.setattr(launcher, 'translate_for_external_daemon',
+                        lambda args, env: [arg.replace(str(tmp_path), '/daemon/fixture') for arg in args])
+    capfd.readouterr()
+    with patch.object(launcher.subprocess, 'run', side_effect=forbidden):
+        assert cli.main(['project', 'run', '--print-command']) == 0
+    output = capfd.readouterr()
+    assert 'Python preparation progress' in output.err
+    assert 'Child-style preparation progress' in output.err
+    assert 'preparation progress' not in output.out
+    assert 'do-not-render-this-value' not in output.out
+    assert 'Required environment variables' in output.out
+    assert 'Temporary Runtime plan:' in output.out
+    assert ('Temporary Display token:' in output.out) == (display == 'contained')
+    expected = ['docker', 'run', *[a.replace(str(tmp_path), '/daemon/fixture') for a in captured['args']], captured['image']]
+    assert shlex.split(output.out.replace('\\\n', ''), comments=True) == expected
+    subprocess.run(['sh', '-n'], input=output.out, text=True, check=True)
+    assert all(not path.exists() for path in vars(captured['files']).values() if isinstance(path, Path))
+    assert all(p.read_bytes() == content for p, content in before.items())
+    assert not (tmp_path / 'state' / 'devcapsule' / 'config-history').exists()
