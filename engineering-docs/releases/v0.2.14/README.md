@@ -117,9 +117,13 @@ The new `runner.py launch --project PATH` records subsequent sessions and
 explicit observations; `resume` reuses their project and configuration. The
 runner has now launched the website's VSCodium session from inside this capsule:
 Docker bind translation and desktop readiness succeeded on the second attempt,
-after resolving missing local configuration. The session is left running for
-the owner; GUI acceptance, normal exit and reopen remain pending. Run details
-and recovery steps are in the maintenance handoff.
+after resolving missing local configuration. The owner confirmed "This is
+working" for that exact session. The runner subsequently recorded exit 0,
+container removal and no monitor errors. Reopen/state preservation and specific
+edit/debug assertions remain pending. Evidence: local run
+`devcapsule-src/dist/rc0-runs/session-7a4dbc068f58/run.json`, attempt 2 and
+its human startup observation. Run details and recovery steps are in the
+maintenance handoff.
 
 Use the downloaded candidate, and record its checksum, platform, IDE/agent,
 steps, user-visible outcome and evidence. Do not imply untested combinations.
