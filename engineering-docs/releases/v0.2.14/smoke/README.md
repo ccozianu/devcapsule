@@ -44,6 +44,18 @@ python3 engineering-docs/releases/v0.2.14/smoke/runner.py note RUN_DIRECTORY \
   --text "Describe the IDE actions and actual results observed."
 ```
 
+Both `launch` and `resume` accept `--network host` or `--network bridge`:
+
+```bash
+python3 engineering-docs/releases/v0.2.14/smoke/runner.py resume RUN_DIRECTORY --network host
+```
+
+This forwards the supported `project run --authorize network host` override
+for that session only, without changing saved project permissions. Repeat the
+option on each invocation that needs it; omitting it uses the project's saved
+configuration, even if the previous session used an override. Each session
+records the requested override and the observed Docker network mode.
+
 `resume` reuses the executable, project and configuration directories, and
 requires the same home and Docker daemon. It does not restore files: the point
 is to inspect the state the earlier session left. A surviving named container

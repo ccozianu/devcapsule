@@ -27,7 +27,7 @@ class ImmediateObserver:
 
 
 class RunnerTests(unittest.TestCase):
-    def exercise_session(self, directory, *, code=0, final_error=False):
+    def exercise_session(self, directory, *, code=0, final_error=False, network=None):
         record = {"schema": 1, "candidate_sha256": runner.RC0_SHA, "pex": "/test/rc0.pex",
                   "project": "/test/project", "host_home": str(Path.home()), "environment": {},
                   "container_name": "test-owned", "sessions": [], "observations": []}
@@ -39,8 +39,9 @@ class RunnerTests(unittest.TestCase):
              patch.object(runner, "container_id", side_effect=ids), \
              patch.object(runner, "inspect_container", return_value={"running": True, "id": "container-id"}), \
              patch.object(runner.threading, "Thread", ImmediateObserver), \
-             patch.object(runner.subprocess, "Popen", return_value=process):
-            result = runner.session(directory, record)
+             patch.object(runner.subprocess, "Popen", return_value=process) as launch:
+            result = runner.session(directory, record, network=network)
+            self.assertEqual(launch.call_args.args[0], record["sessions"][-1]["command"])
         saved = json.loads((directory / "run.json").read_text())
         return result, saved
 
@@ -50,6 +51,19 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(record["sessions"][0]["status"], "PROCESS_CHECKS_PASSED")
         self.assertEqual(record["observations"], [])
+
+    def test_network_override_uses_run_once_authorization_and_does_not_carry_forward(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for network in ("host", "bridge"):
+                with self.subTest(network=network):
+                    code, record = self.exercise_session(Path(tmp), network=network)
+                    self.assertEqual(code, 0)
+                    attempt = record["sessions"][0]
+                    self.assertEqual(attempt["command"][-3:], ["--authorize", "network", network])
+                    self.assertEqual(attempt["network_override"], network)
+                    self.assertNotIn("network_override", record)
+            _, default = self.exercise_session(Path(tmp))
+            self.assertNotIn("--authorize", default["sessions"][0]["command"])
 
     def test_daemon_failure_is_not_container_absence(self):
         with tempfile.TemporaryDirectory() as tmp:

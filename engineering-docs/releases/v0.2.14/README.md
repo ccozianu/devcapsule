@@ -119,8 +119,9 @@ runner has now launched the website's VSCodium session from inside this capsule:
 Docker bind translation and desktop readiness succeeded on the second attempt,
 after resolving missing local configuration. The owner confirmed "This is
 working" for that exact session. The runner subsequently recorded exit 0,
-container removal and no monitor errors. Reopen/state preservation and specific
-edit/debug assertions remain pending. Evidence: local run
+container removal and no monitor errors. The owner also confirmed the file/IDE
+resume checklist; attempt 3 passed exit and cleanup checks. Agent-session
+continuation and specific edit/debug assertions remain pending. Evidence: local run
 `devcapsule-src/dist/rc0-runs/session-7a4dbc068f58/run.json`, attempt 2 and
 its human startup observation. Run details and recovery steps are in the
 maintenance handoff.

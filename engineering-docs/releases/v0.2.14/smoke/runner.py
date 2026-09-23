@@ -111,7 +111,7 @@ def environment(record: dict) -> dict:
     return env
 
 
-def session(directory: Path, record: dict) -> int:
+def session(directory: Path, record: dict, *, network: str | None = None) -> int:
     pex, project = Path(record["pex"]), Path(record["project"])
     verify_pex(pex)
     if record["host_home"] != str(Path.home()):
@@ -124,7 +124,8 @@ def session(directory: Path, record: dict) -> int:
     if container_id(record["container_name"], env):
         raise ValueError("The previous session's container still exists; resume refused")
     attempt = {"number": len(record["sessions"]) + 1, "started": now(), "status": "RUNNING",
-               "before": project_facts(project), "container": None, "monitor_errors": []}
+               "before": project_facts(project), "container": None, "monitor_errors": [],
+               "network_override": network}
     record["sessions"].append(attempt)
     save(directory, record)
     stop = threading.Event()
@@ -147,6 +148,9 @@ def session(directory: Path, record: dict) -> int:
             stop.wait(2)
 
     command = [str(pex), "project", "--path", str(project), "run", "--name", record["container_name"]]
+    # Use the product's run-once authorization, never rewrite saved host choices.
+    if network is not None:
+        command.extend(["--authorize", "network", network])
     attempt["command"] = command
     print(f"Run record: {directory}\nStarting ordinary project run. Exit the IDE normally when finished.", flush=True)
     print("The desktop URL stays in your terminal; it is not copied into the report.", flush=True)
@@ -206,7 +210,8 @@ def report(directory: Path, record: dict) -> None:
     print(f"\nProject: {record['project']}\nCandidate: v0.2.14-rc0 (checksum verified)")
     for item in record["sessions"]:
         print(f"Session {item['number']}: {item['status']}; exit={item.get('launcher_exit', 'unknown')}; "
-              f"container gone={item.get('container_absent_after_exit', 'unknown')}")
+              f"container gone={item.get('container_absent_after_exit', 'unknown')}; "
+              f"network override={item.get('network_override') or 'saved configuration'}")
     print("Recorded observations:")
     for item in record["observations"]:
         print(f"  {item['story']} / session {item['session']}: {item['outcome']} by {item['actor']} — {item['text']}")
@@ -225,9 +230,14 @@ def main() -> int:
     launch.add_argument("--pex", type=Path, default=DEFAULT_PEX)
     launch.add_argument("--output", type=Path, help="New evidence directory; defaults to dist/rc0-runs")
     launch.add_argument("--state-from", type=Path, help="Use XDG state from a prepared smoke directory")
+    launch.add_argument("--network", choices=("host", "bridge"),
+                        help="Override networking for this session only; default: saved project configuration")
     for action in ("resume", "report", "note"):
         command = commands.add_parser(action)
         command.add_argument("run", type=Path)
+        if action == "resume":
+            command.add_argument("--network", choices=("host", "bridge"),
+                                 help="Override networking for this session only; default: saved project configuration")
         if action == "note":
             command.add_argument("--story", required=True, choices=[f"S{i:02}" for i in range(21)])
             command.add_argument("--session", type=int, required=True)
@@ -265,7 +275,7 @@ def main() -> int:
                   "container_name": "rc0-runner-" + identifier, "sessions": [], "observations": []}
         with locked(directory):
             save(directory, record)
-            return session(directory, record)
+            return session(directory, record, network=args.network)
     directory = args.run.resolve()
     if args.action == "report":
         report(directory, read(directory))
@@ -279,7 +289,7 @@ def existing_action(args, directory: Path) -> int:
     if args.action == "resume":
         if any(item["status"] == "RUNNING" for item in record["sessions"]):
             raise ValueError("A session record is still RUNNING; inspect the interrupted run before resuming")
-        return session(directory, record)
+        return session(directory, record, network=args.network)
     if args.action == "note":
         if any(item["status"] == "RUNNING" for item in record["sessions"]):
             raise ValueError("Record observations after the runner has finished, to avoid concurrent record writes")
