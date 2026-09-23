@@ -9,6 +9,65 @@ The old manual walkthrough is superseded. Routine prompt answers, command
 execution and bookkeeping belong to automation. The owner supplies personal
 login/MFA when required and makes the final release decision.
 
+## Run an existing project
+
+From the repository root, with Python 3.11+ and Docker available:
+
+```bash
+python3 engineering-docs/releases/v0.2.14/smoke/runner.py launch --project website
+```
+
+Replace `website` with the root of any configured project. The default executable
+is `devcapsule-src/dist/rc0-published/devcapsule.pex`; on another host, add
+`--pex /path/to/devcapsule.pex`. Its checksum must match published RC0.
+The project must be reachable by Docker; inside a capsule use its host-backed
+project mount. This command starts the ordinary `project run` directly, using
+your existing configuration. It does not run preview or regenerate configuration
+first. Use `--state-from "$SMOKE_RUN"` only when deliberately testing a prepared
+smoke directory's isolated configuration.
+
+The runner prints its evidence directory before launch. Use the IDE normally
+and close it when finished. It records the candidate checksum, project revision
+and changed paths, configuration-file hashes, actual container/image/mounts,
+launcher exit and container removal. It leaves product prompts and desktop URLs
+in the terminal, without saving a transcript or container environment variables.
+Review observations before sharing them; project paths and free-text notes are
+local evidence, not a sanitized public report.
+
+Use the printed directory for subsequent actions:
+
+```bash
+python3 engineering-docs/releases/v0.2.14/smoke/runner.py resume RUN_DIRECTORY
+python3 engineering-docs/releases/v0.2.14/smoke/runner.py report RUN_DIRECTORY
+python3 engineering-docs/releases/v0.2.14/smoke/runner.py note RUN_DIRECTORY \
+  --story S07 --session 1 --outcome PASS --actor human \
+  --text "Describe the IDE actions and actual results observed."
+```
+
+`resume` reuses the executable, project and configuration directories, and
+requires the same home and Docker daemon. It does not restore files: the point
+is to inspect the state the earlier session left. A surviving named container
+or unfinished RUNNING record requires investigation before resuming; the runner
+never deletes it automatically. `report` shows every session and observation.
+
+Automatic success is labelled `PROCESS_CHECKS_PASSED`, not an IDE-story PASS.
+Missing container evidence, Docker query failures or a nonzero launcher exit
+produce `NEEDS_REVIEW` and a nonzero runner exit. The GUI assertions in S07 and
+state-preservation assertions in S10 still need their assigned actor. The runner
+makes voluntary owner testing recordable; it does not replace those assertions
+or claim desktop automation exists.
+
+For the three fully automated CLI stories, one command prepares a run and
+executes them without questions or Docker:
+
+```bash
+python3 engineering-docs/releases/v0.2.14/smoke/runner.py cli
+```
+
+Add `--pex PATH` for a different location of the same candidate, or `--run
+PREPARED_DIRECTORY` to reuse existing smoke inputs. Results remain in the printed
+run directory. See below for fixture preparation and individual CLI groups.
+
 ## Prepare
 
 Run from the DevCapsule repository root on the machine running Docker:

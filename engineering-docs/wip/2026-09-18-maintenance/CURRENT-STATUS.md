@@ -60,6 +60,15 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
+A single entry point now supports existing-project sessions:
+`smoke/runner.py launch --project PATH`, followed by `resume`, `report` and
+explicit actor `note` records. It verifies exact RC0 and captures process and
+container facts without promoting them into a graphical PASS. The owner reports
+VSCodium over the website DevCapsule working; candidate, exact actions and
+close/reopen coverage remain unconfirmed. Preserve this observation narrowly.
+Next: use the runner for the next actual IDE session and complete its relevant
+story assertions; continue the remaining automation identified below.
+
 The owner requested an engineering test specification before further campaign
 work: enumerate stories, distinguish validation prerequisites from reused data,
 state feature promises/preconditions/postconditions, and assign each action to
@@ -115,6 +124,18 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Session runner (2026-09-23): seven focused stdlib tests passed, including
+Docker errors versus absence, nonzero launch, no inferred graphical PASS,
+configuration preservation, wrong candidate, changed daemon and concurrent
+writers. `runner.py cli --run /tmp/rc0-stories-cli-only-20260923` passed S02,
+S03 and S17 against downloaded RC0; attempt `evidence/cli-y6r9a2ve`.
+No real GUI/container session was launched through the new wrapper.
+The full required gate passed (1,046 tests, 18 deselected, one xfail, one
+quarantined XPASS, type checks and nine packaged integrations), log
+`/tmp/maintenance-rc0-session-runner-build.log`. No runtime code changed.
+Fetched main and live coordination were inspected; mail was empty. Workflow
+files are unchanged; the release branch was not synchronized or rebased.
 
 Story automation (2026-09-23): `verify-cli.py` passed real terminal base
 accept/decline, fixed creator/default-agent/host answers, missing-base refusal
@@ -189,6 +210,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Owner's VSCodium/website observation lacks exact candidate/actions/resume
+  details; clarification is pending. Do not infer full story acceptance.
+- The new session runner needs its first real IDE exercise. It records and
+  resumes voluntary owner sessions; remaining objective GUI steps still need
+  desktop automation. Website submodule changes belong to the owner and were
+  left untouched.
 - Owner rejected the earlier manual-heavy campaign. Stories now govern the
   work; do not describe all 21 as automated. Implement remaining machine steps;
   desktop-control tooling is absent here. No provider/GUI acceptance is claimed.

@@ -109,6 +109,14 @@ coordination byte-preservation stories now pass against downloaded RC0; their
 acceptance. [Runner instructions](smoke/README.md) and the story implementation
 table state exactly what is executable and what remains to automate.
 
+Owner observation (2026-09-23): VSCodium “over website devcapsule works as
+expected.” This is a positive human observation. Exact executable/candidate,
+project path, exercised actions and whether close/reopen was included are not
+recorded yet; it does not close the full everyday-work or resume journey.
+The new `runner.py launch --project PATH` records subsequent sessions and
+explicit observations; `resume` reuses their project and configuration. The
+runner itself has not yet been exercised against a real IDE session.
+
 Use the downloaded candidate, and record its checksum, platform, IDE/agent,
 steps, user-visible outcome and evidence. Do not imply untested combinations.
 
