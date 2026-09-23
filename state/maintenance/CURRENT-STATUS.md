@@ -63,13 +63,13 @@ legacy-network retirement now includes the command-removal implementation.
 A single entry point now supports existing-project sessions:
 `smoke/runner.py launch --project PATH`, followed by `resume`, `report` and
 explicit actor `note` records. It verifies exact RC0 and captures process and
-container facts without promoting them into a graphical PASS. The owner reports
-VSCodium over the website DevCapsule working; candidate, exact actions and
-close/reopen coverage remain unconfirmed. Preserve this observation narrowly.
-Owner confirmed the website VSCodium session works. Runner attempt 2 has
-finished with exit 0, container absent and no monitor errors. Next: exercise
-reopen on the same run directory and check preserved state. Continue remaining
-automation below.
+container facts without promoting them into a graphical PASS. The original website observation lacked candidate details; the subsequent
+runner sessions establish exact RC0 startup and file/IDE resume evidence.
+Owner confirmed the website VSCodium session works. Runner attempts 2 and 3
+finished with exit 0, container absent and no monitor errors; owner confirmed
+the S10 file/IDE resume checklist. `launch` and `resume` now accept a per-session
+`--network host|bridge` override using the product authorization grammar. Next:
+continue remaining campaign checks; agent continuation is still untested.
 
 The owner requested an engineering test specification before further campaign
 work: enumerate stories, distinguish validation prerequisites from reused data,
@@ -127,6 +127,17 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Runner network option: `--network host` or `--network bridge` on launch/resume
+maps to `project run --authorize network VALUE` for that invocation only.
+Omitting the option uses saved configuration, not the previous override.
+Requested override is saved with each attempt; Docker inspection already
+records actual network mode. Existing run records remain readable. No new
+container was started solely to test argument forwarding. The eight focused
+runner tests pass, including both override values and omission behavior.
+Full `nox -s build` passed (source tests, type checks, PEX smokes and nine
+packaged integrations); log `/tmp/maintenance-rc0-network-runner-build.log`.
+The release branch was not rebased; workflow definition is unchanged.
+
 Website run (2026-09-23): published RC0 passed its checksum gate and
 launched VSCodium from this capsule through the host Docker daemon. Run directory:
 `devcapsule-src/dist/rc0-runs/session-7a4dbc068f58`; container
@@ -143,8 +154,10 @@ non-privileged execution with no monitor errors. Terminal reports VSCodium
 startup. Owner subsequently confirmed "This is working"; recorded as an S05
 startup observation in run.json, without claiming specific editing/debugging
 assertions. Attempt 2 ended at 23:17:56 UTC with launcher exit 0, container
-absent and no monitor errors: PROCESS_CHECKS_PASSED. State-preserving reopen
-remains untested. Token URL stays in the terminal/chat, not this record.
+absent and no monitor errors: PROCESS_CHECKS_PASSED. Owner subsequently
+confirmed the file/IDE resume checklist; attempt 3 passed
+exit/cleanup checks and its S10 human observation is saved. Agent-session
+continuation remains untested. Token URL stays in the terminal/chat, not this record.
 The launcher warned that this capsule lacks a global Git author identity;
 no identity settings were changed. Existing full gate remains applicable:
 this slice changed only launch configuration and records, not implementation.
@@ -234,11 +247,11 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Owner's VSCodium/website observation lacks exact candidate/actions/resume
-  details; clarification is pending. Do not infer full story acceptance.
-- Website runner attempt 2 is complete: owner-observed startup works and
-  automatic exit/cleanup checks passed. Test resume next using the same run
-  directory. Detailed GUI assertions still need execution; website submodule
+- Exact RC0 website startup and file/IDE resume now have owner confirmation.
+  Do not extend that evidence to unperformed edit/debug or agent tasks.
+- Website runner attempts 2/3 are complete: owner confirmed startup and
+  file/IDE resume; automatic exit/cleanup checks passed. Agent continuation
+  and detailed edit/debug assertions still need execution. Website submodule
   changes belong to the owner and were untouched.
 - Owner rejected the earlier manual-heavy campaign. Stories now govern the
   work; do not describe all 21 as automated. Implement remaining machine steps;
