@@ -27,10 +27,20 @@ dc() { "$SMOKE_PEX" project --path "$SMOKE_PROJECT" "$@"; }
 # Preserve the interactive terminal: log argv/exit, not login or desktop tokens.
 step() {
     local result=0
-    printf '%s ' "$(date -u +%FT%TZ)" >> "$SMOKE_ROOT/evidence/commands.log"
+    printf '%s case=%q project=%q ' "$(date -u +%FT%TZ)" "$SMOKE_CASE" "$SMOKE_PROJECT" >> "$SMOKE_ROOT/evidence/commands.log"
     printf '%q ' "$@" >> "$SMOKE_ROOT/evidence/commands.log"
     printf '\n' >> "$SMOKE_ROOT/evidence/commands.log"
     "$@" || result=$?
     printf 'exit=%s\n' "$result" >> "$SMOKE_ROOT/evidence/commands.log"
     return "$result"
+}
+
+# Docker failure must never be interpreted as proof that a container is absent.
+container_exists() {
+    local names
+    names=$(docker container ls --all --format '{{.Names}}') || {
+        echo 'Cannot inspect Docker containers; absence is unproven.' >&2
+        exit 1
+    }
+    grep -Fxq -- "$SMOKE_CONTAINER" <<< "$names"
 }

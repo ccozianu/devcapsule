@@ -4,11 +4,15 @@ set -euo pipefail
 umask 077
 HERE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 source "$HERE/common.sh"
-[[ $# == 1 || $# == 2 ]] || { echo "Usage: $0 NEW_RUN_DIRECTORY [RC0_PEX]" >&2; exit 2; }
+SMOKE_CHECK_DOCKER=1
+if [[ ${1:-} == --cli-only ]]; then SMOKE_CHECK_DOCKER=0; shift; fi
+[[ $# == 1 || $# == 2 ]] || { echo "Usage: $0 [--cli-only] NEW_RUN_DIRECTORY [RC0_PEX]" >&2; exit 2; }
 [[ $(uname -sm) == 'Linux x86_64' ]] || { echo 'Requires Linux x86_64 (including WSL2).' >&2; exit 2; }
-for tool in git curl sha256sum docker; do command -v "$tool" >/dev/null; done
-docker info >/dev/null
-docker buildx version
+for tool in git curl sha256sum; do command -v "$tool" >/dev/null; done
+if [[ $SMOKE_CHECK_DOCKER == 1 ]]; then
+    docker info >/dev/null
+    docker buildx version
+fi
 mkdir -- "$1"  # Deliberately refuse to overwrite or resume an existing run.
 SMOKE_ROOT=$(cd -- "$1" && pwd -P)
 mkdir -p "$SMOKE_ROOT"/{bin,projects/fresh,evidence,xdg}
@@ -23,7 +27,11 @@ chmod 700 "$SMOKE_ROOT/bin/devcapsule.pex"
 # Isolate the executable's cache even for the identity probe.
 XDG_CACHE_HOME="$SMOKE_ROOT/xdg/cache" "$SMOKE_ROOT/bin/devcapsule.pex" version --json > "$SMOKE_ROOT/evidence/version.json"
 uname -sm > "$SMOKE_ROOT/evidence/platform.txt"
-docker version --format '{{.Server.Version}}' >> "$SMOKE_ROOT/evidence/platform.txt"
+if [[ $SMOKE_CHECK_DOCKER == 1 ]]; then
+    docker version --format '{{.Server.Version}}' >> "$SMOKE_ROOT/evidence/platform.txt"
+else
+    echo 'Docker not checked: CLI-only preparation.' >> "$SMOKE_ROOT/evidence/platform.txt"
+fi
 while read -r name repository revision; do
     git clone --quiet --no-checkout "https://github.com/ccozianu/$repository.git" "$SMOKE_ROOT/projects/$name"
     git -C "$SMOKE_ROOT/projects/$name" checkout --quiet --detach "$revision"

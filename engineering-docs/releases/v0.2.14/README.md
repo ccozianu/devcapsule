@@ -101,10 +101,13 @@ The Actions run was not independently inspected through a credentialed API.
 
 ## End-User Acceptance
 
-Start with the [numbered smoke campaign](smoke/README.md): verified RC0,
-fresh VSCodium, pinned public TypeScript/Python/FastAPI projects, IDE work,
-optional agent/service exercises and resume. The helpers keep isolated local
-state and a result sheet; no graphical acceptance is implied by their validation.
+Use the [validation stories](smoke/stories.md) for contracts, pre/postconditions,
+actors and separate pass-first/data-reuse dependencies. The old manual walkthrough
+has been replaced. Real prompted and unattended initialization and isolated
+coordination byte-preservation stories now pass against downloaded RC0; their
+[saved evidence](smoke/cli-validation.json) does not imply IDE/service/provider
+acceptance. [Runner instructions](smoke/README.md) and the story implementation
+table state exactly what is executable and what remains to automate.
 
 Use the downloaded candidate, and record its checksum, platform, IDE/agent,
 steps, user-visible outcome and evidence. Do not imply untested combinations.

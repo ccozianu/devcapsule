@@ -60,13 +60,19 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
-The owner is starting RC0 end-user testing using the
-[numbered smoke scripts and walkthrough](../../releases/v0.2.14/smoke/README.md).
-The campaign covers a fresh account-free project and pinned public TypeScript,
-trading-research and FastAPI samples, with explicit old-lock regeneration,
-normal launch/resume, and optional agent/PostgreSQL exercises. Record outcomes
-in the generated result sheet, summarize them in the release workspace, and
-continue selected bug decisions. The retirement is integrated;
+The owner requested an engineering test specification before further campaign
+work: enumerate stories, distinguish validation prerequisites from reused data,
+state feature promises/preconditions/postconditions, and assign each action to
+an agent or program. The [21-story specification](../../releases/v0.2.14/smoke/stories.md)
+now does that. Fixed prompt answers are automated both through an actual terminal
+and through unattended flags. S02/S03 and S17 (exact preservation of unrelated
+coordination blobs) pass against downloaded RC0, with durable JSON evidence.
+Fresh and all three public sample configurations complete unattended. Whole
+GUI/upgrade/service stories are not yet implemented or passed; continue the
+runner implementation from the story table, and establish desktop-control
+tooling for the assigned graphical steps. Do not transfer unfinished automation
+to the human. Personal provider login/MFA and release judgment remain owner acts.
+The retirement is integrated;
 publish RC1 when the owner is ready to test that change. RC0 still contains
 the old command; do not move its tag. No base rebuild is needed: the existing
 local Ubuntu recipe-9 image and published RC0 executable were rechecked on
@@ -109,6 +115,23 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Story automation (2026-09-23): `verify-cli.py` passed real terminal base
+accept/decline, fixed creator/default-agent/host answers, missing-base refusal
+and CLI remedy, prompted/batch semantic equivalence, and nine local-remote
+coordination operations checking every path/blob plus exact staged mail bytes.
+Saved evidence: [CLI validation](../../releases/v0.2.14/smoke/cli-validation.json).
+Every attempt gets its own directory; S17 runs independently of failed init,
+while S03 requires S02's choices.json. The first harness expectation incorrectly
+rejected explicit denials; its correction and retained failure are documented.
+The fixed configuration wrapper passed on fresh/TypeScript/trading/FastAPI
+fixtures without stdin or human answers. CLI-only preparation also passed.
+The required gate passed: 1,046 tests, 18 deselected, one existing xfail and
+one quarantined XPASS, type checks and nine packaged integrations; log
+`/tmp/maintenance-rc0-story-contracts-build.log`. No graphical/provider/service
+acceptance was inferred. Shell syntax and documentation links were checked. The retained preview/launch
+helpers now fail on Docker query errors instead of misreporting absence;
+fault checks distinguish daemon error, missing container and present container.
 
 RC0 smoke harness (2026-09-23): shell syntax, complete preparation with the
 verified published PEX, exact public sample clones, fresh initialization,
@@ -166,6 +189,13 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Owner rejected the earlier manual-heavy campaign. Stories now govern the
+  work; do not describe all 21 as automated. Implement remaining machine steps;
+  desktop-control tooling is absent here. No provider/GUI acceptance is claimed.
+- A pre-existing single `c` insertion in the smoke README remains in the working
+  tree and is excluded from the rewritten document's commit, like the earlier
+  unrelated bug-file edit. Its intent was not inferred.
+
 - Legacy launch capabilities now have an owner-directed V1 gate: decide what
   is already covered, migrate selected capabilities, design an image-oriented
   mode only if justified, or explicitly drop them. The work order preserves
@@ -199,7 +229,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
 - [Release bug triage](../../releases/v0.2.14/bugs.md): maintained dispositions and evidence.
-- [RC0 smoke campaign](../../releases/v0.2.14/smoke/README.md): numbered scripts, pinned public samples and owner observations.
+- [RC0 validation runner](../../releases/v0.2.14/smoke/README.md): executable coverage and exact candidate inputs.
+- [RC0 validation stories](../../releases/v0.2.14/smoke/stories.md): dependency types, actors, contracts and remaining automation.
 
 - [Attribution checkpoint](2026-09-22-record-commit-attribution.md): integrated authorship convention, owner acceptance and build evidence.
 
