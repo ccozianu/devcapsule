@@ -30,6 +30,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [0.2.14 release work and checklist](engineering-docs/releases/v0.2.14/README.md)
 - [0.2.14 bug triage](engineering-docs/releases/v0.2.14/bugs.md)
+- [0.2.14 RC0 smoke scripts and walkthrough](engineering-docs/releases/v0.2.14/smoke/README.md)
+- [0.2.14 RC0 smoke results template](engineering-docs/releases/v0.2.14/smoke/results-template.md)
 
 ## Website
 

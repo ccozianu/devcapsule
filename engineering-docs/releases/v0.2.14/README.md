@@ -4,7 +4,7 @@ Updated: 2026-09-23. Stage: **RC0 published; end-user acceptance in progress**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) ·
-[Bug triage](bugs.md)
+[Bug triage](bugs.md) · [RC0 smoke scripts](smoke/README.md)
 
 Update these working files as decisions and evidence arrive. Chat highlights
 changes and questions; the bug records remain authoritative for individual
@@ -100,6 +100,11 @@ and executable portability; they do not substitute for IDE/agent acceptance.
 The Actions run was not independently inspected through a credentialed API.
 
 ## End-User Acceptance
+
+Start with the [numbered smoke campaign](smoke/README.md): verified RC0,
+fresh VSCodium, pinned public TypeScript/Python/FastAPI projects, IDE work,
+optional agent/service exercises and resume. The helpers keep isolated local
+state and a result sheet; no graphical acceptance is implied by their validation.
 
 Use the downloaded candidate, and record its checksum, platform, IDE/agent,
 steps, user-visible outcome and evidence. Do not imply untested combinations.

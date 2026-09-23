@@ -60,8 +60,13 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
-The owner is starting RC0 end-user testing. Record outcomes in the release
-workspace and continue selected bug decisions. The retirement is integrated;
+The owner is starting RC0 end-user testing using the
+[numbered smoke scripts and walkthrough](../../releases/v0.2.14/smoke/README.md).
+The campaign covers a fresh account-free project and pinned public TypeScript,
+trading-research and FastAPI samples, with explicit old-lock regeneration,
+normal launch/resume, and optional agent/PostgreSQL exercises. Record outcomes
+in the generated result sheet, summarize them in the release workspace, and
+continue selected bug decisions. The retirement is integrated;
 publish RC1 when the owner is ready to test that change. RC0 still contains
 the old command; do not move its tag. No base rebuild is needed: the existing
 local Ubuntu recipe-9 image and published RC0 executable were rechecked on
@@ -104,6 +109,19 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+RC0 smoke harness (2026-09-23): shell syntax, complete preparation with the
+verified published PEX, exact public sample clones, fresh initialization,
+resolution and configuration-wrapper roundtrip passed in isolated XDG state.
+Refusal checks covered an existing run directory, invalid case/arguments and
+a mismatched candidate checksum before CLI execution. Validation directory:
+`/tmp/rc0-smoke-script-validation-20260923` (preparation/configuration only;
+not a host-backed launch location). No IDE, service or provider campaign was
+run while authoring these scripts; the generated result sheet remains NOT RUN.
+The required `nox -s build` passed: 1,046 tests, 18 deselected, one existing
+xfail and one quarantined XPASS, mypy and nine packaged checks. Log:
+`/tmp/maintenance-rc0-smoke-scripts-build.log`. These are harness/repository
+checks, not acceptance of the unrun graphical campaign.
 
 Legacy-command removal: 115 focused checks passed, followed by successful
 `nox -s build`: 1,046 tests, 18 deselected, one existing xfail and one
@@ -181,6 +199,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
 - [Release bug triage](../../releases/v0.2.14/bugs.md): maintained dispositions and evidence.
+- [RC0 smoke campaign](../../releases/v0.2.14/smoke/README.md): numbered scripts, pinned public samples and owner observations.
 
 - [Attribution checkpoint](2026-09-22-record-commit-attribution.md): integrated authorship convention, owner acceptance and build evidence.
 
