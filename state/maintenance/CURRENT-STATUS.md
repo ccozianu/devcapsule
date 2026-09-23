@@ -66,9 +66,10 @@ explicit actor `note` records. It verifies exact RC0 and captures process and
 container facts without promoting them into a graphical PASS. The owner reports
 VSCodium over the website DevCapsule working; candidate, exact actions and
 close/reopen coverage remain unconfirmed. Preserve this observation narrowly.
-Website session is now running through the runner from this capsule. Next:
-collect the owner's IDE result, inspect the completed exit/cleanup record, then
-exercise reopen on the same run directory. Continue remaining automation below.
+Owner confirmed the website VSCodium session works. Runner attempt 2 has
+finished with exit 0, container absent and no monitor errors. Next: exercise
+reopen on the same run directory and check preserved state. Continue remaining
+automation below.
 
 The owner requested an engineering test specification before further campaign
 work: enumerate stories, distinguish validation prerequisites from reused data,
@@ -126,10 +127,10 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
-Live website run (2026-09-23): published RC0 passed its checksum gate and
+Website run (2026-09-23): published RC0 passed its checksum gate and
 launched VSCodium from this capsule through the host Docker daemon. Run directory:
 `devcapsule-src/dist/rc0-runs/session-7a4dbc068f58`; container
-`rc0-runner-7a4dbc068f58`; tool PTY session `73149`. Keep it running for the owner.
+`rc0-runner-7a4dbc068f58`; tool PTY session `73149` (now finished).
 Attempt 1 failed with exit 2 before creating a container: local resolution was
 missing. `config resolve` exposed unanswered local choices. Applied the existing
 campaign policy to this capsule's website checkout record: pinned base plus
@@ -139,8 +140,11 @@ Attempt 2 reused the canonical Codium image, translated bind sources to host
 paths, and reached contained-desktop readiness on host loopback port 52123.
 The runner captured a running container, bridge network, read-only root and
 non-privileged execution with no monitor errors. Terminal reports VSCodium
-startup; no visual acceptance, normal exit, cleanup or state-preserving reopen
-is claimed yet. Token URL stays in the terminal/chat, not this record.
+startup. Owner subsequently confirmed "This is working"; recorded as an S05
+startup observation in run.json, without claiming specific editing/debugging
+assertions. Attempt 2 ended at 23:17:56 UTC with launcher exit 0, container
+absent and no monitor errors: PROCESS_CHECKS_PASSED. State-preserving reopen
+remains untested. Token URL stays in the terminal/chat, not this record.
 The launcher warned that this capsule lacks a global Git author identity;
 no identity settings were changed. Existing full gate remains applicable:
 this slice changed only launch configuration and records, not implementation.
@@ -232,10 +236,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 - Owner's VSCodium/website observation lacks exact candidate/actions/resume
   details; clarification is pending. Do not infer full story acceptance.
-- Website runner attempt 2 is live for the owner (PTY 73149, run directory
-  above). Inspect run.json after normal session end, then test resume. Do not
-  kill the session as routine cleanup. Objective GUI steps still need desktop
-  automation; website submodule changes belong to the owner and were untouched.
+- Website runner attempt 2 is complete: owner-observed startup works and
+  automatic exit/cleanup checks passed. Test resume next using the same run
+  directory. Detailed GUI assertions still need execution; website submodule
+  changes belong to the owner and were untouched.
 - Owner rejected the earlier manual-heavy campaign. Stories now govern the
   work; do not describe all 21 as automated. Implement remaining machine steps;
   desktop-control tooling is absent here. No provider/GUI acceptance is claimed.
