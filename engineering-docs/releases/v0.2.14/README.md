@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-22. Stage: **RC0 published; end-user acceptance in progress**.
+Updated: 2026-09-23. Stage: **RC0 published; end-user acceptance in progress**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) ·
@@ -28,7 +28,7 @@ status, ownership and technical evidence.
 
 The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records
 the two owner-approved configuration-bug closures and selected retirement of
-legacy `pycharm run` (removed on the branch; integration pending). Thirteen rows still need decisions:
+legacy `pycharm run` (integrated through PR #133; awaiting RC1). Thirteen rows still need decisions:
 eight targeted verifications and five deferrals. Review these calls, then use the grouped
 acceptance journeys.
 The image-composition redesign is already deferred unless its defect recurs
@@ -39,7 +39,7 @@ journeys below, recording fixes, obsolete findings and explicit deferrals. Two
 old Codium-specific records are retired after checking the removed command and
 implementation against RC0; with the two accepted closures and the legacy
 networking retirement, 14 bugs remain open. The legacy command removal changes
-runtime source after RC0 and requires integration and RC1 or later; never move RC0.
+runtime source after RC0 and requires RC1 or later; never move RC0.
 
 ## Legacy PyCharm Launch Retirement
 
@@ -65,8 +65,9 @@ reject bare/help/legacy-option launches with the retirement message and create
 no checkout state. Log: `/tmp/maintenance-retire-pycharm-run-build.log`.
 The dirty-checkout gate deliberately skipped revision-bearing packaging;
 RC0 artifacts remain unchanged. No Docker/GUI acceptance was added by this
-slice. Merge the release branch through the owner PR workflow, verify main
-contains the change, then publish and accept the next immutable candidate.
+slice. PR #133 merged the removal commit `1f425f3` at `c8ab2d0`; ancestry
+was verified against fetched main on 2026-09-23. The next immutable candidate
+is still pending; owner testing starts with the already published RC0.
 
 ## Preparation And Publication
 
@@ -130,6 +131,13 @@ Docker image ID: `sha256:ed0867e6fe51c72ad49eef935bab45d29d1cd742f2333757201d030
 Both came from exact tagged source. The base used the documented host build
 network after the earlier default-network DNS failure; runtime networking was
 not changed. This base is local only; RC0 retains its manifest's pinned public base.
+
+Readiness rechecked 2026-09-23: the local base exists with the recorded image
+ID, recipe and exact RC0 source labels; the downloaded PEX still matches the
+published checksum. Base build inputs have not changed since RC0, so no
+rebuild was run. Runtime PEX bytes are supplied when a derived image is
+materialized, rather than embedded in this base. The other base recipe,
+NVIDIA CUDA, remains `wip` and is outside this RC0 readiness check.
 
 All nine packaged checks passed across the initial run (eight passed) and the
 corrected identity check: the first invocation used a filename the harness did

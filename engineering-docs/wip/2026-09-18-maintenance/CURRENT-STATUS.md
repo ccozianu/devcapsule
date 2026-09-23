@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC0 public; legacy PyCharm launch removed; integration and next candidate pending
+State: active; releasing 0.2.14; RC0 public; legacy PyCharm launch integrated; RC0 ready for owner testing
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@77b593f70215
 
@@ -28,8 +28,9 @@ Owner-authorized retirement of `pycharm run` is implemented on the release
 branch. The old adapter and CLI-only option helpers are gone; old invocations
 fail before launch/state preparation and are absent from help. Shared project
 launch and the image utilities remain. User guidance, diagnostics and packaged
-smokes reflect the retirement. This changes source after RC0 and needs main
-integration and the next immutable candidate.
+smokes reflect the retirement. This changes source after RC0 and needs
+the next immutable candidate. PR #133 integrated commit `1f425f3` at
+`c8ab2d0`; ancestry was verified against fetched main on 2026-09-23.
 
 Published `v0.2.14-rc0` at `d078b879469c1790647e32db75005d0fa4369b27`, already
 integrated through PR #132 at `e50b9f1`. Tag push was verified through remote
@@ -59,10 +60,13 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
-Deliver the release-branch diff for owner PR integration, then verify main
-contains the retirement before the next candidate. RC0 still contains the old
-command; do not move its tag. Continue the grouped acceptance journeys and
-remaining bug decisions after the updated candidate is available.
+The owner is starting RC0 end-user testing. Record outcomes in the release
+workspace and continue selected bug decisions. The retirement is integrated;
+publish RC1 when the owner is ready to test that change. RC0 still contains
+the old command; do not move its tag. No base rebuild is needed: the existing
+local Ubuntu recipe-9 image and published RC0 executable were rechecked on
+2026-09-23, and base build inputs are unchanged. Release refs are not rebased;
+main has no workflow-definition or devcapsule-src difference from this branch.
 
 The owner requested and received a permanent
 [V1-blocking legacy capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
@@ -111,7 +115,7 @@ also prove no launcher/subprocess call. Validated artifact:
 `devcapsule-src/dist/devcapsule-local.pex`. The gate skipped revision-bearing
 packaging due to checkout edits; no fresh Docker/GUI run was necessary for
 this command removal, and no such acceptance is claimed. Main integration
-and the next candidate are pending. The pre-existing local bug-file edit
+is verified through PR #133; the next candidate remains pending. The pre-existing local bug-file edit
 remains unstaged and is excluded from delivery.
 
 Bug-combing review at `8e7cc21`: fetched main remains `e50b9f1`; PR #117 merge
