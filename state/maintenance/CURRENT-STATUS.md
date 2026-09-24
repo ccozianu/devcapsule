@@ -148,6 +148,27 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Published-RC1 recursive PyCharm launch (2026-09-24): retained run
+`0edc6f491291f0d5ffa4e31b0238863b` beneath the persistent-home
+`e2e-workspaces/` directory. Clean clone at exact RC1 source `cec7a0c`; launched
+with downloaded RC1 bytes, SHA-256
+`68c58ec09c1a73e07c3bb1b1f7514341ddddaf645c7fae1ff4ff0763ff6f7689`.
+The isolated checkout explicitly selects `devcapsule-base:0.2.14-rc1-local`,
+pinned locally to image `sha256:0d9a185ec5a2ac04380e9b5540bae2b212356b8b5d4c0f91c7db320d486a414a`;
+the project lock is unchanged. Successor image:
+`sha256:bc387eb69b8457f61f016a0a21485302e3fc14bcbbae977e4a1623b8d5544863`.
+Container `devcapsule-e2e-0edc6f491291f0d5ffa4e31b0238863b-successor` is running
+with host networking; the actual PyCharm JVM is PID 42. Independent
+`inspect-successor` passed. As UID 1000, public `devcapsule0` reports published
+RC1 and exact runtime bytes, ordinary `devcapsule` is absent, and workflow
+installation succeeds in a disposable directory. Evidence in the retained run:
+`inspection.json`, `runtime-check.json`, `cli-check.log`, `launch.log`.
+Owner received the desktop URL; its token is not committed. Human GUI acceptance
+of this exact session is pending; no full recursive Nox suite or final-release
+acceptance is inferred. Both this session and the earlier local-source session
+remain available. No source changes or new downloads of PyCharm were needed.
+
+
 Published RC1 and local base (2026-09-24): downloaded the public PEX, checksum
 and manifest into `devcapsule-src/dist/rc1-published/`. Verified version
 `0.2.14rc1`, mnemonic `v0.2.14-rc1`, source
@@ -369,6 +390,10 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Published RC1 plus the newly built local base is running in retained recursive
+  run `0edc6f491291f0d5ffa4e31b0238863b`; agent checks passed, owner GUI acceptance
+  pending. Keep it running for the owner; do not stop the earlier session either.
 
 - Recursive PyCharm successor run `29fb2abc530735da1ebd625acd991622` is deliberately
   retained for the owner; see validation above. Do not stop or remove it merely
