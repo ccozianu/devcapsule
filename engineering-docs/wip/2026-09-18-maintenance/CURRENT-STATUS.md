@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active; releasing 0.2.14; RC0 public; release blocked on missing runtime CLI
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@1fc446656564
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Integration target: `main`
 
@@ -52,8 +52,8 @@ Retired the two old codium_with_claude option-parity and ambient-sudo records:
 the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
-[working bug table](../../releases/v0.2.14/bugs.md) now has 21 rows:
-16 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
+[working bug table](../../releases/v0.2.14/bugs.md) now has 22 rows:
+17 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
 of the upgrade-recovery and configuration-contract bugs; their records now
 link the owner/graphical acceptance and verified PR #117 integration. No
 runtime code changed during those earlier record updates. The subsequent
@@ -61,14 +61,22 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
-Owner paused smoke progression on 2026-09-24: fix the confirmed, owner-designated
-[0.2.14 runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md).
-The live website image has exact RC0 bytes but no public `devcapsule` command.
-Do not confuse an absolute-path workaround with closure. Repair normal command
-installation and cache invalidation, then validate IDE-terminal workflow install
-in a disposable project and a new candidate. URL opening is separately routed
-to contained-display; workflow onboarding is non-blocking and routed to
-workflow-improvements. Do not switch workstreams or mutate the website to test.
+The runtime CLI blocker has a source fix and Docker regression evidence on
+`release-0.2.14`. Normal capsules expose the shipped `devcapsule`; the owner
+requested a saved configuration exception and this repository recommends
+`runtime.devcapsule-command = "devcapsule0"`. That real command leaves the normal
+name for development tooling; internal absolute-path calls retain the shipped
+PEX. Explicit checkout values/omissions override ordinary recommendations.
+Owner accepted the real recursive PyCharm/devcapsule0 session at `9cc0868`.
+Next: owner PR integration and next immutable candidate; carry this local
+acceptance into candidate validation before closing the blocker.
+
+The owner requested the installed-IDE reuse bug be filed first and its design
+reviewed together before implementation. No release target or implementation
+approach is approved. Review the linked bug when the owner resumes that topic;
+do not start cache implementation or the broader composition redesign.
+No live capsule or website source was patched. URL opening and non-blocking
+workflow onboarding remain with their previously notified owners.
 
 A single entry point now supports existing-project sessions:
 `smoke/runner.py launch --project PATH`, followed by `resume`, `report` and
@@ -137,6 +145,61 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Owner follow-up (2026-09-24): "Everything works" for the retained recursive
+PyCharm session below. The installed-IDE cache gap was confirmed by reading
+the acquisition/materialization path; filed with proposed acceptance scenarios,
+severity minor, target none. No implementation or new Docker experiment was
+performed for that report. Documentation links and whitespace were checked.
+
+Owner-requested recursive PyCharm launch (2026-09-24): clean local clone of
+`9cc08686c5f6c9b44a1a132bf81e4befd0ecf641`, retained run
+`29fb2abc530735da1ebd625acd991622` beneath
+`/home/devcapsule/.local/share/devcapsule/e2e-workspaces/`.
+The original checkout's preflight fails on its existing website Git pointer;
+the exact-commit clone passes without changing the original or its user edits.
+Built a revision-bearing PEX, initialized isolated checkout configuration/state,
+and ran `recursive-e2e launch-successor` with the pinned real PyCharm distribution.
+Successor `devcapsule-e2e-29fb2abc530735da1ebd625acd991622-successor` remains
+running with host networking. Independent `inspect-successor` passed; PyCharm's
+JVM is running and the desktop has a `PyCharm User Agreement` window.
+As UID 1000, `devcapsule0` reports the exact source revision and identical PEX
+SHA-256 `a0e29d237e978d8c6575ccf12541571a1c0f1d9e016e8f3174ae1b1e23efb34b`;
+`devcapsule` is absent. Workflow bootstrap by public command created the expected
+files in a disposable in-container directory. Owner received the desktop URL;
+its session token is deliberately excluded from committed records. Fresh IDE
+first-run interaction and owner terminal acceptance remain pending. This was
+the actual successor launch/inspection, not a claim that the full recursive
+Nox suite or release-candidate campaign passed. No new release tag was published.
+
+Owner-requested enum cleanup (2026-09-24): `RuntimeCommand` now owns the
+supported public names. Configuration boundaries construct enum members;
+materialization accepts the enum without repeating string-domain checks.
+Existing tests pass enum members and assert typed forwarding from the launcher.
+Required `nox -s build`: type checks, 1,060 source tests and nine packaged
+integrations passed (20 deselected, one xfail and one quarantined XPASS).
+The final Git-status step still fails on the existing website Git pointer;
+the overall gate remains failed. Log:
+`/tmp/maintenance-runtime-command-enum-build.log`. No new Docker/GUI campaign
+was needed for this refactor; the prior command-mode evidence remains separate.
+The release branch was not synchronized or rebased; its local workflow
+difference from main is the already-read dogfooding rule from this repair.
+
+CLI repair and development exception (2026-09-24): 311 focused checks passed;
+four real-Docker variants passed for PyCharm/VSCodium and devcapsule/devcapsule0.
+Tests invoke the command by name as UID 1000, verify exact runtime identity,
+and install workflow files in a disposable project. Development mode permits
+an independent development command without a shipped fallback. Three additional
+filesystem cases ensure only our inherited shipped link is removed, preserving
+a development script or symlink (eight runtime-artifact checks passed).
+Full gate log: `/tmp/maintenance-runtime-cli-build-final.log`; final source
+checks passed (1,060 tests, 20 deselected, one xfail and one quarantined XPASS),
+as did type checks and nine packaged integrations. Final Git status then
+failed on the existing `/home/devcapsule/.git-website` pointer; overall gate
+remains failed.
+No actual IDE-terminal acceptance of the new code or RC1 publication is claimed.
+Earlier lowercase-help assertion failure was a harness defect, corrected before
+the four Docker passes. The pre-fix Docker test reproduced exit 127 as expected.
 
 Blocker intake (2026-09-24): live read-only Docker inspection and runtime
 version/hash checks confirm the missing public CLI; IDE process environment
@@ -277,8 +340,13 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Release now has a blocking bug; earlier statements that all known bugs are
-  non-blocking are historical. No implementation fix was made during intake.
+- Recursive PyCharm successor run `29fb2abc530735da1ebd625acd991622` is deliberately
+  retained for the owner; see validation above. Do not stop or remove it merely
+  because this agent turn finishes. Owner subsequently confirmed everything works.
+- The runtime CLI blocker is fixed in source, awaiting main integration and
+  a new candidate; owner accepted the local PyCharm/devcapsule0 session.
+  Candidate validation still gates release.
+  Existing running capsules retain their original commands until relaunched.
 - URL-opening triage and workflow-onboarding work item are handed to their
   owners through coordination mail. Their acknowledgement remains pending.
 - The local workflow change reported by brief is our owner-directed host-network
@@ -331,6 +399,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [Installed IDE Docker reuse](../../bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md): review design with owner before implementation; no release target.
 
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.

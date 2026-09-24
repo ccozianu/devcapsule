@@ -1242,8 +1242,14 @@ def _configuration_value_rows(
     rows: list[ConfigurationListRow] = []
     for name, declaration in sorted(declarations.items()):
         if name not in raw_values:
-            status = "missing-required" if declaration.get("required", False) else "unset-optional"
-            rows.append(ConfigurationListRow("value", name, status, "-"))
+            if name in configuration.get("omitted-values", []):
+                rows.append(ConfigurationListRow("value", name, "omitted", "-"))
+            elif "recommended" in declaration:
+                value = normalize_configuration_value(manifest, name, "default")
+                rows.append(ConfigurationListRow("value", name, "project-recommended", render_toml_scalar(value)))
+            else:
+                status = "missing-required" if declaration.get("required", False) else "unset-optional"
+                rows.append(ConfigurationListRow("value", name, status, "-"))
             continue
         try:
             normalized = normalize_configuration_value(manifest, name, raw_values[name])

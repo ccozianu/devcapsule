@@ -19,6 +19,7 @@ from devcapsule.image_build import (
     FileComponent, ImageBuildSpec,
 )
 from devcapsule.materialization import ArtifactSpec, ensure_materialized_surface
+from devcapsule.runtime_command import RuntimeCommand
 
 
 def docker(*args: str) -> str:
@@ -66,8 +67,9 @@ def test_installation_is_reused_across_images_and_invalidated_by_recipe(tmp_path
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("surface", ["pycharm", "codium"])
+@pytest.mark.parametrize("command", list(RuntimeCommand))
 def test_formation_receives_exact_launcher_on_runtime_free_base(
-    tmp_path: Path, built_pex: Path, surface: str,
+    tmp_path: Path, built_pex: Path, surface: str, command: RuntimeCommand,
 ) -> None:
     archive_path = tmp_path / "surface.tar.gz"
     names = ("bin/pycharm.sh",) if surface == "pycharm" else ("codium", "bin/codium", "chrome-sandbox")
@@ -93,7 +95,7 @@ def test_formation_receives_exact_launcher_on_runtime_free_base(
             build=lambda spec: BuildxImageBuilder().build(spec, network="none"),
             recipe_id="jetbrains-local-materialization" if surface == "pycharm" else "vscode-local-materialization",
             recipe_version="1" if surface == "pycharm" else "2",
-            component_id=surface, runtime_pex=built_pex,
+            component_id=surface, runtime_pex=built_pex, runtime_command=command,
         )
         assert created
         digest = docker("run", "--rm", "--entrypoint=sha256sum", image,
@@ -102,10 +104,42 @@ def test_formation_receives_exact_launcher_on_runtime_free_base(
         labels = json.loads(docker("image", "inspect", image))[0]["Config"]["Labels"]
         assert labels["devcapsule.pex.sha256"] == digest
         assert "usage: devcapsule runtime" in docker("run", "--rm", "--network=none", image, "--help")
-        actual = json.loads(docker("run", "--rm", "--network=none",
-                                   "--entrypoint=/opt/devcapsule/bin/devcapsule.pex", image, "version", "--json"))
+        # Exercise the user's public command as a non-root user with the image's
+        # ordinary PATH, not the internal absolute path used by the supervisor.
+        actual = json.loads(docker("run", "--rm", "--network=none", "--user=1000:1000",
+                                   "--env=HOME=/tmp", "--entrypoint=sh", image,
+                                   "-ec", f"{command} version --json"))
         expected = json.loads(subprocess.check_output([str(built_pex), "version", "--json"], text=True))
         assert actual == expected
+        assert "Usage: devcapsule" in docker(
+            "run", "--rm", "--network=none", "--user=1000:1000", "--env=HOME=/tmp",
+            "--entrypoint=sh", image, "-ec", f"{command} --help",
+        )
+        # The reported blocked task must work too; install only in this disposable
+        # container, never in the owner's checkout or persisted IDE state.
+        docker("run", "--rm", "--network=none", "--user=1000:1000", "--env=HOME=/tmp",
+               "--entrypoint=sh", image, "-ec", f"""
+            mkdir /tmp/workflow-project
+            {command} bootstrap project --project /tmp/workflow-project
+            test -s /tmp/workflow-project/WORKFLOW.md
+            test -s /tmp/workflow-project/AGENTS.md
+            test -s /tmp/workflow-project/CURRENT-STATUS.md
+        """)
+        if command is RuntimeCommand.DEVELOPMENT:
+            # No shipped fallback can mask a missing development installation.
+            # An independently installed command owns the usual spelling while
+            # the stable alias still reaches the original runtime.
+            actual = docker("run", "--rm", "--network=none", "--user=1000:1000", "--env=HOME=/tmp",
+                            "--entrypoint=sh", image, "-ec", """
+                if command -v devcapsule; then exit 1; fi
+                mkdir -p /tmp/development/bin
+                printf '#!/bin/sh\\necho development-build\\n' > /tmp/development/bin/devcapsule
+                chmod +x /tmp/development/bin/devcapsule
+                export PATH=/tmp/development/bin:$PATH
+                test "$(devcapsule)" = development-build
+                devcapsule0 version --json
+            """)
+            assert json.loads(actual) == expected
     finally:
         if image:
             subprocess.run(["docker", "image", "rm", image], capture_output=True)

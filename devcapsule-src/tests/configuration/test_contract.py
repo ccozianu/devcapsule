@@ -289,3 +289,41 @@ def test_launcher_environment_cannot_override_explicit_sudo_denial(checkout, tmp
         PycharmRunOptions(project=project, docker_mode=DockerMode.none, enable_sudo=False), env,
     )
     assert config.enable_sudo is False
+
+
+def test_shipped_cli_recommendation_override_and_omission(checkout, capsys):
+    project, record, resolution = checkout
+    declaration = project / '.devcapsule/devcapsule.toml'
+    declaration.write_text(declaration.read_text() + '\n[configuration.values."runtime.devcapsule-command"]\n'
+        'type = "string"\nruntime-effect = "devcapsule.command-name"\nrecommended = "devcapsule0"\n')
+    original = record.read_bytes()
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+    assert record.read_bytes() == original  # Derived recommendation is not a local answer.
+    assert invoke(project, 'config', 'list') == 0
+    assert 'project-recommended' in capsys.readouterr().out
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'devcapsule') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule'
+    for invalid in ('../devcapsule', '/bin/sh', 'arbitrary-name'):
+        before = record.read_bytes()
+        assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', invalid) == 2
+        assert record.read_bytes() == before
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'default') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'none') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert 'devcapsule-command' not in load_toml(resolution)['runtime']
+    assert invoke(project, 'config', 'unset', 'runtime.devcapsule-command') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+
+
+@pytest.mark.parametrize('recommended', ['default', 'none', '../bin/devcapsule', 7, False])
+def test_invalid_shipped_cli_recommendation_is_rejected(recommended):
+    manifest = {'configuration': {'values': {'runtime.devcapsule-command': {
+        'type': 'string', 'runtime-effect': 'devcapsule.command-name', 'recommended': recommended,
+    }}}}
+    with pytest.raises(ProjectConfigurationError):
+        build_node_registry(manifest, {})

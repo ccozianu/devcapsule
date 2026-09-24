@@ -27,8 +27,13 @@ status, ownership and technical evidence.
 
 ## Next Work
 
-Fix and validate the [runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
-before resuming the smoke campaign. Earlier startup/resume passes remain valid
+Integrate and publish a candidate containing the [runtime CLI repair](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md),
+then validate it from the actual IDE terminal before resuming the smoke campaign.
+The source fix exposes `devcapsule` normally and supports this repository's
+recommended `devcapsule0` development exception; Docker command/workflow checks
+passed for both names and both IDE image types. Owner accepted the real recursive
+PyCharm/devcapsule0 session at `9cc0868` on 2026-09-24. This is local-build
+acceptance; a new published candidate remains pending. The blocker is fixed, not closed. Earlier startup/resume passes remain valid
 for their limited assertions; they did not check public CLI availability.
 
 The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records
@@ -44,7 +49,9 @@ journeys below, recording fixes, obsolete findings and explicit deferrals. Two
 old Codium-specific records are retired after checking the removed command and
 implementation against RC0; with the two accepted closures and the legacy
 networking retirement, the original list had 14 open bugs. The two new 2026-09-24 records bring
-the current total to 16 open, including the blocking runtime command defect. The legacy command removal changes
+the then-current total to 16 open, including the blocking runtime command defect.
+The subsequent installed-IDE reuse report brings the list to 17 open; it has
+no release target and requires owner design review before implementation. The legacy command removal changes
 runtime source after RC0 and requires RC1 or later; never move RC0.
 
 ## Legacy PyCharm Launch Retirement

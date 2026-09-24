@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: blocking
 target: 0.2.14
 owner: maintenance
@@ -73,3 +73,56 @@ new users helped into an installed workflow; this is explicitly non-blocking
 and is tracked in the [onboarding work item](../../work-orders/2026-09-24-workflow-installation-onboarding.md).
 Its initialization history was not reconstructed. Missing workflow files do
 not excuse the unavailable command needed to install them.
+
+## Implemented repair and validation
+
+Implementation on `release-0.2.14`: expose the delivered PEX through
+`/usr/local/bin/devcapsule` normally. Owner refinement: opt-in development
+checkouts select the name `devcapsule0`, leaving `devcapsule` for the source
+installation. This repository declares an ordinary configuration value
+`runtime.devcapsule-command`, with runtime effect `devcapsule.command-name`
+and `recommended = "devcapsule0"`; other projects default to the normal name.
+A checkout's explicit answer or omission wins over the recommendation.
+The command is executable from scripts as well as interactive shells, with no
+shell startup modification. Internal PEX paths remain unchanged. Include the
+chosen public command in formation identity so old cached images and the two
+command modes cannot be confused, even with identical runtime bytes.
+The existing real-Docker test now invokes `devcapsule` by name as UID 1000,
+checks version/help and installs a workflow in a disposable project.
+Before the repair it reproduced command-not-found (exit 127) for the PyCharm
+formation as well as the owner's VSCodium observation. No live image patched.
+
+Validation on 2026-09-24:
+
+- 311 focused configuration/materialization/CLI checks passed, including
+  default recommendation, explicit override/omission, invalid command rejection
+  without writes, and unchanged runtime identity across command-name choices.
+- Four real-Docker variants passed: PyCharm and VSCodium materialization, each
+  with normal and development command names. As UID 1000 with ordinary PATH,
+  version/help and workflow installation succeeded. Runtime bytes still match.
+  Development variants verified no shipped `devcapsule` fallback and that a
+  separate development command can coexist with `devcapsule0`.
+- A subsequent cleanup refinement removes only an inherited symlink to the
+  shipped PEX, preserving another development script or symlink. All eight
+  runtime-artifact checks passed, including those three filesystem cases.
+- The initial follow-up Docker run reached the public command successfully but
+  failed a test's lowercase `usage` expectation against capitalized `Usage`.
+  Correcting that assertion allowed the four variants above; no product change
+  was made to satisfy that capitalization.
+
+Logs: `/tmp/runtime-cli-regression-before.log`,
+`/tmp/runtime-cli-config-focused.log`, `/tmp/runtime-cli-command-modes-e2e.log`,
+`/tmp/runtime-cli-link-preservation.log`, `/tmp/maintenance-runtime-cli-build-final.log`.
+The full gate's unrelated website Git-pointer issue remains recorded in the
+maintenance status; do not describe that overall gate as passing.
+
+Owner acceptance, 2026-09-24: "Everything works" for the real recursive
+PyCharm session at `9cc0868`, run `29fb2abc530735da1ebd625acd991622`.
+The agent verified `devcapsule0`, exact runtime bytes and workflow installation
+inside that capsule. This accepts that local development-command session; it
+does not imply every IDE/mode, resume story or published candidate was tested.
+
+Status is fixed, not closed. Main integration and a new immutable candidate
+remain pending; carry the local acceptance into candidate validation.
+RC0 and the owner's running containers were not modified. Normal merge to main
+is the intended disposition; no conflicting main implementation was identified.
