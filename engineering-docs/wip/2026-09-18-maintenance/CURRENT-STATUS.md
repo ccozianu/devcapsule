@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC4 tagged at abb785d with the list/show split and row provenance; asset verification, local proofs and owner testing pending
+State: active; releasing 0.2.14; RC4 public and verified, all local proofs passed against the download; owner testing of RC4 pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -207,7 +207,15 @@ v0.2.14-rc4` passed, record at `/opt/devcapsule-gate/rc4-release-protocol.json`;
 annotated tag pushed atomically with the branch, peeled commit
 `abb785d7ad4069606fd3ab84009ca8efeabc22b9`. A detached chain waits for the
 assets, verifies them, and runs the local proofs with the release version
-exported; results follow.
+exported. Results, 2026-09-24: assets published under the Docker-free
+workflow; checksum verified, executable reports `0.2.14rc4` at `abb785d`,
+manifest records mainline integration with no unintegrated commits; PEX
+SHA-256 `d5387d8a05a278bb0b8b109e9da0ea39c29d5a753e50013d9f09dc9e2a48d16a`,
+files in `/opt/devcapsule-gate/0.2.14-rc4-published/`. Local proofs against
+the download with `DEVCAPSULE_EXPECTED_RELEASE_VERSION=0.2.14rc4`: packaging
+integration 9 passed; clean-machine passed; component-cache 5 passed;
+runtime image on the pinned v0.2.12-rc5 digest 1 passed. Log
+`/opt/devcapsule-gate/rc4-proofs.log`.
 
 Provenance in the listing (2026-09-24, owner request before tagging RC4):
 every configuration row carries a SOURCE column naming the document its
