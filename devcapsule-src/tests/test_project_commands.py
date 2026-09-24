@@ -2020,10 +2020,13 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
         assert cli.main(["project", "--path", str(project), "config", "authorize", "host-browser", "true"]) == 0
         capsys.readouterr()
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+    # Columns: KIND NAME STATUS SOURCE VALUE; the source may contain spaces,
+    # so read the status by position and the value as the last token.
     rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
-    assert rows["host-x11"][2:4] == ["denied", "false"]
-    assert rows["host-browser"][2:4] == ["authorized", "true"]
-    assert rows["development-sudo"][2:4] == ["available", "true"]
+    assert (rows["host-x11"][2], rows["host-x11"][-1]) == ("denied", "false")
+    assert (rows["host-browser"][2], rows["host-browser"][-1]) == ("authorized", "true")
+    assert (rows["development-sudo"][2], rows["development-sudo"][-1]) == ("available", "true")
+    assert rows["host-x11"][3] == "checkout" and rows["development-sudo"][3] == "manifest"
 
 
 @pytest.mark.parametrize('surface,needs', [('pycharm', ['python', 'python-ide']), ('codium', ['node', 'frontend-ide'])])
