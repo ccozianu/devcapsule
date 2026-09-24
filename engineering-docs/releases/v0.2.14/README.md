@@ -1,9 +1,9 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-24. Stage: **RC1 tagged; publication and candidate validation pending**.
+Updated: 2026-09-24. Stage: **RC1 public; local base built; candidate validation in progress**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
-[Download RC0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) ·
+[Download RC1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) ·
 [Bug triage](bugs.md) · [RC0 smoke scripts](smoke/README.md)
 
 Update these working files as decisions and evidence arrive. Chat highlights
@@ -29,15 +29,16 @@ status, ownership and technical evidence.
 
 RC1 is tagged at `cec7a0c2f3467b8cc9d84eca820f35ee869087ec`. PR #136 merged
 the release fixes into main at `c6bea96cfbbb15a428c86bde6924df8ff3db1c15`;
-the candidate integration gate passed with no unintegrated commits. Verify
-publication, download/checksum/version-check RC1, then validate its
+the candidate integration gate passed with no unintegrated commits. Public
+RC1 assets are downloaded and checksum/version/source-verified; the requested
+local base is built. Next, validate its
 [runtime CLI repair](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
 from the IDE terminal before closing the blocker.
 The source fix exposes `devcapsule` normally and supports this repository's
 recommended `devcapsule0` development exception; Docker command/workflow checks
 passed for both names and both IDE image types. Owner accepted the real recursive
 PyCharm/devcapsule0 session at `9cc0868` on 2026-09-24. This is local-build
-acceptance; a new published candidate remains pending. The blocker is fixed, not closed. Earlier startup/resume passes remain valid
+acceptance; the published RC1 now needs exact-candidate validation. The blocker is fixed, not closed. Earlier startup/resume passes remain valid
 for their limited assertions; they did not check public CLI availability.
 
 The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records
@@ -102,11 +103,24 @@ is still pending; owner testing starts with the already published RC0.
 | Candidate | Source | Publication | End-user acceptance |
 |---|---|---|---|
 | [v0.2.14-rc0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) | `d078b879469c1790647e32db75005d0fa4369b27` | Public assets verified 2026-09-22. | Clean-machine executable check passed; major journeys pending. |
-| [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Annotated tag pushed and remote target verified 2026-09-24; publication pending. | Local PyCharm source accepted; published bytes not yet validated. |
+| [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Identity checked; local base built and smoke-checked. IDE campaign pending. |
 
 RC1 tag object: `0f460c0cb5a50f9c0fb6f46b4b7ee6060badd572`. Pushed atomically
 with the release branch. The public RC1 manifest returned HTTP 404 immediately
 after tagging; no successful backend run or published assets are claimed yet.
+That initial 404 is superseded by the successful public download below.
+
+RC1 PEX SHA-256: `68c58ec09c1a73e07c3bb1b1f7514341ddddaf645c7fae1ff4ff0763ff6f7689`.
+Files: `devcapsule-src/dist/rc1-published/`; executable and manifest identify
+`0.2.14rc1`, tag `v0.2.14-rc1`, source `cec7a0c`.
+Owner-requested local base: `devcapsule-base:0.2.14-rc1-local`, image
+`sha256:0d9a185ec5a2ac04380e9b5540bae2b212356b8b5d4c0f91c7db320d486a414a`.
+Built by the downloaded RC1 PEX, recipe `ubuntu-24.04@9`, host-network build.
+Metadata and offline tool/display-availability smoke passed; no bundled
+runtime or agents. Evidence: `dist/rc1-published/local-base-build.json`;
+log `/tmp/maintenance-rc1-base-build.log`. No base registry publication or
+lock repin. No fresh GUI or final-release acceptance inferred.
+
 The following artifact evidence describes RC0.
 
 The annotated RC0 tag points to the prepared source, not subsequent record updates.

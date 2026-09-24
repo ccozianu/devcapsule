@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC1 tagged; publication and candidate validation pending
+State: active; releasing 0.2.14; RC1 public; local base built; candidate validation in progress
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -69,8 +69,9 @@ name for development tooling; internal absolute-path calls retain the shipped
 PEX. Explicit checkout values/omissions override ordinary recommendations.
 Owner accepted the real recursive PyCharm/devcapsule0 session at `9cc0868`.
 PR #136 integrated the release fixes; RC1 is tagged at `cec7a0c`.
-Next: verify RC1 publication and downloaded artifact identity, then carry the
-local acceptance into exact-candidate validation before closing the blocker.
+Published RC1 assets are downloaded and checksum/version/source-verified.
+The owner-requested local base is built and smoke-checked. Next: carry the
+local PyCharm acceptance into exact-RC1 validation before closing the blocker.
 
 The owner requested the installed-IDE reuse bug be filed first and its design
 reviewed together before implementation. No release target or implementation
@@ -146,6 +147,23 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Published RC1 and local base (2026-09-24): downloaded the public PEX, checksum
+and manifest into `devcapsule-src/dist/rc1-published/`. Verified version
+`0.2.14rc1`, mnemonic `v0.2.14-rc1`, source
+`cec7a0c2f3467b8cc9d84eca820f35ee869087ec`, and SHA-256
+`68c58ec09c1a73e07c3bb1b1f7514341ddddaf645c7fae1ff4ff0763ff6f7689`.
+Used those exact bytes to build `devcapsule-base:0.2.14-rc1-local` with
+`--network host`, recipe `ubuntu-24.04@9`. Image ID:
+`sha256:0d9a185ec5a2ac04380e9b5540bae2b212356b8b5d4c0f91c7db320d486a414a`.
+Build reused cached installation layers. Metadata and a disposable offline
+container smoke passed: Python/Git/Docker, Node/JDK/Maven, display executables;
+no bundled runtime PEX or agent CLI. Base is local only, with no registry push
+or project-lock change. Evidence: `dist/rc1-published/local-base-build.json`;
+log `/tmp/maintenance-rc1-base-build.log`. No GUI acceptance of this new base
+or final-release acceptance is claimed. Source unchanged; no need to rerun
+the source gate for this image build. Initial coordination claim hit a transient
+SSH rejection; a subsequent claim succeeded. The release branch was not rebased.
 
 RC1 publication trigger (2026-09-24): fetched main is
 `c6bea96cfbbb15a428c86bde6924df8ff3db1c15` (PR #136); it contains release
@@ -356,7 +374,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   retained for the owner; see validation above. Do not stop or remove it merely
   because this agent turn finishes. Owner subsequently confirmed everything works.
 - The runtime CLI blocker is fixed in source, awaiting main integration and
-  RC1 publication and validation; PR #136 is verified merged. Owner accepted
+  exact-RC1 validation; public assets now verified and PR #136 is merged. Owner accepted
   the local PyCharm/devcapsule0 session; exact-candidate validation remains.
   Existing running capsules retain their original commands until relaunched.
 - URL-opening triage and workflow-onboarding work item are handed to their

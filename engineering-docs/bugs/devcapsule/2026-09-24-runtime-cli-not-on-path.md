@@ -124,7 +124,7 @@ does not imply every IDE/mode, resume story or published candidate was tested.
 
 Status is fixed, not closed. PR #136 integrated the repair into main at
 `c6bea96cfbbb15a428c86bde6924df8ff3db1c15`, verified by fetched ancestry and
-matching runtime sources. RC1 is tagged at `cec7a0c`; publication and exact
-candidate validation remain pending. Carry the local acceptance into that validation.
+matching runtime sources. RC1 at `cec7a0c` is public and its downloaded checksum/version/source are
+verified; exact-candidate IDE validation remains pending. Carry the local acceptance into that validation.
 RC0 and the owner's running containers were not modified. Normal merge to main
 is the intended disposition; no conflicting main implementation was identified.
