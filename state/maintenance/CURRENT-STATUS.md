@@ -201,6 +201,18 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+`config list`/`config show` split (2026-09-24): implemented on the release
+branch at the owner's direction after the rc3 findings. `list` prints the
+checkout identity and the table only; `show` adds the review, rendered from
+the generated resolution's real state; newly required acquisition decisions
+say they are new in 0.2.14. Contract tests 55 passed, including the new
+list/show test across fresh, stale and decisions-required states; the
+upgrade-recovery, project-command, release-compatibility, version-set and
+configuration modules passed (423) with the recovery test reading remedies
+from `show`; mypy clean on the touched modules. Full `nox -s build` passed:
+1065 tests, 20 deselected, one xfail, one quarantined XPASS, mypy, PEX smokes
+and nine packaged integrations; log `/opt/devcapsule-gate/list-show-build.log`.
+
 RC3 local proofs (2026-09-24), against the verified download
 `/opt/devcapsule-gate/rc3-published/devcapsule.pex` (SHA-256
 `9a82ae7f91662f448ad180854e2cd43b14b6deca54c598d30440dd4a87ae4d43`), with
@@ -529,7 +541,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Owner's rc3 test, 2026-09-24, produced three findings, all recorded:
+- Owner's rc3 test, 2026-09-24, produced three findings, all recorded and
+  now dispositioned: the trailer is fixed by the list/show split (RC4); the
+  acquisition decision stays required with a named release-notes exception;
+  the checkout naming is not a bug. Earlier text of this thread follows:
   the launcher change rebuilt the formation with a 4.28 GB context transfer
   and 39 retained images at 266 GB (added to the installed-IDE reuse bug);
   `config list` advises resolve on a fresh resolution (new minor bug, fix
