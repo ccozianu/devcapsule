@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC1 public; released-launcher manifest rejection fixed on branch, gate passed; RC2 pending owner PR and tag
+State: active; releasing 0.2.14; RC2 tagged but unpublished after a runner-side Docker failure; Docker removed from the release workflow; RC3 pending owner PR and tag
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -60,6 +60,28 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+RC2's backend run (36023910604) failed at "Verify pinned base availability
+and runtime sessions": `docker build` of the disposable runtime image exited
+1 after 42 seconds on the hosted runner, where the rc1 run had passed the
+same step in 74 seconds with identical test code; the e2e helper discarded
+the build's stderr, and the step log needs administrator rights. The local
+reproduction against the same digest and PEX source passed. The owner ruled
+that no test on hosted infrastructure runs Docker. Filed as a blocking bug
+([record](../../bugs/devcapsule/2026-09-24-release-workflow-gated-on-docker-on-hosted-runner.md))
+and fixed on this branch: the release workflow runs no Docker (both
+clean-machine proofs, component-cache and runtime-session steps removed);
+those proofs are local acceptance steps against the downloaded assets; the
+e2e helpers now fail with the command's output; the operator guide,
+DEVELOPING.md and the source README describe the new split.
+
+Next: the owner opens and merges the PR from `release-0.2.14`; verify the
+candidate gate by ancestry; tag `v0.2.14-rc3` atomically with the branch;
+verify the published assets; run the three local proofs against the
+downloaded RC3; then the owner tests `config list`/`resolve` on this
+repository with 0.2.12 and RC3 and the `devcapsule0` exception in a real
+capsule. RC2's tag stays, without assets. The RC1 configuration-inspection
+bug remains open for the owner's fix-or-defer call.
 
 Owner-directed release steering resumed 2026-09-24 from this checkout. The
 owner reported `project config list` and `config resolve` failing on a fresh
@@ -180,6 +202,29 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Docker-free release workflow (2026-09-24): workflow YAML parses; the two
+edited e2e modules collect (six e2e tests, deselected as before) and pass
+mypy; full `nox -s build` passed: 1064 tests, 20 deselected, one xfail, one
+quarantined XPASS, mypy, PEX smokes and nine packaged integrations; log
+`/opt/devcapsule-gate/no-docker-workflow-build.log`. Local
+reproduction of rc2's failed step, `tests/e2e/test_runtime_image.py` with
+`DEVCAPSULE_E2E_BASE_IMAGE` set to the v0.2.12-rc5 digest and the PEX built
+from `8d005b3`: one passed in 608 seconds; log
+`/opt/devcapsule-gate/rc2-runtime-image-repro.log`. Step timings from the
+public jobs API: rc1 runtime-session step 74 s success; rc2 42 s failure;
+rc2's component-cache Docker step 71 s success, so Docker itself worked on
+that runner.
+
+RC2 tag (2026-09-24): the owner merged the release PR; fetched main
+`9e2396d` contains `8d005b3` and `a779295`, zero unintegrated commits.
+`scripts/release-protocol.py v0.2.14-rc2` passed; record at
+`/opt/devcapsule-gate/rc2-release-protocol.json`. Annotated tag pushed
+atomically with the branch; remote tag object `4a02aa31d817`, peeled commit
+`a779295d7343158d846df89d2d5da184548bfd1d`. Asset publication is the
+workflow's; a watcher downloads and verifies the public assets when they
+appear. No matrix or lock change: the default base remains the v0.2.12-rc5
+digest pin, which carries no runtime (D-0009) and whose recipe is unchanged.
 
 Local rc2 base (2026-09-24): built `devcapsule-base:0.2.14-rc2-local`, image
 `sha256:64c8db54eac0bfbefa019c20777bc486abcad4bc5b0ff420d229f79a5f50718a`,

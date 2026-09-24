@@ -301,8 +301,10 @@ excluded from the selected-executable smoke run. Without the selection variable,
 `nox -s e2e` retains its local build and contributor-bootstrap behavior.
 
 The GitHub backend owns release construction. Pushing `v0.2.11-rc0` on
-`release-0.2.11` runs source, packaging, clean-machine, component-cache and
-runtime-session gates, then publishes download-verified assets as a prerelease.
+`release-0.2.11` runs the source and packaging gates, then publishes
+download-verified assets as a prerelease. The workflow runs no Docker: the
+clean-machine, component-cache and runtime-session proofs are local acceptance
+steps against the downloaded assets.
 The assets include `devcapsule.pex`, its SHA-256 checksum, and a release manifest.
 Candidates do not require main integration and never become GitHub's Latest.
 

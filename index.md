@@ -218,6 +218,7 @@ history; record current decisions in the active documents above.
 
 - [Installed IDE reuse before archive acquisition — design review pending](engineering-docs/bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md)
 
+- [Release workflow gated candidates on Docker builds on a hosted runner — blocked rc2](engineering-docs/bugs/devcapsule/2026-09-24-release-workflow-gated-on-docker-on-hosted-runner.md)
 - [Released launchers reject the repository manifest since RC1 — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md)
 - [Runtime DevCapsule command unavailable — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
 - [Website URL opening has no browser handler](engineering-docs/bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md)

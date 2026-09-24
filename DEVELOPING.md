@@ -187,9 +187,11 @@ deliberately discard cached Nox environments, add
 For CLI installation and usage, see
 [`devcapsule-src/README.md`](devcapsule-src/README.md).
 The initial binary distribution channel is GitHub Releases: pushing an RC or final
-`v*` tag runs the backend release workflow, which builds and clean-machine
-proves the self-contained Linux x86-64 PEX before publishing it with a SHA-256
-checksum, then downloads and proves the published bytes again.
+`v*` tag runs the backend release workflow, which builds the self-contained
+Linux x86-64 PEX, runs the source and packaging tests, publishes it with a
+SHA-256 checksum, and verifies the published bytes against the build. The
+workflow runs no Docker; the clean-machine, component-cache and runtime-session
+proofs run locally against the downloaded assets during release acceptance.
 
 ## Website Development
 
