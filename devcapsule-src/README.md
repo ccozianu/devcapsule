@@ -583,7 +583,14 @@ listing and nothing else: no advice, no commands to run. `project config show`
 prints the same listing followed by the configuration review: the pending
 decisions with their remedies, the recorded base beside the recommendation,
 and whether resolving is needed. A ready review over a fresh resolution says
-so and gives no resolve instruction. It shows
+so and gives no resolve instruction. Every row carries a `SOURCE` column
+naming the document its status and value come from: `checkout` for the
+checkout input, `manifest` for a project recommendation or declaration,
+`lock` for the platform lock's recommendations and component declarations,
+`resolution` for the generated plan, `managed` for DevCapsule-owned state
+directories, and `environment` for a bound secret. `config show` expands
+those tokens in a `Sources:` block with each file's path and whether the
+generated resolution still reflects it. It shows
 the materialized checkout name and exact files. Repeated calls do not rewrite
 existing choices or a resolved plan. If the same portable project identity is
 already registered for another checkout, assign a distinct name first with

@@ -312,9 +312,52 @@ class ConfigurationListRow:
     name: str
     status: str
     value: str
+    # Which document the row's status and value come from, named by the
+    # tokens the Sources block of `config show` expands to paths: checkout,
+    # manifest, lock, resolution, managed, environment.
+    source: str
 
 
-def _print_configuration_listing(context: object | None) -> tuple[Path, dict[str, Any], dict[str, Any], dict[str, Any], ConfigurationListRow] | None:
+@dataclass(frozen=True)
+class ConfigurationListing:
+    """What `config list` printed, for `config show` to explain further."""
+
+    root: Path
+    manifest: dict[str, Any]
+    manifest_path: Path
+    lock: dict[str, Any]
+    lock_path: Path
+    checkout: dict[str, Any]
+    input_path: Path
+    resolution_path: Path
+    resolution_row: ConfigurationListRow
+
+    def render_sources(self) -> str:
+        """Name every document behind the listing and whether the generated
+        resolution still reflects it. The tokens match the SOURCE column."""
+        resolved = load_resolution(self.resolution_path) if self.resolution_path.is_file() else {}
+        drifted = (
+            set(stale_resolution_inputs(self.manifest, self.lock, self.checkout, resolved))
+            if resolved.get("status") != "unresolved" and resolved else set()
+        )
+        def note(key: str) -> str:
+            if not resolved or resolved.get("status") == "unresolved":
+                return "not yet resolved"
+            return "changed since the resolution" if key in drifted else "as resolved"
+        lines = [
+            "Sources:",
+            f"  manifest     {self.manifest_path}  ({note('manifest')})",
+            f"  lock         {self.lock_path}  ({note('platform-lock')})",
+            f"  checkout     {self.input_path}  ({note('checkout-input')})",
+            "  workstation  absent (no workstation-level configuration exists yet)",
+            f"  resolution   {self.resolution_path}  (generated: {self.resolution_row.status})",
+            "  managed      DevCapsule-owned state directories under the XDG data home",
+            "  environment  the launching shell's environment variables",
+        ]
+        return "\n".join(lines)
+
+
+def _print_configuration_listing(context: object | None) -> ConfigurationListing | None:
     """Print the checkout identity and the configuration table.
 
     Returns the loaded documents and the resolution row for a caller that
@@ -328,7 +371,7 @@ def _print_configuration_listing(context: object | None) -> tuple[Path, dict[str
         print(runtime_context.configuration_report())
         return None
     root, manifest = manifest_for(_project_context(context).start_path())
-    _lock_path, lock = lock_for(root, manifest)
+    lock_path, lock = lock_for(root, manifest)
     input_path, resolution_path = checkout_record_paths(manifest, root)
     if not input_path.is_file():
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
@@ -362,7 +405,10 @@ def _print_configuration_listing(context: object | None) -> tuple[Path, dict[str
         resolution_row,
     ]
     _print_configuration_rows(rows)
-    return root, manifest, lock, checkout, resolution_row
+    return ConfigurationListing(
+        root, manifest, root / ".devcapsule" / "devcapsule.toml", lock, lock_path,
+        checkout, input_path, resolution_path, resolution_row,
+    )
 
 
 class ConfigListCommand(Command):
@@ -377,19 +423,20 @@ class ConfigListCommand(Command):
 
 class ConfigShowCommand(Command):
     name = "show"
-    help = "Show the listing plus the configuration review: pending decisions, remedies, and whether to resolve."
+    help = "Show the listing, the documents every row comes from, and the review: decisions, remedies, and whether to resolve."
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         listing = _print_configuration_listing(context)
         if listing is None:
             return 0
-        root, manifest, lock, checkout, resolution_row = listing
-        resolution = (
-            f"stale: {resolution_row.value}" if resolution_row.status == "stale" else resolution_row.status
-        )
+        row = listing.resolution_row
+        resolution = f"stale: {row.value}" if row.status == "stale" else row.status
         print("")
-        print(review_configuration(manifest, lock, checkout).render(root, resolution=resolution))
+        print(listing.render_sources())
+        print("")
+        print(review_configuration(listing.manifest, listing.lock, listing.checkout).render(
+            listing.root, resolution=resolution))
         return 0
 
 
@@ -1260,34 +1307,34 @@ def _configuration_value_rows(
     declarations = configuration_value_declarations(manifest)
     configuration = checkout.get("configuration", {})
     if not isinstance(configuration, dict):
-        return [ConfigurationListRow("value", "*", "invalid", "configuration is not a table")]
+        return [ConfigurationListRow("value", "*", "invalid", "configuration is not a table", "checkout")]
     raw_values = configuration.get("values", {})
     if not isinstance(raw_values, dict):
-        return [ConfigurationListRow("value", "*", "invalid", "values is not a table")]
+        return [ConfigurationListRow("value", "*", "invalid", "values is not a table", "checkout")]
 
     rows: list[ConfigurationListRow] = []
     for name, declaration in sorted(declarations.items()):
         if name not in raw_values:
             if name in configuration.get("omitted-values", []):
-                rows.append(ConfigurationListRow("value", name, "omitted", "-"))
+                rows.append(ConfigurationListRow("value", name, "omitted", "-", "checkout"))
             elif "recommended" in declaration:
                 value = normalize_configuration_value(manifest, name, "default")
-                rows.append(ConfigurationListRow("value", name, "project-recommended", render_toml_scalar(value)))
+                rows.append(ConfigurationListRow("value", name, "project-recommended", render_toml_scalar(value), "manifest"))
             else:
                 status = "missing-required" if declaration.get("required", False) else "unset-optional"
-                rows.append(ConfigurationListRow("value", name, status, "-"))
+                rows.append(ConfigurationListRow("value", name, status, "-", "manifest (declared, no value)"))
             continue
         try:
             normalized = normalize_configuration_value(manifest, name, raw_values[name])
         except ProjectConfigurationError as exc:
-            rows.append(ConfigurationListRow("value", name, "invalid", str(exc)))
+            rows.append(ConfigurationListRow("value", name, "invalid", str(exc), "checkout"))
         else:
             rows.append(
-                ConfigurationListRow("value", name, "configured", render_toml_scalar(normalized))
+                ConfigurationListRow("value", name, "configured", render_toml_scalar(normalized), "checkout")
             )
     for name, value in sorted(raw_values.items(), key=lambda item: str(item[0])):
         if name not in declarations:
-            rows.append(ConfigurationListRow("value", str(name), "undeclared", repr(value)))
+            rows.append(ConfigurationListRow("value", str(name), "undeclared", repr(value), "checkout"))
     return rows
 
 
@@ -1298,20 +1345,23 @@ def _component_secret_rows(
     try:
         bindings = resolve_secret_bindings(lock, checkout)
     except ProjectConfigurationError as exc:
-        return [ConfigurationListRow("secret", "*", "invalid", str(exc))]
+        return [ConfigurationListRow("secret", "*", "invalid", str(exc), "checkout")]
     rows: list[ConfigurationListRow] = []
     for name, declaration in sorted(declarations.items()):
         source = bindings.get(name)
         if source is None:
             status = "missing-required" if declaration.required else "optional-unbound"
+            origin = "lock (declared, unbound)"
         else:
             status = "bound" if source in os.environ else "bound-unavailable"
+            origin = "checkout, environment" if status == "bound" else "checkout (variable unset in environment)"
         rows.append(
             ConfigurationListRow(
                 "secret",
                 name,
                 status,
                 f"{declaration.environment_variable} ({declaration.exposure})",
+                origin,
             )
         )
     return rows
@@ -1328,7 +1378,7 @@ def _configuration_binding_rows(
         bindings = configuration.get("bindings", {})
         raw_bindings = bindings.get("host-directory", {}) if isinstance(bindings, dict) else bindings
     if not isinstance(raw_bindings, dict):
-        return [ConfigurationListRow("binding", "*", "invalid", "host-directory is not a table")]
+        return [ConfigurationListRow("binding", "*", "invalid", "host-directory is not a table", "checkout")]
     state = checkout.get("state", {})
     adopted = state.get("adopted", {}) if isinstance(state, dict) else {}
     if not isinstance(adopted, dict):
@@ -1339,20 +1389,20 @@ def _configuration_binding_rows(
         bound = raw_bindings.get(name)
         legacy = adopted.get(name)
         if bound is not None and legacy is not None:
-            rows.append(ConfigurationListRow("binding", name, "conflict", "bound and adopted"))
+            rows.append(ConfigurationListRow("binding", name, "conflict", "bound and adopted", "checkout"))
         elif bound is not None:
             path = Path(str(bound)).expanduser().resolve()
             status = "bound" if isinstance(bound, str) and path.is_dir() else "invalid"
-            rows.append(ConfigurationListRow("binding", name, status, f"host-directory: {path}"))
+            rows.append(ConfigurationListRow("binding", name, status, f"host-directory: {path}", "checkout"))
         elif legacy is not None:
             path = Path(str(legacy)).expanduser().resolve()
             status = "adopted-legacy" if isinstance(legacy, str) and path.is_dir() else "invalid"
-            rows.append(ConfigurationListRow("binding", name, status, str(path)))
+            rows.append(ConfigurationListRow("binding", name, status, str(path), "checkout (state.adopted)"))
         else:
-            rows.append(ConfigurationListRow("binding", name, "managed-default", "managed directory"))
+            rows.append(ConfigurationListRow("binding", name, "managed-default", "managed directory", "managed (lock declares the slot)"))
     for name, value in sorted(raw_bindings.items(), key=lambda item: str(item[0])):
         if name not in declarations:
-            rows.append(ConfigurationListRow("binding", str(name), "undeclared", str(value)))
+            rows.append(ConfigurationListRow("binding", str(name), "undeclared", str(value), "checkout"))
     return rows
 
 
@@ -1361,15 +1411,27 @@ def _configuration_authorization_rows(
 ) -> list[ConfigurationListRow]:
     try:
         reviews = review_authorizations(manifest, lock, checkout)
+        declarations = authorization_declarations(manifest, lock)
     except ProjectConfigurationError as exc:
-        return [ConfigurationListRow("authorization", "*", "invalid", str(exc))]
-    return [
-        ConfigurationListRow(
-            "authorization", item.name, item.status,
-            item.recommended if item.recorded == "unanswered" else item.recorded,
+        return [ConfigurationListRow("authorization", "*", "invalid", str(exc), "checkout")]
+    rows = []
+    for item in reviews:
+        declaration = declarations.get(item.name)
+        # The base selection and vendor acquisitions are recommended by the
+        # lock; host access is recommended by the manifest's host tables.
+        recommender = "lock" if declaration is None or declaration.required else "manifest"
+        if item.recorded == "unanswered":
+            origin = f"{recommender} (recommendation, unanswered)"
+        else:
+            origin = "checkout" if item.status != "stale" else f"checkout (answer predates the {recommender} recommendation)"
+        rows.append(
+            ConfigurationListRow(
+                "authorization", item.name, item.status,
+                item.recommended if item.recorded == "unanswered" else item.recorded,
+                origin,
+            )
         )
-        for item in reviews
-    ]
+    return rows
 
 
 def _configuration_resolution_row(
@@ -1379,20 +1441,22 @@ def _configuration_resolution_row(
     resolution_path: Path,
 ) -> ConfigurationListRow:
     if not resolution_path.is_file():
-        return ConfigurationListRow("resolution", "generated", "missing", str(resolution_path))
+        return ConfigurationListRow("resolution", "generated", "missing", str(resolution_path), "resolution")
     resolved = load_resolution(resolution_path)
     if resolved.get("status") == "unresolved":
-        return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path))
+        return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path), "resolution")
     stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
     if stale:
-        return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale))
-    return ConfigurationListRow("resolution", "generated", "fresh", str(resolution_path))
+        return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale), "resolution (inputs changed: " + ", ".join(stale) + ")")
+    return ConfigurationListRow("resolution", "generated", "fresh", str(resolution_path), "resolution")
 
 
 def _print_configuration_rows(rows: list[ConfigurationListRow]) -> None:
-    headers = ("KIND", "NAME", "STATUS", "VALUE / RECOMMENDATION")
-    values = [(row.kind, row.name, row.status, row.value) for row in rows]
-    widths = [max(len(headers[index]), *(len(row[index]) for row in values)) for index in range(4)]
+    # SOURCE precedes the value: values carry digests and paths that push a
+    # trailing column past most terminal widths.
+    headers = ("KIND", "NAME", "STATUS", "SOURCE", "VALUE / RECOMMENDATION")
+    values = [(row.kind, row.name, row.status, row.source, row.value) for row in rows]
+    widths = [max(len(headers[index]), *(len(row[index]) for row in values)) for index in range(5)]
     print("")
     print("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
     for row in values:

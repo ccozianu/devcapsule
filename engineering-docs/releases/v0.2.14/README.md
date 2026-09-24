@@ -13,7 +13,9 @@ status, ownership and technical evidence.
 ## Scope And Owner Decisions
 
 - On 2026-09-24 the owner ruled that `project config list` is a data listing
-  with no advice, and that a new `project config show` carries the review;
+  with no advice, and that a new `project config show` carries the review
+  and, before RC4, the provenance of every row and the files behind the
+  resolution;
   the review's resolve instruction now follows the resolution's real state.
   The differing checkout record names (`dev-capsule-2`, `devcapsule-2nd-home`)
   are not a bug; a naming-default change is deferred.
