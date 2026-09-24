@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC1 public; local base built; candidate validation in progress
+State: active; releasing 0.2.14; RC1 public; released-launcher manifest rejection fixed on branch, gate passed; RC2 pending owner PR and tag
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -60,6 +60,28 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+Owner-directed release steering resumed 2026-09-24 from this checkout. The
+owner reported `project config list` and `config resolve` failing on a fresh
+DevCapsule checkout with `runtime-effect must be one of: docker.memory-limit`.
+Root cause, reproduced with the published executables: commit `658749f`
+declared `runtime-effect = "devcapsule.command-name"` in this repository's
+own manifest while adding it to the vocabulary; v0.2.12 and rc0 reject any
+effect they do not know, so every released client failed on `main` and
+`release-0.2.14`; rc1 accepts it. Filed as a blocking bug
+([record](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md)),
+then fixed on this branch: the value name `runtime.devcapsule-command` is
+reserved and carries the effect without the attribute, unknown effects are
+reported with the running version, the manifest drops the attribute, and a
+guard test pins the repository manifest to the released vocabulary. Published
+0.2.12 now lists and resolves the manifest. Full gate passed.
+
+Next: the owner opens the PR from `release-0.2.14` to `main`. After the
+merge, verify the candidate gate by ancestry, tag `v0.2.14-rc2` atomically
+with the branch, download and verify the assets, and validate that RC2 applies
+`devcapsule0` from the reserved name inside a real capsule. Then decide the
+RC1 configuration-inspection bug with the owner: fix both causes on this
+branch under maintenance, or defer. The receiving workstream is paused.
 
 RC1 owner feedback: mostly works, except configuration inspection. Both
 reported failures are confirmed; the [bug](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
@@ -158,6 +180,19 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Manifest compatibility fix (2026-09-24): focused tests 15 passed; full
+`nox -s build` passed with 1064 tests, 20 deselected, one xfail, one
+quarantined XPASS, mypy, PEX smokes and nine packaged integrations; log
+`/opt/devcapsule-gate/manifest-compat-build.log`. Published v0.2.12 and rc1
+executables, checksums verified, exercised against the fixed manifest with
+isolated XDG state: 0.2.12 `config list` and `config resolve` exit 0; rc1
+`config list` exit 0. Pytest scratch had to move to the overlay: this
+capsule's 2 GB `/tmp` overflowed on the first run, and a second run under
+the home directory failed only `test_unmountable_staging_fails_loudly`,
+which expects an unmounted scratch path; the single test passes in `/tmp`
+and on the overlay. No capsule was launched; the effect application from
+the reserved name is covered by unit tests until RC2 exists.
 
 RC1 configuration failure intake (2026-09-24): owner could not retain the log.
 Original successor inspection showed exit 0 and no launch-context/configuration
@@ -413,6 +448,18 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- RC2 is required: rc1 accepts the fixed manifest but applies the
+  `devcapsule0` exception only from the attribute, so dogfood sessions
+  launched with rc1 on the fixed manifest get the normal `devcapsule` name
+  until RC2. Existing running capsules are unaffected.
+- The owner's host executable was not identified; the reported message can
+  only come from 0.2.12 or rc0. Ask for `devcapsule version` when closing.
+- The guard test pins `docker.memory-limit` as the released vocabulary; move
+  it to include `devcapsule.command-name` when 0.2.14 final ships.
+- The website checkout in this capsule has an embedded `.git` directory
+  since 2026-09-23; the other checkout's pointer repair did not hold, as the
+  owner's `git status` failure shows. Not repaired from here.
+
 - RC1 runtime-configuration inspection bug needs component-upgrades triage;
   owner expects read-only inspection from /opt as well as the project root.
   Mail delivered at `dc91dbc8e484`; acknowledgement and repair remain pending.
@@ -486,6 +533,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [Released launchers reject the repository manifest](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md): blocking, fixed on branch, needs RC2.
 
 - [RC1 runtime configuration inspection](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md): component-upgrades; confirmed, target 0.2.14.
 
