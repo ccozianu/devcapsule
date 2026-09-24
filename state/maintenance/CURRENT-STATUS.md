@@ -181,6 +181,19 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Local rc2 base (2026-09-24): built `devcapsule-base:0.2.14-rc2-local`, image
+`sha256:64c8db54eac0bfbefa019c20777bc486abcad4bc5b0ff420d229f79a5f50718a`,
+recipe `ubuntu-24.04@9`, host-network build, root `ubuntu:24.04`, by a
+revision-bearing PEX built from the pushed branch head
+`8d005b38af9777b7e3314bf3e2910314effef4d2` with `--source-revision` asserted.
+The recipe is unchanged since rc1, so the content matches the rc1-local base;
+only builder provenance differs. Not pushed to any registry, no lock repin,
+no matrix change: the owner's reading of "reference the rc2 base by tag"
+(digest pin of a new base named for rc2, or a literal tag reference) and the
+merge of the release PR are pending. Log `/opt/devcapsule-gate/rc2-local-base.log`.
+A first attempt with the `nox -s pex` local artifact was refused by the
+builder for lacking a public source revision, as designed.
+
 Manifest compatibility fix (2026-09-24): focused tests 15 passed; full
 `nox -s build` passed with 1064 tests, 20 deselected, one xfail, one
 quarantined XPASS, mypy, PEX smokes and nine packaged integrations; log
