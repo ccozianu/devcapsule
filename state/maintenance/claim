@@ -1,5 +1,0 @@
-who: Costin Cozianu
-branch: release-0.2.14
-slice: Replace runtime command string checks with an enum
-since: 2026-09-24T09:11:41+00:00
-expires: 2026-09-24T21:11:41+00:00
