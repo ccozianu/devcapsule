@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-24. Stage: **RC2 tagged but unpublished after a runner-side Docker failure; Docker removed from the release workflow; RC3 pending**.
+Updated: 2026-09-24. Stage: **RC2 published on rerun; RC3 tagged with the Docker-free workflow; asset verification and owner testing pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) ·
@@ -131,7 +131,8 @@ not changed since; see the maintenance status for the digest-pin discussion.
 |---|---|---|---|
 | [v0.2.14-rc0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) | `d078b879469c1790647e32db75005d0fa4369b27` | Public assets verified 2026-09-22. | Clean-machine executable check passed; major journeys pending. |
 | [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Owner: mostly works; configuration inspection fails (bug filed). Superseded by RC2 for the manifest fix. |
-| v0.2.14-rc2 | `a779295d7343158d846df89d2d5da184548bfd1d` | Tagged 2026-09-24; gate passed with zero missing commits; backend run 36023910604 failed at the runtime-session Docker build on the runner. No assets; tag retained. | None. Superseded by RC3, which carries the same runtime source plus the Docker-free workflow. |
+| [v0.2.14-rc2](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc2) | `a779295d7343158d846df89d2d5da184548bfd1d` | Tagged 2026-09-24; gate passed with zero missing commits. Backend run 36023910604 failed at the runtime-session Docker build; the owner's rerun of the same run succeeded and published the assets. | Same runtime source as RC3; usable for owner testing. |
+| [v0.2.14-rc3](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc3) | `997cd67445b00c78da38f1a77c7f0622eaf5a0b3` | Tagged 2026-09-24 after PR #138; gate passed with zero missing commits; first candidate built by the Docker-free workflow; publication pending. | Owner testing pending: `config list`/`resolve` on this repository with 0.2.12 and RC3; `devcapsule0` from the reserved name in a real capsule. Local proofs against the download pending. |
 
 RC1 tag object: `0f460c0cb5a50f9c0fb6f46b4b7ee6060badd572`. Pushed atomically
 with the release branch. The public RC1 manifest returned HTTP 404 immediately
