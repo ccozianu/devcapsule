@@ -103,7 +103,7 @@ is still pending; owner testing starts with the already published RC0.
 | Candidate | Source | Publication | End-user acceptance |
 |---|---|---|---|
 | [v0.2.14-rc0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) | `d078b879469c1790647e32db75005d0fa4369b27` | Public assets verified 2026-09-22. | Clean-machine executable check passed; major journeys pending. |
-| [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Identity checked; local base built and smoke-checked. IDE campaign pending. |
+| [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Identity and local base verified; real recursive PyCharm running, automated checks passed; owner GUI acceptance pending. |
 
 RC1 tag object: `0f460c0cb5a50f9c0fb6f46b4b7ee6060badd572`. Pushed atomically
 with the release branch. The public RC1 manifest returned HTTP 404 immediately
@@ -137,6 +137,17 @@ and executable portability; they do not substitute for IDE/agent acceptance.
 The Actions run was not independently inspected through a credentialed API.
 
 ## End-User Acceptance
+
+2026-09-24: launched real PyCharm recursively with the published RC1 PEX and
+`devcapsule-base:0.2.14-rc1-local`. Retained run:
+`0edc6f491291f0d5ffa4e31b0238863b`. Independent successor inspection, host
+networking, exact base/runtime identity and public-command workflow installation
+passed. PyCharm JVM is running; owner received the desktop link. Human GUI
+acceptance of this exact candidate/base session remains pending. The previous
+accepted session used local source `9cc0868` and the pinned `v0.2.12-rc5` base;
+its evidence remains distinct. The two bases have identical five filesystem
+layers and differ only in image-name/provenance labels.
+
 
 Use the [validation stories](smoke/stories.md) for contracts, pre/postconditions,
 actors and separate pass-first/data-reuse dependencies. The old manual walkthrough

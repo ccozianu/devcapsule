@@ -128,3 +128,10 @@ matching runtime sources. RC1 at `cec7a0c` is public and its downloaded checksum
 verified; exact-candidate IDE validation remains pending. Carry the local acceptance into that validation.
 RC0 and the owner's running containers were not modified. Normal merge to main
 is the intended disposition; no conflicting main implementation was identified.
+
+Published-RC1 follow-up, 2026-09-24: recursive run
+`0edc6f491291f0d5ffa4e31b0238863b` uses exact published RC1 bytes and the new
+local RC1 base. Independent inspection passed; PyCharm JVM is running. Agent
+checks as UID 1000 verify public `devcapsule0`, absence of shipped `devcapsule`,
+exact RC1 version/hash, and workflow installation. Owner GUI acceptance of this
+new session remains pending; the bug is not closed by these checks alone.
