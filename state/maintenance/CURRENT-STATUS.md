@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC2 tagged but unpublished after a runner-side Docker failure; Docker removed from the release workflow; RC3 pending owner PR and tag
+State: active; releasing 0.2.14; RC2 published on rerun; RC3 tagged at 997cd67 with the Docker-free workflow; asset verification, local proofs and owner testing pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -202,6 +202,15 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+RC3 tag (2026-09-24): the owner merged PR #138 (fetched main `7c0b5a2`
+contains `997cd67`, zero unintegrated commits) and reported that a rerun of
+rc2's failed run succeeded, which confirms the runner failure as flakiness.
+`scripts/release-protocol.py v0.2.14-rc3` passed, record at
+`/opt/devcapsule-gate/rc3-release-protocol.json`; annotated tag pushed
+atomically with the branch, peeled commit `997cd67445b00c78da38f1a77c7f0622eaf5a0b3`.
+A watcher downloads and verifies the rc2 and rc3 assets; the three local
+Docker proofs against the rc3 download follow.
 
 Docker-free release workflow (2026-09-24): workflow YAML parses; the two
 edited e2e modules collect (six e2e tests, deselected as before) and pass
