@@ -19,6 +19,7 @@ from devcapsule.image_build import (
     FileComponent, ImageBuildSpec,
 )
 from devcapsule.materialization import ArtifactSpec, ensure_materialized_surface
+from devcapsule.runtime_command import RuntimeCommand
 
 
 def docker(*args: str) -> str:
@@ -66,9 +67,9 @@ def test_installation_is_reused_across_images_and_invalidated_by_recipe(tmp_path
 
 @pytest.mark.e2e
 @pytest.mark.parametrize("surface", ["pycharm", "codium"])
-@pytest.mark.parametrize("command", ["devcapsule", "devcapsule0"])
+@pytest.mark.parametrize("command", list(RuntimeCommand))
 def test_formation_receives_exact_launcher_on_runtime_free_base(
-    tmp_path: Path, built_pex: Path, surface: str, command: str,
+    tmp_path: Path, built_pex: Path, surface: str, command: RuntimeCommand,
 ) -> None:
     archive_path = tmp_path / "surface.tar.gz"
     names = ("bin/pycharm.sh",) if surface == "pycharm" else ("codium", "bin/codium", "chrome-sandbox")
@@ -124,7 +125,7 @@ def test_formation_receives_exact_launcher_on_runtime_free_base(
             test -s /tmp/workflow-project/AGENTS.md
             test -s /tmp/workflow-project/CURRENT-STATUS.md
         """)
-        if command == "devcapsule0":
+        if command is RuntimeCommand.DEVELOPMENT:
             # No shipped fallback can mask a missing development installation.
             # An independently installed command owns the usual spelling while
             # the stable alias still reaches the original runtime.

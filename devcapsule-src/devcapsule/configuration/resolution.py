@@ -10,6 +10,7 @@ import tomllib
 from typing import Any, Mapping
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.project import ProjectMountError, normalize_project_mount
+from devcapsule.runtime_command import RuntimeCommand
 
 from .authorization import authorized_base_selection
 from .documents import (
@@ -141,9 +142,10 @@ class Resolution:
         mount = runtime.get("project-mount")
         memory = runtime.get("memory-limit-bytes")
         image = runtime.get("image")
-        command = runtime.get("devcapsule-command", "devcapsule")
-        if command not in ("devcapsule", "devcapsule0"):
-            raise ProjectConfigurationError("Resolved runtime.devcapsule-command must be devcapsule or devcapsule0.")
+        try:
+            RuntimeCommand(runtime.get("devcapsule-command", RuntimeCommand.STANDARD))
+        except ValueError as exc:
+            raise ProjectConfigurationError(f"Resolved runtime.devcapsule-command: {exc}") from exc
         if (not isinstance(component, str) or component not in INTERACTIVE_SURFACES
                 or not isinstance(mount, str) or not mount.startswith("/") or "\x00" in mount):
             raise ProjectConfigurationError("Run requires a valid resolved runtime; run 'devcapsule project config resolve'.")

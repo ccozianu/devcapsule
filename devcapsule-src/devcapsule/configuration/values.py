@@ -4,6 +4,8 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
+from devcapsule.runtime_command import RuntimeCommand
+
 from .documents import ConfigurationScalar, ProjectConfigurationError
 
 
@@ -111,8 +113,11 @@ def _normalize_declared_value(
     if value_type == "string":
         if not isinstance(value, str) or not value or "\x00" in value:
             raise ProjectConfigurationError(f"{field} must be a non-empty string.")
-        if declaration.get("runtime-effect") == "devcapsule.command-name" and value not in {"devcapsule", "devcapsule0"}:
-            raise ProjectConfigurationError(f"{field} must be devcapsule or devcapsule0.")
+        if declaration.get("runtime-effect") == "devcapsule.command-name":
+            try:
+                return RuntimeCommand(value)
+            except ValueError as exc:
+                raise ProjectConfigurationError(f"{field}: {exc}") from exc
         return value
     if value_type == "integer":
         if isinstance(value, bool):

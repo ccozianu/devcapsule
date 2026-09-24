@@ -8,6 +8,7 @@ import pytest
 from devcapsule.compat import CliError
 from devcapsule.materialization import ArtifactSpec, formation_descriptor, formation_identity
 from devcapsule.runtime_artifact import runtime_artifact
+from devcapsule.runtime_command import RuntimeCommand
 from tests.test_base_image import pex_fixture
 
 
@@ -57,7 +58,7 @@ def test_development_alias_changes_image_identity_without_changing_runtime():
                 artifact=ArtifactSpec("1", "https://example.test/ide", "a" * 64),
                 runtime_sha256=hashlib.sha256(b"same launcher").hexdigest())
     ordinary = formation_descriptor(**args)
-    development = formation_descriptor(**args, runtime_command="devcapsule0")
+    development = formation_descriptor(**args, runtime_command=RuntimeCommand.DEVELOPMENT)
     assert ordinary["runtime"]["pex-sha256"] == development["runtime"]["pex-sha256"]
     assert ordinary["runtime"]["entrypoint"] == development["runtime"]["entrypoint"]
     assert formation_identity(ordinary) != formation_identity(development)
@@ -82,7 +83,7 @@ def test_development_mode_removes_only_its_own_inherited_link(tmp_path, monkeypa
         base_reference="base:test", base_identity="sha256:base", image="test:cli",
         surface_root=tmp_path, component_template=tmp_path / "template.json",
         artifact=ArtifactSpec("1", "https://example.test/ide", "a" * 64),
-        platform="linux-amd64", runtime_pex=pex, runtime_command="devcapsule0",
+        platform="linux-amd64", runtime_pex=pex, runtime_command=RuntimeCommand.DEVELOPMENT,
     )
     # Execute the generated cleanup operation on temporary paths, before its
     # installation operation; never mutate the test host's /usr/local/bin.

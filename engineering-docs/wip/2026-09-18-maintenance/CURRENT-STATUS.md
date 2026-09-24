@@ -140,6 +140,19 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Owner-requested enum cleanup (2026-09-24): `RuntimeCommand` now owns the
+supported public names. Configuration boundaries construct enum members;
+materialization accepts the enum without repeating string-domain checks.
+Existing tests pass enum members and assert typed forwarding from the launcher.
+Required `nox -s build`: type checks, 1,060 source tests and nine packaged
+integrations passed (20 deselected, one xfail and one quarantined XPASS).
+The final Git-status step still fails on the existing website Git pointer;
+the overall gate remains failed. Log:
+`/tmp/maintenance-runtime-command-enum-build.log`. No new Docker/GUI campaign
+was needed for this refactor; the prior command-mode evidence remains separate.
+The release branch was not synchronized or rebased; its local workflow
+difference from main is the already-read dogfooding rule from this repair.
+
 CLI repair and development exception (2026-09-24): 311 focused checks passed;
 four real-Docker variants passed for PyCharm/VSCodium and devcapsule/devcapsule0.
 Tests invoke the command by name as UID 1000, verify exact runtime identity,

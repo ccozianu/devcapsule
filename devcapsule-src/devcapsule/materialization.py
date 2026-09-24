@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from devcapsule.compat import CliError
+from devcapsule.runtime_command import RuntimeCommand
 from devcapsule.build_info import read_pex_build_info
 from devcapsule.platforms import XdgHomes
 from devcapsule.components.catalog import (
@@ -258,10 +259,8 @@ def formation_descriptor(
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",
     runtime_sha256: str | None = None,
-    runtime_command: str = "devcapsule",
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> dict[str, Any]:
-    if runtime_command not in {"devcapsule", "devcapsule0"}:
-        raise CliError("Runtime command must be devcapsule or devcapsule0.")
     operating_system, architecture = _split_platform(platform)
     profile = surface_profile(component_id)
     template_digest = hashlib.sha256(
@@ -462,7 +461,7 @@ def surface_materialization_spec(
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",
     runtime_pex: Path | None = None,
-    runtime_command: str = "devcapsule",
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> ImageBuildSpec:
     profile = surface_profile(component_id)
     descriptor = formation_descriptor(
@@ -511,7 +510,7 @@ def surface_materialization_spec(
                 f'if [ "$(readlink {shell_quote(RUNTIME_COMMAND_PATH)})" = '
                 f'{shell_quote(ENTRYPOINT_CONTRACT[0])} ]; then '
                 f'rm -f {shell_quote(RUNTIME_COMMAND_PATH)}; fi')),)
-              if runtime_pex is not None and runtime_command == "devcapsule0" else ()),
+              if runtime_pex is not None and runtime_command is RuntimeCommand.DEVELOPMENT else ()),
             *((FileComponent(runtime_pex, ENTRYPOINT_CONTRACT[0], permissions=0o755),
                ExecComponent(("ln", "-sfn", ENTRYPOINT_CONTRACT[0], descriptor["runtime"]["public-command"])))
               if runtime_pex is not None else ()),
@@ -588,7 +587,7 @@ def ensure_materialized_surface(
     report: Callable[[str], None] | None = None,
     list_formations: Callable[[], tuple[ImageDetails, ...]] | None = None,
     runtime_pex: Path | None = None,
-    runtime_command: str = "devcapsule",
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> tuple[str, bool]:
     profile = surface_profile(component_id)
     descriptor = formation_descriptor(

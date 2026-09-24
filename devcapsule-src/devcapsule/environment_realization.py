@@ -28,6 +28,7 @@ from devcapsule.configuration.authorization import (
     review_authorizations,
 )
 from devcapsule.runtime_artifact import runtime_artifact
+from devcapsule.runtime_command import RuntimeCommand
 
 
 @dataclass(frozen=True)
@@ -134,7 +135,7 @@ def realize_environment(
         if materialize is not None
         else {
             "runtime_pex": runtime_artifact(),
-            "runtime_command": runtime.get("devcapsule-command", "devcapsule"),
+            "runtime_command": RuntimeCommand(runtime.get("devcapsule-command", RuntimeCommand.STANDARD)),
             "report": report,
             "list_formations": lambda: component_formations(locked.component_id),
         }
