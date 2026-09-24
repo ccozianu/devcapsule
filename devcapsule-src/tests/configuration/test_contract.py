@@ -36,6 +36,7 @@ from tests.test_upgrade_recovery import (
     checkout,  # The released v0.2.11 fixture, with isolated XDG homes.
     install_external_fakes,
     invoke,
+    replace_answers,
 )
 from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions, build_run_config
 from tests.test_pycharm import base_env
@@ -360,3 +361,35 @@ def test_invalid_shipped_cli_recommendation_is_rejected(recommended):
     }}}}
     with pytest.raises(ProjectConfigurationError):
         build_node_registry(manifest, {})
+
+
+def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
+    # Owner direction 2026-09-24: the listing is data; advice lives in `show`,
+    # and `show` must not tell a fresh checkout to resolve.
+    project, record, resolution = checkout
+    assert invoke(project, 'config', 'resolve') == 0
+    capsys.readouterr()
+    assert invoke(project, 'config', 'list') == 0
+    listing = capsys.readouterr().out
+    assert 'KIND' in listing and 'generated' in listing and 'fresh' in listing
+    assert 'Configuration review' not in listing and 'resolve explicitly' not in listing
+    assert invoke(project, 'config', 'show') == 0
+    shown = capsys.readouterr().out
+    assert 'KIND' in shown
+    assert 'Configuration review: ready; the generated resolution is fresh.' in shown
+    assert 'Nothing to resolve' in shown and 'After settling' not in shown
+    # A record edited behind the resolution's back stales the checkout input;
+    # `config authorize` would re-resolve, so write the record directly.
+    table = dict(load_toml(record)['authorization'])
+    table['host-browser'] = {**table['host-browser'], 'value': False}
+    replace_answers(project, record, table)
+    assert invoke(project, 'config', 'show') == 0
+    shown = capsys.readouterr().out
+    assert 'Configuration review: ready to resolve.' in shown, shown
+    assert 'The generated resolution is stale: checkout-input; resolve explicitly:' in shown
+    # A missing required decision keeps the decisions text and instruction.
+    replace_answers(project, record, {name: value for name, value in table.items() if name != 'base-image'})
+    assert invoke(project, 'config', 'show') == 0
+    shown = capsys.readouterr().out
+    assert 'Configuration review: decisions required.' in shown
+    assert 'After settling your configuration choices, resolve explicitly:' in shown

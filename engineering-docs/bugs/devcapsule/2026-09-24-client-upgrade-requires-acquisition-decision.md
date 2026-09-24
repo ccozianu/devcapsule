@@ -122,3 +122,12 @@ implying the user forgot.
   launches under the 0.2.14 client, or is refused with the documented remedy
   named in the release notes, according to the chosen disposition.
 - `config list` output for that checkout matches the chosen disposition.
+
+## Disposition, 2026-09-24
+
+The owner accepts the rule and the analysis. 0.2.14 keeps requiring the
+decision; the release overview carries the R-COMPAT-001 exception text with
+the remedy for the final notes; `config show` explains that the decision is
+newly required by this release rather than implying a lost answer. The
+checkout record naming (`dev-capsule-2`, `devcapsule-2nd-home`) is ruled
+not a bug; a naming-default change is deferred.

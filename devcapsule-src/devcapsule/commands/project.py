@@ -314,57 +314,82 @@ class ConfigurationListRow:
     value: str
 
 
+def _print_configuration_listing(context: object | None) -> tuple[Path, dict[str, Any], dict[str, Any], dict[str, Any], ConfigurationListRow] | None:
+    """Print the checkout identity and the configuration table.
+
+    Returns the loaded documents and the resolution row for a caller that
+    adds the review, or ``None`` inside a capsule, where the runtime report
+    is the whole listing. The table is data: every declared value, binding,
+    secret input and authorization with its recorded status, and the
+    generated resolution's state. Advice belongs to ``config show``.
+    """
+    runtime_context = runtime_configuration.for_project(_project_context(context).start_path())
+    if runtime_context is not None:
+        print(runtime_context.configuration_report())
+        return None
+    root, manifest = manifest_for(_project_context(context).start_path())
+    _lock_path, lock = lock_for(root, manifest)
+    input_path, resolution_path = checkout_record_paths(manifest, root)
+    if not input_path.is_file():
+        atomic_write(input_path, render_checkout(manifest, root, {}, {}))
+        print(f"Initialized checkout input: {input_path}")
+    if not resolution_path.is_file():
+        atomic_write(
+            resolution_path,
+            'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
+        )
+        print(f"Initialized resolution placeholder: {resolution_path}")
+    checkout = load_checkout(input_path, manifest, root)
+
+    identity = manifest["project"]
+    print(f"Project: {identity['creator']}/{identity['slug']}")
+    print(f"Checkout: {root}")
+    checkout_name = (
+        "default"
+        if input_path.name == "devcapsule.checkout.toml"
+        else input_path.name.removesuffix(".checkout.toml")
+    )
+    print(f"Checkout name: {checkout_name}")
+    print(f"Checkout input: {input_path}")
+    print(f"Generated plan: {resolution_path}")
+
+    resolution_row = _configuration_resolution_row(manifest, lock, checkout, resolution_path)
+    rows = [
+        *_configuration_value_rows(manifest, checkout),
+        *_configuration_binding_rows(lock, checkout),
+        *_component_secret_rows(lock, checkout),
+        *_configuration_authorization_rows(manifest, lock, checkout),
+        resolution_row,
+    ]
+    _print_configuration_rows(rows)
+    return root, manifest, lock, checkout, resolution_row
+
+
 class ConfigListCommand(Command):
     name = "list"
-    help = "Show configured values, bindings, authorizations, and resolution readiness."
+    help = "List configured values, bindings, authorizations, and the resolution state; data only."
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        runtime_context = runtime_configuration.for_project(_project_context(context).start_path())
-        if runtime_context is not None:
-            print(runtime_context.configuration_report())
+        _print_configuration_listing(context)
+        return 0
+
+
+class ConfigShowCommand(Command):
+    name = "show"
+    help = "Show the listing plus the configuration review: pending decisions, remedies, and whether to resolve."
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        listing = _print_configuration_listing(context)
+        if listing is None:
             return 0
-        root, manifest = manifest_for(_project_context(context).start_path())
-        _lock_path, lock = lock_for(root, manifest)
-        input_path, resolution_path = checkout_record_paths(manifest, root)
-        if not input_path.is_file():
-            atomic_write(input_path, render_checkout(manifest, root, {}, {}))
-            print(f"Initialized checkout input: {input_path}")
-        if not resolution_path.is_file():
-            atomic_write(
-                resolution_path,
-                'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
-            )
-            print(f"Initialized resolution placeholder: {resolution_path}")
-        checkout = load_checkout(input_path, manifest, root)
-
-        identity = manifest["project"]
-        print(f"Project: {identity['creator']}/{identity['slug']}")
-        print(f"Checkout: {root}")
-        checkout_name = (
-            "default"
-            if input_path.name == "devcapsule.checkout.toml"
-            else input_path.name.removesuffix(".checkout.toml")
+        root, manifest, lock, checkout, resolution_row = listing
+        resolution = (
+            f"stale: {resolution_row.value}" if resolution_row.status == "stale" else resolution_row.status
         )
-        print(f"Checkout name: {checkout_name}")
-        print(f"Checkout input: {input_path}")
-        print(f"Generated plan: {resolution_path}")
-
-        rows = [
-            *_configuration_value_rows(manifest, checkout),
-            *_configuration_binding_rows(lock, checkout),
-            *_component_secret_rows(lock, checkout),
-            *_configuration_authorization_rows(manifest, lock, checkout),
-            _configuration_resolution_row(
-                manifest,
-                lock,
-                checkout,
-                resolution_path,
-            ),
-        ]
-        _print_configuration_rows(rows)
         print("")
-        print(review_configuration(manifest, lock, checkout).render(root))
+        print(review_configuration(manifest, lock, checkout).render(root, resolution=resolution))
         return 0
 
 
@@ -667,6 +692,7 @@ class ConfigGroup(Group):
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
             ConfigListCommand.name: ConfigListCommand,
+            ConfigShowCommand.name: ConfigShowCommand,
             ConfigResolveCommand.name: ConfigResolveCommand,
             ConfigNeedCommand.name: ConfigNeedCommand,
             ConfigSetCommand.name: ConfigSetCommand,

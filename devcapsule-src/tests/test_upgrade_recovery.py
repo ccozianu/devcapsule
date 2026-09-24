@@ -156,7 +156,9 @@ def test_upgrade_recovery_commands_converge_to_the_intended_launch(
         assert f"{name}: stale" in refusal
     assert record.read_bytes() == before_record
     assert resolution.read_bytes() == before_resolution
-    assert invoke(project, "config", "list") == 0
+    # The remedies are advice, and advice lives in `config show` since
+    # 2026-09-24; `config list` is the data listing alone.
+    assert invoke(project, "config", "show") == 0
     listing = capsys.readouterr().out
     for item in pending.values():
         command = item.choices[0].command(project)

@@ -578,7 +578,12 @@ devcapsule project config resolve
 `project config list` initializes the selected checkout's workstation-owned
 directory, minimal checkout input, and unresolved generated-plan placeholder
 when they do not exist, then prints every declared value, component binding,
-recommended authorization, and the generated resolution's readiness. It shows
+recommended authorization, and the generated resolution's state. It is a
+listing and nothing else: no advice, no commands to run. `project config show`
+prints the same listing followed by the configuration review: the pending
+decisions with their remedies, the recorded base beside the recommendation,
+and whether resolving is needed. A ready review over a fresh resolution says
+so and gives no resolve instruction. It shows
 the materialized checkout name and exact files. Repeated calls do not rewrite
 existing choices or a resolved plan. If the same portable project identity is
 already registered for another checkout, assign a distinct name first with

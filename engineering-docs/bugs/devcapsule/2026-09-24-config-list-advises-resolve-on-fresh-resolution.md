@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: minor
 target: 0.2.14
 owner: maintenance
@@ -53,3 +53,17 @@ checkout's `config list` contains no resolve instruction.
 - `config list` on a fresh, ready checkout ends with a ready statement and no
   resolve command; on a stale one it names the stale input.
 - `project run` behavior is unchanged in both cases.
+
+## Fix, 2026-09-24
+
+Owner direction the same day widened the fix: `project config list` is a
+data listing with no advice, and a new `project config show` prints the
+listing followed by the review. `ConfigurationReview.render` takes the
+generated resolution's state; a ready review over a fresh resolution says
+"ready; the generated resolution is fresh" and gives no resolve instruction,
+a ready review over a stale one names the stale inputs with the command,
+and unresolved decisions keep the earlier text. Acquisition decisions that
+are newly required say so. The upgrade-recovery test that expected remedies
+in the listing now reads them from `show`; a contract test covers the
+listing's silence and `show`'s three states. The guide and the source README
+describe both commands.

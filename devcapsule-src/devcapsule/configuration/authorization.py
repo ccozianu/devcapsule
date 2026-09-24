@@ -424,7 +424,13 @@ def review_authorizations(
                 "missing-recommended" if declaration.project_recommended else "available"
             )
             if required:
-                problem = "An explicit decision is required before this environment can run."
+                problem = (
+                    "An explicit decision is required before this environment can run. "
+                    "DevCapsule 0.2.14 and later ask for every vendor download; earlier "
+                    "clients did not record this one."
+                    if declaration.kind == "acquisition"
+                    else "An explicit decision is required before this environment can run."
+                )
         elif not isinstance(record, dict):
             status = "invalid"
             problem = f"Checkout authorization {name!r} must be a table."

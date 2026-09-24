@@ -12,6 +12,16 @@ status, ownership and technical evidence.
 
 ## Scope And Owner Decisions
 
+- On 2026-09-24 the owner ruled that `project config list` is a data listing
+  with no advice, and that a new `project config show` carries the review;
+  the review's resolve instruction now follows the resolution's real state.
+  The differing checkout record names (`dev-capsule-2`, `devcapsule-2nd-home`)
+  are not a bug; a naming-default change is deferred.
+- Release-notes exception under R-COMPAT-001, to be carried into the final
+  notes: earlier clients installed vendor downloads other than Claude Code
+  without recording consent; 0.2.14 asks once per checkout. Remedy:
+  `devcapsule project --path … config authorize antigravity-download true`,
+  then `config resolve`.
 - On 2026-09-24 the owner ruled that no test on hosted GitHub infrastructure
   runs Docker: the rc2 backend run failed on a Docker build the rc1 run had
   passed hours earlier. See the
