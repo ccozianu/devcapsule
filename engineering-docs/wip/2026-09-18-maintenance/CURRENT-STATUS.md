@@ -434,12 +434,16 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   owners through coordination mail. Their acknowledgement remains pending.
 - The local workflow change reported by brief is our owner-directed host-network
   rule, already read; the release branch was not synchronized or rebased.
-- Website Git metadata currently points at missing `/home/devcapsule/.git-website`.
-  Left untouched as unrelated local state. The 2026-09-24 policy-only change's
-  full build passed source/type/PEX checks and all nine packaged integrations,
-  then failed its final `git status --porcelain` (exit 128) on that pointer.
-  Log: `/tmp/maintenance-host-network-policy-build.log`. The overall gate is
-  not passed; repair the website checkout metadata before the next full gate.
+- Website Git pointer repaired locally on 2026-09-24 after the owner reported
+  plain `git status` failing. Replaced missing `/home/devcapsule/.git-website`
+  with relative `../.git/modules/website`; the existing metadata HEAD matches
+  the parent's pinned commit `78b7b7f`. Original pointer saved at
+  `.git/codex-website-git-pointer.before`. Plain parent/submodule status now
+  works; website status and staged/unstaged binary diffs are unchanged.
+  No source, index or ref was reset. The earlier policy-only full build passed
+  source/type/PEX checks and nine packaged integrations before failing at this
+  status operation; log `/tmp/maintenance-host-network-policy-build.log`.
+  That historical full gate was not rerun for this local metadata repair.
 - Exact RC0 website startup and file/IDE resume now have owner confirmation.
   Do not extend that evidence to unperformed edit/debug or agent tasks.
 - Website runner attempts 2/3 are complete: owner confirmed startup and
