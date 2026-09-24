@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active; releasing 0.2.14; RC0 public; release blocked on missing runtime CLI
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@1fc446656564
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Integration target: `main`
 
