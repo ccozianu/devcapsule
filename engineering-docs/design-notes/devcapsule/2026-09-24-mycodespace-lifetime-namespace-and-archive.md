@@ -12,7 +12,7 @@ mycodespace is the larger product DevCapsule will be part of. Its defining
 function is a single person's view of all their programming activity over a
 lifetime: one namespace in which every project they ever worked on is
 listed, and from which any project they still hold the inputs for can be
-materialized, built and run decades later.
+materialized, built and run decades after it was written.
 
 Positioning, as decided by the owner:
 
@@ -32,10 +32,16 @@ Positioning, as decided by the owner:
 
 ## 2. The defining scenario
 
-Twenty years from now, the owner opens the namespace, finds a Java 1.6
-project from 2008, materializes it, compiles it, and runs it. This is the
-acceptance scenario for the whole design; every requirement below either
-serves it or serves the small-company extension of it.
+Someone writes a project today with a current toolchain, say Java 21, and
+keeps it. Twenty years from now they open the namespace, find it,
+materialize it, compile it, and run it, with the toolchain and dependencies
+they used then, whatever has happened to the vendors, registries and forges
+in between. This is the acceptance scenario for the whole design; every
+requirement below either serves it or serves the small-company extension
+of it. The promise is forward-looking: what is kept today stays runnable.
+Projects from before the product existed get a record (MC-CAT-3) and are
+kept only where their inputs can still be gathered; the product does not
+promise to resurrect what was never kept.
 
 ## 3. The budget envelope
 
@@ -179,15 +185,17 @@ adopts them into `REQUIREMENTS.md`.
 
 ## 7. Risks, stated honestly
 
-- **Toolchain availability.** Oracle's JDK 6 already sits behind a login;
-  OpenJDK 6 builds from other vendors exist today and may not tomorrow. The
-  archive must hold the binary at `keep` time, not a link to it.
+- **Toolchain availability.** Vendors delist old builds, put them behind
+  logins, or disappear; registries expire tags; forges delete repositories.
+  A toolchain that is one download away today may be unobtainable in ten
+  years. The archive must hold the binary at `keep` time, not a link to it.
 - **Very old userland on new kernels.** The Linux kernel's userspace ABI is
   the strongest longevity guarantee available, and images from the early
   2010s still run, with known caveats such as the `vsyscall` setting for
   very old glibc. This is a risk to record per project, not a blocker.
 - **Architecture drift.** x86-64 may become an emulated target. Emulation
-  is slow but acceptable for "compile and run it once in 2046".
+  is slow but acceptable for "compile and run it once in 2046". Recording
+  the image's architecture in the record is what makes that possible.
 - **Licensing of archived binaries.** Keeping a JDK or a base image for
   personal reuse differs from redistributing it in a shared company
   archive. The small-company extension must state what may be shared.
@@ -232,7 +240,10 @@ adopts them into `REQUIREMENTS.md`.
    cache, save the base image as an OCI layout, verify offline.
 3. `materialize` for the same project into a capsule with third-party
    network disabled, and a passing build.
-4. A Java 6 sample project added to the sample projects as the standing
-   acceptance fixture for the defining scenario, exercised by MC-ARC-6.
+4. A small Java 21 sample project, written and kept now, added to the
+   sample projects as the standing acceptance fixture for the defining
+   scenario. MC-ARC-6 exercises it from the archive at every release, so the
+   evidence that "kept today stays runnable" accumulates year by year rather
+   than being claimed.
 
 Each step is a few days of one human and agents; none needs a service.
