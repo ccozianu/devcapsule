@@ -81,14 +81,9 @@ envelope and out of scope.
 Reviewability is part of the envelope. Implementation languages are limited
 to those the owner can review competently enough to push back on generated
 code and direct refactoring: Python today, revisited when that changes. The
-tool, `mycs` or a `devcapsule` subcommand, ships as the existing PEX scie,
-a single file with an embedded interpreter that needs no host Python. That
-packaging is the youngest technology in the design; it is acceptable
-because of MC-DEG below, under which no promise depends on the tool
-running. If the tool ever needs to stand alone from DevCapsule's codebase,
-Java with `jlink` is the recorded migration path; the text formats make
-that rewrite cheap. C and C++ are rejected for an orchestration tool whose
-main risk is archive-handling bugs.
+tool itself is small by design; section 8, *DevCapsule, part of a bigger
+whole*, says what it depends on, what it must not depend on, and how it is
+bootstrapped.
 
 ## 4. Vocabulary
 
@@ -229,6 +224,17 @@ adopts them into `REQUIREMENTS.md`.
 - **MC-DEV-3** The website's pin on a DevCapsule content revision and
   DevCapsule's pin on a website revision are ordinary record pins, not
   gitlinks, once MC-MAT-4 exists.
+- **MC-DEV-4** The lock names the DevCapsule version that wrote it, not
+  only the resolution matrix it came from, so that a kept record can name
+  the exact executable to materialize with. Today it records the matrix
+  identifier alone; this is a DevCapsule gap.
+- **MC-DEV-5** DevCapsule can start a capsule from an image loaded locally
+  from an archived tar, without a registry, and with network access to
+  third parties denied as an explicit authorization. This is what makes
+  offline materialization a DevCapsule feature rather than a mycs trick.
+- **MC-DEV-6** DevCapsule never calls mycs and never reads catalog or
+  archive records. It may consume an archive artifact handed to it as a
+  plain file. The dependency runs one way; see section 8.
 
 ### MC-CO: the small-company extension
 
@@ -276,7 +282,105 @@ adopts them into `REQUIREMENTS.md`.
   runs a capsule offline. It is not enough for a filesystem, a service, or
   a build-system migration, which is why those are excluded.
 
-## 8. Relationship to existing records
+## 8. DevCapsule, part of a bigger whole
+
+This section records the design discussion of 2026-09-24 on how the tool
+relates to DevCapsule, what it may depend on, and how the two are
+bootstrapped without a cycle.
+
+### The four primitives
+
+The twenty-year promise rests on exactly four runtime dependencies, each a
+format with a standard behind it, several independent implementations, and
+decades of use:
+
+1. `git`, for the catalog and the mirrors, with `git bundle` as the archive
+   form;
+2. `tar`, for dependency snapshots;
+3. a SHA-256 implementation, for content addressing and bit-rot checks;
+4. a Docker-compatible runtime, for images in OCI layout and for running
+   the capsule.
+
+If any of these vanished, computing as a whole would have a larger problem
+than this archive. That is the whole confidence argument, and it extends to
+nothing else.
+
+### mycs is glue, not a platform
+
+The tool is a few hundred lines of Python over those primitives. Its main
+job is to refuse to say "kept" until every input is present and an offline
+materialization has succeeded. The genuinely new parts are three: the record
+schema, the `keep` verification, and the IDE plugin in v2. Everything else
+is a subprocess call.
+
+Other tools are accelerators, never dependencies. A workspace view is a
+manifest and `git clone` in a loop, written and owned here; exporting a
+manifest for `vcstool` or `repo` is a courtesy. The archive is a directory
+of digest-named files with a checksum list; git-annex or a bucket sync tool
+may replicate it. Images move with `docker save` and `docker load`;
+`skopeo` is optional. The absence of any accelerator changes nothing. An
+adopted tool is acceptable only if its output passes MC-DEG, or if it is
+confined to the replica layer where the truth on disk does not depend on it.
+
+Reviewability constrains what is written here, not what is run. A tool
+maintained in a language the owner cannot review may be used; it may not be
+depended on for the promise.
+
+### The tool is a separate project
+
+mycs is its own repository and release, not a `devcapsule` subcommand. It
+shells out to the `devcapsule` executable and depends on it; nothing depends
+on mycs. The repository boundary makes the direction structural rather than
+a layering discipline inside one codebase. The cost is a second small
+release. It ships as a PEX scie like DevCapsule; Java with `jlink` is the
+recorded path if it ever needs to stand alone from Python, and the text
+formats make that rewrite cheap.
+
+### Dependency direction
+
+- DevCapsule depends on git, a container runtime and its base images. It
+  knows nothing of a catalog or an archive. It is a record in the owner's
+  workspace, which is data about it, not a dependency of it.
+- mycs depends on DevCapsule at run time, to materialize, and at development
+  time, because it is built inside a capsule.
+- The catalog and the archive are plain files; nothing depends on mycs to
+  read them (MC-DEG).
+- The IDE plugin depends on mycs and DevCapsule; nothing depends on it.
+
+Two rules keep the graph acyclic. DevCapsule may consume an archive artifact
+handed to it as a plain file, such as an image tar for `docker load`, but
+never calls mycs or reads its records (MC-DEV-6). And mycs stays outside
+DevCapsule's codebase, so the direction cannot erode by convenience.
+
+### Bootstrapping
+
+1. DevCapsule exists and is released. Done.
+2. Create the mycs repository and open it with DevCapsule. Development needs
+   nothing from mycs.
+3. Write the first catalog by hand: a git repository with TOML records for
+   DevCapsule, mycs, the website and the samples. No tool is needed to
+   create it; MC-DEG works in the owner's favor on day one.
+4. mycs v0 implements `keep`. Its first two kept projects are DevCapsule and
+   mycs itself. Self-keeping is a fixed point, not a cycle: the output is
+   plain files, and the record names the mycs version that produced them.
+5. Prove the fixed point: materialize mycs from its own archive using only
+   DevCapsule and the four primitives, build it, run `keep` again, and
+   compare digests. When that passes, the archive can regenerate the tool
+   that made it, and the tool is never the only way back in.
+
+In 2046 the chain is: `git clone` the bundle, `docker load` the image, run
+the kept DevCapsule executable, open the capsule. Without the executable,
+the fallback in the record's recipe is `docker run` on the kept image with
+the source mounted.
+
+### What DevCapsule must provide
+
+MC-DEV-4 through MC-DEV-6 above: the lock names the DevCapsule version, a
+capsule can start from a locally loaded image with third-party network
+denied, and DevCapsule never depends on mycs. The archive keeps the
+DevCapsule executable as a toolchain artifact like any other.
+
+### Relationship to existing records
 
 - `R-PRODUCT-001` batteries-included environments and `R-PRODUCT-002`
   explicit host boundaries define the capsule that MC-MAT materializes.
@@ -309,12 +413,14 @@ because it must not invent state of its own (MC-VIEW-5).
 
 ### First slice
 
-1. The record format and a catalog with the owner's current projects as
-   records, including at least one `lost` record from a former employer.
-2. `keep` for a git project: bundle the mirror, snapshot the dependency
-   cache, save the base image as an OCI layout, verify offline.
-3. `materialize` for the same project into a capsule with third-party
-   network disabled, and a passing build.
+1. The record format and a hand-written catalog with the owner's current
+   projects as records, including at least one `lost` record from a former
+   employer, and a workspace manifest for this repository's siblings.
+2. `keep` for a git project: `git bundle` the mirror, `tar` the dependency
+   cache, `docker save` the base image, write the digest list, verify
+   offline. First kept: DevCapsule and mycs.
+3. `materialize` for the same projects into a capsule with third-party
+   network denied, and a passing build. The fixed-point check of section 8.
 4. A small Java 21 sample project, written and kept now, added to the
    sample projects as the standing acceptance fixture for the defining
    scenario. MC-ARC-6 exercises it from the archive at every release, so the
