@@ -233,6 +233,12 @@ without conflict and pushed.
 
 ## Open Threads
 
+- 2026-09-24: at the owner's explicit direction, wrote the proposed
+  [mycodespace design note](../../design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
+  here while paused. It is product direction and belongs to
+  `project-management` to adopt; it answers the submodule question with
+  a workspace view (MC-MAT-4, MC-DEV-2). Not sent by mail; the owner
+  switches there himself.
 - `main` moved ten commits past this branch minutes after the merge, through
   PR #133 from `release-0.2.14`, including a definition change in `b44a559`.
   Synchronize first on resume; not merged before pausing.
