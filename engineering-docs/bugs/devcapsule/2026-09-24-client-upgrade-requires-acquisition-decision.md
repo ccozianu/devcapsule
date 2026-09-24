@@ -93,6 +93,12 @@ The `resolution  generated  stale  manifest` row in the same listing is
 legitimate and separate: the repository's manifest changed on `main` after
 the checkout last resolved, and a project change may require `config resolve`.
 
+Owner confirmation, 2026-09-24: after reviewing the checkout's final
+resolution, which lists claude-code-download, development-sudo,
+docker-daemon, host-x11, network and the base and no antigravity decision,
+the owner accepts the analysis: the lock declared the gate, 0.2.12 installed
+without enforcing it, and 0.2.14 asks for the first time.
+
 ## Disposition needed from the owner
 
 1. Keep the rule and record the R-COMPAT-001 exception in the 0.2.14 release
