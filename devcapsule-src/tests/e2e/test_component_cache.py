@@ -23,7 +23,14 @@ from devcapsule.runtime_command import RuntimeCommand
 
 
 def docker(*args: str) -> str:
-    return subprocess.run(["docker", *args], check=True, text=True, capture_output=True).stdout.strip()
+    completed = subprocess.run(["docker", *args], check=False, text=True, capture_output=True)
+    if completed.returncode != 0:
+        # Keep the command's own output: a bare CalledProcessError hides it.
+        raise AssertionError(
+            f"docker {' '.join(args)} exited {completed.returncode}\n"
+            f"--- stdout ---\n{completed.stdout[-4000:]}\n--- stderr ---\n{completed.stderr[-4000:]}"
+        )
+    return completed.stdout.strip()
 
 
 @pytest.mark.e2e

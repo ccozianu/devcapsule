@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-24. Stage: **RC2 tagged after the manifest-compatibility fix; publication and owner testing pending**.
+Updated: 2026-09-24. Stage: **RC2 tagged but unpublished after a runner-side Docker failure; Docker removed from the release workflow; RC3 pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) ·
@@ -12,6 +12,12 @@ status, ownership and technical evidence.
 
 ## Scope And Owner Decisions
 
+- On 2026-09-24 the owner ruled that no test on hosted GitHub infrastructure
+  runs Docker: the rc2 backend run failed on a Docker build the rc1 run had
+  passed hours earlier. See the
+  [runner-gating bug](../../bugs/devcapsule/2026-09-24-release-workflow-gated-on-docker-on-hosted-runner.md).
+  The clean-machine, component-cache and runtime-session proofs are now local
+  acceptance steps against the downloaded assets.
 - On 2026-09-24 the owner designated as a show stopper that the DevCapsule
   repository itself could not be opened: released clients reject the
   manifest since RC1's commit `658749f`. See the
@@ -32,10 +38,13 @@ status, ownership and technical evidence.
 
 ## Next Work
 
-The released-launcher manifest rejection is fixed on `release-0.2.14` at the
-commit after `ac81aaf` with a passing full gate. Next: the owner opens the PR
-from `release-0.2.14` to `main`; after the merge, verify the candidate gate by
-ancestry and tag `v0.2.14-rc2`; then validate with the published RC2 that
+The released-launcher manifest rejection is fixed and integrated. RC2 was
+tagged but its backend run failed on the runner; the release workflow now
+runs no Docker. Next: the owner opens the PR from `release-0.2.14` to `main`
+for the workflow change; after the merge, verify the candidate gate by
+ancestry and tag `v0.2.14-rc3`; then run the local proofs against the
+downloaded RC3 (clean-machine, component cache, runtime image on each pinned
+base) and validate with the published RC3 that
 `devcapsule0` is applied from the reserved name inside a real capsule, and
 with the published 0.2.12 that `config list` and `config resolve` succeed on
 `main`. The RC1 configuration-inspection bug remains open for triage.
@@ -122,7 +131,7 @@ not changed since; see the maintenance status for the digest-pin discussion.
 |---|---|---|---|
 | [v0.2.14-rc0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) | `d078b879469c1790647e32db75005d0fa4369b27` | Public assets verified 2026-09-22. | Clean-machine executable check passed; major journeys pending. |
 | [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Owner: mostly works; configuration inspection fails (bug filed). Superseded by RC2 for the manifest fix. |
-| [v0.2.14-rc2](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc2) | `a779295d7343158d846df89d2d5da184548bfd1d` | Tagged 2026-09-24 after PR merge; gate passed with zero missing commits; publication pending. | Owner testing pending: `config list`/`resolve` on this repository with the released 0.2.12 and with RC2; `devcapsule0` applied from the reserved name. |
+| v0.2.14-rc2 | `a779295d7343158d846df89d2d5da184548bfd1d` | Tagged 2026-09-24; gate passed with zero missing commits; backend run 36023910604 failed at the runtime-session Docker build on the runner. No assets; tag retained. | None. Superseded by RC3, which carries the same runtime source plus the Docker-free workflow. |
 
 RC1 tag object: `0f460c0cb5a50f9c0fb6f46b4b7ee6060badd572`. Pushed atomically
 with the release branch. The public RC1 manifest returned HTTP 404 immediately

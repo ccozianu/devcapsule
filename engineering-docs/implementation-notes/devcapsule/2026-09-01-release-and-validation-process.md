@@ -228,13 +228,23 @@ The tag workflow:
 2. Recovers exact existing assets, or builds the self-contained PEX.
 3. Records source identity, base digests, checksum, build-input hashes, dependency
    distribution fingerprints and the embedded Python fingerprint in the manifest.
-4. Runs packaging integration tests, a clean-machine proof with no Python or
-   networking, Docker component-install reuse and exact launcher delivery tests
-   for both surface families, and runtime-session tests on each pinned base.
-   Fixture IDEs do not claim real GUI or authenticated provider smoke.
-5. Retains build artifacts, creates a draft release, downloads and compares its
-   bytes, and repeats the clean-machine proof against the download.
+4. Runs the packaging integration tests against the built PEX. Nothing in
+   the workflow runs Docker: a hosted runner is an environment nobody
+   controls, and a proof that depends on it gates the candidate on the runner
+   (owner ruling 2026-09-24, after rc2 of 0.2.14 failed on a Docker build
+   that rc1 had passed hours earlier with identical test code).
+5. Retains build artifacts, creates a draft release, downloads the assets and
+   compares their bytes and checksum with the build.
 6. Publishes candidates as GitHub prereleases with Latest disabled.
+
+The Docker-backed proofs moved to local acceptance of the downloaded assets,
+run by the driving workstream and recorded in the release overview: the
+clean-machine proof (`nox -s pex_clean_machine` with `DEVCAPSULE_PEX_UNDER_TEST`
+set to the download), component-cache reuse and launcher delivery
+(`pytest -m e2e tests/e2e/test_component_cache.py`), and the runtime session
+on each pinned base (`tests/e2e/test_runtime_image.py` with
+`DEVCAPSULE_E2E_BASE_IMAGE`). A candidate is not accepted without them; they
+are simply run where the environment is known.
 
 An incomplete or inconsistent staged asset set fails explicitly. Recover partial
 uploads from the retained Actions artifact. Reruns verify and test the existing
@@ -382,9 +392,11 @@ This tests reuse itself rather than only the generated Dockerfile text.
 
 `nox -s build` remains the local gate. The explicit Docker cache/runtime check
 is `python -m pytest --no-cov -m e2e tests/e2e/test_component_cache.py` after
-building the local PEX and making `ubuntu:24.04` available. The release workflow
-runs it against the actual release artifact. Packaging tests also build a tag
-whose version differs from the source baseline and verify source remains clean.
+building the local PEX and making `ubuntu:24.04` available; run it, and the
+clean-machine and runtime-image checks above, locally against the downloaded
+release artifact, since the release workflow no longer runs Docker. Packaging
+tests also build a tag whose version differs from the source baseline and
+verify source remains clean.
 
 Product-owner GUI/login acceptance for changed component behavior remains part
 of development and integration. Fixture tests do not replace that evidence or
