@@ -52,8 +52,8 @@ Retired the two old codium_with_claude option-parity and ambient-sudo records:
 the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
-[working bug table](../../releases/v0.2.14/bugs.md) now has 21 rows:
-16 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
+[working bug table](../../releases/v0.2.14/bugs.md) now has 22 rows:
+17 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
 of the upgrade-recovery and configuration-contract bugs; their records now
 link the owner/graphical acceptance and verified PR #117 integration. No
 runtime code changed during those earlier record updates. The subsequent
@@ -67,8 +67,14 @@ requested a saved configuration exception and this repository recommends
 `runtime.devcapsule-command = "devcapsule0"`. That real command leaves the normal
 name for development tooling; internal absolute-path calls retain the shipped
 PEX. Explicit checkout values/omissions override ordinary recommendations.
-Next: owner PR integration, next immutable candidate, actual IDE-terminal
-acceptance of the public command and workflow install before closing the blocker.
+Owner accepted the real recursive PyCharm/devcapsule0 session at `9cc0868`.
+Next: owner PR integration and next immutable candidate; carry this local
+acceptance into candidate validation before closing the blocker.
+
+The owner requested the installed-IDE reuse bug be filed first and its design
+reviewed together before implementation. No release target or implementation
+approach is approved. Review the linked bug when the owner resumes that topic;
+do not start cache implementation or the broader composition redesign.
 No live capsule or website source was patched. URL opening and non-blocking
 workflow onboarding remain with their previously notified owners.
 
@@ -139,6 +145,12 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Owner follow-up (2026-09-24): "Everything works" for the retained recursive
+PyCharm session below. The installed-IDE cache gap was confirmed by reading
+the acquisition/materialization path; filed with proposed acceptance scenarios,
+severity minor, target none. No implementation or new Docker experiment was
+performed for that report. Documentation links and whitespace were checked.
 
 Owner-requested recursive PyCharm launch (2026-09-24): clean local clone of
 `9cc08686c5f6c9b44a1a132bf81e4befd0ecf641`, retained run
@@ -330,9 +342,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 - Recursive PyCharm successor run `29fb2abc530735da1ebd625acd991622` is deliberately
   retained for the owner; see validation above. Do not stop or remove it merely
-  because this agent turn finishes. The first-run User Agreement is still pending.
+  because this agent turn finishes. Owner subsequently confirmed everything works.
 - The runtime CLI blocker is fixed in source, awaiting main integration and
-  a new candidate with owner IDE-terminal acceptance. It still blocks release.
+  a new candidate; owner accepted the local PyCharm/devcapsule0 session.
+  Candidate validation still gates release.
   Existing running capsules retain their original commands until relaunched.
 - URL-opening triage and workflow-onboarding work item are handed to their
   owners through coordination mail. Their acknowledgement remains pending.
@@ -386,6 +399,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [Installed IDE Docker reuse](../../bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md): review design with owner before implementation; no release target.
 
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
