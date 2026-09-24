@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-24. Stage: **RC1 public; local base built; candidate validation in progress**.
+Updated: 2026-09-24. Stage: **RC2 tagged after the manifest-compatibility fix; publication and owner testing pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) ·
@@ -113,14 +113,16 @@ is still pending; owner testing starts with the already published RC0.
 
 ## Candidates
 
-RC2 is pending on the manifest-compatibility fix; RC1 remains the latest
-published candidate and does not apply the development command exception
-from the fixed manifest.
+RC2 carries the manifest-compatibility fix; RC1 does not apply the
+development command exception from the fixed manifest. The default base pin
+is unchanged: the v0.2.12-rc5 base carries no runtime, and the recipe has
+not changed since; see the maintenance status for the digest-pin discussion.
 
 | Candidate | Source | Publication | End-user acceptance |
 |---|---|---|---|
 | [v0.2.14-rc0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) | `d078b879469c1790647e32db75005d0fa4369b27` | Public assets verified 2026-09-22. | Clean-machine executable check passed; major journeys pending. |
-| [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Identity and local base verified; real recursive PyCharm running, automated checks passed; owner GUI acceptance pending. |
+| [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Owner: mostly works; configuration inspection fails (bug filed). Superseded by RC2 for the manifest fix. |
+| [v0.2.14-rc2](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc2) | `a779295d7343158d846df89d2d5da184548bfd1d` | Tagged 2026-09-24 after PR merge; gate passed with zero missing commits; publication pending. | Owner testing pending: `config list`/`resolve` on this repository with the released 0.2.12 and with RC2; `devcapsule0` applied from the reserved name. |
 
 RC1 tag object: `0f460c0cb5a50f9c0fb6f46b4b7ee6060badd572`. Pushed atomically
 with the release branch. The public RC1 manifest returned HTTP 404 immediately

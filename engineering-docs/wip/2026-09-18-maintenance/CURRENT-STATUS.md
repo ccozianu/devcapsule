@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC1 public; released-launcher manifest rejection fixed on branch, gate passed; RC2 pending owner PR and tag
+State: active; releasing 0.2.14; RC2 tagged at a779295 after the manifest-compatibility fix; publication verification and owner testing pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -180,6 +180,16 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+RC2 tag (2026-09-24): the owner merged the release PR; fetched main
+`9e2396d` contains `8d005b3` and `a779295`, zero unintegrated commits.
+`scripts/release-protocol.py v0.2.14-rc2` passed; record at
+`/opt/devcapsule-gate/rc2-release-protocol.json`. Annotated tag pushed
+atomically with the branch; remote tag object `4a02aa31d817`, peeled commit
+`a779295d7343158d846df89d2d5da184548bfd1d`. Asset publication is the
+workflow's; a watcher downloads and verifies the public assets when they
+appear. No matrix or lock change: the default base remains the v0.2.12-rc5
+digest pin, which carries no runtime (D-0009) and whose recipe is unchanged.
 
 Local rc2 base (2026-09-24): built `devcapsule-base:0.2.14-rc2-local`, image
 `sha256:64c8db54eac0bfbefa019c20777bc486abcad4bc5b0ff420d229f79a5f50718a`,
