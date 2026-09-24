@@ -1,0 +1,75 @@
+---
+status: confirmed
+severity: blocking
+target: 0.2.14
+owner: maintenance
+opened: 2026-09-24
+requirements: [R-RUNTIME-001, R-PRODUCT-001, R-PRODUCT-006]
+---
+
+# DevCapsule command is unavailable inside the delivered environment
+
+The owner designated this the first 0.2.14 release blocker on 2026-09-24.
+A user opens the website capsule and tries to install its missing workflow,
+but cannot invoke `devcapsule` by name. Release acceptance and the smoke
+campaign are paused for triage. An internal absolute-path workaround does
+not satisfy the normal CLI experience or close this blocker.
+
+## Evidence and reproduction
+
+Observed read-only in the owner's running website capsule:
+`pycharm-isolated-costin-1790207368`, project `/workspace/devcapsule-website`,
+image `devcapsule-local-codium:939b4bc8cedc2b3440f9`, image ID
+`sha256:b832f8c6c52551dbfb356d347837e741efaf9dfddbded4a85d431a999621d37d`.
+Network mode is host. This is the owner's later session, not runner attempt 4.
+
+1. Open the IDE terminal and invoke `command -v devcapsule`, then
+   `devcapsule version --json` or the workflow installation command.
+2. Expected: the installed public CLI is available without setting PATH,
+   adding an alias, installing another package or knowing its internal path.
+3. Actual: the owner reports command-not-found. An independent process in
+   that container confirms `shutil.which("devcapsule")` is null; the IDE's
+   own environment also lacks `/opt/devcapsule/bin` in PATH. There is no
+   `/usr/local/bin/devcapsule` file or symlink.
+4. `/opt/devcapsule/bin/devcapsule.pex version --json` succeeds and identifies
+   `v0.2.14-rc0`, source `d078b879469c1790647e32db75005d0fa4369b27`.
+   Its SHA-256 is exactly the published RC0:
+   `2a425a39d2ed5319d1945dd91e34f693c299fa2c53acdf70a205024eea45d513`.
+
+The binary is present and works; this is command installation/discoverability,
+not failure to deliver the runtime. Adding its directory to PATH alone would
+still expose `devcapsule.pex`, not necessarily the promised `devcapsule` name.
+
+## Implementation evidence and test gap
+
+`devcapsule/materialization.py` installs the artifact only as
+`/opt/devcapsule/bin/devcapsule.pex`. That formation contribution supplies no
+public command alias. The materialization is shared across IDE families;
+PyCharm's symptom must be tested, not assumed from VSCodium's observation.
+
+`tests/e2e/test_component_cache.py` verifies runtime bytes and version by
+invoking the internal absolute path. It does not establish that a user can
+run the ordinary CLI from the IDE terminal. Preserve that identity test and
+add coverage for the public command contract.
+
+## Required fix and close criteria
+
+- Install a public `devcapsule` command backed by the exact delivered runtime
+  in newly materialized environments, without a manual shell/alias repair.
+- Ensure formation identity/cache invalidation cannot reuse an environment
+  missing the repaired entrypoint. Do not change immutable RC0 artifacts.
+- Verify `devcapsule version --json` and `devcapsule --help` by name as the
+  normal capsule user and from actual VSCodium/PyCharm terminal environments.
+- Install the workflow through the public CLI in a disposable project from
+  inside the capsule, verify its documented files, and check it after resume.
+  Do not mutate the owner's website as a diagnostic test.
+- Confirm delivered runtime identity still matches the launcher; record the
+  main disposition and validate a new candidate before owner closure.
+
+## Separate onboarding issue
+
+The website has a DevCapsule declaration but no WORKFLOW.md. The owner wants
+new users helped into an installed workflow; this is explicitly non-blocking
+and is tracked in the [onboarding work item](../../work-orders/2026-09-24-workflow-installation-onboarding.md).
+Its initialization history was not reconstructed. Missing workflow files do
+not excuse the unavailable command needed to install them.

@@ -5,20 +5,15 @@
 Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
 main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
 and integration state are recorded in the release overview.
-19 tracked records: 14 open (eight reported/confirmed, six fixed but not closed),
-two closed with owner acceptance and verified integration, and three retired.
-The legacy-network record was retired by owner decision ahead of command
-removal; removal is now implemented on the release branch. RC0 is unchanged.
-All have workstream owners. All currently have `target: none`; 16 have
-`severity: untriaged`, three have `severity: minor`; among the 14 open records,
-11 are untriaged and three are minor.
+21 tracked records: 16 open, two closed and three retired. The two new
+2026-09-24 findings are a **blocking** missing runtime command owned by
+maintenance and a URL-opening defect owned by contained-display, both targeted
+at 0.2.14. The original 19 rows retain their recorded fields and dispositions.
 
-Owner decision, 2026-09-22: none of this current list blocks starting the
-release. The owner further confirmed that the bug list itself does not prevent
-publication: fix or verify a selected few while validating major end-user E2E
-journeys. Resolve or defer bugs during stabilization. Rows remain undecided
-until their individual disposition is recorded; this is not blanket closure
-or a decision that every bug must be fixed in 0.2.14.
+**Owner decision, 2026-09-24: release blocked; pause the smoke campaign to
+address the missing `devcapsule` command inside the website capsule.** This
+supersedes the earlier assessment that no known bug blocked publication.
+Automatic workflow installation is a separate non-blocking onboarding work item.
 
 ## How We Use This List
 
@@ -39,6 +34,8 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 
 | Bug | Owner | Recorded status | Recorded severity | 0.2.14 disposition | Next action / evidence |
 |---|---|---|---|---|---|
+| [Runtime CLI missing from PATH](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md) | maintenance | confirmed | blocking | **Fix for 0.2.14 — release blocker** | RC0 bytes exist and execute by absolute path, but the public command is absent. Repair installation/cache identity and verify normal IDE-terminal workflow installation in a new candidate. |
+| [URL opening has no browser handler](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md) | contained-display | confirmed | untriaged | Triage for 0.2.14 | Host networking active; no local browser or authorized host-browser bridge. Decide supported no-bridge UX; preserve host-access choices. |
 | [Codium runtime-option parity](../../bugs/devcapsule/2026-07-13-codium-run-option-parity.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Codium ambient passwordless sudo](../../bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Multiline Dockerfile quoting](../../bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md) | maintenance | confirmed | untriaged | Deferred — unless it recurs during the release E2E campaign | Owner decision 2026-09-22. Current recipes build; generic rendering defect remains. After this release, redesign component image composition around documented, unit-testable contracts; see bug for evidence and scope. |

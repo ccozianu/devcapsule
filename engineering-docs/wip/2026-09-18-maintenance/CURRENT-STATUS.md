@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC0 public; legacy PyCharm launch removed; integration and next candidate pending
+State: active; releasing 0.2.14; RC0 public; release blocked on missing runtime CLI
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@77b593f70215
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@1fc446656564
 
 Integration target: `main`
 
@@ -28,8 +28,9 @@ Owner-authorized retirement of `pycharm run` is implemented on the release
 branch. The old adapter and CLI-only option helpers are gone; old invocations
 fail before launch/state preparation and are absent from help. Shared project
 launch and the image utilities remain. User guidance, diagnostics and packaged
-smokes reflect the retirement. This changes source after RC0 and needs main
-integration and the next immutable candidate.
+smokes reflect the retirement. This changes source after RC0 and needs
+the next immutable candidate. PR #133 integrated commit `1f425f3` at
+`c8ab2d0`; ancestry was verified against fetched main on 2026-09-23.
 
 Published `v0.2.14-rc0` at `d078b879469c1790647e32db75005d0fa4369b27`, already
 integrated through PR #132 at `e50b9f1`. Tag push was verified through remote
@@ -43,15 +44,16 @@ The owner explicitly deferred legacy branch renames through 0.2.14 publication,
 before substantive work on the next release. WORKFLOW-LOCAL.md records this;
 project-management received `2026-09-22-maintenance-rename-deadline-deferred.md`
 on coordination at `4013fca06a54`, superseding the earlier pre-RC0 deadline.
-The owner says known bugs do not prevent publication on bug grounds; fix or
-verify a selected few and validate major end-user journeys before final acceptance.
+The owner originally said known bugs did not prevent publication. On
+2026-09-24 the missing runtime CLI became the first release blocker; fix and
+validate it before resuming the remaining end-user journeys.
 
 Retired the two old codium_with_claude option-parity and ambient-sudo records:
 the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
-[working bug table](../../releases/v0.2.14/bugs.md) retains all 19 rows, now
-14 open, two closed and three retired. On 2026-09-22 the owner accepted closure
+[working bug table](../../releases/v0.2.14/bugs.md) now has 21 rows:
+16 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
 of the upgrade-recovery and configuration-contract bugs; their records now
 link the owner/graphical acceptance and verified PR #117 integration. No
 runtime code changed during those earlier record updates. The subsequent
@@ -59,10 +61,45 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
-Deliver the release-branch diff for owner PR integration, then verify main
-contains the retirement before the next candidate. RC0 still contains the old
-command; do not move its tag. Continue the grouped acceptance journeys and
-remaining bug decisions after the updated candidate is available.
+Owner paused smoke progression on 2026-09-24: fix the confirmed, owner-designated
+[0.2.14 runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md).
+The live website image has exact RC0 bytes but no public `devcapsule` command.
+Do not confuse an absolute-path workaround with closure. Repair normal command
+installation and cache invalidation, then validate IDE-terminal workflow install
+in a disposable project and a new candidate. URL opening is separately routed
+to contained-display; workflow onboarding is non-blocking and routed to
+workflow-improvements. Do not switch workstreams or mutate the website to test.
+
+A single entry point now supports existing-project sessions:
+`smoke/runner.py launch --project PATH`, followed by `resume`, `report` and
+explicit actor `note` records. It verifies exact RC0 and captures process and
+container facts without promoting them into a graphical PASS. The original website observation lacked candidate details; the subsequent
+runner sessions establish exact RC0 startup and file/IDE resume evidence.
+Owner confirmed the website VSCodium session works. Runner attempts 2 and 3
+finished with exit 0, container absent and no monitor errors; owner confirmed
+the S10 file/IDE resume checklist. `launch` and `resume` now accept a per-session
+`--network host|bridge` override using the product authorization grammar. Next:
+continue remaining campaign checks using `--network host` per local policy;
+agent continuation is still untested. Owner verified host-network attempt 4.
+
+The owner requested an engineering test specification before further campaign
+work: enumerate stories, distinguish validation prerequisites from reused data,
+state feature promises/preconditions/postconditions, and assign each action to
+an agent or program. The [21-story specification](../../releases/v0.2.14/smoke/stories.md)
+now does that. Fixed prompt answers are automated both through an actual terminal
+and through unattended flags. S02/S03 and S17 (exact preservation of unrelated
+coordination blobs) pass against downloaded RC0, with durable JSON evidence.
+Fresh and all three public sample configurations complete unattended. Whole
+GUI/upgrade/service stories are not yet implemented or passed; continue the
+runner implementation from the story table, and establish desktop-control
+tooling for the assigned graphical steps. Do not transfer unfinished automation
+to the human. Personal provider login/MFA and release judgment remain owner acts.
+The retirement is integrated;
+publish RC1 when the owner is ready to test that change. RC0 still contains
+the old command; do not move its tag. No base rebuild is needed: the existing
+local Ubuntu recipe-9 image and published RC0 executable were rechecked on
+2026-09-23, and base build inputs are unchanged. Release refs are not rebased;
+main has no workflow-definition or devcapsule-src difference from this branch.
 
 The owner requested and received a permanent
 [V1-blocking legacy capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
@@ -101,6 +138,102 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Blocker intake (2026-09-24): live read-only Docker inspection and runtime
+version/hash checks confirm the missing public CLI; IDE process environment
+inspection confirms the URL-opener conditions. Evidence is in the two new bug
+records. No runtime or website source was changed. New record links/index and
+Git diff whitespace checks passed. Full build source/type/PEX checks and nine
+packaged integrations passed, then final Git status failed on the pre-existing
+website pointer to `/home/devcapsule/.git-website`; overall gate not passed.
+Log: `/tmp/maintenance-rc0-blocker-intake-build.log`.
+Mail delivered: `2026-09-24-maintenance-url-opening-triage.md` to
+contained-display at `ba6768619aac`; workflow-onboarding item delivered to
+workflow-improvements. Both await disposition, not implementation in this checkout.
+
+Host-network validation (2026-09-24): owner confirmed the runner's host-network
+session works. Attempt 4 in `dist/rc0-runs/session-7a4dbc068f58/run.json` records
+requested `host`, observed Docker network `host`, exit 0, container absent and
+PROCESS_CHECKS_PASSED. The owner made host networking the standing local launch
+preference; see WORKFLOW-LOCAL.md, Local Launch Networking. Deliberate network
+isolation tests retain their declared mode. Release branch was not rebased.
+
+Runner network option: `--network host` or `--network bridge` on launch/resume
+maps to `project run --authorize network VALUE` for that invocation only.
+Omitting the option uses saved configuration, not the previous override.
+Requested override is saved with each attempt; Docker inspection already
+records actual network mode. Existing run records remain readable. No new
+container was started solely to test argument forwarding. The eight focused
+runner tests pass, including both override values and omission behavior.
+Full `nox -s build` passed (source tests, type checks, PEX smokes and nine
+packaged integrations); log `/tmp/maintenance-rc0-network-runner-build.log`.
+The release branch was not rebased; workflow definition is unchanged.
+
+Website run (2026-09-23): published RC0 passed its checksum gate and
+launched VSCodium from this capsule through the host Docker daemon. Run directory:
+`devcapsule-src/dist/rc0-runs/session-7a4dbc068f58`; container
+`rc0-runner-7a4dbc068f58`; tool PTY session `73149` (now finished).
+Attempt 1 failed with exit 2 before creating a container: local resolution was
+missing. `config resolve` exposed unanswered local choices. Applied the existing
+campaign policy to this capsule's website checkout record: pinned base plus
+Claude/Antigravity downloads accepted; host network/Docker/sudo/browser/X11
+denied. Explicit resolve succeeded; website source/lock were not regenerated.
+Attempt 2 reused the canonical Codium image, translated bind sources to host
+paths, and reached contained-desktop readiness on host loopback port 52123.
+The runner captured a running container, bridge network, read-only root and
+non-privileged execution with no monitor errors. Terminal reports VSCodium
+startup. Owner subsequently confirmed "This is working"; recorded as an S05
+startup observation in run.json, without claiming specific editing/debugging
+assertions. Attempt 2 ended at 23:17:56 UTC with launcher exit 0, container
+absent and no monitor errors: PROCESS_CHECKS_PASSED. Owner subsequently
+confirmed the file/IDE resume checklist; attempt 3 passed
+exit/cleanup checks and its S10 human observation is saved. Agent-session
+continuation remains untested. Token URL stays in the terminal/chat, not this record.
+The launcher warned that this capsule lacks a global Git author identity;
+no identity settings were changed. Existing full gate remains applicable:
+this slice changed only launch configuration and records, not implementation.
+
+Session runner (2026-09-23): seven focused stdlib tests passed, including
+Docker errors versus absence, nonzero launch, no inferred graphical PASS,
+configuration preservation, wrong candidate, changed daemon and concurrent
+writers. `runner.py cli --run /tmp/rc0-stories-cli-only-20260923` passed S02,
+S03 and S17 against downloaded RC0; attempt `evidence/cli-y6r9a2ve`.
+No real GUI/container session was launched through the new wrapper.
+The full required gate passed (1,046 tests, 18 deselected, one xfail, one
+quarantined XPASS, type checks and nine packaged integrations), log
+`/tmp/maintenance-rc0-session-runner-build.log`. No runtime code changed.
+Fetched main and live coordination were inspected; mail was empty. Workflow
+files are unchanged; the release branch was not synchronized or rebased.
+
+Story automation (2026-09-23): `verify-cli.py` passed real terminal base
+accept/decline, fixed creator/default-agent/host answers, missing-base refusal
+and CLI remedy, prompted/batch semantic equivalence, and nine local-remote
+coordination operations checking every path/blob plus exact staged mail bytes.
+Saved evidence: [CLI validation](../../releases/v0.2.14/smoke/cli-validation.json).
+Every attempt gets its own directory; S17 runs independently of failed init,
+while S03 requires S02's choices.json. The first harness expectation incorrectly
+rejected explicit denials; its correction and retained failure are documented.
+The fixed configuration wrapper passed on fresh/TypeScript/trading/FastAPI
+fixtures without stdin or human answers. CLI-only preparation also passed.
+The required gate passed: 1,046 tests, 18 deselected, one existing xfail and
+one quarantined XPASS, type checks and nine packaged integrations; log
+`/tmp/maintenance-rc0-story-contracts-build.log`. No graphical/provider/service
+acceptance was inferred. Shell syntax and documentation links were checked. The retained preview/launch
+helpers now fail on Docker query errors instead of misreporting absence;
+fault checks distinguish daemon error, missing container and present container.
+
+RC0 smoke harness (2026-09-23): shell syntax, complete preparation with the
+verified published PEX, exact public sample clones, fresh initialization,
+resolution and configuration-wrapper roundtrip passed in isolated XDG state.
+Refusal checks covered an existing run directory, invalid case/arguments and
+a mismatched candidate checksum before CLI execution. Validation directory:
+`/tmp/rc0-smoke-script-validation-20260923` (preparation/configuration only;
+not a host-backed launch location). No IDE, service or provider campaign was
+run while authoring these scripts; the generated result sheet remains NOT RUN.
+The required `nox -s build` passed: 1,046 tests, 18 deselected, one existing
+xfail and one quarantined XPASS, mypy and nine packaged checks. Log:
+`/tmp/maintenance-rc0-smoke-scripts-build.log`. These are harness/repository
+checks, not acceptance of the unrun graphical campaign.
+
 Legacy-command removal: 115 focused checks passed, followed by successful
 `nox -s build`: 1,046 tests, 18 deselected, one existing xfail and one
 quarantined claim XPASS, mypy over 167 source files, source/PEX smokes and
@@ -111,7 +244,7 @@ also prove no launcher/subprocess call. Validated artifact:
 `devcapsule-src/dist/devcapsule-local.pex`. The gate skipped revision-bearing
 packaging due to checkout edits; no fresh Docker/GUI run was necessary for
 this command removal, and no such acceptance is claimed. Main integration
-and the next candidate are pending. The pre-existing local bug-file edit
+is verified through PR #133; the next candidate remains pending. The pre-existing local bug-file edit
 remains unstaged and is excluded from delivery.
 
 Bug-combing review at `8e7cc21`: fetched main remains `e50b9f1`; PR #117 merge
@@ -144,6 +277,31 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Release now has a blocking bug; earlier statements that all known bugs are
+  non-blocking are historical. No implementation fix was made during intake.
+- URL-opening triage and workflow-onboarding work item are handed to their
+  owners through coordination mail. Their acknowledgement remains pending.
+- The local workflow change reported by brief is our owner-directed host-network
+  rule, already read; the release branch was not synchronized or rebased.
+- Website Git metadata currently points at missing `/home/devcapsule/.git-website`.
+  Left untouched as unrelated local state. The 2026-09-24 policy-only change's
+  full build passed source/type/PEX checks and all nine packaged integrations,
+  then failed its final `git status --porcelain` (exit 128) on that pointer.
+  Log: `/tmp/maintenance-host-network-policy-build.log`. The overall gate is
+  not passed; repair the website checkout metadata before the next full gate.
+- Exact RC0 website startup and file/IDE resume now have owner confirmation.
+  Do not extend that evidence to unperformed edit/debug or agent tasks.
+- Website runner attempts 2/3 are complete: owner confirmed startup and
+  file/IDE resume; automatic exit/cleanup checks passed. Agent continuation
+  and detailed edit/debug assertions still need execution. Website submodule
+  changes belong to the owner and were untouched.
+- Owner rejected the earlier manual-heavy campaign. Stories now govern the
+  work; do not describe all 21 as automated. Implement remaining machine steps;
+  desktop-control tooling is absent here. No provider/GUI acceptance is claimed.
+- A pre-existing single `c` insertion in the smoke README remains in the working
+  tree and is excluded from the rewritten document's commit, like the earlier
+  unrelated bug-file edit. Its intent was not inferred.
+
 - Legacy launch capabilities now have an owner-directed V1 gate: decide what
   is already covered, migrate selected capabilities, design an image-oriented
   mode only if justified, or explicitly drop them. The work order preserves
@@ -174,9 +332,15 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Workstream Document Index
 
+- [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
+- [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
+- [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
+
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
 - [Release bug triage](../../releases/v0.2.14/bugs.md): maintained dispositions and evidence.
+- [RC0 validation runner](../../releases/v0.2.14/smoke/README.md): executable coverage and exact candidate inputs.
+- [RC0 validation stories](../../releases/v0.2.14/smoke/stories.md): dependency types, actors, contracts and remaining automation.
 
 - [Attribution checkpoint](2026-09-22-record-commit-attribution.md): integrated authorship convention, owner acceptance and build evidence.
 

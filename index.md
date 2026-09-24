@@ -30,6 +30,9 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [0.2.14 release work and checklist](engineering-docs/releases/v0.2.14/README.md)
 - [0.2.14 bug triage](engineering-docs/releases/v0.2.14/bugs.md)
+- [0.2.14 RC0 smoke scripts and walkthrough](engineering-docs/releases/v0.2.14/smoke/README.md)
+- [0.2.14 RC0 validation stories and contracts](engineering-docs/releases/v0.2.14/smoke/stories.md)
+- [0.2.14 RC0 smoke results template](engineering-docs/releases/v0.2.14/smoke/results-template.md)
 
 ## Website
 
@@ -84,6 +87,8 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
 ## Work Orders
+
+- [Workflow installation during onboarding](engineering-docs/work-orders/2026-09-24-workflow-installation-onboarding.md)
 
 - [Legacy launch capability decisions — blocks V1](engineering-docs/work-orders/2026-09-22-legacy-launch-capability-disposition.md)
 
@@ -208,6 +213,9 @@ history; record current decisions in the active documents above.
 - [Merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md)
 
 ## Bugs
+
+- [Runtime DevCapsule command unavailable — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
+- [Website URL opening has no browser handler](engineering-docs/bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md)
 
 - [Claim lifecycle test depends on wall-clock timing](engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md)
 - [Nested-directory workflow commands lose coordination files](engineering-docs/bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md)
