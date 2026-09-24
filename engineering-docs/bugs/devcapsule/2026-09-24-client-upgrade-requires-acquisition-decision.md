@@ -70,6 +70,25 @@ notes, once, for one release. The justification here is that the earlier
 client materialized a vendor download without recording consent, and the
 new client will not proceed on a consent it cannot see.
 
+Owner follow-up, 2026-09-24: shell history shows an init that named the
+antigravity need explicitly, `project init --need node --need pycharm --need
+antigravity-agent --need claude-code-agent --need codex-agent --authorize
+base-image mycodespaceai/devcapsule-base:v0.2.9 --regenerate`, run with a
+local build in the v0.2.9 days. That init did ask for and persist an
+antigravity consent, but for a different project: its need list matches no
+manifest of this repository, whose need has never contained `node`, and the
+only records on this host carrying `antigravity-download` are the
+tictactoe sample (born 2026-09-05), the trading-research sample
+(2026-09-06), the website (2026-09-23) and `devcapsule-2` (2026-09-24). This
+repository's own need gained `antigravity-agent` by commit `9248b68` on
+2026-09-06 ("the dogfood project runs all three agents"), which is how the
+component reached this checkout's lock formation without any consent ever
+being asked for this checkout. The owner's memory of approving antigravity
+is right; the approval belongs to other projects. Which launcher path
+started the 2026-09-14 container, `project run` or the retired legacy
+`pycharm run`, is still to be read from the owner's `ps` output; both are
+consistent with the records and neither gated the acquisition.
+
 The `resolution  generated  stale  manifest` row in the same listing is
 legitimate and separate: the repository's manifest changed on `main` after
 the checkout last resolved, and a project change may require `config resolve`.
