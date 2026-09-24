@@ -20,7 +20,7 @@ If the project already has a `.devcapsule/devcapsule.toml` file:
 
 `init` uses the project's declared tools and asks for required local values,
 base-image consent, and acquisition authorizations it still needs. Repository
-recommendations do not grant host access. Use `project config list` to review
+recommendations do not grant host access. Use `project config show` to review
 them, then explicitly authorize the access you choose. If this checkout is
 already initialized, skip directly to `project run`.
 
@@ -92,12 +92,14 @@ choices. If the project itself changed its configuration, `project run` may
 ask you to resolve it again:
 
 ```bash
-~/.local/bin/devcapsule project config list
+~/.local/bin/devcapsule project config show
 ~/.local/bin/devcapsule project config resolve
 ```
 
-The review shows pending decisions together, including your recorded base,
-the project's current recommendation, and commands for the available choices.
+`config show` prints the configuration listing and then the review: pending
+decisions together, including your recorded base, the project's current
+recommendation, and commands for the available choices. `config list` prints
+the listing alone.
 Choose one alternative for each pending authorization; do not execute every
 alternative. A recorded denial is shown as a decision you can keep.
 
@@ -131,7 +133,7 @@ install its matching runtime even when project tools stay the same.
 From your computer's terminal in the project folder:
 
 ```bash
-~/.local/bin/devcapsule project config list
+~/.local/bin/devcapsule project config show
 ```
 
 The first exercise uses ordinary container networking and the contained

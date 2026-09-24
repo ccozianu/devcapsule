@@ -49,6 +49,35 @@ Code inspection establishes the gap:
   BuildKit execution reuse using a small generated component. It does not cover
   the materializer with an empty archive cache and an existing installed IDE.
 
+## Owner evidence from v0.2.14-rc3, 2026-09-24
+
+The owner ran `project run` with the downloaded rc3 launcher in a checkout
+last launched by rc2. The formation differed only in `runtime.pex-sha256`,
+so the launcher materialized a new canonical image
+`devcapsule-local-pycharm:71ccc3500d04b532a6c8` from `828151182df668fafb66`.
+Every component stage was `CACHED`, including the PyCharm copy stage and the
+codex `npm install`; the archive cache was warm, so no download or unpack
+happened. The cost was elsewhere:
+
+| Phase | Measured |
+|---|---|
+| `load build context` | 4.28 GB transferred in 10.9 s, with the PyCharm tree re-rendered into the context although its stage was cached |
+| `exporting layers` | 16.9 s |
+| whole build | 31.5 s, 38 steps |
+| retained images | 39 prior `devcapsule-local-pycharm` formations, 266.0 GB, with the launcher's own note that superseded canonical images are not reaped |
+
+Root cause of the rebuild itself: the runtime PEX digest is part of the
+formation identity by design (D-0009, `materialization.py`, `pex-sha256` in
+the descriptor and the `devcapsule.pex.sha256` label), so every launcher
+change is a new formation. Root cause of the cost: `image_build.py` renders
+the extracted IDE tree into the build context on every build (`copy-dir`
+entries), so BuildKit's stage cache saves the `COPY` but not the transfer;
+and nothing reaps superseded canonical images. The owner rates this "very
+bad": a launcher upgrade should not cost minutes of I/O and gigabytes of disk
+per checkout. This extends the scenario list below: reuse must hold across a
+launcher change with a warm archive cache, and the context must not carry
+what the cache already holds.
+
 ## Proposed acceptance scenarios for design review
 
 1. Materialize a pinned IDE once. Keep its reusable Docker content, use an

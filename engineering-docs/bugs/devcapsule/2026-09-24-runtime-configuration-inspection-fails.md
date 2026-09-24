@@ -95,3 +95,17 @@ plan itself omits these mounts. Its earlier PASS did not test this user story.
 
 No implementation changes made during intake. Severity and release disposition
 await owner triage; no final-release acceptance is inferred from "mostly works."
+
+## Owner observation on v0.2.14-rc3, 2026-09-24
+
+In a capsule launched by an ordinary `project run` with the published rc3:
+from `/opt`, `devcapsule0 project config list` fails as recorded above
+(cause 2, no fallback to the enclosing capsule's project when the working
+directory is outside the project tree); from the project mount under
+`/workspace`, it succeeds and shows the project's configuration as
+recorded on the host. This narrows the bug: cause 1, the missing
+launch-context mounts, belongs to the recursive test launcher only and does
+not affect ordinary launches. The user-facing defect is cause 2 alone, and
+it is small: discovery should fall back to the capsule's project when no
+project is found from the working directory and the runtime context names
+one. The recursive launcher's parity gap remains a test-harness fix.

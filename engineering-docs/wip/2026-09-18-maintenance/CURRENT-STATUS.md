@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC2 tagged but unpublished after a runner-side Docker failure; Docker removed from the release workflow; RC3 pending owner PR and tag
+State: active; releasing 0.2.14; RC3 public and verified, all local proofs passed against the download; owner testing of RC2/RC3 and the configuration-inspection decision pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -75,10 +75,8 @@ those proofs are local acceptance steps against the downloaded assets; the
 e2e helpers now fail with the command's output; the operator guide,
 DEVELOPING.md and the source README describe the new split.
 
-Next: the owner opens and merges the PR from `release-0.2.14`; verify the
-candidate gate by ancestry; tag `v0.2.14-rc3` atomically with the branch;
-verify the published assets; run the three local proofs against the
-downloaded RC3; then the owner tests `config list`/`resolve` on this
+Done since: PR #138 merged, `v0.2.14-rc3` tagged and published, assets and
+all local proofs verified (see validation below). Next: the owner tests `config list`/`resolve` on this
 repository with 0.2.12 and RC3 and the `devcapsule0` exception in a real
 capsule. RC2's tag stays, without assets. The RC1 configuration-inspection
 bug remains open for the owner's fix-or-defer call.
@@ -202,6 +200,43 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+`config list`/`config show` split (2026-09-24): implemented on the release
+branch at the owner's direction after the rc3 findings. `list` prints the
+checkout identity and the table only; `show` adds the review, rendered from
+the generated resolution's real state; newly required acquisition decisions
+say they are new in 0.2.14. Contract tests 55 passed, including the new
+list/show test across fresh, stale and decisions-required states; the
+upgrade-recovery, project-command, release-compatibility, version-set and
+configuration modules passed (423) with the recovery test reading remedies
+from `show`; mypy clean on the touched modules. Full `nox -s build` passed:
+1065 tests, 20 deselected, one xfail, one quarantined XPASS, mypy, PEX smokes
+and nine packaged integrations; log `/opt/devcapsule-gate/list-show-build.log`.
+
+RC3 local proofs (2026-09-24), against the verified download
+`/opt/devcapsule-gate/rc3-published/devcapsule.pex` (SHA-256
+`9a82ae7f91662f448ad180854e2cd43b14b6deca54c598d30440dd4a87ae4d43`), with
+`DEVCAPSULE_PEX_UNDER_TEST`, `DEVCAPSULE_EXPECTED_BUILD_MNEMONIC=v0.2.14-rc3`
+and `DEVCAPSULE_EXPECTED_RELEASE_VERSION=0.2.14rc3` exported, pytest scratch
+on the overlay: packaging integration tests 9 passed; clean-machine proof
+(`nox -s pex_clean_machine`, `docker run` without Python or network) passed;
+component-cache reuse and launcher delivery 5 passed in 91 s; runtime image
+on the manifest's single pinned base, the v0.2.12-rc5 digest, 1 passed in
+28 s on a warm builder cache. Log `/opt/devcapsule-gate/rc3-local-proofs.log`;
+its first packaging and clean-machine attempts failed only because the
+release-version variable was not exported, and passed on rerun with it.
+RC2 assets verified the same way: SHA-256
+`eddf2cde00e07c8d7874c229283ff1a20f409400b5b7bbdcc9b5cc54dca8d3b1`,
+version `0.2.14rc2`, source `a779295`, mainline integration.
+
+RC3 tag (2026-09-24): the owner merged PR #138 (fetched main `7c0b5a2`
+contains `997cd67`, zero unintegrated commits) and reported that a rerun of
+rc2's failed run succeeded, which confirms the runner failure as flakiness.
+`scripts/release-protocol.py v0.2.14-rc3` passed, record at
+`/opt/devcapsule-gate/rc3-release-protocol.json`; annotated tag pushed
+atomically with the branch, peeled commit `997cd67445b00c78da38f1a77c7f0622eaf5a0b3`.
+A watcher downloads and verifies the rc2 and rc3 assets; the three local
+Docker proofs against the rc3 download follow.
 
 Docker-free release workflow (2026-09-24): workflow YAML parses; the two
 edited e2e modules collect (six e2e tests, deselected as before) and pass
@@ -505,6 +540,21 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Owner's rc3 test, 2026-09-24, produced three findings, all recorded and
+  now dispositioned: the trailer is fixed by the list/show split (RC4); the
+  acquisition decision stays required with a named release-notes exception;
+  the checkout naming is not a bug. Earlier text of this thread follows:
+  the launcher change rebuilt the formation with a 4.28 GB context transfer
+  and 39 retained images at 266 GB (added to the installed-IDE reuse bug);
+  `config list` advises resolve on a fresh resolution (new minor bug, fix
+  proposed); and an untouched 0.2.12 checkout now owes a required
+  antigravity-download decision (new bug under R-COMPAT-001, disposition
+  needed: restore 0.2.12 behavior or name the exception in the notes).
+  The rc3 launch worked and the owner confirmed `devcapsule0` on the PATH in
+  the capsule: the runtime-CLI blocker is closed as verified on rc3. From
+  `/opt` the configuration inspection still fails; from the project mount it
+  works, so only the discovery fallback (cause 2) affects ordinary launches.
 
 - RC2 is required: rc1 accepts the fixed manifest but applies the
   `devcapsule0` exception only from the attribute, so dogfood sessions
