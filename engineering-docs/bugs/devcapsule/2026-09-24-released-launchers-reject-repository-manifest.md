@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: blocking
 target: 0.2.14
 owner: maintenance
 opened: 2026-09-24
+closed: 2026-09-24
 requirements: [R-COMPAT-001, R-RUNTIME-001]
 ---
 
@@ -128,3 +129,11 @@ source README documents the reserved name.
 - The owner's host executable is identified by `devcapsule version`; the
   report is closed only once that executable, whichever it is, opens the
   repository.
+
+## Closure, 2026-09-24
+
+Owner verified v0.2.14-rc4 on both host checkouts, `devcapsule` (last
+launched by 0.2.12) and `devcapsule-2`: `config list` and `config show`
+succeed on the fixed manifest. The published 0.2.12 was verified earlier
+against the same manifest. The guard test keeps the repository manifest
+within the vocabulary the latest final release knows.

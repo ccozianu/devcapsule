@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: blocking
 target: 0.2.14
 owner: maintenance
 opened: 2026-09-24
+closed: 2026-09-24
 requirements: [R-PRODUCT-005]
 ---
 
@@ -58,3 +59,8 @@ Two defects, one of design and one of evidence:
 - The next candidate's backend run publishes assets without a Docker step,
   and the local proofs pass against its download before owner testing.
 - The rc2 tag stays where it is, without assets; tags never move.
+
+## Closure, 2026-09-24
+
+rc3 and rc4 published under the Docker-free workflow in about four minutes
+each; the local proofs passed against both downloads. Owner accepted rc4.
