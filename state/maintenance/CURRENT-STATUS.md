@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC4 public and verified, all local proofs passed against the download; owner testing of RC4 pending
+State: active; releasing 0.2.14; RC4 accepted by the owner on both host checkouts; four blocking/related records closed; remaining triage and final tag pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -60,6 +60,15 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+RC4 accepted 2026-09-24: the owner tested it on `devcapsule-2` and
+`devcapsule` and closed the manifest rejection, the runner-gated release,
+the listing trailer and the acquisition-decision records. Open and owned
+here: the `/opt` discovery fallback (minor, set aside), the installed-IDE
+reuse design review, and the thirteen undecided rows in the release bug
+table. Next: the owner decides the remaining rows and any further
+candidate; then the final `v0.2.14` tag from the accepted candidate's
+commit with the release notes carrying the R-COMPAT-001 exception.
 
 RC2's backend run (36023910604) failed at "Verify pinned base availability
 and runtime sessions": `docker build` of the disposable runtime image exited
