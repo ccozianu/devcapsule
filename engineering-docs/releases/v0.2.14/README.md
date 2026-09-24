@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-24. Stage: **RC0 published; release blocked on runtime CLI availability**.
+Updated: 2026-09-24. Stage: **RC1 tagged; publication and candidate validation pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) ·
@@ -27,8 +27,12 @@ status, ownership and technical evidence.
 
 ## Next Work
 
-Integrate and publish a candidate containing the [runtime CLI repair](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md),
-then validate it from the actual IDE terminal before resuming the smoke campaign.
+RC1 is tagged at `cec7a0c2f3467b8cc9d84eca820f35ee869087ec`. PR #136 merged
+the release fixes into main at `c6bea96cfbbb15a428c86bde6924df8ff3db1c15`;
+the candidate integration gate passed with no unintegrated commits. Verify
+publication, download/checksum/version-check RC1, then validate its
+[runtime CLI repair](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
+from the IDE terminal before closing the blocker.
 The source fix exposes `devcapsule` normally and supports this repository's
 recommended `devcapsule0` development exception; Docker command/workflow checks
 passed for both names and both IDE image types. Owner accepted the real recursive
@@ -98,8 +102,14 @@ is still pending; owner testing starts with the already published RC0.
 | Candidate | Source | Publication | End-user acceptance |
 |---|---|---|---|
 | [v0.2.14-rc0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) | `d078b879469c1790647e32db75005d0fa4369b27` | Public assets verified 2026-09-22. | Clean-machine executable check passed; major journeys pending. |
+| [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Annotated tag pushed and remote target verified 2026-09-24; publication pending. | Local PyCharm source accepted; published bytes not yet validated. |
 
-The annotated tag points to the prepared source, not subsequent record updates.
+RC1 tag object: `0f460c0cb5a50f9c0fb6f46b4b7ee6060badd572`. Pushed atomically
+with the release branch. The public RC1 manifest returned HTTP 404 immediately
+after tagging; no successful backend run or published assets are claimed yet.
+The following artifact evidence describes RC0.
+
+The annotated RC0 tag points to the prepared source, not subsequent record updates.
 Public manifest: version `0.2.14rc0`, prerelease true, release branch
 `release-0.2.14`, and mainline integration with no missing commits.
 Published PEX SHA-256:

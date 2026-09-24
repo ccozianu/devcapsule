@@ -122,7 +122,9 @@ The agent verified `devcapsule0`, exact runtime bytes and workflow installation
 inside that capsule. This accepts that local development-command session; it
 does not imply every IDE/mode, resume story or published candidate was tested.
 
-Status is fixed, not closed. Main integration and a new immutable candidate
-remain pending; carry the local acceptance into candidate validation.
+Status is fixed, not closed. PR #136 integrated the repair into main at
+`c6bea96cfbbb15a428c86bde6924df8ff3db1c15`, verified by fetched ancestry and
+matching runtime sources. RC1 is tagged at `cec7a0c`; publication and exact
+candidate validation remain pending. Carry the local acceptance into that validation.
 RC0 and the owner's running containers were not modified. Normal merge to main
 is the intended disposition; no conflicting main implementation was identified.
