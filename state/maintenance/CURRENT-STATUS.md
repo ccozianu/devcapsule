@@ -140,6 +140,26 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Owner-requested recursive PyCharm launch (2026-09-24): clean local clone of
+`9cc08686c5f6c9b44a1a132bf81e4befd0ecf641`, retained run
+`29fb2abc530735da1ebd625acd991622` beneath
+`/home/devcapsule/.local/share/devcapsule/e2e-workspaces/`.
+The original checkout's preflight fails on its existing website Git pointer;
+the exact-commit clone passes without changing the original or its user edits.
+Built a revision-bearing PEX, initialized isolated checkout configuration/state,
+and ran `recursive-e2e launch-successor` with the pinned real PyCharm distribution.
+Successor `devcapsule-e2e-29fb2abc530735da1ebd625acd991622-successor` remains
+running with host networking. Independent `inspect-successor` passed; PyCharm's
+JVM is running and the desktop has a `PyCharm User Agreement` window.
+As UID 1000, `devcapsule0` reports the exact source revision and identical PEX
+SHA-256 `a0e29d237e978d8c6575ccf12541571a1c0f1d9e016e8f3174ae1b1e23efb34b`;
+`devcapsule` is absent. Workflow bootstrap by public command created the expected
+files in a disposable in-container directory. Owner received the desktop URL;
+its session token is deliberately excluded from committed records. Fresh IDE
+first-run interaction and owner terminal acceptance remain pending. This was
+the actual successor launch/inspection, not a claim that the full recursive
+Nox suite or release-candidate campaign passed. No new release tag was published.
+
 Owner-requested enum cleanup (2026-09-24): `RuntimeCommand` now owns the
 supported public names. Configuration boundaries construct enum members;
 materialization accepts the enum without repeating string-domain checks.
@@ -308,6 +328,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Recursive PyCharm successor run `29fb2abc530735da1ebd625acd991622` is deliberately
+  retained for the owner; see validation above. Do not stop or remove it merely
+  because this agent turn finishes. The first-run User Agreement is still pending.
 - The runtime CLI blocker is fixed in source, awaiting main integration and
   a new candidate with owner IDE-terminal acceptance. It still blocks release.
   Existing running capsules retain their original commands until relaunched.
