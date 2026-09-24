@@ -134,6 +134,7 @@ def realize_environment(
         if materialize is not None
         else {
             "runtime_pex": runtime_artifact(),
+            "runtime_command": runtime.get("devcapsule-command", "devcapsule"),
             "report": report,
             "list_formations": lambda: component_formations(locked.component_id),
         }

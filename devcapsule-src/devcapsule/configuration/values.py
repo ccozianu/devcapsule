@@ -16,7 +16,9 @@ MEMORY_SIZE_PATTERN = re.compile(r"^([1-9][0-9]*)(B|KiB|MiB|GiB|TiB)$")
 CONFIGURATION_VALUE_TYPES = {"string", "integer", "boolean", "memory-size"}
 
 
-RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size"}
+RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size", "devcapsule.command-name": "string"}
+
+RuntimeEffects = dict[str, int | str]
 
 
 def configuration_value_declarations(
@@ -63,6 +65,8 @@ def configuration_value_declarations(
                 raise ProjectConfigurationError(
                     f"{field}.runtime-effect {effect!r} requires type {expected_type!r}."
                 )
+        if "recommended" in declaration:
+            _normalize_declared_value(declaration, name, declaration["recommended"])
         declarations[name] = declaration
     return declarations
 
@@ -78,16 +82,21 @@ def normalize_configuration_value(
             f"Configuration value {name!r} is not declared by this project; declared values: {available}."
         )
     if isinstance(value, str) and value.strip().lower() == "default":
-        # 'default' is an input artifact, never a stored value: it resolves
-        # to the node's declared default at the moment the decision is made
-        # (owner ruling 2026-09-03, uniform across node families).  Value
-        # declarations carry no default field today, so there is nothing for
-        # it to resolve to here.
-        raise ProjectConfigurationError(
-            f"Configuration value {name!r} declares no default for 'default' to "
-            "resolve to; set an explicit value, or use 'unset' to leave the "
-            "value absent."
-        )
+        if "recommended" not in declaration:
+            raise ProjectConfigurationError(
+                f"Configuration value {name!r} declares no default for 'default' to "
+                "resolve to; set an explicit value, or use 'unset' to leave the value absent."
+            )
+        value = declaration["recommended"]
+    return _normalize_declared_value(declaration, name, value)
+
+
+def _normalize_declared_value(
+    declaration: Mapping[str, Any], name: str, value: object,
+) -> ConfigurationScalar:
+    """Validate literal answers and recommendations against the same domain."""
+    if isinstance(value, str) and value.strip().lower() == "default":
+        raise ProjectConfigurationError(f"Configuration value {name!r} recommendation must be a literal value.")
     if isinstance(value, str) and value.strip().lower() == "none":
         # Reserved alongside 'default' (owner ruling 2026-09-03): the
         # explicit-absence answer is recorded by the carriers as an omission,
@@ -102,6 +111,8 @@ def normalize_configuration_value(
     if value_type == "string":
         if not isinstance(value, str) or not value or "\x00" in value:
             raise ProjectConfigurationError(f"{field} must be a non-empty string.")
+        if declaration.get("runtime-effect") == "devcapsule.command-name" and value not in {"devcapsule", "devcapsule0"}:
+            raise ProjectConfigurationError(f"{field} must be devcapsule or devcapsule0.")
         return value
     if value_type == "integer":
         if isinstance(value, bool):
@@ -140,7 +151,7 @@ def checkout_omitted_values(checkout: Mapping[str, Any]) -> tuple[str, ...]:
 
 def resolve_configuration_values(
     manifest: Mapping[str, Any], checkout: Mapping[str, Any]
-) -> tuple[dict[str, ConfigurationScalar], dict[str, int]]:
+) -> tuple[dict[str, ConfigurationScalar], RuntimeEffects]:
     """Validate checkout values and derive curated runtime effects from metadata."""
 
     declarations = configuration_value_declarations(manifest)
@@ -154,7 +165,7 @@ def resolve_configuration_values(
     omitted = checkout_omitted_values(checkout)
     problems: list[str] = []
     normalized: dict[str, ConfigurationScalar] = {}
-    effects: dict[str, int] = {}
+    effects: RuntimeEffects = {}
     for name in sorted(set(raw_values) | set(omitted) | set(declarations)):
         try:
             declaration = declarations.get(name)
@@ -167,6 +178,10 @@ def resolve_configuration_values(
                     raise ProjectConfigurationError(f"Configuration value {name!r} is both recorded and omitted.")
             elif name in raw_values:
                 normalized[name] = normalize_configuration_value(manifest, name, raw_values[name])
+            elif "recommended" in declaration:
+                # This is an ordinary value, not a host/acquisition authorization.
+                # Explicit answers and omissions always take precedence.
+                normalized[name] = _normalize_declared_value(declaration, name, declaration["recommended"])
             elif declaration.get("required", False):
                 raise ProjectConfigurationError(
                     f"Required configuration value {name!r} is missing: project config set {name} VALUE."
@@ -179,6 +194,8 @@ def resolve_configuration_values(
         effect = declarations[name].get("runtime-effect")
         if effect == "docker.memory-limit":
             effects["memory-limit-bytes"] = memory_size_bytes(str(value))
+        elif effect == "devcapsule.command-name":
+            effects["devcapsule-command"] = str(value)
     return normalized, effects
 
 

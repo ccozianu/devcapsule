@@ -27,8 +27,11 @@ status, ownership and technical evidence.
 
 ## Next Work
 
-Fix and validate the [runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
-before resuming the smoke campaign. Earlier startup/resume passes remain valid
+Integrate and publish a candidate containing the [runtime CLI repair](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md),
+then validate it from the actual IDE terminal before resuming the smoke campaign.
+The source fix exposes `devcapsule` normally and supports this repository's
+recommended `devcapsule0` development exception; Docker command/workflow checks
+passed for both names and both IDE image types. The blocker is fixed, not closed. Earlier startup/resume passes remain valid
 for their limited assertions; they did not check public CLI availability.
 
 The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records

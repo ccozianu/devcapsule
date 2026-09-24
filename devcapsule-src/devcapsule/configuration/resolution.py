@@ -141,6 +141,9 @@ class Resolution:
         mount = runtime.get("project-mount")
         memory = runtime.get("memory-limit-bytes")
         image = runtime.get("image")
+        command = runtime.get("devcapsule-command", "devcapsule")
+        if command not in ("devcapsule", "devcapsule0"):
+            raise ProjectConfigurationError("Resolved runtime.devcapsule-command must be devcapsule or devcapsule0.")
         if (not isinstance(component, str) or component not in INTERACTIVE_SURFACES
                 or not isinstance(mount, str) or not mount.startswith("/") or "\x00" in mount):
             raise ProjectConfigurationError("Run requires a valid resolved runtime; run 'devcapsule project config resolve'.")

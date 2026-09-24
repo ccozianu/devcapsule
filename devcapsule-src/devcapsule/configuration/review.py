@@ -16,7 +16,7 @@ from .authorization import AuthorizationChoice, AuthorizationReview, review_auth
 from .bindings import resolve_configuration_bindings, resolve_secret_bindings
 from .documents import AuthorizationScalar, ConfigurationScalar, ProjectConfigurationError, table
 from .nodes import build_node_registry
-from .values import resolve_configuration_values
+from .values import RuntimeEffects, resolve_configuration_values
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,7 @@ class HostAccess:
 @dataclass(frozen=True)
 class ConfigurationReview:
     values: dict[str, ConfigurationScalar]
-    runtime_effects: dict[str, int]
+    runtime_effects: RuntimeEffects
     bindings: dict[str, str]
     secret_bindings: dict[str, str]
     authorizations: tuple[AuthorizationReview, ...]
@@ -116,7 +116,7 @@ def review_configuration(
     build_node_registry(manifest, lock)
     problems: list[str] = []
     values: dict[str, ConfigurationScalar] = {}
-    effects: dict[str, int] = {}
+    effects: RuntimeEffects = {}
     bindings: dict[str, str] = {}
     secrets: dict[str, str] = {}
     authorizations: tuple[AuthorizationReview, ...] = ()

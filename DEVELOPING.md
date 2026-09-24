@@ -130,6 +130,33 @@ For source-form environment launches, first build the PEX (`nox -s pex`), then
 run that artifact, or set `DEVCAPSULE_RUNTIME_PEX` to its absolute path when
 invoking the source CLI. Rebuild and reselect it after runtime source changes.
 
+### Shipped CLI versus development CLI
+
+This project's `.devcapsule/devcapsule.toml` recommends
+`runtime.devcapsule-command = "devcapsule0"`. In a newly materialized capsule,
+`devcapsule0` runs the exact shipped launcher, while the image leaves the
+`devcapsule` name free for the development installation. Both interactive
+shells and scripts can use `devcapsule0`; no `.bashrc` alias is needed.
+Activate the development virtualenv to use its `devcapsule` command, or invoke
+the virtualenv interpreter / built PEX explicitly as described above.
+Internal runtime and host-open integrations retain their absolute PEX path.
+
+Projects without that recommendation receive the usual `devcapsule` command.
+The recommendation is an ordinary configuration value, not a host permission.
+To override it for a checkout, run the **outside launcher**:
+
+```text
+devcapsule project config set runtime.devcapsule-command devcapsule
+devcapsule project config resolve
+```
+
+`config set runtime.devcapsule-command default` records the current project
+recommendation; `config unset runtime.devcapsule-command` resumes following it.
+An explicit `none` omits the value and uses the normal shipped command.
+The selection is part of image identity and takes effect at the next launch;
+it never renames commands inside an already running capsule. The first launcher
+containing this fix is required; immutable RC0 does not support the new value.
+
 Calling the virtualenv's interpreter directly is intentional: it works without
 shell activation and cannot silently fall through to `/usr/bin/python` because
 an activation script contains an obsolete path. Activation remains supported:

@@ -61,14 +61,16 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
-Owner paused smoke progression on 2026-09-24: fix the confirmed, owner-designated
-[0.2.14 runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md).
-The live website image has exact RC0 bytes but no public `devcapsule` command.
-Do not confuse an absolute-path workaround with closure. Repair normal command
-installation and cache invalidation, then validate IDE-terminal workflow install
-in a disposable project and a new candidate. URL opening is separately routed
-to contained-display; workflow onboarding is non-blocking and routed to
-workflow-improvements. Do not switch workstreams or mutate the website to test.
+The runtime CLI blocker has a source fix and Docker regression evidence on
+`release-0.2.14`. Normal capsules expose the shipped `devcapsule`; the owner
+requested a saved configuration exception and this repository recommends
+`runtime.devcapsule-command = "devcapsule0"`. That real command leaves the normal
+name for development tooling; internal absolute-path calls retain the shipped
+PEX. Explicit checkout values/omissions override ordinary recommendations.
+Next: owner PR integration, next immutable candidate, actual IDE-terminal
+acceptance of the public command and workflow install before closing the blocker.
+No live capsule or website source was patched. URL opening and non-blocking
+workflow onboarding remain with their previously notified owners.
 
 A single entry point now supports existing-project sessions:
 `smoke/runner.py launch --project PATH`, followed by `resume`, `report` and
@@ -137,6 +139,22 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+CLI repair and development exception (2026-09-24): 311 focused checks passed;
+four real-Docker variants passed for PyCharm/VSCodium and devcapsule/devcapsule0.
+Tests invoke the command by name as UID 1000, verify exact runtime identity,
+and install workflow files in a disposable project. Development mode permits
+an independent development command without a shipped fallback. Three additional
+filesystem cases ensure only our inherited shipped link is removed, preserving
+a development script or symlink (eight runtime-artifact checks passed).
+Full gate log: `/tmp/maintenance-runtime-cli-build-final.log`; final source
+checks passed (1,060 tests, 20 deselected, one xfail and one quarantined XPASS),
+as did type checks and nine packaged integrations. Final Git status then
+failed on the existing `/home/devcapsule/.git-website` pointer; overall gate
+remains failed.
+No actual IDE-terminal acceptance of the new code or RC1 publication is claimed.
+Earlier lowercase-help assertion failure was a harness defect, corrected before
+the four Docker passes. The pre-fix Docker test reproduced exit 127 as expected.
 
 Blocker intake (2026-09-24): live read-only Docker inspection and runtime
 version/hash checks confirm the missing public CLI; IDE process environment
@@ -277,8 +295,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Release now has a blocking bug; earlier statements that all known bugs are
-  non-blocking are historical. No implementation fix was made during intake.
+- The runtime CLI blocker is fixed in source, awaiting main integration and
+  a new candidate with owner IDE-terminal acceptance. It still blocks release.
+  Existing running capsules retain their original commands until relaunched.
 - URL-opening triage and workflow-onboarding work item are handed to their
   owners through coordination mail. Their acknowledgement remains pending.
 - The local workflow change reported by brief is our owner-directed host-network

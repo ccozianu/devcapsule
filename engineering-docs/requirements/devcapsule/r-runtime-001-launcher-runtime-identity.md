@@ -41,6 +41,12 @@ dependency cycle and keeps runtime-plan production and execution in one build.
 - `devcapsule/materialization.py` installs it at
   `/opt/devcapsule/bin/devcapsule.pex` and incorporates its SHA-256 in the
   formation descriptor. The shared base is not modified in place.
+- The delivered executable is reachable through `/usr/local/bin/devcapsule`.
+  An ordinary configuration value with runtime effect `devcapsule.command-name`
+  can select `devcapsule0` instead for development checkouts. This changes the
+  public name only; internal absolute-path execution and byte identity remain.
+  The command selection participates in formation identity. An old cached
+  image without the public command contract cannot satisfy the repaired plan.
 - Source-form launchers can explicitly select a built PEX using
   `DEVCAPSULE_RUNTIME_PEX`; running that PEX directly gives the ordinary
   identical-executable path. Source Python files are not themselves a PEX.
@@ -58,6 +64,12 @@ Existing coverage for the default, delivered with v0.2.11:
 - `tests/e2e/test_component_cache.py` checks the installed executable's SHA-256,
   image label, runtime invocation, and inside/outside version metadata for both
   fixture surface families.
+
+The 0.2.14 runtime-command repair extends those Docker checks to execute the
+public command by name as a non-root user and bootstrap workflow files. Both
+PyCharm/VSCodium formations and normal/development command names are covered;
+configuration and cache-identity tests cover recommendation/override semantics.
+These fixture-image checks do not stand in for actual IDE-terminal acceptance.
 
 Future changes must preserve these properties. Any additional override
 interface needs its own explicit-selection and default-regression coverage;

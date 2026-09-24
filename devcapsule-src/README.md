@@ -535,6 +535,29 @@ runtime-effect = "docker.memory-limit"
 description = "Hard memory limit applied to the checkout's project container."
 ```
 
+A declaration may also supply a typed `recommended` value. Resolution uses it
+when the checkout has neither an explicit value nor an explicit omission;
+`config list` labels it `project-recommended`. `config set NAME default` records
+the current recommendation, while `config unset NAME` follows it again. These
+ordinary-value defaults never grant host access or authorize downloads.
+
+For DevCapsule development, this repository declares:
+
+```toml
+[configuration.values."runtime.devcapsule-command"]
+type = "string"
+runtime-effect = "devcapsule.command-name"
+recommended = "devcapsule0"
+```
+
+This names the shipped CLI `devcapsule0` so the development build can own
+`devcapsule`. Both names are real commands, not interactive shell aliases.
+The two supported values are `devcapsule` and `devcapsule0`; projects without
+this declaration use `devcapsule`. Explicit omission also uses the normal name.
+The change applies when materializing and launching the next environment;
+internal runtime integrations still use the identical PEX at its absolute path.
+This value is persistent checkout configuration, not a run-once `--set` effect.
+
 The developer selects a value for one checkout with the generic command:
 
 ```bash
@@ -553,8 +576,8 @@ already registered for another checkout, assign a distinct name first with
 `project checkout register NAME`; the list command never invents or inherits a
 checkout name.
 
-Value statuses distinguish configured, invalid, required-but-missing, and
-optional-but-unset values. Bindings show an explicit host directory, legacy
+Value statuses distinguish configured, project-recommended, explicitly omitted,
+invalid, required-but-missing, and optional-but-unset values. Bindings show an explicit host directory, legacy
 adoption, conflict, or managed-default storage. Authorizations show authorized,
 stale, required-but-missing, or recommended-but-missing decisions. Resolution
 is unresolved, fresh, or stale. Missing choices are reported without making a

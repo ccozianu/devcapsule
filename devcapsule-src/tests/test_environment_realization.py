@@ -349,3 +349,16 @@ def test_realize_environment_propagates_canonical_conflict_without_launch(
         )
 
     require.assert_not_called()
+
+
+@pytest.mark.parametrize("command", [None, "devcapsule", "devcapsule0"])
+def test_realizer_uses_resolved_shipped_command_choice(tmp_path, monkeypatch, command):
+    selected = resolved_project(tmp_path)
+    if command is not None:
+        selected.resolution["runtime"]["devcapsule-command"] = command
+    materialize = Mock(return_value=(CANONICAL_IMAGE, True))
+    monkeypatch.setattr("devcapsule.environment_realization.ensure_materialized_surface", materialize)
+    monkeypatch.setattr("devcapsule.environment_realization.runtime_artifact", lambda: tmp_path / "runtime.pex")
+    realize_environment(selected, root=tmp_path / "cache", obtain_image=lambda _ref: base_image(),
+                        require_image=lambda _ref: completed_image(), build=Mock(), inspect_image=Mock())
+    assert materialize.call_args.kwargs["runtime_command"] == (command or "devcapsule")

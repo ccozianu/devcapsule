@@ -101,6 +101,17 @@ networking for host-bound development services, and development sudo. The
 facts: the canonical repository and owner-operated pull-request delivery.
 The GitHub integration rules below govern agent access and the UI handoff.
 
+### Dogfooding CLI Selection
+
+Owner direction, 2026-09-24: this project's configuration recommends
+`runtime.devcapsule-command = "devcapsule0"`. Newly materialized development
+capsules expose the shipped runtime as `devcapsule0`, leaving `devcapsule` for
+our development installation. Use the shipped command deliberately when testing
+its released behavior; use the development CLI or explicit built PEX for current
+work. Do not silently fall back to the shipped CLI when development setup is
+missing. Other projects retain the standard command unless they explicitly opt
+into this exception. See DEVELOPING.md for checkout overrides and resolution.
+
 ### Local Launch Networking
 
 Owner direction, 2026-09-24: always pursue host networking for this project's
