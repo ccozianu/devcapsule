@@ -380,6 +380,49 @@ capsule can start from a locally loaded image with third-party network
 denied, and DevCapsule never depends on mycs. The archive keeps the
 DevCapsule executable as a toolchain artifact like any other.
 
+### Migration of this repository
+
+Once mycs is bootstrapped, the website and the three sample projects move
+from submodules to records and a workspace manifest. The wiring is light,
+as inventoried on 2026-09-24:
+
+- Website: `.gitmodules`, `scripts/website.sh`, two steps in
+  `.github/workflows/website.yml`, two paragraphs in `DEVELOPING.md`. The
+  website's own `content:fetch` already works by ref and needs nothing.
+- Samples: `.gitmodules`, the `pyproject.toml` exclusions that keep them
+  out of the gate, one test in `test_project_commands.py` that reaches into
+  a sample, and the recursive-clone end-to-end test that passes
+  `--no-recurse-submodules`. The `sample-projects` workstream, paused since
+  2026-08-21, owns its half.
+
+In order:
+
+1. **Records first.** Each of the four becomes a catalog record with its
+   origin, pin and status. The website's pin is the revision the Website
+   workflow builds; each sample's pin is the revision the tests expect.
+   Nothing else changes yet.
+2. **A workspace manifest in this repository**, generated from those
+   records, listing path, origin and pin. A small materialize step, git
+   clone in a loop, replaces `git submodule update --init` in `website.sh`,
+   in both workflow steps, and in `DEVELOPING.md`. The workflow already
+   overrides the SSH URL with HTTPS; a clone by pin does the same.
+3. **Tests read the manifest.** The one test that reaches into a sample and
+   the end-to-end clone test take the path from the manifest rather than
+   assuming a gitlink. The `pyproject.toml` exclusions stay, since the
+   paths do not move.
+4. **Remove the gitlinks and `.gitmodules`**, only after steps 2 and 3 are
+   green in CI. The directories stay where they are, embedded repositories
+   as today, so no checkout breaks.
+5. **Pin bumps become record edits.** Advancing the website or a sample is
+   a one-line manifest change, reviewed like any other.
+
+Two consequences: the directories can later become siblings instead of
+nested, which is what a capsule wants, by changing only the manifest paths;
+and the `--no-recurse-submodules` flag disappears because there is nothing
+to recurse into. When mycs exists, `project-management` receives an intake
+item to schedule this, since it touches the website workstream, the
+sample-projects workstream and CI. Not sent yet.
+
 ### Relationship to existing records
 
 - `R-PRODUCT-001` batteries-included environments and `R-PRODUCT-002`
