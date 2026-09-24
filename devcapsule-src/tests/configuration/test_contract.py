@@ -371,11 +371,14 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     capsys.readouterr()
     assert invoke(project, 'config', 'list') == 0
     listing = capsys.readouterr().out
-    assert 'KIND' in listing and 'generated' in listing and 'fresh' in listing
+    assert 'KIND' in listing and 'SOURCE' in listing and 'generated' in listing and 'fresh' in listing
+    assert 'Sources:' not in listing
     assert 'Configuration review' not in listing and 'resolve explicitly' not in listing
     assert invoke(project, 'config', 'show') == 0
     shown = capsys.readouterr().out
-    assert 'KIND' in shown
+    assert 'KIND' in shown and 'SOURCE' in shown
+    assert 'Sources:' in shown and str(record) in shown and str(resolution) in shown
+    assert '(as resolved)' in shown and 'changed since the resolution' not in shown
     assert 'Configuration review: ready; the generated resolution is fresh.' in shown
     assert 'Nothing to resolve' in shown and 'After settling' not in shown
     # A record edited behind the resolution's back stales the checkout input;
@@ -387,6 +390,7 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     shown = capsys.readouterr().out
     assert 'Configuration review: ready to resolve.' in shown, shown
     assert 'The generated resolution is stale: checkout-input; resolve explicitly:' in shown
+    assert f'checkout     {record}  (changed since the resolution)' in shown
     # A missing required decision keeps the decisions text and instruction.
     replace_answers(project, record, {name: value for name, value in table.items() if name != 'base-image'})
     assert invoke(project, 'config', 'show') == 0
