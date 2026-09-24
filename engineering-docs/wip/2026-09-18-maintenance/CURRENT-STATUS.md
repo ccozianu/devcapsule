@@ -52,14 +52,23 @@ Retired the two old codium_with_claude option-parity and ambient-sudo records:
 the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
-[working bug table](../../releases/v0.2.14/bugs.md) now has 22 rows:
-17 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
+[working bug table](../../releases/v0.2.14/bugs.md) now has 23 rows:
+18 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
 of the upgrade-recovery and configuration-contract bugs; their records now
 link the owner/graphical acceptance and verified PR #117 integration. No
 runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+RC1 owner feedback: mostly works, except configuration inspection. Both
+reported failures are confirmed; the [bug](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
+belongs to component-upgrades' runtime inspection contract, target 0.2.14.
+Next: route the evidence for that workstream's triage and agree the release
+repair with the owner. No source fix or workstream switch was performed.
+Coordination claim/mail operations hit SSH authentication failures during
+intake; delivery must be verified rather than assumed.
+
 
 The runtime CLI blocker has a source fix and Docker regression evidence on
 `release-0.2.14`. Normal capsules expose the shipped `devcapsule`; the owner
@@ -147,6 +156,17 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+RC1 configuration failure intake (2026-09-24): owner could not retain the log.
+Original successor inspection showed exit 0 and no launch-context/configuration
+mounts. One disposable read-only CLI probe of the exact image reproduced
+`config list` and `versions show` failures from /opt and the actual project
+mount. Bare `project config` prints help successfully. Evidence lives in the
+retained run's `configuration-diagnostics.json`; the bug records exact errors
+and producer/reader causes. No IDE restart, host-record edit or source fix.
+Earlier recursive inspection PASS did not cover this story. No full source
+suite was needed for this documentation-only intake.
+
 
 Published-RC1 recursive PyCharm launch (2026-09-24): retained run
 `0edc6f491291f0d5ffa4e31b0238863b` beneath the persistent-home
@@ -391,6 +411,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- RC1 runtime-configuration inspection bug needs component-upgrades triage;
+  owner expects read-only inspection from /opt as well as the project root.
+  Send the linked bug/evidence by coordination mail if delivery is still pending.
+- Run `0edc6f491291f0d5ffa4e31b0238863b` subsequently exited normally (code 0);
+  earlier retained-running notes below are historical. No restart was attempted.
+
 - Published RC1 plus the newly built local base is running in retained recursive
   run `0edc6f491291f0d5ffa4e31b0238863b`; agent checks passed, owner GUI acceptance
   pending. Keep it running for the owner; do not stop the earlier session either.
@@ -454,6 +480,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [RC1 runtime configuration inspection](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md): component-upgrades; confirmed, target 0.2.14.
 
 - [Installed IDE Docker reuse](../../bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md): review design with owner before implementation; no release target.
 

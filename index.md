@@ -212,6 +212,8 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [RC1 in-capsule configuration inspection fails](engineering-docs/bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
+
 - [Installed IDE reuse before archive acquisition — design review pending](engineering-docs/bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md)
 
 - [Runtime DevCapsule command unavailable — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)

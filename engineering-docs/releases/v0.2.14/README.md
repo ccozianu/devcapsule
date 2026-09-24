@@ -138,6 +138,14 @@ The Actions run was not independently inspected through a credentialed API.
 
 ## End-User Acceptance
 
+Owner reports the RC1 session mostly works, but in-capsule configuration
+inspection fails. Both failures are reproduced and tracked in the
+[configuration-inspection bug](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md),
+owned by component-upgrades and targeted at 0.2.14. This qualifies the earlier
+agent PASS: the recursive inspection did not check this feature. The retained
+successor has exited normally (code 0); it was not restarted for diagnosis.
+
+
 2026-09-24: launched real PyCharm recursively with the published RC1 PEX and
 `devcapsule-base:0.2.14-rc1-local`. Retained run:
 `0edc6f491291f0d5ffa4e31b0238863b`. Independent successor inspection, host

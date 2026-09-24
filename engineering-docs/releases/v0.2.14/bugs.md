@@ -5,7 +5,7 @@
 Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
 main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
 and integration state are recorded in the release overview.
-22 tracked records: 17 open, two closed and three retired. The installed-IDE
+23 tracked records: 18 open, two closed and three retired. The installed-IDE
 reuse report has no release target and awaits owner design review. The two new
 2026-09-24 findings are a **blocking** missing runtime command owned by
 maintenance and a URL-opening defect owned by contained-display, both targeted
@@ -36,6 +36,7 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | Bug | Owner | Recorded status | Recorded severity | 0.2.14 disposition | Next action / evidence |
 |---|---|---|---|---|---|
 | [Runtime CLI missing from PATH](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md) | maintenance | fixed | blocking | **Release blocker — pending candidate acceptance** | Public command installed; this repository recommends devcapsule0 for development. Four Docker command-mode/surface variants passed. Owner accepted the real PyCharm/devcapsule0 session at 9cc0868. Integrated through PR #136; RC1 public at cec7a0c; downloaded identity verified, exact-candidate IDE validation pending. |
+| [In-capsule configuration inspection](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md) | component-upgrades | confirmed | untriaged | Triage for 0.2.14 | Recursive launch omits read-only configuration mounts; /opt discovery lacks capsule-project fallback. Both config list failures reproduced with exact RC1 image. |
 | [Installed IDE Docker reuse](../../bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md) | maintenance | confirmed | minor | No release target — design review first | No implementation authorized; review cache identity, reuse, retention and scope with the owner. |
 | [URL opening has no browser handler](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md) | contained-display | confirmed | untriaged | Triage for 0.2.14 | Host networking active; no local browser or authorized host-browser bridge. Decide supported no-bridge UX; preserve host-access choices. |
 | [Codium runtime-option parity](../../bugs/devcapsule/2026-07-13-codium-run-option-parity.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
