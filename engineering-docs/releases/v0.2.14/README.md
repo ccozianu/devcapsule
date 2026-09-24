@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-23. Stage: **RC0 published; end-user acceptance in progress**.
+Updated: 2026-09-24. Stage: **RC0 published; release blocked on runtime CLI availability**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) ·
@@ -15,9 +15,10 @@ status, ownership and technical evidence.
 - Release baseline: preparation merge `21371084f7137624aed6c0581b12495a04b04fbb`
   (PR #131), including integrated configuration/upgrade recovery, workflow,
   component and diagnostic-command changes.
-- None of the known bugs is a showstopper. The owner considers publication
-  possible on bug grounds; fix a selected few or verify they no longer apply,
-  and validate major end-user E2E journeys before final acceptance.
+- On 2026-09-24 the owner designated the missing in-capsule `devcapsule`
+  command as the first release blocker, superseding the earlier non-blocking
+  bug assessment. Smoke progression pauses for blocker triage/fix. URL opening
+  is separately filed; workflow onboarding remains non-blocking.
 - Branch-name migration is deferred through publication of 0.2.14. Complete
   it before substantive work on the next release. Project-management coordinates;
   each workstream owns its rename. WORKFLOW-LOCAL.md records the exception.
@@ -25,6 +26,10 @@ status, ownership and technical evidence.
   are unavailable here. Git fetch/push and public-asset verification are available.
 
 ## Next Work
+
+Fix and validate the [runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
+before resuming the smoke campaign. Earlier startup/resume passes remain valid
+for their limited assertions; they did not check public CLI availability.
 
 The [bug review](bugs.md#proposed-calls-from-the-2026-09-22-review) now records
 the two owner-approved configuration-bug closures and selected retirement of
@@ -38,7 +43,8 @@ Work through selected undecided rows in [bug triage](bugs.md) and the acceptance
 journeys below, recording fixes, obsolete findings and explicit deferrals. Two
 old Codium-specific records are retired after checking the removed command and
 implementation against RC0; with the two accepted closures and the legacy
-networking retirement, 14 bugs remain open. The legacy command removal changes
+networking retirement, the original list had 14 open bugs. The two new 2026-09-24 records bring
+the current total to 16 open, including the blocking runtime command defect. The legacy command removal changes
 runtime source after RC0 and requires RC1 or later; never move RC0.
 
 ## Legacy PyCharm Launch Retirement
