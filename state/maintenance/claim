@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: release-0.2.14
+slice: Fix public runtime CLI entrypoint and verify in materialized images
+since: 2026-09-24T08:39:55+00:00
+expires: 2026-09-24T20:39:55+00:00
