@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC0 public; legacy PyCharm launch integrated; RC0 ready for owner testing
+State: active; releasing 0.2.14; RC0 public; release blocked on missing runtime CLI
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@1fc446656564
 
@@ -44,21 +44,31 @@ The owner explicitly deferred legacy branch renames through 0.2.14 publication,
 before substantive work on the next release. WORKFLOW-LOCAL.md records this;
 project-management received `2026-09-22-maintenance-rename-deadline-deferred.md`
 on coordination at `4013fca06a54`, superseding the earlier pre-RC0 deadline.
-The owner says known bugs do not prevent publication on bug grounds; fix or
-verify a selected few and validate major end-user journeys before final acceptance.
+The owner originally said known bugs did not prevent publication. On
+2026-09-24 the missing runtime CLI became the first release blocker; fix and
+validate it before resuming the remaining end-user journeys.
 
 Retired the two old codium_with_claude option-parity and ambient-sudo records:
 the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
-[working bug table](../../releases/v0.2.14/bugs.md) retains all 19 rows, now
-14 open, two closed and three retired. On 2026-09-22 the owner accepted closure
+[working bug table](../../releases/v0.2.14/bugs.md) now has 21 rows:
+16 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
 of the upgrade-recovery and configuration-contract bugs; their records now
 link the owner/graphical acceptance and verified PR #117 integration. No
 runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+Owner paused smoke progression on 2026-09-24: fix the confirmed, owner-designated
+[0.2.14 runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md).
+The live website image has exact RC0 bytes but no public `devcapsule` command.
+Do not confuse an absolute-path workaround with closure. Repair normal command
+installation and cache invalidation, then validate IDE-terminal workflow install
+in a disposable project and a new candidate. URL opening is separately routed
+to contained-display; workflow onboarding is non-blocking and routed to
+workflow-improvements. Do not switch workstreams or mutate the website to test.
 
 A single entry point now supports existing-project sessions:
 `smoke/runner.py launch --project PATH`, followed by `resume`, `report` and
@@ -127,6 +137,18 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Blocker intake (2026-09-24): live read-only Docker inspection and runtime
+version/hash checks confirm the missing public CLI; IDE process environment
+inspection confirms the URL-opener conditions. Evidence is in the two new bug
+records. No runtime or website source was changed. New record links/index and
+Git diff whitespace checks passed. Full build source/type/PEX checks and nine
+packaged integrations passed, then final Git status failed on the pre-existing
+website pointer to `/home/devcapsule/.git-website`; overall gate not passed.
+Log: `/tmp/maintenance-rc0-blocker-intake-build.log`.
+Mail delivered: `2026-09-24-maintenance-url-opening-triage.md` to
+contained-display at `ba6768619aac`; workflow-onboarding item delivered to
+workflow-improvements. Both await disposition, not implementation in this checkout.
 
 Host-network validation (2026-09-24): owner confirmed the runner's host-network
 session works. Attempt 4 in `dist/rc0-runs/session-7a4dbc068f58/run.json` records
@@ -255,6 +277,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Release now has a blocking bug; earlier statements that all known bugs are
+  non-blocking are historical. No implementation fix was made during intake.
+- URL-opening triage and workflow-onboarding work item are handed to their
+  owners through coordination mail. Their acknowledgement remains pending.
+- The local workflow change reported by brief is our owner-directed host-network
+  rule, already read; the release branch was not synchronized or rebased.
 - Website Git metadata currently points at missing `/home/devcapsule/.git-website`.
   Left untouched as unrelated local state. The 2026-09-24 policy-only change's
   full build passed source/type/PEX checks and all nine packaged integrations,
@@ -303,6 +331,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
+- [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
+- [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
 
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
