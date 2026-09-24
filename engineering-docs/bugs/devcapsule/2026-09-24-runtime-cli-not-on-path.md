@@ -122,7 +122,16 @@ The agent verified `devcapsule0`, exact runtime bytes and workflow installation
 inside that capsule. This accepts that local development-command session; it
 does not imply every IDE/mode, resume story or published candidate was tested.
 
-Status is fixed, not closed. Main integration and a new immutable candidate
-remain pending; carry the local acceptance into candidate validation.
+Status is fixed, not closed. PR #136 integrated the repair into main at
+`c6bea96cfbbb15a428c86bde6924df8ff3db1c15`, verified by fetched ancestry and
+matching runtime sources. RC1 at `cec7a0c` is public and its downloaded checksum/version/source are
+verified; exact-candidate IDE validation remains pending. Carry the local acceptance into that validation.
 RC0 and the owner's running containers were not modified. Normal merge to main
 is the intended disposition; no conflicting main implementation was identified.
+
+Published-RC1 follow-up, 2026-09-24: recursive run
+`0edc6f491291f0d5ffa4e31b0238863b` uses exact published RC1 bytes and the new
+local RC1 base. Independent inspection passed; PyCharm JVM is running. Agent
+checks as UID 1000 verify public `devcapsule0`, absence of shipped `devcapsule`,
+exact RC1 version/hash, and workflow installation. Owner GUI acceptance of this
+new session remains pending; the bug is not closed by these checks alone.

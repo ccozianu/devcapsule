@@ -320,6 +320,39 @@ def test_shipped_cli_recommendation_override_and_omission(checkout, capsys):
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
 
 
+def test_reserved_shipped_cli_name_carries_the_effect_without_the_attribute(checkout):
+    # Released clients before 0.2.14 reject any runtime-effect they do not
+    # know, so the repository manifest must not spell this one; the name
+    # alone selects the effect here.
+    project, record, resolution = checkout
+    declaration = project / '.devcapsule/devcapsule.toml'
+    declaration.write_text(declaration.read_text() + '\n[configuration.values."runtime.devcapsule-command"]\n'
+        'type = "string"\nrecommended = "devcapsule0"\n')
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'arbitrary-name') == 2
+
+
+def test_reserved_shipped_cli_name_rejects_a_different_effect():
+    manifest = {'configuration': {'values': {'runtime.devcapsule-command': {
+        'type': 'memory-size', 'runtime-effect': 'docker.memory-limit',
+    }}}}
+    with pytest.raises(ProjectConfigurationError, match='reserved for runtime effect'):
+        build_node_registry(manifest, {})
+
+
+def test_unknown_runtime_effect_names_the_running_version():
+    manifest = {'configuration': {'values': {'runtime.future': {
+        'type': 'string', 'runtime-effect': 'devcapsule.not-yet-invented',
+    }}}}
+    with pytest.raises(ProjectConfigurationError) as error:
+        build_node_registry(manifest, {})
+    message = str(error.value)
+    assert "'devcapsule.not-yet-invented' is not supported by DevCapsule " in message
+    assert 'supported: devcapsule.command-name, docker.memory-limit' in message
+    assert 'may require a newer DevCapsule' in message
+
+
 @pytest.mark.parametrize('recommended', ['default', 'none', '../bin/devcapsule', 7, False])
 def test_invalid_shipped_cli_recommendation_is_rejected(recommended):
     manifest = {'configuration': {'values': {'runtime.devcapsule-command': {

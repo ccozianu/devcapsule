@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC0 public; release blocked on missing runtime CLI
+State: active; releasing 0.2.14; RC1 public; released-launcher manifest rejection fixed on branch, gate passed; RC2 pending owner PR and tag
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -52,14 +52,47 @@ Retired the two old codium_with_claude option-parity and ambient-sudo records:
 the exact candidate lacks the old command module, launcher and entrypoint, and
 both local and downloaded RC0 reject the command. This implements the saved
 triage recommendation; it does not claim complete VSCodium acceptance. The
-[working bug table](../../releases/v0.2.14/bugs.md) now has 22 rows:
-17 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
+[working bug table](../../releases/v0.2.14/bugs.md) now has 23 rows:
+18 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
 of the upgrade-recovery and configuration-contract bugs; their records now
 link the owner/graphical acceptance and verified PR #117 integration. No
 runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+Owner-directed release steering resumed 2026-09-24 from this checkout. The
+owner reported `project config list` and `config resolve` failing on a fresh
+DevCapsule checkout with `runtime-effect must be one of: docker.memory-limit`.
+Root cause, reproduced with the published executables: commit `658749f`
+declared `runtime-effect = "devcapsule.command-name"` in this repository's
+own manifest while adding it to the vocabulary; v0.2.12 and rc0 reject any
+effect they do not know, so every released client failed on `main` and
+`release-0.2.14`; rc1 accepts it. Filed as a blocking bug
+([record](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md)),
+then fixed on this branch: the value name `runtime.devcapsule-command` is
+reserved and carries the effect without the attribute, unknown effects are
+reported with the running version, the manifest drops the attribute, and a
+guard test pins the repository manifest to the released vocabulary. Published
+0.2.12 now lists and resolves the manifest. Full gate passed.
+
+Next: the owner opens the PR from `release-0.2.14` to `main`. After the
+merge, verify the candidate gate by ancestry, tag `v0.2.14-rc2` atomically
+with the branch, download and verify the assets, and validate that RC2 applies
+`devcapsule0` from the reserved name inside a real capsule. Then decide the
+RC1 configuration-inspection bug with the owner: fix both causes on this
+branch under maintenance, or defer. The receiving workstream is paused.
+
+RC1 owner feedback: mostly works, except configuration inspection. Both
+reported failures are confirmed; the [bug](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
+belongs to component-upgrades' runtime inspection contract, target 0.2.14.
+Evidence delivered to component-upgrades by coordination mail
+`2026-09-24-maintenance-rc1-runtime-configuration.md` at `dc91dbc8e484`.
+Next: agree the release repair with the owner and receiving workstream.
+No source fix or workstream switch was performed. Initial coordination claims
+hit SSH authentication errors and a Git push hit a remote internal-server
+error; mail delivery subsequently succeeded.
+
 
 The runtime CLI blocker has a source fix and Docker regression evidence on
 `release-0.2.14`. Normal capsules expose the shipped `devcapsule`; the owner
@@ -68,8 +101,10 @@ requested a saved configuration exception and this repository recommends
 name for development tooling; internal absolute-path calls retain the shipped
 PEX. Explicit checkout values/omissions override ordinary recommendations.
 Owner accepted the real recursive PyCharm/devcapsule0 session at `9cc0868`.
-Next: owner PR integration and next immutable candidate; carry this local
-acceptance into candidate validation before closing the blocker.
+PR #136 integrated the release fixes; RC1 is tagged at `cec7a0c`.
+Published RC1 assets are downloaded and checksum/version/source-verified.
+The owner-requested local base is built and smoke-checked. Next: carry the
+local PyCharm acceptance into exact-RC1 validation before closing the blocker.
 
 The owner requested the installed-IDE reuse bug be filed first and its design
 reviewed together before implementation. No release target or implementation
@@ -145,6 +180,92 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Local rc2 base (2026-09-24): built `devcapsule-base:0.2.14-rc2-local`, image
+`sha256:64c8db54eac0bfbefa019c20777bc486abcad4bc5b0ff420d229f79a5f50718a`,
+recipe `ubuntu-24.04@9`, host-network build, root `ubuntu:24.04`, by a
+revision-bearing PEX built from the pushed branch head
+`8d005b38af9777b7e3314bf3e2910314effef4d2` with `--source-revision` asserted.
+The recipe is unchanged since rc1, so the content matches the rc1-local base;
+only builder provenance differs. Not pushed to any registry, no lock repin,
+no matrix change: the owner's reading of "reference the rc2 base by tag"
+(digest pin of a new base named for rc2, or a literal tag reference) and the
+merge of the release PR are pending. Log `/opt/devcapsule-gate/rc2-local-base.log`.
+A first attempt with the `nox -s pex` local artifact was refused by the
+builder for lacking a public source revision, as designed.
+
+Manifest compatibility fix (2026-09-24): focused tests 15 passed; full
+`nox -s build` passed with 1064 tests, 20 deselected, one xfail, one
+quarantined XPASS, mypy, PEX smokes and nine packaged integrations; log
+`/opt/devcapsule-gate/manifest-compat-build.log`. Published v0.2.12 and rc1
+executables, checksums verified, exercised against the fixed manifest with
+isolated XDG state: 0.2.12 `config list` and `config resolve` exit 0; rc1
+`config list` exit 0. Pytest scratch had to move to the overlay: this
+capsule's 2 GB `/tmp` overflowed on the first run, and a second run under
+the home directory failed only `test_unmountable_staging_fails_loudly`,
+which expects an unmounted scratch path; the single test passes in `/tmp`
+and on the overlay. No capsule was launched; the effect application from
+the reserved name is covered by unit tests until RC2 exists.
+
+RC1 configuration failure intake (2026-09-24): owner could not retain the log.
+Original successor inspection showed exit 0 and no launch-context/configuration
+mounts. One disposable read-only CLI probe of the exact image reproduced
+`config list` and `versions show` failures from /opt and the actual project
+mount. Bare `project config` prints help successfully. Evidence lives in the
+retained run's `configuration-diagnostics.json`; the bug records exact errors
+and producer/reader causes. No IDE restart, host-record edit or source fix.
+Earlier recursive inspection PASS did not cover this story. No full source
+suite was needed for this documentation-only intake.
+
+
+Published-RC1 recursive PyCharm launch (2026-09-24): retained run
+`0edc6f491291f0d5ffa4e31b0238863b` beneath the persistent-home
+`e2e-workspaces/` directory. Clean clone at exact RC1 source `cec7a0c`; launched
+with downloaded RC1 bytes, SHA-256
+`68c58ec09c1a73e07c3bb1b1f7514341ddddaf645c7fae1ff4ff0763ff6f7689`.
+The isolated checkout explicitly selects `devcapsule-base:0.2.14-rc1-local`,
+pinned locally to image `sha256:0d9a185ec5a2ac04380e9b5540bae2b212356b8b5d4c0f91c7db320d486a414a`;
+the project lock is unchanged. Successor image:
+`sha256:bc387eb69b8457f61f016a0a21485302e3fc14bcbbae977e4a1623b8d5544863`.
+Container `devcapsule-e2e-0edc6f491291f0d5ffa4e31b0238863b-successor` is running
+with host networking; the actual PyCharm JVM is PID 42. Independent
+`inspect-successor` passed. As UID 1000, public `devcapsule0` reports published
+RC1 and exact runtime bytes, ordinary `devcapsule` is absent, and workflow
+installation succeeds in a disposable directory. Evidence in the retained run:
+`inspection.json`, `runtime-check.json`, `cli-check.log`, `launch.log`.
+Owner received the desktop URL; its token is not committed. Human GUI acceptance
+of this exact session is pending; no full recursive Nox suite or final-release
+acceptance is inferred. Both this session and the earlier local-source session
+remain available. No source changes or new downloads of PyCharm were needed.
+
+
+Published RC1 and local base (2026-09-24): downloaded the public PEX, checksum
+and manifest into `devcapsule-src/dist/rc1-published/`. Verified version
+`0.2.14rc1`, mnemonic `v0.2.14-rc1`, source
+`cec7a0c2f3467b8cc9d84eca820f35ee869087ec`, and SHA-256
+`68c58ec09c1a73e07c3bb1b1f7514341ddddaf645c7fae1ff4ff0763ff6f7689`.
+Used those exact bytes to build `devcapsule-base:0.2.14-rc1-local` with
+`--network host`, recipe `ubuntu-24.04@9`. Image ID:
+`sha256:0d9a185ec5a2ac04380e9b5540bae2b212356b8b5d4c0f91c7db320d486a414a`.
+Build reused cached installation layers. Metadata and a disposable offline
+container smoke passed: Python/Git/Docker, Node/JDK/Maven, display executables;
+no bundled runtime PEX or agent CLI. Base is local only, with no registry push
+or project-lock change. Evidence: `dist/rc1-published/local-base-build.json`;
+log `/tmp/maintenance-rc1-base-build.log`. No GUI acceptance of this new base
+or final-release acceptance is claimed. Source unchanged; no need to rerun
+the source gate for this image build. Initial coordination claim hit a transient
+SSH rejection; a subsequent claim succeeded. The release branch was not rebased.
+
+RC1 publication trigger (2026-09-24): fetched main is
+`c6bea96cfbbb15a428c86bde6924df8ff3db1c15` (PR #136); it contains release
+commit `cec7a0c2f3467b8cc9d84eca820f35ee869087ec`, with matching runtime/test
+sources. Candidate gate passed: mainline, zero unintegrated commits. Pushed
+annotated `v0.2.14-rc1` atomically with the release branch and verified both
+remote tag object and peeled commit. Expected package version is `0.2.14rc1`.
+The public manifest returned HTTP 404 immediately afterward; publication is
+pending, not failed or verified. No GitHub API/UI inspection was attempted.
+Existing source/type/packaging and real PyCharm evidence applies; no runtime
+code changed since acceptance. The release branch was not rebased.
 
 Owner follow-up (2026-09-24): "Everything works" for the retained recursive
 PyCharm session below. The installed-IDE cache gap was confirmed by reading
@@ -340,23 +461,49 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- RC2 is required: rc1 accepts the fixed manifest but applies the
+  `devcapsule0` exception only from the attribute, so dogfood sessions
+  launched with rc1 on the fixed manifest get the normal `devcapsule` name
+  until RC2. Existing running capsules are unaffected.
+- The owner's host executable was not identified; the reported message can
+  only come from 0.2.12 or rc0. Ask for `devcapsule version` when closing.
+- The guard test pins `docker.memory-limit` as the released vocabulary; move
+  it to include `devcapsule.command-name` when 0.2.14 final ships.
+- The website checkout in this capsule has an embedded `.git` directory
+  since 2026-09-23; the other checkout's pointer repair did not hold, as the
+  owner's `git status` failure shows. Not repaired from here.
+
+- RC1 runtime-configuration inspection bug needs component-upgrades triage;
+  owner expects read-only inspection from /opt as well as the project root.
+  Mail delivered at `dc91dbc8e484`; acknowledgement and repair remain pending.
+- Run `0edc6f491291f0d5ffa4e31b0238863b` subsequently exited normally (code 0);
+  earlier retained-running notes below are historical. No restart was attempted.
+
+- Published RC1 plus the newly built local base is running in retained recursive
+  run `0edc6f491291f0d5ffa4e31b0238863b`; agent checks passed, owner GUI acceptance
+  pending. Keep it running for the owner; do not stop the earlier session either.
+
 - Recursive PyCharm successor run `29fb2abc530735da1ebd625acd991622` is deliberately
   retained for the owner; see validation above. Do not stop or remove it merely
   because this agent turn finishes. Owner subsequently confirmed everything works.
 - The runtime CLI blocker is fixed in source, awaiting main integration and
-  a new candidate; owner accepted the local PyCharm/devcapsule0 session.
-  Candidate validation still gates release.
+  exact-RC1 validation; public assets now verified and PR #136 is merged. Owner accepted
+  the local PyCharm/devcapsule0 session; exact-candidate validation remains.
   Existing running capsules retain their original commands until relaunched.
 - URL-opening triage and workflow-onboarding work item are handed to their
   owners through coordination mail. Their acknowledgement remains pending.
 - The local workflow change reported by brief is our owner-directed host-network
   rule, already read; the release branch was not synchronized or rebased.
-- Website Git metadata currently points at missing `/home/devcapsule/.git-website`.
-  Left untouched as unrelated local state. The 2026-09-24 policy-only change's
-  full build passed source/type/PEX checks and all nine packaged integrations,
-  then failed its final `git status --porcelain` (exit 128) on that pointer.
-  Log: `/tmp/maintenance-host-network-policy-build.log`. The overall gate is
-  not passed; repair the website checkout metadata before the next full gate.
+- Website Git pointer repaired locally on 2026-09-24 after the owner reported
+  plain `git status` failing. Replaced missing `/home/devcapsule/.git-website`
+  with relative `../.git/modules/website`; the existing metadata HEAD matches
+  the parent's pinned commit `78b7b7f`. Original pointer saved at
+  `.git/codex-website-git-pointer.before`. Plain parent/submodule status now
+  works; website status and staged/unstaged binary diffs are unchanged.
+  No source, index or ref was reset. The earlier policy-only full build passed
+  source/type/PEX checks and nine packaged integrations before failing at this
+  status operation; log `/tmp/maintenance-host-network-policy-build.log`.
+  That historical full gate was not rerun for this local metadata repair.
 - Exact RC0 website startup and file/IDE resume now have owner confirmation.
   Do not extend that evidence to unperformed edit/debug or agent tasks.
 - Website runner attempts 2/3 are complete: owner confirmed startup and
@@ -399,6 +546,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [Released launchers reject the repository manifest](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md): blocking, fixed on branch, needs RC2.
+
+- [RC1 runtime configuration inspection](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md): component-upgrades; confirmed, target 0.2.14.
 
 - [Installed IDE Docker reuse](../../bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md): review design with owner before implementation; no release target.
 
