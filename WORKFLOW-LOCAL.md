@@ -101,6 +101,21 @@ networking for host-bound development services, and development sudo. The
 facts: the canonical repository and owner-operated pull-request delivery.
 The GitHub integration rules below govern agent access and the UI handoff.
 
+### Local Launch Networking
+
+Owner direction, 2026-09-24: always pursue host networking for this project's
+local development and release-validation launches, including launches from
+inside a DevCapsule. Use the RC runner's `--network host`, or ordinary
+`devcapsule project run --authorize network host`. This is standing authorization
+for those local launches; do not repeatedly ask for it. Prefer the supported
+run-once option over rewriting a checkout's saved configuration.
+
+Tests specifically exercising bridge networking, denied host access or network
+isolation must retain their declared network mode. If host networking cannot
+be used, record the concrete reason and the fallback; do not silently substitute
+bridge networking. This is a local operating rule, not a change to DevCapsule's
+product defaults or other projects' permissions.
+
 ## GitHub Integration: Owner Through The UI
 
 Owner direction, 2026-09-21: agents use ordinary Git operations with the

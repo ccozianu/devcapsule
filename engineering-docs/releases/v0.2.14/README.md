@@ -126,6 +126,11 @@ continuation and specific edit/debug assertions remain pending. Evidence: local 
 its human startup observation. Run details and recovery steps are in the
 maintenance handoff.
 
+Host-network variant verified by owner on 2026-09-24: runner attempt 4
+requested and observed `host` networking, exited 0 and removed its container.
+Future local launches use host networking under WORKFLOW-LOCAL.md; deliberate
+isolation tests keep their specified mode.
+
 Use the downloaded candidate, and record its checksum, platform, IDE/agent,
 steps, user-visible outcome and evidence. Do not imply untested combinations.
 
