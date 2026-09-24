@@ -116,7 +116,13 @@ Logs: `/tmp/runtime-cli-regression-before.log`,
 The full gate's unrelated website Git-pointer issue remains recorded in the
 maintenance status; do not describe that overall gate as passing.
 
-Status is fixed, not closed. Main integration, a new immutable candidate and
-actual IDE-terminal owner acceptance of both command modes remain pending.
+Owner acceptance, 2026-09-24: "Everything works" for the real recursive
+PyCharm session at `9cc0868`, run `29fb2abc530735da1ebd625acd991622`.
+The agent verified `devcapsule0`, exact runtime bytes and workflow installation
+inside that capsule. This accepts that local development-command session; it
+does not imply every IDE/mode, resume story or published candidate was tested.
+
+Status is fixed, not closed. Main integration and a new immutable candidate
+remain pending; carry the local acceptance into candidate validation.
 RC0 and the owner's running containers were not modified. Normal merge to main
 is the intended disposition; no conflicting main implementation was identified.
