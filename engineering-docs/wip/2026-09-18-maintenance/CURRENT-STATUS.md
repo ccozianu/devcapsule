@@ -64,10 +64,12 @@ legacy-network retirement now includes the command-removal implementation.
 RC1 owner feedback: mostly works, except configuration inspection. Both
 reported failures are confirmed; the [bug](../../bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
 belongs to component-upgrades' runtime inspection contract, target 0.2.14.
-Next: route the evidence for that workstream's triage and agree the release
-repair with the owner. No source fix or workstream switch was performed.
-Coordination claim/mail operations hit SSH authentication failures during
-intake; delivery must be verified rather than assumed.
+Evidence delivered to component-upgrades by coordination mail
+`2026-09-24-maintenance-rc1-runtime-configuration.md` at `dc91dbc8e484`.
+Next: agree the release repair with the owner and receiving workstream.
+No source fix or workstream switch was performed. Initial coordination claims
+hit SSH authentication errors and a Git push hit a remote internal-server
+error; mail delivery subsequently succeeded.
 
 
 The runtime CLI blocker has a source fix and Docker regression evidence on
@@ -413,7 +415,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 - RC1 runtime-configuration inspection bug needs component-upgrades triage;
   owner expects read-only inspection from /opt as well as the project root.
-  Send the linked bug/evidence by coordination mail if delivery is still pending.
+  Mail delivered at `dc91dbc8e484`; acknowledgement and repair remain pending.
 - Run `0edc6f491291f0d5ffa4e31b0238863b` subsequently exited normally (code 0);
   earlier retained-running notes below are historical. No restart was attempted.
 
