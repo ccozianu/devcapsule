@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC0 public; release blocked on missing runtime CLI
+State: active; releasing 0.2.14; RC1 tagged; publication and candidate validation pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -68,8 +68,9 @@ requested a saved configuration exception and this repository recommends
 name for development tooling; internal absolute-path calls retain the shipped
 PEX. Explicit checkout values/omissions override ordinary recommendations.
 Owner accepted the real recursive PyCharm/devcapsule0 session at `9cc0868`.
-Next: owner PR integration and next immutable candidate; carry this local
-acceptance into candidate validation before closing the blocker.
+PR #136 integrated the release fixes; RC1 is tagged at `cec7a0c`.
+Next: verify RC1 publication and downloaded artifact identity, then carry the
+local acceptance into exact-candidate validation before closing the blocker.
 
 The owner requested the installed-IDE reuse bug be filed first and its design
 reviewed together before implementation. No release target or implementation
@@ -145,6 +146,17 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+RC1 publication trigger (2026-09-24): fetched main is
+`c6bea96cfbbb15a428c86bde6924df8ff3db1c15` (PR #136); it contains release
+commit `cec7a0c2f3467b8cc9d84eca820f35ee869087ec`, with matching runtime/test
+sources. Candidate gate passed: mainline, zero unintegrated commits. Pushed
+annotated `v0.2.14-rc1` atomically with the release branch and verified both
+remote tag object and peeled commit. Expected package version is `0.2.14rc1`.
+The public manifest returned HTTP 404 immediately afterward; publication is
+pending, not failed or verified. No GitHub API/UI inspection was attempted.
+Existing source/type/packaging and real PyCharm evidence applies; no runtime
+code changed since acceptance. The release branch was not rebased.
 
 Owner follow-up (2026-09-24): "Everything works" for the retained recursive
 PyCharm session below. The installed-IDE cache gap was confirmed by reading
@@ -344,8 +356,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   retained for the owner; see validation above. Do not stop or remove it merely
   because this agent turn finishes. Owner subsequently confirmed everything works.
 - The runtime CLI blocker is fixed in source, awaiting main integration and
-  a new candidate; owner accepted the local PyCharm/devcapsule0 session.
-  Candidate validation still gates release.
+  RC1 publication and validation; PR #136 is verified merged. Owner accepted
+  the local PyCharm/devcapsule0 session; exact-candidate validation remains.
   Existing running capsules retain their original commands until relaunched.
 - URL-opening triage and workflow-onboarding work item are handed to their
   owners through coordination mail. Their acknowledgement remains pending.
