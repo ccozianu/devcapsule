@@ -11,8 +11,19 @@ authorizes implementation.
 mycodespace is the larger product DevCapsule will be part of. Its defining
 function is a single person's view of all their programming activity over a
 lifetime: one namespace in which every project they ever worked on is
-listed, and from which any project they still hold the inputs for can be
-materialized, built and run decades after it was written.
+listed, browsable from the tools they already use, and from which any
+project can be materialized into a working capsule in one action.
+
+The value has two layers, and the note is ordered by them:
+
+1. **The everyday value is the view.** One place that answers "what have I
+   worked on, where is it, what state is it in", and turns any entry into an
+   open project on demand. This is what a person uses every week, and in v2
+   it lives inside the IDE.
+2. **The guarantee underneath is longevity.** Anything kept stays
+   materializable, buildable and runnable decades after it was written,
+   whatever happens to vendors, registries and forges. This is what makes
+   the view trustworthy rather than a list of dead links.
 
 Positioning, as decided by the owner:
 
@@ -30,15 +41,22 @@ Positioning, as decided by the owner:
   everything, materialize only what you open", obtained from a catalog and
   an archive, not from a FUSE or virtual filesystem.
 
-## 2. The defining scenario
+## 2. The defining scenarios
 
-Someone writes a project today with a current toolchain, say Java 21, and
-keeps it. Twenty years from now they open the namespace, find it,
+**Every week.** From the IDE, or a terminal, or a browser page, the person
+opens the namespace, searches or browses to a project from any year, and
+materializes it on demand. A capsule opens on the right toolchain with the
+project's own state, and they work. Closing it keeps it. Nothing is checked
+out that was not asked for.
+
+**Twenty years later.** Someone writes a project today with a current
+toolchain, say Java 21, and keeps it. Twenty years from now they open the namespace, find it,
 materialize it, compile it, and run it, with the toolchain and dependencies
 they used then, whatever has happened to the vendors, registries and forges
-in between. This is the acceptance scenario for the whole design; every
-requirement below either serves it or serves the small-company extension
-of it. The promise is forward-looking: what is kept today stays runnable.
+in between. The first scenario is the acceptance test for the view; the second for the
+archive. Every requirement below serves one of them or the small-company
+extension. The longevity promise is forward-looking: what is kept today
+stays runnable.
 Projects from before the product existed get a record (MC-CAT-3) and are
 kept only where their inputs can still be gathered; the product does not
 promise to resurrect what was never kept.
@@ -59,6 +77,18 @@ a requirement.
 A requirement that implies a hosted multi-tenant service, a custom
 filesystem, a build system migration, or an operations team is out of
 envelope and out of scope.
+
+Reviewability is part of the envelope. Implementation languages are limited
+to those the owner can review competently enough to push back on generated
+code and direct refactoring: Python today, revisited when that changes. The
+tool, `mycs` or a `devcapsule` subcommand, ships as the existing PEX scie,
+a single file with an embedded interpreter that needs no host Python. That
+packaging is the youngest technology in the design; it is acceptable
+because of MC-DEG below, under which no promise depends on the tool
+running. If the tool ever needs to stand alone from DevCapsule's codebase,
+Java with `jlink` is the recorded migration path; the text formats make
+that rewrite cheap. C and C++ are rejected for an orchestration tool whose
+main risk is archive-handling bugs.
 
 ## 4. Vocabulary
 
@@ -149,6 +179,44 @@ adopts them into `REQUIREMENTS.md`.
   history. This replaces git submodules for the case of independent
   projects co-located for convenience.
 
+### MC-VIEW: the namespace view
+
+- **MC-VIEW-1** The namespace is browsable and searchable from three
+  surfaces: a terminal command, a page in the graphical browser, and, in
+  v2, a plugin inside the IDE the person is already using. All three read
+  the same catalog; none needs a server.
+- **MC-VIEW-2** From any surface, one action on a record materializes it
+  and opens it: a capsule on the recorded toolchain with the project's own
+  durable state, in the IDE the record or the person prefers.
+- **MC-VIEW-3** The view shows each record's status, last activity, and
+  whether it is kept, dormant or lost, so that a lifetime list reads as a
+  map and not as a graveyard of equal-looking entries.
+- **MC-VIEW-4** The IDE plugin is a thin client over the catalog files and
+  the tool. It targets one IDE family first, the VS Code family that
+  DevCapsule already provisions as `codium`, then JetBrains and Eclipse as
+  budget allows. It must work from inside a capsule as well as from the
+  host IDE, since that is where a person is when they want the next
+  project.
+- **MC-VIEW-5** The plugin adds no format and no state of its own; a
+  person without it loses convenience, never data.
+
+### MC-DEG: degradation to plain tools
+
+- **MC-DEG-1** Every artifact in the catalog and the archive is usable with
+  `git`, `tar` and a Docker-compatible runtime alone: a catalog is read
+  with `git` and `cat`; a mirror is restored with `git clone` of a bundle;
+  an image is loaded from its OCI layout; a dependency snapshot is untarred
+  into place; a workspace view is materialized by a shell loop over its
+  manifest.
+- **MC-DEG-2** Every record carries a plain-text restore recipe naming those
+  commands for that project, so that a person or an agent in 2046 with no
+  `mycs` can still follow it.
+- **MC-DEG-3** The exercise in MC-ARC-6 runs the by-hand path as well as
+  the tool path, so the fallback is proven, not assumed.
+- **MC-DEG-4** The tool keeps itself: its source and a built executable are
+  kept in the archive like any project, and every record names the tool
+  version that kept it.
+
 ### MC-DEV: fit with DevCapsule as it exists
 
 - **MC-DEV-1** The existing per-project lock is the lock this note relies
@@ -232,7 +300,14 @@ adopts them into `REQUIREMENTS.md`.
 4. Should the catalog be one repository per person, or one per person per
    domain of life, with inclusion joining them?
 
-## 10. Suggested first slice, inside the envelope
+## 10. Suggested slices, inside the envelope
+
+**v1** delivers the catalog, `keep`, `materialize`, and the terminal and
+browser surfaces of the view. **v2** delivers the IDE plugin, MC-VIEW-4,
+which is where the everyday value becomes obvious. The plugin waits for v1
+because it must not invent state of its own (MC-VIEW-5).
+
+### First slice
 
 1. The record format and a catalog with the owner's current projects as
    records, including at least one `lost` record from a former employer.
@@ -247,3 +322,4 @@ adopts them into `REQUIREMENTS.md`.
    than being claimed.
 
 Each step is a few days of one human and agents; none needs a service.
+The plugin is a separate slice after these, scoped to one IDE family.
