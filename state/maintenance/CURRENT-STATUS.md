@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active; releasing 0.2.14; RC0 public; legacy PyCharm launch integrated; RC0 ready for owner testing
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@77b593f70215
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@1fc446656564
 
 Integration target: `main`
 
@@ -69,7 +69,8 @@ Owner confirmed the website VSCodium session works. Runner attempts 2 and 3
 finished with exit 0, container absent and no monitor errors; owner confirmed
 the S10 file/IDE resume checklist. `launch` and `resume` now accept a per-session
 `--network host|bridge` override using the product authorization grammar. Next:
-continue remaining campaign checks; agent continuation is still untested.
+continue remaining campaign checks using `--network host` per local policy;
+agent continuation is still untested. Owner verified host-network attempt 4.
 
 The owner requested an engineering test specification before further campaign
 work: enumerate stories, distinguish validation prerequisites from reused data,
@@ -126,6 +127,13 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Host-network validation (2026-09-24): owner confirmed the runner's host-network
+session works. Attempt 4 in `dist/rc0-runs/session-7a4dbc068f58/run.json` records
+requested `host`, observed Docker network `host`, exit 0, container absent and
+PROCESS_CHECKS_PASSED. The owner made host networking the standing local launch
+preference; see WORKFLOW-LOCAL.md, Local Launch Networking. Deliberate network
+isolation tests retain their declared mode. Release branch was not rebased.
 
 Runner network option: `--network host` or `--network bridge` on launch/resume
 maps to `project run --authorize network VALUE` for that invocation only.
@@ -247,6 +255,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Website Git metadata currently points at missing `/home/devcapsule/.git-website`.
+  Left untouched as unrelated local state. The 2026-09-24 policy-only change's
+  full build passed source/type/PEX checks and all nine packaged integrations,
+  then failed its final `git status --porcelain` (exit 128) on that pointer.
+  Log: `/tmp/maintenance-host-network-policy-build.log`. The overall gate is
+  not passed; repair the website checkout metadata before the next full gate.
 - Exact RC0 website startup and file/IDE resume now have owner confirmation.
   Do not extend that evidence to unperformed edit/debug or agent tasks.
 - Website runner attempts 2/3 are complete: owner confirmed startup and
