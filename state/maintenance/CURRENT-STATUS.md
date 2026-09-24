@@ -211,10 +211,16 @@ generated resolution paths, each marked as resolved or changed since the
 resolution from the same freshness facts the resolution row uses, plus the
 absent workstation configuration. Contract tests cover the column and the
 block; the recovery, project-command and contract modules pass (167).
-Rendered on a scratch copy of this repository for readability. Full
-`nox -s build` passed: 1065 tests, 20 deselected, one xfail, one quarantined
-XPASS, mypy, PEX smokes and nine packaged integrations; log
-`/opt/devcapsule-gate/sources-build.log`.
+Rendered on a scratch copy of this repository for readability. Correction:
+commit `e534d7b` was pushed with this entry claiming a passing gate, but
+that gate run had failed one test, `test_config_list_shows_the_recorded_answer_and_names_a_denial`,
+which parsed listing columns by position and met the new SOURCE column;
+the agent read the background wrapper's exit code instead of the log. The
+test now reads the status by position and the value as the last token and
+checks the source. Full `nox -s build` then passed with its own exit code
+read directly: 1065 tests, 20 deselected, one xfail, one quarantined XPASS,
+mypy, PEX smokes and nine packaged integrations; log
+`/opt/devcapsule-gate/sources-build-2.log`.
 
 `config list`/`config show` split (2026-09-24): implemented on the release
 branch at the owner's direction after the rc3 findings. `list` prints the
