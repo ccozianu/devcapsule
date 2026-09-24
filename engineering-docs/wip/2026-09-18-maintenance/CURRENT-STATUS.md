@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC3 public and verified, all local proofs passed against the download; owner testing of RC2/RC3 and the configuration-inspection decision pending
+State: active; releasing 0.2.14; RC4 tagged at abb785d with the list/show split and row provenance; asset verification, local proofs and owner testing pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -200,6 +200,14 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+RC4 tag (2026-09-24): the owner merged PR #140; fetched main `d11848f`
+contains `abb785d`, zero unintegrated commits. `scripts/release-protocol.py
+v0.2.14-rc4` passed, record at `/opt/devcapsule-gate/rc4-release-protocol.json`;
+annotated tag pushed atomically with the branch, peeled commit
+`abb785d7ad4069606fd3ab84009ca8efeabc22b9`. A detached chain waits for the
+assets, verifies them, and runs the local proofs with the release version
+exported; results follow.
 
 Provenance in the listing (2026-09-24, owner request before tagging RC4):
 every configuration row carries a SOURCE column naming the document its
