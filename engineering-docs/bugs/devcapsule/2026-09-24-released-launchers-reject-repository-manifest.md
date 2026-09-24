@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: blocking
 target: 0.2.14
 owner: maintenance
@@ -90,6 +90,32 @@ rc1 accepts the same copy.
    strand released clients unnoticed. The pinned set moves when a final
    release ships with the new vocabulary.
 4. Documentation of the reserved name in the source README.
+
+## Fix evidence, 2026-09-24
+
+Implemented on `release-0.2.14` as a release fix under maintenance:
+`configuration/values.py` recognizes the reserved name and reports unknown
+effects with the running version; `.devcapsule/devcapsule.toml` drops the
+attribute; `tests/test_repository_manifest_compatibility.py` pins the
+repository manifest to the v0.2.12 vocabulary; three contract tests cover the
+reserved name, a conflicting effect on it, and the diagnostic text; the
+source README documents the reserved name.
+
+- Published v0.2.12, isolated XDG state, fixed manifest: `config list` exit 0
+  showing `runtime.devcapsule-command` as `unset-optional`; `config resolve`
+  exit 0.
+- Published rc1 on the same manifest: `config list` exit 0 showing the
+  `project-recommended` value. Its `config resolve` exit 2 is the fresh
+  checkout's unanswered base-image authorization; a control on the pre-fix
+  manifest gives the same result. rc1 does not apply the effect from the
+  reserved name; only rc2 and later do, so the `devcapsule0` development
+  exception needs the next candidate.
+- Full gate `nox -s build`: 1064 passed, 20 deselected, one xfail, one
+  quarantined XPASS, mypy, PEX smokes and nine packaged integrations. Log:
+  `/opt/devcapsule-gate/manifest-compat-build.log`. Pytest scratch was placed
+  on the overlay because this capsule's 2 GB `/tmp` cannot hold the suite;
+  a first run under the home directory failed only the host-daemon mount
+  test that expects an unmounted scratch path.
 
 ## Verification needed before closure
 

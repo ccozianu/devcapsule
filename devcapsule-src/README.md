@@ -546,9 +546,16 @@ For DevCapsule development, this repository declares:
 ```toml
 [configuration.values."runtime.devcapsule-command"]
 type = "string"
-runtime-effect = "devcapsule.command-name"
 recommended = "devcapsule0"
 ```
+
+The name `runtime.devcapsule-command` is reserved: DevCapsule applies the
+`devcapsule.command-name` runtime effect to it whether or not the declaration
+spells `runtime-effect`, and rejects any other effect on that name. This
+repository omits the attribute so that released clients before 0.2.14, which
+reject every effect they do not know, still read the manifest as an ordinary
+string value. An unknown effect is reported with the running version, since
+it usually means the project needs a newer DevCapsule.
 
 This names the shipped CLI `devcapsule0` so the development build can own
 `devcapsule`. Both names are real commands, not interactive shell aliases.

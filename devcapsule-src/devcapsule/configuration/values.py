@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
+from devcapsule.build_info import BuildInfoError, current_build_info
 from devcapsule.runtime_command import RuntimeCommand
 
 from .documents import ConfigurationScalar, ProjectConfigurationError
@@ -19,6 +20,16 @@ CONFIGURATION_VALUE_TYPES = {"string", "integer", "boolean", "memory-size"}
 
 
 RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size", "devcapsule.command-name": "string"}
+
+# The shipped-command value is recognized by its name, not only by its
+# ``runtime-effect`` attribute. Released clients validate the attribute by
+# exact membership in their own vocabulary, so a manifest that spells an
+# effect they predate is unreadable to them; v0.2.12 rejects this
+# repository's manifest that way (bug 2026-09-24, released launchers reject
+# the repository manifest). A declaration that omits the attribute is an
+# ordinary string value to those clients and carries the effect here.
+SHIPPED_COMMAND_VALUE_NAME = "runtime.devcapsule-command"
+SHIPPED_COMMAND_EFFECT = "devcapsule.command-name"
 
 RuntimeEffects = dict[str, int | str]
 
@@ -58,11 +69,24 @@ def configuration_value_declarations(
         if description is not None and not isinstance(description, str):
             raise ProjectConfigurationError(f"{field}.description must be a string when present.")
         effect = declaration.get("runtime-effect")
+        if name == SHIPPED_COMMAND_VALUE_NAME:
+            if effect is None:
+                declaration = {**declaration, "runtime-effect": SHIPPED_COMMAND_EFFECT}
+                effect = SHIPPED_COMMAND_EFFECT
+            elif effect != SHIPPED_COMMAND_EFFECT:
+                raise ProjectConfigurationError(
+                    f"{field} is reserved for runtime effect {SHIPPED_COMMAND_EFFECT!r}; "
+                    f"found runtime-effect {effect!r}."
+                )
         if effect is not None:
             expected_type = RUNTIME_EFFECT_TYPES.get(effect) if isinstance(effect, str) else None
             if expected_type is None:
                 choices = ", ".join(sorted(RUNTIME_EFFECT_TYPES))
-                raise ProjectConfigurationError(f"{field}.runtime-effect must be one of: {choices}.")
+                raise ProjectConfigurationError(
+                    f"{field}.runtime-effect {effect!r} is not supported by DevCapsule "
+                    f"{_running_version()}; supported: {choices}. The project may require "
+                    "a newer DevCapsule."
+                )
             if value_type != expected_type:
                 raise ProjectConfigurationError(
                     f"{field}.runtime-effect {effect!r} requires type {expected_type!r}."
@@ -71,6 +95,19 @@ def configuration_value_declarations(
             _normalize_declared_value(declaration, name, declaration["recommended"])
         declarations[name] = declaration
     return declarations
+
+
+def _running_version() -> str:
+    """The version to name in a diagnostic about this executable's limits.
+
+    Build information is derived rather than authored for source-form runs
+    and is validated for built ones; a malformed record is someone else's
+    error to raise, so a diagnostic about a manifest never fails on it.
+    """
+    try:
+        return current_build_info().version
+    except BuildInfoError:
+        return "(unknown version)"
 
 
 def normalize_configuration_value(

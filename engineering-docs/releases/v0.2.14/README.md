@@ -12,6 +12,11 @@ status, ownership and technical evidence.
 
 ## Scope And Owner Decisions
 
+- On 2026-09-24 the owner designated as a show stopper that the DevCapsule
+  repository itself could not be opened: released clients reject the
+  manifest since RC1's commit `658749f`. See the
+  [manifest rejection bug](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md);
+  fixed on the release branch, requires RC2.
 - Release baseline: preparation merge `21371084f7137624aed6c0581b12495a04b04fbb`
   (PR #131), including integrated configuration/upgrade recovery, workflow,
   component and diagnostic-command changes.
@@ -26,6 +31,14 @@ status, ownership and technical evidence.
   are unavailable here. Git fetch/push and public-asset verification are available.
 
 ## Next Work
+
+The released-launcher manifest rejection is fixed on `release-0.2.14` at the
+commit after `ac81aaf` with a passing full gate. Next: the owner opens the PR
+from `release-0.2.14` to `main`; after the merge, verify the candidate gate by
+ancestry and tag `v0.2.14-rc2`; then validate with the published RC2 that
+`devcapsule0` is applied from the reserved name inside a real capsule, and
+with the published 0.2.12 that `config list` and `config resolve` succeed on
+`main`. The RC1 configuration-inspection bug remains open for triage.
 
 RC1 is tagged at `cec7a0c2f3467b8cc9d84eca820f35ee869087ec`. PR #136 merged
 the release fixes into main at `c6bea96cfbbb15a428c86bde6924df8ff3db1c15`;
@@ -99,6 +112,10 @@ is still pending; owner testing starts with the already published RC0.
 - [ ] After publishing final 0.2.14, migrate old branch names before next-release work.
 
 ## Candidates
+
+RC2 is pending on the manifest-compatibility fix; RC1 remains the latest
+published candidate and does not apply the development command exception
+from the fixed manifest.
 
 | Candidate | Source | Publication | End-user acceptance |
 |---|---|---|---|
