@@ -106,6 +106,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Engineering Design Notes
 
+- [mycodespace: a lifetime namespace and archive for one programmer's projects](engineering-docs/design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
 - [Competitive comparison: agent workflows and the DevCapsule adopter choice](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
 - [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
 - [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
