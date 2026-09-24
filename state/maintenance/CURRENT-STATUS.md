@@ -536,8 +536,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   proposed); and an untouched 0.2.12 checkout now owes a required
   antigravity-download decision (new bug under R-COMPAT-001, disposition
   needed: restore 0.2.12 behavior or name the exception in the notes).
-  The rc3 launch itself worked; `devcapsule0` acceptance in the capsule is
-  still to be confirmed by the owner.
+  The rc3 launch worked and the owner confirmed `devcapsule0` on the PATH in
+  the capsule: the runtime-CLI blocker is closed as verified on rc3. From
+  `/opt` the configuration inspection still fails; from the project mount it
+  works, so only the discovery fallback (cause 2) affects ordinary launches.
 
 - RC2 is required: rc1 accepts the fixed manifest but applies the
   `devcapsule0` exception only from the attribute, so dogfood sessions
