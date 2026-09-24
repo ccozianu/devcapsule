@@ -529,6 +529,16 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Owner's rc3 test, 2026-09-24, produced three findings, all recorded:
+  the launcher change rebuilt the formation with a 4.28 GB context transfer
+  and 39 retained images at 266 GB (added to the installed-IDE reuse bug);
+  `config list` advises resolve on a fresh resolution (new minor bug, fix
+  proposed); and an untouched 0.2.12 checkout now owes a required
+  antigravity-download decision (new bug under R-COMPAT-001, disposition
+  needed: restore 0.2.12 behavior or name the exception in the notes).
+  The rc3 launch itself worked; `devcapsule0` acceptance in the capsule is
+  still to be confirmed by the owner.
+
 - RC2 is required: rc1 accepts the fixed manifest but applies the
   `devcapsule0` exception only from the attribute, so dogfood sessions
   launched with rc1 on the fixed manifest get the normal `devcapsule` name

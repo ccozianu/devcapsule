@@ -5,7 +5,9 @@
 Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
 main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
 and integration state are recorded in the release overview.
-25 tracked records: 20 open, two closed and three retired. The 2026-09-24
+27 tracked records: 22 open, two closed and three retired. Two records from
+the owner's rc3 test on 2026-09-24 await disposition: the newly required
+acquisition decision (R-COMPAT-001) and the misleading `config list` trailer. The 2026-09-24
 released-launcher manifest rejection is **blocking**, fixed on the release
 branch, and needs RC2. The installed-IDE
 reuse report has no release target and awaits owner design review. The two new
@@ -37,6 +39,8 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 
 | Bug | Owner | Recorded status | Recorded severity | 0.2.14 disposition | Next action / evidence |
 |---|---|---|---|---|---|
+| [Client upgrade requires an acquisition decision](../../bugs/devcapsule/2026-09-24-client-upgrade-requires-acquisition-decision.md) | maintenance | confirmed | untriaged | **Undecided: restore 0.2.12 behavior, or name the R-COMPAT-001 exception in the notes** | Root cause: `AuthorizationDeclaration.required` is true for every acquisition since 6709756/85bec27 (2026-09-20); 0.2.12 reported missing-recommended and launched. Owner's untouched 0.2.12 checkout would be refused by rc3. |
+| [`config list` advises resolve on a fresh resolution](../../bugs/devcapsule/2026-09-24-config-list-advises-resolve-on-fresh-resolution.md) | maintenance | confirmed | minor | Fix for 0.2.14 proposed | Root cause: `ConfigurationReview.render()` appends the resolve instruction unconditionally; `run` checks freshness separately and is correct. |
 | [Release workflow gated on Docker on a hosted runner](../../bugs/devcapsule/2026-09-24-release-workflow-gated-on-docker-on-hosted-runner.md) | maintenance | fixed | blocking | **Fixed on branch; RC2 has no assets, RC3 needed** | rc2 backend run failed at a Docker build the rc1 run had passed with identical code; local reproduction passes. Owner ruling: no Docker on hosted runners. Workflow stripped of Docker steps; proofs move to local acceptance; e2e helpers now report command output. |
 | [Released launchers reject the repository manifest](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md) | maintenance | fixed | blocking | **Release blocker — fix on branch, needs RC2** | Root cause: 658749f declared runtime-effect devcapsule.command-name in the repository manifest; v0.2.12 and rc0 reject unknown effects, so every released client failed on main and release-0.2.14. Fixed by the reserved value name, a version-naming diagnostic, and a guard test; published 0.2.12 now lists and resolves the manifest. Full gate passed. Owner PR to main, then tag RC2. |
 | [Runtime CLI missing from PATH](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md) | maintenance | fixed | blocking | **Release blocker — pending candidate acceptance** | Public command installed; this repository recommends devcapsule0 for development. Four Docker command-mode/surface variants passed. Owner accepted the real PyCharm/devcapsule0 session at 9cc0868. Integrated through PR #136; RC1 public at cec7a0c; downloaded identity verified, exact-candidate IDE validation pending. |
