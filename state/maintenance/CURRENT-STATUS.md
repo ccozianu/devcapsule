@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC2 published on rerun; RC3 tagged at 997cd67 with the Docker-free workflow; asset verification, local proofs and owner testing pending
+State: active; releasing 0.2.14; RC3 public and verified, all local proofs passed against the download; owner testing of RC2/RC3 and the configuration-inspection decision pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -75,10 +75,8 @@ those proofs are local acceptance steps against the downloaded assets; the
 e2e helpers now fail with the command's output; the operator guide,
 DEVELOPING.md and the source README describe the new split.
 
-Next: the owner opens and merges the PR from `release-0.2.14`; verify the
-candidate gate by ancestry; tag `v0.2.14-rc3` atomically with the branch;
-verify the published assets; run the three local proofs against the
-downloaded RC3; then the owner tests `config list`/`resolve` on this
+Done since: PR #138 merged, `v0.2.14-rc3` tagged and published, assets and
+all local proofs verified (see validation below). Next: the owner tests `config list`/`resolve` on this
 repository with 0.2.12 and RC3 and the `devcapsule0` exception in a real
 capsule. RC2's tag stays, without assets. The RC1 configuration-inspection
 bug remains open for the owner's fix-or-defer call.
@@ -202,6 +200,22 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+RC3 local proofs (2026-09-24), against the verified download
+`/opt/devcapsule-gate/rc3-published/devcapsule.pex` (SHA-256
+`9a82ae7f91662f448ad180854e2cd43b14b6deca54c598d30440dd4a87ae4d43`), with
+`DEVCAPSULE_PEX_UNDER_TEST`, `DEVCAPSULE_EXPECTED_BUILD_MNEMONIC=v0.2.14-rc3`
+and `DEVCAPSULE_EXPECTED_RELEASE_VERSION=0.2.14rc3` exported, pytest scratch
+on the overlay: packaging integration tests 9 passed; clean-machine proof
+(`nox -s pex_clean_machine`, `docker run` without Python or network) passed;
+component-cache reuse and launcher delivery 5 passed in 91 s; runtime image
+on the manifest's single pinned base, the v0.2.12-rc5 digest, 1 passed in
+28 s on a warm builder cache. Log `/opt/devcapsule-gate/rc3-local-proofs.log`;
+its first packaging and clean-machine attempts failed only because the
+release-version variable was not exported, and passed on rerun with it.
+RC2 assets verified the same way: SHA-256
+`eddf2cde00e07c8d7874c229283ff1a20f409400b5b7bbdcc9b5cc54dca8d3b1`,
+version `0.2.14rc2`, source `a779295`, mainline integration.
 
 RC3 tag (2026-09-24): the owner merged PR #138 (fetched main `7c0b5a2`
 contains `997cd67`, zero unintegrated commits) and reported that a rerun of
