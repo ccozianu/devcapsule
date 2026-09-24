@@ -1,5 +1,5 @@
 ---
-status: fixed
+status: closed
 severity: blocking
 target: 0.2.14
 owner: maintenance
@@ -135,3 +135,12 @@ local RC1 base. Independent inspection passed; PyCharm JVM is running. Agent
 checks as UID 1000 verify public `devcapsule0`, absence of shipped `devcapsule`,
 exact RC1 version/hash, and workflow installation. Owner GUI acceptance of this
 new session remains pending; the bug is not closed by these checks alone.
+
+## Closure, 2026-09-24
+
+Owner verification on the published v0.2.14-rc3 in a real capsule launched
+from the `devcapsule-2` checkout: `devcapsule0` is on the PATH, as the
+repository's reserved-name recommendation intends, with `devcapsule` left
+for the development build. This closes the blocker as verified on an exact
+candidate; the earlier local-build acceptance at `9cc0868` and the rc1
+agent checks were preliminary.
