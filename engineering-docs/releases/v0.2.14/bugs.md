@@ -5,9 +5,10 @@
 Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
 main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
 and integration state are recorded in the release overview.
-27 tracked records: 16 open, eight closed and three retired. On 2026-09-25
+27 tracked records: 14 open, ten closed and three retired. On 2026-09-25
 the owner deferred five rows as minor and closed the base-image consent
-row as verified across the candidates; seven verification rows remain. The owner
+row as verified across the candidates and the CODEX_HOME and tooling PATH
+rows as no longer the case; five verification rows remain. The owner
 verified rc4 on both host checkouts on 2026-09-24 and closed the manifest
 rejection, the runner-gated release, the listing trailer and the acquisition
 decision records. Two records from
@@ -56,8 +57,8 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Codium ambient passwordless sudo](../../bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md) | maintenance | retired | untriaged | Retired — removed implementation | Local RC0 rejects the old command; candidate tree lacks its launcher/assets. See linked retirement evidence. |
 | [Multiline Dockerfile quoting](../../bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md) | maintenance | confirmed | untriaged | Deferred — unless it recurs during the release E2E campaign | Owner decision 2026-09-22. Current recipes build; generic rendering defect remains. After this release, redesign component image composition around documented, unit-testable contracts; see bug for evidence and scope. |
 | [Legacy PyCharm host networking](../../bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md) | maintenance | retired | untriaged | Retired — launch command removed | Legacy adapter/helpers removed; rejected invocations cannot launch or prepare state. Shared project launch remains. [V1 capability decisions](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md) stay open. Integration and next candidate pending; RC0 still contains the command. |
-| [Codex ACP missing CODEX_HOME](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md) | maintenance | fixed | untriaged | Undecided | **Propose verify:** fresh component state, one actual PyCharm ACP exchange, then relaunch. CLI use alone does not exercise ACP. |
-| [Component tooling missing from PATH](../../bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md) | maintenance | confirmed | untriaged | Undecided | **Propose verify, likely resolved:** base PATH export and generic environment inheritance exist. Check node/npm/npx by name in the IDE terminal and a child build process. |
+| [Codex ACP missing CODEX_HOME](../../bugs/devcapsule/2026-08-03-codex-acp-missing-home.md) | maintenance | closed | untriaged | **Closed: owner ruling 2026-09-25, no longer the case** | The rc4 runtime plan sets CODEX_HOME for the codex component; the owner confirms the condition no longer occurs.|
+| [Component tooling missing from PATH](../../bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md) | maintenance | closed | untriaged | **Closed: owner ruling 2026-09-25, no longer the case** | Base PATH export and environment inheritance are in place; the owner confirms node tooling is on the PATH in current capsules.|
 | [Manual ecosystem setup for fresh clones](../../bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md) | maintenance | confirmed | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer:** multi-ecosystem bootstrap needs product/consent/lifecycle design. Keep setup instructions usable; reopen release scope if the documented onboarding cannot reach useful work. |
 | [JetBrains X11 alpha-compositing warning](../../bugs/devcapsule/2026-08-03-jbr-slow-x11-alpha-compositing.md) | maintenance | reported | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer:** warning has no recorded functional impact. Observe the normal GUI journey; investigate visible corruption or material latency, not the warning alone. |
 | [JetBrains embedded-browser preview](../../bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md) | maintenance | fixed | untriaged | Undecided | **Propose verify:** Markdown/SVG preview with fresh IDE settings, no AppArmor remedy prompt, existing disclosure and outer isolation retained. |
