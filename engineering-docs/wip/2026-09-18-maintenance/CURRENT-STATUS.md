@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC4 accepted by the owner on both host checkouts; four blocking/related records closed; remaining triage and final tag pending
+State: active; releasing 0.2.14; RC4 accepted; every release-table row decided on 2026-09-25; final tag pending the owner's word
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -60,6 +60,13 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+All 0.2.14 release-table rows are decided and rc4 is accepted on both host
+checkouts. Next: on the owner's word, verify ancestry of the release branch
+head on `main`, tag the final `v0.2.14` on the accepted candidate's commit
+`abb785d` as the operator guide prescribes, verify the published final
+assets and run the local proofs against them; carry the R-COMPAT-001
+exception into the release notes.
 
 RC4 accepted 2026-09-24: the owner tested it on `devcapsule-2` and
 `devcapsule` and closed the manifest rejection, the runner-gated release,
@@ -209,6 +216,16 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Release table settled (2026-09-25): the owner deferred five rows as minor,
+closed the base-image consent, CODEX_HOME, tooling PATH, embedded-browser
+preview, X11 credential, formation-lifecycle and Codex installation rows,
+and sent the `/opt` discovery fallback to V1 and component-layer reuse
+outside the cycle. The last row, nested-directory coordination loss, closed
+after the regression test was strengthened to assert blob identity per
+command: coordination module 18 passed, mypy clean, full `nox -s build`
+passed with 1065 tests, mypy, PEX smokes and nine packaged integrations
+(exit code read directly; log `/opt/devcapsule-gate/coord-test-build.log`).
 
 RC4 tag (2026-09-24): the owner merged PR #140; fetched main `d11848f`
 contains `abb785d`, zero unintegrated commits. `scripts/release-protocol.py

@@ -5,13 +5,14 @@
 Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
 main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
 and integration state are recorded in the release overview.
-27 tracked records: 10 open, fourteen closed and three retired. On 2026-09-25
+27 tracked records: 9 open, fifteen closed and three retired. Every row is
+decided as of 2026-09-25. On 2026-09-25
 the owner deferred five rows as minor and closed the base-image consent
 row as verified across the candidates and the CODEX_HOME and tooling PATH
 rows as no longer the case, the embedded-browser preview row, and the X11
 credential row as no longer applying, and the formation-lifecycle and Codex
-installation rows; one verification row remains, the nested-directory
-coordination test, which maintenance strengthens and runs itself. The owner
+installation rows; the nested-directory coordination row closed once
+maintenance strengthened its regression test to blob identity and ran it. The owner
 verified rc4 on both host checkouts on 2026-09-24 and closed the manifest
 rejection, the runner-gated release, the listing trailer and the acquisition
 decision records. Two records from
@@ -73,7 +74,7 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Incomplete Codex installation](../../bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md) | component-catalog | closed | untriaged | **Closed: owner ruling 2026-09-25** | Codex is installed from the npm meta package and its platform artifact in every 0.2.14 formation build; the single plucked binary is gone.|
 | [Upgrade recovery rejects its own remedy](../../bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md) | maintenance | closed | untriaged | Closed — owner accepted 2026-09-22 | PR #117 is in main and RC0; recorded owner and graphical acceptance supersede the pending integration note. Retain RC acceptance for later regressions. |
 | [Configuration contract across boundaries](../../bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md) | maintenance | closed | untriaged | Closed — owner accepted 2026-09-22 | G1–G9 have implementation, regression, integration and recorded owner/GUI evidence. Broader future contracts are not established by this closure. |
-| [Nested-directory coordination data loss](../../bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md) | workflow-improvements | fixed | untriaged | Undecided | **Propose verify first:** downloaded RC0, disposable bare remote, nested/relative paths; compare unrelated blob IDs after every mutation. Existing test checks names, not all unchanged bytes. |
+| [Nested-directory coordination data loss](../../bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md) | workflow-improvements | closed | untriaged | **Closed 2026-09-25: fix in rc4; regression test now asserts blob identity per command** | The nested-directory test snapshots `ls-tree -r` blobs and asserts every path a command does not own is byte-identical after send, publish, claim and take; 135 coordination commits since the fix show no loss. |
 | [Flaky claim lifecycle test](../../bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md) | workflow-improvements | confirmed | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer repair:** preserve owner-requested xfail and contract/design review. Verify intended claim operations in the isolated candidate journey; XPASS cannot establish lifecycle coverage. |
 
 ## Proposed Calls From The 2026-09-22 Review
