@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-25. Stage: **RC4 accepted; every table row decided; acceptance record prepared; final tag `v0.2.14` on `abb785d` pending the record's merge to main**.
+Updated: 2026-09-25. Stage: **final tag `v0.2.14` pushed on `abb785d` after PR #141 put the acceptance record on main; publication and verification pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) ·
@@ -129,7 +129,8 @@ is still pending; owner testing starts with the already published RC0.
 - [x] Candidate source verified on main; integration method `mainline`, no missing commits.
 - [x] Owner authorized RC0 and deferred the legacy branch-name deadline.
 - [x] Immutable tag pushed; public PEX, checksum and manifest downloaded and verified.
-- [ ] Repeat main-disposition review for subsequent candidate fixes.
+- [x] Main disposition reviewed for every candidate (rc1 through rc4, mainline ancestry).
+- [x] Acceptance record merged to main in PR #141; final gate passed at the candidate commit; `v0.2.14` tagged on `abb785d` and pushed 2026-09-25.
 - [ ] After publishing final 0.2.14, migrate old branch names before next-release work.
 
 ## Candidates
