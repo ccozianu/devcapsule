@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: untriaged
-target: 0.2.14
+target: v1
 owner: component-upgrades
 opened: 2026-09-24
 requirements: [R-UPGRADE-001, R-PRODUCT-001]
@@ -109,3 +109,10 @@ not affect ordinary launches. The user-facing defect is cause 2 alone, and
 it is small: discovery should fall back to the capsule's project when no
 project is found from the working directory and the runtime context names
 one. The recursive launcher's parity gap remains a test-harness fix.
+
+## Disposition, 2026-09-25
+
+Owner ruling: discovery of the configuration inside the capsule from a
+directory outside the project, such as `/opt`, is minor and is sent to the
+V1 release to decide; it does not hold 0.2.14. The recursive test launcher's
+missing mounts remain a test-harness fix on the same record.
