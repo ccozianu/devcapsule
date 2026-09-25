@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; owner said release; acceptance record v0.2.14.json prepared; final tag on abb785d follows the record's merge to main, which the gate reads
+State: active; releasing 0.2.14; final tag v0.2.14 pushed on abb785d after PR #141; publication and final asset verification pending
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -227,6 +227,16 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Final tag (2026-09-25): PR #141 merged the release branch, fetched main
+`bb3b0aa` carries `engineering-docs/releases/v0.2.14.json`. In a scratch
+worktree at `abb785d`, `scripts/release-protocol.py v0.2.14` passed:
+version `0.2.14`, prerelease false, candidate `v0.2.14-rc4`, integration
+by ancestry, main revision `bb3b0aa`; record at
+`/opt/devcapsule-gate/final-release-protocol.json`. Annotated `v0.2.14`
+tagged on `abb785d`, the accepted candidate's commit, and pushed. A
+detached chain waits for the final assets, verifies them, and runs the
+local proofs with the release version exported; results follow.
 
 Release table settled (2026-09-25): the owner deferred five rows as minor,
 closed the base-image consent, CODEX_HOME, tooling PATH, embedded-browser
