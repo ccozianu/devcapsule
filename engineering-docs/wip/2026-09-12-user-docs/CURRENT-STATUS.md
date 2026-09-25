@@ -4,10 +4,10 @@ Name: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-22; resumed by the product owner to refresh the adopter
+State: paused 2026-09-22; website content contract delivered as R-DOCS-003 and
+handed to the website project; owner switching to the website repository
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
-documentation for the next release; migrated to the current workflow
+Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
 Branch association: `ws-user-docs/first-session`
 
@@ -193,59 +193,71 @@ pass. No runtime tests or installations were repeated for this prose delivery.
 
 ## Last Task And Planned Next Step
 
-The owner accepted the interim guides, landing edits, and both blog versions
-for mainline delivery. Verified PR #86 (`6a44168`) and the final landing follow-up
-PR #87 (`2e5f3b1`) on remote main; this checkout is synchronized through
-`21367b8`, including the subsequent coverage-badge update. Agent instructions
-and earlier coordination records already landed through PRs #84 and #85.
+Planned next step, on the owner's return here (the session record follows): verify the website merge and
+whether the parent pin should move; fix R-DOCS-003's reference to the blog
+README, since `main` moved the blog conventions into `WORKFLOW-LOCAL.md`;
+then resume UD-001, the AI-first first sessions. The migration of front
+matter and the versions manifest into `docs/` waits for the website's
+implementing revision and travels in the same parent change as its pin.
 
-At the owner's direction, prepared the permanent
-[website autonomy work order](../../work-orders/2026-09-16-website-autonomy.md)
-in this workstream, then the `website` registration through `user-docs/outbox`.
-Deliver the work order through `user-docs/first-session` before merging the
-registration outbox, so its linked brief exists on main. The outbox carries
-this handoff verbatim and pauses user-docs in the registry. The owner authorized
-a prepared `website/initial-cut` branch from this workstream's branch; record
-that narrow pre-registration branch exception in the new handoff.
+Session of 2026-09-22, at the owner's direction, on the website rather than
+the guides. Read the publishing mechanism end to end and recorded it in
+[How the website is published, and what it still lacks](../../implementation-notes/website/2026-09-22-website-publishing-contract.md):
+the parent builds `main` content with the pinned website revision, deploys
+the test site, mints a public candidate prerelease, and the website
+repository promotes one candidate to production by hand. Verified live state
+that day: both hosted sites served content `a989155` with website `78b7b7f`;
+the three guides added to `main` since (component freshness, component
+upgrades, working in workstreams) were not yet published and build cleanly.
 
-Website implementation has not started. The human will use `/new` and explicitly
-select `website/initial-cut` after the deliveries land. Leave this checkout on
-user-docs for that handoff; do not switch or begin the experiment in this context.
-The initial setup/credentials checkpoint belongs to the new pair. Its work order
-is self-contained and expressly includes the repository-owned development blog.
+Delivered the producer side of the content–website contract (W12-C) as
+[R-DOCS-003](../../requirements/product/r-docs-003-website-content-carries-front-matter.md),
+proposed, in `e67f6fa`: mandatory front matter on every published page under
+`docs/` and the journal, and `docs/versions.yaml` giving the documentation the
+PostgreSQL shape chosen by the owner: `/docs/<version>/`, a canonical
+`/docs/current/` copy, a per-page switcher, and the statuses `development`,
+`supported`, `deprecated`, `unsupported`. Versioning starts at 0.2.14; 0.2.12
+appears as `unsupported` from `main` commit `a989155`, because its guides
+were written after its tag and never reached `release-0.2.12`. Evidence: a
+retroactive build of that branch with the pinned website fails on the landing
+adapter, so a version takes only `docs/` from its source.
 
-On a future human-directed return to user-docs, resume UD-001: agree the small
-AI-first project and outcome, then design the v1 journey and record gaps.
-UD-002 through UD-004 and the later OpenCode requirement remain accepted.
-No remaining website design choices should be decided here.
+Delivered to the website repository, branch
+`requests-from-devcapsule-2026-09-22`, two commits for the owner to merge:
+a pointer section in its status file asking for contract version 1, a
+sitemap ahead of the rest of W09, and a night-mode switch; and the workflow
+definition 0.2.14 installed with the CLI's bootstrap, its `WORKFLOW-LOCAL.md`
+filled in, and its former agent instructions kept as a section. The parent
+pin stays at `78b7b7f` until that merge. Merged `main` into this branch
+without conflict and pushed.
 
 ## Open Threads
 
-- Pending delivery: work-order PR, then registration outbox; verify external
-  merge state before starting website. Git push works, but the human opens and
-  merges PRs. No infrastructure access has been requested for the experiment.
-- This is a deliberate pause, not completion of user-docs. The v1 guide cleanup,
-  OpenCode setup, and platform follow-ups remain here.
-- Preserved for the next pair: the work order and website handoff. No full chat
-  transcript or unpublished speculative website design is being carried over;
-  the blog dialogue is illustrative fiction, not an additional task contract.
-
-- Choose the small project, first useful outcome, and AI/IDE pairing with the
-  owner. Decide whether and how a second AI improves the first sessions.
-- Verify the exact Meijer quotation if the owner supplies its source; the
-  located secondary account supports a paraphrase only.
-- Awaiting the owner's Windows/Gemini workaround text; basic Linux documentation
-  and confirmed WSL2 notes can proceed independently.
-- Actual browser clipboard/fullscreen behavior and fresh Windows installation
-  need human platform checks; preserve the contained-display evidence separately
-  from validation performed here.
-- Two restart attempts hit a host Docker DNAT/iptables error; retrying the same
-  documented command succeeded without changes to Docker or host permissions.
-  This is recorded as an observed environment limitation, not an established
-  DevCapsule defect or a reason to weaken the default boundary.
-- v0.2.12 currently labels its selected base v0.2.12-rc5; the immutable digest
-  matches the released base. Explain the prompt locally and record the UX issue.
-- No new session transcript or session record was requested or created.
+- `main` moved ten commits past this branch minutes after the merge, through
+  PR #133 from `release-0.2.14`, including a definition change in `b44a559`.
+  Synchronize first on resume; not merged before pausing.
+- Two decisions for the owner, both recorded as open in R-DOCS-003: whether
+  documentation-only fixes for a released version land on its retained
+  release branch, and what `/docs/current/` shows before 0.2.14 goes final.
+  The manifest example assumes 0.2.14.
+- The website PR is not merged; nothing on its `main` yet references
+  R-DOCS-003 or carries the installed definition. Re-verify before assuming
+  the website pair has seen the requests.
+- The packaged workflow definition at 0.2.14 is thinner than the root
+  `WORKFLOW.md` at the same version: the rule on changing workstreams during
+  a task and the longer selection section are root-only. Worth a mail to
+  `workflow-improvements`; not sent.
+- `devcapsule bootstrap project` appends Python ignore defaults to a Node
+  project's `.gitignore`. Small product wart, not filed.
+- Cross-project delivery does not exist in the workflow; today's pointer
+  commit into the website's status file is recorded there as an exception.
+  A recurring need; not yet handed to `workflow-improvements`.
+- Earlier threads remain: the small AI-first project and pairing for UD-001,
+  the Meijer quotation, the owner's Windows/Gemini workaround text, browser
+  clipboard and fullscreen checks, and the v0.2.12-rc5 base label UX issue.
+- Deliberately not preserved: the three scratch builds of 0.2.12, 0.2.14
+  and `main` content used for the retroactive check, and the chat reasoning
+  behind the status ladder beyond what R-DOCS-003 states.
 
 ## Delivered-Branch Documents
 
@@ -262,6 +274,8 @@ it is not a change to another workstream's handoff.
 
 ## Documents
 
+- [R-DOCS-003 Website content carries explicit front matter and a versions manifest](../../requirements/product/r-docs-003-website-content-carries-front-matter.md) — producer side of the content–website contract, proposed 2026-09-22.
+- [How the website is published, and what it still lacks](../../implementation-notes/website/2026-09-22-website-publishing-contract.md) — mechanism, author rules, gap inventory.
 - [Website autonomy work order](../../work-orders/2026-09-16-website-autonomy.md) — agreed experiment brief handed to website.
 
 - [Second development-blog entry: I asked for user docs](../../blog/2026-09-16-i-asked-for-user-docs.md) — first-person version.
