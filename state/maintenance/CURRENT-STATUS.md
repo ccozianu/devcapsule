@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC4 accepted; every release-table row decided on 2026-09-25; final tag pending the owner's word
+State: active; releasing 0.2.14; owner said release; acceptance record v0.2.14.json prepared; final tag on abb785d follows the record's merge to main, which the gate reads
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -60,6 +60,17 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+The owner said "release 0.2.14" on 2026-09-25. The acceptance record
+`engineering-docs/releases/v0.2.14.json` is generated from the verified rc4
+download (integration by ancestry, baseline `2137108`); the final gate reads
+the record from `main`, so it passes only after the merge. Next: the
+owner merges the release branch to `main`; then tag `v0.2.14` on
+`abb785d` (`v0.2.14-rc4^{commit}`), push, verify the published final assets
+and run the local proofs against them; the owner pastes the notes text
+from the release overview into the GitHub release. Then the branch-name
+migration deferred through publication becomes due before next-release
+work.
 
 All 0.2.14 release-table rows are decided and rc4 is accepted on both host
 checkouts. Next: on the owner's word, verify ancestry of the release branch
