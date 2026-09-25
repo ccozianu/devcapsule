@@ -243,6 +243,14 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Host Docker cleanup (2026-09-25, owner: "run freely"): 98 DevCapsule-related
+images at 288.9 GB total store. Removed the exited recursive-run containers,
+then 88 tagged images, keeping the two running capsules' images, the newest
+two formations per surface, the published pinned base under both tags, the
+two other matrix-pinned bases and the rc2 local twin; ten remain. Store now
+80.4 GB. The BuildKit cache was left alone: it is what keeps component
+stages `CACHED` across formation rebuilds.
+
 Post-release close-out (2026-09-25, owner-directed): branch names migrated
 to `ws-<name>/<sub>` by creating the new refs at the old tips and pushing
 them: `ws-project-management/coordination` (was `project-management/coordination`,
