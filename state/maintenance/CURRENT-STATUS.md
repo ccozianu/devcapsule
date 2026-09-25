@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; final tag v0.2.14 pushed on abb785d after PR #141; publication and final asset verification pending
+State: active; 0.2.14 published 2026-09-25 as Latest and verified; release closure records and the deferred branch-name migration remain
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -60,6 +60,14 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+0.2.14 is published and verified. Remaining for this release: the owner
+pastes the notes block from the release overview into the GitHub release
+body; the release overview and this status are delivered to `main` through
+the ordinary PR; then the branch-name migration deferred through
+publication is coordinated by project-management before substantive
+next-release work, and `main` reopens with the next development version
+per WORKFLOW-LOCAL.md.
 
 The owner said "release 0.2.14" on 2026-09-25. The acceptance record
 `engineering-docs/releases/v0.2.14.json` is generated from the verified rc4
@@ -236,7 +244,14 @@ by ancestry, main revision `bb3b0aa`; record at
 `/opt/devcapsule-gate/final-release-protocol.json`. Annotated `v0.2.14`
 tagged on `abb785d`, the accepted candidate's commit, and pushed. A
 detached chain waits for the final assets, verifies them, and runs the
-local proofs with the release version exported; results follow.
+local proofs with the release version exported. Results: `v0.2.14` public
+at 01:55 UTC as a final release and GitHub Latest; checksum verified, the
+executable reports `0.2.14` at `abb785d`, SHA-256
+`98ff656499208bf2d4bb43adfeeafb34676b91d48adcb8ac6e8ee4e5e5d2c7bf`; the
+manifest names main revision `bb3b0aa` for the acceptance record. Local
+proofs: packaging integration 9 passed, clean-machine passed, component
+cache 5 passed, runtime image on the pinned base passed
+(`/opt/devcapsule-gate/final-proofs.log`).
 
 Release table settled (2026-09-25): the owner deferred five rows as minor,
 closed the base-image consent, CODEX_HOME, tooling PATH, embedded-browser
