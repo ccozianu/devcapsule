@@ -1,9 +1,9 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-25. Stage: **final tag `v0.2.14` pushed on `abb785d` after PR #141 put the acceptance record on main; publication and verification pending**.
+Updated: 2026-09-25. Stage: **v0.2.14 published 2026-09-25 as GitHub Latest; final assets verified and local proofs passed**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
-[Download RC1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) ·
+[Download v0.2.14](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14) ·
 [Bug triage](bugs.md) · [RC0 smoke scripts](smoke/README.md)
 
 Update these working files as decisions and evidence arrive. Chat highlights
@@ -307,6 +307,17 @@ the closed triage, into `main`; then the final tag is placed on the accepted
 candidate's commit, `git tag -a v0.2.14 'v0.2.14-rc4^{commit}'`, and pushed.
 The backend rebuilds final-version bytes from that exact source and
 publishes with GitHub's Latest selection.
+
+### Published
+
+`v0.2.14` is public since 2026-09-25 01:55 UTC, final, selected as Latest.
+Final PEX SHA-256 `98ff656499208bf2d4bb43adfeeafb34676b91d48adcb8ac6e8ee4e5e5d2c7bf`,
+reporting `0.2.14` at `abb785d`; the manifest names main revision
+`bb3b0aa` for the acceptance record. Local proofs against the final download
+on 2026-09-25: packaging integration 9 passed, clean-machine passed,
+component cache 5 passed, runtime image on the pinned base passed; log
+`/opt/devcapsule-gate/final-proofs.log`. Files in
+`/opt/devcapsule-gate/0.2.14-published/`.
 
 ### Release notes for the owner to paste into the GitHub release
 
