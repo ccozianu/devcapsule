@@ -4,15 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; 0.2.14 published 2026-09-25 as Latest and verified; release closure records and the deferred branch-name migration remain
+State: active; 0.2.14 published; post-release cleanup on ws-maintenance/post-0.2.14: branch names migrated, main reopened at 0.2.15.dev0, 0.2.15 plan mailed to project-management
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Integration target: `main`
 
 Delivery method: pull request; agent pushes the branch, owner opens and merges on GitHub
 
-Branch association: `release-0.2.14`
+Branch association: `ws-maintenance/post-0.2.14`
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -60,6 +60,13 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+Post-release, on `ws-maintenance/post-0.2.14`: deliver the registry rows,
+the version reopening and the close-out records to `main` by PR; then the
+cleanup slices the owner approves from the 0.2.15 plan: the named
+build-context fix for the 4.8 GB rebuild transfer, the `v0.2.12` mnemonic
+(option A recommended), and repository hygiene. 0.2.15 registration and
+scope are with project-management.
 
 0.2.14 is published and verified. Remaining for this release: the owner
 pastes the notes block from the release overview into the GitHub release
@@ -235,6 +242,27 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Post-release close-out (2026-09-25, owner-directed): branch names migrated
+to `ws-<name>/<sub>` by creating the new refs at the old tips and pushing
+them: `ws-project-management/coordination` (was `project-management/coordination`,
+c5a011d), `ws-sample-projects/fastapi-webapp` (was `sample-projects/fastapi-webapp`,
+6a9776c), `ws-contained-display/display-transport` (was
+`contained-display/display-transport`, fa89c53),
+`ws-component-catalog/antigravity-cli` (was `component-catalog/antigravity-cli`,
+85a94d6); `ws-website/initial-cut` already existed and contains
+`website/initial-cut` (0658207). Maintenance left the release ref for
+`ws-maintenance/post-0.2.14`, cut from the release head so the two post-tag
+record commits travel with it. `nox -s bump -- 0.2.15.dev0` reopened `main`'s
+development version in `pyproject.toml`, `WORKFLOW.md` and the packaged
+definition; `.devcapsule/devcapsule.toml`'s `[workflow] version` still reads
+`0.2.14.dev0`, as it did before the release, and the bump does not touch it.
+The registry rows are updated here under the owner's instruction; each
+workstream's own status names its old branch until it next publishes. For a
+checkout on an old name: `git branch -m OLD NEW && git branch -u origin/NEW`.
+Old-name refs and the retired `*/outbox` branches are deleted or listed in
+the report to the owner. The 0.2.15 plan went to project-management as
+`2026-09-25-maintenance-0215-plan.md` at `354d4c7c2aff`.
 
 Final tag (2026-09-25): PR #141 merged the release branch, fetched main
 `bb3b0aa` carries `engineering-docs/releases/v0.2.14.json`. In a scratch
