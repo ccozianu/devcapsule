@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; 0.2.14 published; post-release cleanup on ws-maintenance/post-0.2.14: branch names migrated, main reopened at 0.2.15.dev0, 0.2.15 plan mailed to project-management
+State: paused 2026-09-25 after the 0.2.14 close-out; the post-release branch awaits the owner's PR; 0.2.15 planning is with project-management
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -687,6 +687,18 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Pause of 2026-09-25, after 0.2.14 shipped and the close-out cleanup.
+  Awaiting the owner: the PR from `ws-maintenance/post-0.2.14` (registry
+  rows, 0.2.15.dev0, close-out records); the GitHub release body for
+  `v0.2.14`, notes text in the release overview; option A or B for the
+  `v0.2.12` mnemonic; yes or no on the named-build-context fix. Awaiting
+  project-management: registration and scope of 0.2.15 (mail of
+  2026-09-25), adoption of the mycodespace note and the checkout-naming
+  default (mail of 2026-09-25). Awaiting workflow-improvements: the four
+  workflow gaps (mail of 2026-09-25). Deliberately not preserved: the
+  scratch builds and downloaded candidates under `/opt/devcapsule-gate`,
+  which are regenerable from the public releases.
 
 - Owner's rc3 test, 2026-09-24, produced three findings, all recorded and
   now dispositioned: the trailer is fixed by the list/show split (RC4); the
