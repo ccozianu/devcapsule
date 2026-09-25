@@ -105,3 +105,9 @@ Coordinate with the already-deferred
 without treating this report as approval to start that redesign or enlarge
 the current release. Review design, implementation ownership and release
 placement with the owner before coding.
+
+## Disposition, 2026-09-25
+
+Owner ruling: reuse of installed IDE and other component layers across
+formations is substantial work and is presumed outside the 0.2.14 release
+cycle; keep it in attention with the rc3 measurements above as the case.

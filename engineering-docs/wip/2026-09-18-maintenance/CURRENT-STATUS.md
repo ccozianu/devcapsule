@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; RC3 public and verified, all local proofs passed against the download; owner testing of RC2/RC3 and the configuration-inspection decision pending
+State: active; releasing 0.2.14; owner said release; acceptance record v0.2.14.json prepared; final tag on abb785d follows the record's merge to main, which the gate reads
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -60,6 +60,33 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+The owner said "release 0.2.14" on 2026-09-25. The acceptance record
+`engineering-docs/releases/v0.2.14.json` is generated from the verified rc4
+download (integration by ancestry, baseline `2137108`); the final gate reads
+the record from `main`, so it passes only after the merge. Next: the
+owner merges the release branch to `main`; then tag `v0.2.14` on
+`abb785d` (`v0.2.14-rc4^{commit}`), push, verify the published final assets
+and run the local proofs against them; the owner pastes the notes text
+from the release overview into the GitHub release. Then the branch-name
+migration deferred through publication becomes due before next-release
+work.
+
+All 0.2.14 release-table rows are decided and rc4 is accepted on both host
+checkouts. Next: on the owner's word, verify ancestry of the release branch
+head on `main`, tag the final `v0.2.14` on the accepted candidate's commit
+`abb785d` as the operator guide prescribes, verify the published final
+assets and run the local proofs against them; carry the R-COMPAT-001
+exception into the release notes.
+
+RC4 accepted 2026-09-24: the owner tested it on `devcapsule-2` and
+`devcapsule` and closed the manifest rejection, the runner-gated release,
+the listing trailer and the acquisition-decision records. Open and owned
+here: the `/opt` discovery fallback (minor, set aside), the installed-IDE
+reuse design review, and the thirteen undecided rows in the release bug
+table. Next: the owner decides the remaining rows and any further
+candidate; then the final `v0.2.14` tag from the accepted candidate's
+commit with the release notes carrying the R-COMPAT-001 exception.
 
 RC2's backend run (36023910604) failed at "Verify pinned base availability
 and runtime sessions": `docker build` of the disposable runtime image exited
@@ -200,6 +227,32 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Release table settled (2026-09-25): the owner deferred five rows as minor,
+closed the base-image consent, CODEX_HOME, tooling PATH, embedded-browser
+preview, X11 credential, formation-lifecycle and Codex installation rows,
+and sent the `/opt` discovery fallback to V1 and component-layer reuse
+outside the cycle. The last row, nested-directory coordination loss, closed
+after the regression test was strengthened to assert blob identity per
+command: coordination module 18 passed, mypy clean, full `nox -s build`
+passed with 1065 tests, mypy, PEX smokes and nine packaged integrations
+(exit code read directly; log `/opt/devcapsule-gate/coord-test-build.log`).
+
+RC4 tag (2026-09-24): the owner merged PR #140; fetched main `d11848f`
+contains `abb785d`, zero unintegrated commits. `scripts/release-protocol.py
+v0.2.14-rc4` passed, record at `/opt/devcapsule-gate/rc4-release-protocol.json`;
+annotated tag pushed atomically with the branch, peeled commit
+`abb785d7ad4069606fd3ab84009ca8efeabc22b9`. A detached chain waits for the
+assets, verifies them, and runs the local proofs with the release version
+exported. Results, 2026-09-24: assets published under the Docker-free
+workflow; checksum verified, executable reports `0.2.14rc4` at `abb785d`,
+manifest records mainline integration with no unintegrated commits; PEX
+SHA-256 `d5387d8a05a278bb0b8b109e9da0ea39c29d5a753e50013d9f09dc9e2a48d16a`,
+files in `/opt/devcapsule-gate/0.2.14-rc4-published/`. Local proofs against
+the download with `DEVCAPSULE_EXPECTED_RELEASE_VERSION=0.2.14rc4`: packaging
+integration 9 passed; clean-machine passed; component-cache 5 passed;
+runtime image on the pinned v0.2.12-rc5 digest 1 passed. Log
+`/opt/devcapsule-gate/rc4-proofs.log`.
 
 Provenance in the listing (2026-09-24, owner request before tagging RC4):
 every configuration row carries a SOURCE column naming the document its

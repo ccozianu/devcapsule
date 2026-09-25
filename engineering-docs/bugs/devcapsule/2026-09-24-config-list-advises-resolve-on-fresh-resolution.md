@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: minor
 target: 0.2.14
 owner: maintenance
 opened: 2026-09-24
+closed: 2026-09-24
 requirements: [R-DOCS-002]
 ---
 
@@ -67,3 +68,9 @@ are newly required say so. The upgrade-recovery test that expected remedies
 in the listing now reads them from `show`; a contract test covers the
 listing's silence and `show`'s three states. The guide and the source README
 describe both commands.
+
+## Closure, 2026-09-24
+
+Owner verified rc4 on `devcapsule-2` and `devcapsule`: `config list` is the
+data listing with the SOURCE column and `config show` reports the resolution's
+real state with the Sources block.

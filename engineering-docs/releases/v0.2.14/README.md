@@ -1,6 +1,6 @@
 # DevCapsule 0.2.14 — Release Work
 
-Updated: 2026-09-24. Stage: **RC3 public, verified, local proofs passed; owner testing pending**.
+Updated: 2026-09-25. Stage: **RC4 accepted; every table row decided; acceptance record prepared; final tag `v0.2.14` on `abb785d` pending the record's merge to main**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Download RC1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) ·
@@ -154,7 +154,8 @@ not changed since; see the maintenance status for the digest-pin discussion.
 | [v0.2.14-rc0](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc0) | `d078b879469c1790647e32db75005d0fa4369b27` | Public assets verified 2026-09-22. | Clean-machine executable check passed; major journeys pending. |
 | [v0.2.14-rc1](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc1) | `cec7a0c2f3467b8cc9d84eca820f35ee869087ec` | Public PEX, checksum and manifest verified 2026-09-24. | Owner: mostly works; configuration inspection fails (bug filed). Superseded by RC2 for the manifest fix. |
 | [v0.2.14-rc2](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc2) | `a779295d7343158d846df89d2d5da184548bfd1d` | Tagged 2026-09-24; gate passed with zero missing commits. Backend run 36023910604 failed at the runtime-session Docker build; the owner's rerun of the same run succeeded and published the assets. | Same runtime source as RC3; usable for owner testing. |
-| [v0.2.14-rc3](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc3) | `997cd67445b00c78da38f1a77c7f0622eaf5a0b3` | Tagged 2026-09-24 after PR #138; gate passed with zero missing commits; first candidate built by the Docker-free workflow. Public PEX, checksum and manifest downloaded and verified 2026-09-24. | Local proofs against the download passed 2026-09-24. Owner testing pending: `config list`/`resolve` on this repository with 0.2.12 and RC3; `devcapsule0` from the reserved name in a real capsule. |
+| [v0.2.14-rc3](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc3) | `997cd67445b00c78da38f1a77c7f0622eaf5a0b3` | Tagged 2026-09-24 after PR #138; gate passed with zero missing commits; first candidate built by the Docker-free workflow. Public PEX, checksum and manifest downloaded and verified 2026-09-24. | Local proofs passed 2026-09-24. Owner tested: `devcapsule0` on the PATH confirmed; the two host listings led to the list/show split, the acquisition-decision analysis and the naming ruling; superseded by RC4. |
+| [v0.2.14-rc4](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc4) | `abb785d7ad4069606fd3ab84009ca8efeabc22b9` | Tagged 2026-09-24 after PR #140; gate passed with zero missing commits. Public PEX, checksum and manifest verified 2026-09-24; local proofs passed against the download. | Owner tested successfully on `devcapsule-2` and `devcapsule` on 2026-09-24; the four related records are closed. |
 
 RC1 tag object: `0f460c0cb5a50f9c0fb6f46b4b7ee6060badd572`. Pushed atomically
 with the release branch. The public RC1 manifest returned HTTP 404 immediately
@@ -285,9 +286,53 @@ quarantined XPASS, plus mypy; runtime/test inputs did not change for RC0.
 
 ## Final Promotion
 
-No final tag or acceptance JSON exists. When an exact candidate passes the
-selected end-user journeys, prepare `engineering-docs/releases/v0.2.14.json`
-through the [release runbook](../../implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md).
-Retain this directory as the release's working history.
+The owner accepted v0.2.14-rc4 and, on 2026-09-25, said to release 0.2.14.
+The acceptance record [`v0.2.14.json`](../v0.2.14.json) was generated with
+`scripts/prepare-promotion.py v0.2.14-rc4` from the checksum-verified
+download: candidate `v0.2.14-rc4`, source
+`abb785d7ad4069606fd3ab84009ca8efeabc22b9`, SHA-256
+`d5387d8a05a278bb0b8b109e9da0ea39c29d5a753e50013d9f09dc9e2a48d16a`,
+integration by ancestry from the preparation baseline `2137108`, accepted by
+github.com/ccozianu with the owner's two-checkout acceptance and the local
+proofs as evidence. The record carries every field the runbook lists:
+schema 1, tag, candidate tag, source revision, candidate SHA-256, accepted-by,
+a nonempty evidence list and ancestry integration with its baseline. The
+final gate reads the record from `main`, so it cannot pass before the merge;
+a local dry run at the candidate commit stopped exactly there, at
+`git show <main>:engineering-docs/releases/v0.2.14.json`, as designed.
+
+Sequence: the owner merges the release branch, which carries this record and
+the closed triage, into `main`; then the final tag is placed on the accepted
+candidate's commit, `git tag -a v0.2.14 'v0.2.14-rc4^{commit}'`, and pushed.
+The backend rebuilds final-version bytes from that exact source and
+publishes with GitHub's Latest selection.
+
+### Release notes for the owner to paste into the GitHub release
+
+GitHub generates the pull-request list. Put this above it:
+
+> **Upgrading a checkout last launched by 0.2.12.** Earlier clients installed
+> vendor downloads other than Claude Code without recording your consent.
+> 0.2.14 asks once per checkout for every vendor download. On such a
+> checkout `project config show` lists the decision with its reason; answer
+> with `devcapsule project --path <checkout> config authorize antigravity-download true`
+> (or `false` after removing the agent from the project need), then
+> `devcapsule project --path <checkout> config resolve`. This is the one-time
+> exception R-COMPAT-001 provides for, named here as it requires.
+>
+> **Commands.** `project config list` is now a data listing with a SOURCE
+> column naming the document each row comes from. The new
+> `project config show` adds the files behind the resolution and the review:
+> pending decisions with remedies, and whether resolving is needed. The
+> in-capsule command is `devcapsule`; this repository's development
+> checkouts name it `devcapsule0`. The legacy `pycharm run` is retired; use
+> `project run`.
+>
+> **Deferred, tracked in the release bug table:** configuration discovery
+> from a directory outside the project inside a capsule (V1), reuse of
+> installed IDE and component layers across formations, manual ecosystem
+> setup for fresh clones, the JetBrains X11 alpha-compositing and
+> native-launcher warnings, cleanup of exited recursive containers, and the
+> flaky claim lifecycle test.
 
 [Maintenance handoff](../../wip/2026-09-18-maintenance/CURRENT-STATUS.md)

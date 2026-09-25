@@ -1,9 +1,10 @@
 ---
-status: confirmed
+status: closed
 severity: untriaged
 target: 0.2.14
 owner: maintenance
 opened: 2026-09-24
+closed: 2026-09-24
 requirements: [R-COMPAT-001]
 ---
 
@@ -131,3 +132,10 @@ the remedy for the final notes; `config show` explains that the decision is
 newly required by this release rather than implying a lost answer. The
 checkout record naming (`dev-capsule-2`, `devcapsule-2nd-home`) is ruled
 not a bug; a naming-default change is deferred.
+
+## Closure, 2026-09-24
+
+Owner verified rc4 on the `devcapsule` checkout: the newly required
+antigravity decision is asked with its reason and remedy, and the checkout
+runs once answered. The rule stays; the R-COMPAT-001 exception and remedy
+are recorded in the release overview for the final notes.
