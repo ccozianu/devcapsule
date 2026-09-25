@@ -5,10 +5,11 @@
 Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
 main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
 and integration state are recorded in the release overview.
-27 tracked records: 14 open, ten closed and three retired. On 2026-09-25
+27 tracked records: 13 open, eleven closed and three retired. On 2026-09-25
 the owner deferred five rows as minor and closed the base-image consent
 row as verified across the candidates and the CODEX_HOME and tooling PATH
-rows as no longer the case; five verification rows remain. The owner
+rows as no longer the case, and the embedded-browser preview row; four
+verification rows remain. The owner
 verified rc4 on both host checkouts on 2026-09-24 and closed the manifest
 rejection, the runner-gated release, the listing trailer and the acquisition
 decision records. Two records from
@@ -61,7 +62,7 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Component tooling missing from PATH](../../bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md) | maintenance | closed | untriaged | **Closed: owner ruling 2026-09-25, no longer the case** | Base PATH export and environment inheritance are in place; the owner confirms node tooling is on the PATH in current capsules.|
 | [Manual ecosystem setup for fresh clones](../../bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md) | maintenance | confirmed | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer:** multi-ecosystem bootstrap needs product/consent/lifecycle design. Keep setup instructions usable; reopen release scope if the documented onboarding cannot reach useful work. |
 | [JetBrains X11 alpha-compositing warning](../../bugs/devcapsule/2026-08-03-jbr-slow-x11-alpha-compositing.md) | maintenance | reported | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer:** warning has no recorded functional impact. Observe the normal GUI journey; investigate visible corruption or material latency, not the warning alone. |
-| [JetBrains embedded-browser preview](../../bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md) | maintenance | fixed | untriaged | Undecided | **Propose verify:** Markdown/SVG preview with fresh IDE settings, no AppArmor remedy prompt, existing disclosure and outer isolation retained. |
+| [JetBrains embedded-browser preview](../../bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md) | maintenance | closed | untriaged | **Closed: owner ruling 2026-09-25 during rc4 acceptance** | Embedded preview verified in the rc4 sessions with the existing disclosure and outer isolation retained.|
 | [PyCharm native-launcher warning](../../bugs/devcapsule/2026-08-03-jetbrains-native-launcher.md) | maintenance | reported | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer:** changing launcher affects signals, restart and lifecycle; no functional failure reported. Investigate if normal close/restart fails. |
 | [Exited containers not cleaned up](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md) | maintenance | reported | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer:** retained recursive successors need an owned cleanup policy; ordinary foreground runs already use --rm. Preserve diagnostic evidence; record retained objects during acceptance. |
 | [X11 host-session credential exposure](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md) | contained-display | fixed | untriaged | Undecided | **Propose verify scope:** confirm contained project launch shares no host X socket/cookie and explicit passthrough is disclosed. Legacy bypass removed; old-base fallback in project launch remains. Avoid blanket closure. |
