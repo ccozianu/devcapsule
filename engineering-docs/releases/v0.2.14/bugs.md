@@ -5,11 +5,13 @@
 Initial review: 2026-09-22 at `8e7cc21`, against RC0 source `d078b87` and
 main `e50b9f1`. Follow-up: legacy PyCharm launch removed after RC0; validation
 and integration state are recorded in the release overview.
-27 tracked records: 12 open, twelve closed and three retired. On 2026-09-25
+27 tracked records: 10 open, fourteen closed and three retired. On 2026-09-25
 the owner deferred five rows as minor and closed the base-image consent
 row as verified across the candidates and the CODEX_HOME and tooling PATH
 rows as no longer the case, the embedded-browser preview row, and the X11
-credential row as no longer applying; three verification rows remain. The owner
+credential row as no longer applying, and the formation-lifecycle and Codex
+installation rows; one verification row remains, the nested-directory
+coordination test, which maintenance strengthens and runs itself. The owner
 verified rc4 on both host checkouts on 2026-09-24 and closed the manifest
 rejection, the runner-gated release, the listing trailer and the acquisition
 decision records. Two records from
@@ -67,8 +69,8 @@ than copying the technical narrative. `fixed` does not mean closed or released.
 | [Exited containers not cleaned up](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md) | maintenance | reported | minor | **Deferred by owner ruling 2026-09-25; severity minor** | **Propose defer:** retained recursive successors need an owned cleanup policy; ordinary foreground runs already use --rm. Preserve diagnostic evidence; record retained objects during acceptance. |
 | [X11 host-session credential exposure](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md) | contained-display | closed | untriaged | **Closed: owner ruling 2026-09-25, no longer applies** | Contained display is the default on recipe-9 bases and shares no host X socket or cookie; host X11 is an explicit, disclosed opt-in; the legacy bypass is removed. The pre-recipe-8 base fallback remains a disclosed passthrough until those bases retire.|
 | [Base-image consent versus selection](../../bugs/devcapsule/2026-09-02-authorize-base-image-conflates-consent-with-selection.md) | maintenance | closed | untriaged | **Closed: owner ruling 2026-09-25, verified repeatedly during rc0 to rc4 testing** | Current local-reference selection and consent UX exercised through `config authorize base-image` and `config show` across the candidate campaign; no failure observed.|
-| [Formation entrypoint and image lifecycle](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md) | component-catalog | confirmed | untriaged | Undecided | **Propose verify/split:** inspect actual image boot configuration against descriptor, then repeat launch for reuse. Defer remaining superseded-image cleanup separately; do not close the combined record wholesale. |
-| [Incomplete Codex installation](../../bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md) | component-catalog | fixed | untriaged | Undecided | **Propose verify:** fresh npm-based installation and state; actual agent edit/shell/test turn. Owner accepted the capsule as sandbox; --version or an obsolete sandbox command is insufficient. |
+| [Formation entrypoint and image lifecycle](../../bugs/devcapsule/2026-09-02-formation-identity-claims-an-entrypoint-the-recipe-never-sets.md) | component-catalog | closed | untriaged | **Closed: owner ruling 2026-09-25** | rc0 to rc4 launched and relaunched from their formations without a boot defect; the superseded-image cleanup half is carried by the installed-IDE reuse record, kept outside 0.2.14.|
+| [Incomplete Codex installation](../../bugs/devcapsule/2026-09-05-codex-installed-as-a-single-plucked-binary.md) | component-catalog | closed | untriaged | **Closed: owner ruling 2026-09-25** | Codex is installed from the npm meta package and its platform artifact in every 0.2.14 formation build; the single plucked binary is gone.|
 | [Upgrade recovery rejects its own remedy](../../bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md) | maintenance | closed | untriaged | Closed — owner accepted 2026-09-22 | PR #117 is in main and RC0; recorded owner and graphical acceptance supersede the pending integration note. Retain RC acceptance for later regressions. |
 | [Configuration contract across boundaries](../../bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md) | maintenance | closed | untriaged | Closed — owner accepted 2026-09-22 | G1–G9 have implementation, regression, integration and recorded owner/GUI evidence. Broader future contracts are not established by this closure. |
 | [Nested-directory coordination data loss](../../bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md) | workflow-improvements | fixed | untriaged | Undecided | **Propose verify first:** downloaded RC0, disposable bare remote, nested/relative paths; compare unrelated blob IDs after every mutation. Existing test checks names, not all unchanged bytes. |
