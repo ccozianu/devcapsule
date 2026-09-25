@@ -248,8 +248,11 @@ images at 288.9 GB total store. Removed the exited recursive-run containers,
 then 88 tagged images, keeping the two running capsules' images, the newest
 two formations per surface, the published pinned base under both tags, the
 two other matrix-pinned bases and the rc2 local twin; ten remain. Store now
-80.4 GB. The BuildKit cache was left alone: it is what keeps component
-stages `CACHED` across formation rebuilds.
+80.4 GB. The BuildKit cache held 645.9 GB in 2561 entries; entries unused
+for more than seven days were pruned (377.2 GB reclaimed), keeping the
+stages behind this week's builds so component stages stay `CACHED`. 268.7 GB
+of cache from the last week remains; 21 unused local volumes (15 GB) were
+not touched, their owners being unknown.
 
 Post-release close-out (2026-09-25, owner-directed): branch names migrated
 to `ws-<name>/<sub>` by creating the new refs at the old tips and pushing
