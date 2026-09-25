@@ -260,8 +260,17 @@ definition; `.devcapsule/devcapsule.toml`'s `[workflow] version` still reads
 The registry rows are updated here under the owner's instruction; each
 workstream's own status names its old branch until it next publishes. For a
 checkout on an old name: `git branch -m OLD NEW && git branch -u origin/NEW`.
-Old-name refs and the retired `*/outbox` branches are deleted or listed in
-the report to the owner. The 0.2.15 plan went to project-management as
+Old-name refs were deleted once their `ws-` successors contained them.
+With the owner's confirmation the retired outbox delivery branches and the
+superseded triage branch were deleted too, each with one never-merged record
+commit, noted here for recovery: `component-catalog/outbox` 986136f,
+`component-catalog/outbox-recovered-2026-09-06` 802adaf,
+`sample-projects/outbox` e62d910, `ws-project-management/outbox` 09ac366,
+`ws-website/outbox` 9383efe, `ws-maintenance/triage` f565689; also the
+merged `contained-display/outbox`, `project-management/outbox`,
+`project-management/outbox-pending-2026-08-19`, `ws-maintenance/outbox` and
+`ws-workflow-improvements/nested-cwd-fix`. Remaining non-`ws-` refs are the
+project's own and were not touched. The 0.2.15 plan went to project-management as
 `2026-09-25-maintenance-0215-plan.md` at `354d4c7c2aff`.
 
 Final tag (2026-09-25): PR #141 merged the release branch, fetched main
