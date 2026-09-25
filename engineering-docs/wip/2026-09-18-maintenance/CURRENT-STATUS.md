@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-25 after the 0.2.14 close-out; the post-release branch awaits the owner's PR; 0.2.15 planning is with project-management
+State: active 2026-09-26; resumed at the owner's direction for the base-image naming and selection design decision; the close-out PR is merged and main is merged into this branch
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
