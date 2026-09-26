@@ -4,11 +4,11 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-22 at owner direction; maintenance takes over the approved 0.2.14 release cut
+State: active 2026-09-26; resumed at owner direction after 0.2.14 shipped; 0.2.15 planning and 26 undecided intake items
 
-Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@031c167690c0
+Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
-Branch association: `project-management/coordination`
+Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
 Integration target: `main`
 
@@ -87,24 +87,36 @@ The marker and bug await owner PR integration.
 
 ## Planned Next Step
 
-The owner approved cutting 0.2.14 under maintenance and ruled that none of the
-current bugs stops the cut; fix or defer them during stabilization. PR #131
-integrated the working release documents and test quarantine at `2137108`;
-main advanced only its coverage badge afterward to `c8ae736`. All prepared
-release content is integrated. The integrated preparation merge `2137108`
-is the selected baseline. This checkout now pauses project-management and
-moves to maintenance to cut and operate the release.
+Resumed 2026-09-26 on `ws-project-management/coordination`, synchronized with
+`main` at `f4949aa` (v0.2.14 published 2026-09-25; `main` reopened at
+0.2.15.dev0). The definition text is unchanged since the last read apart from
+its version line; `WORKFLOW-LOCAL.md` gained the dogfooding CLI selection,
+local launch networking and the deferred rename deadline, all read.
 
-Work from the [release overview](../../releases/v0.2.14/README.md) and
-[bug triage table](../../releases/v0.2.14/bugs.md). Maintenance maintains these
-while releasing. The existing JSON remains the final acceptance record.
-No individual bug is closed or broadly deferred by the permission to cut.
+Six mailed items were taken on resume and join the 20 already in `intake/`;
+none is decided yet. The first decisions to put to the owner, in order:
 
-On a later explicit return to project-management, resume the remaining 20
-intake decisions and cross-workstream coordination. Legacy branch migration
-before RC0 remains project-management's coordination responsibility. The V1
-functionality/WOW discussion, operational objectives and resource ownership
-remain queued. No transcript/session record was requested.
+1. The 0.2.15 plan (`2026-09-25-maintenance-0215-plan.md`): register the
+   release, its driver and the week horizon; rule on the IDE-surface wish
+   against "no new features"; sequence the cleanup candidates.
+2. Release notes as a release artifact
+   (`2026-09-26-maintenance-release-notes-artifact.md`): adopt into the
+   runbook and the 0.2.15 plan or not.
+3. The mycodespace design note and checkout-naming default
+   (`2026-09-25-maintenance-mycodespace-and-checkout-naming.md`).
+4. The V1 gate on legacy launch capabilities
+   (`2026-09-22-maintenance-v1-legacy-launch-capabilities.md`): acknowledge
+   into the V1 scope ledger.
+5. The two branch-migration items from 2026-09-22 are overtaken by the
+   migration `main` carried on 2026-09-25; decide them as acknowledged with
+   the remaining cleanup named.
+
+Then the 20 older intake items, oldest first, and the queued V1
+functionality/WOW discussion. Legacy branch migration is done for the active
+workstreams; `eclipse-surface` has no branch yet.
+
+The previous planned next step, the handoff of the 0.2.14 cut to maintenance,
+completed: PR #131 was the baseline, maintenance cut and published 0.2.14.
 
 ## Validation And External State
 
@@ -142,7 +154,7 @@ submodules were changed.
   with the evidenced outcome rule and clarify selective-delivery routing.
 - Preserved: 20 undecided intake items; prior blog decisions and review; V1 scope
   proposals; component-upgrade operations; resource ownership and cleanup decisions.
-- Branch rename and retired-outbox reconciliation remain queued. Inspect unlanded
+- Branch rename and retired-outbox cleanup were done by maintenance on `main` (2026-09-25); the two 2026-09-22 migration intake items await their closing decision. Inspect unlanded
   records before any deletion; no old branch was deleted.
 - Historic host settings remain on `project-management/local-host-settings-20260915`;
   do not restore them over a newer lock without review. No restoration requested.
