@@ -327,7 +327,7 @@ def test_realize_environment_rejects_manual_alternative_published_base(
         local_base=(alternative, f"sha256:{'c' * 64}"),
     )
 
-    with pytest.raises(CliError, match="not the lock-recommended digest"):
+    with pytest.raises(CliError, match="no longer the project's recommendation"):
         realize_environment(selected, obtain_image=Mock())
 
 

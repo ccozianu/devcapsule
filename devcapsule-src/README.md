@@ -752,7 +752,16 @@ reauthorization; a committed project change never grants access by itself.
 
 `base-image` authorizes one immutable published digest after the developer
 reviews its available checksum and scan evidence. It never trusts a mutable
-tag, repository, organization, publisher, or future digest. `docker-daemon
+tag, repository, organization, publisher, or future digest. The prompt and
+`config show` name the base by its contract, `<family>@<recipe>` such as
+`ubuntu-24.04@9`, which the lock records beside the digest; the release that
+built the image follows as provenance with a permalink to the recipe at that
+tag, and `config show` lists which locked components are validated for the
+base and why. Consent binds to the image: a lock that changes around an
+unchanged base, a component version bump for instance, keeps the consent,
+and only a moved recommendation asks again. Within a family a newer recipe
+only adds services, so a component validated on an older recipe runs on a
+newer one; a new family is an incompatible change and inherits no validation. `docker-daemon
 host-socket` exposes the host Docker control socket, effectively granting the
 container control over the host daemon. `network host` shares the host network
 namespace instead of the default Docker bridge. `development-sudo true`
@@ -782,7 +791,8 @@ devcapsule project run
 This is a developer-owned override, not a new project recommendation. At
 authorization time DevCapsule inspects the local image, validates its managed
 base metadata and platform, and records both the supplied name and immutable
-Docker image ID against the current lock. Resolve and run inspect it again;
+Docker image ID; the selection stays valid across lock changes, being bound
+to the image. Resolve and run inspect it again;
 removing or retagging the name fails instead of pulling or silently running a
 different image. Reauthorize after deliberately rebuilding the tag.
 `config list` reports this state as `authorized-local`, while

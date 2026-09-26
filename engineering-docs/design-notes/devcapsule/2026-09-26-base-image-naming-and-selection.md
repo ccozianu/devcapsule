@@ -153,33 +153,42 @@ needing a release of the tool.
 `devcapsule-base:ubuntu-24.04-r9-20260914`, with the digest as the pin.
 Tags named after tool releases, `v0.2.12`, `v0.2.12-rc5`, stop being minted.
 
-## 6. Migration
+## 6. Implemented on 2026-09-26, maintenance branch
 
-- Add `BaseContract` and `BaseImage` to `base_image.py`; the recipe
-  constants already define the contract. `from_labels` reads the labels the
-  build already writes.
-- Give the three matrix pins their contracts: v0.2.8 is `ubuntu-24.04@5`,
-  v0.2.10 is `ubuntu-24.04@6`, the 0.2.12 base is `ubuntu-24.04@9`, from
-  the recipe versions recorded in their comments. Verified edges are
-  unchanged.
-- Lock: write `contract` and `built-by`; read `build-mnemonic` as `built-by`
-  for existing locks. This is a lock change, so each project's next
-  regeneration re-asks base consent once. With consent rebound to the
-  `BaseImage`, it is the last cosmetic re-consent there will be.
-- Display and diagnostics read the contract identity; provenance is shown
-  after it, never instead of it.
-- Version sets admit the base as a member in a later slice; nothing above
-  depends on it.
+The owner asked for the design as a pull request the same day. What landed:
 
-The four options of the earlier draft map onto this: A is the interim if
-the contract work waits (derive the display name from the matrix by
-reference); B is subsumed; C is this note done properly; D is section 5's
-first paragraph.
+- `devcapsule/base_contract.py`: `BaseContract`, `Provenance`, `BaseImage`
+  with `accepts` (the compatibility rule), `extends` (the additive rule a
+  maintainer must keep) and `from_labels`.
+- The recipe declares its contract (`current_contract`) and labels the
+  services it satisfies (`devcapsule.base.services`), so every image built
+  from now on carries its whole contract.
+- The matrix pins carry their recipe versions, 5, 6 and 9, read from their
+  recorded history; the lock's `[base]` table gains `contract =
+  "ubuntu-24.04@9"`; `build-mnemonic` stays as provenance; the matrix
+  advanced to `embedded-21`. A test asserts the additive rule across the
+  pins of each family.
+- Consent binds to the image. A lock that changes around an unchanged base
+  keeps its consent; a published digest the lock no longer recommends is
+  reported as superseded with the current recommendation named; a local
+  selection stays bound to its image ID. The configuration core reads the
+  contract from the lock and imports nothing from the matrix, keeping the
+  architecture rule that the core depends on no adapter.
+- The consent prompt reads "Execute base ubuntu-24.04@9 at <digest>, built
+  by v0.2.12-rc5; recipe source: <permalink to the recipe at that tag>";
+  `config show` adds a Base block with the full contract, the provenance,
+  and a compatibility report naming the rule and each locked component's
+  validation evidence.
 
-## 7. Asked of the owner
+Existing checkouts are not re-asked: the repository's own lock changed by
+the matrix version and the contract line, and consent no longer looks at
+the lock. The four options of the first draft dissolved into this: the
+name is the contract, the builder is provenance.
 
-1. Adopt the contract naming, `<family>@<recipe>`, as the base's identity,
-   with provenance kept out of the name.
-2. Approve rebinding base consent to the `BaseImage`.
-3. Decide whether the version-set membership of the base comes with the
-   contract work or waits for the first newer published build.
+## 7. Still open
+
+1. The base as a version-set member (`versions preview base …`), so a
+   newer compatible build is adoptable per checkout; waits for the first
+   published build newer than the pinned one.
+2. Registry tags by contract and date (`ubuntu-24.04-r9-20260914`) for the
+   next published base.

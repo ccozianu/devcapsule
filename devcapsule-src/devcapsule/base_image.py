@@ -9,6 +9,13 @@ from pathlib import Path
 import urllib.error
 import urllib.request
 
+from devcapsule.base_contract import (
+    CONTAINED_DISPLAY,
+    HOST_X11_ONLY_DISPLAY,
+    LAUNCHER_SUPPLIED_RUNTIME,
+    SERVICES_LABEL,
+    BaseContract,
+)
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 from devcapsule.compat import CliError
 from devcapsule.launch.pycharm._image_build import BASE_APT_PACKAGES
@@ -51,6 +58,9 @@ PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 # label the launcher reads to select the contained transport; recipe 9 adds
 # the tint2 panel so a hidden window is always one click away.
 BASE_RECIPE_VERSION = "9"
+# The capabilities a base satisfies by itself; components fill the rest.
+# Adding to this set keeps the family; removing from it opens a new one.
+BASE_SERVICES = frozenset({"python", "docker-cli", "node", "java", "maven", "postgresql-client"})
 DEFAULT_BASE_RECIPE = "ubuntu-24.04"
 NVIDIA_CUDA_BASE_RECIPE = "nvidia-cuda-devel"
 BASE_RECIPE_NAMES = (DEFAULT_BASE_RECIPE, NVIDIA_CUDA_BASE_RECIPE)
@@ -81,6 +91,17 @@ class BaseImageRecipe:
     default_root_image: str
     status: str
     labels: tuple[tuple[str, str], ...] = ()
+
+
+def current_contract(recipe_name: str = DEFAULT_BASE_RECIPE, *, install_display: bool = True) -> BaseContract:
+    """The contract a base built from this recipe today would carry."""
+    return BaseContract(
+        family=recipe_name,
+        recipe=int(BASE_RECIPE_VERSION),
+        services=BASE_SERVICES,
+        display=CONTAINED_DISPLAY if install_display else HOST_X11_ONLY_DISPLAY,
+        runtime=LAUNCHER_SUPPLIED_RUNTIME,
+    )
 
 
 BASE_IMAGE_RECIPES = {
@@ -230,6 +251,7 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.base.recipe-version", BASE_RECIPE_VERSION),
                     ("devcapsule.base.recipe-status", recipe.status),
                     ("devcapsule.base.runtime", "launcher-supplied"),
+                    (SERVICES_LABEL, ",".join(sorted(BASE_SERVICES))),
                 )
                 + (
                     ((DISPLAY_LABEL, CONTAINED_DISPLAY_LABEL_VALUE),)
