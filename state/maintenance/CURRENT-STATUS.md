@@ -61,6 +61,10 @@ legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
 
+The base-contract slice is on this branch for the owner's PR. Next after the
+merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
+owner approves it, and the 0.2.15 sequencing from project-management.
+
 Post-release, on `ws-maintenance/post-0.2.14`: deliver the registry rows,
 the version reopening and the close-out records to `main` by PR; then the
 cleanup slices the owner approves from the 0.2.15 plan: the named
@@ -242,6 +246,21 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Base contract slice (2026-09-26, owner-directed, from the design note): new
+`base_contract` module (`BaseContract`, `Provenance`, `BaseImage`), the
+recipe declares and labels its contract, matrix pins carry recipe versions
+5, 6, 9 and write `contract` into locks, matrix advanced to `embedded-21`,
+consent bound to the image, the prompt and `config show` name the base by
+contract with provenance and a recipe permalink, and `show` adds a
+compatibility report from the matrix's verified edges. The configuration
+core reads the contract from the lock and keeps its no-adapter rule. This
+repository's lock regenerated to exactly the three expected lines. Golden
+locks updated. Tests: 8 new contract tests; 3 tests rewritten from the
+lock-digest rule to the image rule; full `nox -s build` passed with 1073
+tests, mypy over 166 files, PEX smokes and nine packaged integrations (exit
+read directly; log `/opt/devcapsule-gate/base-contract-build.log`). Prompt
+and Base block rendered on a scratch copy and read by eye.
 
 Host Docker cleanup (2026-09-25, owner: "run freely"): 98 DevCapsule-related
 images at 288.9 GB total store. Removed the exited recursive-run containers,
