@@ -22,8 +22,11 @@ the first implementation.
   do not send workflow mail: the experiment must leave the project's live
   coordination untouched. Record this as the experiment's declared
   exception in your own status notes on the branch.
-- Deliver a pull request against `main` from that branch. The owner
-  reviews; the pull request is not merged.
+- Deliver a pull request from that branch against `release-0.2.14`, the
+  retained release branch whose head is the tag's commit, not against
+  `main`: `main` keeps moving, and a diff against it would mix the
+  experiment's work with everything that landed since. The owner reviews;
+  the pull request is not merged.
 
 ## The problem, in the owner's words
 
