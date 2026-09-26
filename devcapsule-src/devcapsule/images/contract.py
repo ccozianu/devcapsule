@@ -24,7 +24,10 @@ from dataclasses import dataclass
 from typing import Mapping
 
 REPOSITORY = "https://github.com/ccozianu/devcapsule"
-RECIPE_SOURCE_PATH = "devcapsule-src/devcapsule/base_image.py"
+# Where the recipe lives now, written into new images as a label, and where
+# it lived for every image built before the move of 2026-09-26.
+RECIPE_SOURCE_PATH = "devcapsule-src/devcapsule/images/base.py"
+LEGACY_RECIPE_SOURCE_PATH = "devcapsule-src/devcapsule/base_image.py"
 
 FAMILY_LABEL = "devcapsule.base.recipe"
 RECIPE_VERSION_LABEL = "devcapsule.base.recipe-version"
@@ -33,6 +36,7 @@ DISPLAY_LABEL = "devcapsule.base.display"
 RUNTIME_LABEL = "devcapsule.base.runtime"
 BUILDER_LABEL = "org.opencontainers.image.version"
 SOURCE_REVISION_LABEL = "devcapsule.source.revision"
+RECIPE_SOURCE_LABEL = "devcapsule.base.recipe-source"
 
 CONTAINED_DISPLAY = "contained"
 HOST_X11_ONLY_DISPLAY = "host-x11-only"
@@ -91,6 +95,8 @@ class Provenance:
     builder: str
     """The release mnemonic of the executable that built the image, e.g. ``v0.2.12-rc5``."""
     source_revision: str | None = None
+    recipe_path: str = LEGACY_RECIPE_SOURCE_PATH
+    """Where the recipe lived in the builder's source; new images label it."""
 
     @property
     def recipe_url(self) -> str:
@@ -100,7 +106,7 @@ class Provenance:
         alone locates the text; a recorded revision is more exact when known.
         """
         ref = self.source_revision or self.builder
-        return f"{REPOSITORY}/blob/{ref}/{RECIPE_SOURCE_PATH}"
+        return f"{REPOSITORY}/blob/{ref}/{self.recipe_path}"
 
     def describe(self) -> str:
         return f"built by {self.builder}; recipe source: {self.recipe_url}"
@@ -151,5 +157,6 @@ class BaseImage:
             built=Provenance(
                 builder=labels.get(BUILDER_LABEL, "unknown"),
                 source_revision=labels.get(SOURCE_REVISION_LABEL),
+                recipe_path=labels.get(RECIPE_SOURCE_LABEL, LEGACY_RECIPE_SOURCE_PATH),
             ),
         )

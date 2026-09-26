@@ -11,7 +11,7 @@ source.
 
 A base image is a prebuilt OCI image that every capsule image names in its
 `FROM` line. It is built once, by `devcapsule images build --type base`,
-from a recipe in `devcapsule/base_image.py`, and it contains no DevCapsule
+from a recipe in `devcapsule/images/base.py` (`devcapsule/base_image.py` until 2026-09-26), and it contains no DevCapsule
 runtime: the launcher copies its own executable into the capsule image at
 launch (D-0009). The consumer of a base is a formation, the capsule image
 built on top of it, and the components validated to run there.
@@ -157,7 +157,7 @@ Tags named after tool releases, `v0.2.12`, `v0.2.12-rc5`, stop being minted.
 
 The owner asked for the design as a pull request the same day. What landed:
 
-- `devcapsule/base_contract.py`: `BaseContract`, `Provenance`, `BaseImage`
+- `devcapsule/images/contract.py`: `BaseContract`, `Provenance`, `BaseImage`
   with `accepts` (the compatibility rule), `extends` (the additive rule a
   maintainer must keep) and `from_labels`.
 - The recipe declares its contract (`current_contract`) and labels the
@@ -174,6 +174,12 @@ The owner asked for the design as a pull request the same day. What landed:
   selection stays bound to its image ID. The configuration core reads the
   contract from the lock and imports nothing from the matrix, keeping the
   architecture rule that the core depends on no adapter.
+- Layout: the recipe, the contract, the build plans, the image metadata and
+  the toolchain pins moved from the crowded root package into
+  `devcapsule/images/` (`base`, `contract`, `build`, `metadata`, `tooling`).
+  The recipe's path is provenance too: new images label it
+  (`devcapsule.base.recipe-source`), and permalinks for images built before
+  the move keep pointing at the old file.
 - The consent prompt reads "Execute base ubuntu-24.04@9 at <digest>, built
   by v0.2.12-rc5; recipe source: <permalink to the recipe at that tag>";
   `config show` adds a Base block with the full contract, the provenance,

@@ -29,7 +29,7 @@ from devcapsule.components.catalog import (
 )
 from devcapsule.components import LockedArtifactDeclaration
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
-from devcapsule.image_build import (
+from devcapsule.images.build import (
     CommandComponent,
     ContributionComponent,
     DirectoryComponent,
@@ -42,7 +42,7 @@ from devcapsule.image_build import (
     normalize_archive_directory,
     shell_quote,
 )
-from devcapsule.image_metadata import (
+from devcapsule.images.metadata import (
     BASE_KIND,
     CANONICAL_NAME_LABEL,
     IMAGE_KIND_LABEL,

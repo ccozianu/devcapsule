@@ -426,16 +426,16 @@ a capsule can bring its own desktop instead of borrowing the host's X session
 
 The repository-owned Python build plan is the inspectable source of truth:
 
-- [`devcapsule/base_image.py`](devcapsule/base_image.py) defines the curated
+- [`devcapsule/images/base.py`](devcapsule/images/base.py) defines the curated
   `ubuntu-24.04` and WIP `nvidia-cuda-devel` recipes, root images, managed-image
   labels, and independent tool-installation contributions.
 - [`devcapsule/launch/pycharm/_image_build.py`](devcapsule/launch/pycharm/_image_build.py)
   currently owns `BASE_APT_PACKAGES`, the exact Ubuntu package list shared by
   the Python-owned base planner. Despite that transitional module location,
   the base remains JetBrains-free.
-- [`devcapsule/image_tooling.py`](devcapsule/image_tooling.py) pins and verifies
+- [`devcapsule/images/tooling.py`](devcapsule/images/tooling.py) pins and verifies
   Node.js/npm, Eclipse Temurin, and Apache Maven for each supported architecture.
-- [`devcapsule/image_build.py`](devcapsule/image_build.py) shows how those
+- [`devcapsule/images/build.py`](devcapsule/images/build.py) shows how those
   components become the generated Dockerfile/build context and are executed
   through Docker buildx.
 - [`devcapsule/container_runtime/`](devcapsule/container_runtime/) is the

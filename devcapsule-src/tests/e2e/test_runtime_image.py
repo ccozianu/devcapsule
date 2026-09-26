@@ -17,10 +17,10 @@ import uuid
 
 import pytest
 
-from devcapsule.base_image import BaseImageBuildOptions, build_base_image_spec, file_sha256
+from devcapsule.images.base import BaseImageBuildOptions, build_base_image_spec, file_sha256
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.container_runtime.contract import DisplayPlan, Identity, RuntimePlan
-from devcapsule.image_build import render_build_context
+from devcapsule.images.build import render_build_context
 from devcapsule.materialization import ArtifactSpec, ImageDetails, ensure_materialized_surface
 
 DEFAULT_BASE_IMAGE = str(tomllib.loads(

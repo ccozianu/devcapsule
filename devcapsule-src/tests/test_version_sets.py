@@ -175,7 +175,7 @@ def journey(tmp_path, monkeypatch, request):
     monkeypatch.setattr("devcapsule.environment_realization.required_local_image", require)
     monkeypatch.setattr("devcapsule.environment_realization.optional_local_image", images.get)
     monkeypatch.setattr("devcapsule.environment_realization.component_formations", lambda _: ())
-    monkeypatch.setattr("devcapsule.image_build.BuildxImageBuilder.build", build)
+    monkeypatch.setattr("devcapsule.images.build.BuildxImageBuilder.build", build)
     def launch(options):
         state.launched.append((options, json.loads(images[options.image].labels["devcapsule.materialization.descriptor"])))
         if state.during_run:

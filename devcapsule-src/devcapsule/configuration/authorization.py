@@ -6,7 +6,7 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
-from devcapsule.base_contract import Provenance
+from devcapsule.images.contract import Provenance
 from devcapsule.components.catalog import COMPONENTS
 
 from .documents import AuthorizationScalar, ProjectConfigurationError, canonical_digest

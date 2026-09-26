@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
-from devcapsule.base_contract import (
+from devcapsule.images.contract import (
     CONTAINED_DISPLAY,
     EMBEDDED_RUNTIME,
     HOST_X11_ONLY_DISPLAY,

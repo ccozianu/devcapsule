@@ -9,17 +9,19 @@ from pathlib import Path
 import urllib.error
 import urllib.request
 
-from devcapsule.base_contract import (
+from devcapsule.images.contract import (
     CONTAINED_DISPLAY,
     HOST_X11_ONLY_DISPLAY,
     LAUNCHER_SUPPLIED_RUNTIME,
+    RECIPE_SOURCE_LABEL,
+    RECIPE_SOURCE_PATH,
     SERVICES_LABEL,
     BaseContract,
 )
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 from devcapsule.compat import CliError
 from devcapsule.launch.pycharm._image_build import BASE_APT_PACKAGES
-from devcapsule.image_build import (
+from devcapsule.images.build import (
     AptPackagesComponent,
     BaseImageComponent,
     BuildComponent,
@@ -30,7 +32,7 @@ from devcapsule.image_build import (
     ImageBuildSpec,
     LabelComponent,
 )
-from devcapsule.image_tooling import (
+from devcapsule.images.tooling import (
     MAVEN_CURRENT,
     MAVEN_CURRENT_BIN,
     MAVEN_VERSION,
@@ -42,7 +44,7 @@ from devcapsule.image_tooling import (
     node_tooling_component,
     temurin_tooling_component,
 )
-from devcapsule.image_metadata import (
+from devcapsule.images.metadata import (
     BASE_KIND,
     CONTAINED_DISPLAY_LABEL_VALUE,
     DISPLAY_LABEL,
@@ -252,6 +254,7 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     ("devcapsule.base.recipe-status", recipe.status),
                     ("devcapsule.base.runtime", "launcher-supplied"),
                     (SERVICES_LABEL, ",".join(sorted(BASE_SERVICES))),
+                    (RECIPE_SOURCE_LABEL, RECIPE_SOURCE_PATH),
                 )
                 + (
                     ((DISPLAY_LABEL, CONTAINED_DISPLAY_LABEL_VALUE),)

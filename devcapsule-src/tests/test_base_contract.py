@@ -8,17 +8,19 @@ from pathlib import Path
 
 import pytest
 
-from devcapsule.base_contract import (
+from devcapsule.images.contract import (
     BaseContract,
     BaseImage,
     CONTAINED_DISPLAY,
     HOST_X11_ONLY_DISPLAY,
     LAUNCHER_SUPPLIED_RUNTIME,
+    LEGACY_RECIPE_SOURCE_PATH,
+    RECIPE_SOURCE_LABEL,
     RECIPE_SOURCE_PATH,
     REPOSITORY,
     SERVICES_LABEL,
 )
-from devcapsule.base_image import BASE_RECIPE_VERSION, BASE_SERVICES, current_contract
+from devcapsule.images.base import BASE_RECIPE_VERSION, BASE_SERVICES, current_contract
 from devcapsule.configuration.authorization import authorization_declarations
 from devcapsule.resolution_matrix import MATRICES, compatibility_report, known_base_image
 
@@ -78,14 +80,16 @@ def test_image_is_reconstructed_from_its_labels() -> None:
         SERVICES_LABEL: "docker-cli,java,maven,node,postgresql-client,python",
         "org.opencontainers.image.version": "v0.2.14-rc2",
         "devcapsule.source.revision": "8d005b38af9777b7e3314bf3e2910314effef4d2",
+        RECIPE_SOURCE_LABEL: RECIPE_SOURCE_PATH,
     }
     image = BaseImage.from_labels("sha256:64c8db54", labels)
     assert image.contract.identity == "ubuntu-24.04@9"
     assert "postgresql-client" in image.contract.services
     assert image.built.builder == "v0.2.14-rc2"
     assert image.built.recipe_url == f"{REPOSITORY}/blob/8d005b38af9777b7e3314bf3e2910314effef4d2/{RECIPE_SOURCE_PATH}"
-    older = BaseImage.from_labels("sha256:old", {k: v for k, v in labels.items() if k != SERVICES_LABEL}, services=frozenset({"python"}))
+    older = BaseImage.from_labels("sha256:old", {k: v for k, v in labels.items() if k not in (SERVICES_LABEL, RECIPE_SOURCE_LABEL)}, services=frozenset({"python"}))
     assert older.contract.services == frozenset({"python"}), "pre-services images take the caller's knowledge"
+    assert older.built.recipe_path == LEGACY_RECIPE_SOURCE_PATH, "an image built before the move points at the old recipe file"
     with pytest.raises(ValueError):
         BaseImage.from_labels("sha256:none", {})
 
@@ -96,7 +100,7 @@ def test_consent_names_the_contract_and_the_recipe_source() -> None:
     declaration = authorization_declarations(manifest, lock)["base-image"]
     assert declaration.description.startswith("Execute base ubuntu-24.04@9 at docker.io/")
     assert "built by v0.2.12-rc5" in declaration.description
-    assert f"{REPOSITORY}/blob/v0.2.12-rc5/{RECIPE_SOURCE_PATH}" in declaration.description
+    assert f"{REPOSITORY}/blob/v0.2.12-rc5/{LEGACY_RECIPE_SOURCE_PATH}" in declaration.description
     assert declaration.display_value is not None and declaration.display_value.startswith("ubuntu-24.04@9 — ")
 
 
