@@ -32,6 +32,8 @@ declaration through :attr:`ConfigurationNode.declaration`.
 
 from __future__ import annotations
 
+import difflib
+
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
@@ -114,9 +116,14 @@ class NodeRegistry:
         found = self._nodes.get(name)
         if found is None:
             available = ", ".join(self.names()) or "none"
+            # A near miss is almost always a typo of the declared name:
+            # 'docker' for 'docker-daemon' cost the owner a whole first
+            # session on 2026-09-26. Say the likely name before the list.
+            close = difflib.get_close_matches(name, self.names(), n=1, cutoff=0.6)
+            hint = f" Did you mean {close[0]!r}?" if close else ""
             raise ProjectConfigurationError(
-                f"Configuration node {name!r} is not declared by this project and lock; "
-                f"declared nodes: {available}."
+                f"Configuration node {name!r} is not declared by this project and lock;"
+                f"{hint} declared nodes: {available}."
             )
         return found
 
