@@ -24,7 +24,7 @@ Driver: **maintenance**. Product owner: Costin Cozianu.
 - Release branch `release-0.2.15` at `abb785d` (`v0.2.14`), fix `9a0567c`,
   version `c601fb8`.
 - Candidate gate: exception record `../v0.2.15-rc0-integration-exception.json`.
-- [ ] Full local gate on the release branch.
+- [x] Full local gate on the release branch at `4f28a12`: 1068 passed, 20 deselected, 1 xfailed, 1 xpassed; mypy clean on 169 files; exact-revision PEX built and nine packaged checks passed (2026-09-26).
 - [ ] Tag `v0.2.15-rc0`, backend publication, downloaded assets verified.
 - [ ] Owner acceptance: the failing `project init` command line of 2026-09-26
   rerun on a fresh directory with the downloaded candidate, first with the
