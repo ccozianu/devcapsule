@@ -91,6 +91,7 @@ from devcapsule.recursive_successor import (
     inspect_successor,
     launch_successor,
 )
+from devcapsule.resolution_matrix import compatibility_report, known_base_image
 from devcapsule.configuration.authorization import (
     AuthorizationChoice,
     AuthorizationDeclaration,
@@ -332,6 +333,21 @@ class ConfigurationListing:
     resolution_path: Path
     resolution_row: ConfigurationListRow
 
+    def render_base(self) -> str:
+        """Name the base by its contract, say who built it and where the recipe
+        is, and say which locked components are validated for it and why."""
+        reference = self.lock.get("base", {}).get("reference")
+        image = known_base_image(str(reference)) if reference else None
+        lines = ["Base:"]
+        if image is None:
+            lines.append(f"  {reference}: not pinned by this DevCapsule's matrix.")
+        else:
+            lines.append(f"  {image.contract.describe()}")
+            lines.append(f"  at {image.reference}")
+            lines.append(f"  {image.built.describe()}")
+        lines.extend(f"  {line}" for line in compatibility_report(self.lock))
+        return "\n".join(lines)
+
     def render_sources(self) -> str:
         """Name every document behind the listing and whether the generated
         resolution still reflects it. The tokens match the SOURCE column."""
@@ -434,6 +450,8 @@ class ConfigShowCommand(Command):
         resolution = f"stale: {row.value}" if row.status == "stale" else row.status
         print("")
         print(listing.render_sources())
+        print("")
+        print(listing.render_base())
         print("")
         print(review_configuration(listing.manifest, listing.lock, listing.checkout).render(
             listing.root, resolution=resolution))
@@ -676,8 +694,8 @@ class ConfigAuthorizeCommand(Command):
         print(f"Recommendation digest: {declaration.recommendation_digest}")
         print(f"Checkout input: {input_path}")
         print(
-            "This authorization applies only to the exact recorded value, image identity when "
-            "local, and current lock."
+            "This authorization applies to the exact recorded image, by digest or by local image "
+            "identity, and stays valid while the lock recommends that image."
         )
         print("Run 'devcapsule project config resolve' before materialization or launch.")
         return 0

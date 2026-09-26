@@ -25,6 +25,7 @@ from devcapsule.environment_realization import realize_environment
 from devcapsule.materialization import ImageDetails
 from devcapsule.configuration.authorization import (
     AuthorizationChoice,
+    base_recovery_choices,
     authorization_declarations,
     resolved_checkout_authorizations,
     review_authorizations,
@@ -221,10 +222,12 @@ def test_host_answer_state_table_and_executable_choices(checkout, name, allow, d
     ("broken", "invalid", ("default",)),
     ({}, "invalid", ("default",)),
     ({"reference": OLD_BASE, "lock-digest": canonical_digest(OLD_LOCK)}, "authorized", ()),
-    ({"reference": OLD_BASE, "lock-digest": "old"}, "stale", ("default",)),
-    ({"reference": NEW_BASE, "lock-digest": canonical_digest(OLD_LOCK)}, "invalid", ("default",)),
+    # Consent binds to the image: a lock that changed around the same base keeps it.
+    ({"reference": OLD_BASE, "lock-digest": "old"}, "authorized", ()),
+    # A published digest the lock does not recommend is superseded, whatever the digest says.
+    ({"reference": NEW_BASE, "lock-digest": canonical_digest(OLD_LOCK)}, "stale", ("default",)),
     ({"reference": "local/base:tag", "image-id": LOCAL_ID, "lock-digest": canonical_digest(OLD_LOCK)}, "authorized-local", ()),
-    ({"reference": "local/base:tag", "image-id": LOCAL_ID, "lock-digest": "old"}, "stale", ("default", LOCAL_ID)),
+    ({"reference": "local/base:tag", "image-id": LOCAL_ID, "lock-digest": "old"}, "authorized-local", ()),
     ({"reference": "local/base:tag", "image-id": "malformed", "lock-digest": canonical_digest(OLD_LOCK)}, "invalid", ("default",)),
     ({"reference": OLD_BASE, "image-id": LOCAL_ID, "lock-digest": canonical_digest(OLD_LOCK)}, "invalid", ("default", LOCAL_ID)),
 ])
@@ -241,13 +244,19 @@ def test_base_state_table(checkout, record, status, choice_values):
 
 def test_local_base_recovery_keeps_immutable_identity_not_mutable_tag(checkout, monkeypatch):
     project, record, _ = checkout
+    # A local selection is bound to its image ID, so a lock change around it
+    # is not a reason to ask again ...
     replace_answers(project, record, {"base-image": {"reference": "local/base:moved", "image-id": LOCAL_ID, "lock-digest": "old"}})
     item = next(r for r in review(project, record).authorizations if r.name == "base-image")
+    assert item.status == "authorized-local" and item.choices == ()
+    # ... and when recovery is offered, it names the immutable ID, never the tag.
+    choices = base_recovery_choices({"reference": "local/base:moved", "image-id": LOCAL_ID})
+    assert [choice.value for choice in choices] == ["default", LOCAL_ID]
     obtain = Mock(return_value=ImageDetails(LOCAL_ID, LOCAL_ID, {
         "devcapsule.image.managed": "true", "devcapsule.metadata.version": "1", "devcapsule.image.kind": "base",
     }, "linux", "amd64"))
     monkeypatch.setattr("devcapsule.commands.project.required_local_image", obtain)
-    assert cli.main(shlex.split(item.choices[1].command(project))[1:]) == 0
+    assert cli.main(shlex.split(choices[1].command(project))[1:]) == 0
     obtain.assert_called_once_with(LOCAL_ID)
     saved = load_toml(record)["authorization"]["base-image"]
     assert saved["reference"] == saved["image-id"] == LOCAL_ID
@@ -417,7 +426,8 @@ def test_local_recovery_refusal_preserves_the_record(checkout, monkeypatch):
     }})
     before = record.read_bytes(), resolution.read_bytes()
     monkeypatch.setattr("devcapsule.commands.project.required_local_image", Mock(side_effect=CliError("image is absent")))
-    choice = next(r for r in review(project, record).authorizations if r.name == "base-image").choices[1]
+    # The local selection is not stale, so recovery is the explicit renewal by image ID.
+    choice = base_recovery_choices(load_toml(record)["authorization"]["base-image"])[1]
     assert cli.main(shlex.split(choice.command(project))[1:]) == 2
     assert (record.read_bytes(), resolution.read_bytes()) == before
 

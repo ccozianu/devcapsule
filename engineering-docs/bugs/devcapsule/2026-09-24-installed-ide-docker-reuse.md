@@ -111,3 +111,14 @@ placement with the owner before coding.
 Owner ruling: reuse of installed IDE and other component layers across
 formations is substantial work and is presumed outside the 0.2.14 release
 cycle; keep it in attention with the rc3 measurements above as the case.
+
+## Addendum, 2026-09-25: the other half is reaping
+
+The host cleanup after 0.2.14 found 39 superseded PyCharm formations and
+15 Codium formations retained at up to 7 GB each, and a BuildKit cache of
+645.9 GB in 2561 entries, one copy of the IDE tree per formation build.
+The named-build-context fix stops the transfer; a reaping policy for
+superseded canonical formations and their cache entries, keeping the
+newest per surface and anything a container uses, is the other half, and
+the launcher already prints that it does not reap. Both belong to this
+record's design review.

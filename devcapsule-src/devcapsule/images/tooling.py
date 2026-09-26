@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from devcapsule.image_build import ExecComponent
+from devcapsule.images.build import ExecComponent
 
 NODE_VERSION = "v22.23.1"
 NODE_CURRENT_BIN = "/opt/node/current/bin"

@@ -6,6 +6,7 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+from devcapsule.images.contract import Provenance
 from devcapsule.components.catalog import COMPONENTS
 
 from .documents import AuthorizationScalar, ProjectConfigurationError, canonical_digest
@@ -183,19 +184,33 @@ def authorization_declarations(
     if "base" in lock:
         reference = locked_base_reference(lock)
         build_mnemonic = locked_base_build_mnemonic(lock)
-        display_value = (
-            f"{build_mnemonic} — {reference}" if build_mnemonic is not None else None
-        )
+        contract_identity = locked_base_contract(lock)
+        # What the user approves is the image under its contract, as the lock
+        # states it; who built it is provenance and follows, with a permalink
+        # to the recipe. Locks written before contracts were recorded fall
+        # back to the builder's name, which is all they carry.
+        provenance = Provenance(builder=build_mnemonic) if build_mnemonic is not None else None
+        if contract_identity is not None:
+            description = (
+                f"Execute base {contract_identity} at {reference}"
+                + (f", {provenance.describe()}" if provenance is not None else "")
+                + "."
+            )
+            display_value: str | None = f"{contract_identity} — {reference}"
+        else:
+            description = (
+                f"Execute the base at {reference}, selected by the platform lock"
+                + (f", {provenance.describe()}" if provenance is not None else "")
+                + "."
+            )
+            display_value = f"{build_mnemonic} — {reference}" if build_mnemonic is not None else None
         declarations["base-image"] = AuthorizationDeclaration(
             name="base-image",
             recommended_value=reference,
+            # Recorded with every answer for older clients; consent itself binds
+            # to the image (reference, or local image ID), not to the lock.
             recommendation_digest=canonical_digest(lock),
-            description=(
-                f"Execute DevCapsule {build_mnemonic} at the exact registry digest selected "
-                "by the platform lock."
-                if build_mnemonic is not None
-                else "Execute the exact registry digest selected by the platform lock."
-            ),
+            description=description,
             display_value=display_value,
         )
 
@@ -349,6 +364,24 @@ def normalize_authorization_value(
     return normalized
 
 
+def _is_superseded_published_selection(
+    record: Mapping[str, Any], declaration: AuthorizationDeclaration
+) -> bool:
+    """A recorded published digest that the lock no longer recommends.
+
+    Consent binds to the image, so a lock that changed around an unchanged
+    base keeps its consent; only a moved recommendation asks again.
+    """
+    reference = record.get("reference")
+    if not isinstance(reference, str) or not reference or record.get("image-id") is not None:
+        return False
+    try:
+        immutable_registry_reference(reference)
+    except ProjectConfigurationError:
+        return False
+    return reference != declaration.recommended_value
+
+
 def base_recovery_choices(record: Mapping[str, Any]) -> tuple[AuthorizationChoice, ...]:
     """Always offer the reviewed pin; renew a local override only by exact ID.
 
@@ -441,13 +474,11 @@ def review_authorizations(
             try:
                 selection = authorized_base_selection(lock, checkout)
             except ProjectConfigurationError as exc:
-                status = "stale" if (
-                    isinstance(record.get("reference"), str) and record["reference"]
-                    and record.get("lock-digest") != declaration.recommendation_digest
-                ) else "invalid"
+                status = "stale" if _is_superseded_published_selection(record, declaration) else "invalid"
                 problem = (
-                    "The recorded base selection was authorized against a different lock. "
-                    "Review the previous selection and current recommendation before choosing."
+                    f"The recorded base {record['reference']} is no longer the project's "
+                    f"recommendation, which is now {declaration.recommended_value}. Review the "
+                    "recommendation before choosing; consent for an unchanged image never expires."
                     if status == "stale" else str(exc)
                 )
             else:
@@ -565,6 +596,24 @@ def locked_base_reference(lock: Mapping[str, Any], *, source: str = "platform lo
         raise ProjectConfigurationError(f"Invalid {source} base.reference {reference!r}: {exc}") from exc
 
 
+BASE_CONTRACT_PATTERN = re.compile(r"^[a-z][a-z0-9.-]*@(?:0|[1-9][0-9]*)$")
+
+
+def locked_base_contract(lock: Mapping[str, Any]) -> str | None:
+    """The base's contract identity, ``<family>@<recipe>``, when the lock records it."""
+    base = lock.get("base")
+    if not isinstance(base, dict):
+        raise ProjectConfigurationError("Platform lock does not define formation base inputs.")
+    value = base.get("contract")
+    if value is None:
+        return None
+    if not isinstance(value, str) or BASE_CONTRACT_PATTERN.fullmatch(value) is None:
+        raise ProjectConfigurationError(
+            "Platform lock base.contract must name a base contract such as 'ubuntu-24.04@9'."
+        )
+    return value
+
+
 def locked_base_build_mnemonic(lock: Mapping[str, Any]) -> str | None:
     base = lock.get("base")
     if not isinstance(base, dict):
@@ -609,15 +658,10 @@ def authorized_base_selection(
         raise ProjectConfigurationError(
             "The checkout's base-image authorization must contain a non-empty reference."
         )
-    authorized_lock = authorization.get("lock-digest")
+    # Consent binds to the image: a lock that changed around the same base
+    # keeps it, and a local selection stays bound to its image ID. The lock
+    # digest is still recorded for older clients and for the resolution.
     expected_lock = canonical_digest(lock)
-    if authorized_lock != expected_lock:
-        choices = base_recovery_choices(authorization)
-        raise ProjectConfigurationError(
-            "The checkout's base-image authorization is stale for the current lock; "
-            f"previous selection: {authorized_reference}; current recommendation: {locked_reference}. "
-            + " ".join(f"{choice.meaning}: {choice.command()}." for choice in choices)
-        )
     local_identity = authorization.get("image-id")
     if authorized_reference == locked_reference:
         if local_identity is not None:
@@ -633,9 +677,12 @@ def authorized_base_selection(
     except ProjectConfigurationError:
         pass
     else:
+        choices = base_recovery_choices(authorization)
         raise ProjectConfigurationError(
-            f"Published base {authorized_reference!r} is not the lock-recommended digest; "
-            "a different published artifact requires distinct project-reviewed metadata."
+            f"The recorded base {authorized_reference} is no longer the project's recommendation, "
+            f"which is now {locked_reference}; a different published digest needs the project's "
+            "reviewed metadata. "
+            + " ".join(f"{choice.meaning}: {choice.command()}." for choice in choices)
         )
     if (
         not isinstance(local_identity, str)

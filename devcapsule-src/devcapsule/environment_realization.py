@@ -10,8 +10,8 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
-from devcapsule.image_build import BuildxImageBuilder, ImageBuildSpec
-from devcapsule.image_metadata import inspect_local_image
+from devcapsule.images.build import BuildxImageBuilder, ImageBuildSpec
+from devcapsule.images.metadata import inspect_local_image
 from devcapsule.materialization import (
     ImageDetails,
     LockedEnvironment,

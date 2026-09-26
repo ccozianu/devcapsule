@@ -14,7 +14,7 @@ import uuid
 import pytest
 
 from devcapsule.environment_realization import optional_local_image
-from devcapsule.image_build import (
+from devcapsule.images.build import (
     BuildxImageBuilder, ContributionComponent, ExecComponent,
     FileComponent, ImageBuildSpec,
 )

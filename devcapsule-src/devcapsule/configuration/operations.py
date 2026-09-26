@@ -781,12 +781,15 @@ def _elicit_acquisitions(
         return _elicit_component_acquisitions(elicitor, declarations, record, settled)
     reference = str(base.recommended_value)
     existing_base = record.authorization.get("base-image")
-    # The saved record's lock binding, rather than equality with today's
-    # recommendation, decides whether a local selection is an existing answer.
+    # Consent binds to the image: the recommended digest, or a local image
+    # by ID, is an existing answer whatever the lock has done around it.
     fresh = (
         isinstance(existing_base, dict)
         and isinstance(existing_base.get("reference"), str)
-        and existing_base.get("lock-digest") == base.recommendation_digest
+        and (
+            existing_base.get("reference") == reference
+            or isinstance(existing_base.get("image-id"), str)
+        )
     )
     existing_answer = (
         "default" if existing_base.get("reference") == reference else existing_base.get("reference")

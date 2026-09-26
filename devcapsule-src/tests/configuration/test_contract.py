@@ -380,6 +380,7 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     assert 'Sources:' in shown and str(record) in shown and str(resolution) in shown
     assert '(as resolved)' in shown and 'changed since the resolution' not in shown
     assert 'Configuration review: ready; the generated resolution is fresh.' in shown
+    assert 'Base:' in shown and 'ubuntu-24.04@' in shown and 'Compatibility:' in shown
     assert 'Nothing to resolve' in shown and 'After settling' not in shown
     # A record edited behind the resolution's back stales the checkout input;
     # `config authorize` would re-resolve, so write the record directly.

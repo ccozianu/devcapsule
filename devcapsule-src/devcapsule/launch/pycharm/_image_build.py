@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from devcapsule.compat import CliError
-from devcapsule.image_build import (
+from devcapsule.images.build import (
     AptPackagesComponent,
     BaseImageComponent,
     BuildComponent,
@@ -23,7 +23,7 @@ from devcapsule.image_build import (
     normalize_pycharm_source,
     resource_to_tempdir,
 )
-from devcapsule.image_tooling import NODE_CURRENT_BIN, node_tooling_component
+from devcapsule.images.tooling import NODE_CURRENT_BIN, node_tooling_component
 
 DEFAULT_BASE_IMAGE = "ubuntu:24.04"
 DEFAULT_IMAGE = "pycharm-isolated:latest"

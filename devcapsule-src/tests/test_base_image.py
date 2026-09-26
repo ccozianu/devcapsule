@@ -9,7 +9,7 @@ from zipfile import ZipFile
 
 import pytest
 
-from devcapsule.base_image import (
+from devcapsule.images.base import (
     NVIDIA_CUDA_ROOT_IMAGE,
     BaseImageBuildOptions,
     build_base_image,
@@ -18,8 +18,8 @@ from devcapsule.base_image import (
 )
 from devcapsule.build_info import BuildInfo
 from devcapsule.compat import CliError
-from devcapsule.image_build import render_build_context
-from devcapsule.image_tooling import MAVEN_VERSION, TEMURIN_VERSION
+from devcapsule.images.build import render_build_context
+from devcapsule.images.tooling import MAVEN_VERSION, TEMURIN_VERSION
 
 
 def pex_fixture(
@@ -242,7 +242,7 @@ def test_public_revision_verification_checks_exact_commit_url(monkeypatch: pytes
     response.status = 200
     response.__enter__.return_value = response
     urlopen = Mock(return_value=response)
-    monkeypatch.setattr("devcapsule.base_image.urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("devcapsule.images.base.urllib.request.urlopen", urlopen)
 
     verify_public_github_revision(info)
 
@@ -264,7 +264,7 @@ def test_public_revision_verification_rejects_missing_commit(monkeypatch: pytest
             info.source_url, 404, "Not Found", hdrs=Message(), fp=None
         )
     )
-    monkeypatch.setattr("devcapsule.base_image.urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("devcapsule.images.base.urllib.request.urlopen", urlopen)
 
     with pytest.raises(CliError, match=r"not publicly reachable.*HTTP 404"):
         verify_public_github_revision(info)

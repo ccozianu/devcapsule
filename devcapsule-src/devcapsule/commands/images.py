@@ -10,7 +10,7 @@ from typing import Mapping
 from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
-from devcapsule.base_image import (
+from devcapsule.images.base import (
     BASE_RECIPE_NAMES,
     BASE_RECIPE_VERSION,
     DEFAULT_BASE_RECIPE,
@@ -22,7 +22,7 @@ from devcapsule.base_image import (
 from devcapsule.commands.framework import Command, Group
 from devcapsule.compat import CliError
 from devcapsule.environment_realization import optional_local_image, realize_environment
-from devcapsule.image_metadata import LocalImageRecord, inspect_local_image, list_local_images
+from devcapsule.images.metadata import LocalImageRecord, inspect_local_image, list_local_images
 from devcapsule.materialization import ImageDetails
 from devcapsule.configuration.execution import (
     fresh_resolved_project,

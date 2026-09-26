@@ -4,15 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.14; owner said release; acceptance record v0.2.14.json prepared; final tag on abb785d follows the record's merge to main, which the gate reads
+State: active 2026-09-26; resumed at the owner's direction for the base-image naming and selection design decision; the close-out PR is merged and main is merged into this branch
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Integration target: `main`
 
 Delivery method: pull request; agent pushes the branch, owner opens and merges on GitHub
 
-Branch association: `release-0.2.14`
+Branch association: `ws-maintenance/post-0.2.14`
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -60,6 +60,25 @@ runtime code changed during those earlier record updates. The subsequent
 legacy-network retirement now includes the command-removal implementation.
 
 ## Planned Next Step
+
+The base-contract slice is on this branch for the owner's PR. Next after the
+merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
+owner approves it, and the 0.2.15 sequencing from project-management.
+
+Post-release, on `ws-maintenance/post-0.2.14`: deliver the registry rows,
+the version reopening and the close-out records to `main` by PR; then the
+cleanup slices the owner approves from the 0.2.15 plan: the named
+build-context fix for the 4.8 GB rebuild transfer, the `v0.2.12` mnemonic
+(option A recommended), and repository hygiene. 0.2.15 registration and
+scope are with project-management.
+
+0.2.14 is published and verified. Remaining for this release: the owner
+pastes the notes block from the release overview into the GitHub release
+body; the release overview and this status are delivered to `main` through
+the ordinary PR; then the branch-name migration deferred through
+publication is coordinated by project-management before substantive
+next-release work, and `main` reopens with the next development version
+per WORKFLOW-LOCAL.md.
 
 The owner said "release 0.2.14" on 2026-09-25. The acceptance record
 `engineering-docs/releases/v0.2.14.json` is generated from the verified rc4
@@ -227,6 +246,89 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Base contract slice (2026-09-26, owner-directed, from the design note): new
+`base_contract` module (`BaseContract`, `Provenance`, `BaseImage`), the
+recipe declares and labels its contract, matrix pins carry recipe versions
+5, 6, 9 and write `contract` into locks, matrix advanced to `embedded-21`,
+consent bound to the image, the prompt and `config show` name the base by
+contract with provenance and a recipe permalink, and `show` adds a
+compatibility report from the matrix's verified edges. The configuration
+core reads the contract from the lock and keeps its no-adapter rule. This
+repository's lock regenerated to exactly the three expected lines. Golden
+locks updated. Tests: 8 new contract tests; 3 tests rewritten from the
+lock-digest rule to the image rule; full `nox -s build` passed with 1073
+tests, mypy over 166 files, PEX smokes and nine packaged integrations (exit
+read directly; log `/opt/devcapsule-gate/base-contract-build.log`). Prompt
+and Base block rendered on a scratch copy and read by eye.
+
+Layout (2026-09-26, owner request): the root package was crowded, so the
+recipe, the contract, the build plans, the image metadata and the toolchain
+pins moved into `devcapsule/images/` as `base`, `contract`, `build`,
+`metadata` and `tooling`; 18 files had their imports rewritten, including
+the monkeypatch targets in tests. The recipe's path is now provenance: new
+images carry `devcapsule.base.recipe-source`, and permalinks for images
+built before the move keep the old file. Full `nox -s build` passed again:
+1073 tests, mypy over 167 files, PEX smokes and nine packaged integrations
+(exit read directly; log `/opt/devcapsule-gate/images-layout-build.log`).
+
+Host Docker cleanup (2026-09-25, owner: "run freely"): 98 DevCapsule-related
+images at 288.9 GB total store. Removed the exited recursive-run containers,
+then 88 tagged images, keeping the two running capsules' images, the newest
+two formations per surface, the published pinned base under both tags, the
+two other matrix-pinned bases and the rc2 local twin; ten remain. Store now
+80.4 GB. The BuildKit cache held 645.9 GB in 2561 entries; entries unused
+for more than seven days were pruned (377.2 GB reclaimed), keeping the
+stages behind this week's builds so component stages stay `CACHED`. 268.7 GB
+of cache from the last week remains; 21 unused local volumes (15 GB) were
+not touched, their owners being unknown.
+
+Post-release close-out (2026-09-25, owner-directed): branch names migrated
+to `ws-<name>/<sub>` by creating the new refs at the old tips and pushing
+them: `ws-project-management/coordination` (was `project-management/coordination`,
+c5a011d), `ws-sample-projects/fastapi-webapp` (was `sample-projects/fastapi-webapp`,
+6a9776c), `ws-contained-display/display-transport` (was
+`contained-display/display-transport`, fa89c53),
+`ws-component-catalog/antigravity-cli` (was `component-catalog/antigravity-cli`,
+85a94d6); `ws-website/initial-cut` already existed and contains
+`website/initial-cut` (0658207). Maintenance left the release ref for
+`ws-maintenance/post-0.2.14`, cut from the release head so the two post-tag
+record commits travel with it. `nox -s bump -- 0.2.15.dev0` reopened `main`'s
+development version in `pyproject.toml`, `WORKFLOW.md` and the packaged
+definition; `.devcapsule/devcapsule.toml`'s `[workflow] version` still reads
+`0.2.14.dev0`, as it did before the release, and the bump does not touch it.
+The registry rows are updated here under the owner's instruction; each
+workstream's own status names its old branch until it next publishes. For a
+checkout on an old name: `git branch -m OLD NEW && git branch -u origin/NEW`.
+Old-name refs were deleted once their `ws-` successors contained them.
+With the owner's confirmation the retired outbox delivery branches and the
+superseded triage branch were deleted too, each with one never-merged record
+commit, noted here for recovery: `component-catalog/outbox` 986136f,
+`component-catalog/outbox-recovered-2026-09-06` 802adaf,
+`sample-projects/outbox` e62d910, `ws-project-management/outbox` 09ac366,
+`ws-website/outbox` 9383efe, `ws-maintenance/triage` f565689; also the
+merged `contained-display/outbox`, `project-management/outbox`,
+`project-management/outbox-pending-2026-08-19`, `ws-maintenance/outbox` and
+`ws-workflow-improvements/nested-cwd-fix`. Remaining non-`ws-` refs are the
+project's own and were not touched. The 0.2.15 plan went to project-management as
+`2026-09-25-maintenance-0215-plan.md` at `354d4c7c2aff`.
+
+Final tag (2026-09-25): PR #141 merged the release branch, fetched main
+`bb3b0aa` carries `engineering-docs/releases/v0.2.14.json`. In a scratch
+worktree at `abb785d`, `scripts/release-protocol.py v0.2.14` passed:
+version `0.2.14`, prerelease false, candidate `v0.2.14-rc4`, integration
+by ancestry, main revision `bb3b0aa`; record at
+`/opt/devcapsule-gate/final-release-protocol.json`. Annotated `v0.2.14`
+tagged on `abb785d`, the accepted candidate's commit, and pushed. A
+detached chain waits for the final assets, verifies them, and runs the
+local proofs with the release version exported. Results: `v0.2.14` public
+at 01:55 UTC as a final release and GitHub Latest; checksum verified, the
+executable reports `0.2.14` at `abb785d`, SHA-256
+`98ff656499208bf2d4bb43adfeeafb34676b91d48adcb8ac6e8ee4e5e5d2c7bf`; the
+manifest names main revision `bb3b0aa` for the acceptance record. Local
+proofs: packaging integration 9 passed, clean-machine passed, component
+cache 5 passed, runtime image on the pinned base passed
+(`/opt/devcapsule-gate/final-proofs.log`).
 
 Release table settled (2026-09-25): the owner deferred five rows as minor,
 closed the base-image consent, CODEX_HOME, tooling PATH, embedded-browser
@@ -614,6 +716,18 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Pause of 2026-09-25, after 0.2.14 shipped and the close-out cleanup.
+  Awaiting the owner: the PR from `ws-maintenance/post-0.2.14` (registry
+  rows, 0.2.15.dev0, close-out records); the GitHub release body for
+  `v0.2.14`, notes text in the release overview; option A or B for the
+  `v0.2.12` mnemonic; yes or no on the named-build-context fix. Awaiting
+  project-management: registration and scope of 0.2.15 (mail of
+  2026-09-25), adoption of the mycodespace note and the checkout-naming
+  default (mail of 2026-09-25). Awaiting workflow-improvements: the four
+  workflow gaps (mail of 2026-09-25). Deliberately not preserved: the
+  scratch builds and downloaded candidates under `/opt/devcapsule-gate`,
+  which are regenerable from the public releases.
 
 - Owner's rc3 test, 2026-09-24, produced three findings, all recorded and
   now dispositioned: the trailer is fixed by the list/show split (RC4); the

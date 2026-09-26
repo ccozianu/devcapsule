@@ -12,7 +12,7 @@ import pytest
 from devcapsule import cli, compat
 from devcapsule.launch.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.environment_realization import RealizedEnvironment
-from devcapsule.image_metadata import LocalImageRecord
+from devcapsule.images.metadata import LocalImageRecord
 from devcapsule.materialization import ImageDetails, parse_locked_environment
 from devcapsule.configuration.documents import (
     canonical_digest,
