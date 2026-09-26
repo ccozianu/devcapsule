@@ -51,6 +51,7 @@ from .freshness import stale_resolution_inputs
 from .manifest import validate_manifest
 from .model import Configuration
 from .nodes import (
+    CARRIER_FAMILY_AUTHORIZE,
     CARRIER_FAMILY_BIND,
     CARRIER_FAMILY_SET,
     PROVIDER_HOST_DIRECTORY,
@@ -427,24 +428,21 @@ def initialize_project(
         output_stream=output_stream,
     )
     identity = _elicit_identity(elicitor, root, existing_manifest)
-    recommendations = _elicit_recommendations(
-        elicitor, existing_manifest,
-        authored=frozenset(answer.name for answer in request.answers if answer.justification is not None),
-    )
+    authored = frozenset(answer.name for answer in request.answers if answer.justification is not None)
     # Fail now if identity or capabilities are unanswered: the lock cannot be
     # generated without them, so later questions are unreachable and their
     # supplied answers must not be misreported as unknown.
     if elicitor.missing():
         elicitor.finish(require_all_consumed=False)
 
-    manifest_action = _write_manifest(
-        manifest_path, existing_manifest, identity, recommendations
-    )
-    manifest = load_toml(manifest_path)
-    validate_manifest(manifest, manifest_path)
-
+    # The lock, in memory first. Every name a supplied answer may use is
+    # fixed by the capabilities and the lock, both known here, so a
+    # misspelled or wrong-family name is rejected before the first question
+    # is asked and before anything is written.
+    generated = None
     if lock_path.is_file() and not request.regenerate:
         lock_action = "Kept"
+        preview_lock = load_toml(lock_path)
     else:
         lock_action = "Regenerated" if lock_path.is_file() else "Created"
         generated = MATRICES[platform].resolve(
@@ -461,6 +459,29 @@ def initialize_project(
                 "let the DevCapsule maintainers know so the matrix can learn.",
                 file=sys.stderr,
             )
+        preview_lock = tomllib.loads(generated.render_lock())
+    _reject_undeclared_answers(
+        request.answers,
+        existing_manifest if existing_manifest is not None else _preview_manifest(identity),
+        preview_lock,
+        authoring=frozenset(CURATED_HOST_RECOMMENDATIONS) if existing_manifest is None else authored,
+    )
+
+    recommendations = _elicit_recommendations(
+        elicitor, existing_manifest, authored=authored,
+    )
+    # A recommendation answered without its justification is unanswered:
+    # report it now rather than authoring an incomplete block.
+    if elicitor.missing():
+        elicitor.finish(require_all_consumed=False)
+
+    manifest_action = _write_manifest(
+        manifest_path, existing_manifest, identity, recommendations
+    )
+    manifest = load_toml(manifest_path)
+    validate_manifest(manifest, manifest_path)
+
+    if generated is not None:
         # World-readable like any committed project file; the 0600 default is
         # for developer-owned records.
         atomic_write(lock_path, generated.render_lock(), mode=0o644)
@@ -544,6 +565,60 @@ def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
         if answer.justification is not None:
             command_line[(answer.name, "justification")] = answer.justification
     return command_line
+
+
+def _preview_manifest(identity: _ProjectIdentity) -> dict[str, Any]:
+    """The manifest a fresh init is about to author, as a mapping, before any write.
+
+    Only what the node registry reads: the capabilities and the identity.
+    Recommendations are absent because they are asked after this preview is
+    used; see ``authoring`` in :func:`_reject_undeclared_answers`.
+    """
+
+    return {
+        "devcapsule-schema-version": 1,
+        "capabilities": {"need": list(identity.capabilities)},
+        "project": {
+            "name": identity.name,
+            "slug": identity.slug,
+            "creator": identity.creator,
+            "mount": identity.mount,
+        },
+    }
+
+
+def _reject_undeclared_answers(
+    answers: tuple[ProvidedAnswer, ...],
+    manifest: Mapping[str, Any],
+    lock: Mapping[str, Any],
+    *,
+    authoring: frozenset[str],
+) -> None:
+    """Fail on a misspelled or wrong-family answer name before anything is asked or written.
+
+    The names an init can answer are fixed by the capabilities and the lock,
+    both known before the first prompt, so ``--authorize docker host`` for
+    ``docker-daemon`` is reported then, with nothing on disk and no prompt
+    consumed. Until 2026-09-26 this check ran last, after every prompt and
+    after the manifest and lock were written, and its failure discarded every
+    answer the owner had just given.
+
+    ``authoring`` names the curated host recommendations this invocation may
+    still record. Such a name is an authorization node only once the project
+    recommends it (``network`` has no workstation default), and the
+    recommendation question consumes the answer that authors it, so an
+    ``--authorize`` under one of these names is admitted here.
+    """
+
+    registry = build_node_registry(manifest, lock)
+    for answer in answers:
+        if (
+            answer.family == CARRIER_FAMILY_AUTHORIZE
+            and answer.name in authoring
+            and registry.get(answer.name) is None
+        ):
+            continue
+        registry.answerable(answer.name, answer.family)
 
 
 def _elicit_identity(
@@ -1037,13 +1112,12 @@ def _elicit_extra_answers(
     """Use the registry for every ordinary/binding question, including required ones.
 
     Identity fields and configuration nodes can share a spelling; they must
-    never share an answer cache. Families are checked before any local write.
+    never share an answer cache. Every supplied name was checked against the
+    registry by :func:`_reject_undeclared_answers` before the first question.
     """
     registry = build_node_registry(manifest, lock)
     supplied = {(answer.name, "value"): answer.value for answer in answers
                 if answer.family in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND)}
-    for supplied_answer in answers:
-        registry.answerable(supplied_answer.name, supplied_answer.family)
     questions = elicitor.child(supplied)
     for family in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND):
         for node in registry.family(family):
@@ -1265,6 +1339,7 @@ def _apply_answers_to_standing_checkout(
     manifest = load_toml(manifest_path)
     validate_manifest(manifest, manifest_path)
     _, lock = lock_for(root, manifest)
+    _reject_undeclared_answers(request.answers, manifest, lock, authoring=frozenset())
     declarations = authorization_declarations(manifest, lock)
     record = CheckoutRecord(manifest, root)
     authorize_answers = {

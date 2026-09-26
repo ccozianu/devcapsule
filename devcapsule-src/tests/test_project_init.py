@@ -1291,3 +1291,89 @@ def test_init_report_shows_recommendation_values_and_how_each_node_was_settled(
     assert "Answered for this checkout: base-image." in output
     assert "Project recommendations applied to this checkout: docker-daemon." in output
     assert "Standing from the existing checkout record" not in output
+
+
+def test_undeclared_authorize_name_fails_before_any_prompt_or_write(tmp_path: Path) -> None:
+    """Bug of 2026-09-26: the owner's first init answered every prompt, then lost them all.
+
+    ``--authorize docker host`` names no node (``docker-daemon`` does). The
+    name check used to run last, after the recommendation and consent
+    prompts and after the manifest and lock were written; the checkout
+    record holding every answer was never written. The check now precedes
+    the first question: nothing is asked, nothing is on disk, and the
+    message names the likely spelling.
+    """
+    project = tmp_path / "chessclub-website"
+    project.mkdir()
+    prompts = io.StringIO()
+    unread = io.StringIO("")
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with pytest.raises(ProjectConfigurationError) as failure:
+            initialize_project(
+                InitializeRequest(
+                    directory=project,
+                    need=("python", "python-ide", "antigravity-agent"),
+                    creator="https://github.com/example",
+                    answers=(
+                        ProvidedAnswer("authorize", "base-image", "default"),
+                        ProvidedAnswer("authorize", "network", "host"),
+                        ProvidedAnswer("authorize", "docker", "host"),
+                    ),
+                    interactive=True,
+                ),
+                input_stream=unread,
+                output_stream=prompts,
+            )
+    message = str(failure.value)
+    assert "Configuration node 'docker' is not declared" in message
+    assert "Did you mean 'docker-daemon'?" in message
+    assert prompts.getvalue() == ""
+    assert unread.tell() == 0
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+
+
+def test_wrong_family_answer_fails_before_any_prompt_or_write(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    prompts = io.StringIO()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with pytest.raises(ProjectConfigurationError, match="answered with --authorize, not --set"):
+            initialize_project(
+                InitializeRequest(
+                    directory=project,
+                    need=("python-ide", "antigravity-agent"),
+                    creator="https://github.com/example",
+                    answers=(ProvidedAnswer("set", "docker-daemon", "host-socket"),),
+                    interactive=True,
+                ),
+                input_stream=io.StringIO(""),
+                output_stream=prompts,
+            )
+    assert prompts.getvalue() == ""
+    assert not (project / ".devcapsule").exists()
+
+
+def test_curated_host_authorization_is_admitted_before_the_recommendation_exists(
+    tmp_path: Path,
+) -> None:
+    """``network`` has no workstation default; it is declared by the recommendation
+    the same invocation records, so the early name check must admit it."""
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert (
+            cli.main(
+                [
+                    "project", "--path", str(project), "init",
+                    "--need", "python-ide", "--creator", "https://github.com/example",
+                    "--authorize", "network", "host", "Host-bound development services.",
+                    "--authorize", "base-image", "default",
+                ]
+            )
+            == 0
+        )
+        manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
+        assert manifest["host"]["network"]["mode"]["recommended"]["value"] == "host"
+        record = read_toml(next((tmp_path / "config").rglob("devcapsule.checkout.toml")))
+        assert record["authorization"]["network"]["value"] == "host"
