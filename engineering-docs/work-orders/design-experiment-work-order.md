@@ -23,10 +23,12 @@ the first implementation.
   coordination untouched. Record this as the experiment's declared
   exception in your own status notes on the branch.
 - Deliver a pull request from that branch against `release-0.2.14`, the
-  retained release branch whose head is the tag's commit, not against
-  `main`: `main` keeps moving, and a diff against it would mix the
-  experiment's work with everything that landed since. The owner reviews;
-  the pull request is not merged.
+  retained release branch, not against `main`. The release branch's history
+  is the tag's commit plus two record-only commits from the release
+  close-out, so the pull request's diff shows exactly the experiment's
+  commits since the tag; `main` keeps moving and a diff against it would mix
+  in everything that landed since. The owner reviews; the pull request is
+  not merged.
 
 ## The problem, in the owner's words
 
