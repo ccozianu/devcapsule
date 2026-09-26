@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-26; resumed at the owner's direction for the base-image naming and selection design decision; the close-out PR is merged and main is merged into this branch
+State: paused 2026-09-26 after the base-contract slice, the images package move and the design-experiment work order merged to main; the owner moves to project-management
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -716,6 +716,17 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Pause of 2026-09-26. Merged to `main` today: the base-contract slice
+  (consent bound to the image, bases named by `family@recipe`, compatibility
+  report), the `devcapsule.images` package, and the design-experiment work
+  order. Awaiting the owner: yes or no on the named-build-context fix for
+  the 4.8 GB rebuild transfer; the GitHub release body for `v0.2.14`.
+  Awaiting project-management: 0.2.15 registration and scope, the
+  release-notes artifact, the mycodespace note and checkout naming. Still
+  open from the design note: the base as a version-set member, registry tags
+  by contract and date. The `ws-user-docs/first-session` branch carries the
+  mycodespace design note and needs its own PR to reach `main`.
 
 - Pause of 2026-09-25, after 0.2.14 shipped and the close-out cleanup.
   Awaiting the owner: the PR from `ws-maintenance/post-0.2.14` (registry
