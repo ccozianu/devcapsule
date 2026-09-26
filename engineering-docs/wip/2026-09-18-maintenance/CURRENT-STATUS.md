@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-26; fixing the blocking init bug, the sole content of 0.2.15, which maintenance drives
+State: active; releasing 0.2.15 from `release-0.2.15`, cut 2026-09-26 from `v0.2.14` with the init fix alone
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -12,7 +12,7 @@ Integration target: `main`
 
 Delivery method: pull request; agent pushes the branch, owner opens and merges on GitHub
 
-Branch association: `ws-maintenance/post-0.2.14`
+Branch association: `release-0.2.15` for the duration of the release; records are kept and published from `ws-maintenance/post-0.2.14`, see *Release 0.2.15* below
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -43,15 +43,38 @@ The paragraphs under *Planned Next Step* after the first are the 0.2.14
 history of this file, kept verbatim until the pause that sheds them into a
 dated record.
 
+## Release 0.2.15
+
+Cut 2026-09-26 from the `v0.2.14` tag (`abb785d`), not from `main`, by the
+owner's ruling that 0.2.15 carries the init fix and nothing else and by lines
+touched: the fix is 97/15 in two source files; `main` since the tag is 496/60
+across seventeen, the rest being the base-contract naming and the images
+package move, assigned to 0.2.16. `release-0.2.15`: fix cherry-picked with
+origin as `9a0567c` (main `74bc4aa`, PR #143 at `3acc460`), version 0.2.15 at
+`c601fb8`, release overview and the candidate gate's exception record at
+`4f28a12`, gate recorded at the branch tip. Full gate passed on the branch.
+Overview: [releases/v0.2.15](../../releases/v0.2.15/README.md).
+
+Judgment where the definition is silent: *Taking A Release Over* assumes a
+cut from `main`, where the working branch's records are already on `main`.
+Cut from a tag, the release branch carries 0.2.14-era copies of this file and
+the registry, so editing or publishing them from there would regress the live
+state. This release therefore keeps the workstream records on
+`ws-maintenance/post-0.2.14` and publishes from it; the release branch carries
+only source, version and release documents. The row names the release branch
+as the rule requires. Handed to workflow-improvements as a gap to close in
+the definition.
+
+Next: on the owner's word, tag `v0.2.15-rc0` at the branch tip and push it;
+the backend builds; verify the published assets; the owner reruns the
+2026-09-26 init command line on a fresh directory with the downloaded
+candidate, typo first, then corrected, through `project run`; local proofs;
+acceptance record; final tag; `main` reopens at 0.2.16.dev0.
+
 ## Planned Next Step
 
-1. Full gate on the fix, push, owner PR from `ws-maintenance/post-0.2.14`
-   to `main`. Verification: the three new tests and the whole build.
-2. After the merge: cut `release-0.2.15` at the merge commit on `main`, first
-   commit sets the version to 0.2.15, row names the release branch, tag
-   `v0.2.15-rc0`, publish through the backend per the runbook.
-3. Gate: the owner's one-command rerun of the failing init on a fresh
-   directory with the downloaded candidate, then the final tag.
+Release 0.2.15 is cut and gated; see *Release 0.2.15* above for the exact
+next step. PR #143 merged the fix to `main` at `3acc460` on 2026-09-26.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
