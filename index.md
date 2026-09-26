@@ -95,6 +95,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Component upgrades and recoverable version sets](engineering-docs/work-orders/2026-09-21-component-upgrades.md)
 
 - [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)
+- [Base images as a contract, design experiment](engineering-docs/work-orders/design-experiment-work-order.md)
 
 ## Workstream Status
 
