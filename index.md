@@ -217,6 +217,8 @@ history; record current decisions in the active documents above.
 ## Bugs
 
 - [`project init` discards every interactive answer when a `--authorize` name is unknown — blocking 0.2.15](engineering-docs/bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md)
+- [Inside a capsule, `project <unknown>` is refused as launcher-only instead of as unknown](engineering-docs/bugs/devcapsule/2026-09-26-project-group-guard-hides-unknown-subcommand-in-capsule.md)
+- [`bootstrap` installs single-stream by default and offers no way to choose the mode](engineering-docs/bugs/devcapsule/2026-09-26-bootstrap-cannot-choose-the-workflow-mode.md)
 - [RC1 in-capsule configuration inspection fails](engineering-docs/bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
 
 - [Installed IDE reuse before archive acquisition — design review pending](engineering-docs/bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md)
