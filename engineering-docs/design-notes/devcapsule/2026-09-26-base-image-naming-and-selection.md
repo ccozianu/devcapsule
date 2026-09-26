@@ -1,138 +1,185 @@
-# Base images: how one is chosen, what its name is, and how a user could move to a newer one
+# Base images as a contract
 
-Design note for a decision the product owner asked to make together on
-2026-09-26, after 0.2.14 shipped with its base labelled `v0.2.12-rc5`.
-Written by `maintenance` as a memory prop: the mechanics below are read
-from the 0.2.14 source, not remembered. Status: proposed; the owner decides.
+Design note, 2026-09-26, `maintenance`, for a decision with the product
+owner after 0.2.14 shipped with its base labelled `v0.2.12-rc5`. Status:
+proposed. The first version of this note presented four options for
+renaming; the owner redirected it to the question underneath, and the
+options collapsed. The mechanics quoted here are read from the 0.2.14
+source.
 
-## 1. The three places a base image lives
+## 1. What a base image is
 
-**The matrix, inside the tool.** `devcapsule/resolution_matrix.py` is a
-hand-maintained table shipped in every DevCapsule executable, currently
-`embedded-20`. It holds base pins, component pins, and "verified edges",
-records that a component version was validated on a base family. A base
-pin has four parts:
+A base image is a prebuilt OCI image that every capsule image names in its
+`FROM` line. It is built once, by `devcapsule images build --type base`,
+from a recipe in `devcapsule/base_image.py`, and it contains no DevCapsule
+runtime: the launcher copies its own executable into the capsule image at
+launch (D-0009). The consumer of a base is a formation, the capsule image
+built on top of it, and the components validated to run there.
 
-| Part | Value for the 0.2.12 base | Role |
+The consumer does not care who built the base or with which executable. It
+cares what it can rely on: which operating system line and libraries, which
+toolchains are installed and where, whether a contained display is present,
+and what the runtime expects of the image. That set of promises is the
+base's contract, and the recipe is the contract's text.
+
+## 2. The contract, and when it changes
+
+The recipe already knows its contract; it labels it into every image it
+builds:
+
+| Label | Value today | What it promises |
 |---|---|---|
-| `mnemonic` | `v0.2.12-rc5` | the pin's name in matrix diagnostics |
-| `base_family` | `ubuntu-24.04` | which validations it inherits |
-| `satisfies` | python, docker-cli, node, java, maven | capabilities the base provides |
-| `lock_table` | `reference = docker.io/mycodespaceai/devcapsule-base@sha256:8837edd3…`, `build-mnemonic = v0.2.12-rc5` | copied verbatim into locks |
+| `devcapsule.base.recipe` | `ubuntu-24.04` | the OS line and library ABI |
+| `devcapsule.base.recipe-version` | `9` | which edition of the recipe |
+| `devcapsule.base.display` | `contained` | Xvnc, window manager, noVNC present |
+| `devcapsule.base.runtime` | `launcher-supplied` | no runtime inside; the launcher brings its own |
+| `devcapsule.component.*` | temurin 25.0.4+7, maven 3.9.16, postgresql client | toolchains and their homes |
 
-Three pins exist: v0.2.8, v0.2.10, v0.2.12-rc5, all one family. The newest
-pin whose family has verified edges for every needed component is selected.
-Every project that lets the tool recommend a base gets this pin. The table
-is not about the ccozianu/devcapsule repository; that repository is only
-the project that regenerates its lock most often.
+The matrix has the other half of the vocabulary: a **base family**
+(`ubuntu-24.04`), the line along which validations are inherited. D-0007's
+amendment of 2026-09-06 says when a new family opens: "a new OS release, a
+toolchain overhaul, or a runtime-plan vocabulary older releases cannot
+execute". That sentence is the definition of an incompatible change, and it
+is already the boundary the matrix uses: a component version is verified
+against a family, and every base in the family inherits the verification.
 
-**The lock, inside each project.** `project init` and `init --regenerate`
-write `.devcapsule/devcapsule.<platform>.lock`, committed with the project.
-Its `[base]` table is the pin's `lock_table`, byte for byte. The lock is the
-project's recommendation; it changes only when someone regenerates it, and
-that change travels to every checkout by git.
+So the contract has two versions, and both already exist:
 
-**The consent, inside each checkout.** `config authorize base-image default`
-accepts the lock's recommendation and records, in the checkout's own file,
-the `reference` and a `lock-digest`, the digest of the entire lock. Any
-later change to any table of the lock, a component version, a mnemonic,
-anything, makes the consent "authorized against a different lock", and the
-checkout is asked again. A local image can be authorized instead by tag or
-ID; then the consent also records the image ID and `run` requires it.
+- **Family** is the incompatible-change line. A consumer validated on
+  `ubuntu-24.04` may not run on `ubuntu-26.04`.
+- **Recipe version** is compatible evolution within the family. Recipe 9
+  added the contained display to recipe 8; a formation validated on recipe 8
+  still runs on recipe 9.
+- A **build** is one execution of a recipe: fresher packages, a new digest,
+  the same promises.
 
-## 2. Where the name you see comes from
+## 3. Naming by contract
 
-This is the fact that reshapes the options. The visible label is not the
-matrix pin's `mnemonic`. `config show` and the launch messages read the
-lock's `build-mnemonic`: "Execute DevCapsule v0.2.12-rc5 at the exact
-registry digest selected by the platform lock", and "recommended:
-v0.2.12-rc5 — docker.io/…". The matrix `mnemonic` appears only in matrix
-diagnostics such as "X on base v0.2.12-rc5".
+A base's name is its contract: `<family>@<recipe>`, today `ubuntu-24.04@9`.
+A concrete image is that name at an immutable digest. The release of the
+tool that built it belongs in provenance labels, where the recipe already
+puts it (`devcapsule.source.revision`, `org.opencontainers.image.version`),
+and nowhere in the name.
 
-So "change only the display name" cannot be done by editing one word in
-the table: the display reads the lock, and the lock is a copy of the table
-made at regeneration time.
+This dissolves the problem that started the note. `v0.2.12-rc5` was never
+the base's name; it was its builder. The matrix pin copied the builder's
+mnemonic into the lock as `build-mnemonic`, and the messages read it as if
+it named the base. Renaming it to `v0.2.12` would have replaced one wrong
+kind of name with a slightly less wrong one. The right name was in the
+labels all along.
 
-Why the label is what it is: the base was built by the v0.2.12-rc5
-executable on 2026-09-14 and pushed; Docker Hub later got a second tag,
-`v0.2.12`, on the same image. `build-mnemonic` records who built it, which
-is provenance, and the messages use it as if it were the base's release
-name, which it is not.
+## 4. The model
 
-## 3. The options for the name
+Three small, frozen types; the recipe module owns the first two, the matrix
+and the lock carry the third.
 
-**A. Derive the display name from the matrix by reference; keep the lock.**
-The matrix already looks up a pin by its `reference` (it does so to find the
-base family). The display code can do the same: when the lock's reference
-matches a pin, show the pin's `mnemonic`, renamed to `v0.2.12`; otherwise
-fall back to the lock's `build-mnemonic`. The lock is untouched, no
-consent is invalidated, every project sees "v0.2.12" from the next
-executable on. Cost: a small display change plus the one-word rename.
-Locks keep saying `build-mnemonic = "v0.2.12-rc5"`, which is true as
-provenance and read by nobody else.
+```python
+@dataclass(frozen=True)
+class BaseContract:
+    """What a base promises. Changes only when the recipe changes."""
+    family: str                 # "ubuntu-24.04": the incompatible-change line
+    recipe: int                 # 9: compatible evolution within the family
+    services: frozenset[str]    # capabilities satisfied: python, docker-cli, node, java, maven
+    display: str                # "contained" or "host-x11-only"
+    runtime: str                # "launcher-supplied"
 
-**B. Rename in the lock table as well.** `build-mnemonic` becomes
-`v0.2.12`. Correct on its face, but the lock fragment is part of the lock,
-so at each project's next regeneration the lock changes and every
-checkout's base consent is invalidated for a cosmetic reason. By the
-matrix's own rule a changed generated formation also advances the matrix
-version.
+    @property
+    def identity(self) -> str:
+        return f"{self.family}@{self.recipe}"
 
-**C. Separate the two meanings.** Add a `release` field to the pin's
-`lock_table`, `v0.2.12`, and keep `build-mnemonic` as provenance; messages
-use `release`. Same re-consent cost as B, because the lock changes, but it
-fixes the vocabulary permanently: every future base carries both the
-release it belongs to and the executable that built it. This is B done
-properly, and it should ride along with the next genuinely new base, when
-regeneration and re-consent happen anyway.
+    def accepts(self, validated_on: "BaseContract") -> bool:
+        """May a consumer validated on `validated_on` run on this base?"""
+        return self.family == validated_on.family and self.recipe >= validated_on.recipe
 
-**D. Bind consent to the base, not to the whole lock.** Today a component
-version bump invalidates base consent although the image is unchanged. If
-the consent bound to the base table's digest (reference and its fields),
-B and C would not re-prompt for a mnemonic change, and component-only lock
-changes would stop re-prompting base consent too. This is a change to
-D-0004's consent binding and needs its own argument: the whole-lock digest
-was chosen so that a consent always names the exact combination it was
-given for. Worth deciding on its merits, not as a way to fix a label.
 
-Recommendation: A now, C with the next new base, and D as a separate
-question for component-upgrades.
+@dataclass(frozen=True)
+class Provenance:
+    """Who built the image. Informational; never an identity."""
+    source_revision: str
+    builder: str                # "v0.2.12-rc5"
+    built_on: date
 
-## 4. The design question underneath: moving to a newer base
 
-Today a user has exactly three ways to change the base a checkout runs on:
+@dataclass(frozen=True)
+class BaseImage:
+    """One built artifact under a contract."""
+    contract: BaseContract
+    reference: str              # registry reference at an immutable digest, or a local image ID
+    built: Provenance
 
-1. Regenerate the project's lock with a newer tool (`init --regenerate`),
-   commit it, and re-consent. A project change; every checkout follows.
-2. Authorize a daemon-local image by tag or ID. A checkout-local override
-   bound to that image ID.
-3. Nothing per checkout for a published base the tool recommends but the
-   project's lock does not. Version sets (R-UPGRADE-001, `project versions`)
-   let a checkout try newer component versions without touching the lock;
-   the base is part of a set's identity but is not selectable.
+    @classmethod
+    def from_labels(cls, reference: str, labels: Mapping[str, str]) -> "BaseImage": ...
+```
 
-The gap is number 3. Two shapes:
+`from_labels` exists because the labels are complete: any image the daemon
+holds, published or locally built, reconstructs its `BaseImage` without a
+matrix lookup. That is what makes a local twin (`devcapsule-base:0.2.14-rc2-local`)
+and the published `v0.2.12` provably the same contract: both are
+`ubuntu-24.04@9`.
 
-- **Base as a version-set member.** `versions preview base v0.2.13`,
-  `select`, `rollback`, with the same evidence and consent flow the
-  components have. The tool's newer pin becomes a candidate the checkout
-  can adopt without a project change, and `propose` can export the lock
-  patch upstream once it worked. Consistent with the existing design.
-- **Keep the rule that base changes are project changes**, and make the
-  tool say so clearly: "this DevCapsule recommends a newer base than your
-  project's lock; regenerate to adopt it". Cheaper, and honest about who
-  decides, but it leaves the per-checkout trial that version sets give
-  components unavailable for the base.
+The matrix's base pins become `BaseImage` records; its verified edges stay
+keyed by `contract.family`, which they already are. The lock's `[base]`
+table gains `contract = "ubuntu-24.04@9"` and renames `build-mnemonic` to
+`built-by`, read under both names for old locks. Messages become:
 
-Both need the same prerequisite: a published base that is newer than the
-project's lock, which does not exist today, since 0.2.14 shipped no base.
-The decision can wait for the first one, but the naming (section 3) should
-not, because every new base inherits the vocabulary.
+```text
+Base ubuntu-24.04@9 at sha256:8837edd3…, built 2026-09-14 by v0.2.12-rc5.
+```
 
-## 5. What is asked of the owner
+## 5. What the abstraction buys
 
-1. For the name: A now, or B or C now, or nothing until the next base.
-2. Whether D, consent bound to the base table rather than the whole lock,
-   should be argued separately by component-upgrades.
-3. Whether the base becomes a version-set member, the plain rule stays, or
-   the question waits for the first newer published base.
+**Consent binds to the base.** Today the base-image consent is bound to a
+digest of the whole lock, so a component version bump re-asks consent for
+an unchanged image. Consent is about executing an image; it should bind to
+the `BaseImage`, its reference and contract identity. Component changes stop
+re-prompting; a different image, or the same image under a different
+contract claim, still does.
+
+**Moving to a newer base has a rule instead of a procedure.** `accepts` is
+the rule. A newer base in the same family is compatible by construction and
+inherits every validation, so a checkout may adopt it the way it adopts a
+newer component version: as a version-set member, `versions preview base
+ubuntu-24.04@10`, `select`, `rollback`, `propose`. A base in a new family
+is a project decision: regenerate the lock, validate the components on the
+new family, commit. The tool can say which case it is, because the contract
+says so.
+
+**Rebuilds are ordinary.** A rebuild of recipe 9 with fresher packages is
+`ubuntu-24.04@9` at a new digest: compatible, adoptable per checkout, and
+its provenance says when it was built. Security refreshes of the base stop
+needing a release of the tool.
+
+**Registry tags follow.** A published build is tagged by contract and date,
+`devcapsule-base:ubuntu-24.04-r9-20260914`, with the digest as the pin.
+Tags named after tool releases, `v0.2.12`, `v0.2.12-rc5`, stop being minted.
+
+## 6. Migration
+
+- Add `BaseContract` and `BaseImage` to `base_image.py`; the recipe
+  constants already define the contract. `from_labels` reads the labels the
+  build already writes.
+- Give the three matrix pins their contracts: v0.2.8 is `ubuntu-24.04@5`,
+  v0.2.10 is `ubuntu-24.04@6`, the 0.2.12 base is `ubuntu-24.04@9`, from
+  the recipe versions recorded in their comments. Verified edges are
+  unchanged.
+- Lock: write `contract` and `built-by`; read `build-mnemonic` as `built-by`
+  for existing locks. This is a lock change, so each project's next
+  regeneration re-asks base consent once. With consent rebound to the
+  `BaseImage`, it is the last cosmetic re-consent there will be.
+- Display and diagnostics read the contract identity; provenance is shown
+  after it, never instead of it.
+- Version sets admit the base as a member in a later slice; nothing above
+  depends on it.
+
+The four options of the earlier draft map onto this: A is the interim if
+the contract work waits (derive the display name from the matrix by
+reference); B is subsumed; C is this note done properly; D is section 5's
+first paragraph.
+
+## 7. Asked of the owner
+
+1. Adopt the contract naming, `<family>@<recipe>`, as the base's identity,
+   with provenance kept out of the name.
+2. Approve rebinding base consent to the `BaseImage`.
+3. Decide whether the version-set membership of the base comes with the
+   contract work or waits for the first newer published build.
