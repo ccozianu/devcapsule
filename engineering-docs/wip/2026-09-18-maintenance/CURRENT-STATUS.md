@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-26 after the base-contract slice, the images package move and the design-experiment work order merged to main; the owner moves to project-management
+State: active 2026-09-26; fixing the blocking init bug, the sole content of 0.2.15, which maintenance drives
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,44 +24,36 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-Owner-authorized retirement of `pycharm run` is implemented on the release
-branch. The old adapter and CLI-only option helpers are gone; old invocations
-fail before launch/state preparation and are absent from help. Shared project
-launch and the image utilities remain. User guidance, diagnostics and packaged
-smokes reflect the retirement. This changes source after RC0 and needs
-the next immutable candidate. PR #133 integrated commit `1f425f3` at
-`c8ab2d0`; ancestry was verified against fetched main on 2026-09-23.
+Resumed 2026-09-26 at the owner's direction, synchronized with `main` at
+`f4949aa` by merge. Three items from project-management taken and decided:
+the blocking init bug, the 0.2.15 routing, and its fix-only correction.
+0.2.15 is a maintenance release containing one fix: `project init` discarded
+every interactive answer when a `--authorize` name was unknown
+([bug record](../../bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md),
+carried on this branch with the fix; project-management's branch holds the
+same record at status confirmed, a mechanical conflict for whichever
+integrates second). Everything else planned for 0.2.15 is 0.2.16 material by
+owner ruling.
 
-Published `v0.2.14-rc0` at `d078b879469c1790647e32db75005d0fa4369b27`, already
-integrated through PR #132 at `e50b9f1`. Tag push was verified through remote
-refs; public PEX, checksum and manifest were downloaded without credentials.
-Checksum, version 0.2.14rc0, tag mnemonic and exact source identity agree.
-The downloaded executable passed clean-machine validation with no Python or
-network. Full evidence, artifact locations and the acceptance checklist are in
-[release work](../../releases/v0.2.14/README.md).
+The fix is on this branch: supplied answer names are checked against the node
+registry before the first recommendation prompt and before any write, and the
+undeclared-name error names the closest spelling. Three tests cover it.
 
-The owner explicitly deferred legacy branch renames through 0.2.14 publication,
-before substantive work on the next release. WORKFLOW-LOCAL.md records this;
-project-management received `2026-09-22-maintenance-rename-deadline-deferred.md`
-on coordination at `4013fca06a54`, superseding the earlier pre-RC0 deadline.
-The owner originally said known bugs did not prevent publication. On
-2026-09-24 the missing runtime CLI became the first release blocker; fix and
-validate it before resuming the remaining end-user journeys.
-
-Retired the two old codium_with_claude option-parity and ambient-sudo records:
-the exact candidate lacks the old command module, launcher and entrypoint, and
-both local and downloaded RC0 reject the command. This implements the saved
-triage recommendation; it does not claim complete VSCodium acceptance. The
-[working bug table](../../releases/v0.2.14/bugs.md) now has 23 rows:
-18 open (including the runtime CLI blocker), two closed and three retired. On 2026-09-22 the owner accepted closure
-of the upgrade-recovery and configuration-contract bugs; their records now
-link the owner/graphical acceptance and verified PR #117 integration. No
-runtime code changed during those earlier record updates. The subsequent
-legacy-network retirement now includes the command-removal implementation.
+The paragraphs under *Planned Next Step* after the first are the 0.2.14
+history of this file, kept verbatim until the pause that sheds them into a
+dated record.
 
 ## Planned Next Step
 
-The base-contract slice is on this branch for the owner's PR. Next after the
+1. Full gate on the fix, push, owner PR from `ws-maintenance/post-0.2.14`
+   to `main`. Verification: the three new tests and the whole build.
+2. After the merge: cut `release-0.2.15` at the merge commit on `main`, first
+   commit sets the version to 0.2.15, row names the release branch, tag
+   `v0.2.15-rc0`, publish through the backend per the runbook.
+3. Gate: the owner's one-command rerun of the failing init on a fresh
+   directory with the downloaded candidate, then the final tag.
+
+Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
 owner approves it, and the 0.2.15 sequencing from project-management.
 
