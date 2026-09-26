@@ -262,6 +262,16 @@ tests, mypy over 166 files, PEX smokes and nine packaged integrations (exit
 read directly; log `/opt/devcapsule-gate/base-contract-build.log`). Prompt
 and Base block rendered on a scratch copy and read by eye.
 
+Layout (2026-09-26, owner request): the root package was crowded, so the
+recipe, the contract, the build plans, the image metadata and the toolchain
+pins moved into `devcapsule/images/` as `base`, `contract`, `build`,
+`metadata` and `tooling`; 18 files had their imports rewritten, including
+the monkeypatch targets in tests. The recipe's path is now provenance: new
+images carry `devcapsule.base.recipe-source`, and permalinks for images
+built before the move keep the old file. Full `nox -s build` passed again:
+1073 tests, mypy over 167 files, PEX smokes and nine packaged integrations
+(exit read directly; log `/opt/devcapsule-gate/images-layout-build.log`).
+
 Host Docker cleanup (2026-09-25, owner: "run freely"): 98 DevCapsule-related
 images at 288.9 GB total store. Removed the exited recursive-run containers,
 then 88 tagged images, keeping the two running capsules' images, the newest
