@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-maintenance/post-0.2.14
+slice: fix the blocking init bug (early --authorize name check) and cut 0.2.15
+since: 2026-09-26T17:22:10+00:00
+expires: 2026-09-27T05:22:10+00:00
