@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-26; resumed at owner direction after 0.2.14 shipped; 0.2.15 registered under maintenance for the blocking init bug; 25 undecided intake items
+State: paused 2026-09-26 at owner direction; the pair moves to maintenance to fix the blocking init bug and cut 0.2.15; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -172,20 +172,27 @@ submodules were changed.
 
 ## Open Threads
 
-- Handed to maintenance: approved 0.2.14 cut, progressive bug triage and
-  candidate acceptance. No current bug blocks starting stabilization.
-- Awaiting workflow-improvements: review and repair the quarantined claim test
-  under its temporal contract; replace the generic merge-only prohibition
-  with the evidenced outcome rule and clarify selective-delivery routing.
-- Preserved: 20 undecided intake items; prior blog decisions and review; V1 scope
-  proposals; component-upgrade operations; resource ownership and cleanup decisions.
-- Branch rename and retired-outbox cleanup were done by maintenance on `main` (2026-09-25); the two 2026-09-22 migration intake items await their closing decision. Inspect unlanded
-  records before any deletion; no old branch was deleted.
-- Historic host settings remain on `project-management/local-host-settings-20260915`;
-  do not restore them over a newer lock without review. No restoration requested.
-- Deliberately not preserved: no chat transcript or session record. Prior status
-  remains in the dated historical record; canonical policy is in the local
-  workflow and release runbook.
+- Awaiting the human: register 0.2.16 after 0.2.15 ships (driver, the five
+  cleanup candidates' order, the IDE-surface ruling, the release-notes
+  artifact proposal); ratify or trim the V1 acceptance criteria in the
+  ledger; decide the legacy-launch rows L1 to L13.
+- Weighed and unresolved: V1 timing. Assessed 2026-09-26 against the
+  unratified ledger criteria: no blocking bug then, three unowned in-v1
+  rows, E8 proof and the WOW walk-through unrun, L1 to L13 undecided.
+  Recommended the dogfood week as V1 evidence and V1 as the release after
+  the optimization release; the init bug then displaced that release plan.
+- Handed to maintenance by mail: the init bug with transcript, the 0.2.15
+  routing, and its fix-only correction. Maintenance had not taken them at
+  this pause.
+- Preserved: 25 undecided intake items, oldest from 2026-08-17; the two
+  2026-09-22 migration items are overtaken and await only their closing
+  entry. Historic host settings remain on
+  `project-management/local-host-settings-20260915`; no restoration requested.
+- Two `workflow brief` defects seen, not filed: it says nobody has a live
+  claim while `status` shows one, and prints the definition line twice.
+  Belong to workflow-improvements.
+- Deliberately not preserved: no session record; the V1 assessment lives
+  only in this section and the ledger it cites.
 
 ## Workstream Document Index
 
