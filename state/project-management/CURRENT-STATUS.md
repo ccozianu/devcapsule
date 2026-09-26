@@ -77,14 +77,15 @@ day: no fourth version number; fix it and release 0.2.15. This decides the
 first ask of maintenance's 0.2.15 plan:
 
 - 0.2.15 is a maintenance release driven by `maintenance`, cut from `main`
-  under *Taking A Release Over*, with this fix as its headline. The
-  2026-09-25 direction stands: cleanup and optimization, no new features.
-- The release ships when the fix is verified on a candidate, not on the
-  week horizon; the horizon was a target, the fix is the gate.
-- Still open with the owner, from the same plan: whether any IDE surface
-  enters 0.2.15 (maintenance estimates only IntelliJ fits a week and
-  recommends none), and the order of the five cleanup candidates. Neither
-  holds the cut.
+  under *Taking A Release Over*, containing this fix and nothing else.
+- The release ships when the fix is verified on a candidate; the fix is
+  the gate.
+- Owner ruling, same day: everything else named for 0.2.15 moves to
+  0.2.16. That is the cleanup and optimization list from the 2026-09-25
+  plan, its five candidates, the IDE-surface wish (maintenance estimates
+  only IntelliJ fits a week and recommends none), and the release-notes
+  artifact proposal. 0.2.16 is not yet registered; its driver and scope
+  are the next planning decision.
 
 Delivered to maintenance by mail on 2026-09-26; the acknowledgement is in
 the decision log.
@@ -119,9 +120,10 @@ local launch networking and the deferred rename deadline, all read.
 Six mailed items were taken on resume and joined the 20 already in `intake/`;
 the 0.2.15 plan is decided, 25 remain. The first decisions to put to the owner, in order:
 
-1. Done 2026-09-26: 0.2.15 registered with maintenance as driver and the
-   blocking init bug as headline; see *Release 0.2.15* above. Remaining from
-   that plan for the owner: the IDE-surface ruling and cleanup sequencing.
+1. Done 2026-09-26: 0.2.15 registered with maintenance as driver, the
+   blocking init bug its only content; see *Release 0.2.15* above. The rest
+   of that plan is 0.2.16 material: register 0.2.16 with the owner once
+   0.2.15 is out, sequencing the cleanup candidates and ruling on surfaces.
 2. Release notes as a release artifact
    (`2026-09-26-maintenance-release-notes-artifact.md`): adopt into the
    runbook and the 0.2.15 plan or not.
