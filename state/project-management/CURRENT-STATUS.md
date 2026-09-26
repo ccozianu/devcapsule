@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-26; resumed at owner direction after 0.2.14 shipped; 0.2.15 planning and 26 undecided intake items
+State: active 2026-09-26; resumed at owner direction after 0.2.14 shipped; 0.2.15 registered under maintenance for the blocking init bug; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -66,6 +66,29 @@ Generic-rule revision was delivered to workflow-improvements as
 `5d47a901d22d`; that includes clarifying routing for selective mainline delivery.
 No other workstream's records or generic workflow source were edited.
 
+## Release 0.2.15 (decided 2026-09-26)
+
+The owner's first-session attempt with the released 0.2.14 launcher hit a
+show stopper: `project init` discards every interactive answer when a
+`--authorize` name is unknown, filed as
+[the init bug](../../bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md),
+owner maintenance, severity blocking, target 0.2.15. The owner ruled the same
+day: no fourth version number; fix it and release 0.2.15. This decides the
+first ask of maintenance's 0.2.15 plan:
+
+- 0.2.15 is a maintenance release driven by `maintenance`, cut from `main`
+  under *Taking A Release Over*, with this fix as its headline. The
+  2026-09-25 direction stands: cleanup and optimization, no new features.
+- The release ships when the fix is verified on a candidate, not on the
+  week horizon; the horizon was a target, the fix is the gate.
+- Still open with the owner, from the same plan: whether any IDE surface
+  enters 0.2.15 (maintenance estimates only IntelliJ fits a week and
+  recommends none), and the order of the five cleanup candidates. Neither
+  holds the cut.
+
+Delivered to maintenance by mail on 2026-09-26; the acknowledgement is in
+the decision log.
+
 ## Claim Test Quarantine (2026-09-22)
 
 The owner reported inconsistent CI results at one revision for the claim
@@ -93,12 +116,12 @@ Resumed 2026-09-26 on `ws-project-management/coordination`, synchronized with
 its version line; `WORKFLOW-LOCAL.md` gained the dogfooding CLI selection,
 local launch networking and the deferred rename deadline, all read.
 
-Six mailed items were taken on resume and join the 20 already in `intake/`;
-none is decided yet. The first decisions to put to the owner, in order:
+Six mailed items were taken on resume and joined the 20 already in `intake/`;
+the 0.2.15 plan is decided, 25 remain. The first decisions to put to the owner, in order:
 
-1. The 0.2.15 plan (`2026-09-25-maintenance-0215-plan.md`): register the
-   release, its driver and the week horizon; rule on the IDE-surface wish
-   against "no new features"; sequence the cleanup candidates.
+1. Done 2026-09-26: 0.2.15 registered with maintenance as driver and the
+   blocking init bug as headline; see *Release 0.2.15* above. Remaining from
+   that plan for the owner: the IDE-surface ruling and cleanup sequencing.
 2. Release notes as a release artifact
    (`2026-09-26-maintenance-release-notes-artifact.md`): adopt into the
    runbook and the 0.2.15 plan or not.
