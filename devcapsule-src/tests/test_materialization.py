@@ -10,7 +10,7 @@ import pytest
 
 from devcapsule.compat import CliError
 from devcapsule.components import LockedArtifactDeclaration
-from devcapsule.image_build import ExecStep
+from devcapsule.images.build import ExecStep
 from devcapsule.materialization import (
     ENTRYPOINT_CONTRACT,
     RUNTIME_PLAN_PATH,

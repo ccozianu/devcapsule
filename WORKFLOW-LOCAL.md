@@ -101,6 +101,32 @@ networking for host-bound development services, and development sudo. The
 facts: the canonical repository and owner-operated pull-request delivery.
 The GitHub integration rules below govern agent access and the UI handoff.
 
+### Dogfooding CLI Selection
+
+Owner direction, 2026-09-24: this project's configuration recommends
+`runtime.devcapsule-command = "devcapsule0"`. Newly materialized development
+capsules expose the shipped runtime as `devcapsule0`, leaving `devcapsule` for
+our development installation. Use the shipped command deliberately when testing
+its released behavior; use the development CLI or explicit built PEX for current
+work. Do not silently fall back to the shipped CLI when development setup is
+missing. Other projects retain the standard command unless they explicitly opt
+into this exception. See DEVELOPING.md for checkout overrides and resolution.
+
+### Local Launch Networking
+
+Owner direction, 2026-09-24: always pursue host networking for this project's
+local development and release-validation launches, including launches from
+inside a DevCapsule. Use the RC runner's `--network host`, or ordinary
+`devcapsule project run --authorize network host`. This is standing authorization
+for those local launches; do not repeatedly ask for it. Prefer the supported
+run-once option over rewriting a checkout's saved configuration.
+
+Tests specifically exercising bridge networking, denied host access or network
+isolation must retain their declared network mode. If host networking cannot
+be used, record the concrete reason and the fallback; do not silently substitute
+bridge networking. This is a local operating rule, not a change to DevCapsule's
+product defaults or other projects' permissions.
+
 ## GitHub Integration: Owner Through The UI
 
 Owner direction, 2026-09-21: agents use ordinary Git operations with the
@@ -168,5 +194,9 @@ add attribution. No change to SSH credentials or PR merge permissions is needed.
   2026-09-18 under the adoption exception the definition provides. Both are
   recorded in root `CURRENT-STATUS.md`. Neither ends.
 - **Branch names outside the `ws-` vocabulary.** Open workstreams registered
-  before 2026-09-18 keep their old branch names until they rename them, which
-  each does before the next release candidate is tagged. Ends then.
+  before 2026-09-18 keep their old branch names until they rename them. Owner
+  direction, 2026-09-22, defers the former pre-candidate deadline through the
+  0.2.14 release: publish 0.2.14, then complete the migration before beginning
+  substantive work on the next release. RC0 and later 0.2.14 candidates are not
+  held for this migration. Each workstream still owns its rename. Ends when
+  those renames are complete.

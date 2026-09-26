@@ -11,7 +11,7 @@ from devcapsule.launch.pycharm._image_build import (
     build_pycharm_image_spec,
     parse_pycharm_build_options,
 )
-from devcapsule.image_build import BuildxImageBuilder, ImageBuildSpec, normalize_pycharm_source, render_build_context
+from devcapsule.images.build import BuildxImageBuilder, ImageBuildSpec, normalize_pycharm_source, render_build_context
 
 
 def test_parse_pycharm_build_options_rejects_missing_source(tmp_path: Path) -> None:
@@ -119,7 +119,7 @@ def test_render_build_context_includes_network_host_compatible_dockerfile_conten
 
 def test_buildx_builder_can_place_large_context_outside_system_tmp(tmp_path: Path) -> None:
     context_root = tmp_path / "large-contexts"
-    with patch("devcapsule.image_build.docker.build") as build:
+    with patch("devcapsule.images.build.docker.build") as build:
         BuildxImageBuilder(temporary_root=context_root).build(
             ImageBuildSpec(image="result:test", base_image="sha256:base"),
             network="none",

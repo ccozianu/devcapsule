@@ -36,6 +36,7 @@ from tests.test_upgrade_recovery import (
     checkout,  # The released v0.2.11 fixture, with isolated XDG homes.
     install_external_fakes,
     invoke,
+    replace_answers,
 )
 from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions, build_run_config
 from tests.test_pycharm import base_env
@@ -289,3 +290,111 @@ def test_launcher_environment_cannot_override_explicit_sudo_denial(checkout, tmp
         PycharmRunOptions(project=project, docker_mode=DockerMode.none, enable_sudo=False), env,
     )
     assert config.enable_sudo is False
+
+
+def test_shipped_cli_recommendation_override_and_omission(checkout, capsys):
+    project, record, resolution = checkout
+    declaration = project / '.devcapsule/devcapsule.toml'
+    declaration.write_text(declaration.read_text() + '\n[configuration.values."runtime.devcapsule-command"]\n'
+        'type = "string"\nruntime-effect = "devcapsule.command-name"\nrecommended = "devcapsule0"\n')
+    original = record.read_bytes()
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+    assert record.read_bytes() == original  # Derived recommendation is not a local answer.
+    assert invoke(project, 'config', 'list') == 0
+    assert 'project-recommended' in capsys.readouterr().out
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'devcapsule') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule'
+    for invalid in ('../devcapsule', '/bin/sh', 'arbitrary-name'):
+        before = record.read_bytes()
+        assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', invalid) == 2
+        assert record.read_bytes() == before
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'default') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'none') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert 'devcapsule-command' not in load_toml(resolution)['runtime']
+    assert invoke(project, 'config', 'unset', 'runtime.devcapsule-command') == 0
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+
+
+def test_reserved_shipped_cli_name_carries_the_effect_without_the_attribute(checkout):
+    # Released clients before 0.2.14 reject any runtime-effect they do not
+    # know, so the repository manifest must not spell this one; the name
+    # alone selects the effect here.
+    project, record, resolution = checkout
+    declaration = project / '.devcapsule/devcapsule.toml'
+    declaration.write_text(declaration.read_text() + '\n[configuration.values."runtime.devcapsule-command"]\n'
+        'type = "string"\nrecommended = "devcapsule0"\n')
+    assert invoke(project, 'config', 'resolve') == 0
+    assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
+    assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'arbitrary-name') == 2
+
+
+def test_reserved_shipped_cli_name_rejects_a_different_effect():
+    manifest = {'configuration': {'values': {'runtime.devcapsule-command': {
+        'type': 'memory-size', 'runtime-effect': 'docker.memory-limit',
+    }}}}
+    with pytest.raises(ProjectConfigurationError, match='reserved for runtime effect'):
+        build_node_registry(manifest, {})
+
+
+def test_unknown_runtime_effect_names_the_running_version():
+    manifest = {'configuration': {'values': {'runtime.future': {
+        'type': 'string', 'runtime-effect': 'devcapsule.not-yet-invented',
+    }}}}
+    with pytest.raises(ProjectConfigurationError) as error:
+        build_node_registry(manifest, {})
+    message = str(error.value)
+    assert "'devcapsule.not-yet-invented' is not supported by DevCapsule " in message
+    assert 'supported: devcapsule.command-name, docker.memory-limit' in message
+    assert 'may require a newer DevCapsule' in message
+
+
+@pytest.mark.parametrize('recommended', ['default', 'none', '../bin/devcapsule', 7, False])
+def test_invalid_shipped_cli_recommendation_is_rejected(recommended):
+    manifest = {'configuration': {'values': {'runtime.devcapsule-command': {
+        'type': 'string', 'runtime-effect': 'devcapsule.command-name', 'recommended': recommended,
+    }}}}
+    with pytest.raises(ProjectConfigurationError):
+        build_node_registry(manifest, {})
+
+
+def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
+    # Owner direction 2026-09-24: the listing is data; advice lives in `show`,
+    # and `show` must not tell a fresh checkout to resolve.
+    project, record, resolution = checkout
+    assert invoke(project, 'config', 'resolve') == 0
+    capsys.readouterr()
+    assert invoke(project, 'config', 'list') == 0
+    listing = capsys.readouterr().out
+    assert 'KIND' in listing and 'SOURCE' in listing and 'generated' in listing and 'fresh' in listing
+    assert 'Sources:' not in listing
+    assert 'Configuration review' not in listing and 'resolve explicitly' not in listing
+    assert invoke(project, 'config', 'show') == 0
+    shown = capsys.readouterr().out
+    assert 'KIND' in shown and 'SOURCE' in shown
+    assert 'Sources:' in shown and str(record) in shown and str(resolution) in shown
+    assert '(as resolved)' in shown and 'changed since the resolution' not in shown
+    assert 'Configuration review: ready; the generated resolution is fresh.' in shown
+    assert 'Base:' in shown and 'ubuntu-24.04@' in shown and 'Compatibility:' in shown
+    assert 'Nothing to resolve' in shown and 'After settling' not in shown
+    # A record edited behind the resolution's back stales the checkout input;
+    # `config authorize` would re-resolve, so write the record directly.
+    table = dict(load_toml(record)['authorization'])
+    table['host-browser'] = {**table['host-browser'], 'value': False}
+    replace_answers(project, record, table)
+    assert invoke(project, 'config', 'show') == 0
+    shown = capsys.readouterr().out
+    assert 'Configuration review: ready to resolve.' in shown, shown
+    assert 'The generated resolution is stale: checkout-input; resolve explicitly:' in shown
+    assert f'checkout     {record}  (changed since the resolution)' in shown
+    # A missing required decision keeps the decisions text and instruction.
+    replace_answers(project, record, {name: value for name, value in table.items() if name != 'base-image'})
+    assert invoke(project, 'config', 'show') == 0
+    shown = capsys.readouterr().out
+    assert 'Configuration review: decisions required.' in shown
+    assert 'After settling your configuration choices, resolve explicitly:' in shown

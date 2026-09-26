@@ -30,12 +30,16 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [0.2.14 release work and checklist](engineering-docs/releases/v0.2.14/README.md)
 - [0.2.14 bug triage](engineering-docs/releases/v0.2.14/bugs.md)
+- [0.2.14 RC0 smoke scripts and walkthrough](engineering-docs/releases/v0.2.14/smoke/README.md)
+- [0.2.14 RC0 validation stories and contracts](engineering-docs/releases/v0.2.14/smoke/stories.md)
+- [0.2.14 RC0 smoke results template](engineering-docs/releases/v0.2.14/smoke/results-template.md)
 
 ## Website
 
 - [Website development and preview](website/README.md)
 - [Website publication](website/PUBLISHING.md)
 - [Website-owned backlog and producer dependencies](website/BACKLOG.md)
+- [How the website is published, and what it still lacks](engineering-docs/implementation-notes/website/2026-09-22-website-publishing-contract.md)
 
 ## Root Requirement Records
 
@@ -50,6 +54,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-PRODUCT-006 Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - [R-DOCS-001 Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - [R-DOCS-002 Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
+- [R-DOCS-003 Website Content Carries Explicit Front Matter And A Versions Manifest](engineering-docs/requirements/product/r-docs-003-website-content-carries-front-matter.md)
 - [R-SETTINGS-001 Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
 
@@ -83,9 +88,14 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Workflow installation during onboarding](engineering-docs/work-orders/2026-09-24-workflow-installation-onboarding.md)
+
+- [Legacy launch capability decisions — blocks V1](engineering-docs/work-orders/2026-09-22-legacy-launch-capability-disposition.md)
+
 - [Component upgrades and recoverable version sets](engineering-docs/work-orders/2026-09-21-component-upgrades.md)
 
 - [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)
+- [Base images as a contract, design experiment](engineering-docs/work-orders/design-experiment-work-order.md)
 
 ## Workstream Status
 
@@ -104,6 +114,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Engineering Design Notes
 
+- [Base images: how one is chosen, what its name is, and how a user could move to a newer one](engineering-docs/design-notes/devcapsule/2026-09-26-base-image-naming-and-selection.md)
 - [Competitive comparison: agent workflows and the DevCapsule adopter choice](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
 - [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
 - [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
@@ -204,6 +215,17 @@ history; record current decisions in the active documents above.
 - [Merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md)
 
 ## Bugs
+
+- [RC1 in-capsule configuration inspection fails](engineering-docs/bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
+
+- [Installed IDE reuse before archive acquisition — design review pending](engineering-docs/bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md)
+
+- [A client upgrade turns an unanswered acquisition into a required decision — R-COMPAT-001](engineering-docs/bugs/devcapsule/2026-09-24-client-upgrade-requires-acquisition-decision.md)
+- [`config list` advises resolve on a fresh resolution](engineering-docs/bugs/devcapsule/2026-09-24-config-list-advises-resolve-on-fresh-resolution.md)
+- [Release workflow gated candidates on Docker builds on a hosted runner — blocked rc2](engineering-docs/bugs/devcapsule/2026-09-24-release-workflow-gated-on-docker-on-hosted-runner.md)
+- [Released launchers reject the repository manifest since RC1 — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md)
+- [Runtime DevCapsule command unavailable — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
+- [Website URL opening has no browser handler](engineering-docs/bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md)
 
 - [Claim lifecycle test depends on wall-clock timing](engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md)
 - [Nested-directory workflow commands lose coordination files](engineering-docs/bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md)

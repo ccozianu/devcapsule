@@ -1848,12 +1848,16 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             resolved = tomllib.load(stream)
         assert resolved["authorization"]["base-image"]["reference"] == LOCKED_BASE
 
+        # Consent binds to the image: a lock edit that leaves the base alone
+        # stales the resolution, which resolve refreshes, and asks nothing.
         lock_path.write_text(
             lock_path.read_text(encoding="utf-8").replace("formation-v1", "formation-v2"),
             encoding="utf-8",
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
-        assert "base-image: stale" in capsys.readouterr().err
+        capsys.readouterr()
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        with resolved_path.open("rb") as stream:
+            assert tomllib.load(stream)["authorization"]["base-image"]["reference"] == LOCKED_BASE
 
 
 @pytest.mark.parametrize(
@@ -2020,10 +2024,13 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
         assert cli.main(["project", "--path", str(project), "config", "authorize", "host-browser", "true"]) == 0
         capsys.readouterr()
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+    # Columns: KIND NAME STATUS SOURCE VALUE; the source may contain spaces,
+    # so read the status by position and the value as the last token.
     rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
-    assert rows["host-x11"][2:4] == ["denied", "false"]
-    assert rows["host-browser"][2:4] == ["authorized", "true"]
-    assert rows["development-sudo"][2:4] == ["available", "true"]
+    assert (rows["host-x11"][2], rows["host-x11"][-1]) == ("denied", "false")
+    assert (rows["host-browser"][2], rows["host-browser"][-1]) == ("authorized", "true")
+    assert (rows["development-sudo"][2], rows["development-sudo"][-1]) == ("available", "true")
+    assert rows["host-x11"][3] == "checkout" and rows["development-sudo"][3] == "manifest"
 
 
 @pytest.mark.parametrize('surface,needs', [('pycharm', ['python', 'python-ide']), ('codium', ['node', 'frontend-ide'])])

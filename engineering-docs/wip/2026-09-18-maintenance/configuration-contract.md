@@ -68,8 +68,13 @@ formation inputs; it is not a generic overlay over the manifest.
 There is one logical typed tree, distributed across these owners. It is not a
 recursive TOML merge. For each node we need its canonical name, family, domain,
 requiredness, owner, allowed sources, dependency set, default/absence behavior,
-and runtime effect. Recommendations are metadata beside a node, never values
-in the ordinary precedence chain.
+and runtime effect. Host/acquisition recommendations are metadata beside a
+node and never authorize themselves. Owner refinement, 2026-09-24: an ordinary
+value declaration may carry a typed `recommended` default. Resolution uses it
+only in the absence of an explicit checkout value or omission; it is not copied
+into the checkout as an answer. `set NAME default` records its current value,
+while `unset NAME` resumes following it. This implements the repository's
+opt-in `devcapsule0` development command without granting any host access.
 
 For an ordinary node, D-0001's precedence is:
 
@@ -93,7 +98,7 @@ Repository manifest P
   devcapsule-schema-version
   project: name, creator, slug, mount
   capabilities.need[]
-  configuration.values.<name>: type, required?, description?, runtime-effect?
+  configuration.values.<name>: type, required?, description?, runtime-effect?, recommended?
   host.<curated-boundary>.recommended: value, justification, enables?
   workflow / workflow-type and other project metadata
 

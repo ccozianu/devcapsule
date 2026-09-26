@@ -1,13 +1,31 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: maintenance
 opened: 2026-09-20
+closed: 2026-09-22
 requirements: [R-IDE-CONFIG-001, R-COMPAT-001, R-PRODUCT-002]
 ---
 
 # Configuration Contract Is Not Enforced Across Boundaries
+
+## Closure — 2026-09-22
+
+Closed at the owner's explicit direction for the repaired G1–G9 obligations.
+The recorded implementation and regression checks are integrated through
+PR #117 merge `d2386bb`, verified as an ancestor of both main and
+`v0.2.14-rc0` (`d078b87`). The 2026-09-21 owner report and
+[graphical predecessor-configuration acceptance](../../wip/2026-09-18-maintenance/2026-09-21-record-maintenance-before-component-upgrades.md)
+provide the previously pending live-use evidence. Earlier pending-integration
+and acceptance statements below are historical and superseded.
+
+The focused release review also passed the existing configuration contract
+and invariant suites. Closure respects the contract's serialized-access
+precondition and stated coverage limits; it does not certify unspecified
+future formats, all CLI behavior or completion of RC0 acceptance. Reopen for
+a supported lifecycle that loses decisions, invents authority or bypasses
+admission, as described below.
 
 ## Evidence and scope
 

@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from devcapsule.compat import CliError
+from devcapsule.runtime_command import RuntimeCommand
 from devcapsule.build_info import read_pex_build_info
 from devcapsule.platforms import XdgHomes
 from devcapsule.components.catalog import (
@@ -28,7 +29,7 @@ from devcapsule.components.catalog import (
 )
 from devcapsule.components import LockedArtifactDeclaration
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
-from devcapsule.image_build import (
+from devcapsule.images.build import (
     CommandComponent,
     ContributionComponent,
     DirectoryComponent,
@@ -41,7 +42,7 @@ from devcapsule.image_build import (
     normalize_archive_directory,
     shell_quote,
 )
-from devcapsule.image_metadata import (
+from devcapsule.images.metadata import (
     BASE_KIND,
     CANONICAL_NAME_LABEL,
     IMAGE_KIND_LABEL,
@@ -152,6 +153,7 @@ SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
 }
 COMPONENT_TEMPLATE_PATH = "/etc/devcapsule/component-runtime-template.json"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
+RUNTIME_COMMAND_PATH = "/usr/local/bin/devcapsule"
 ENTRYPOINT_CONTRACT = (
     "/opt/devcapsule/bin/devcapsule.pex",
     "runtime",
@@ -257,6 +259,7 @@ def formation_descriptor(
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",
     runtime_sha256: str | None = None,
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> dict[str, Any]:
     operating_system, architecture = _split_platform(platform)
     profile = surface_profile(component_id)
@@ -309,7 +312,10 @@ def formation_descriptor(
             "parameters": {"installation-path": profile.installation_path},
         },
         "runtime": {
-            **({"pex-sha256": _validated_sha256(runtime_sha256, "Runtime PEX SHA-256")}
+            # The public command is part of image identity: a cached image with
+            # the same PEX but without its command link cannot satisfy this plan.
+            **({"pex-sha256": _validated_sha256(runtime_sha256, "Runtime PEX SHA-256"),
+                "public-command": f"/usr/local/bin/{runtime_command}"}
                if runtime_sha256 is not None else {}),
             "component-template-sha256": template_digest,
             "entrypoint": list(ENTRYPOINT_CONTRACT),
@@ -455,6 +461,7 @@ def surface_materialization_spec(
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",
     runtime_pex: Path | None = None,
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> ImageBuildSpec:
     profile = surface_profile(component_id)
     descriptor = formation_descriptor(
@@ -466,6 +473,7 @@ def surface_materialization_spec(
         recipe_version=recipe_version,
         component_id=component_id,
         runtime_sha256=sha256_file(runtime_pex) if runtime_pex is not None else None,
+        runtime_command=runtime_command,
     )
     identity = formation_identity(descriptor)
     environment = _ancillary_environment(
@@ -495,7 +503,16 @@ def surface_materialization_spec(
             ),
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
             *_ancillary_contributions(ancillary_files, npm_projects),
-            *((FileComponent(runtime_pex, "/opt/devcapsule/bin/devcapsule.pex", permissions=0o755),)
+            # Keep the shipped executable available to ordinary shells/scripts.
+            # Development checkouts reserve 'devcapsule' for their source build;
+            # clear only our canonical link if their base inherited one.
+            *((ExecComponent(("sh", "-c",
+                f'if [ "$(readlink {shell_quote(RUNTIME_COMMAND_PATH)})" = '
+                f'{shell_quote(ENTRYPOINT_CONTRACT[0])} ]; then '
+                f'rm -f {shell_quote(RUNTIME_COMMAND_PATH)}; fi')),)
+              if runtime_pex is not None and runtime_command is RuntimeCommand.DEVELOPMENT else ()),
+            *((FileComponent(runtime_pex, ENTRYPOINT_CONTRACT[0], permissions=0o755),
+               ExecComponent(("ln", "-sfn", ENTRYPOINT_CONTRACT[0], descriptor["runtime"]["public-command"])))
               if runtime_pex is not None else ()),
             *( (EnvComponent(environment),) if environment else () ),
             LabelComponent(
@@ -570,6 +587,7 @@ def ensure_materialized_surface(
     report: Callable[[str], None] | None = None,
     list_formations: Callable[[], tuple[ImageDetails, ...]] | None = None,
     runtime_pex: Path | None = None,
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> tuple[str, bool]:
     profile = surface_profile(component_id)
     descriptor = formation_descriptor(
@@ -581,6 +599,7 @@ def ensure_materialized_surface(
         recipe_version=recipe_version,
         component_id=component_id,
         runtime_sha256=sha256_file(runtime_pex) if runtime_pex is not None else None,
+        runtime_command=runtime_command,
     )
     image = canonical_image_name(descriptor, component_id)
     identity = formation_identity(descriptor)
@@ -674,6 +693,7 @@ def ensure_materialized_surface(
                     recipe_version=recipe_version,
                     component_id=component_id,
                     runtime_pex=runtime_pex,
+                    runtime_command=runtime_command,
                 )
             )
         completed = inspect_image(image)

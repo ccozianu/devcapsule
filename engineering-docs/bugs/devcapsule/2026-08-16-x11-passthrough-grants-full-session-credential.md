@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: contained-display
 opened: 2026-08-16
+closed: 2026-09-25
 requirements: [R-SCOPE-001, R-PRODUCT-002, R-DOCKER-001]
 ---
 
@@ -101,3 +102,18 @@ Recorded for the display-transport decision rather than decided here.
 
 The `xdg-open` forwarding shim that fixes link clicking is required under every
 candidate transport and can be implemented independently of this bug.
+
+## Closure, 2026-09-25
+
+Owner ruling during 0.2.14 rc4 acceptance: the bug no longer applies. The
+contained display (Xvnc, window manager and noVNC inside the capsule,
+reached over loopback with a token) is the default on bases with the
+display stack and shares no host X socket or cookie; a capsule launched
+that way shows transport `contained`, an empty `/tmp/.X11-unix`, and its own
+X authority. Host X11 passthrough is an explicit `host-x11 true`
+authorization whose launch line discloses the full-session credential and
+the waived boundary test; the legacy launcher that supplied it ambiently
+was removed in 0.2.14. Residual: an image predating base recipe 8 has no
+contained display, so the launcher uses host X11 with a printed reason, and
+an explicit denial refuses to launch. That disclosed fallback ends when such
+bases are retired.

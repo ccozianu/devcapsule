@@ -12,6 +12,7 @@ from devcapsule.components.claude_code import (
 )
 from devcapsule.environment_realization import ensure_local_image, realize_environment
 from devcapsule.materialization import ImageDetails
+from devcapsule.runtime_command import RuntimeCommand
 from devcapsule.configuration.storage import (
     ResolvedProject,
 )
@@ -326,7 +327,7 @@ def test_realize_environment_rejects_manual_alternative_published_base(
         local_base=(alternative, f"sha256:{'c' * 64}"),
     )
 
-    with pytest.raises(CliError, match="not the lock-recommended digest"):
+    with pytest.raises(CliError, match="no longer the project's recommendation"):
         realize_environment(selected, obtain_image=Mock())
 
 
@@ -349,3 +350,16 @@ def test_realize_environment_propagates_canonical_conflict_without_launch(
         )
 
     require.assert_not_called()
+
+
+@pytest.mark.parametrize("command", [None, "devcapsule", "devcapsule0"])
+def test_realizer_uses_resolved_shipped_command_choice(tmp_path, monkeypatch, command):
+    selected = resolved_project(tmp_path)
+    if command is not None:
+        selected.resolution["runtime"]["devcapsule-command"] = command
+    materialize = Mock(return_value=(CANONICAL_IMAGE, True))
+    monkeypatch.setattr("devcapsule.environment_realization.ensure_materialized_surface", materialize)
+    monkeypatch.setattr("devcapsule.environment_realization.runtime_artifact", lambda: tmp_path / "runtime.pex")
+    realize_environment(selected, root=tmp_path / "cache", obtain_image=lambda _ref: base_image(),
+                        require_image=lambda _ref: completed_image(), build=Mock(), inspect_image=Mock())
+    assert materialize.call_args.kwargs["runtime_command"] is RuntimeCommand(command or "devcapsule")
