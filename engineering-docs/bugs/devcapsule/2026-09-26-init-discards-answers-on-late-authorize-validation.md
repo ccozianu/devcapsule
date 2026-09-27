@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: blocking
 target: 0.2.15
 owner: maintenance
@@ -135,6 +135,27 @@ consumed from the input stream; and either no manifest was written or the
 checkout record holds every answer that was given. Then the owner's
 one-command check on a fresh directory: the corrected command line runs to a
 successful `project run`.
+
+## Fix (2026-09-26, `ws-maintenance/post-0.2.14`)
+
+`initialize_project` now derives the lock in memory right after the identity
+questions and checks every supplied answer name against the node registry
+before the first recommendation prompt and before any write
+(`_reject_undeclared_answers` in `operations.py`). A curated host name the
+project does not recommend yet, such as `network`, is admitted because the
+recommendation question of the same invocation declares it. The registry's
+undeclared-name error names the closest declared spelling: `'docker'` gets
+"Did you mean 'docker-daemon'?". The repeated-init path checks names the
+same way before eliciting. Identity questions the command line leaves open,
+such as the default-agent offer, still precede the check, because their
+answers change which nodes exist.
+
+Tests: `test_undeclared_authorize_name_fails_before_any_prompt_or_write`
+(no prompt written, no input consumed, nothing on disk, hint present),
+`test_wrong_family_answer_fails_before_any_prompt_or_write`, and
+`test_curated_host_authorization_is_admitted_before_the_recommendation_exists`
+in `devcapsule-src/tests/test_project_init.py`. The duplicate `--need` and
+the optional-answer visibility observations are not changed by this fix.
 
 ## Close criteria
 
