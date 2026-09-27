@@ -28,6 +28,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Releases
 
+- [0.2.15 release work, scope and agent validation](engineering-docs/releases/v0.2.15/README.md)
 - [0.2.14 release work and checklist](engineering-docs/releases/v0.2.14/README.md)
 - [0.2.14 bug triage](engineering-docs/releases/v0.2.14/bugs.md)
 - [0.2.14 RC0 smoke scripts and walkthrough](engineering-docs/releases/v0.2.14/smoke/README.md)
@@ -87,6 +88,8 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
 ## Work Orders
+
+- [0.2.15 extra tools, project information and agent defaults](engineering-docs/work-orders/2026-09-27-project-environment-discovery.md)
 
 - [Workflow installation during onboarding](engineering-docs/work-orders/2026-09-24-workflow-installation-onboarding.md)
 
