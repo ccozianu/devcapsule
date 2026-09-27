@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27; RC1 implementation and main PR preparation validated; awaiting owner UI merge and interactive agent acceptance
+State: active 2026-09-27; PR #145 verified merged, RC1 tag pushed; publishing and validating the downloaded candidate
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,14 +24,15 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-Merge verification checkpoint, 2026-09-27: the owner reported the next PR
-merged, but SSH fetch and `ls-remote` still identify main as
-`0dede824c35fe9a616fa3d0aad5b5f407e00c3d2`. The public page for
-[PR #145](https://github.com/ccozianu/devcapsule/pull/145) identifies the correct
-`ws-maintenance/0215-rc1-main` branch and still says **Open**. No RC1 tag was
-created. The prepared release source stays a15ff8b; publication resumes after
-verifying the owner completes that merge. This is an observed external-state
-blocker, not a request for new release scope or tagging authorization.
+RC1 resumed after the owner's completed merge. SSH fetch verified
+[PR #145](https://github.com/ccozianu/devcapsule/pull/145) at
+`1215795`; its tree is identical to tested main preparation commit 1d1a882 and
+contains release source `a15ff8b58f4af93845c17eaca22f9c9d29c8e000`.
+Annotated tag `v0.2.15-rc1` is pushed at that unchanged source. The release
+protocol gate reports `mainline` with zero unintegrated commits. Backend
+publication and downloaded-candidate verification are in progress; a tag
+alone does not establish delivery or acceptance. Release and main gates
+already passed on this source; neither branch is being rebased.
 
 Agent freshness was rechecked against the same vendor endpoints on 2026-09-27:
 Codex latest remains 0.157.1, Claude latest 2.1.283 and the Antigravity Linux
@@ -216,11 +217,11 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Owner completes [PR #145](https://github.com/ccozianu/devcapsule/pull/145)
-from `ws-maintenance/0215-rc1-main` into main through the GitHub UI. Fetch and verify source a15ff8b is integrated with its behavior
-preserved, then tag the unchanged release tip as `v0.2.15-rc1`, publish and
-validate downloaded assets. The prepared main branch is only a delivery
-vehicle; further fixes belong on `release-0.2.15`.
+Wait for RC1 backend publication, verify all three downloaded assets and the
+executable's identity, then run required Docker proofs and the actual init,
+xtras/info and replacement journeys against those bytes. Keep RC1 immutable;
+fix concrete regressions only on `release-0.2.15` and account for main before a
+new candidate. The main preparation branch remains a delivery vehicle.
 
 Take the owner's interactive Claude/Antigravity results when they arrive;
 keep the RC0 desktop until the owner is done. Address concrete regressions on
@@ -893,9 +894,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- PR #145 exists but was verified still Open after the owner reported a merge.
-  Awaiting its completed UI merge for `ws-maintenance/0215-rc1-main` (1d1a882).
-  Release a15ff8b is pushed and locally validated; RC1 is not tagged yet.
+- PR #145 is merged and verified at 1215795; RC1 is tagged at a15ff8b.
+  Backend publication and downloaded-candidate checks are now in progress.
 - Awaiting authenticated Claude/Antigravity tool/model checks in the retained
   RC0 desktop. No credentials were imported or provider acceptance invented.
 - After merge, fetch main, verify disposition, tag RC1 and run the downloaded
