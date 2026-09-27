@@ -121,6 +121,7 @@ from devcapsule.configuration.storage import (
 )
 from devcapsule.configuration.bindings import (
     configuration_binding_declarations,
+    managed_binding_path as _managed_binding_path,
     component_secret_inputs,
     resolve_secret_bindings,
 )
@@ -148,6 +149,24 @@ class ProjectCommandContext:
 def _project_context(context: object | None) -> ProjectCommandContext:
     assert isinstance(context, ProjectCommandContext)
     return context
+
+
+class ProjectInfoCommand(Command):
+    name = "info"
+    help = "Show project software, environment and persistent storage without changing state."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", action="store_true", help="Print the information as JSON.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.project_information import project_information, render_information
+
+        selected = _project_context(context)
+        report = project_information(selected.start_path(), runtime_fallback=selected.selected_path is None)
+        print(json.dumps(report, indent=2) if arguments.json else render_information(report))
+        return 0
 
 
 class ProjectListCommand(Command):
@@ -1284,13 +1303,14 @@ class ProjectCommand(Group):
         parsed_tokens = tokens[:tokens.index("--")] if "--" in tokens else tokens
         if tokens and not any(token in {"-h", "--help"} for token in parsed_tokens):
             read_only = tuple(tokens[:2]) in {("versions", "show"), ("config", "list")}
-            if not read_only and tokens[0] not in {"recursive-e2e", "list"} and len(tokens) >= (2 if tokens[0] in {"versions", "config", "state", "checkout"} else 1):
+            if not read_only and tokens[0] not in {"recursive-e2e", "list", "info"} and len(tokens) >= (2 if tokens[0] in {"versions", "config", "state", "checkout"} else 1):
                 runtime_configuration.require_launcher(context.start_path(), tokens)
         return context
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
+            ProjectInfoCommand.name: ProjectInfoCommand,
             ProjectListCommand.name: ProjectListCommand,
             ProjectInitCommand.name: ProjectInitCommand,
             CheckoutGroup.name: CheckoutGroup,
@@ -1637,18 +1657,6 @@ def _fill_missing_settings(settings: dict[str, Any], defaults: dict[str, Any]) -
             changed = _fill_missing_settings(settings[key], value) or changed
     return changed
 
-
-def _managed_binding_path(root: Path, declaration: Any) -> Path:
-    home = Path(os.environ.get("HOME", "~")).expanduser()
-    roots = {
-        "durable": Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share"),
-        "state": Path(os.environ.get("XDG_STATE_HOME") or home / ".local" / "state"),
-        "cache": Path(os.environ.get("XDG_CACHE_HOME") or home / ".cache"),
-    }
-    namespace = roots[declaration.kind] / "devcapsule" / "projects" / "by-path" / project_namespace(root)
-    if declaration.name == "home":
-        return namespace / "home"
-    return namespace / "components" / str(declaration.component_id) / str(declaration.slot_name)
 
 
 COMMAND = ProjectCommand

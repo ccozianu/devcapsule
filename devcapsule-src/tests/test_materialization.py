@@ -180,7 +180,7 @@ def test_codium_materialization_builds_an_image_with_no_setuid_binary(tmp_path: 
     def build(build_spec) -> None:
         plan = build_spec.build_plan()
         assert any(copy.destination == "/opt/codium" for stage in plan.stages for copy in stage.plan.directories)
-        assert plan.exec_steps == ()
+        assert not any("chmod" in step.args and "4755" in step.args for step in plan.exec_steps)
         labels = dict(plan.labels)
         assert labels["devcapsule.component.id"] == "codium"
         assert labels["devcapsule.component.vscode.version"] == "1.126.04524"
@@ -388,7 +388,7 @@ def test_materialization_extracts_a_locked_archive_member(tmp_path: Path) -> Non
         )
         assert copied.source.read_bytes() == b"tool-binary-fixture"
         assert copied.permissions == 0o755
-        assert plan.exec_steps == ()
+        assert not any("tar" in step.args for step in plan.exec_steps)
         labels = dict(plan.labels)
         built[plan.image] = image_details(plan.image, labels)
 

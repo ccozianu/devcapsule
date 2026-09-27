@@ -74,6 +74,46 @@ Review the result and run the project's checks before committing.
 
 ## Return to work
 
+### Install extra tools (0.2.15)
+
+Inside the capsule, install tools such as gcloud under `/opt/xtras/gcloud`.
+`/opt/xtras` is writable without sudo and points to your persistent
+`$HOME/xtras`; an existing installation there remains available. Put launchers
+or links in `/opt/xtras/bin`, which is on PATH for IDEs, agents and terminals:
+
+```bash
+# After installing a tool under /opt/xtras:
+ln -s /opt/xtras/gcloud/bin/gcloud /opt/xtras/bin/gcloud
+```
+
+These files survive container replacement for this checkout. A separate
+checkout gets its own storage by default; explicitly sharing or relocating
+the home also shares or relocates these tools. You manage their installation
+and updates. They are not added to the project's lock, copied to other
+computers, or guaranteed compatible with a future base image.
+
+### Inspect your environment (0.2.15)
+
+```bash
+devcapsule project info
+devcapsule project info --json
+```
+
+On the host, run this from the project folder or a descendant. Inside the
+capsule, it also works from elsewhere, including `/opt`. Use
+`devcapsule project --path /path/to/project info` to select a project explicitly;
+a nested project keeps its own identity.
+
+The report shows components and versions, provided environment variables and
+their purpose, persistent container paths and their host backing, and temporary
+storage. Host output describes the next launch; runtime output identifies
+running software from launch evidence and separately shows the next-launch
+selection. It omits secret values and does not initialize, resolve or repair
+anything. Older running capsules without launch evidence need a relaunch to
+report their runtime accurately.
+
+### Restart a session
+
 From the project folder, `~/.local/bin/devcapsule project run` is the return
 command. Save files before stopping; a new session restarts processes while
 reusing stored IDE and agent state. The container is disposable; your source
