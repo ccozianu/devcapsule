@@ -16,3 +16,6 @@ undispositioned, or listed below, meaning resolved. Never both, never neither.
 | `2026-09-26-project-management-init-discards-answers-bug.md` | 2026-09-26 | acknowledged | Blocking init bug taken as the 0.2.15 headline; fixed on this branch with tests, record carried here with status fixed. |
 | `2026-09-26-project-management-release-0215.md` | 2026-09-26 | acknowledged | Maintenance drives 0.2.15 from `main` as `release-0.2.15`; superseded on scope by the fix-only item below. |
 | `2026-09-26-project-management-release-0215-fix-only.md` | 2026-09-26 | acknowledged | 0.2.15 carries the init fix alone; cleanup candidates, surfaces and release notes move to 0.2.16. |
+| `2026-09-27-project-management-0215-xtras-info-scope.md` | 2026-09-27 | acknowledged | Accepted xtras and host/runtime project info into 0.2.15; general guard repair remains non-gating. Supersedes fix-only scope. |
+| `2026-09-27-project-management-0215-antigravity-default.md` | 2026-09-27 | acknowledged | Accepted always-proceed default with preservation of explicit choices and selected-version acceptance. |
+| `2026-09-27-project-management-0215-claude-default.md` | 2026-09-27 | acknowledged | Accepted minimal pre-first-launch bypassPermissions settings and interactive first-use acceptance, extending the agent-defaults slice. |

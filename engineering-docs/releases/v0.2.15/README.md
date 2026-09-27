@@ -1,6 +1,6 @@
 # DevCapsule 0.2.15 — Release Work
 
-Updated: 2026-09-27. Stage: **RC1 accepted; final promotion record prepared; main integration and final publication pending**.
+Updated: 2026-09-27. Stage: **final published and verified; main development reopening prepared**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 ## Scope And Owner Decisions
@@ -104,8 +104,8 @@ next resumption; its pause does not block this owner-authorized release review.
 - [x] Required Docker proofs against downloaded RC1: 7 passed in 201.29 s.
 - [x] Vendor freshness rechecked 2026-09-27 20:37 UTC; all pins still current.
 - [x] Exact-candidate [acceptance record](../v0.2.15.json), re-downloaded and checksum-verified.
-- [ ] Acceptance integration to main, final tag and verified final assets.
-  Reopen main at 0.2.16.dev0 after publication.
+- [x] Acceptance integrated to main; final tag and all three assets verified.
+- [ ] Integrate the prepared 0.2.16.dev0 reopening and close-out records.
 
 ## Candidates
 
@@ -242,12 +242,35 @@ Accepted candidate: `v0.2.15-rc1`. The reviewed
 `abb785d7ad4069606fd3ab84009ca8efeabc22b9` (`v0.2.14`). The helper re-downloaded
 and verified the published candidate when preparing that record.
 
-Deliver the record and post-candidate evidence to main by PR, preserving main's
-newer implementation and development version. After verifying integration,
-tag `v0.2.15` at the accepted source a15ff8b, **not** at a later documentation
-commit. Final packaging may change version metadata; the backend must retain
-the accepted frozen inputs. Verify final publication and downloaded assets,
-then reopen main at 0.2.16.dev0. No final tag has been created yet.
+The acceptance record and post-candidate evidence reached main through PRs
+#148 and #146. SSH fetch verified main `82a1b5d9ee4bf815d0d9dc53a4eab4727ace52bd`
+has the exact tested preparation tree. The local final gate passed before
+pushing annotated `v0.2.15` at accepted source a15ff8b. The release branch
+remains at 95c7bad and is retained, together with the immutable candidate tags.
+
+[Final release](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15)
+is public and marked Latest. The
+[final backend](https://github.com/ccozianu/devcapsule/actions/runs/36353476393)
+completed successfully in 3m 13s. All three assets were freshly downloaded:
+executable, checksum and manifest. Final SHA-256:
+`0e66b9d9947aa447b53d0466d57de3290bb85ca07309df2d739baf82e4c5e113`.
+
+The executable reports version `0.2.15`, mnemonic `v0.2.15` and exact accepted
+source `a15ff8b58f4af93845c17eaca22f9c9d29c8e000`; its help command passes.
+Checksum and manifest agree. Frozen file, dependency, Python and base inputs
+match RC1, and inspection of the final PEX reproduces the manifest inputs.
+The embedded promotion record matches main's acceptance record and captures
+main 82a1b5d. Final bytes intentionally differ from RC1 through final-version
+metadata. RC1's downloaded Docker and owner-interactive acceptance are reused;
+no additional final GUI/provider or Docker round is claimed.
+
+Downloads are under `/home/devcapsule/.cache/devcapsule-releases/v0.2.15`.
+Local gate evidence: `/tmp/0215-final-gate.json`; final verification helper:
+`/tmp/0215-verify-final.py`. They are regenerable from the published release.
+Main reopens at 0.2.16.dev0 through `ws-maintenance/post-0.2.15`, carrying this
+close-out evidence. The final adopter notes below are ready for the owner to
+use in the GitHub release body; automated publication currently supplies the
+changelog link.
 
 ## Release Notes Preparation
 
