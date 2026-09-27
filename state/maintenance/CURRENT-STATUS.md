@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active; releasing 0.2.15 from `release-0.2.15`, cut 2026-09-26 from `v0.2.14` with the init fix alone
+State: active 2026-09-27; releasing 0.2.15; init fix plus approved xtras, project info and Claude/Antigravity defaults; implementation next
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -23,6 +23,36 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+Resumed 2026-09-27 at explicit owner direction after project-management paused
+until 0.2.15 publication. Took and acknowledged all three project-management
+scope messages; intake is empty. The owner-approved additions now supersede
+the original fix-only scope: persistent `/opt/xtras`, read-only `project info`
+on host and inside the capsule, and Antigravity/Claude permission defaults.
+The full accepted contract is
+`engineering-docs/work-orders/2026-09-27-project-environment-discovery.md`
+at pushed project-management commit `d34fb06`; the receipt commit `04382ce`
+also preserves all three messages. Carry that work order into the release
+branch with its index entry before implementation. Project-management remains
+paused; switching back requires owner direction.
+
+The current checkout is `/tmp/devcapsule-project-management` (its pathname
+has no workflow meaning). The original checkout's release-document edits and
+website state are untouched. The records branch was merged with main through
+`0cb4b0a`; only records and coverage differed, definitions were unchanged. The
+release branch is never synchronized with main. Remote `release-0.2.15` is at
+`1d9a27f`; no `v0.2.15*` tags were returned by the remote on resume.
+
+Eight nonterminal bugs belong to maintenance: the fixed blocking init bug
+(target 0.2.15); the confirmed guard, installed-IDE reuse, multiline-rendering
+and ecosystem-bootstrap bugs; and reported X11 compositing, native-launcher
+and detached-successor cleanup bugs. Those seven have no assigned release
+target. The general capsule command-guard repair is explicitly non-gating
+for 0.2.15, but new `project info` must work, including from `/opt`.
+
+Earlier release history follows; fix-only statements below describe the
+initial cut and do not override the scope accepted on 2026-09-27.
+
 
 Resumed 2026-09-26 at the owner's direction, synchronized with `main` at
 `f4949aa` by merge. Three items from project-management taken and decided:
@@ -65,16 +95,28 @@ only source, version and release documents. The row names the release branch
 as the rule requires. Handed to workflow-improvements as a gap to close in
 the definition.
 
-Next: on the owner's word, tag `v0.2.15-rc0` at the branch tip and push it;
-the backend builds; verify the published assets; the owner reruns the
-2026-09-26 init command line on a fresh directory with the downloaded
-candidate, typo first, then corrected, through `project run`; local proofs;
-acceptance record; final tag; `main` reopens at 0.2.16.dev0.
+Next: implement the owner-approved additions on `release-0.2.15` before
+cutting RC0. Then run the full gate, account for main, publish and validate
+the downloaded candidate, record exact-candidate acceptance, integrate it,
+and publish the final tag. Main subsequently reopens at 0.2.16.dev0. The
+old fix-only gate does not validate the expanded release.
 
 ## Planned Next Step
 
-Release 0.2.15 is cut and gated; see *Release 0.2.15* above for the exact
-next step. PR #143 merged the fix to `main` at `3acc460` on 2026-09-26.
+On `release-0.2.15`, import the approved work order, update the release
+overview and implement the bounded additions in this order:
+
+1. Claude and Antigravity permission defaults: minimal pre-first-launch
+   settings, missing-property defaults, explicit-choice preservation and
+   malformed-file handling. Verify vendor interactive startup behavior.
+2. `/opt/xtras`: writable persistent storage backed by existing home/xtras,
+   preserve existing installations and expose bin on IDE/agent/terminal PATH.
+3. `project info`: read-only identity/software/environment/persistence overview
+   on host and inside the capsule, including outside the source directory.
+
+Then validate the combined release and arrange its main disposition before
+RC0. PR #143 already merged the init fix at `3acc460`. GitHub PR operations
+remain owner-operated via UI. No new candidate or acceptance is claimed.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -261,6 +303,14 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+2026-09-27 resumption: SSH refs, waiting mail and the current main disposition
+were rechecked; no candidate tag exists. Record-only acknowledgement changes
+pass whitespace checks. The clean checkout has no developer virtualenv, as
+already established during the project-management handoff; no new build pass
+is claimed. Set up its developer environment before implementation validation.
+No containers or vendor sessions were launched for workstream selection.
+
 
 Base contract slice (2026-09-26, owner-directed, from the design note): new
 `base_contract` module (`BaseContract`, `Provenance`, `BaseImage`), the
@@ -732,6 +782,18 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Current 0.2.15 scope is accepted and all three messages acknowledged. No
+  additional product decision is needed to start the ordered slices above.
+- Vendor verification still owed: Antigravity's exact toolPermission behavior;
+  Claude minimal settings plus first-use notice, then settings persistence.
+- Existing source gate covers only the init-fix tree. The additions need fresh
+  tests, main disposition and downloaded-candidate acceptance before release.
+- The 25 older project-management items remain paused until 0.2.15 ships;
+  no automatic workstream return. Original checkout's dirty state is untouched.
+- Deliberately not preserved: no session transcript or regenerated build output.
+
+Earlier open-thread history (read against the current scope above):
+
 - Pause of 2026-09-26. Merged to `main` today: the base-contract slice
   (consent bound to the image, bases named by `family@recipe`, compatibility
   report), the `devcapsule.images` package, and the design-experiment work
@@ -883,4 +945,4 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - [Configuration contract](configuration-contract.md): lifecycle requirements relevant to future changes.
 - [Correctness/test map](configuration-correctness.md): implementation evidence and coverage limits.
 - [Intake decisions](intake-dispositions.md): outcomes of received mail.
-- `intake/`: no pending items; both project-management messages acknowledged in the decision log.
+- `intake/`: empty; the three 2026-09-27 scope items are acknowledged in the decision log.
