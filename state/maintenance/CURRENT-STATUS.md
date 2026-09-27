@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27 awaiting owner UI merge for RC0; releasing 0.2.15; agent slice implemented and validated; xtras and project info follow RC0
+State: active 2026-09-27; RC0 tagged and publication underway; downloaded-candidate validation next
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -49,11 +49,12 @@ implementation and 0.2.15.dev0 remain. Main's matrix is embedded-23; release's
 older schema is embedded-22. Main merge-result gate: 1085 passed, 20 deselected,
 1 xfailed, 1 xpassed; mypy clean on 172 files; nine packaged checks passed.
 
-The owner has the compare URL and `/tmp/0215-rc0-pr.md` for the UI merge.
-No RC tag has been created. Remote main last verified at `0cb4b0a` before
-preparation; re-fetch after the owner merges and verify d96e0e7 ancestry.
-The obsolete fix-only integration-exception JSON was removed. Use ancestry
-for RC0 after the normal PR merge; never claim the new slice is on main early.
+Owner reported the PR merge; SSH fetch verified PR #144 at `0770638` and
+remote main `0dede82` contains release commit d96e0e7. The unchanged release
+commit is now tagged and pushed as `v0.2.15-rc0`. The release protocol gate
+reports integration method mainline and zero unintegrated commits.
+Publication assets are pending; no successful backend run or downloaded
+candidate acceptance is claimed yet. The obsolete fix-only exception is gone.
 
 The mainline preparation branch is the release runbook's ordinary fix delivery
 within maintenance, not a workstream change or a rebase of the release.
@@ -141,11 +142,11 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Await the owner-operated UI merge of main ← `ws-maintenance/0215-rc0-main`.
-Then fetch main over SSH, verify the exact release commit is an ancestor,
-return to `release-0.2.15`, tag `v0.2.15-rc0` at d96e0e7 and push it.
-Verify published assets and smoke the downloaded candidate: init recovery,
-new agent versions, fresh interactive defaults and ordinary tool actions.
+Verify RC0 publication and download/checksum its PEX, checksum and manifest.
+Use those bytes for packaged checks, required local Docker proofs, init
+recovery and agent acceptance. Candidate commit is d96e0e7, tag v0.2.15-rc0;
+never move it. The release branch must not synchronize with main: its older
+base-contract implementation is intentionally retained for 0.2.15.
 
 Next implement `/opt/xtras` and host/runtime `project info` on the release
 branch for the following candidate. The full approved work order still gates
@@ -818,10 +819,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Paused only for the owner UI merge of the prepared RC0 main delivery.
-  PR operations remain owner-only under WORKFLOW-LOCAL.md. No published
-  candidate or authenticated provider acceptance is claimed.
-- Resume on release d96e0e7 after verifying remote main; do not publish this
+- PR #144 is merged and verified; RC0 is pushed. Wait for real published
+  assets before claiming delivery or acceptance. Authentication/provider
+  checks remain distinct from startup checks.
+- Continue on release d96e0e7; do not publish this
   status from the stale release-branch copy. The prepared main branch is a
   delivery vehicle, not the release branch for subsequent fixes.
 - Scratch: `/tmp` (2 GB) and `/var/tmp` (1 GB) are tmpfs; long HOME-based
