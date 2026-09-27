@@ -42,8 +42,9 @@ container removed; detailed evidence is in the release overview.
 Release full gate: 1077 passed, 20 deselected, 1 xfailed, 1 xpassed; mypy clean
 on 169 files; nine packaged-runtime checks passed. Clean exact-release PEX
 built and version/help smoke passed at d96e0e7. Main delivery is a real merge
-prepared on `ws-maintenance/0215-rc0-main`, pushed at
-`8859c5f1e4d097274f0f911cdbdedb44f389fdaa`: main's newer images/base-contract
+prepared on `ws-maintenance/0215-rc0-main`, tested merge
+`8859c5f1e4d097274f0f911cdbdedb44f389fdaa`, pushed tip `7069b3a`
+(adds the release overview to main's documentation index): main's newer images/base-contract
 implementation and 0.2.15.dev0 remain. Main's matrix is embedded-23; release's
 older schema is embedded-22. Main merge-result gate: 1085 passed, 20 deselected,
 1 xfailed, 1 xpassed; mypy clean on 172 files; nine packaged checks passed.
