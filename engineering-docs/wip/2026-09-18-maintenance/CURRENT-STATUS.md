@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-27; 0.2.15 published and verified; preparing 0.2.16.dev0 reopening
+State: paused 2026-09-27; 0.2.15 published and verified; 0.2.16.dev0 reopening validated, awaiting owner UI merge
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -47,7 +47,12 @@ bump command sets package and both definition headers to 0.2.16.dev0; the
 installed workflow declaration is unchanged. This branch brings the latest
 maintenance status/decision log back from the release's records-only exception,
 updates only maintenance's registry row, and records final publication.
-Reopening full build validation is pending.
+Reopening full build passed on clean commit 52bb2cf: 1089 source tests,
+20 deselected, one existing xfail and one XPASS, mypy 174 files, nine packaged
+checks and exact/local PEX builds/smokes. Log: `/tmp/0215-closeout-build.log`.
+The subsequent checkpoint changes records only; source inputs are unchanged.
+Project-management was notified by `2026-09-27-maintenance-0215-published.md`
+at coordination a498133ed199. Mail take before pause returned no items.
 
 No release branch was rebased or synchronized. The post-release branch is
 based on current main; workflow prose is unchanged. The original checkout's
@@ -85,11 +90,12 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Finish the required build, then deliver `ws-maintenance/post-0.2.15` for the
-owner UI PR to main: 0.2.16.dev0 reopening and release close-out records.
+Owner opens and merges `ws-maintenance/post-0.2.15` into main through the
+GitHub UI: validated 0.2.16.dev0 reopening and release close-out records.
 After the owner merges, fetch and verify the version triplet and records on
 main. Publication itself is complete; no additional final tag or acceptance
-is needed. Notify project-management of the verified release and reopening.
+is needed. Project-management already has the verified release and pending
+reopening via coordination mail.
 The adopter notes in the release overview can be pasted into the GitHub
 release body by the owner under the UI-only integration rule.
 
@@ -763,7 +769,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 ## Open Threads
 
 - Final 0.2.15 publication and download verification are complete.
-- Deliver and verify the post-release PR reopening main at 0.2.16.dev0.
+- Awaiting owner UI merge, then verify the post-release PR reopening main at
+  0.2.16.dev0. Full build passed; no implementation work remains in this slice.
   User-facing release notes are prepared in the release overview; GitHub's
   final release body currently contains its generated changelog link.
 - Project-management receives final identity/acceptance and reopening state;

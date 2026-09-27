@@ -268,7 +268,9 @@ Downloads are under `/home/devcapsule/.cache/devcapsule-releases/v0.2.15`.
 Local gate evidence: `/tmp/0215-final-gate.json`; final verification helper:
 `/tmp/0215-verify-final.py`. They are regenerable from the published release.
 Main reopens at 0.2.16.dev0 through `ws-maintenance/post-0.2.15`, carrying this
-close-out evidence. The final adopter notes below are ready for the owner to
+close-out evidence. Its full gate passed: 1089 source tests, type checks over
+174 files, nine packaged checks and exact/local PEX smokes; log
+`/tmp/0215-closeout-build.log`. The final adopter notes below are ready for the owner to
 use in the GitHub release body; automated publication currently supplies the
 changelog link.
 
