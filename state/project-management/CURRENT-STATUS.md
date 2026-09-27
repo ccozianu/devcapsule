@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-27; owner approved three bounded 0.2.15 additions; maintenance handoff delivered; 25 undecided intake items
+State: active 2026-09-27; owner approved three bounded 0.2.15 slices including Claude and Antigravity defaults; maintenance handoff delivered; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -39,11 +39,16 @@ The owner approved persistent `/opt/xtras` and read-only `project info` for
 0.2.15, and accepted deferring the general in-capsule project-command guard
 bug. The [accepted work order](../../work-orders/2026-09-27-project-environment-discovery.md)
 is the current scope and acceptance contract. Maintenance is the release
-driver for these three bounded additions; its general scope is not expanded.
+driver for these three bounded slices; its general scope is not expanded.
 The owner subsequently approved Antigravity's `toolPermission` default as
 `always-proceed` in `$HOME/.gemini/antigravity-cli/settings.json`, completing
-the three-addition scope. New state and a missing key in managed settings get
-the default; explicit choices and unrelated settings are preserved. Codex's
+the initial three-slice scope. The owner then explicitly extended the agent
+defaults slice to Claude: seed minimal user settings before its first launch,
+with `permissions.defaultMode` set to `bypassPermissions`. Official vendor
+docs permit pre-creating the file. Selected-version interactive acceptance
+must establish first-use notice behavior and preservation of Claude-written
+state; do not claim a fresh-launch test from documentation alone. New state
+and a missing key in managed settings get the default; explicit choices and unrelated settings are preserved. Codex's
 v0.2.14 seed already sets approvals to never and sandbox to danger-full-access;
 existing configurations are not overwritten. Branch is current with main;
 workflow definitions unchanged. No runtime implementation or new candidate
@@ -146,7 +151,10 @@ belong to maintenance; remain in project-management unless the owner explicitly
 selects that workstream. The third addition is Antigravity
 `toolPermission: "always-proceed"`; its supplemental maintenance handoff
 `2026-09-27-project-management-0215-antigravity-default.md` was delivered at
-coordination commit `ebf07f17ef87`. No further addition is selected.
+coordination commit `ebf07f17ef87`. Claude is now also in the agent-defaults
+slice; `2026-09-27-project-management-0215-claude-default.md` was delivered
+at coordination commit `0b272657b687`. Check both acknowledgements. No further
+slice is selected.
 
 Previous planning context (2026-09-26):
 
@@ -184,7 +192,7 @@ completed: PR #131 was the baseline, maintenance cut and published 0.2.14.
 
 ## Validation And External State
 
-2026-09-27 coordination checkpoint, including the Antigravity supplement:
+2026-09-27 coordination checkpoint, including the Antigravity and Claude supplements:
 diff whitespace and changed-document relative links checked. Codex defaults
 were verified in v0.2.14 source and the current component/seed implementation.
 No live agent settings were edited. The required `.venv/bin/python -m nox -s build` could
@@ -222,8 +230,8 @@ submodules were changed.
 
 ## Open Threads
 
-- Current: three 0.2.15 additions are approved; implementation and release
-  acceptance await maintenance. The general capsule guard bug is explicitly
+- Current: three 0.2.15 slices are approved, including Claude and Antigravity
+  defaults; implementation and release acceptance await maintenance. The general capsule guard bug is explicitly
   non-gating, but `project info` must work inside the capsule.
 - Checkout custody: original release-document and website edits remain
   untouched in `/workspace/301e4208ef81-ChatGPT_Codex`. This workstream's clean
@@ -254,7 +262,7 @@ submodules were changed.
 
 ## Workstream Document Index
 
-- [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/Antigravity scope, guard deferral and acceptance checks.
+- [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/agent-defaults scope, guard deferral and acceptance checks.
 
 - [0.2.14 release overview](../../releases/v0.2.14/README.md): maintained release checklist and evidence.
 - [0.2.14 bug triage](../../releases/v0.2.14/bugs.md): release dispositions and next actions; canonical bug records remain linked.
