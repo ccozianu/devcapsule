@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-26 at owner direction; the pair moves to maintenance to fix the blocking init bug and cut 0.2.15; 25 undecided intake items
+State: active 2026-09-27; owner approved two bounded 0.2.15 additions; maintenance handoff delivered; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,6 +24,26 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+Resumed 2026-09-27 for the owner's release-scope decision in a clean checkout
+at `/tmp/devcapsule-project-management`, on the registered branch. The original
+checkout remains on `release-0.2.14` with its two pre-existing document edits
+and dirty website submodule untouched. This is initial selection of the
+explicitly requested workstream, not resumption of obsolete local release
+state. Main was merged through `0cb4b0a`: nine commits behind, current rules
+unchanged, new release evidence relevant to this decision. Mechanical conflicts
+kept main's fixed init-bug record and added bug-index entries. No open bug
+owned by project-management was found. No waiting mail; 25 intake items remain.
+
+The owner approved persistent `/opt/xtras` and read-only `project info` for
+0.2.15, and accepted deferring the general in-capsule project-command guard
+bug. The [accepted work order](../../work-orders/2026-09-27-project-environment-discovery.md)
+is the current scope and acceptance contract. Maintenance is the release
+driver for these two bounded additions; its general scope is not expanded.
+No runtime implementation or new candidate acceptance is claimed here.
+
+Earlier coordination history follows; the 2026-09-27 decision supersedes the
+fix-only restriction wherever it appears below.
 
 The owner explicitly returned this checkout from maintenance on 2026-09-22.
 Maintenance was paused, committed, pushed and published first, with its bug
@@ -66,7 +86,7 @@ Generic-rule revision was delivered to workflow-improvements as
 `5d47a901d22d`; that includes clarifying routing for selective mainline delivery.
 No other workstream's records or generic workflow source were edited.
 
-## Release 0.2.15 (decided 2026-09-26)
+## Release 0.2.15 (initial decision 2026-09-26; expanded 2026-09-27)
 
 The owner's first-session attempt with the released 0.2.14 launcher hit a
 show stopper: `project init` discards every interactive answer when a
@@ -76,10 +96,10 @@ owner maintenance, severity blocking, target 0.2.15. The owner ruled the same
 day: no fourth version number; fix it and release 0.2.15. This decides the
 first ask of maintenance's 0.2.15 plan:
 
-- 0.2.15 is a maintenance release driven by `maintenance`, cut from `main`
-  under *Taking A Release Over*, containing this fix and nothing else.
-- The release ships when the fix is verified on a candidate; the fix is
-  the gate.
+- Maintenance cut 0.2.15 from `v0.2.14` under the owner's fix-only ruling;
+  the published maintenance state records that cut and the passing local gate.
+  On 2026-09-27 the owner added `/opt/xtras` and `project info` via the linked
+  work order. The init fix and both additions require candidate acceptance.
 - Owner ruling, same day: everything else named for 0.2.15 moves to
   0.2.16. That is the cleanup and optimization list from the 2026-09-25
   plan, its five candidates, the IDE-surface wish (maintenance estimates
@@ -111,6 +131,15 @@ The marker and bug await owner PR integration.
 
 ## Planned Next Step
 
+Maintenance received `2026-09-27-project-management-0215-xtras-info-scope.md`
+at coordination commit `2e76c7989b32`, including the full work order. Next:
+check its acknowledgement when reviewing release progress, then resume the
+remaining coordination decisions below. Implementation and candidate validation
+belong to maintenance; remain in project-management unless the owner explicitly
+selects that workstream. No third addition has been selected for 0.2.15.
+
+Previous planning context (2026-09-26):
+
 Resumed 2026-09-26 on `ws-project-management/coordination`, synchronized with
 `main` at `f4949aa` (v0.2.14 published 2026-09-25; `main` reopened at
 0.2.15.dev0). The definition text is unchanged since the last read apart from
@@ -121,7 +150,7 @@ Six mailed items were taken on resume and joined the 20 already in `intake/`;
 the 0.2.15 plan is decided, 25 remain. The first decisions to put to the owner, in order:
 
 1. Done 2026-09-26: 0.2.15 registered with maintenance as driver, the
-   blocking init bug its only content; see *Release 0.2.15* above. The rest
+   blocking init bug initially its only content (expanded 2026-09-27); see *Release 0.2.15* above. The rest
    of that plan is 0.2.16 material: register 0.2.16 with the owner once
    0.2.15 is out, sequencing the cleanup candidates and ruling on surfaces.
 2. Release notes as a release artifact
@@ -144,6 +173,15 @@ The previous planned next step, the handoff of the 0.2.14 cut to maintenance,
 completed: PR #131 was the baseline, maintenance cut and published 0.2.14.
 
 ## Validation And External State
+
+2026-09-27 coordination checkpoint: diff whitespace and changed-document
+relative links checked. The required `.venv/bin/python -m nox -s build` could
+not start in the clean checkout because its developer virtualenv is absent
+(exit 127). No environment provisioned for this documentation-only handoff;
+no new build pass or implementation validation claimed. Earlier build results
+below belong to their recorded checkpoints. The original checkout and website
+edits remain untouched. Git author identity was verified as Costin Cozianu.
+
 
 Release-workspace setup changes documentation only; relative links, all 19 bug
 rows against committed metadata, and whitespace were checked. Reuse the full
@@ -172,6 +210,14 @@ submodules were changed.
 
 ## Open Threads
 
+- Current: two 0.2.15 additions are approved; implementation and release
+  acceptance await maintenance. The general capsule guard bug is explicitly
+  non-gating, but `project info` must work inside the capsule.
+- Checkout custody: original release-document and website edits remain
+  untouched in `/workspace/301e4208ef81-ChatGPT_Codex`. This workstream's clean
+  checkout is `/tmp/devcapsule-project-management`; branch commits and
+  coordination publication, not the temporary path, preserve its records.
+
 - Awaiting the human: register 0.2.16 after 0.2.15 ships (driver, the five
   cleanup candidates' order, the IDE-surface ruling, the release-notes
   artifact proposal); ratify or trim the V1 acceptance criteria in the
@@ -195,6 +241,8 @@ submodules were changed.
   only in this section and the ledger it cites.
 
 ## Workstream Document Index
+
+- [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info scope, guard deferral and acceptance checks.
 
 - [0.2.14 release overview](../../releases/v0.2.14/README.md): maintained release checklist and evidence.
 - [0.2.14 bug triage](../../releases/v0.2.14/bugs.md): release dispositions and next actions; canonical bug records remain linked.
