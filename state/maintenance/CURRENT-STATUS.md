@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-27; releasing 0.2.15; init fix, xtras, project info, agent defaults and owner-directed agent upgrades; validation pending
+State: paused 2026-09-27 awaiting owner UI merge for RC0; releasing 0.2.15; agent slice implemented and validated; xtras and project info follow RC0
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,16 +24,42 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-Owner addition, 2026-09-27: every release should try upgrading the supported
-AI agent CLIs to current generally available vendor versions. Direct feed
-checks found Codex 0.157.1 (pin 0.153.4), Claude Code 2.1.283 (pin 2.1.261),
-and Antigravity 1.2.12 (pin 1.1.24). These are candidates only; no artifacts
-were installed, pins changed, or new-version runtime acceptance claimed.
-Release commit `8028a11` updates the 0.2.15 overview with the entire approved
-scope, source URLs, freshness decisions and validation checklist. The recurring
-runbook instruction was sent to paused project-management as
-`2026-09-27-maintenance-recurring-agent-release-review.md` at `8244b5ae7bca`;
-its resumption is not needed to execute the owner's instruction for 0.2.15.
+RC0 slice completed 2026-09-27 at the owner's direction to cut a candidate
+before xtras/project info, aiming to finish the full release this evening.
+Release `d96e0e7ada56dbea3f857777abb28f1bc223ceef` is pushed: Codex 0.157.1,
+Claude Code 2.1.283, Antigravity 1.2.12, and managed JSON permission defaults.
+Explicit settings, malformed files, links and adopted state are preserved.
+The approved work order is imported into the release with its index entry.
+
+Vendor checksums passed before execution; all three CLIs started as a fresh
+non-root user on the exact pinned v0.2.12-rc5 base. Claude headless startup
+reported bypassPermissions from its seed; the selected binary supports the
+separate first-use suppression property. No account was imported. Interactive
+tool execution, model entitlement and replaced-container persistence remain
+candidate acceptance tasks, and the matrix edges say so. Disposable smoke
+container removed; detailed evidence is in the release overview.
+
+Release full gate: 1077 passed, 20 deselected, 1 xfailed, 1 xpassed; mypy clean
+on 169 files; nine packaged-runtime checks passed. Clean exact-release PEX
+built and version/help smoke passed at d96e0e7. Main delivery is a real merge
+prepared on `ws-maintenance/0215-rc0-main`, pushed at
+`8859c5f1e4d097274f0f911cdbdedb44f389fdaa`: main's newer images/base-contract
+implementation and 0.2.15.dev0 remain. Main's matrix is embedded-23; release's
+older schema is embedded-22. Main merge-result gate: 1085 passed, 20 deselected,
+1 xfailed, 1 xpassed; mypy clean on 172 files; nine packaged checks passed.
+
+The owner has the compare URL and `/tmp/0215-rc0-pr.md` for the UI merge.
+No RC tag has been created. Remote main last verified at `0cb4b0a` before
+preparation; re-fetch after the owner merges and verify d96e0e7 ancestry.
+The obsolete fix-only integration-exception JSON was removed. Use ancestry
+for RC0 after the normal PR merge; never claim the new slice is on main early.
+
+The mainline preparation branch is the release runbook's ordinary fix delivery
+within maintenance, not a workstream change or a rebase of the release.
+Records stay on this branch under the existing exception. Live coordination
+now reports project-management active in another checkout for 0.2.16; this
+pair remains on maintenance and does not change that workstream's records.
+The recurring agent-freshness policy mail is acknowledged there.
 
 
 Resumed 2026-09-27 at explicit owner direction after project-management paused
@@ -108,33 +134,23 @@ only source, version and release documents. The row names the release branch
 as the rule requires. Handed to workflow-improvements as a gap to close in
 the definition.
 
-Next: implement the owner-approved additions on `release-0.2.15` before
-cutting RC0. Then run the full gate, account for main, publish and validate
-the downloaded candidate, record exact-candidate acceptance, integrate it,
-and publish the final tag. Main subsequently reopens at 0.2.16.dev0. The
-old fix-only gate does not validate the expanded release.
+Owner subsequently agreed to RC0 after the agent slice, with xtras and
+project info in the next candidate. See the current evidence and next step
+above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-On `release-0.2.15`, import the approved work order, update the release
-overview (updated at `8028a11`) and implement the bounded additions in this order:
+Await the owner-operated UI merge of main ← `ws-maintenance/0215-rc0-main`.
+Then fetch main over SSH, verify the exact release commit is an ancestor,
+return to `release-0.2.15`, tag `v0.2.15-rc0` at d96e0e7 and push it.
+Verify published assets and smoke the downloaded candidate: init recovery,
+new agent versions, fresh interactive defaults and ordinary tool actions.
 
-0. Prepare the developer environment, inspect the current vendor releases and
-   verify/pin compatible agent upgrades. Record holdbacks with reasons; do not
-   claim an untested compatibility edge. Run the subsequent defaults work on
-   the versions selected for the release. Recheck freshness before acceptance.
-
-1. Claude and Antigravity permission defaults: minimal pre-first-launch
-   settings, missing-property defaults, explicit-choice preservation and
-   malformed-file handling. Verify vendor interactive startup behavior.
-2. `/opt/xtras`: writable persistent storage backed by existing home/xtras,
-   preserve existing installations and expose bin on IDE/agent/terminal PATH.
-3. `project info`: read-only identity/software/environment/persistence overview
-   on host and inside the capsule, including outside the source directory.
-
-Then validate the combined release and arrange its main disposition before
-RC0. PR #143 already merged the init fix at `3acc460`. GitHub PR operations
-remain owner-operated via UI. No new candidate or acceptance is claimed.
+Next implement `/opt/xtras` and host/runtime `project info` on the release
+branch for the following candidate. The full approved work order still gates
+final 0.2.15. Recheck agent freshness before acceptance, integrate the exact
+acceptance record, publish final and verify delivery. Do not import main's
+0.2.16 implementation into the release.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -800,6 +816,21 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Paused only for the owner UI merge of the prepared RC0 main delivery.
+  PR operations remain owner-only under WORKFLOW-LOCAL.md. No published
+  candidate or authenticated provider acceptance is claimed.
+- Resume on release d96e0e7 after verifying remote main; do not publish this
+  status from the stale release-branch copy. The prepared main branch is a
+  delivery vehicle, not the release branch for subsequent fixes.
+- Scratch: `/tmp` (2 GB) and `/var/tmp` (1 GB) are tmpfs; long HOME-based
+  test paths also exceeded Unix socket limits. Use `TMPDIR=/opt/d215` for
+  local gates. Logs: `/tmp/0215-build.log`, `/tmp/0215-main-build.log`,
+  `/tmp/0215-exact-pex.log`; verified downloads remain under
+  `/home/devcapsule/.cache/devcapsule-0215-agents` for candidate work.
+- The original checkout's unrelated source/website changes remain untouched.
+  No session transcript was requested or created.
+
 
 - Latest direction: attempt current agent releases for 0.2.15 and every release;
   candidates and vendor sources are in release overview `8028a11`. Their
