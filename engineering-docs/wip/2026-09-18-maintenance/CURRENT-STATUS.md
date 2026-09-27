@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: paused 2026-09-27; 0.2.15 published and verified; 0.2.16.dev0 reopening validated, awaiting owner UI merge
 
-Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Integration target: `main`
 
