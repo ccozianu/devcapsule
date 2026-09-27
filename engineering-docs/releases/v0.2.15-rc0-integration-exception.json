@@ -1,8 +1,0 @@
-{
-  "schema-version": 1,
-  "tag": "v0.2.15-rc0",
-  "authorized-by": "Costin Cozianu, product owner, 2026-09-26: 0.2.15 carries the init fix and nothing else, cut from the v0.2.14 tag; and the standing 2026-09-22 direction that release-fix propagation uses engineering judgment (WORKFLOW-LOCAL.md, Exceptions).",
-  "rationale": "The only source change, the fix for engineering-docs/bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md, is on main at 3acc460 (PR #143) and is carried here as a patch-equivalent cherry-pick of 74bc4aa. The commits main has neither merged nor cherry-picked are release-only metadata: the version 0.2.15 on a tree whose main counterpart is 0.2.15.dev0, this record, and the release overview. main since v0.2.14 also carries the base-contract naming and the devcapsule.images package move (5051f4f, 3692950), which the owner assigned to 0.2.16; a cut from main would have shipped them.",
-  "forward-port-owner": "maintenance",
-  "follow-up": "Nothing to port: the fix is already on main. After the final tag, main keeps its development version and reopens at 0.2.16.dev0 per WORKFLOW-LOCAL.md; the release overview and acceptance record reach main through maintenance's ordinary branch."
-}

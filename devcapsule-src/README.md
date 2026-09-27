@@ -691,6 +691,23 @@ codex login
 codex login status
 ```
 
+Claude Code and Antigravity also start with tool approvals disabled in
+checkout-managed state. Before either tool's first launch, DevCapsule creates
+`$CLAUDE_CONFIG_DIR/settings.json` (normally `~/.claude/settings.json`) with
+`permissions.defaultMode = "bypassPermissions"` and
+`skipDangerousModePermissionPrompt = true`, and
+`~/.gemini/antigravity-cli/settings.json` with
+`toolPermission = "always-proceed"`. Authentication and workspace trust still
+follow each tool's normal setup.
+
+For existing managed JSON settings, launches add only missing keys and preserve
+explicit choices and unrelated fields. Set a different permission mode to opt
+out; deleting the key restores the capsule default next launch. Invalid JSON,
+incompatible object structure and linked settings are left untouched with a
+diagnostic. Externally adopted state is never seeded: add these properties
+yourself there if you want the same behavior. Codex retains its absent-file-only
+TOML seeding described above.
+
 Codex falls back to file-backed authentication beneath `$CODEX_HOME` when no
 container keyring is available, so its login and configuration survive later
 launches. The component interface also declares `OPENAI_API_KEY` as an

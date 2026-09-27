@@ -1565,9 +1565,8 @@ def _component_state_mounts(
 def _seed_component_state(source: Path, declaration: Any) -> None:
     """Place a component's declared default files into its managed slot.
 
-    Written as the invoking user, before the daemon mounts the slot, and
-    only when the file is absent: the slot is developer-owned state, so an
-    existing file — however it got there — is never rewritten. Adopted
+    Written as the invoking user before the daemon mounts the slot. JSON
+    seeds may fill missing keys; explicit values always survive. Adopted
     directories never reach here (see the caller).
     """
 
@@ -1578,10 +1577,47 @@ def _seed_component_state(source: Path, declaration: Any) -> None:
         if seed.slot != declaration.slot_name:
             continue
         target = source / seed.relative_path
+        # A developer may link settings elsewhere. Do not follow or replace
+        # those links, including dangling links and linked parent directories.
+        relative_parts = Path(seed.relative_path).parts
+        if any(source.joinpath(*relative_parts[:i]).is_symlink()
+               for i in range(1, len(relative_parts) + 1)):
+            print(f"Warning: leaving linked component settings unchanged: {target}", file=sys.stderr)
+            continue
         if target.exists():
+            if not seed.merge_missing_json:
+                continue
+            try:
+                settings = json.loads(target.read_text(encoding="utf-8"))
+                defaults = json.loads(seed.content)
+                if not isinstance(settings, dict):
+                    raise ValueError("expected a JSON object")
+                if _fill_missing_settings(settings, defaults):
+                    atomic_write(target, json.dumps(settings, indent=2) + "\n")
+            except (ValueError, OSError) as exc:
+                # Do not echo file contents: settings may include credentials.
+                print(
+                    f"Warning: leaving component settings unchanged: {target} "
+                    f"({type(exc).__name__}); repair the JSON object to apply defaults.",
+                    file=sys.stderr,
+                )
             continue
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         atomic_write(target, seed.content)
+
+
+def _fill_missing_settings(settings: dict[str, Any], defaults: dict[str, Any]) -> bool:
+    """Add missing JSON keys in memory; reject incompatible object structure."""
+    changed = False
+    for key, value in defaults.items():
+        if key not in settings:
+            settings[key] = value
+            changed = True
+        elif isinstance(value, dict):
+            if not isinstance(settings[key], dict):
+                raise ValueError(f"expected an object for {key}")
+            changed = _fill_missing_settings(settings[key], value) or changed
+    return changed
 
 
 def _managed_binding_path(root: Path, declaration: Any) -> Path:
