@@ -1,6 +1,6 @@
 # DevCapsule 0.2.15 — Release Work
 
-Updated: 2026-09-27. Stage: **RC1 published; downloaded machine checks passed; interactive agent acceptance pending**.
+Updated: 2026-09-27. Stage: **RC1 accepted; final promotion record prepared; main integration and final publication pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 ## Scope And Owner Decisions
@@ -87,7 +87,7 @@ next resumption; its pause does not block this owner-authorized release review.
   checks passed (2026-09-26). This covers only the original init-fix tree.
 - [x] Prepare developer environment in the clean release checkout.
 - [x] Resolve upgrade pins, verify downloads and test pinned-base startup.
-- [ ] Interactive/account-level agent acceptance with downloaded candidate.
+- [x] Owner confirmed RC1 interactive/account-level agent acceptance on 2026-09-27.
 - [x] Implement Claude/Antigravity defaults and document managed/adopted behavior.
 - [x] Implement `/opt/xtras` and `project info`; update help and documentation.
   Owner agreed to put these in the candidate after RC0.
@@ -100,11 +100,12 @@ next resumption; its pause does not block this owner-authorized release review.
   then corrected through a real three-agent Codium `project run` and relaunch.
 - [x] Downloaded RC1: xtras persistence/PATH, host/runtime information, init retry,
   exact runtime delivery, agent versions and seeded-settings persistence.
-- [ ] Actual authenticated interactive agent defaults/model behavior.
+- [x] Owner-reported authenticated interactive agent defaults/model behavior.
 - [x] Required Docker proofs against downloaded RC1: 7 passed in 201.29 s.
 - [x] Vendor freshness rechecked 2026-09-27 20:37 UTC; all pins still current.
-- [ ] Exact-candidate acceptance record, integration to main, final tag and
-  verified final assets. Reopen main at 0.2.16.dev0 after publication.
+- [x] Exact-candidate [acceptance record](../v0.2.15.json), re-downloaded and checksum-verified.
+- [ ] Acceptance integration to main, final tag and verified final assets.
+  Reopen main at 0.2.16.dev0 after publication.
 
 ## Candidates
 
@@ -222,11 +223,31 @@ authenticated owner acceptance still remains.
   `init-smoke-retry` subdirectory containing init transcripts, host/runtime
   reports, settings hashes and run logs. Temporary probe helpers are under
   `/tmp/0215-rc1-*.py`; freshness evidence is `/tmp/0215-rc1-freshness.json`.
-- `devcapsule-0215-rc1-smoke` is deliberately retained after its second launch
-  for owner interactive acceptance. The prior RC0 desktop is also retained.
-  No account material was imported. Desktop access tokens stay out of Git.
-  Agent sign-in, ordinary interactive tool execution and desired-model access
-  still need the owner's result; no acceptance record or final tag exists.
+- The owner confirmed “It's all good, working as expected” in response to
+  the RC1 Claude/Antigravity sign-in, file/shell tool execution without
+  approval prompts and desired-model access checks. This is owner-reported
+  acceptance, distinct from the agent's machine proofs above. No specific
+  model name or performance result is inferred.
+- Both temporary test containers are now absent: RC1 had already exited,
+  and RC0 was stopped after acceptance.
+  Their persistent fixture storage is retained; no account material was
+  copied into Git and desktop access tokens remain untracked.
+
+## Final Promotion
+
+Accepted candidate: `v0.2.15-rc1`. The reviewed
+[acceptance record](../v0.2.15.json) names Costin Cozianu, candidate SHA-256
+`52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131`, source
+`a15ff8b58f4af93845c17eaca22f9c9d29c8e000` and preparation baseline
+`abb785d7ad4069606fd3ab84009ca8efeabc22b9` (`v0.2.14`). The helper re-downloaded
+and verified the published candidate when preparing that record.
+
+Deliver the record and post-candidate evidence to main by PR, preserving main's
+newer implementation and development version. After verifying integration,
+tag `v0.2.15` at the accepted source a15ff8b, **not** at a later documentation
+commit. Final packaging may change version metadata; the backend must retain
+the accepted frozen inputs. Verify final publication and downloaded assets,
+then reopen main at 0.2.16.dev0. No final tag has been created yet.
 
 ## Release Notes Preparation
 
@@ -275,7 +296,7 @@ developer's selected version set.
   limits in this container. Test scratch was moved to short disk-backed
   `/opt/d215`; no product workaround or weakened test was introduced.
 
-## Adopter Notes Draft — Pending Final Acceptance
+## Final Adopter Notes
 
 DevCapsule 0.2.15 makes project setup and everyday environment adjustments easier.
 
