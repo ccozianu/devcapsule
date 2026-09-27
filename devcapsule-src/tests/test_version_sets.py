@@ -710,6 +710,47 @@ def runtime_view(s, monkeypatch, tmp_path):
     return runtime_root, snapshot, context
 
 
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_info_from_anywhere_preserves_launch_facts_and_explicit_paths(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, snapshot, _ = runtime_view(s, monkeypatch, tmp_path)
+    preview_select(s, capsys)
+    monkeypatch.setenv("OPENAI_API_KEY", "never-disclose-this-value")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "empty-runtime-config"))
+    before = s.record.read_bytes(), s.resolution.read_bytes()
+    capsys.readouterr()
+    outside = tmp_path / "opt"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+    assert cli.main(["project", "info", "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["components"][s.component] == "1.0.0"
+    assert report["next-launch-components"][s.component] == "2.0.0"
+    assert report["selection-changed"]
+    assert report["persistence"] == snapshot["info"]["persistence"]
+    assert "never-disclose-this-value" not in json.dumps(report)
+    assert invoke(runtime_root, "info", "--json") == 0
+    assert json.loads(capsys.readouterr().out) == report
+    # An explicit unrelated path must not silently select the hosting capsule.
+    assert invoke(outside, "info") == 2
+    capsys.readouterr()
+    nested = runtime_root / "nested"
+    shutil.copytree(s.root, nested)
+    monkeypatch.chdir(nested)
+    assert cli.main(["project", "info", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["context"] == "host selection (next launch)"
+    assert not (tmp_path / "empty-runtime-config").exists()
+    journal = s.record.with_suffix(".activation.toml")
+    journal.write_text('"unfinished" = true\n')
+    assert invoke(runtime_root, "info", "--json") == 0
+    blocked = json.loads(capsys.readouterr().out)
+    assert blocked["components"][s.component] == "1.0.0"
+    assert "never repairs" in blocked["next-launch-unavailable"]
+    assert journal.read_text() == '"unfinished" = true\n'
+    assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
+
+
 def test_runtime_show_tracks_running_and_next_sets_without_local_registration(journey, monkeypatch, capsys, tmp_path):
     s = journey
     assert invoke(s.root, "run") == 0
