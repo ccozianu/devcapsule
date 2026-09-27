@@ -1,5 +1,0 @@
-who: Costin Cozianu
-branch: release-0.2.15
-slice: Implement RC0 agent upgrades and permission defaults; validate release
-since: 2026-09-27T16:54:22+00:00
-expires: 2026-09-28T04:54:22+00:00
