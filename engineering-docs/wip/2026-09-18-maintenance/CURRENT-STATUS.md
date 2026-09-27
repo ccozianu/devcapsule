@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27; RC1 published and downloaded machine checks passed; awaiting owner interactive agent acceptance
+State: paused 2026-09-27; RC1 accepted; final promotion branch validated and pushed; awaiting owner UI merge
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,59 +24,48 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-**RC1 is published and its downloaded machine acceptance passed.** The owner
-completed PR #145; SSH fetch verified main `1215795` has the exact tree tested
-at main preparation 1d1a882, with release source a15ff8b integrated. Annotated
-`v0.2.15-rc1` points to `a15ff8b58f4af93845c17eaca22f9c9d29c8e000` and remains
-immutable. The release gate reports mainline and no unintegrated commits.
+**RC1 is accepted; the final promotion PR is ready for the owner UI.** The
+owner replied “It's all good, working as expected” to the requested RC1
+Claude/Antigravity sign-in, ordinary file/shell actions without approval
+prompts and desired-model access checks. This is owner-reported acceptance;
+no additional named-model result or benchmark is inferred.
 
-[RC1 release](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15-rc1);
-[successful backend](https://github.com/ccozianu/devcapsule/actions/runs/36348273337)
-(3m 5s). All three assets were downloaded. PEX SHA-256:
-`52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131`, matching
-checksum and manifest. It reports 0.2.15rc1/v0.2.15-rc1 and exact source a15ff8b.
-Seven required Docker proofs passed in 201.29 seconds against this download.
+Accepted immutable source: `v0.2.15-rc1` at
+`a15ff8b58f4af93845c17eaca22f9c9d29c8e000`. Downloaded candidate SHA-256:
+`52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131`.
+[Successful backend](https://github.com/ccozianu/devcapsule/actions/runs/36348273337)
+and [candidate release](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15-rc1).
+Seven downloaded Docker proofs passed, together with real PTY init/retry,
+xtras persistence/PATH, host/runtime project info, safe environment output,
+running-versus-next selection and agent-settings persistence. The release
+overview preserves the detailed observations and limits. Vendor pointers at
+2026-09-27 20:37 UTC still selected Codex 0.157.1, Claude 2.1.283 and
+Antigravity 1.2.12; no holdback is needed.
 
-The downloaded public CLI passed the fresh PTY init typo/retry journey, then
-built and ran a real three-agent Codium capsule. Runtime and launcher hashes
-match; all agent versions match the pins. With UID 1000 and a read-only root,
-existing HOME/xtras content and a bin executable survived container replacement
-and worked on ordinary/login PATH. Claude/Antigravity settings remained
-byte-identical, and a Claude-slot marker persisted. Host root/descendant and
-runtime project/opt info agreed; storage matched Docker mounts, secrets were
-omitted, inspection did not mutate records, and next-launch edits did not
-relabel running software. The project lock was restored byte-for-byte.
+`release-0.2.15` now points to `95c7bad`, adding reviewed acceptance at
+`engineering-docs/releases/v0.2.15.json` and final adopter notes after the
+tested source. The helper re-downloaded and verified RC1; direct promotion
+validation against origin/main and the local downloaded digest passed.
+Preparation baseline is `abb785d7ad4069606fd3ab84009ca8efeabc22b9` (v0.2.14).
 
-The vendor pointer recheck at 2026-09-27 20:37 UTC still found Codex 0.157.1,
-Claude 2.1.283 and Antigravity 1.2.12. No holdback is needed. Runtime/account
-acceptance remains distinct: no account material was copied, and the owner
-has not yet reported authenticated interactive tools/model results. RC1's
-second test session (`devcapsule-0215-rc1-smoke`, launcher session 55871) is
-retained for that check; the RC0 desktop (`devcapsule-0215-rc0-smoke`) is also
-retained until the owner is finished. Desktop URLs are in their run logs and
-were sent in chat; do not commit the access tokens.
+Main preparation branch `ws-maintenance/0215-final-main` is pushed at
+`bc83e302b96fe1a6162779b121fb357dee4a715a`, merging the release records onto
+fetched main `da18f93`. Only five documentation/evidence files differ from
+main; runtime source and main's 0.2.15.dev0 are unchanged. Full required gate
+passed on the clean merged tree: 1089 source tests, 20 deselected, one existing
+xfail and one XPASS, mypy 174 files, nine packaged checks and exact/local PEX
+builds/smokes. Log: `/tmp/0215-final-main-build.log`. No final tag exists yet.
 
-Release evidence, the init bug's downloaded-RC1 proof and draft adopter notes
-are pushed on `release-0.2.15` at `9519f63`. This is a documentation commit
-after the tested candidate source, not a new candidate. No promotion record
-or final tag exists yet. The init bug remains fixed with its existing owner
-confirmation close criterion; do not invent that confirmation from machine
-proofs. Detailed evidence is in the release overview at the release tip.
+Both temporary test containers are absent: RC1 had already exited, and RC0
+was stopped after acceptance. Persistent fixtures remain; no credentials or
+desktop tokens were committed. The init bug remains fixed; the agent's fresh
+init proof does not imply a separate owner-performed init walk.
 
-Validation remains: release full gate 1081 passed, 20 deselected, 1 xfailed,
-1 xpassed, mypy 171 files, nine packaged checks; main merge gate 1089 passed,
-20 deselected, 1 xfailed, 1 xpassed, mypy 174, nine packaged checks. Both exact
-local PEX builds/smokes passed. No product source changed after these gates.
-Later documentation alone did not trigger another full build.
-
-The accepted scope is in
-`engineering-docs/work-orders/2026-09-27-project-environment-discovery.md`:
-init fix, persistent xtras, read-only host/runtime info, agent permission
-defaults and current agent CLIs. Broader project-command guard repair stays
-deferred. The original checkout's dirty source/website state is untouched.
-Records remain here under the tag-cut exception; never publish the stale
-release-branch status. Definitions are unchanged; records-only updates defer
-synchronization. No release branch was rebased or synchronized with main.
+The original checkout's unrelated dirty source/website state is untouched.
+Records remain here under the tag-cut exception; never publish stale release
+records. Workflow definitions are unchanged. This records-only checkpoint
+defers synchronization; the actual promotion tree is based on current main.
+No release branch was rebased or synchronized. Mail take returned no items.
 
 ## Release 0.2.15
 
@@ -106,22 +95,18 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Take the owner's authenticated Claude/Antigravity results from the retained
-RC1 desktop or their own RC1 project: ordinary file/shell actions without tool
-approval, first-use notice behavior, desired-model access and persisted state.
-Machine proofs and seeded JSON alone do not provide that acceptance. If an
-issue is found, fix on `release-0.2.15`, account for main, and cut a fresh RC;
-never move RC1.
+Owner opens and merges `ws-maintenance/0215-final-main` into main through the
+GitHub UI. Prepared title: “Accept 0.2.15 RC1 for final promotion”. The PR
+body is `/tmp/0215-final-pr-body.md`; the branch is fully committed, pushed
+and validated. Re-fetch over SSH to verify the accepted record and reviewed
+merge result on main after the owner reports completion.
 
-Once accepted, generate `engineering-docs/releases/v0.2.15.json` with
-`prepare-promotion.py`, candidate `v0.2.15-rc1`, preparation baseline
-`v0.2.14^{commit}` (full SHA), truthful evidence and operator identity. Commit
-it with the final notes/status on the release branch; deliver acceptance and
-post-candidate documentation to main through the owner UI PR. Preserve main's
-newer implementation and version. After verifying integration, tag final
-`v0.2.15` at the accepted source **a15ff8b**, not the later documentation tip.
-Verify final backend, downloads, checksum and identity, then reopen main at
-0.2.16.dev0 under the existing release policy. User target remains this evening.
+Then tag `v0.2.15` at accepted source **a15ff8b**, not documentation tip
+95c7bad or preparation merge bc83e30. Existing release authorization covers
+this step; no second permission round is needed. Verify the final backend,
+three published assets, checksum, final version and source identity. After
+publication, reopen main at 0.2.16.dev0 and deliver close-out records by the
+ordinary owner-operated PR process. User target remains this evening.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -788,25 +773,22 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- All RC1 downloaded machine proofs passed. Awaiting the owner's authenticated
-  Claude/Antigravity interactive tool/model results; the fresh RC1 desktop URL
-  was sent by asynchronous question. No reply has been inferred as acceptance.
-- Retain both RC0 and RC1 test desktops until the owner is done. RC1 launcher
-  session 55871 waits normally for exit. Its desktop access token stays private.
-- Final promotion record, acceptance PR, final tagging/asset verification and
-  main reopening remain. Do not open a docs-only PR while acceptance is pending.
-- Candidate tag remains a15ff8b; release branch 9519f63 carries post-candidate
-  evidence/notes. Use the candidate source for final tagging after acceptance.
-- Downloads: `/home/devcapsule/.cache/devcapsule-releases/v0.2.15-rc1`;
-  private fixture under `init-smoke-retry`. Logs/probes:
-  `/tmp/0215-rc1-docker-proofs.log`, `/tmp/0215-rc1-*.py`, and
-  `/tmp/0215-rc1-freshness.json`. All are regenerable. Draft final adopter text
-  is persisted in the release overview, still labelled pending final acceptance.
-- Use `TMPDIR=/opt/d215` for gates. Local dist PEX files last came from the main
-  gate; use the verified downloaded candidate for acceptance, not stale dist.
-- Resume source work on `release-0.2.15`; publish records only from this branch.
-  No automatic switch to project-management. Original unrelated dirty state
-  is untouched. No transcript/session record was requested or created.
+- Awaiting owner UI creation/merge of the prepared final promotion branch.
+  No source changes or further candidate acceptance are pending.
+- After verified integration: tag exact accepted a15ff8b, verify final delivery,
+  then reopen main at 0.2.16.dev0. Final tag has not been created.
+- RC0/RC1 test containers are absent; private fixtures/downloads remain under
+  `/home/devcapsule/.cache/devcapsule-releases/v0.2.15-rc1`. Access tokens and
+  provider credentials stay out of Git. No need to repeat interactive checks
+  for the unchanged accepted candidate.
+- Candidate evidence is in the release overview and promotion JSON on release
+  95c7bad / preparation bc83e30. Full gate log is
+  `/tmp/0215-final-main-build.log`; older downloaded proofs are at
+  `/tmp/0215-rc1-docker-proofs.log`. Scratch scripts/logs are regenerable.
+- Use `TMPDIR=/opt/d215`. Local dist PEX files came from the main preparation
+  gate; use published downloads when verifying release identity.
+- Resume on `release-0.2.15`; publish records only from this records branch.
+  No automatic switch to project-management. No session transcript requested.
 
 Earlier open-thread history (read against the current scope above):
 
