@@ -162,3 +162,16 @@ the optional-answer visibility observations are not changed by this fix.
 Status `closed` when the test above passes on `main`, the release runbook's
 first-session acceptance journey includes a misspelled-flag attempt, and the
 owner confirms on a fresh directory with a 0.2.15 candidate.
+
+
+## Downloaded RC0 verification (2026-09-27)
+
+Published `v0.2.15-rc0` at d96e0e7, PEX SHA-256
+`ef7499059a747dff280b3fed31128d9aafa4f6d36ba1c8a46addac6279652014`,
+was driven through a pseudoterminal with fresh project/XDG state. The unknown
+`docker` name returned exit 2 with a docker-daemon suggestion, no prompts and
+no project writes. The corrected interactive command completed, preserving
+explicit network/Docker grants and agent acquisition decisions. `project run`
+then built and launched the three-agent Codium environment; a replacement
+container started from the same recorded choices. See the
+[0.2.15 release evidence](../../releases/v0.2.15/README.md#rc0--published-2026-09-27).

@@ -1,6 +1,6 @@
 # DevCapsule 0.2.15 — Release Work
 
-Updated: 2026-09-27. Stage: **RC0 agent slice implemented; validation and main disposition in progress**.
+Updated: 2026-09-27. Stage: **RC0 published; machine checks passed; interactive agent acceptance pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 ## Scope And Owner Decisions
@@ -93,11 +93,11 @@ next resumption; its pause does not block this owner-authorized release review.
   Owner agreed to put these in the candidate after RC0.
 - [x] RC0 source/local-package gate: 1077 passed, 20 deselected, 1 xfailed,
   1 xpassed; mypy clean on 169 files; nine packaged-runtime checks passed.
-- [ ] Build and smoke the clean exact-revision release PEX before tagging.
-- [ ] Resolve main disposition for all changes before tagging the candidate.
-- [ ] Tag `v0.2.15-rc0`, backend publication, downloaded assets verified.
-- [ ] Rerun the failing init journey with the downloaded candidate, typo first,
-  then corrected through `project run`.
+- [x] Build and smoke the clean exact-revision release PEX before tagging.
+- [x] RC0 integrated by PR #144 at `0770638`; ancestry verified on remote main.
+- [x] Tag `v0.2.15-rc0`, backend publication, downloaded assets verified.
+- [x] Rerun the failing init journey with the downloaded candidate, typo first,
+  then corrected through a real three-agent Codium `project run` and relaunch.
 - [ ] Verify xtras persistence and PATH, host/runtime information, and actual
   interactive agent defaults/version behavior using downloaded candidate bytes.
 - [ ] Local proofs against downloaded assets per the runbook; final freshness review.
@@ -106,10 +106,43 @@ next resumption; its pause does not block this owner-authorized release review.
 
 ## Candidates
 
-None yet. RC0 contains the init fix, agent upgrades and agent defaults.
-The owner agreed on 2026-09-27 to validate that slice first, then add xtras
-and project info in the next candidate; the final release still requires all
-approved scope.
+### RC0 — published 2026-09-27
+
+- Tag `v0.2.15-rc0`; source `d96e0e7ada56dbea3f857777abb28f1bc223ceef`.
+- [Published prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15-rc0);
+  [successful backend run](https://github.com/ccozianu/devcapsule/actions/runs/36340320532).
+- Downloaded all three assets. PEX SHA-256:
+  `ef7499059a747dff280b3fed31128d9aafa4f6d36ba1c8a46addac6279652014`.
+  It agrees with the checksum file and release manifest; the executable reports
+  package `0.2.15rc0`, mnemonic `v0.2.15-rc0` and the exact source above.
+- Seven Docker proofs passed against that download: no-Python/no-network
+  execution, component cache reuse/invalidation, exact runtime delivery on both
+  IDE surfaces and both command names, and the pinned-base runtime/display
+  session. The suite used the pinned v0.2.12-rc5 base and host build networking;
+  intentional network-isolation cases kept their prescribed mode.
+- The public CLI, driven through a pseudoterminal in fresh private XDG state,
+  rejected `--authorize docker host-socket` with the docker-daemon suggestion
+  before prompts or writes. Correcting the name completed interactive init,
+  retaining network, Docker and both agent acquisition answers. The first
+  harness attempt stopped at an unhandled justification question; a corrected
+  harness answered the known questions and passed. No product workaround.
+- That initialized project built and launched an actual Codium environment.
+  Runtime PEX hash/identity matches the downloaded artifact; on PATH the agents
+  report Codex 0.157.1, Claude 2.1.283 and Antigravity 1.2.12. Fresh user settings
+  contain the requested defaults. After an explicit stop/removal and a second
+  launch, a Claude-slot marker and both settings files survived byte-for-byte.
+- Isolated test checkout and evidence:
+  `/home/devcapsule/.cache/devcapsule-releases/v0.2.15-rc0/init-smoke-retry`.
+  Docker proof log: `/tmp/0215-rc0-docker-proofs.log` (7 passed in 189.60 s).
+  Candidate download is in the parent directory. Temporary harnesses are under
+  `/tmp/0215-*-smoke.py`; no authentication material was copied.
+- The second test session, container `devcapsule-0215-rc0-smoke`, remains running
+  for the owner's interactive agent login/tool/model checks. Those checks are
+  pending and are not implied by the startup/version or persistence proofs.
+
+RC0 contains the init fix, agent upgrades and agent defaults. `/opt/xtras`
+and `project info` follow in the next candidate; all approved scope remains
+required for final 0.2.15. This is a candidate checkpoint, not final acceptance.
 
 ## Release Notes Preparation
 
