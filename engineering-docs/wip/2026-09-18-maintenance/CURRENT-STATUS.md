@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-26; fixing the blocking init bug, the sole content of 0.2.15, which maintenance drives
+State: paused 2026-09-27; RC1 accepted; final promotion branch validated and pushed; awaiting owner UI merge
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -12,7 +12,7 @@ Integration target: `main`
 
 Delivery method: pull request; agent pushes the branch, owner opens and merges on GitHub
 
-Branch association: `ws-maintenance/post-0.2.14`
+Branch association: `release-0.2.15` for the duration of the release; records are kept and published from `ws-maintenance/post-0.2.14`, see *Release 0.2.15* below
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -24,34 +24,89 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-Resumed 2026-09-26 at the owner's direction, synchronized with `main` at
-`f4949aa` by merge. Three items from project-management taken and decided:
-the blocking init bug, the 0.2.15 routing, and its fix-only correction.
-0.2.15 is a maintenance release containing one fix: `project init` discarded
-every interactive answer when a `--authorize` name was unknown
-([bug record](../../bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md),
-carried on this branch with the fix; project-management's branch holds the
-same record at status confirmed, a mechanical conflict for whichever
-integrates second). Everything else planned for 0.2.15 is 0.2.16 material by
-owner ruling.
+**RC1 is accepted; the final promotion PR is ready for the owner UI.** The
+owner replied “It's all good, working as expected” to the requested RC1
+Claude/Antigravity sign-in, ordinary file/shell actions without approval
+prompts and desired-model access checks. This is owner-reported acceptance;
+no additional named-model result or benchmark is inferred.
 
-The fix is on this branch: supplied answer names are checked against the node
-registry before the first recommendation prompt and before any write, and the
-undeclared-name error names the closest spelling. Three tests cover it.
+Accepted immutable source: `v0.2.15-rc1` at
+`a15ff8b58f4af93845c17eaca22f9c9d29c8e000`. Downloaded candidate SHA-256:
+`52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131`.
+[Successful backend](https://github.com/ccozianu/devcapsule/actions/runs/36348273337)
+and [candidate release](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15-rc1).
+Seven downloaded Docker proofs passed, together with real PTY init/retry,
+xtras persistence/PATH, host/runtime project info, safe environment output,
+running-versus-next selection and agent-settings persistence. The release
+overview preserves the detailed observations and limits. Vendor pointers at
+2026-09-27 20:37 UTC still selected Codex 0.157.1, Claude 2.1.283 and
+Antigravity 1.2.12; no holdback is needed.
 
-The paragraphs under *Planned Next Step* after the first are the 0.2.14
-history of this file, kept verbatim until the pause that sheds them into a
-dated record.
+`release-0.2.15` now points to `95c7bad`, adding reviewed acceptance at
+`engineering-docs/releases/v0.2.15.json` and final adopter notes after the
+tested source. The helper re-downloaded and verified RC1; direct promotion
+validation against origin/main and the local downloaded digest passed.
+Preparation baseline is `abb785d7ad4069606fd3ab84009ca8efeabc22b9` (v0.2.14).
+
+Main preparation branch `ws-maintenance/0215-final-main` is pushed at
+`bc83e302b96fe1a6162779b121fb357dee4a715a`, merging the release records onto
+fetched main `da18f93`. Only five documentation/evidence files differ from
+main; runtime source and main's 0.2.15.dev0 are unchanged. Full required gate
+passed on the clean merged tree: 1089 source tests, 20 deselected, one existing
+xfail and one XPASS, mypy 174 files, nine packaged checks and exact/local PEX
+builds/smokes. Log: `/tmp/0215-final-main-build.log`. No final tag exists yet.
+
+Both temporary test containers are absent: RC1 had already exited, and RC0
+was stopped after acceptance. Persistent fixtures remain; no credentials or
+desktop tokens were committed. The init bug remains fixed; the agent's fresh
+init proof does not imply a separate owner-performed init walk.
+
+The original checkout's unrelated dirty source/website state is untouched.
+Records remain here under the tag-cut exception; never publish stale release
+records. Workflow definitions are unchanged. This records-only checkpoint
+defers synchronization; the actual promotion tree is based on current main.
+No release branch was rebased or synchronized. Mail take returned no items.
+
+## Release 0.2.15
+
+Cut 2026-09-26 from the `v0.2.14` tag (`abb785d`), not from `main`, by the
+owner's ruling that 0.2.15 carries the init fix and nothing else and by lines
+touched: the fix is 97/15 in two source files; `main` since the tag is 496/60
+across seventeen, the rest being the base-contract naming and the images
+package move, assigned to 0.2.16. `release-0.2.15`: fix cherry-picked with
+origin as `9a0567c` (main `74bc4aa`, PR #143 at `3acc460`), version 0.2.15 at
+`c601fb8`, release overview and the candidate gate's exception record at
+`4f28a12`, gate recorded at the branch tip. Full gate passed on the branch.
+Overview: [releases/v0.2.15](../../releases/v0.2.15/README.md).
+
+Judgment where the definition is silent: *Taking A Release Over* assumes a
+cut from `main`, where the working branch's records are already on `main`.
+Cut from a tag, the release branch carries 0.2.14-era copies of this file and
+the registry, so editing or publishing them from there would regress the live
+state. This release therefore keeps the workstream records on
+`ws-maintenance/post-0.2.14` and publishes from it; the release branch carries
+only source, version and release documents. The row names the release branch
+as the rule requires. Handed to workflow-improvements as a gap to close in
+the definition.
+
+Owner subsequently agreed to RC0 after the agent slice, with xtras and
+project info in the next candidate. See the current evidence and next step
+above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-1. Full gate on the fix, push, owner PR from `ws-maintenance/post-0.2.14`
-   to `main`. Verification: the three new tests and the whole build.
-2. After the merge: cut `release-0.2.15` at the merge commit on `main`, first
-   commit sets the version to 0.2.15, row names the release branch, tag
-   `v0.2.15-rc0`, publish through the backend per the runbook.
-3. Gate: the owner's one-command rerun of the failing init on a fresh
-   directory with the downloaded candidate, then the final tag.
+Owner opens and merges `ws-maintenance/0215-final-main` into main through the
+GitHub UI. Prepared title: “Accept 0.2.15 RC1 for final promotion”. The PR
+body is `/tmp/0215-final-pr-body.md`; the branch is fully committed, pushed
+and validated. Re-fetch over SSH to verify the accepted record and reviewed
+merge result on main after the owner reports completion.
+
+Then tag `v0.2.15` at accepted source **a15ff8b**, not documentation tip
+95c7bad or preparation merge bc83e30. Existing release authorization covers
+this step; no second permission round is needed. Verify the final backend,
+three published assets, checksum, final version and source identity. After
+publication, reopen main at 0.2.16.dev0 and deliver close-out records by the
+ordinary owner-operated PR process. User target remains this evening.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -238,6 +293,15 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+2026-09-27 resumption: SSH refs, waiting mail and the current main disposition
+were rechecked; no candidate tag exists. Record-only acknowledgement changes
+and the release-scope overview pass whitespace checks. The vendor metadata
+reads are availability evidence only, not installation or model-access tests. The clean checkout has no developer virtualenv, as
+already established during the project-management handoff; no new build pass
+is claimed. Set up its developer environment before implementation validation.
+No containers or vendor sessions were launched for workstream selection.
+
 
 Base contract slice (2026-09-26, owner-directed, from the design note): new
 `base_contract` module (`BaseContract`, `Provenance`, `BaseImage`), the
@@ -709,6 +773,25 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Awaiting owner UI creation/merge of the prepared final promotion branch.
+  No source changes or further candidate acceptance are pending.
+- After verified integration: tag exact accepted a15ff8b, verify final delivery,
+  then reopen main at 0.2.16.dev0. Final tag has not been created.
+- RC0/RC1 test containers are absent; private fixtures/downloads remain under
+  `/home/devcapsule/.cache/devcapsule-releases/v0.2.15-rc1`. Access tokens and
+  provider credentials stay out of Git. No need to repeat interactive checks
+  for the unchanged accepted candidate.
+- Candidate evidence is in the release overview and promotion JSON on release
+  95c7bad / preparation bc83e30. Full gate log is
+  `/tmp/0215-final-main-build.log`; older downloaded proofs are at
+  `/tmp/0215-rc1-docker-proofs.log`. Scratch scripts/logs are regenerable.
+- Use `TMPDIR=/opt/d215`. Local dist PEX files came from the main preparation
+  gate; use published downloads when verifying release identity.
+- Resume on `release-0.2.15`; publish records only from this records branch.
+  No automatic switch to project-management. No session transcript requested.
+
+Earlier open-thread history (read against the current scope above):
+
 - Pause of 2026-09-26. Merged to `main` today: the base-contract slice
   (consent bound to the image, bases named by `family@recipe`, compatibility
   report), the `devcapsule.images` package, and the design-experiment work
@@ -860,4 +943,4 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - [Configuration contract](configuration-contract.md): lifecycle requirements relevant to future changes.
 - [Correctness/test map](configuration-correctness.md): implementation evidence and coverage limits.
 - [Intake decisions](intake-dispositions.md): outcomes of received mail.
-- `intake/`: no pending items; both project-management messages acknowledged in the decision log.
+- `intake/`: empty; the three 2026-09-27 scope items are acknowledged in the decision log.
