@@ -76,6 +76,22 @@ regenerable effective view and never becomes another configuration layer.
 
 ## Persistent Home
 
+From 0.2.15, `/opt/xtras` is an image-provided symlink to
+`/home/devcapsule/xtras`. Runtime preparation creates its `bin` directory
+without replacing existing files, and `/opt/xtras/bin` is on PATH for tools
+and terminals. The capsule user can install tools without sudo. A conflicting
+path in a custom base makes materialization fail rather than overwriting it.
+The alias follows the home's persistence, relocation and explicit sharing
+rules; it adds no separate component, version lock or package manager.
+Existing `$HOME/xtras` installations remain available unchanged.
+
+`devcapsule project info` reports persistent paths, their launcher-side backing
+and scope, plus temporary paths. It is read-only on the host and inside the
+capsule. Runtime backing paths come from launch evidence, so changing the
+next-launch configuration does not relabel the running mounts. Secret values
+are excluded. These paths may be outside the source checkout and are not
+automatically backed up or committed with it.
+
 Every normal V1 launch has a persistent, DevCapsule-managed home:
 
 ```text

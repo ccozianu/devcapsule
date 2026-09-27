@@ -78,8 +78,8 @@ next resumption; its pause does not block this owner-authorized release review.
 
 - Release branch starts at `abb785d` (`v0.2.14`), init fix `9a0567c`, version
   `c601fb8`; current pre-expansion tip `1d9a27f`.
-- Main disposition: prepare an ordinary merge of the RC0 release slice into
-  main, preserving main's newer implementation and development version. Verify
+- Main disposition: RC0 is integrated. Prepare an ordinary merge of the RC1
+  slice, preserving main's newer implementation and development version. Verify
   remote ancestry after the owner merges the PR, then tag the release commit.
   The former fix-only exception record is removed because its scope is obsolete.
 - Historical full gate at `4f28a12`: 1068 passed, 20 deselected, 1 xfailed,
@@ -89,7 +89,7 @@ next resumption; its pause does not block this owner-authorized release review.
 - [x] Resolve upgrade pins, verify downloads and test pinned-base startup.
 - [ ] Interactive/account-level agent acceptance with downloaded candidate.
 - [x] Implement Claude/Antigravity defaults and document managed/adopted behavior.
-- [ ] Implement `/opt/xtras` and `project info`; update help and documentation.
+- [x] Implement `/opt/xtras` and `project info`; update help and documentation.
   Owner agreed to put these in the candidate after RC0.
 - [x] RC0 source/local-package gate: 1077 passed, 20 deselected, 1 xfailed,
   1 xpassed; mypy clean on 169 files; nine packaged-runtime checks passed.
@@ -143,6 +143,46 @@ next resumption; its pause does not block this owner-authorized release review.
 RC0 contains the init fix, agent upgrades and agent defaults. `/opt/xtras`
 and `project info` follow in the next candidate; all approved scope remains
 required for final 0.2.15. This is a candidate checkpoint, not final acceptance.
+
+### RC1 preparation — 2026-09-27
+
+The release tree adds `/opt/xtras` as an alias of persistent home storage,
+creates its writable `bin`, and includes that directory on ordinary and login
+shell PATH. Image formation identity includes the new layout so old cached
+images cannot silently miss it. Existing custom-base content is never replaced.
+
+`project info` supports text/JSON, host discovery and runtime discovery from
+outside the project. It captures storage backing at launch, reports running
+versions separately from the next selection, and shows only allowlisted
+environment values. Explicit paths and nested projects retain their identity.
+Managed storage path calculation is shared with the launcher. Updated help,
+user guidance and persistence specification accompany the implementation.
+
+- Release local gate: **1081 passed, 20 deselected, 1 xfailed, 1 xpassed**;
+  mypy clean on 171 files; nine packaged-runtime checks passed. Log:
+  `/tmp/0215-rc1-build.log`.
+- A local PEX launched a real Codium/three-agent capsule with host networking,
+  no development sudo, a read-only root and UID 1000. An existing
+  `$HOME/xtras/gcloud` installation was visible through `/opt/xtras`; an
+  executable created in its `bin` worked in ordinary and login shells.
+  Both survived removing and replacing the capsule.
+- Runtime information from `/opt` and the project agreed. Reported backing
+  matched Docker mounts after translating the nested launcher's paths.
+  Editing the next-launch Codex selection left the reported running version
+  unchanged. Inspection preserved checkout/resolution bytes and omitted an
+  injected API-key sentinel. The project lock was restored byte-for-byte.
+- The image recipe rejected a pre-existing directory, file and conflicting
+  symlink at `/opt/xtras`, preserving each; absent and canonical links succeeded
+  idempotently in a disposable container. Separate checkout storage remained
+  isolated; focused CLI tests also cover default isolation and an explicit
+  shared home binding.
+- Fixture evidence is under
+  `/home/devcapsule/.cache/devcapsule-0215-xtras-info`; the local test capsule
+  was removed after its second run. The RC0 owner acceptance desktop remains
+  available. Authenticated agent acceptance is still pending.
+
+These are local implementation proofs. Main integration, an immutable RC1 tag,
+downloaded-RC1 proofs and owner interactive acceptance remain required.
 
 ## Release Notes Preparation
 

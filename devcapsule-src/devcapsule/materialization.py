@@ -312,6 +312,7 @@ def formation_descriptor(
             "parameters": {"installation-path": profile.installation_path},
         },
         "runtime": {
+            "xtras-layout": "home-symlink-v1",
             # The public command is part of image identity: a cached image with
             # the same PEX but without its command link cannot satisfy this plan.
             **({"pex-sha256": _validated_sha256(runtime_sha256, "Runtime PEX SHA-256"),
@@ -503,6 +504,17 @@ def surface_materialization_spec(
             ),
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
             *_ancillary_contributions(ancillary_files, npm_projects),
+            # The image supplies the alias; the runtime creates its writable
+            # target in the persistent home as the capsule user. Never replace
+            # pre-existing content in a custom base to establish this mapping.
+            ExecComponent(("sh", "-ec",
+                'if [ -e /opt/xtras ] || [ -L /opt/xtras ]; then '
+                '[ "$(readlink /opt/xtras)" = /home/devcapsule/xtras ] || '
+                '{ echo "Cannot reserve /opt/xtras: base contains another path" >&2; exit 1; }; '
+                'else ln -s /home/devcapsule/xtras /opt/xtras; fi; '
+                'mkdir -p /etc/profile.d; '
+                "printf '%s\\n' 'export PATH=\"/opt/xtras/bin:$PATH\"' "
+                '> /etc/profile.d/devcapsule-xtras.sh')),
             # Keep the shipped executable available to ordinary shells/scripts.
             # Development checkouts reserve 'devcapsule' for their source build;
             # clear only our canonical link if their base inherited one.
@@ -515,6 +527,7 @@ def surface_materialization_spec(
                ExecComponent(("ln", "-sfn", ENTRYPOINT_CONTRACT[0], descriptor["runtime"]["public-command"])))
               if runtime_pex is not None else ()),
             *( (EnvComponent(environment),) if environment else () ),
+            EnvComponent((("PATH", "/opt/xtras/bin:${PATH}"),)),
             LabelComponent(
                 managed_labels(MATERIALIZED_KIND, image)
                 + runtime_labels

@@ -4,6 +4,12 @@ This directory contains DevCapsule's Python CLI implementation, packaging and
 contributor reference. Current project commands use `devcapsule project …`;
 image operations use `devcapsule images …`.
 
+`devcapsule project info` (or `info --json`) provides a read-only overview of
+software, environment and persistent storage. It works from the host project's
+directory or descendants and anywhere inside its running capsule. See
+[extra tools and environment inspection](../docs/guides/your-project.md#install-extra-tools-0215)
+for the persistent `/opt/xtras` contract.
+
 ## User Setup
 
 To use DevCapsule, start with [your first session](../docs/guides/first-session.md):

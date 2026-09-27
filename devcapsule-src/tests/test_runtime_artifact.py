@@ -87,7 +87,9 @@ def test_development_mode_removes_only_its_own_inherited_link(tmp_path, monkeypa
     )
     # Execute the generated cleanup operation on temporary paths, before its
     # installation operation; never mutate the test host's /usr/local/bin.
-    subprocess.run(spec.build_plan().exec_steps[0].args, check=True)
+    cleanup = next(step for step in spec.build_plan().exec_steps
+                   if step.args[:2] == ("sh", "-c") and str(command) in step.args[2])
+    subprocess.run(cleanup.args, check=True)
     if existing == "shipped-link":
         assert not command.is_symlink()
     else:
