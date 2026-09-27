@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27; 0.2.15 published and verified; 0.2.16.dev0 reopening validated, awaiting owner UI merge
+State: paused 2026-09-27; 0.2.15 published; 0.2.16.dev0 reopening merged; owner dogfooding released 0.2.15
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -23,6 +23,15 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+Close-out PR #149 is merged at main `6980b60`. SSH fetch verified its tree
+matches the delivered 0f6578d exactly and all three version copies read
+0.2.16.dev0. This checkout fast-forwarded to main before this records-only
+pause. No build rerun is needed: the integrated tree is the validated tree.
+The owner now wants to dogfood the actual released 0.2.15 before judging
+its everyday quality. Release verification and prior acceptance stand;
+ongoing dogfooding feedback is pending, with no further work requested.
+
 
 **0.2.15 is published and verified.** The owner merged the promotion; SSH
 fetch found PR #148 and PR #146 at main 82a1b5d, with exactly the tested
@@ -90,18 +99,12 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Owner opens and merges `ws-maintenance/post-0.2.15` into main through the
-GitHub UI: validated 0.2.16.dev0 reopening and release close-out records.
-After the owner merges, fetch and verify the version triplet and records on
-main. Publication itself is complete; no additional final tag or acceptance
-is needed. Project-management already has the verified release and pending
-reopening via coordination mail.
-The adopter notes in the release overview can be pasted into the GitHub
-release body by the owner under the UI-only integration rule.
-
-No 0.2.16 implementation scope is inferred. Project-management owns its
-sequencing in the separate active checkout. Remain on maintenance unless the
-owner explicitly selects another workstream.
+Wait for the owner's real-use feedback on released 0.2.15. Triage any reported
+problem against the published executable and route it by ownership; do not
+start new implementation or infer 0.2.16 scope. Release publication and main's
+0.2.16.dev0 reopening are complete. No further PR or release action is required
+for this slice. This records-only pause is published through coordination and
+will reach main with the next substantive maintenance integration.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -769,8 +772,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 ## Open Threads
 
 - Final 0.2.15 publication and download verification are complete.
-- Awaiting owner UI merge, then verify the post-release PR reopening main at
-  0.2.16.dev0. Full build passed; no implementation work remains in this slice.
+- PR #149 is merged and verified; main is reopened at 0.2.16.dev0.
+  Await owner dogfooding feedback on released 0.2.15; no new scope is inferred.
   User-facing release notes are prepared in the release overview; GitHub's
   final release body currently contains its generated changelog link.
 - Project-management receives final identity/acceptance and reopening state;
