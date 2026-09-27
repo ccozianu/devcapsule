@@ -4,15 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27; RC1 accepted; final promotion branch validated and pushed; awaiting owner UI merge
+State: paused 2026-09-27; 0.2.15 published and verified; 0.2.16.dev0 reopening validated, awaiting owner UI merge
 
-Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Integration target: `main`
 
 Delivery method: pull request; agent pushes the branch, owner opens and merges on GitHub
 
-Branch association: `release-0.2.15` for the duration of the release; records are kept and published from `ws-maintenance/post-0.2.14`, see *Release 0.2.15* below
+Branch association: `ws-maintenance/post-0.2.15`; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -24,48 +24,43 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-**RC1 is accepted; the final promotion PR is ready for the owner UI.** The
-owner replied “It's all good, working as expected” to the requested RC1
-Claude/Antigravity sign-in, ordinary file/shell actions without approval
-prompts and desired-model access checks. This is owner-reported acceptance;
-no additional named-model result or benchmark is inferred.
+**0.2.15 is published and verified.** The owner merged the promotion; SSH
+fetch found PR #148 and PR #146 at main 82a1b5d, with exactly the tested
+preparation tree. The final tag is at accepted RC1 source
+`a15ff8b58f4af93845c17eaca22f9c9d29c8e000`. Release-0.2.15 remains at 95c7bad;
+retain the branch and both candidate tags. No candidate source was changed.
 
-Accepted immutable source: `v0.2.15-rc1` at
-`a15ff8b58f4af93845c17eaca22f9c9d29c8e000`. Downloaded candidate SHA-256:
-`52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131`.
-[Successful backend](https://github.com/ccozianu/devcapsule/actions/runs/36348273337)
-and [candidate release](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15-rc1).
-Seven downloaded Docker proofs passed, together with real PTY init/retry,
-xtras persistence/PATH, host/runtime project info, safe environment output,
-running-versus-next selection and agent-settings persistence. The release
-overview preserves the detailed observations and limits. Vendor pointers at
-2026-09-27 20:37 UTC still selected Codex 0.157.1, Claude 2.1.283 and
-Antigravity 1.2.12; no holdback is needed.
+[Final release](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15)
+is public, final and marked Latest. The
+[backend](https://github.com/ccozianu/devcapsule/actions/runs/36353476393)
+succeeded in 3m 13s. All three downloaded assets agree; final executable
+SHA-256 is `0e66b9d9947aa447b53d0466d57de3290bb85ca07309df2d739baf82e4c5e113`.
+Version 0.2.15, mnemonic v0.2.15, accepted source and help invocation passed.
+Frozen inputs match RC1 and the inspected final executable. Embedded acceptance
+matches main's record, captured at 82a1b5d. This is final delivery verification;
+RC1's seven Docker proofs and owner-interactive acceptance remain the behavioral
+acceptance. No extra GUI/provider or Docker campaign was performed.
 
-`release-0.2.15` now points to `95c7bad`, adding reviewed acceptance at
-`engineering-docs/releases/v0.2.15.json` and final adopter notes after the
-tested source. The helper re-downloaded and verified RC1; direct promotion
-validation against origin/main and the local downloaded digest passed.
-Preparation baseline is `abb785d7ad4069606fd3ab84009ca8efeabc22b9` (v0.2.14).
+A fresh maintenance branch `ws-maintenance/post-0.2.15` starts at fetched main
+8243aef (only the coverage badge followed the promotion merge). The supported
+bump command sets package and both definition headers to 0.2.16.dev0; the
+installed workflow declaration is unchanged. This branch brings the latest
+maintenance status/decision log back from the release's records-only exception,
+updates only maintenance's registry row, and records final publication.
+Reopening full build passed on clean commit 52bb2cf: 1089 source tests,
+20 deselected, one existing xfail and one XPASS, mypy 174 files, nine packaged
+checks and exact/local PEX builds/smokes. Log: `/tmp/0215-closeout-build.log`.
+The subsequent checkpoint changes records only; source inputs are unchanged.
+Project-management was notified by `2026-09-27-maintenance-0215-published.md`
+at coordination a498133ed199. Mail take before pause returned no items.
 
-Main preparation branch `ws-maintenance/0215-final-main` is pushed at
-`bc83e302b96fe1a6162779b121fb357dee4a715a`, merging the release records onto
-fetched main `da18f93`. Only five documentation/evidence files differ from
-main; runtime source and main's 0.2.15.dev0 are unchanged. Full required gate
-passed on the clean merged tree: 1089 source tests, 20 deselected, one existing
-xfail and one XPASS, mypy 174 files, nine packaged checks and exact/local PEX
-builds/smokes. Log: `/tmp/0215-final-main-build.log`. No final tag exists yet.
-
-Both temporary test containers are absent: RC1 had already exited, and RC0
-was stopped after acceptance. Persistent fixtures remain; no credentials or
-desktop tokens were committed. The init bug remains fixed; the agent's fresh
-init proof does not imply a separate owner-performed init walk.
-
-The original checkout's unrelated dirty source/website state is untouched.
-Records remain here under the tag-cut exception; never publish stale release
-records. Workflow definitions are unchanged. This records-only checkpoint
-defers synchronization; the actual promotion tree is based on current main.
-No release branch was rebased or synchronized. Mail take returned no items.
+No release branch was rebased or synchronized. The post-release branch is
+based on current main; workflow prose is unchanged. The original checkout's
+unrelated dirty source/website state is untouched. Both temporary RC test
+containers are absent; private fixture storage remains. Mail take was empty.
+The init bug remains fixed: machine init acceptance does not establish a
+separate owner-performed init walk. Broader project-command guard repair and
+other deferred work remain outside this completed release.
 
 ## Release 0.2.15
 
@@ -95,18 +90,18 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Owner opens and merges `ws-maintenance/0215-final-main` into main through the
-GitHub UI. Prepared title: “Accept 0.2.15 RC1 for final promotion”. The PR
-body is `/tmp/0215-final-pr-body.md`; the branch is fully committed, pushed
-and validated. Re-fetch over SSH to verify the accepted record and reviewed
-merge result on main after the owner reports completion.
+Owner opens and merges `ws-maintenance/post-0.2.15` into main through the
+GitHub UI: validated 0.2.16.dev0 reopening and release close-out records.
+After the owner merges, fetch and verify the version triplet and records on
+main. Publication itself is complete; no additional final tag or acceptance
+is needed. Project-management already has the verified release and pending
+reopening via coordination mail.
+The adopter notes in the release overview can be pasted into the GitHub
+release body by the owner under the UI-only integration rule.
 
-Then tag `v0.2.15` at accepted source **a15ff8b**, not documentation tip
-95c7bad or preparation merge bc83e30. Existing release authorization covers
-this step; no second permission round is needed. Verify the final backend,
-three published assets, checksum, final version and source identity. After
-publication, reopen main at 0.2.16.dev0 and deliver close-out records by the
-ordinary owner-operated PR process. User target remains this evening.
+No 0.2.16 implementation scope is inferred. Project-management owns its
+sequencing in the separate active checkout. Remain on maintenance unless the
+owner explicitly selects another workstream.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -773,22 +768,21 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting owner UI creation/merge of the prepared final promotion branch.
-  No source changes or further candidate acceptance are pending.
-- After verified integration: tag exact accepted a15ff8b, verify final delivery,
-  then reopen main at 0.2.16.dev0. Final tag has not been created.
-- RC0/RC1 test containers are absent; private fixtures/downloads remain under
-  `/home/devcapsule/.cache/devcapsule-releases/v0.2.15-rc1`. Access tokens and
-  provider credentials stay out of Git. No need to repeat interactive checks
-  for the unchanged accepted candidate.
-- Candidate evidence is in the release overview and promotion JSON on release
-  95c7bad / preparation bc83e30. Full gate log is
-  `/tmp/0215-final-main-build.log`; older downloaded proofs are at
-  `/tmp/0215-rc1-docker-proofs.log`. Scratch scripts/logs are regenerable.
-- Use `TMPDIR=/opt/d215`. Local dist PEX files came from the main preparation
-  gate; use published downloads when verifying release identity.
-- Resume on `release-0.2.15`; publish records only from this records branch.
-  No automatic switch to project-management. No session transcript requested.
+- Final 0.2.15 publication and download verification are complete.
+- Awaiting owner UI merge, then verify the post-release PR reopening main at
+  0.2.16.dev0. Full build passed; no implementation work remains in this slice.
+  User-facing release notes are prepared in the release overview; GitHub's
+  final release body currently contains its generated changelog link.
+- Project-management receives final identity/acceptance and reopening state;
+  0.2.16 scope decisions remain with that workstream and the owner.
+- New source and records branch: `ws-maintenance/post-0.2.15`. The release
+  records exception has ended; publish from this branch going forward.
+- Final downloads: `/home/devcapsule/.cache/devcapsule-releases/v0.2.15`;
+  gate `/tmp/0215-final-gate.json`; verifier `/tmp/0215-verify-final.py`.
+  RC1 downloaded proofs and private fixtures remain alongside. Scratch
+  evidence is regenerable; no credentials/tokens or session transcript in Git.
+- Use `TMPDIR=/opt/d215` for gates. Do not infer release identity from local
+  mainline dist builds. Retain published release/candidate tags unchanged.
 
 Earlier open-thread history (read against the current scope above):
 
