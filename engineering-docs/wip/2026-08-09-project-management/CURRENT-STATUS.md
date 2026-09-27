@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-27 at owner direction until 0.2.15 is released; all release-scope handoffs delivered; 25 undecided intake items
+State: active 2026-09-27; resumed at owner direction to plan 0.2.16 while maintenance releases 0.2.15 from another checkout; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,6 +24,25 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+Resumed 2026-09-27 at the owner's explicit direction, in this checkout,
+to consider what is reasonable for 0.2.16 and plan it, while 0.2.15 is
+still being implemented under maintenance in a different checkout. This
+supersedes the pause note's ordering "after 0.2.15 is released"; the owner
+chose to plan ahead, not the agent. The pause note's first step, verifying
+the published 0.2.15 artifact and maintenance's acceptance record, stays
+pending until that release is final. Fast-forwarded to the pushed branch
+tip; zero commits behind `main`; definition and local workflow unchanged
+since the last read, so nothing to synchronize. One mail item taken: the
+owner's standing agent-freshness practice, acknowledged below. The
+[0.2.16 planning proposal](2026-09-27-0216-release-planning.md) maps the
+0.2.15 leftovers, what `main` already carries, the bug inventory and the
+intake queue to nineteen candidates with a recommended scope and seven
+owner decisions. No intake item other than the freshness practice is
+dispositioned by the proposal; each is decided when its owner decision
+lands. Documentation only; no build, container or source change.
+
+Previous pause note follows.
 
 Paused 2026-09-27 at the owner's explicit direction until 0.2.15 is released.
 All three release-scope messages are verified in maintenance's mailbox;
@@ -152,12 +171,38 @@ no quick repair was made. Bug/design handoff delivered by coordination mail
 `2026-09-22-project-management-claim-test-design.md` at `f263535437cb`.
 The marker and bug await owner PR integration.
 
+## Release 0.2.16 Planning (2026-09-27)
+
+The [proposal](2026-09-27-0216-release-planning.md) recommends 0.2.16 as
+"what `main` already carries, made releasable, plus the bounded cleanup
+0.2.15 set aside": acceptance of the base-contract naming already on
+`main`, 0.2.15's additions forward-ported before the cut, the standing
+agent freshness review, release notes as a gated artifact, the named
+build-context fix, the in-capsule guard bug, triage of the seven
+untargeted maintenance bugs, the two first-session UX fixes as bugs, and
+the first-session guide refresh. The checkout-naming default and an
+IntelliJ surface are the owner's options; the upgrade experience,
+mycodespace and the legacy L1-L13 capabilities are decisions, not 0.2.16
+implementation. Driver recommended: maintenance, cutting from `main` as an
+ordinary release. Estimate: one to two weeks of pair time after 0.2.15 is
+final, IntelliJ adding days. Nothing is registered until the owner decides.
+
 ## Planned Next Step
 
-After 0.2.15 is released and the owner resumes this workstream: verify the
-published final artifact and maintenance acceptance record, then register
-0.2.16 scope/driver and resume the coordination queue below. Do not resume
-project-management automatically while implementing the maintenance release.
+Put the seven decisions in the proposal to the owner. On each decision:
+register 0.2.16 in the registry with its driver and scope, deliver the
+scope to the driver by mail as a work order, file the two first-session
+UX bug records with target 0.2.16, and disposition the intake items the
+decision settles. Independently of the decisions, add the *Agent
+Freshness Review* section to the release runbook, the task acknowledged
+from maintenance's 2026-09-27 item, and reference it from preparation and
+final acceptance. After 0.2.15 is final: verify the published artifact and
+maintenance's acceptance record before the 0.2.16 cut.
+
+Superseded 2026-09-27 by the owner's direction to plan ahead: after 0.2.15
+is released and the owner resumes this workstream, verify the published
+final artifact and maintenance acceptance record, then register 0.2.16
+scope/driver and resume the coordination queue below.
 
 Completed handoffs:
 
@@ -210,6 +255,16 @@ completed: PR #131 was the baseline, maintenance cut and published 0.2.14.
 
 ## Validation And External State
 
+2026-09-27 planning checkpoint: documentation only. Relative links in the
+changed documents checked; no build run, since no source or test changed
+and the developer virtualenv is absent in this checkout. Facts in the
+proposal were read from `origin/main` at `0cb4b0a`, `origin/release-0.2.15`
+at `8028a11` and the live coordination state, not from this checkout's
+stale local `main`. The stray edit found on arrival, a typed "Will" at the
+top of the legacy launch work order on `release-0.2.15`, was discarded
+before switching; nothing else was dirty. Git author verified as Costin
+Cozianu; this session's model is Claude Fable 5.1.
+
 2026-09-27 coordination checkpoint, including the Antigravity and Claude supplements:
 diff whitespace and changed-document relative links checked. Codex defaults
 were verified in v0.2.14 source and the current component/seed implementation.
@@ -248,28 +303,37 @@ submodules were changed.
 
 ## Open Threads
 
-- Awaiting resumption: 0.2.15 publication, then owner selection of this
-  workstream; verify external release evidence before planning 0.2.16.
-- Handed off: init fix plus xtras, project info and Claude/Antigravity defaults
-  to maintenance; general capsule guard repair is non-gating. Vendor first-run
-  acceptance remains required. Two brief observations went to workflow-improvements.
-- Awaiting the human after release: 0.2.16 scope/driver, cleanup ordering,
-  IDE surfaces, release-notes artifact, V1 criteria and legacy rows L1-L13.
-- Weighed and unresolved: dogfood-week evidence and V1 timing; preserve the
-  ledger and 25 undecided intake items. Details remain at pre-pause `d34fb06`.
+- Awaiting the human: the seven 0.2.16 decisions in the proposal, chiefly
+  scope, driver, IntelliJ in or out, and the release-notes artifact. The
+  registration waits on them; the runbook freshness section does not.
+- Awaiting 0.2.15: its final artifact and acceptance record, and how
+  maintenance lands its release-only additions on `main`, which the 0.2.16
+  cut depends on.
+- Weighed and unresolved: whether IntelliJ needs a new `ide-surfaces`
+  workstream or fits a rescoped `eclipse-surface`; whether C7, choosing a
+  newer recommended base from `config`, is left with anything after the
+  base-contract change. The upgrade experience is deliberately kept out of
+  0.2.16 as implementation; a parallel design slice is proposed instead.
+- Observed, not owned here: the website-link bug still targets shipped
+  0.2.14 and needs its owner's retarget; `[workflow] version` in the
+  declaration reads 0.2.14.dev0 while the definition's frontmatter reads
+  0.2.15.dev0, a doctor-class finding for workflow-improvements if it recurs.
+- Handed off earlier: init fix plus xtras, project info and Claude/Antigravity
+  defaults to maintenance; two brief observations to workflow-improvements.
 - Preserved separately: original checkout's release-document and website edits;
   historical host settings on `project-management/local-host-settings-20260915`.
 - Deliberately not preserved: no transcript/session record or disposable builds.
 
 ## Workstream Document Index
 
+- [0.2.16 planning proposal](2026-09-27-0216-release-planning.md): candidates, recommended scope, driver and the owner decisions; proposed 2026-09-27.
 - [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/agent-defaults scope, guard deferral and acceptance checks.
 
 - [0.2.14 release overview](../../releases/v0.2.14/README.md): maintained release checklist and evidence.
 - [0.2.14 bug triage](../../releases/v0.2.14/bugs.md): release dispositions and next actions; canonical bug records remain linked.
 
 - [Prior coordination status](2026-09-22-record-prior-coordination-status.md): full historical handoff, decisions, open-thread context and external-state claims; read when reconciling a specific prior topic.
-- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains the 20 pending items.
+- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains the 25 pending items.
 
 - [Diagnostic print-command and run-image retirement](2026-09-21-design-editable-project-launch.md): accepted simplified contract and maintenance implementation scope.
 - [Design issue: V1 completeness and the WOW experience](2026-09-19-v1-wow-functionality-areas.md)
