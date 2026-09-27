@@ -2,7 +2,7 @@
 
 Status: accepted by the owner, 2026-09-27; implementation pending.
 
-Release: 0.2.15. Driver: maintenance, with these three bounded additions to its
+Release: 0.2.15. Driver: maintenance, with these three bounded slices to its
 release scope explicitly approved by the owner. Project-management owns this
 scope decision; this does not make maintenance a general feature workstream.
 
@@ -15,8 +15,8 @@ a supported `/opt/xtras` installation location and `devcapsule project info`.
 The location matters even though persistent home can provide its storage.
 
 This supersedes the 2026-09-26 restriction that 0.2.15 contain only the init
-answer-loss fix. That fix remains required. The owner subsequently selected a third small addition: Antigravity
-CLI defaults to proceeding without tool-approval prompts. Previously deferred cleanup,
+answer-loss fix. That fix remains required. The owner subsequently selected a third small slice: agent permission
+defaults, initially Antigravity and then explicitly extended to Claude Code. Previously deferred cleanup,
 optimization, IDE surfaces and release-notes automation remain outside 0.2.15.
 
 ## Persistent `/opt/xtras`
@@ -98,6 +98,62 @@ is requested. The current generic seed mechanism creates missing files only;
 adding a missing JSON property to an existing Antigravity settings file needs
 an explicit, bounded implementation rather than assuming file seeding does it.
 
+## Claude Code permission default
+
+Owner direction, 2026-09-27: include Claude in the agent-default correction.
+Do not wait for a first run to create the configuration tree. Anthropic's
+[settings documentation](https://code.claude.com/docs/en/settings#find-or-create-your-settings-files)
+says installation creates no settings file and users may create it themselves;
+`CLAUDE_CONFIG_DIR` relocates the user settings directory. DevCapsule already
+sets that variable to its persistent Claude slot at `/home/devcapsule/.claude`.
+The launcher creates that slot and missing seed parent directories before
+mounting it. There is no need to manufacture Claude's complete state tree.
+
+Seed `$CLAUDE_CONFIG_DIR/settings.json` (normally `$HOME/.claude/settings.json`)
+with the minimum supported mode setting:
+
+```json
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  }
+}
+```
+
+Anthropic documents this user-scope default in
+[permission modes](https://code.claude.com/docs/en/permission-modes#start-in-a-different-permission-mode).
+Let Claude create its remaining session, authentication and preference state.
+Do not seed sign-in or project-trust records or use an organization-managed
+policy to impose the default. This concerns the CLI component; changing IDE
+extension-specific controls is not implicitly included.
+
+Use the Antigravity defaulting rules: create missing managed files, fill only
+missing properties in existing valid settings, preserve explicit permission
+choices and unrelated fields, leave malformed files intact with a diagnostic,
+and retain the adopted-external-state boundary. A conflicting non-object
+`permissions` value is not an empty object to replace silently. Repeated
+launches must preserve settings written by Claude itself.
+
+The documented CLI has a separate first-use bypass confirmation. Maintenance
+must check the selected release version's supported setting for suppressing
+that notice, including whether `skipDangerousModePermissionPrompt` is supported
+in user settings; its availability was not established by this source review.
+If supported, include the smallest such property under the owner's requested
+no-tool-approval default, preserving explicit choices. Otherwise report the
+remaining one-time notice accurately rather than stamping unrelated onboarding
+state or claiming fully prompt-free startup. Authentication and deliberate
+user-interaction questions remain separate from ordinary tool approvals.
+
+Acceptance starts with an empty managed Claude slot, before Claude has ever
+run: the launcher seeds it; a fresh interactive CLI session loads the mode;
+an ordinary file/shell tool action needs no approval; Claude can write its
+remaining settings; after a container replacement those settings survive.
+Also exercise an existing file missing the mode, an explicit alternative mode,
+unrelated nested permission fields, malformed settings and idempotent relaunch.
+A print/headless invocation alone cannot establish interactive first-run
+behavior. Documentation supports the seed design; selected-version runtime
+acceptance is still pending.
+
 ## Accepted deferral
 
 The owner can live with the general in-capsule `devcapsule project <command>`
@@ -128,10 +184,12 @@ not required for this release.
    preservation of unrelated settings and an explicit permission choice,
    malformed-file preservation and repeat launches. Prove an ordinary tool
    action proceeds without approval using the selected vendor CLI.
-5. Cover read-only behavior and secret omission with focused regression
+5. Run the Claude fresh-state interactive acceptance described above, including
+   its first-use notice disposition and preservation of vendor-written state.
+6. Cover read-only behavior and secret omission with focused regression
    checks; run the required release gate and downloaded-candidate acceptance.
    Update CLI help, user documentation and release notes alongside delivery.
-6. Maintenance records implementation and main disposition under the existing
+7. Maintenance records implementation and main disposition under the existing
    release policy, and updates its release overview before the next candidate.
 
 ## Evidence informing the scope
