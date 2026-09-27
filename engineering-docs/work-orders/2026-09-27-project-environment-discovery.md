@@ -1,8 +1,8 @@
-# 0.2.15: Persistent extra tools and project information
+# 0.2.15: Extra tools, project information and agent defaults
 
 Status: accepted by the owner, 2026-09-27; implementation pending.
 
-Release: 0.2.15. Driver: maintenance, with these two bounded additions to its
+Release: 0.2.15. Driver: maintenance, with these three bounded additions to its
 release scope explicitly approved by the owner. Project-management owns this
 scope decision; this does not make maintenance a general feature workstream.
 
@@ -15,8 +15,8 @@ a supported `/opt/xtras` installation location and `devcapsule project info`.
 The location matters even though persistent home can provide its storage.
 
 This supersedes the 2026-09-26 restriction that 0.2.15 contain only the init
-answer-loss fix. That fix remains required. These are the two approved small
-additions; no third addition is selected. Previously deferred cleanup,
+answer-loss fix. That fix remains required. The owner subsequently selected a third small addition: Antigravity
+CLI defaults to proceeding without tool-approval prompts. Previously deferred cleanup,
 optimization, IDE surfaces and release-notes automation remain outside 0.2.15.
 
 ## Persistent `/opt/xtras`
@@ -67,6 +67,37 @@ slice. gcloud under xtras is covered by the persistence explanation, not
 misrepresented as a catalog component. No new component publication flow,
 package manager or cross-machine synchronization is requested.
 
+## Antigravity tool-permission default
+
+The owner's third addition, approved 2026-09-27, is:
+
+```json
+{"toolPermission": "always-proceed"}
+```
+
+in `$HOME/.gemini/antigravity-cli/settings.json`. Apply it for the selected
+Antigravity CLI component inside the capsule. This is the default agent
+posture intended by DevCapsule's isolated-workspace model.
+
+- Seed the setting for new managed Antigravity state.
+- For existing managed settings lacking the key, add only this default,
+  preserving other settings. Retain an explicit user-selected permission
+  mode; never reset the whole file on launch. Repeated launches are idempotent.
+- Keep malformed settings intact and provide an actionable diagnostic rather
+  than silently replacing them. Preserve the existing rule against silently
+  seeding developer-adopted external state; document the one-key edit for it.
+- Verify the exact key and value with the selected Antigravity version and
+  demonstrate an ordinary tool action without a permission prompt. This
+  record captures the owner's requested setting, not a completed vendor test.
+
+Codex already has this posture in v0.2.14: its component seeds
+`approval_policy = "never"` and `sandbox_mode = "danger-full-access"` in
+`$HOME/.codex/config.toml` only when that file is absent in managed state.
+Existing files and adopted state remain untouched. No Codex behavior change
+is requested. The current generic seed mechanism creates missing files only;
+adding a missing JSON property to an existing Antigravity settings file needs
+an explicit, bounded implementation rather than assuming file seeding does it.
+
 ## Accepted deferral
 
 The owner can live with the general in-capsule `devcapsule project <command>`
@@ -93,10 +124,14 @@ not required for this release.
    inside the capsule from the project and `/opt`. Check the actual persisted
    paths and component versions against the report. Exercise a next-launch
    configuration change and verify that it does not relabel running software.
-4. Cover read-only behavior and secret omission with focused regression
+4. Verify Antigravity fresh defaults, an existing file missing the key,
+   preservation of unrelated settings and an explicit permission choice,
+   malformed-file preservation and repeat launches. Prove an ordinary tool
+   action proceeds without approval using the selected vendor CLI.
+5. Cover read-only behavior and secret omission with focused regression
    checks; run the required release gate and downloaded-candidate acceptance.
    Update CLI help, user documentation and release notes alongside delivery.
-5. Maintenance records implementation and main disposition under the existing
+6. Maintenance records implementation and main disposition under the existing
    release policy, and updates its release overview before the next candidate.
 
 ## Evidence informing the scope

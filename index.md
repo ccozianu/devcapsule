@@ -88,7 +88,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
-- [0.2.15 persistent extra tools and project information](engineering-docs/work-orders/2026-09-27-project-environment-discovery.md)
+- [0.2.15 extra tools, project information and agent defaults](engineering-docs/work-orders/2026-09-27-project-environment-discovery.md)
 
 - [Workflow installation during onboarding](engineering-docs/work-orders/2026-09-24-workflow-installation-onboarding.md)
 
