@@ -1,0 +1,20 @@
+{
+  "accepted-by": "Costin Cozianu",
+  "candidate-sha256": "52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131",
+  "candidate-tag": "v0.2.15-rc1",
+  "evidence": [
+    "Published RC1 backend succeeded: https://github.com/ccozianu/devcapsule/actions/runs/36348273337 . Downloaded executable, checksum and manifest matched; executable reports 0.2.15rc1, v0.2.15-rc1 and source a15ff8b58f4af93845c17eaca22f9c9d29c8e000.",
+    "Seven required Docker proofs passed against the downloaded RC1 in 201.29 seconds: no-Python/no-network operation, component cache reuse and invalidation, identical launcher/runtime delivery on both IDE surfaces and command names, and pinned-base runtime/display behavior.",
+    "Fresh PTY init rejected the misspelled authorization before prompts or writes; corrected init retained all supplied authorizations and launched the actual three-agent Codium environment. On UID 1000 with a read-only root, existing HOME/xtras tools, PATH discovery, agent settings and a state marker survived container replacement.",
+    "Downloaded RC1 project info agreed at host root/descendant and runtime project/opt; backing paths matched Docker mounts, secrets were omitted, records remained unchanged and next-launch edits did not relabel running software.",
+    "On 2026-09-27 the owner confirmed \"It's all good, working as expected\" in response to the requested RC1 Claude and Antigravity sign-in, ordinary file/shell actions without approval prompts, and desired-model access checks. Provider acceptance is owner-reported; no additional model names or benchmarks are asserted.",
+    "Vendor pointers checked on 2026-09-27 at 20:37 UTC still selected Codex 0.157.1, Claude Code 2.1.283 and Antigravity CLI 1.2.12. Release and main gates passed before RC1: 1081 and 1089 source tests respectively, type checks and nine packaged-runtime checks on each tree. Main PR 145 integrated the tested source."
+  ],
+  "integration": {
+    "baseline": "abb785d7ad4069606fd3ab84009ca8efeabc22b9",
+    "method": "ancestry"
+  },
+  "schema-version": 1,
+  "source-revision": "a15ff8b58f4af93845c17eaca22f9c9d29c8e000",
+  "tag": "v0.2.15"
+}

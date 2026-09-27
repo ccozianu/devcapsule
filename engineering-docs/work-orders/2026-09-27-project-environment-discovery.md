@@ -1,7 +1,7 @@
 # 0.2.15: Extra tools, project information and agent defaults
 
-Status: implemented on the 0.2.15 release line, 2026-09-27; downloaded-candidate
-and authenticated agent acceptance pending. See the
+Status: implemented and accepted on downloaded 0.2.15 RC1, 2026-09-27;
+final promotion and publication pending. See the
 [release overview](../releases/v0.2.15/README.md) for evidence and remaining gates.
 
 Release: 0.2.15. Driver: maintenance, with these three bounded slices to its
