@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-27; owner approved three bounded 0.2.15 slices including Claude and Antigravity defaults; maintenance handoff delivered; 25 undecided intake items
+State: paused 2026-09-27 at owner direction until 0.2.15 is released; all release-scope handoffs delivered; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,6 +24,17 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+Paused 2026-09-27 at the owner's explicit direction until 0.2.15 is released.
+All three release-scope messages are verified in maintenance's mailbox;
+implementation, validation and release now move to that workstream under the
+same owner's instruction. The final work-order revision is `d34fb06`; its
+source is available on the pushed project-management branch. The two older
+brief observations were sent for triage to workflow-improvements as
+`2026-09-27-project-management-brief-observations.md` at `5286a7bfbeb4`.
+No source work or user edits remain in this checkout. The 25 pre-existing
+intake items stay queued until resumption; no session record was requested.
+
 
 Resumed 2026-09-27 for the owner's release-scope decision in a clean checkout
 at `/tmp/devcapsule-project-management`, on the registered branch. The original
@@ -143,6 +154,13 @@ The marker and bug await owner PR integration.
 
 ## Planned Next Step
 
+After 0.2.15 is released and the owner resumes this workstream: verify the
+published final artifact and maintenance acceptance record, then register
+0.2.16 scope/driver and resume the coordination queue below. Do not resume
+project-management automatically while implementing the maintenance release.
+
+Completed handoffs:
+
 Maintenance received `2026-09-27-project-management-0215-xtras-info-scope.md`
 at coordination commit `2e76c7989b32`, including the full work order. Next:
 check its acknowledgement when reviewing release progress, then resume the
@@ -230,35 +248,18 @@ submodules were changed.
 
 ## Open Threads
 
-- Current: three 0.2.15 slices are approved, including Claude and Antigravity
-  defaults; implementation and release acceptance await maintenance. The general capsule guard bug is explicitly
-  non-gating, but `project info` must work inside the capsule.
-- Checkout custody: original release-document and website edits remain
-  untouched in `/workspace/301e4208ef81-ChatGPT_Codex`. This workstream's clean
-  checkout is `/tmp/devcapsule-project-management`; branch commits and
-  coordination publication, not the temporary path, preserve its records.
-
-- Awaiting the human: register 0.2.16 after 0.2.15 ships (driver, the five
-  cleanup candidates' order, the IDE-surface ruling, the release-notes
-  artifact proposal); ratify or trim the V1 acceptance criteria in the
-  ledger; decide the legacy-launch rows L1 to L13.
-- Weighed and unresolved: V1 timing. Assessed 2026-09-26 against the
-  unratified ledger criteria: no blocking bug then, three unowned in-v1
-  rows, E8 proof and the WOW walk-through unrun, L1 to L13 undecided.
-  Recommended the dogfood week as V1 evidence and V1 as the release after
-  the optimization release; the init bug then displaced that release plan.
-- Handed to maintenance by mail: the init bug with transcript, the 0.2.15
-  routing, and its fix-only correction. Maintenance had not taken them at
-  this pause.
-- Preserved: 25 undecided intake items, oldest from 2026-08-17; the two
-  2026-09-22 migration items are overtaken and await only their closing
-  entry. Historic host settings remain on
-  `project-management/local-host-settings-20260915`; no restoration requested.
-- Two `workflow brief` defects seen, not filed: it says nobody has a live
-  claim while `status` shows one, and prints the definition line twice.
-  Belong to workflow-improvements.
-- Deliberately not preserved: no session record; the V1 assessment lives
-  only in this section and the ledger it cites.
+- Awaiting resumption: 0.2.15 publication, then owner selection of this
+  workstream; verify external release evidence before planning 0.2.16.
+- Handed off: init fix plus xtras, project info and Claude/Antigravity defaults
+  to maintenance; general capsule guard repair is non-gating. Vendor first-run
+  acceptance remains required. Two brief observations went to workflow-improvements.
+- Awaiting the human after release: 0.2.16 scope/driver, cleanup ordering,
+  IDE surfaces, release-notes artifact, V1 criteria and legacy rows L1-L13.
+- Weighed and unresolved: dogfood-week evidence and V1 timing; preserve the
+  ledger and 25 undecided intake items. Details remain at pre-pause `d34fb06`.
+- Preserved separately: original checkout's release-document and website edits;
+  historical host settings on `project-management/local-host-settings-20260915`.
+- Deliberately not preserved: no transcript/session record or disposable builds.
 
 ## Workstream Document Index
 
