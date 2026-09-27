@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-27; RC0 published and machine-validated; implementing xtras/project info for the next candidate
+State: paused 2026-09-27; RC1 implementation and main PR preparation validated; awaiting owner UI merge and interactive agent acceptance
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -23,6 +23,47 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+RC1 implementation is committed and pushed on `release-0.2.15` at
+`a15ff8b58f4af93845c17eaca22f9c9d29c8e000`: persistent `/opt/xtras`, its bin on
+PATH, and read-only host/runtime `project info`. Updated help, user guidance,
+persistence specification and release evidence accompany it. The recipe
+preserves conflicting custom-base paths and invalidates old image formations.
+Runtime reports capture backing paths and running software at launch, distinguish
+next-launch selection, omit secrets, and honor explicit/nested project paths.
+
+Release full gate: 1081 passed, 20 deselected, 1 xfailed, 1 xpassed; mypy clean
+on 171 files; nine packaged checks. Clean exact-revision PEX built and
+version/info-help smoke passed after the source push. A local PEX passed real
+non-root/read-only-root launch and replacement: existing HOME/xtras content,
+ordinary/login PATH, reported mount backing, runtime info from /opt and project,
+changed next-launch software without relabeling running software, secret
+omission and byte-stable inspection. Custom-base directory/file/link collision
+checks passed. This disposable capsule was stopped and removed after the
+second run; evidence is under `/home/devcapsule/.cache/devcapsule-0215-xtras-info`.
+
+Main delivery is the clean merge at `1d1a882199dfae080a5c1b34e7e9eddf414ed157`
+on pushed `ws-maintenance/0215-rc1-main`, based on remote main `0dede82`.
+Main's images/base-contract implementation and 0.2.15.dev0 are preserved.
+Main full gate: 1089 passed, 20 deselected, 1 xfailed, 1 xpassed; mypy clean
+on 174 files; nine packaged checks and clean exact-revision PEX smoke passed.
+The PR still needs the owner's GitHub UI action. Do not tag RC1 before
+verifying the merged main disposition. The release remains at a15ff8b.
+
+RC0 stays immutable and published at d96e0e7. Its seven downloaded Docker
+proofs and real init/run/relaunch acceptance passed. The retained
+`devcapsule-0215-rc0-smoke` desktop is still for the owner's authenticated
+Claude/Antigravity ordinary-tool and model checks; the asynchronous request
+has no reply yet. Do not infer provider acceptance from headless startup.
+Keep the access token out of Git. Final freshness review, downloaded-RC1
+proofs, exact acceptance and final publication remain after the PR merge.
+
+Records stay on `ws-maintenance/post-0.2.14` under the documented release-cut
+exception; source fixes stay on the release branch. Definitions are unchanged,
+so a records-only checkpoint does not need a main synchronization. No release
+branch was rebased or synchronized, and no other workstream was selected.
+
+### RC0 checkpoint detail
 
 RC0 slice completed 2026-09-27 at the owner's direction to cut a candidate
 before xtras/project info, aiming to finish the full release this evening.
@@ -157,16 +198,17 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-On `release-0.2.15`, implement the approved `/opt/xtras` and host/runtime
-`project info` contracts for the next candidate. Keep RC0 immutable and its
-test desktop running for the owner's interactive checks. Take the answer when
-it arrives and address any concrete agent regression on the release branch.
+Owner opens and merges `ws-maintenance/0215-rc1-main` into main through the
+GitHub UI. Fetch and verify source a15ff8b is integrated with its behavior
+preserved, then tag the unchanged release tip as `v0.2.15-rc1`, publish and
+validate downloaded assets. The prepared main branch is only a delivery
+vehicle; further fixes belong on `release-0.2.15`.
 
-Then run the relevant/full gate, integrate the new slice to main by the usual
-owner UI PR, publish the next candidate and verify its downloaded bytes.
-The full approved work order gates final 0.2.15. Recheck agent freshness before
-acceptance, integrate the exact acceptance record, publish final and verify
-it. Do not import main's 0.2.16 implementation into this release.
+Take the owner's interactive Claude/Antigravity results when they arrive;
+keep the RC0 desktop until the owner is done. Address concrete regressions on
+the release branch. Finish downloaded-RC1 xtras/info and required Docker proofs,
+recheck agent freshness, integrate the exact acceptance record, publish final
+0.2.15 and verify final assets. Do not import main's 0.2.16 work into this release.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -833,34 +875,24 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- PR #144 is merged and RC0 is published/checksummed. Seven Docker proofs
-  and real init/run/relaunch passed. Interactive provider/model checks await
-  the owner in the deliberately retained RC0 test desktop.
-- Continue on release d96e0e7; do not publish this
-  status from the stale release-branch copy. The prepared main branch is a
-  delivery vehicle, not the release branch for subsequent fixes.
-- Scratch: `/tmp` (2 GB) and `/var/tmp` (1 GB) are tmpfs; long HOME-based
-  test paths also exceeded Unix socket limits. Use `TMPDIR=/opt/d215` for
-  local gates. Logs: `/tmp/0215-build.log`, `/tmp/0215-main-build.log`,
-  `/tmp/0215-exact-pex.log`; verified downloads remain under
-  `/home/devcapsule/.cache/devcapsule-0215-agents` for candidate work.
-- The original checkout's unrelated source/website changes remain untouched.
-  No session transcript was requested or created.
-
-
-- Latest direction: attempt current agent releases for 0.2.15 and every release;
-  candidates and vendor sources are in release overview `8028a11`. Their
-  integrity, compatibility and runtime behavior still need validation.
-
-- Current 0.2.15 scope is accepted and all three messages acknowledged. No
-  additional product decision is needed to start the ordered slices above.
-- Vendor verification still owed: Antigravity's exact toolPermission behavior;
-  Claude minimal settings plus first-use notice, then settings persistence.
-- Existing source gate covers only the init-fix tree. The additions need fresh
-  tests, main disposition and downloaded-candidate acceptance before release.
-- The 25 older project-management items remain paused until 0.2.15 ships;
-  no automatic workstream return. Original checkout's dirty state is untouched.
-- Deliberately not preserved: no session transcript or regenerated build output.
+- Awaiting the owner's UI PR merge for `ws-maintenance/0215-rc1-main` (1d1a882).
+  Release a15ff8b is pushed and locally validated; RC1 is not tagged yet.
+- Awaiting authenticated Claude/Antigravity tool/model checks in the retained
+  RC0 desktop. No credentials were imported or provider acceptance invented.
+- After merge, fetch main, verify disposition, tag RC1 and run the downloaded
+  acceptance. Final freshness review, acceptance record and final publication
+  remain; RC0 is immutable.
+- Resume source work on `release-0.2.15`. Publish records only from this records
+  branch, never the stale status copy on the release branch. Main preparation
+  branches are delivery vehicles, not workstream changes.
+- Scratch: use `TMPDIR=/opt/d215`; `/tmp` and `/var/tmp` have small tmpfs limits
+  and long HOME paths broke socket tests. Logs: `/tmp/0215-rc1-build.log`,
+  `/tmp/0215-rc1-main-build.log`, `/tmp/0215-rc1-exact-pex.log`.
+- The PR body is prepared at `/tmp/0215-rc1-pr-body.md`; the release overview
+  carries durable evidence. Local probes/build outputs are regenerable, not
+  committed deliverables. No session transcript was requested or created.
+- The original checkout's dirty source and website state remain untouched.
+  The deferred general runtime command guard remains outside this release.
 
 Earlier open-thread history (read against the current scope above):
 
