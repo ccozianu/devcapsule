@@ -24,6 +24,24 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+Merge verification checkpoint, 2026-09-27: the owner reported the next PR
+merged, but SSH fetch and `ls-remote` still identify main as
+`0dede824c35fe9a616fa3d0aad5b5f407e00c3d2`. The public page for
+[PR #145](https://github.com/ccozianu/devcapsule/pull/145) identifies the correct
+`ws-maintenance/0215-rc1-main` branch and still says **Open**. No RC1 tag was
+created. The prepared release source stays a15ff8b; publication resumes after
+verifying the owner completes that merge. This is an observed external-state
+blocker, not a request for new release scope or tagging authorization.
+
+Agent freshness was rechecked against the same vendor endpoints on 2026-09-27:
+Codex latest remains 0.157.1, Claude latest 2.1.283 and the Antigravity Linux
+amd64 manifest 1.2.12. No pin change or holdback is needed at this checkpoint.
+Raw responses are in `/tmp/0215-freshness-{codex,claude,antigravity}.txt`;
+canonical vendor links remain in the release overview. The owner has again
+been asked for the pending authenticated Claude/Antigravity tool/model results;
+no reply or acceptance has been inferred. No product files changed, so the
+previous release and main validation still applies.
+
 RC1 implementation is committed and pushed on `release-0.2.15` at
 `a15ff8b58f4af93845c17eaca22f9c9d29c8e000`: persistent `/opt/xtras`, its bin on
 PATH, and read-only host/runtime `project info`. Updated help, user guidance,
@@ -198,8 +216,8 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Owner opens and merges `ws-maintenance/0215-rc1-main` into main through the
-GitHub UI. Fetch and verify source a15ff8b is integrated with its behavior
+Owner completes [PR #145](https://github.com/ccozianu/devcapsule/pull/145)
+from `ws-maintenance/0215-rc1-main` into main through the GitHub UI. Fetch and verify source a15ff8b is integrated with its behavior
 preserved, then tag the unchanged release tip as `v0.2.15-rc1`, publish and
 validate downloaded assets. The prepared main branch is only a delivery
 vehicle; further fixes belong on `release-0.2.15`.
@@ -875,7 +893,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting the owner's UI PR merge for `ws-maintenance/0215-rc1-main` (1d1a882).
+- PR #145 exists but was verified still Open after the owner reported a merge.
+  Awaiting its completed UI merge for `ws-maintenance/0215-rc1-main` (1d1a882).
   Release a15ff8b is pushed and locally validated; RC1 is not tagged yet.
 - Awaiting authenticated Claude/Antigravity tool/model checks in the retained
   RC0 desktop. No credentials were imported or provider acceptance invented.
