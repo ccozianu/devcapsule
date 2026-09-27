@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-27; owner approved two bounded 0.2.15 additions; maintenance handoff delivered; 25 undecided intake items
+State: active 2026-09-27; owner approved three bounded 0.2.15 additions; maintenance handoff delivered; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -39,8 +39,15 @@ The owner approved persistent `/opt/xtras` and read-only `project info` for
 0.2.15, and accepted deferring the general in-capsule project-command guard
 bug. The [accepted work order](../../work-orders/2026-09-27-project-environment-discovery.md)
 is the current scope and acceptance contract. Maintenance is the release
-driver for these two bounded additions; its general scope is not expanded.
-No runtime implementation or new candidate acceptance is claimed here.
+driver for these three bounded additions; its general scope is not expanded.
+The owner subsequently approved Antigravity's `toolPermission` default as
+`always-proceed` in `$HOME/.gemini/antigravity-cli/settings.json`, completing
+the three-addition scope. New state and a missing key in managed settings get
+the default; explicit choices and unrelated settings are preserved. Codex's
+v0.2.14 seed already sets approvals to never and sandbox to danger-full-access;
+existing configurations are not overwritten. Branch is current with main;
+workflow definitions unchanged. No runtime implementation or new candidate
+acceptance is claimed here.
 
 Earlier coordination history follows; the 2026-09-27 decision supersedes the
 fix-only restriction wherever it appears below.
@@ -99,7 +106,7 @@ first ask of maintenance's 0.2.15 plan:
 - Maintenance cut 0.2.15 from `v0.2.14` under the owner's fix-only ruling;
   the published maintenance state records that cut and the passing local gate.
   On 2026-09-27 the owner added `/opt/xtras` and `project info` via the linked
-  work order. The init fix and both additions require candidate acceptance.
+  work order. The init fix and all three additions require candidate acceptance.
 - Owner ruling, same day: everything else named for 0.2.15 moves to
   0.2.16. That is the cleanup and optimization list from the 2026-09-25
   plan, its five candidates, the IDE-surface wish (maintenance estimates
@@ -136,7 +143,10 @@ at coordination commit `2e76c7989b32`, including the full work order. Next:
 check its acknowledgement when reviewing release progress, then resume the
 remaining coordination decisions below. Implementation and candidate validation
 belong to maintenance; remain in project-management unless the owner explicitly
-selects that workstream. No third addition has been selected for 0.2.15.
+selects that workstream. The third addition is Antigravity
+`toolPermission: "always-proceed"`; its supplemental maintenance handoff
+`2026-09-27-project-management-0215-antigravity-default.md` was delivered at
+coordination commit `ebf07f17ef87`. No further addition is selected.
 
 Previous planning context (2026-09-26):
 
@@ -174,8 +184,10 @@ completed: PR #131 was the baseline, maintenance cut and published 0.2.14.
 
 ## Validation And External State
 
-2026-09-27 coordination checkpoint: diff whitespace and changed-document
-relative links checked. The required `.venv/bin/python -m nox -s build` could
+2026-09-27 coordination checkpoint, including the Antigravity supplement:
+diff whitespace and changed-document relative links checked. Codex defaults
+were verified in v0.2.14 source and the current component/seed implementation.
+No live agent settings were edited. The required `.venv/bin/python -m nox -s build` could
 not start in the clean checkout because its developer virtualenv is absent
 (exit 127). No environment provisioned for this documentation-only handoff;
 no new build pass or implementation validation claimed. Earlier build results
@@ -210,7 +222,7 @@ submodules were changed.
 
 ## Open Threads
 
-- Current: two 0.2.15 additions are approved; implementation and release
+- Current: three 0.2.15 additions are approved; implementation and release
   acceptance await maintenance. The general capsule guard bug is explicitly
   non-gating, but `project info` must work inside the capsule.
 - Checkout custody: original release-document and website edits remain
@@ -242,7 +254,7 @@ submodules were changed.
 
 ## Workstream Document Index
 
-- [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info scope, guard deferral and acceptance checks.
+- [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/Antigravity scope, guard deferral and acceptance checks.
 
 - [0.2.14 release overview](../../releases/v0.2.14/README.md): maintained release checklist and evidence.
 - [0.2.14 bug triage](../../releases/v0.2.14/bugs.md): release dispositions and next actions; canonical bug records remain linked.
