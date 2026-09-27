@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-27; releasing 0.2.15; init fix plus approved xtras, project info and Claude/Antigravity defaults; implementation next
+State: active 2026-09-27; releasing 0.2.15; init fix, xtras, project info, agent defaults and owner-directed agent upgrades; validation pending
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,6 +24,18 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+Owner addition, 2026-09-27: every release should try upgrading the supported
+AI agent CLIs to current generally available vendor versions. Direct feed
+checks found Codex 0.157.1 (pin 0.153.4), Claude Code 2.1.283 (pin 2.1.261),
+and Antigravity 1.2.12 (pin 1.1.24). These are candidates only; no artifacts
+were installed, pins changed, or new-version runtime acceptance claimed.
+Release commit `8028a11` updates the 0.2.15 overview with the entire approved
+scope, source URLs, freshness decisions and validation checklist. The recurring
+runbook instruction was sent to paused project-management as
+`2026-09-27-maintenance-recurring-agent-release-review.md` at `8244b5ae7bca`;
+its resumption is not needed to execute the owner's instruction for 0.2.15.
+
+
 Resumed 2026-09-27 at explicit owner direction after project-management paused
 until 0.2.15 publication. Took and acknowledged all three project-management
 scope messages; intake is empty. The owner-approved additions now supersede
@@ -40,8 +52,9 @@ The current checkout is `/tmp/devcapsule-project-management` (its pathname
 has no workflow meaning). The original checkout's release-document edits and
 website state are untouched. The records branch was merged with main through
 `0cb4b0a`; only records and coverage differed, definitions were unchanged. The
-release branch is never synchronized with main. Remote `release-0.2.15` is at
-`1d9a27f`; no `v0.2.15*` tags were returned by the remote on resume.
+release branch is never synchronized with main. Remote `release-0.2.15` was at
+`1d9a27f` on resume and is now `8028a11` after the scope checkpoint; no
+`v0.2.15*` tags were returned by the remote on resume.
 
 Eight nonterminal bugs belong to maintenance: the fixed blocking init bug
 (target 0.2.15); the confirmed guard, installed-IDE reuse, multiline-rendering
@@ -104,7 +117,12 @@ old fix-only gate does not validate the expanded release.
 ## Planned Next Step
 
 On `release-0.2.15`, import the approved work order, update the release
-overview and implement the bounded additions in this order:
+overview (updated at `8028a11`) and implement the bounded additions in this order:
+
+0. Prepare the developer environment, inspect the current vendor releases and
+   verify/pin compatible agent upgrades. Record holdbacks with reasons; do not
+   claim an untested compatibility edge. Run the subsequent defaults work on
+   the versions selected for the release. Recheck freshness before acceptance.
 
 1. Claude and Antigravity permission defaults: minimal pre-first-launch
    settings, missing-property defaults, explicit-choice preservation and
@@ -306,7 +324,8 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 2026-09-27 resumption: SSH refs, waiting mail and the current main disposition
 were rechecked; no candidate tag exists. Record-only acknowledgement changes
-pass whitespace checks. The clean checkout has no developer virtualenv, as
+and the release-scope overview pass whitespace checks. The vendor metadata
+reads are availability evidence only, not installation or model-access tests. The clean checkout has no developer virtualenv, as
 already established during the project-management handoff; no new build pass
 is claimed. Set up its developer environment before implementation validation.
 No containers or vendor sessions were launched for workstream selection.
@@ -781,6 +800,10 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Latest direction: attempt current agent releases for 0.2.15 and every release;
+  candidates and vendor sources are in release overview `8028a11`. Their
+  integrity, compatibility and runtime behavior still need validation.
 
 - Current 0.2.15 scope is accepted and all three messages acknowledged. No
   additional product decision is needed to start the ordered slices above.
