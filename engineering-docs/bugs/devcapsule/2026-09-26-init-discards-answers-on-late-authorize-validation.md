@@ -175,3 +175,15 @@ explicit network/Docker grants and agent acquisition decisions. `project run`
 then built and launched the three-agent Codium environment; a replacement
 container started from the same recorded choices. See the
 [0.2.15 release evidence](../../releases/v0.2.15/README.md#rc0--published-2026-09-27).
+
+## Downloaded RC1 verification (2026-09-27)
+
+The same fresh-directory public-CLI journey passed with `v0.2.15-rc1`, source
+a15ff8b, PEX SHA-256
+`52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131`.
+The typo again failed before prompts/writes; correcting it retained every
+explicit authorization, and the resulting three-agent Codium capsule launched
+and survived replacement. Evidence is in the
+[RC1 release record](../../releases/v0.2.15/README.md#rc1--published-2026-09-27).
+The existing owner-confirmation close criterion remains; this records the
+agent-executed downloaded-candidate proof.

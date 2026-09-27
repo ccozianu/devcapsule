@@ -1,6 +1,6 @@
 # DevCapsule 0.2.15 — Release Work
 
-Updated: 2026-09-27. Stage: **RC0 published; machine checks passed; interactive agent acceptance pending**.
+Updated: 2026-09-27. Stage: **RC1 published; downloaded machine checks passed; interactive agent acceptance pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 ## Scope And Owner Decisions
@@ -10,7 +10,7 @@ Driver: **maintenance**. Product owner: Costin Cozianu.
 - Required fix: [`project init` loses interactive answers for an unknown
   configuration name](../../bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md).
   Fixed on main in PR #143 at `3acc460`; release cherry-pick `9a0567c`
-  records main origin `74bc4aa`. Candidate acceptance remains pending.
+  records main origin `74bc4aa`. The downloaded RC0 and RC1 init-retry journeys passed.
 - Persistent `/opt/xtras`: writable without sudo, backed by checkout storage,
   preserving existing `$HOME/xtras`; bin available to IDEs, agents and terminals.
 - Read-only `devcapsule project info`: identity, components/versions,
@@ -78,9 +78,9 @@ next resumption; its pause does not block this owner-authorized release review.
 
 - Release branch starts at `abb785d` (`v0.2.14`), init fix `9a0567c`, version
   `c601fb8`; current pre-expansion tip `1d9a27f`.
-- Main disposition: RC0 is integrated. Prepare an ordinary merge of the RC1
-  slice, preserving main's newer implementation and development version. Verify
-  remote ancestry after the owner merges the PR, then tag the release commit.
+- Main disposition: RC0 and RC1 are integrated. PR #145 at `1215795` has
+  the tested main-preparation tree (1d1a882) and includes release source a15ff8b;
+  main's newer implementation and development version are preserved.
   The former fix-only exception record is removed because its scope is obsolete.
 - Historical full gate at `4f28a12`: 1068 passed, 20 deselected, 1 xfailed,
   1 xpassed; mypy clean on 169 files; exact-revision PEX and nine packaged
@@ -98,9 +98,11 @@ next resumption; its pause does not block this owner-authorized release review.
 - [x] Tag `v0.2.15-rc0`, backend publication, downloaded assets verified.
 - [x] Rerun the failing init journey with the downloaded candidate, typo first,
   then corrected through a real three-agent Codium `project run` and relaunch.
-- [ ] Verify xtras persistence and PATH, host/runtime information, and actual
-  interactive agent defaults/version behavior using downloaded candidate bytes.
-- [ ] Local proofs against downloaded assets per the runbook; final freshness review.
+- [x] Downloaded RC1: xtras persistence/PATH, host/runtime information, init retry,
+  exact runtime delivery, agent versions and seeded-settings persistence.
+- [ ] Actual authenticated interactive agent defaults/model behavior.
+- [x] Required Docker proofs against downloaded RC1: 7 passed in 201.29 s.
+- [x] Vendor freshness rechecked 2026-09-27 20:37 UTC; all pins still current.
 - [ ] Exact-candidate acceptance record, integration to main, final tag and
   verified final assets. Reopen main at 0.2.16.dev0 after publication.
 
@@ -181,8 +183,50 @@ user guidance and persistence specification accompany the implementation.
   was removed after its second run. The RC0 owner acceptance desktop remains
   available. Authenticated agent acceptance is still pending.
 
-These are local implementation proofs. Main integration, an immutable RC1 tag,
-downloaded-RC1 proofs and owner interactive acceptance remain required.
+The proofs above used local builds. The published RC1 evidence follows;
+authenticated owner acceptance still remains.
+
+### RC1 — published 2026-09-27
+
+- Tag `v0.2.15-rc1`; source `a15ff8b58f4af93845c17eaca22f9c9d29c8e000`.
+  PR #145 merged at `1215795`; its tree matches tested main preparation 1d1a882.
+  The candidate integration gate reports mainline and no unmatched commits.
+- [Public prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.2.15-rc1);
+  [successful backend run](https://github.com/ccozianu/devcapsule/actions/runs/36348273337)
+  (3m 5s). Downloaded executable, checksum file and manifest agree on SHA-256
+  `52c28999a0a8e83353d060a23ec7b914e781b02269445a4c7a189ea04399e131`.
+  The executable reports `0.2.15rc1`, `v0.2.15-rc1` and the exact source above.
+- All seven required Docker proofs passed against the downloaded PEX in
+  201.29 s: no-Python/no-network execution, component reuse/invalidation,
+  launcher/runtime identity on both surfaces/command names, and pinned-base
+  runtime/display behavior. Log: `/tmp/0215-rc1-docker-proofs.log`.
+- Fresh private-XDG init used the downloaded public CLI through a pseudoterminal.
+  The misspelled `docker` authorization failed before prompts or writes;
+  corrected `docker-daemon` completed init, retaining network, Docker and
+  vendor-acquisition answers. That project launched actual Codium and all
+  three agent CLIs with the expected versions and the required settings.
+- The runtime PEX hash equals the downloaded launcher hash. With read-only
+  root and UID 1000, an existing HOME/xtras installation was visible through
+  `/opt/xtras`; its bin was writable and worked on ordinary and login PATH.
+  Both installation and executable survived container replacement. Claude and
+  Antigravity settings stayed byte-identical, and a Claude-slot marker survived.
+- `project info` agreed at host root/descendant and runtime project/`/opt`.
+  Storage backing matched actual Docker mounts after nested-launch path
+  translation. Changing the next-launch Codex version left running software
+  and mounts unchanged. API-key sentinel was omitted; inspection left checkout
+  and resolution bytes unchanged. The project lock was restored byte-for-byte.
+- Vendor release pointers were rechecked at 20:37 UTC: Codex 0.157.1,
+  Claude 2.1.283 and Antigravity 1.2.12 remain current. No holdback is needed.
+- Download and fixture evidence:
+  `/home/devcapsule/.cache/devcapsule-releases/v0.2.15-rc1`, with the
+  `init-smoke-retry` subdirectory containing init transcripts, host/runtime
+  reports, settings hashes and run logs. Temporary probe helpers are under
+  `/tmp/0215-rc1-*.py`; freshness evidence is `/tmp/0215-rc1-freshness.json`.
+- `devcapsule-0215-rc1-smoke` is deliberately retained after its second launch
+  for owner interactive acceptance. The prior RC0 desktop is also retained.
+  No account material was imported. Desktop access tokens stay out of Git.
+  Agent sign-in, ordinary interactive tool execution and desired-model access
+  still need the owner's result; no acceptance record or final tag exists.
 
 ## Release Notes Preparation
 
@@ -230,3 +274,17 @@ developer's selected version set.
 - Initial gate attempts hit temporary-filesystem capacity and Unix socket path
   limits in this container. Test scratch was moved to short disk-backed
   `/opt/d215`; no product workaround or weakened test was introduced.
+
+## Adopter Notes Draft — Pending Final Acceptance
+
+DevCapsule 0.2.15 makes project setup and everyday environment adjustments easier.
+
+- `project init` now catches misspelled configuration names before asking questions or writing files, and suggests the correct name. Correcting a typo no longer means losing the answers you just entered.
+- Install additional tools under `/opt/xtras` without sudo. It points to persistent `$HOME/xtras`, preserving existing installations; `/opt/xtras/bin` is available on PATH. Storage belongs to the checkout by default and follows any explicitly selected home binding. You manage these tools and their updates.
+- `devcapsule project info` shows component versions, provided environment variables and persistent/temporary storage. It works on the host from the project or a descendant, and anywhere inside its capsule. Runtime output separates running software from the next-launch selection. `--json` supports agent use; secret values are omitted.
+- New managed Claude and Antigravity settings use the requested no-tool-approval defaults. Missing properties are added to valid managed settings; explicit choices, malformed files and adopted external state remain intact. Codex retains its existing defaults.
+- Updated recommendations: Codex 0.157.1, Claude Code 2.1.283 and Antigravity CLI 1.2.12. Existing project locks and selected version sets remain unchanged until you choose to update them.
+
+Authentication and model access still use your own provider account. Tools stored under `/opt/xtras` are not automatically installed on another machine or recorded in the component lock. The broader in-capsule project-command diagnostic issue remains deferred.
+
+Migration: upgrading the launcher does not grant new host permissions. Checkouts created by older clients may still need the one-time vendor-download consent introduced in 0.2.14.
