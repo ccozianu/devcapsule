@@ -14,7 +14,7 @@ from devcapsule.components import (
     SecretInputDeclaration,
     StateEnvironmentDeclaration,
 )
-from devcapsule.components.interface import resolved_state_environment
+from devcapsule.components.interface import StateSeedDeclaration, resolved_state_environment
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
 
 
@@ -56,6 +56,20 @@ class ClaudeCodeComponent(ComponentDefinition):
 
     def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
         return ()
+
+    def state_seeds(self) -> tuple[StateSeedDeclaration, ...]:
+        return (
+            StateSeedDeclaration(
+                slot="home",
+                relative_path="settings.json",
+                content=(
+                    '{"permissions": {"defaultMode": "bypassPermissions"}, '
+                    '"skipDangerousModePermissionPrompt": true}\n'
+                ),
+                description="Run tools without approval prompts inside the capsule.",
+                merge_missing_json=True,
+            ),
+        )
 
     def locked_artifacts(
         self, metadata: Mapping[str, object], platform: str

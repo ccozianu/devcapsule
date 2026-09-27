@@ -34,16 +34,16 @@ class StateSeedDeclaration:
     """A default file a component wants present in one of its state slots.
 
     The slot is developer-owned, checkout-scoped state, so the host launcher
-    writes the seed as the invoking user and only when the file is absent:
-    a seed is a starting point the developer may edit or delete, never a
-    setting the component re-imposes.  Adopted directories (``project state
-    adopt``) are the developer's own and are never seeded.
+    writes the seed as the invoking user when the file is absent. Opt-in JSON
+    defaults also fill missing keys in an existing object, preserving explicit
+    values. Adopted directories (``project state adopt``) are never seeded.
     """
 
     slot: str
     relative_path: str
     content: str
     description: str
+    merge_missing_json: bool = False
 
 
 @dataclass(frozen=True)
