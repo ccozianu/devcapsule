@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-09-27; RC0 tagged and publication underway; downloaded-candidate validation next
+State: active 2026-09-27; RC0 published and machine-validated; implementing xtras/project info for the next candidate
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -53,8 +53,23 @@ Owner reported the PR merge; SSH fetch verified PR #144 at `0770638` and
 remote main `0dede82` contains release commit d96e0e7. The unchanged release
 commit is now tagged and pushed as `v0.2.15-rc0`. The release protocol gate
 reports integration method mainline and zero unintegrated commits.
-Publication assets are pending; no successful backend run or downloaded
-candidate acceptance is claimed yet. The obsolete fix-only exception is gone.
+Publication succeeded in Actions run `36340320532`. The downloaded PEX,
+checksum and manifest agree on SHA-256
+`ef7499059a747dff280b3fed31128d9aafa4f6d36ba1c8a46addac6279652014` and
+source d96e0e7; its package/mnemonic are 0.2.15rc0/v0.2.15-rc0.
+Seven required Docker proofs passed in 189.60 seconds against the download.
+The original init typo/retry journey passed, followed by a real three-agent
+Codium launch and container replacement with settings/marker persistence.
+Release evidence and the init bug are updated in pushed commit `a0b8186`.
+The obsolete fix-only exception is gone.
+
+`devcapsule-0215-rc0-smoke` is deliberately running for the owner's fresh-state
+Claude/Antigravity interactive login, ordinary-tool and model checks. An
+asynchronous question is pending; no account material was copied and no
+provider acceptance is claimed. The desktop URL is in the session's run.log;
+do not commit its access token. Preserve this test session until the owner is
+done. Launch controller exec session 70593 is waiting normally for its exit.
+
 
 The mainline preparation branch is the release runbook's ordinary fix delivery
 within maintenance, not a workstream change or a rebase of the release.
@@ -142,17 +157,16 @@ above; the original fix-only gate is historical.
 
 ## Planned Next Step
 
-Verify RC0 publication and download/checksum its PEX, checksum and manifest.
-Use those bytes for packaged checks, required local Docker proofs, init
-recovery and agent acceptance. Candidate commit is d96e0e7, tag v0.2.15-rc0;
-never move it. The release branch must not synchronize with main: its older
-base-contract implementation is intentionally retained for 0.2.15.
+On `release-0.2.15`, implement the approved `/opt/xtras` and host/runtime
+`project info` contracts for the next candidate. Keep RC0 immutable and its
+test desktop running for the owner's interactive checks. Take the answer when
+it arrives and address any concrete agent regression on the release branch.
 
-Next implement `/opt/xtras` and host/runtime `project info` on the release
-branch for the following candidate. The full approved work order still gates
-final 0.2.15. Recheck agent freshness before acceptance, integrate the exact
-acceptance record, publish final and verify delivery. Do not import main's
-0.2.16 implementation into the release.
+Then run the relevant/full gate, integrate the new slice to main by the usual
+owner UI PR, publish the next candidate and verify its downloaded bytes.
+The full approved work order gates final 0.2.15. Recheck agent freshness before
+acceptance, integrate the exact acceptance record, publish final and verify
+it. Do not import main's 0.2.16 implementation into this release.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -819,9 +833,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- PR #144 is merged and verified; RC0 is pushed. Wait for real published
-  assets before claiming delivery or acceptance. Authentication/provider
-  checks remain distinct from startup checks.
+- PR #144 is merged and RC0 is published/checksummed. Seven Docker proofs
+  and real init/run/relaunch passed. Interactive provider/model checks await
+  the owner in the deliberately retained RC0 test desktop.
 - Continue on release d96e0e7; do not publish this
   status from the stale release-branch copy. The prepared main branch is a
   delivery vehicle, not the release branch for subsequent fixes.
