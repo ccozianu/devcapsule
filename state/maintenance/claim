@@ -1,5 +1,5 @@
 who: Costin Cozianu
 branch: release-0.2.15
-slice: Publish RC0 and validate downloaded candidate
-since: 2026-09-27T18:20:58+00:00
-expires: 2026-09-28T06:20:58+00:00
+slice: Implement persistent xtras and host/runtime project info for RC1
+since: 2026-09-27T18:31:58+00:00
+expires: 2026-09-28T06:31:58+00:00
