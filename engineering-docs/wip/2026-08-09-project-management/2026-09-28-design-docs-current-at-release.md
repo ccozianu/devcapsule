@@ -336,6 +336,7 @@ defined, each with its evidence, before any of them is solved.
 
 ## Related Records
 
+- [Design: the content–website contract, version 1](2026-09-28-design-content-website-contract.md), the owner-directed specification that follows from S1, D1 and P7.
 - [R-DOCS-003](../../requirements/product/r-docs-003-website-content-carries-front-matter.md), the PostgreSQL-shaped contract.
 - [How the website is published, and what it still lacks](../../implementation-notes/website/2026-09-22-website-publishing-contract.md).
 - [Release runbook](../../implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md).
