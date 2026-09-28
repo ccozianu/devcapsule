@@ -125,11 +125,10 @@ open become concrete the moment a release tries to follow it.
 
 1. **The install command needs a version.** The contract says a page never
    states which release it documents. The first-session guide must print a
-   download URL and an expected version string. Either the website
-   substitutes a version token per built version, or the rule relaxes to "a
-   page may name its own version" and a gate checks that every version string
-   under `docs/` equals the release version. The stale 0.2.12 references are
-   exactly what such a check would have caught.
+   download URL and an expected version string. Resolved in principle by S1
+   below: the version is read from the source at the built ref and
+   substituted, and a typed version string under `docs/` becomes a build
+   error. The stale 0.2.12 references are exactly what that would have caught.
 2. **Documentation fixes on a closed release branch.** WORKFLOW.md,
    *Releases*: after the final tag nobody commits to the release branch.
    R-DOCS-003 anticipates docs-only fixes landing there, or pinning a
@@ -159,6 +158,65 @@ paused 2026-09-22; `website` active in the registry but unpublished since
 **Decision it forces.** Same as P2 and P1: a named owner for the release
 moment, most naturally the release driver, with `user-docs` owning quality
 between releases.
+
+## S1. The Required System, As The Owner Stated It (2026-09-28)
+
+**Statement.** From the source of the user documentation, which carries its
+version implicitly or indirectly, for example in `devcapsule-src/pyproject.toml`,
+build several directories on the documentation website, one for each
+released version. Marketing material, the landing page and the blog are not
+versioned; the documentation is.
+
+**Relation to what is already decided.** This is R-DOCS-003 part 2, the
+PostgreSQL shape, with one element that contract did not have: the version
+a directory is built for is read from the source at that ref, not typed into
+a page and not only labelled in a manifest. That is what makes it a system
+rather than a convention.
+
+**What the source actually says at each ref**, read 2026-09-28:
+
+| Ref | `pyproject.toml` version | `WORKFLOW.md` frontmatter | `docs/` pages | First-session guide pins |
+|---|---|---|---|---|
+| `main` | 0.2.16.dev0 | 0.2.16.dev0 | 7 (after its 0.2.15 merge: 13) | v0.2.12 |
+| `release-0.2.15`, `v0.2.15` | 0.2.15 | 0.2.15 | 13 | v0.2.12, eight places |
+| `release-0.2.14`, `v0.2.14` | 0.2.14 | 0.2.14 | 13 | v0.2.12, eight places |
+| `v0.2.12` | 0.2.12 | none | 7, none of today's guides | not present |
+| `a989155`, the 0.2.12 guides' home | 0.2.14.dev0 | 0.2.14.dev0 | 10 | v0.2.12 |
+
+Two consequences follow directly from the table.
+
+1. **The implicit version is exact from 0.2.14 on.** The release branch's
+   first commit sets it, the tag carries it, and `main` carries the next
+   development version. A directory named from the source needs no manifest
+   label for those versions, and `main` maps to `devel` by its `.dev0` suffix.
+2. **0.2.12 is the case the implicit version gets wrong.** Its guides were
+   written after the tag, on a commit whose version reads 0.2.14.dev0. Either
+   0.2.12 is not published at all, which R-DOCS-003 already permits, or the
+   manifest keeps an explicit label that overrides the derived version for
+   that one entry. The manifest as the list of versions and their statuses
+   survives either way; what changes is that the derived version becomes a
+   consistency check against it rather than something the manifest asserts
+   alone.
+
+**What S1 resolves.** P5 detail 1, the install command's version: the
+builder knows the version of the tree it is building, so the download URL,
+the expected `--version` output and any "in this version" phrase can be
+substituted from it instead of typed. Typed version strings under `docs/`
+then become a build error rather than a convention.
+
+**What S1 does not resolve.** P2. Both release branches faithfully carry a
+first-session guide that describes 0.2.12. A per-version build publishes
+that guide, correctly labelled 0.2.15, still describing the 0.2.12 base
+prompt and the 0.2.12 Ctrl+C traceback. Substitution fixes version strings;
+only a person or a gate that reads the prose fixes prose. The system makes
+staleness visible and attributable to a ref; it does not make the tree true.
+
+**What S1 needs that does not exist.** The builder reads only `docs/` from a
+version's source today, by contract; it would also read the version from
+`devcapsule-src/pyproject.toml` at that ref, a one-line widening of the
+contract. A substitution vocabulary for pages. The manifest, the front matter
+and the per-version build from R-DOCS-003. All of it is W12 in the website
+repository plus the parent migration; none of it is started.
 
 ## Candidate Direction, Not Decided
 
