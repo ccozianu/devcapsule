@@ -324,7 +324,8 @@ submodules were changed.
 
 ## Open Threads
 
-- Owner finding 2026-09-28, diagnosed, no fix chosen: the website at
+- Owner finding 2026-09-28, being defined problem by problem in the
+  design issue listed in the index; more problems are expected. Origin: the website at
   devcapsule.mycodespace.ai was last published 2026-09-21 and still pins the
   first-session guide to v0.2.12, although 0.2.14 and 0.2.15 have shipped.
   Three layers: the guide on `main` itself still says v0.2.12, so a republish
@@ -355,6 +356,7 @@ submodules were changed.
 
 ## Workstream Document Index
 
+- [Design issue: the documentation is current when a release drops](2026-09-28-design-docs-current-at-release.md): work in progress, accumulating problem statements P1-P6 with evidence; no decision yet.
 - [0.2.16 planning proposal](2026-09-27-0216-release-planning.md): candidates, recommended scope, driver and the owner decisions; proposed 2026-09-27.
 - [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/agent-defaults scope, guard deferral and acceptance checks.
 
