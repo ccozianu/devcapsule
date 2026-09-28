@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-09-28; 0.2.15 final verified on `main`; owner dogfooding 0.2.15 in this capsule; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
 
-Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
