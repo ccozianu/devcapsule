@@ -231,7 +231,7 @@ commands and the actual v0.2.11 acceptance record.
 
 ## Project Documentation
 
-- [Component freshness](docs/guides/component-freshness.md) — vendor signals,
+- [Component freshness](docs/updates/component-freshness.md) — vendor signals,
   user decisions, current service limits and V1 operational objectives.
 - [Component status operations](component-status/README.md) — compatibility
   schema, diagnosis maintenance and publication.

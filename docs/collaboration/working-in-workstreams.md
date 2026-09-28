@@ -1,3 +1,10 @@
+---
+description: How several people and agents work on one repository with workstreams, status files, mail and a coordination branch, using DevCapsule's own workflow.
+aliases:
+  - /docs/guides/working-in-workstreams/
+weight: 1
+updated: 2026-09-28
+---
 # Work in workstreams with humans and agents
 
 This guide is for a project that uses the DevCapsule workflow in

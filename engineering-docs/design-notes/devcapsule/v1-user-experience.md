@@ -131,7 +131,7 @@ currently reaches a question this narrative does not answer:
 - **An evaluator** who wants to know what a run will do to their machine before
   authorizing it. A display and acknowledgement question inside *New checkout*.
 - **A learning or course project**, named as the third adoption moment in
-  `docs/product/v1-announcement.md`. Many disposable checkouts of one upstream
+  `engineering-docs/product/v1-announcement.md`. Many disposable checkouts of one upstream
   project, by users who are not its owners.
 - **An existing project that already carries an environment definition** — a
   devcontainer, a Dockerfile, a virtualenv recipe. This changes what
@@ -177,7 +177,7 @@ current tree:
   deliberate regeneration spelling. Locks the stub already wrote remain
   readable per `R-COMPAT-001`.
 - **The four first-run flows disagree.** `D-0001` section 9,
-  `docs/product/v1-announcement.md`, and the implementation still describe
+  `engineering-docs/product/v1-announcement.md`, and the implementation still describe
   sequences that the specification below supersedes for the first case, and
   the announcement's verbs do not exist in the CLI. The second and third
   cases are not yet written.

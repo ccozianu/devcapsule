@@ -7,8 +7,8 @@
 
 ### For the really, really curious—and itching to try it:
 
-**[Start here: open your first workspace](docs/guides/first-session.md)** — Linux x86-64.
-On Windows, [read the WSL2 setup notes first](docs/guides/windows-wsl2.md).
+**[Start here: open your first workspace](docs/getting-started/first-session.md)** — Linux x86-64.
+On Windows, [read the WSL2 setup notes first](docs/platforms/windows-wsl2.md).
 
 Is it a very smooth experience? Not quite yet; we're working toward V1.
 But don't worry—you can already use it productively. DevCapsule is being
