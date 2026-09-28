@@ -151,6 +151,24 @@ or an immediate installation task.
    defect to send back. Owns `docs/guides/working-in-workstreams.md` from the
    same date.
 
+## Alignment Check With The Website, 2026-09-28
+
+The website executed all six slices of its work order on stacked branches,
+`publication` at `31e85b1` being the top; its `CONTRACT.md` matches the
+producer's design with its section 11a decisions and adds an additive
+`legacy: true` manifest field for pre-contract sources. Checked here with
+the submodule working tree on `publication`: `npm test` 21 passing; against
+this checkout with a scratch `docs/versions.yaml` and scratch journal front
+matter, neither committed, `npm run check:content` passed, 176 pages, all six
+roles resolved, 0.2.14 and 0.2.12 reused as legacy, and a full build passed
+`npm run check`. What the producer still owes, the website's four requests:
+the manifest; front matter on the six journal entries with `draft: true` on
+the two 2026-09-19 retrospectives; three quoted descriptions, fixed here at
+`1b60e59`; and the pin advance with the gate running the check, which lands
+together with the first two as the website workstream's migration change.
+An accidental pin advance swept into `84c4e1b` by a broad `git add` was
+restored at `c624e2f`; the pin moves with the migration, not this branch.
+
 ## Proposed Improvements For 0.2.16 And After
 
 The list is [a dated note](2026-09-28-docs-improvements-for-0216.md),
