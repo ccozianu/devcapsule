@@ -39,9 +39,13 @@ migration work order, acknowledged as this section. The work order's section
   "Is it for you" and "Contribute" sections new; documentation links point
   into the new tree.
 - The three quoted descriptions from user-docs, cherry-picked.
-- The website pin advanced to `31e85b1`, the `publication` branch tip; if
-  the owner squash-merges the website's stacked PRs, the pin must move to
-  the merged revision in a follow-up commit.
+- The website pin advanced to `9dd4993`, the website's `main` after the
+  owner merged the stacked slices and the colour-schemes follow-up; the
+  first pin, `31e85b1`, was the `publication` tip before those merges.
+- The parent Website workflow checks out with full history and tags and
+  fetches `docs-*` branches into local refs, so the manifest's sources,
+  `docs-0.2.15`, `v0.2.14` and a bare commit, resolve on the hosted runner;
+  a shallow single-branch checkout resolved none of them.
 - The gate: `nox -s docs-contract` and a step in `build` run the website's
   `check:content` against this checkout, skipped with a notice where the
   submodule or npm is absent.
