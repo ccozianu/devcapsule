@@ -9,6 +9,13 @@ an exercise as valuable as the software itself.
 For the simple file conventions, see
 [Blog Entries in the local workflow](../../WORKFLOW-LOCAL.md#blog-entries).
 
+Every entry begins with a YAML front matter block carrying `description`,
+one sentence of at most 200 characters that the website shows as the
+entry's summary, and `draft: true` while the owner has not released it;
+a draft is excluded from production builds and shown labelled in preview.
+Nothing else framework-specific belongs in an entry. The block is authored
+here, per [R-DOCS-003](../requirements/product/r-docs-003-website-content-carries-front-matter.md).
+
 ## Entries
 
 - [Why give DevCapsule a spin before V1?](2026-09-21-why-try-devcapsule-before-v1.md) — invitation to early adopters and contributors; draft for owner review.
