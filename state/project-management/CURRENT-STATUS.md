@@ -324,6 +324,15 @@ submodules were changed.
 
 ## Open Threads
 
+- Owner finding 2026-09-28, diagnosed, no fix chosen: the website at
+  devcapsule.mycodespace.ai was last published 2026-09-21 and still pins the
+  first-session guide to v0.2.12, although 0.2.14 and 0.2.15 have shipped.
+  Three layers: the guide on `main` itself still says v0.2.12, so a republish
+  alone would not help; `docs/versions.yaml`, which R-DOCS-003 calls
+  authoritative, does not exist on `main`; and publication is two manual
+  Actions runs that no runbook step names. Decisions are the owner's: whether
+  documentation refresh and website publication become release gates, and
+  which workstream owns each.
 - Awaiting the human: the seven 0.2.16 decisions in the proposal, chiefly
   scope, driver, IntelliJ in or out, and the release-notes artifact. The
   registration waits on them; the runbook freshness section does not.
