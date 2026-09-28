@@ -218,6 +218,22 @@ contract. A substitution vocabulary for pages. The manifest, the front matter
 and the per-version build from R-DOCS-003. All of it is W12 in the website
 repository plus the parent migration; none of it is started.
 
+### Manifest Bootstrap: The Owner's Tentative View (2026-09-28)
+
+Not yet a decision; recorded so the manifest can be written from it.
+
+| Version | Status | Source | Reason |
+|---|---|---|---|
+| 0.2.15 | supported, `current` | `release-0.2.15` | Released 2026-09-27; where fixes go. |
+| 0.2.14 | deprecated | `release-0.2.14` | Released 2026-09-25, first release for outside adopters, superseded in two days; works, upgrade proven, gets no fixes. |
+| 0.2.12 | deprecated, with a note | the commit holding its guides (`a989155` or its predecessor), since the tag carries none | The version the website has told adopters to install since 2026-09-21. Known edges argue for "move when you can": upgrade configuration recovery broken until 0.2.14; vendor downloads installed without recorded consent (R-COMPAT-001 exception). Deprecation ends when the site documents 0.2.15 and one further release has shipped, not on the calendar. |
+| 0.2.11 and earlier | unsupported | not published | Predates the contained display, so exposes the host X11 session credential that 0.2.12 closed; never documented on the site; superseded in five days. |
+| `devel` | development | `main` | Version from the `.dev0` suffix. |
+
+This holds two deprecated versions at once, which the contract's default
+lifecycle avoids and its explicit override allows; the bootstrap is the
+moment for the override, with the note carrying the reason.
+
 ## Candidate Direction, Not Decided
 
 Recorded so it is not re-derived; the owner has not adopted it.
