@@ -1,5 +1,5 @@
 ---
-description: Moving a project to another computer: what travels in Git, what you set up again, and what you can carry over.
+description: "Moving a project to another computer: what travels in Git, what you set up again, and what you can carry over."
 status: planned
 weight: 4
 ---
