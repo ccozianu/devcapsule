@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-09-28; website and visitor-content work orders issued under the owner's autonomy grant and delivered; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@48de1e1b1d15
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -228,7 +228,13 @@ final, IntelliJ adding days. Nothing is registered until the owner decides.
 
 ## Planned Next Step
 
-This workstream's own slices from the content work order, section 4, in
+Done 2026-09-28 evening: the three slices below. `docs-0.2.15` is on origin
+at `a15ff8b`; `WORKFLOW-LOCAL.md` declares the ref; the runbook carries
+*Documentation Is Part Of The Release* and *Agent Freshness Review*; the
+0.2.16 proposal carries C20. Remaining for this workstream: nothing until
+the owner's decisions or the other workstreams' deliveries.
+
+The slices were, from the content work order, section 4, in
 order: (1) declare the `docs-<version>` project ref in `WORKFLOW-LOCAL.md`
 and create `docs-0.2.15` from `v0.2.15`, ready to receive user-docs'
 corrected guides; (2) add the three documentation obligations and the
