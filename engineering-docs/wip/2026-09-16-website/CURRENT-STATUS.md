@@ -39,7 +39,7 @@ migration work order, acknowledged as this section. The work order's section
   "Is it for you" and "Contribute" sections new; documentation links point
   into the new tree.
 - The three quoted descriptions from user-docs, cherry-picked.
-- The website pin advanced to `9dd4993`, the website's `main` after the
+- The website pin advanced to `6759b9d`, the website's `main` after the
   owner merged the stacked slices and the colour-schemes follow-up; the
   first pin, `31e85b1`, was the `publication` tip before those merges.
 - The parent Website workflow checks out with full history and tags and
