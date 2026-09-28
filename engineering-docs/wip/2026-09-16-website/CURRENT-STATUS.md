@@ -48,8 +48,12 @@ migration work order, acknowledged as this section. The work order's section
 
 Validated here: `nox -s docs-contract` passed, 176 pages, all six roles
 resolved, 0.2.14 and 0.2.12 reused as legacy; `./scripts/website.sh build`
-passed its check on 180 pages and 13432 links; the full build gate's result
-is recorded below when it finishes. Not validated: the test site and
+passed its check on 180 pages and 13432 links; the full build gate,
+`nox -s build` with its scratch under `/opt/devcapsule-gate`, passed on the
+committed tree: 1089 tests, 20 deselected, one existing xfail and one xpass,
+mypy clean on 174 files, the docs-contract step inside the gate passing on
+176 pages, the local and exact-revision PEX built and smoked; log
+`/opt/devcapsule-gate/build-ws-website.log`. Not validated: the test site and
 production, which are the owner's two publication runs after the merge.
 The registry row now names the `ws-` branch, per the deferred rename.
 
