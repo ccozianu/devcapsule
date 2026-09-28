@@ -216,7 +216,30 @@ pass. No runtime tests or installations were repeated for this prose delivery.
 
 ## Last Task And Planned Next Step
 
-Planned next step: write UD-006 in the order above, verifying each command
+Done 2026-09-28 evening, UD-006 items 1 to 7 on this branch: 43 pages under
+`docs/` in the thirteen areas of the work order, 26 written and 17 planned
+stubs, every page with front matter, no literal version string, the six
+roles once each, all relative links resolving, 25 shell blocks parsing; the
+old guides moved with `aliases` so their URLs keep working; the product
+drafts and the Docker4PyCharm guide moved out of `docs/`; release notes for
+0.2.14 and 0.2.15 under `engineering-docs/releases/<tag>/notes.md`; README,
+DEVELOPING and the index updated. Verified against the 0.2.15 executable
+running this capsule: every `project` subcommand's help, `project info` on
+the host-side and runtime paths, the configuration listing, the seeded agent
+defaults in the component sources. Not re-verified interactively, since
+`init` and `run` are launcher-only outside a capsule: the exact init prompt
+sequence, taken from the 0.2.12 guide and the 0.2.15 acceptance evidence,
+and the Ctrl+C behaviour. Rendering waits for the website's contract
+implementation; see the resumption note.
+
+Next: the owner opens the pull request from this branch to `main`; then
+project-management carries `docs/` onto `docs-0.2.15` (the tree describes
+0.2.15 exactly, since 0.2.16's base-contract change is not in it and the
+guides say so without naming a version); then item 8, the everyday
+development, sessions, troubleshooting and reference stubs, in that order,
+each replacing its stub after verification in a real session.
+
+Previous planned next step, superseded: write UD-006 in the order above, verifying each command
 against `devcapsule0` here where a command can run inside a capsule and
 against the 0.2.15 acceptance evidence where it cannot; then deliver by pull
 request and carry `docs/` onto `docs-0.2.15` through project-management.
