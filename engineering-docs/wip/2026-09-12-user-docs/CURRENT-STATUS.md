@@ -4,8 +4,7 @@ Name: `user-docs`
 
 Start date: `2026-09-12`
 
-State: paused 2026-09-22; website content contract delivered as R-DOCS-003 and
-handed to the website project; owner switching to the website repository
+State: active 2026-09-28; writing the 0.2.15 documentation under the content work order as a matter of urgency; the ideal structure with planned stubs
 
 Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
 
@@ -17,7 +16,31 @@ Delivery method: pull request; GitHub API writes previously returned 403
 
 Requirements: `R-DOCS-002`, `R-PRODUCT-001`, `R-PRODUCT-002`, `R-PRODUCT-003`
 
-## Goal And Owner Direction
+## Resumed 2026-09-28: The 0.2.15 Content, Urgently
+
+The owner selected this workstream on 2026-09-28 evening after posting a
+first LinkedIn announcement: the documentation is the most glaring deficiency
+of the 0.2.x series and the highest return for gaining adopters. Synchronized
+by merging `main` at `6980b60` (127 commits, the whole 0.2.14 definition
+entry read, one mechanical conflict in `index.md`). Took and acknowledged
+project-management's work order, the tasks below. The runtime this session
+verifies against is the released 0.2.15 executable running this capsule,
+`devcapsule0`, source `a15ff8b`.
+
+**UD-006 — The 0.2.15 documentation under the content–website contract.**
+Accepted from [the visitor-content work order](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md),
+section 2, authored on this branch: the ideal structure of section 1 as
+directories under `docs/`, every page with front matter, version tokens
+instead of typed versions, roles on the six entry pages, planned stubs where
+a page is not yet written; in order: getting started split for 0.2.15,
+Working with AI, Containment, Configuration, the overview, release notes for
+0.2.14 and 0.2.15, stubs, then everyday development, sessions,
+troubleshooting and reference. This subsumes UD-002 and UD-003, whose
+substance it delivers, and gives UD-001 its home under Working with AI.
+Rendering waits for the website's contract implementation: until the pin
+that implements it lands, `main` must not be published to the site, since
+the current builder renders front matter as text and tokens literally.
+
 
 From the landing page, a curious adopter should reach useful work without a
 “what am I supposed to do here?” moment. The owner explicitly selected this
@@ -193,7 +216,12 @@ pass. No runtime tests or installations were repeated for this prose delivery.
 
 ## Last Task And Planned Next Step
 
-Planned next step, on the owner's return here (the session record follows): verify the website merge and
+Planned next step: write UD-006 in the order above, verifying each command
+against `devcapsule0` here where a command can run inside a capsule and
+against the 0.2.15 acceptance evidence where it cannot; then deliver by pull
+request and carry `docs/` onto `docs-0.2.15` through project-management.
+
+Previous planned next step, superseded: verify the website merge and
 whether the parent pin should move; fix R-DOCS-003's reference to the blog
 README, since `main` moved the blog conventions into `WORKFLOW-LOCAL.md`;
 then resume UD-001, the AI-first first sessions. The migration of front
