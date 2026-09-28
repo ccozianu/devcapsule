@@ -18,15 +18,25 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
 - [This project's local workflow](WORKFLOW-LOCAL.md)
-- [Product documentation](docs/README.md)
-- [Your first DevCapsule session](docs/guides/first-session.md)
-- [Use your own project and add a coding agent](docs/guides/your-project.md)
-- [Try component upgrades and recover](docs/guides/component-upgrades.md)
-- [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
-- [Work in workstreams with humans and agents](docs/guides/working-in-workstreams.md)
+- [Product documentation](docs/README.md), versioned per release under the content–website contract; pages marked *coming soon* are planned stubs
+  - Getting started: [Install](docs/getting-started/install.md), [Your first session](docs/getting-started/first-session.md), [Stop and come back](docs/getting-started/stop-and-come-back.md)
+  - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
+  - Working with AI: [Choose an agent](docs/working-with-ai/choose-an-agent.md), [Sign in and defaults](docs/working-with-ai/sign-in-and-defaults.md), [Instructions for agents](docs/working-with-ai/instructions-for-agents.md), [Hosted and local models](docs/working-with-ai/hosted-and-local-models.md) (coming soon), [Review and change agents](docs/working-with-ai/review-and-change-agents.md) (coming soon)
+  - Everyday development: [Clipboard, keys and browser](docs/everyday-development/clipboard-and-browser.md); coming soon: [IDEs and terminals](docs/everyday-development/ides-and-terminals.md), [Git](docs/everyday-development/git.md), [Run, debug, test](docs/everyday-development/run-debug-test.md), [Previews and ports](docs/everyday-development/previews-and-ports.md)
+  - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
+  - Containment: [The boundary](docs/containment/the-boundary.md), [Granting and withdrawing access](docs/containment/granting-and-withdrawing.md)
+  - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
+  - Collaboration: [Work in workstreams with humans and agents](docs/collaboration/working-in-workstreams.md)
+  - Updates: [Supported versions](docs/updates/supported-versions.md), [Launcher updates](docs/updates/launcher-updates.md), [Component freshness](docs/updates/component-freshness.md), [Component upgrades](docs/updates/component-upgrades.md)
+  - Troubleshooting: [First session](docs/troubleshooting/first-session.md); coming soon: [Diagnostics and logs](docs/troubleshooting/diagnostics-and-logs.md), [Cleanup and uninstall](docs/troubleshooting/cleanup-and-uninstall.md)
+  - Platforms: [Linux](docs/platforms/linux.md), [Windows via WSL2](docs/platforms/windows-wsl2.md), [macOS](docs/platforms/macos.md)
+  - Reference: [Configuration nodes](docs/reference/configuration-nodes.md); coming soon: [Command reference](docs/reference/cli.md), [project info fields](docs/reference/project-info.md)
 - [Engineering documentation](engineering-docs/README.md)
 
 ## Releases
+
+- [0.2.15 release notes](engineering-docs/releases/v0.2.15/notes.md)
+- [0.2.14 release notes](engineering-docs/releases/v0.2.14/notes.md)
 
 - [0.2.15 release work, scope and agent validation](engineering-docs/releases/v0.2.15/README.md)
 - [0.2.15 accepted-candidate promotion record](engineering-docs/releases/v0.2.15.json)
@@ -62,7 +72,6 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Component Upgrades
 
-- [How DevCapsule checks component freshness](docs/guides/component-freshness.md)
 - [Component status service contract and operations](component-status/README.md)
 
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
@@ -121,6 +130,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Engineering Design Notes
 
 - [Base images: how one is chosen, what its name is, and how a user could move to a newer one](engineering-docs/design-notes/devcapsule/2026-09-26-base-image-naming-and-selection.md)
+- [mycodespace: a lifetime namespace and archive for one programmer's projects](engineering-docs/design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
 - [Competitive comparison: agent workflows and the DevCapsule adopter choice](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
 - [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
 - [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
@@ -173,10 +183,11 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Product And Positioning
 
 - [Product documentation map](docs/README.md)
-- [Draft pitch: batteries included, boundaries explicit](docs/product/draft-pitch.md)
-- [LinkedIn announcement draft](docs/product/linkedin-announcement.md)
-- [V1 announcement draft](docs/product/v1-announcement.md)
-- [Working backwards press release](docs/product/working-backwards-press-release.md)
+- [Draft pitch: batteries included, boundaries explicit](engineering-docs/product/draft-pitch.md)
+- [Issue-tracker positioning](engineering-docs/product/issue-tracker-positioning.md)
+- [LinkedIn announcement draft](engineering-docs/product/linkedin-announcement.md)
+- [V1 announcement draft](engineering-docs/product/v1-announcement.md)
+- [Working backwards press release](engineering-docs/product/working-backwards-press-release.md)
 
 ## Docker4PyCharm Historical Reference
 
@@ -187,7 +198,7 @@ history; record current decisions in the active documents above.
 - [Docker PyCharm isolation README](docker4pycharm/README.md)
 - [Historical root project brief](engineering-docs/implementation-notes/docker4pycharm/historical-root-readme.md)
 - [Post-MVP refactoring strategy](engineering-docs/design-notes/docker4pycharm/future-agent-refactoring-brief.md)
-- [PyCharm AI plugin and ChatGPT subscription setup](docs/guides/docker4pycharm-ai-plugin-and-chatgpt-setup.md)
+- [PyCharm AI plugin and ChatGPT subscription setup](engineering-docs/archive/docker4pycharm-ai-plugin-and-chatgpt-setup.md)
 - [Debugging notes](engineering-docs/implementation-notes/docker4pycharm/debugging.md)
 - [Vibe-coding process bootstrap template, frozen copy](docker4pycharm/image-assets/vibe-coding-process.md)
 

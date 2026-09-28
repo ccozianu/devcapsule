@@ -1,6 +1,13 @@
+---
+description: Try a newer component version for one checkout, inspect the result, and roll back to the project's selection.
+aliases:
+  - /docs/guides/component-upgrades/
+weight: 4
+updated: 2026-09-28
+---
 # Try a component upgrade and recover
 
-Available in the v0.2.14 development client. Run these commands from your project
+Available in {{tag}}. Run these commands from your project
 checkout in a normal host terminal. Update discovery covers PyCharm, VSCodium,
 Codex, Claude Code, Antigravity CLI and PostgreSQL client. Codex currently supports
 preparation/selection through this interface; other components explain their

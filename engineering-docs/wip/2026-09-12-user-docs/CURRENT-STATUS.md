@@ -4,10 +4,9 @@ Name: `user-docs`
 
 Start date: `2026-09-12`
 
-State: paused 2026-09-22; website content contract delivered as R-DOCS-003 and
-handed to the website project; owner switching to the website repository
+State: active 2026-09-28; writing the 0.2.15 documentation under the content work order as a matter of urgency; the ideal structure with planned stubs
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Branch association: `ws-user-docs/first-session`
 
@@ -17,7 +16,31 @@ Delivery method: pull request; GitHub API writes previously returned 403
 
 Requirements: `R-DOCS-002`, `R-PRODUCT-001`, `R-PRODUCT-002`, `R-PRODUCT-003`
 
-## Goal And Owner Direction
+## Resumed 2026-09-28: The 0.2.15 Content, Urgently
+
+The owner selected this workstream on 2026-09-28 evening after posting a
+first LinkedIn announcement: the documentation is the most glaring deficiency
+of the 0.2.x series and the highest return for gaining adopters. Synchronized
+by merging `main` at `6980b60` (127 commits, the whole 0.2.14 definition
+entry read, one mechanical conflict in `index.md`). Took and acknowledged
+project-management's work order, the tasks below. The runtime this session
+verifies against is the released 0.2.15 executable running this capsule,
+`devcapsule0`, source `a15ff8b`.
+
+**UD-006 — The 0.2.15 documentation under the content–website contract.**
+Accepted from [the visitor-content work order](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md),
+section 2, authored on this branch: the ideal structure of section 1 as
+directories under `docs/`, every page with front matter, version tokens
+instead of typed versions, roles on the six entry pages, planned stubs where
+a page is not yet written; in order: getting started split for 0.2.15,
+Working with AI, Containment, Configuration, the overview, release notes for
+0.2.14 and 0.2.15, stubs, then everyday development, sessions,
+troubleshooting and reference. This subsumes UD-002 and UD-003, whose
+substance it delivers, and gives UD-001 its home under Working with AI.
+Rendering waits for the website's contract implementation: until the pin
+that implements it lands, `main` must not be published to the site, since
+the current builder renders front matter as text and tokens literally.
+
 
 From the landing page, a curious adopter should reach useful work without a
 “what am I supposed to do here?” moment. The owner explicitly selected this
@@ -193,7 +216,35 @@ pass. No runtime tests or installations were repeated for this prose delivery.
 
 ## Last Task And Planned Next Step
 
-Planned next step, on the owner's return here (the session record follows): verify the website merge and
+Done 2026-09-28 evening, UD-006 items 1 to 7 on this branch: 43 pages under
+`docs/` in the thirteen areas of the work order, 26 written and 17 planned
+stubs, every page with front matter, no literal version string, the six
+roles once each, all relative links resolving, 25 shell blocks parsing; the
+old guides moved with `aliases` so their URLs keep working; the product
+drafts and the Docker4PyCharm guide moved out of `docs/`; release notes for
+0.2.14 and 0.2.15 under `engineering-docs/releases/<tag>/notes.md`; README,
+DEVELOPING and the index updated. Verified against the 0.2.15 executable
+running this capsule: every `project` subcommand's help, `project info` on
+the host-side and runtime paths, the configuration listing, the seeded agent
+defaults in the component sources. Not re-verified interactively, since
+`init` and `run` are launcher-only outside a capsule: the exact init prompt
+sequence, taken from the 0.2.12 guide and the 0.2.15 acceptance evidence,
+and the Ctrl+C behaviour. Rendering waits for the website's contract
+implementation; see the resumption note.
+
+Next: the owner opens the pull request from this branch to `main`; then
+project-management carries `docs/` onto `docs-0.2.15` (the tree describes
+0.2.15 exactly, since 0.2.16's base-contract change is not in it and the
+guides say so without naming a version); then item 8, the everyday
+development, sessions, troubleshooting and reference stubs, in that order,
+each replacing its stub after verification in a real session.
+
+Previous planned next step, superseded: write UD-006 in the order above, verifying each command
+against `devcapsule0` here where a command can run inside a capsule and
+against the 0.2.15 acceptance evidence where it cannot; then deliver by pull
+request and carry `docs/` onto `docs-0.2.15` through project-management.
+
+Previous planned next step, superseded: verify the website merge and
 whether the parent pin should move; fix R-DOCS-003's reference to the blog
 README, since `main` moved the blog conventions into `WORKFLOW-LOCAL.md`;
 then resume UD-001, the AI-first first sessions. The migration of front
@@ -233,6 +284,12 @@ without conflict and pushed.
 
 ## Open Threads
 
+- 2026-09-24: at the owner's explicit direction, wrote the proposed
+  [mycodespace design note](../../design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
+  here while paused. It is product direction and belongs to
+  `project-management` to adopt; it answers the submodule question with
+  a workspace view (MC-MAT-4, MC-DEV-2). Not sent by mail; the owner
+  switches there himself.
 - `main` moved ten commits past this branch minutes after the merge, through
   PR #133 from `release-0.2.14`, including a definition change in `b44a559`.
   Synchronize first on resume; not merged before pausing.

@@ -1,6 +1,13 @@
+---
+description: What an update check can and cannot establish, where the freshness signals come from, and what to do when a component is unknown or stale.
+aliases:
+  - /docs/guides/component-freshness/
+weight: 3
+updated: 2026-09-28
+---
 # How DevCapsule checks component freshness
 
-This describes the v0.2.14 development implementation. It checks vendor metadata
+This describes the implementation shipped in {{tag}}. It checks vendor metadata
 for six curated components and offers maintained guidance when those checks
 fail. The operational improvements described at the end are intended for V1;
 they are not guarantees of the current service.
