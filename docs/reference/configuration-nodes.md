@@ -1,5 +1,5 @@
 ---
-description: Every configuration node a checkout can carry, its values, and which command records it: authorizations, declared values and bindings.
+description: "Every configuration node a checkout can carry, its values, and which command records it: authorizations, declared values and bindings."
 weight: 1
 updated: 2026-09-28
 ---

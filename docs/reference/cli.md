@@ -1,5 +1,5 @@
 ---
-description: Every devcapsule command and option, by command tree: project, images, workflow, version.
+description: "Every devcapsule command and option, by command tree: project, images, workflow, version."
 status: planned
 weight: 2
 ---
