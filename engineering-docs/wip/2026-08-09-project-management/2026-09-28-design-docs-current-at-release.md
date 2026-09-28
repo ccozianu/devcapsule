@@ -1,7 +1,7 @@
 # Design Issue: The Documentation Is Current When A Release Drops
 
 Date opened: 2026-09-28. Owner: `project-management`.
-Status: **work in progress; accumulating problems**. This document defines
+Status: **work in progress; accumulating problems**. Evening of 2026-09-28: P1-P7 are answered by the content–website contract, the two work orders, the `docs-<version>` ref in `WORKFLOW-LOCAL.md` and the runbook's *Documentation Is Part Of The Release*; the section for further problems stays open. This document defines
 problems the owner and the agent are working through in conversation. It
 records no decision and proposes no implementation until a problem is
 agreed to be correctly stated. Solutions, where they appear, are marked as

@@ -70,6 +70,7 @@ accepted" names the workstream that would implement, following the rule that
 | C16 | Refresh the first-session guide, still pinned to v0.2.12, to the released versions | guide; early-adopter input item 2 | hours to a day | `user-docs` | **In** as the release's documentation; no code |
 | C17 | Workflow doctor, review policy, adopter inheritance | `workflow-improvements` plate | that workstream's pace | `workflow-improvements` | **No gate**; ships if merged before the cut |
 | C18 | Repository hygiene: retired branches | 0.2.15 plan item 5 | none remote | none | **Done** on the remote (`f1254e9`); local leftovers are each checkout's own |
+| C20 | Release tooling for the documentation obligations now in the runbook: the backend takes `releases/<tag>/notes.md` as the release body and refuses a final tag without it; the final tag triggers the website's test deployment and candidate | design issue 2026-09-28, runbook *Documentation Is Part Of The Release* | days | `maintenance` | **In**; the runbook obligations are operator steps until this lands. Subsumes the gate and backend half of C4 |
 | C19 | Early-adopter invitation, contributor front door, README wording, blog entry | intake 2026-09-21 (two items) | positioning | owner | **Decision**; 0.2.16 is a plausible release to invite on, which is a reason to keep its scope short |
 
 ## Recommended Scope
@@ -124,8 +125,9 @@ mostly in C4 and C5, neither of which has been designed in code yet.
 3. C12, IntelliJ: in or out of 0.2.16; if in, whether to open a bounded
    `ide-surfaces` workstream for it, folding `eclipse-surface` in.
 4. Driver: `maintenance`, or a feature workstream if IntelliJ is the headline.
-5. C4: adopt the release-notes artifact into the runbook with the gate and
-   backend change in 0.2.16 and the website page deferred to W12.
+5. C4 and C20: the notes artifact is adopted as content under the owner's
+   2026-09-28 grant and the runbook now requires it before a final tag; the
+   decision left is the release-tooling automation in C20 for 0.2.16.
 6. C13: start a design slice for managed agent updates in `component-upgrades`
    now, in parallel, without a 0.2.16 commitment.
 7. Schedule the two decision sessions that are not release content: the
@@ -151,6 +153,14 @@ the disposition log then, not now.
 | 2026-09-03 upgrade experience; 2026-09-21 component status reliability; 2026-09-21 pre-V1 adopter story | C13, C19 |
 | 2026-09-21 release and early-adopter input | C9, C16, C19 |
 | 2026-09-18 and 2026-09-22 branch migration; 2026-09-21 definition-changed notice | overtaken by the 2026-09-25 migration and this workstream's publication; to be acknowledged as done |
+
+## Addendum 2026-09-28
+
+The documentation-currency design issue and the two work orders of
+2026-09-28 changed two things here: C20 was added, and C4's decision
+narrowed to automation. The website publication that documents 0.2.15 is
+not gated on 0.2.16; 0.2.16 is the first release whose runbook carries the
+documentation obligations, so its driver should budget for them.
 
 ## What This Proposal Does Not Decide
 
