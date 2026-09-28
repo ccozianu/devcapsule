@@ -313,6 +313,22 @@ that implements it:
    delivered to the consumer repository; the delivery mechanism across the
    two repositories is itself open, P7.
 
+## 11a. Decisions Taken (2026-09-28, under the owner's autonomy grant)
+
+The owner granted `project-management` the decisions of section 11 on
+2026-09-28. Taken, with the reasoning in
+[the content work order](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md),
+section 5: (1) the location rule stands and the product drafts leave
+`docs/`; (2) contract version 1 has six roles, adding `agents` and
+`containment` to the four above; (3) `docs-<version>` project refs are
+adopted; (4) 0.2.12 is published from its guides' commit; (5) 0.2.15's guides
+are corrected on `docs-0.2.15`, 0.2.14 is published as it is with a note;
+(6) this document goes to the consumer repository as the producer's
+proposal. One additive element joins version 1: front matter
+`status: planned`, a published stub labelled "coming soon", so the ideal
+documentation structure is visible before every page is written. Section 5.3's
+role table is superseded by the six-role list; the rules stand.
+
 ## 12. Acceptance
 
 The contract is satisfied when the consumer's build, at the pinned revision,

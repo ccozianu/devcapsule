@@ -336,6 +336,7 @@ defined, each with its evidence, before any of them is solved.
 
 ## Related Records
 
+- [Work order: the website, from the visitor's chair](../../work-orders/2026-09-28-website-visitor-experience.md) and [work order: the visitor content and the producer migration](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md), issued 2026-09-28 under the owner's autonomy grant; together they are the plan that answers P1 to P7.
 - [Design: the content–website contract, version 1](2026-09-28-design-content-website-contract.md), the owner-directed specification that follows from S1, D1 and P7.
 - [R-DOCS-003](../../requirements/product/r-docs-003-website-content-carries-front-matter.md), the PostgreSQL-shaped contract.
 - [How the website is published, and what it still lacks](../../implementation-notes/website/2026-09-22-website-publishing-contract.md).
