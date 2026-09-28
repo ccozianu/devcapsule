@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-28; website and visitor-content work orders issued under the owner's autonomy grant and delivered; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
+State: paused 2026-09-28 at owner direction; the pair moves to user-docs for the 0.2.15 content as a matter of urgency; work orders delivered; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@48de1e1b1d15
 
@@ -359,6 +359,12 @@ submodules were changed.
 
 ## Open Threads
 
+- Paused 2026-09-28 evening at the owner's direction: the owner posted a
+  first LinkedIn announcement and judges the documentation the most glaring
+  deficiency of 0.2.x and the highest return for gaining adopters; the pair
+  moves to `user-docs` to execute the content work order. Resume here when
+  the owner decides the 0.2.16 proposal or the other workstreams deliver.
+  Nothing external is left running; no containers or builds were started.
 - Under the owner's grant of 2026-09-28, this workstream decides the
   documentation and website plan alone; only production promotion and the
   owner's later adjustments come back to the owner. The grant covers the
