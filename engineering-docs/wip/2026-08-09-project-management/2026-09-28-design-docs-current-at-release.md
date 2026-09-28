@@ -263,9 +263,8 @@ for early adopters. Users of a 0.x version are asked to upgrade to the
 current release. Whether a version older than two weeks receives a patch is
 at the project's discretion.
 
-**Draft user-facing wording**, to publish with the versions index once it
-exists, and in the docs overview until then; candidate text, not yet
-approved:
+**User-facing wording, approved by the owner 2026-09-28**, to publish with
+the versions index once it exists, and in the docs overview until then:
 
 > DevCapsule 0.x is for early adopters. We publish the documentation of every
 > released version, and we ask you to run the current release: it is the one
@@ -284,6 +283,37 @@ upgrade" under this decision. At 2026-09-28, 0.2.14 is three days old and
 **What it leaves for V1.** The window lengths, the line definition from the
 comparison above, and the status vocabulary. None of them needs deciding
 to publish 0.x documentation.
+
+### P7. The website must build and serve every published version, and the work item asking it to has not entered its queue
+
+**Statement.** Under S1 the website builds one documentation directory per
+published version from that version's source ref, plus `/docs/current/` and
+a switcher. Doing that efficiently means three specific things: a released
+version's source is immutable, so its output is built once and reused, and
+only `devel` and the current release line rebuild on a content change; each
+version's build takes only `docs/` from its ref, so a checkout per version is
+cheap; and serving stays static, so "dispatch" is directory layout,
+`current` as a copy or a redirect, and a switcher computed from the union of
+page paths across versions at build time. Nothing here is hard; what is
+missing is that the website project has not taken the task.
+
+**Evidence.** The producer side was delivered on 2026-09-22 to the website
+repository as branch `requests-from-devcapsule-2026-09-22`: a pointer section
+in that project's status file asking for contract version 1, a sitemap and a
+night-mode switch, two commits for the owner to merge. On 2026-09-28 the
+branch still exists there, no pull request has been opened for it, and
+nothing on the website's `main` references R-DOCS-003 or `versions.yaml`.
+The website backlog's W12 scope lists "draft/historical/version semantics"
+and "source revision selection" but predates R-DOCS-003 and does not name a
+per-version build. Its stated top priority is W00, search discoverability.
+The two repositories share no coordination mailbox; delivery is a branch and
+the owner's merge.
+
+**Decision it forces.** Whether the owner merges the 2026-09-22 branch in the
+website repository and sequences W12 with the per-version build ahead of or
+beside W00; and whether cross-repository delivery needs a firmer mechanism
+than a branch waiting for a merge, which is a `workflow-improvements`
+question if it does.
 
 ## Candidate Direction, Not Decided
 
