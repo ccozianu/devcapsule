@@ -10,8 +10,8 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
-from devcapsule.image_build import BuildxImageBuilder, ImageBuildSpec
-from devcapsule.image_metadata import inspect_local_image
+from devcapsule.images.build import BuildxImageBuilder, ImageBuildSpec
+from devcapsule.images.metadata import inspect_local_image
 from devcapsule.materialization import (
     ImageDetails,
     LockedEnvironment,
@@ -28,6 +28,7 @@ from devcapsule.configuration.authorization import (
     review_authorizations,
 )
 from devcapsule.runtime_artifact import runtime_artifact
+from devcapsule.runtime_command import RuntimeCommand
 
 
 @dataclass(frozen=True)
@@ -134,6 +135,7 @@ def realize_environment(
         if materialize is not None
         else {
             "runtime_pex": runtime_artifact(),
+            "runtime_command": RuntimeCommand(runtime.get("devcapsule-command", RuntimeCommand.STANDARD)),
             "report": report,
             "list_formations": lambda: component_formations(locked.component_id),
         }

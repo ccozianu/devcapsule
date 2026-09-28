@@ -79,3 +79,8 @@ The full `nox -s build` passed after adding the marker: 1,044 tests passed,
 18 deselected, one existing xfail, and this test XPASS. Type checking and all
 nine packaged checks passed. XPASS is consistent with the reported flakiness;
 it is not evidence of a repair. Runtime and the test body remain unchanged.
+
+## Disposition, 2026-09-25
+
+Owner ruling during 0.2.14 acceptance: deferred beyond 0.2.14 and marked
+minor; no functional failure was reported on any 0.2.14 candidate.

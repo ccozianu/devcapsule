@@ -430,10 +430,29 @@ def test_publish_keeps_a_live_claim(repos) -> None:
     assert row.claim is not None and row.claim.slice == "still here"
 
 
+def coordination_blobs(origin: Path) -> dict[str, str]:
+    """Every path on the coordination branch with its blob ID: the unit of
+    "unrelated files are untouched" is the blob, not the name."""
+    entries = {}
+    for line in git(origin, "ls-tree", "-r", "coordination").splitlines():
+        meta, path = line.split("\t", 1)
+        entries[path] = meta.split()[2]
+    return entries
+
+
+def assert_untouched(before: dict[str, str], after: dict[str, str], allowed) -> None:
+    """Every pre-existing path the command had no business with keeps its blob."""
+    for path, blob in before.items():
+        if not allowed(path):
+            assert after.get(path) == blob, f"{path} changed or vanished"
+
+
 def test_commands_from_a_nested_directory_preserve_everyone_else(repos) -> None:
     """Regression for the 2026-09-22 coordination data loss: a send run from a
     subdirectory rebuilt the tree from a cwd-limited listing and dropped every
-    other mailbox, state, and claim."""
+    other mailbox, state, and claim. Each nested command may touch only the
+    paths it owns; everything else must be byte-identical afterwards, which
+    the release-table review of 2026-09-22 asked for beyond the name check."""
     origin, sender, recipient = repos
     status_file(sender, "alpha", "active", "x")
     status_file(recipient, "beta", "active", "y")
@@ -441,24 +460,35 @@ def test_commands_from_a_nested_directory_preserve_everyone_else(repos) -> None:
     publish(recipient, "beta")
     claim(recipient, "beta", "reviewing")
     send(recipient, "alpha", item(recipient, "2026-09-22-beta-first.md"))
-    before = set(git(origin, "ls-tree", "-r", "--name-only", "coordination").split())
+    before = coordination_blobs(origin)
     assert len(before) == 5
 
     nested = sender / "devcapsule-src" / "deeper"
     nested.mkdir(parents=True)
     send(nested, "beta", item(sender, "2026-09-22-alpha-nested.md"))
+    after_send = coordination_blobs(origin)
+    assert_untouched(before, after_send, lambda path: path.startswith("mail/beta/"))
+    assert "mail/beta/2026-09-22-alpha-nested.md" in after_send
+
     status_file(sender, "alpha", "active", "changed from nested")
     publish(nested, "alpha")
-    claim(nested, "alpha", "from nested")
+    after_publish = coordination_blobs(origin)
+    assert_untouched(after_send, after_publish, lambda path: path.startswith("state/alpha/"))
 
-    after = set(git(origin, "ls-tree", "-r", "--name-only", "coordination").split())
-    assert before <= after
-    assert "mail/beta/2026-09-22-alpha-nested.md" in after
+    claim(nested, "alpha", "from nested")
+    after_claim = coordination_blobs(origin)
+    assert_untouched(after_publish, after_claim, lambda path: path == "state/alpha/claim")
+
+    assert set(before) <= set(after_claim)
     assert list_state(nested)[0].state == "active"
     assert check(nested, "alpha")[0].name == "2026-09-22-beta-first.md"
-    # Taking from a nested directory still writes into the repository's intake.
+    # Taking from a nested directory still writes into the repository's intake
+    # and removes only the taken item from the branch.
     taken = take(nested, "alpha")
     assert taken == [sender / "engineering-docs/wip/2026-09-19-alpha/intake/2026-09-22-beta-first.md"]
+    after_take = coordination_blobs(origin)
+    assert_untouched(after_claim, after_take, lambda path: path.startswith("mail/alpha/"))
+    assert "mail/alpha/2026-09-22-beta-first.md" not in after_take
 
 
 def test_next_step_is_read_from_a_combined_heading(repos) -> None:

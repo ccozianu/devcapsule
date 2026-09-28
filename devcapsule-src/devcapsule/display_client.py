@@ -22,7 +22,7 @@ import webbrowser
 from devcapsule.container_runtime.contract import CONTAINED_DISPLAY_TRANSPORT, HOST_X11_DISPLAY_TRANSPORT
 from devcapsule.compat import CliError
 from devcapsule.host_daemon import in_container
-from devcapsule.image_metadata import CONTAINED_DISPLAY_LABEL_VALUE, DISPLAY_LABEL
+from devcapsule.images.metadata import CONTAINED_DISPLAY_LABEL_VALUE, DISPLAY_LABEL
 from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenError, open_host_url
 
 # Where the launcher bind-mounts the per-run token inside the capsule and

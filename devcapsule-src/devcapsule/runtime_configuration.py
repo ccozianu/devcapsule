@@ -29,11 +29,14 @@ class LaunchConfiguration:
 
     @classmethod
     def capture(cls, selected: ResolvedProject, identity: str) -> LaunchConfiguration:
+        from devcapsule.project_information import configured_information
+
         return cls(selected.checkout_path.parent, {
             "format": 1, "project": deepcopy(selected.manifest["project"]),
             "launcher-root": str(selected.root),
             "runtime-root": selected.resolution["runtime"]["project-mount"],
             "checkout-file": selected.checkout_path.name,
+            "info": configured_information(selected.root, selected.manifest, selected.lock, selected.checkout),
             "running": {"identity": identity, "lock": deepcopy(selected.lock),
                         "origin": "local selection" if selected_version_lock(selected.checkout) else "project recommendation",
                         "base": deepcopy(selected.checkout.get("authorization", {}).get("base-image", {}))},
@@ -85,17 +88,19 @@ class RuntimeConfiguration:
                 + self.launcher_command(["config", "list"]))
 
 
-def for_project(start: Path) -> RuntimeConfiguration | None:
+def for_project(start: Path, *, fallback: bool = False) -> RuntimeConfiguration | None:
     """Runtime for its own project; still a launcher for separate nested projects."""
+    discovered = True
     try:
         root = discover_project(start)
     except ProjectConfigurationError:
+        discovered = False
         root = start.expanduser().resolve()
     # Older capsules have the project/name environment but no mounted context.
     # Do not pretend their project recommendation describes the running image.
     declared = os.environ.get("PROJECT_PATH") if os.environ.get("DEVCAPSULE_CONTAINER_NAME") else None
     if not CONTEXT_PATH.is_file():
-        if declared and root == Path(declared).resolve():
+        if declared and (root == Path(declared).resolve() or (fallback and not discovered)):
             raise ProjectConfigurationError(
                 "This capsule has no launcher configuration mount. Relaunch this project from outside "
                 "the capsule with the updated DevCapsule launcher, then retry. Its running versions "
@@ -109,7 +114,7 @@ def for_project(start: Path) -> RuntimeConfiguration | None:
         for key in ("launcher-root", "runtime-root"):
             if not isinstance(document.get(key), str) or not Path(document[key]).is_absolute():
                 raise ValueError(f"{key} must be an absolute path")
-        if root != Path(document["runtime-root"]).resolve():
+        if root != Path(document["runtime-root"]).resolve() and not (fallback and not discovered):
             return None
         name = document.get("checkout-file")
         if not isinstance(name, str) or Path(name).name != name or not name.endswith(".checkout.toml"):

@@ -4,6 +4,9 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping
 
+from devcapsule.build_info import BuildInfoError, current_build_info
+from devcapsule.runtime_command import RuntimeCommand
+
 from .documents import ConfigurationScalar, ProjectConfigurationError
 
 
@@ -16,7 +19,19 @@ MEMORY_SIZE_PATTERN = re.compile(r"^([1-9][0-9]*)(B|KiB|MiB|GiB|TiB)$")
 CONFIGURATION_VALUE_TYPES = {"string", "integer", "boolean", "memory-size"}
 
 
-RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size"}
+RUNTIME_EFFECT_TYPES = {"docker.memory-limit": "memory-size", "devcapsule.command-name": "string"}
+
+# The shipped-command value is recognized by its name, not only by its
+# ``runtime-effect`` attribute. Released clients validate the attribute by
+# exact membership in their own vocabulary, so a manifest that spells an
+# effect they predate is unreadable to them; v0.2.12 rejects this
+# repository's manifest that way (bug 2026-09-24, released launchers reject
+# the repository manifest). A declaration that omits the attribute is an
+# ordinary string value to those clients and carries the effect here.
+SHIPPED_COMMAND_VALUE_NAME = "runtime.devcapsule-command"
+SHIPPED_COMMAND_EFFECT = "devcapsule.command-name"
+
+RuntimeEffects = dict[str, int | str]
 
 
 def configuration_value_declarations(
@@ -54,17 +69,45 @@ def configuration_value_declarations(
         if description is not None and not isinstance(description, str):
             raise ProjectConfigurationError(f"{field}.description must be a string when present.")
         effect = declaration.get("runtime-effect")
+        if name == SHIPPED_COMMAND_VALUE_NAME:
+            if effect is None:
+                declaration = {**declaration, "runtime-effect": SHIPPED_COMMAND_EFFECT}
+                effect = SHIPPED_COMMAND_EFFECT
+            elif effect != SHIPPED_COMMAND_EFFECT:
+                raise ProjectConfigurationError(
+                    f"{field} is reserved for runtime effect {SHIPPED_COMMAND_EFFECT!r}; "
+                    f"found runtime-effect {effect!r}."
+                )
         if effect is not None:
             expected_type = RUNTIME_EFFECT_TYPES.get(effect) if isinstance(effect, str) else None
             if expected_type is None:
                 choices = ", ".join(sorted(RUNTIME_EFFECT_TYPES))
-                raise ProjectConfigurationError(f"{field}.runtime-effect must be one of: {choices}.")
+                raise ProjectConfigurationError(
+                    f"{field}.runtime-effect {effect!r} is not supported by DevCapsule "
+                    f"{_running_version()}; supported: {choices}. The project may require "
+                    "a newer DevCapsule."
+                )
             if value_type != expected_type:
                 raise ProjectConfigurationError(
                     f"{field}.runtime-effect {effect!r} requires type {expected_type!r}."
                 )
+        if "recommended" in declaration:
+            _normalize_declared_value(declaration, name, declaration["recommended"])
         declarations[name] = declaration
     return declarations
+
+
+def _running_version() -> str:
+    """The version to name in a diagnostic about this executable's limits.
+
+    Build information is derived rather than authored for source-form runs
+    and is validated for built ones; a malformed record is someone else's
+    error to raise, so a diagnostic about a manifest never fails on it.
+    """
+    try:
+        return current_build_info().version
+    except BuildInfoError:
+        return "(unknown version)"
 
 
 def normalize_configuration_value(
@@ -78,16 +121,21 @@ def normalize_configuration_value(
             f"Configuration value {name!r} is not declared by this project; declared values: {available}."
         )
     if isinstance(value, str) and value.strip().lower() == "default":
-        # 'default' is an input artifact, never a stored value: it resolves
-        # to the node's declared default at the moment the decision is made
-        # (owner ruling 2026-09-03, uniform across node families).  Value
-        # declarations carry no default field today, so there is nothing for
-        # it to resolve to here.
-        raise ProjectConfigurationError(
-            f"Configuration value {name!r} declares no default for 'default' to "
-            "resolve to; set an explicit value, or use 'unset' to leave the "
-            "value absent."
-        )
+        if "recommended" not in declaration:
+            raise ProjectConfigurationError(
+                f"Configuration value {name!r} declares no default for 'default' to "
+                "resolve to; set an explicit value, or use 'unset' to leave the value absent."
+            )
+        value = declaration["recommended"]
+    return _normalize_declared_value(declaration, name, value)
+
+
+def _normalize_declared_value(
+    declaration: Mapping[str, Any], name: str, value: object,
+) -> ConfigurationScalar:
+    """Validate literal answers and recommendations against the same domain."""
+    if isinstance(value, str) and value.strip().lower() == "default":
+        raise ProjectConfigurationError(f"Configuration value {name!r} recommendation must be a literal value.")
     if isinstance(value, str) and value.strip().lower() == "none":
         # Reserved alongside 'default' (owner ruling 2026-09-03): the
         # explicit-absence answer is recorded by the carriers as an omission,
@@ -102,6 +150,11 @@ def normalize_configuration_value(
     if value_type == "string":
         if not isinstance(value, str) or not value or "\x00" in value:
             raise ProjectConfigurationError(f"{field} must be a non-empty string.")
+        if declaration.get("runtime-effect") == "devcapsule.command-name":
+            try:
+                return RuntimeCommand(value)
+            except ValueError as exc:
+                raise ProjectConfigurationError(f"{field}: {exc}") from exc
         return value
     if value_type == "integer":
         if isinstance(value, bool):
@@ -140,7 +193,7 @@ def checkout_omitted_values(checkout: Mapping[str, Any]) -> tuple[str, ...]:
 
 def resolve_configuration_values(
     manifest: Mapping[str, Any], checkout: Mapping[str, Any]
-) -> tuple[dict[str, ConfigurationScalar], dict[str, int]]:
+) -> tuple[dict[str, ConfigurationScalar], RuntimeEffects]:
     """Validate checkout values and derive curated runtime effects from metadata."""
 
     declarations = configuration_value_declarations(manifest)
@@ -154,7 +207,7 @@ def resolve_configuration_values(
     omitted = checkout_omitted_values(checkout)
     problems: list[str] = []
     normalized: dict[str, ConfigurationScalar] = {}
-    effects: dict[str, int] = {}
+    effects: RuntimeEffects = {}
     for name in sorted(set(raw_values) | set(omitted) | set(declarations)):
         try:
             declaration = declarations.get(name)
@@ -167,6 +220,10 @@ def resolve_configuration_values(
                     raise ProjectConfigurationError(f"Configuration value {name!r} is both recorded and omitted.")
             elif name in raw_values:
                 normalized[name] = normalize_configuration_value(manifest, name, raw_values[name])
+            elif "recommended" in declaration:
+                # This is an ordinary value, not a host/acquisition authorization.
+                # Explicit answers and omissions always take precedence.
+                normalized[name] = _normalize_declared_value(declaration, name, declaration["recommended"])
             elif declaration.get("required", False):
                 raise ProjectConfigurationError(
                     f"Required configuration value {name!r} is missing: project config set {name} VALUE."
@@ -179,6 +236,8 @@ def resolve_configuration_values(
         effect = declarations[name].get("runtime-effect")
         if effect == "docker.memory-limit":
             effects["memory-limit-bytes"] = memory_size_bytes(str(value))
+        elif effect == "devcapsule.command-name":
+            effects["devcapsule-command"] = str(value)
     return normalized, effects
 
 

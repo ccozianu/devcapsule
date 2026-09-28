@@ -20,7 +20,7 @@ If the project already has a `.devcapsule/devcapsule.toml` file:
 
 `init` uses the project's declared tools and asks for required local values,
 base-image consent, and acquisition authorizations it still needs. Repository
-recommendations do not grant host access. Use `project config list` to review
+recommendations do not grant host access. Use `project config show` to review
 them, then explicitly authorize the access you choose. If this checkout is
 already initialized, skip directly to `project run`.
 
@@ -74,6 +74,46 @@ Review the result and run the project's checks before committing.
 
 ## Return to work
 
+### Install extra tools (0.2.15)
+
+Inside the capsule, install tools such as gcloud under `/opt/xtras/gcloud`.
+`/opt/xtras` is writable without sudo and points to your persistent
+`$HOME/xtras`; an existing installation there remains available. Put launchers
+or links in `/opt/xtras/bin`, which is on PATH for IDEs, agents and terminals:
+
+```bash
+# After installing a tool under /opt/xtras:
+ln -s /opt/xtras/gcloud/bin/gcloud /opt/xtras/bin/gcloud
+```
+
+These files survive container replacement for this checkout. A separate
+checkout gets its own storage by default; explicitly sharing or relocating
+the home also shares or relocates these tools. You manage their installation
+and updates. They are not added to the project's lock, copied to other
+computers, or guaranteed compatible with a future base image.
+
+### Inspect your environment (0.2.15)
+
+```bash
+devcapsule project info
+devcapsule project info --json
+```
+
+On the host, run this from the project folder or a descendant. Inside the
+capsule, it also works from elsewhere, including `/opt`. Use
+`devcapsule project --path /path/to/project info` to select a project explicitly;
+a nested project keeps its own identity.
+
+The report shows components and versions, provided environment variables and
+their purpose, persistent container paths and their host backing, and temporary
+storage. Host output describes the next launch; runtime output identifies
+running software from launch evidence and separately shows the next-launch
+selection. It omits secret values and does not initialize, resolve or repair
+anything. Older running capsules without launch evidence need a relaunch to
+report their runtime accurately.
+
+### Restart a session
+
 From the project folder, `~/.local/bin/devcapsule project run` is the return
 command. Save files before stopping; a new session restarts processes while
 reusing stored IDE and agent state. The container is disposable; your source
@@ -92,12 +132,14 @@ choices. If the project itself changed its configuration, `project run` may
 ask you to resolve it again:
 
 ```bash
-~/.local/bin/devcapsule project config list
+~/.local/bin/devcapsule project config show
 ~/.local/bin/devcapsule project config resolve
 ```
 
-The review shows pending decisions together, including your recorded base,
-the project's current recommendation, and commands for the available choices.
+`config show` prints the configuration listing and then the review: pending
+decisions together, including your recorded base, the project's current
+recommendation, and commands for the available choices. `config list` prints
+the listing alone.
 Choose one alternative for each pending authorization; do not execute every
 alternative. A recorded denial is shown as a decision you can keep.
 
@@ -131,7 +173,7 @@ install its matching runtime even when project tools stay the same.
 From your computer's terminal in the project folder:
 
 ```bash
-~/.local/bin/devcapsule project config list
+~/.local/bin/devcapsule project config show
 ```
 
 The first exercise uses ordinary container networking and the contained

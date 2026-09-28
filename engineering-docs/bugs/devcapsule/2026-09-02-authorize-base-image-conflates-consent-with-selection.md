@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: maintenance
 opened: 2026-09-02
+closed: 2026-09-25
 requirements: [R-PRODUCT-001, R-PRODUCT-002]
 ---
 
@@ -153,3 +154,11 @@ Always: any `--authorize base-image VALUE` where VALUE is not `yes`,
   reference-shaped value names the resolution matrix as the selector,
   the consent role of the flag, and the yes/no remedy.
 - Manual: the owner rereads the message cold and finds it intelligible.
+
+## Closure, 2026-09-25
+
+Owner ruling: verified repeatedly during 0.2.14 candidate testing (rc0 to
+rc4). The current base selection and consent UX were exercised through
+`config authorize base-image` and `config show` on real and scratch
+checkouts with no failure; the superseded yes/no instructions are gone from
+the current text.

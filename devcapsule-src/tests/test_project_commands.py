@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import shutil
 import tomllib
@@ -1848,12 +1849,16 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             resolved = tomllib.load(stream)
         assert resolved["authorization"]["base-image"]["reference"] == LOCKED_BASE
 
+        # Consent binds to the image: a lock edit that leaves the base alone
+        # stales the resolution, which resolve refreshes, and asks nothing.
         lock_path.write_text(
             lock_path.read_text(encoding="utf-8").replace("formation-v1", "formation-v2"),
             encoding="utf-8",
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
-        assert "base-image: stale" in capsys.readouterr().err
+        capsys.readouterr()
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        with resolved_path.open("rb") as stream:
+            assert tomllib.load(stream)["authorization"]["base-image"]["reference"] == LOCKED_BASE
 
 
 @pytest.mark.parametrize(
@@ -1949,7 +1954,7 @@ def test_component_state_seed_is_written_once_and_never_overwrites(tmp_path: Pat
     # seed, are left empty.
     other = tmp_path / "other"
     other.mkdir()
-    _seed_component_state(other, SimpleNamespace(component_id="claude-code", slot_name="home"))
+    _seed_component_state(other, SimpleNamespace(component_id="postgresql-client", slot_name="home"))
     _seed_component_state(other, SimpleNamespace(component_id="codex", slot_name="cache"))
     _seed_component_state(other, SimpleNamespace(component_id="unknown", slot_name="home"))
     assert list(other.iterdir()) == []
@@ -2020,10 +2025,13 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
         assert cli.main(["project", "--path", str(project), "config", "authorize", "host-browser", "true"]) == 0
         capsys.readouterr()
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+    # Columns: KIND NAME STATUS SOURCE VALUE; the source may contain spaces,
+    # so read the status by position and the value as the last token.
     rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
-    assert rows["host-x11"][2:4] == ["denied", "false"]
-    assert rows["host-browser"][2:4] == ["authorized", "true"]
-    assert rows["development-sudo"][2:4] == ["available", "true"]
+    assert (rows["host-x11"][2], rows["host-x11"][-1]) == ("denied", "false")
+    assert (rows["host-browser"][2], rows["host-browser"][-1]) == ("authorized", "true")
+    assert (rows["development-sudo"][2], rows["development-sudo"][-1]) == ("available", "true")
+    assert rows["host-x11"][3] == "checkout" and rows["development-sudo"][3] == "manifest"
 
 
 @pytest.mark.parametrize('surface,needs', [('pycharm', ['python', 'python-ide']), ('codium', ['node', 'frontend-ide'])])
@@ -2104,3 +2112,96 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
     assert all(not path.exists() for path in vars(captured['files']).values() if isinstance(path, Path))
     assert all(p.read_bytes() == content for p, content in before.items())
     assert not (tmp_path / 'state' / 'devcapsule' / 'config-history').exists()
+
+
+@pytest.mark.parametrize(
+    "component,relative_path,defaults,explicit",
+    [
+        ("claude-code", "settings.json",
+         {"permissions": {"defaultMode": "bypassPermissions"},
+          "skipDangerousModePermissionPrompt": True},
+         {"permissions": {"defaultMode": "plan", "allow": ["Read"]},
+          "skipDangerousModePermissionPrompt": False, "model": "custom"}),
+        ("antigravity-cli", "antigravity-cli/settings.json",
+         {"toolPermission": "always-proceed"},
+         {"toolPermission": "ask", "model": "custom"}),
+    ],
+)
+def test_agent_settings_seed_and_upgrade_preserve_explicit_choices(
+    tmp_path: Path, component: str, relative_path: str, defaults: dict, explicit: dict,
+) -> None:
+    from devcapsule.commands.project import _seed_component_state
+
+    declaration = SimpleNamespace(component_id=component, slot_name="home")
+    _seed_component_state(tmp_path, declaration)
+    target = tmp_path / relative_path
+    assert json.loads(target.read_text()) == defaults
+    assert target.stat().st_mode & 0o777 == 0o600
+
+    original = json.dumps(explicit)
+    target.write_text(original)
+    _seed_component_state(tmp_path, declaration)
+    assert target.read_text() == original  # No rewrite, even formatting.
+
+    partial: dict = {"model": "custom"}
+    if component == "claude-code":
+        partial["permissions"] = {"deny": ["WebFetch"]}
+    target.write_text(json.dumps(partial))
+    _seed_component_state(tmp_path, declaration)
+    merged = json.loads(target.read_text())
+    assert merged["model"] == "custom"
+    if component == "claude-code":
+        assert merged["permissions"] == {"defaultMode": "bypassPermissions", "deny": ["WebFetch"]}
+    else:
+        assert merged["toolPermission"] == "always-proceed"
+    before = target.read_bytes(), target.stat().st_mtime_ns
+    _seed_component_state(tmp_path, declaration)
+    assert (target.read_bytes(), target.stat().st_mtime_ns) == before
+
+
+@pytest.mark.parametrize("content", ['{broken', '[]', '{"permissions": null}', '{"permissions": "plan"}'])
+def test_invalid_agent_settings_are_preserved(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], content: str,
+) -> None:
+    from devcapsule.commands.project import _seed_component_state
+
+    target = tmp_path / "settings.json"
+    target.write_text(content)
+    _seed_component_state(tmp_path, SimpleNamespace(component_id="claude-code", slot_name="home"))
+    assert target.read_text() == content
+    assert "leaving component settings unchanged" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("linked_parent", [False, True])
+def test_agent_defaults_leave_linked_settings_untouched(tmp_path: Path, linked_parent: bool) -> None:
+    from devcapsule.commands.project import _seed_component_state
+
+    external = tmp_path / "external"
+    external.mkdir()
+    slot = tmp_path / "slot"
+    slot.mkdir()
+    if linked_parent:
+        (slot / "antigravity-cli").symlink_to(external, target_is_directory=True)
+    else:
+        (slot / "antigravity-cli").mkdir()
+        (slot / "antigravity-cli/settings.json").symlink_to(external / "settings.json")
+    _seed_component_state(slot, SimpleNamespace(component_id="antigravity-cli", slot_name="home"))
+    assert not (external / "settings.json").exists()
+
+
+def test_adopted_agent_settings_are_not_seeded(tmp_path: Path) -> None:
+    from devcapsule.commands.project import _component_state_mounts
+    from devcapsule.platforms import Platform
+    from devcapsule.resolution_matrix import MATRICES
+
+    lock = tomllib.loads(MATRICES[Platform.LINUX_AMD64].resolve(
+        ["frontend-ide", "claude-code-agent", "antigravity-agent"]
+    ).render_lock())
+    claude = tmp_path / "claude"
+    gemini = tmp_path / "gemini"
+    claude.mkdir()
+    gemini.mkdir()
+    configured = {"claude-code/home": str(claude), "antigravity-cli/home": str(gemini)}
+    mounts = _component_state_mounts(tmp_path, lock, configured, object(), {"claude-code", "antigravity-cli"})
+    assert len(mounts) == 2
+    assert list(claude.iterdir()) == list(gemini.iterdir()) == []

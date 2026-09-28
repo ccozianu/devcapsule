@@ -1,6 +1,6 @@
 ---
 status: reported
-severity: untriaged
+severity: minor
 target: none
 owner: maintenance
 opened: 2026-08-15
@@ -97,3 +97,8 @@ Stage 7 of the recursive dogfood milestone is the natural home for the
 implementation, since it already owns persistence and deterministic cleanup.
 Until then, do not remove the two containers above: they are the retained
 Stage 6 and Stage 7 evidence.
+
+## Disposition, 2026-09-25
+
+Owner ruling during 0.2.14 acceptance: deferred beyond 0.2.14 and marked
+minor; no functional failure was reported on any 0.2.14 candidate.

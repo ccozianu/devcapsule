@@ -64,3 +64,8 @@ Close after a controlled comparison establishes the appropriate supported
 default—or confirms that JetBrains' `auto` behavior is acceptable—and records
 the manual evidence. Reopen if a JetBrains Runtime upgrade changes the warning
 or produces a visible regression.
+
+## Disposition, 2026-09-25
+
+Owner ruling during 0.2.14 acceptance: deferred beyond 0.2.14 and marked
+minor; no functional failure was reported on any 0.2.14 candidate.

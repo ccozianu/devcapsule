@@ -70,7 +70,7 @@ devcapsule/
     history.py              Successful-run snapshots
   components/               Trusted component declarations and contributions
   launch/                   Host-side launch adapters
-    pycharm/                Legacy PyCharm-compatible launch/build interface
+    pycharm/                Shared host launcher and PyCharm image utilities
   container_runtime/        In-container plan interpretation and supervision
 ```
 
@@ -83,8 +83,10 @@ Internal configuration imports are acyclic, including imports inside functions.
 The architecture tests under `devcapsule-src/tests/configuration/` enforce these
 boundaries alongside the configuration laws and representation tests.
 
-`launch/pycharm` retains the existing compatibility interface; its command
-grammar lives in `commands/_pycharm.py`. The former `configurations/` package
+`launch/pycharm` contains the shared host launcher used by `project run` and
+the retained PyCharm image utilities. The legacy `pycharm run` CLI is retired;
+`commands/_pycharm.py` owns build/check-runtime grammar and the retirement
+diagnostic. The former `configurations/` package
 was launcher machinery and is no longer presented as the configuration model.
 The remaining top-level modules retain their existing responsibilities; this
 layout change establishes the configuration boundary without inventing new
@@ -128,6 +130,33 @@ For source-form environment launches, first build the PEX (`nox -s pex`), then
 run that artifact, or set `DEVCAPSULE_RUNTIME_PEX` to its absolute path when
 invoking the source CLI. Rebuild and reselect it after runtime source changes.
 
+### Shipped CLI versus development CLI
+
+This project's `.devcapsule/devcapsule.toml` recommends
+`runtime.devcapsule-command = "devcapsule0"`. In a newly materialized capsule,
+`devcapsule0` runs the exact shipped launcher, while the image leaves the
+`devcapsule` name free for the development installation. Both interactive
+shells and scripts can use `devcapsule0`; no `.bashrc` alias is needed.
+Activate the development virtualenv to use its `devcapsule` command, or invoke
+the virtualenv interpreter / built PEX explicitly as described above.
+Internal runtime and host-open integrations retain their absolute PEX path.
+
+Projects without that recommendation receive the usual `devcapsule` command.
+The recommendation is an ordinary configuration value, not a host permission.
+To override it for a checkout, run the **outside launcher**:
+
+```text
+devcapsule project config set runtime.devcapsule-command devcapsule
+devcapsule project config resolve
+```
+
+`config set runtime.devcapsule-command default` records the current project
+recommendation; `config unset runtime.devcapsule-command` resumes following it.
+An explicit `none` omits the value and uses the normal shipped command.
+The selection is part of image identity and takes effect at the next launch;
+it never renames commands inside an already running capsule. The first launcher
+containing this fix is required; immutable RC0 does not support the new value.
+
 Calling the virtualenv's interpreter directly is intentional: it works without
 shell activation and cannot silently fall through to `/usr/bin/python` because
 an activation script contains an obsolete path. Activation remains supported:
@@ -158,9 +187,11 @@ deliberately discard cached Nox environments, add
 For CLI installation and usage, see
 [`devcapsule-src/README.md`](devcapsule-src/README.md).
 The initial binary distribution channel is GitHub Releases: pushing an RC or final
-`v*` tag runs the backend release workflow, which builds and clean-machine
-proves the self-contained Linux x86-64 PEX before publishing it with a SHA-256
-checksum, then downloads and proves the published bytes again.
+`v*` tag runs the backend release workflow, which builds the self-contained
+Linux x86-64 PEX, runs the source and packaging tests, publishes it with a
+SHA-256 checksum, and verifies the published bytes against the build. The
+workflow runs no Docker; the clean-machine, component-cache and runtime-session
+proofs run locally against the downloaded assets during release acceptance.
 
 ## Website Development
 

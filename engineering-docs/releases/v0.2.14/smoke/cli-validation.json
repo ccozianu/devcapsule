@@ -1,0 +1,256 @@
+{
+  "date": "2026-09-23",
+  "candidate": "v0.2.14-rc0",
+  "candidate-sha256": "2a425a39d2ed5319d1945dd91e34f693c299fa2c53acdf70a205024eea45d513",
+  "runner-sha256": "33a84769d02975b2d9fbf47eb0befa7ae174e0f84c988f2a140d4b2878482da2",
+  "stories": [
+    {
+      "id": "S02",
+      "status": "PASS",
+      "seconds": 1.75
+    },
+    {
+      "id": "S03",
+      "status": "PASS",
+      "seconds": 1.505
+    },
+    {
+      "id": "S17",
+      "status": "PASS",
+      "seconds": 2.155
+    }
+  ],
+  "coordination-operations": 9,
+  "scope": "Published CLI only: real terminal answers, batch configuration, local Git coordination. No IDE/provider/service acceptance.",
+  "coordination-comparisons": [
+    {
+      "args": [
+        "claim",
+        "unrelated claim",
+        "--workstream",
+        "other"
+      ],
+      "changed": [
+        "state/other/claim"
+      ],
+      "before": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "claim",
+        "test byte preservation"
+      ],
+      "changed": [
+        "state/alpha/claim"
+      ],
+      "before": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "publish"
+      ],
+      "changed": [
+        "state/alpha/CURRENT-STATUS.md",
+        "state/alpha/intake-dispositions.md"
+      ],
+      "before": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "status"
+      ],
+      "changed": [],
+      "before": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "mail",
+        "send",
+        "beta",
+        "FIXTURE/S17/2026-09-23-alpha-hello.md"
+      ],
+      "changed": [
+        "mail/beta/2026-09-23-alpha-hello.md"
+      ],
+      "before": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/beta/2026-09-23-alpha-hello.md": "100644 blob fae7c34d9672bbbf6b1718f7a262f6b269556c4c",
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "mail",
+        "send",
+        "beta",
+        "FIXTURE/S17/2026-09-23-alpha-hello.md"
+      ],
+      "changed": [],
+      "before": {
+        "mail/beta/2026-09-23-alpha-hello.md": "100644 blob fae7c34d9672bbbf6b1718f7a262f6b269556c4c",
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/beta/2026-09-23-alpha-hello.md": "100644 blob fae7c34d9672bbbf6b1718f7a262f6b269556c4c",
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "claim",
+        "--release"
+      ],
+      "changed": [
+        "state/alpha/claim"
+      ],
+      "before": {
+        "mail/beta/2026-09-23-alpha-hello.md": "100644 blob fae7c34d9672bbbf6b1718f7a262f6b269556c4c",
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/claim": "100644 blob da12b7f0341c9babc5e249b94b25120ff356a481",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/beta/2026-09-23-alpha-hello.md": "100644 blob fae7c34d9672bbbf6b1718f7a262f6b269556c4c",
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "mail",
+        "take"
+      ],
+      "changed": [
+        "mail/beta/2026-09-23-alpha-hello.md"
+      ],
+      "before": {
+        "mail/beta/2026-09-23-alpha-hello.md": "100644 blob fae7c34d9672bbbf6b1718f7a262f6b269556c4c",
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    },
+    {
+      "args": [
+        "mail",
+        "take"
+      ],
+      "changed": [],
+      "before": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      },
+      "after": {
+        "mail/other/2026-09-23-other-unrelated.md": "100644 blob cb889cb2fabafce61aa2701a3d2390d41729b3d6",
+        "state/alpha/CURRENT-STATUS.md": "100644 blob 1d7c179f26ff850b5200b34e9588adb9a278d05b",
+        "state/alpha/intake-dispositions.md": "100644 blob 4e0b50202d44596afe8fb37b3bf491a2af9bc1a8",
+        "state/other/CURRENT-STATUS.md": "100644 blob 5da49d8f563b150bdde3e656f8489d6e87a4d5f6",
+        "state/other/claim": "100644 blob c0b79ab2ee213983b121e26f6b9a6b50a433fe34",
+        "state/other/intake-dispositions.md": "100644 blob 0bed665bb2953f69584371430a6e405c1299825c"
+      }
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: workflow-improvements
 opened: 2026-09-22
+closed: 2026-09-25
 requirements: [R-PRODUCT-006]
 ---
 
@@ -61,3 +62,14 @@ directory from that top level. A regression test sends, publishes, claims, and
 takes from a nested directory against a bare remote and asserts every
 pre-existing entry survives. Validation pending: the owner's next session from
 a nested directory against the shared remote, or the release candidate.
+
+## Closure, 2026-09-25
+
+The fix is in v0.2.14-rc4. The regression test
+`test_commands_from_a_nested_directory_preserve_everyone_else` now snapshots
+the coordination branch's blob IDs and asserts, after each of send, publish,
+claim and take run from a nested directory, that every path the command does
+not own is byte-identical, which the 2026-09-22 review asked for beyond the
+name check. Real use since the fix, 135 coordination commits including many
+from nested working directories, shows no loss. Closed by the owner during
+0.2.14 rc4 acceptance.
