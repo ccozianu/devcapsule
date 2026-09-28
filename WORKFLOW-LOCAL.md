@@ -45,6 +45,23 @@ documented evidence record described in the guide; requires downloaded-artifact 
 evidence for acceptance; and keeps the acceptance record under
 `engineering-docs/releases/`.
 
+## Documentation Refs
+
+Owner grant of 2026-09-28, exercised by `project-management`: the project
+declares one ref kind of its own beside the workflow's, `docs-<version>`.
+A `docs-<version>` branch is forked from the final tag `v<version>` and
+carries documentation-only commits: changes under `docs/` and nothing else.
+It exists because the definition closes a release branch after its final
+tag while the website publishes each version's documentation from that
+version's own source; the branch is where a released version's guides are
+corrected after the fact. It is never merged anywhere, never rebased, and is
+named in `docs/versions.yaml` as that version's `source` for as long as it
+exists; without it, the version's source is its final tag. The candidate gate
+does not apply to it; the website's build check does. Anyone may commit to
+it on the owner's or `project-management`'s direction; `user-docs` normally
+authors the corrections. See the content–website contract, version 1, under
+`engineering-docs/wip/2026-08-09-project-management/`.
+
 ## Blog Entries
 
 When the human says "write a blog entry on topic X", write it:

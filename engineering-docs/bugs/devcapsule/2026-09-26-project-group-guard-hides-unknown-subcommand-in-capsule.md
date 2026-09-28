@@ -67,6 +67,17 @@ owner's rerun inside a capsule.
 ## Close criteria
 
 Status `closed` when the test passes on `main` and the owner confirms the
-message inside a capsule with a release that carries the fix. 0.2.15 is the
-init fix alone by owner ruling; this is a 0.2.16 candidate unless the owner
-rates it higher.
+message inside a capsule with a release that carries the fix.
+
+## Release disposition (owner, 2026-09-27)
+
+The owner explicitly accepts this limitation for 0.2.15. Keep the defect
+open and outside that release's gate; a later target remains unassigned.
+The owner's broader report that project subcommands fail inside the capsule
+regardless of working directory is preserved as reported, not established
+by the narrower reproduction above.
+
+The same decision adds `project info` and persistent `/opt/xtras` to 0.2.15;
+see the [accepted work order](../../work-orders/2026-09-27-project-environment-discovery.md).
+`project info` must work inside the capsule, including outside the project
+directory. The deferral does not excuse failure of that new command.
