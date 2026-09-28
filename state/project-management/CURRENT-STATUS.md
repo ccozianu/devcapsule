@@ -356,6 +356,7 @@ submodules were changed.
 
 ## Workstream Document Index
 
+- [Design: the content–website contract, version 1](2026-09-28-design-content-website-contract.md): proposed at the owner's direction; versioned `docs/`, roles for the distinguished pages, tokens, manifest, caching, six owner decisions.
 - [Design issue: the documentation is current when a release drops](2026-09-28-design-docs-current-at-release.md): work in progress, accumulating problem statements P1-P6 with evidence; no decision yet.
 - [0.2.16 planning proposal](2026-09-27-0216-release-planning.md): candidates, recommended scope, driver and the owner decisions; proposed 2026-09-27.
 - [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/agent-defaults scope, guard deferral and acceptance checks.
