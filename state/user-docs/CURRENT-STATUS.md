@@ -4,7 +4,7 @@ Name: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-28; writing the 0.2.15 documentation under the content work order as a matter of urgency; the ideal structure with planned stubs
+State: paused 2026-09-28 evening; UD-006 items 1-7 merged in PR #151 and carried onto docs-0.2.15; the pair moves to the website workstream for the producer migration at the owner's direction
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@48de1e1b1d15
 
@@ -309,6 +309,10 @@ without conflict and pushed.
 
 ## Open Threads
 
+- Paused 2026-09-28 evening so the same pair can do the website workstream's
+  producer migration, at the owner's "just do it". Resume with the owner's
+  decisions on the improvement list, then item 8 of UD-006. Nothing external
+  is running; the descriptions fix at `1b60e59` awaits this branch's PR.
 - 2026-09-24: at the owner's explicit direction, wrote the proposed
   [mycodespace design note](../../design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
   here while paused. It is product direction and belongs to
