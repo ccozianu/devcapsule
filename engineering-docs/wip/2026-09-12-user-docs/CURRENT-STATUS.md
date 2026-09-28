@@ -6,7 +6,7 @@ Start date: `2026-09-12`
 
 State: active 2026-09-28; writing the 0.2.15 documentation under the content work order as a matter of urgency; the ideal structure with planned stubs
 
-Definition read: WORKFLOW.md@bc1937f188ca, WORKFLOW-LOCAL.md@031c167690c0
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
 Branch association: `ws-user-docs/first-session`
 
