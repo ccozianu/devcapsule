@@ -1,6 +1,8 @@
 # 0.2.15: Extra tools, project information and agent defaults
 
-Status: accepted by the owner, 2026-09-27; implementation pending.
+Status: implemented, accepted on downloaded RC1, and published in 0.2.15 final
+on 2026-09-27. See the
+[release overview](../releases/v0.2.15/README.md) for evidence and remaining gates.
 
 Release: 0.2.15. Driver: maintenance, with these three bounded slices to its
 release scope explicitly approved by the owner. Project-management owns this

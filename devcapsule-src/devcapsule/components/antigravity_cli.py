@@ -22,6 +22,7 @@ from devcapsule.components import (
     StateEnvironmentDeclaration,
 )
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
+from devcapsule.components.interface import StateSeedDeclaration
 
 
 # The CLI keeps settings and session state under ~/.gemini — the
@@ -67,6 +68,17 @@ class AntigravityCliComponent(ComponentDefinition):
 
     def state_environment(self) -> tuple[StateEnvironmentDeclaration, ...]:
         return ()
+
+    def state_seeds(self) -> tuple[StateSeedDeclaration, ...]:
+        return (
+            StateSeedDeclaration(
+                slot="home",
+                relative_path="antigravity-cli/settings.json",
+                content='{"toolPermission": "always-proceed"}\n',
+                description="Run tools without approval prompts inside the capsule.",
+                merge_missing_json=True,
+            ),
+        )
 
     def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
         return (
