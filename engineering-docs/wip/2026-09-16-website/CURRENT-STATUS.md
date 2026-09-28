@@ -6,6 +6,8 @@ Start date: `2026-09-16`
 
 State: active 2026-09-28; producer migration to the content–website contract, version 1, with the pin advanced to the website's publication revision; awaiting the owner's PR
 
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@b03863e6242d
+
 Branch association: `ws-website/contract-v1`, forked from `main` at `d9b9975` on 2026-09-28 under the `ws-` form; the earlier `website/initial-cut` is closed, everything it held is on `main`
 
 Integration target: DevCapsule `main`. Website PR #1 is merged into its `main`
