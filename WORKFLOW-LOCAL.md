@@ -68,8 +68,10 @@ When the human says "write a blog entry on topic X", write it:
 
 - Create `engineering-docs/blog/YYYY-MM-DD-short-topic.md` in the flat blog
   directory. Use the date of writing; the website reads the date from the filename.
-- Start with `# Title`, then plain Markdown prose. Use existing entries as
-  examples. No frontmatter or website-specific markup is needed.
+- Begin with the front matter block the blog README describes, `description`
+  and, until the owner releases the entry, `draft: true`; then `# Title` and
+  plain Markdown prose. Use existing entries as examples. No other
+  website-specific markup is needed.
 - Attribute quoted material and identify any editing of quotations. For links
   to repository evidence, use a mainline commit SHA so the reference stays stable.
 - Add the entry to `engineering-docs/blog/README.md` and root `index.md`.

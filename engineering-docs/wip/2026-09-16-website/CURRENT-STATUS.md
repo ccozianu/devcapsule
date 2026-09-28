@@ -4,9 +4,11 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active 2026-09-19; experiment accepted with A−; website backlog transferred under owner exception; content and parent-integration tasks remain
+State: active 2026-09-28; producer migration to the content–website contract, version 1, with the pin advanced to the website's publication revision; awaiting the owner's PR
 
-Branch association: `website/initial-cut`; prefix `website/`
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@b03863e6242d
+
+Branch association: `ws-website/contract-v1`, forked from `main` at `d9b9975` on 2026-09-28 under the `ws-` form; the earlier `website/initial-cut` is closed, everything it held is on `main`
 
 Integration target: DevCapsule `main`. Website PR #1 is merged into its `main`
 at `b55ea0a`, with the same tree as previewed implementation `c508b91`.
@@ -15,6 +17,56 @@ Delivery method: reviewable SSH-pushed branches; the owner creates/merges PRs
 and performs final GitHub backend wiring. The owner has now authorized making
 the site live at `devcapsule.mycodespace.ai` before finishing the review.
 No force-push or mainline implementation is needed.
+
+## Producer Migration (2026-09-28)
+
+Resumed 2026-09-28 at the owner's "just do it" after project-management's
+work order and the website repository's execution of all six slices of its
+own order, `publication` at `31e85b1`. Definition read: the 0.2.14 entry in
+full; the branch is current with `main`. Taken and decided: the 2026-09-21
+definition-changed notice, done by this publication; the 2026-09-28 producer
+migration work order, acknowledged as this section. The work order's section
+3, delivered in this one change so that no build sees half a contract:
+
+- `docs/versions.yaml`, contract 1, the owner's approved notice, `devel` from
+  `main`, 0.2.15 supported and current from `docs-0.2.15` (carried there at
+  `9e43ec7`), 0.2.14 and 0.2.12 deprecated as `legacy: true` with their notes.
+- Front matter on the six journal entries, authored descriptions, `draft:
+  true` on the two 2026-09-19 retrospectives; the blog README and the local
+  workflow's blog conventions amended to require it.
+- The README restructured with the contract's landing identities: hero,
+  benefits, fit, dogfood, why, comparison, contribute; the prose kept, the
+  "Is it for you" and "Contribute" sections new; documentation links point
+  into the new tree.
+- The three quoted descriptions from user-docs, cherry-picked.
+- The website pin advanced to `6759b9d`, the website's `main` after the
+  owner merged the stacked slices and the colour-schemes follow-up; the
+  first pin, `31e85b1`, was the `publication` tip before those merges.
+- The parent Website workflow checks out with full history and tags and
+  fetches `docs-*` branches into local refs, so the manifest's sources,
+  `docs-0.2.15`, `v0.2.14` and a bare commit, resolve on the hosted runner;
+  a shallow single-branch checkout resolved none of them.
+- The gate: `nox -s docs-contract` and a step in `build` run the website's
+  `check:content` against this checkout, skipped with a notice where the
+  submodule or npm is absent.
+
+Validated here: `nox -s docs-contract` passed, 176 pages, all six roles
+resolved, 0.2.14 and 0.2.12 reused as legacy; `./scripts/website.sh build`
+passed its check on 180 pages and 13432 links; the full build gate,
+`nox -s build` with its scratch under `/opt/devcapsule-gate`, passed on the
+committed tree: 1089 tests, 20 deselected, one existing xfail and one xpass,
+mypy clean on 174 files, the docs-contract step inside the gate passing on
+176 pages, the local and exact-revision PEX built and smoked; log
+`/opt/devcapsule-gate/build-ws-website.log`. Not validated: the test site and
+production, which are the owner's two publication runs after the merge.
+The registry row now names the `ws-` branch, per the deferred rename.
+
+Next: the owner merges this branch, the website's stacked PRs, then runs the
+parent Website workflow (test site and candidate) and the website's Publish
+workflow (production). After publication: W07-C closes, since the README
+carries the markers; W08-C is delivered by the manifest and front matter;
+W12-C by the accepted contract. The retained tasks below then reduce to
+W04-C, W09-C and W11-C.
 
 ## Synchronization And Pause (2026-09-18)
 

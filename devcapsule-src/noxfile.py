@@ -5,6 +5,7 @@ import json
 import hashlib
 import uuid
 import argparse
+import shutil
 from pathlib import Path
 
 import nox
@@ -271,6 +272,30 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "pycharm", "build", "--help", external=True)
 
 
+def check_docs_contract(session: nox.Session) -> None:
+    """Check docs/, the journal and the release notes against the website's contract.
+
+    The pinned website submodule owns the check (``npm run check:content``); this
+    runs it against the repository root as the content checkout, so a producer
+    change that would break the site fails here first. Skipped with a notice
+    when the submodule is not initialized or npm is absent, as on the hosted
+    test runner, where the documentation is not built.
+    """
+    website = REPO_ROOT / "website"
+    if not (website / "package.json").exists():
+        session.log("docs contract: website submodule not initialized; skipped")
+        return
+    if shutil.which("npm") is None:
+        session.log("docs contract: npm not available; skipped")
+        return
+    if not (website / "node_modules").exists():
+        session.run("npm", "--prefix", str(website), "ci", external=True)
+    session.run(
+        "npm", "--prefix", str(website), "run", "check:content",
+        env={"CONTENT_DIR": str(REPO_ROOT)}, external=True,
+    )
+
+
 def run_clean_machine_pex_test(session: nox.Session) -> None:
     environment: dict[str, str] = {}
     for name in ("DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE", PEX_UNDER_TEST_ENV):
@@ -390,6 +415,12 @@ def recursive_dogfood_e2e(session: nox.Session) -> None:
     run_recursive_e2e_tests(session)
 
 
+@nox.session(name="docs-contract", python=False)
+def docs_contract(session: nox.Session) -> None:
+    """Run only the website content-contract check against this checkout."""
+    check_docs_contract(session)
+
+
 @nox.session(python="3.12")
 def build(session: nox.Session) -> None:
     install_locked(session)
@@ -402,5 +433,6 @@ def build(session: nox.Session) -> None:
     build_test_pex(session)
     smoke_pex(session)
     run_packaging_tests(session)
+    check_docs_contract(session)
     if build_public_pex_if_clean(session):
         smoke_pex(session, PUBLIC_PEX_PATH)

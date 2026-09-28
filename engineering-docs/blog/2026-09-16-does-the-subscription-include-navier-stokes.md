@@ -1,3 +1,6 @@
+---
+description: "An imagined round of golf between Costin and Astra, his Codex partner, about paying for tools, disagreeing well, and what a subscription really buys."
+---
 # Does the subscription include Navier–Stokes?
 
 *An imaginary round of golf with Costin Cozianu and Astra, his AI coding
