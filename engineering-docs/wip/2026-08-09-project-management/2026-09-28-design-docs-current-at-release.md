@@ -234,6 +234,57 @@ This holds two deprecated versions at once, which the contract's default
 lifecycle avoids and its explicit override allows; the bootstrap is the
 moment for the override, with the note carrying the reason.
 
+## What Other Projects Do (comparison, 2026-09-28)
+
+From the agent's training knowledge; verify a date before citing it.
+
+| Project | Cadence | Support window | Docs directories | Old docs |
+|---|---|---|---|---|
+| PostgreSQL | one major a year; quarterly minors for every supported major | 5 years from the major; supported or unsupported | one per major plus `/docs/current/` | kept forever, banner, switcher |
+| OpenJDK | feature release every 6 months; LTS every 2 years | non-LTS until the next release; LTS for years via update projects and vendors | one per feature release | kept |
+| Python | one minor a year | about 1.5 years bugfix, security-only to 5 years | one per minor; `/3/` aliases stable | kept; bugfix, security, end-of-life |
+| Node.js | two majors a year; even ones LTS | odd 6 months; LTS 30 months: Current, Active, Maintenance, End-of-Life | one per major line plus `latest` | kept |
+| Django | every 8 months; every third LTS | 8 months; LTS 3 years | one per feature release; `stable`, `dev` | kept, "insecure version" banner |
+| Go | two minors a year | the two most recent minors | one set, notes per version | not versioned |
+
+What it says for us: nobody makes a docs directory per patch release, the
+unit is the line that changes behaviour; support windows are time-based
+everywhere except Go, and a count-based rule at a two-day cadence expires a
+version in days; old documentation is never removed; and "deprecated" for a
+version is unusual, the common words are maintenance, security-only and
+end-of-life. Decisions it suggested: define the line, use a time window,
+borrow a conventional vocabulary. The owner's decision below answers the
+window question for the whole pre-V1 period.
+
+## D1. Pre-V1 Support Commitment (owner decision, 2026-09-28)
+
+**Decision.** A support policy will be issued after V1. Every 0.x release is
+for early adopters. Users of a 0.x version are asked to upgrade to the
+current release. Whether a version older than two weeks receives a patch is
+at the project's discretion.
+
+**Draft user-facing wording**, to publish with the versions index once it
+exists, and in the docs overview until then; candidate text, not yet
+approved:
+
+> DevCapsule 0.x is for early adopters. We publish the documentation of every
+> released version, and we ask you to run the current release: it is the one
+> we fix. Whether we patch a release older than two weeks is at our
+> discretion. A support policy with defined windows will come with V1.
+
+**What it settles.** P5 detail 3, the lifecycle clock: pre-V1 there is no
+promised window, so cadence cannot break one. The manifest's statuses before
+V1 reduce to three readings: the current release, which is supported; older
+released versions, documented and asked to upgrade, patched at discretion;
+and versions no longer published. The bootstrap table under S1 stands for
+which versions are published; its "deprecated" labels read as "older, please
+upgrade" under this decision. At 2026-09-28, 0.2.14 is three days old and
+0.2.12 fourteen, so both sit at or inside the discretionary line today.
+
+**What it leaves for V1.** The window lengths, the line definition from the
+comparison above, and the status vocabulary. None of them needs deciding
+to publish 0.x documentation.
+
 ## Candidate Direction, Not Decided
 
 Recorded so it is not re-derived; the owner has not adopted it.
