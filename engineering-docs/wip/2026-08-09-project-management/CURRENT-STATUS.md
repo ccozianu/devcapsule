@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-27; resumed at owner direction to plan 0.2.16 while maintenance releases 0.2.15 from another checkout; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
+State: active 2026-09-28; 0.2.15 final verified on `main`; owner dogfooding 0.2.15 in this capsule; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
 
 Definition read: WORKFLOW.md@df81c25a0f2a, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,6 +24,26 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+Resumed 2026-09-28 in this checkout, now a released-0.2.15 capsule with the
+shipped `devcapsule0` on PATH and the development CLI in the source tree's
+virtualenv; workflow commands ran through the development CLI per the local
+rule. Maintenance's publication notice was taken and acknowledged: **0.2.15
+is final and verified from the record**, tag `v0.2.15` at accepted RC1 source
+`a15ff8b`, acceptance record `releases/v0.2.15.json` on `main` (ancestry
+method, baseline `abb785d`), release branch merged through PRs #145, #146
+and #148, `main` reopened at 0.2.16.dev0 by PR #149 at `6980b60`. That
+closes the pause note's verification step and the proposal's candidate C2:
+0.2.15's additions are on `main`, so the 0.2.16 cut can be ordinary.
+Synchronized by merging `main` at `6980b60`: the definition changed only in
+its version line (0.2.16.dev0); two mechanical conflicts, this workstream's
+registry row kept beside maintenance's new row, and the 0.2.15 work order
+taking `main`'s implemented status. The owner's note that the pace has
+accelerated was checked against `main`: non-merge commits per week rose
+from about 35 in early August to about 90 through mid-September and about
+135-140 in the last two weeks; merged pull requests from 5-8 to 24, 53 and
+35; eight final releases since 2026-08-26, the last two days apart; since
+2026-09-19, 17 bug records opened and 19 closed. Activity counts, not value.
 
 Resumed 2026-09-27 at the owner's explicit direction, in this checkout,
 to consider what is reasonable for 0.2.16 and plan it, while 0.2.15 is
@@ -189,15 +209,16 @@ final, IntelliJ adding days. Nothing is registered until the owner decides.
 
 ## Planned Next Step
 
-Put the seven decisions in the proposal to the owner. On each decision:
+Collect the owner's 0.2.15 dogfooding feedback as it arrives: defects go
+to bug records owned by maintenance with their evidence, not into this
+status. Then put the seven decisions in the proposal to the owner. On each decision:
 register 0.2.16 in the registry with its driver and scope, deliver the
 scope to the driver by mail as a work order, file the two first-session
 UX bug records with target 0.2.16, and disposition the intake items the
 decision settles. Independently of the decisions, add the *Agent
 Freshness Review* section to the release runbook, the task acknowledged
 from maintenance's 2026-09-27 item, and reference it from preparation and
-final acceptance. After 0.2.15 is final: verify the published artifact and
-maintenance's acceptance record before the 0.2.16 cut.
+final acceptance. The 0.2.15 verification step is done (see *Current State*).
 
 Superseded 2026-09-27 by the owner's direction to plan ahead: after 0.2.15
 is released and the owner resumes this workstream, verify the published
@@ -306,9 +327,8 @@ submodules were changed.
 - Awaiting the human: the seven 0.2.16 decisions in the proposal, chiefly
   scope, driver, IntelliJ in or out, and the release-notes artifact. The
   registration waits on them; the runbook freshness section does not.
-- Awaiting 0.2.15: its final artifact and acceptance record, and how
-  maintenance lands its release-only additions on `main`, which the 0.2.16
-  cut depends on.
+- Awaiting the owner's 0.2.15 dogfooding verdict, which may add bug
+  records to the 0.2.16 triage candidate C9 or change the scope.
 - Weighed and unresolved: whether IntelliJ needs a new `ide-surfaces`
   workstream or fits a rescoped `eclipse-surface`; whether C7, choosing a
   newer recommended base from `config`, is left with anything after the
