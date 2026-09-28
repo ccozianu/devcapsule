@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-09-28; 0.2.15 final verified on `main`; owner dogfooding 0.2.15 in this capsule; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
+State: active 2026-09-28; website and visitor-content work orders issued under the owner's autonomy grant and delivered; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -24,6 +24,25 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+Afternoon of 2026-09-28: the owner found the website unpublished since
+2026-09-21 and its guides pinned to v0.2.12, defined the problem with the
+agent in [the documentation-currency design issue](2026-09-28-design-docs-current-at-release.md)
+(P1-P7, the per-version system S1, the pre-V1 support commitment D1 with
+approved wording), directed [the content–website contract, version 1](2026-09-28-design-content-website-contract.md),
+and then granted this workstream the remaining decisions and the plan, to be
+run without consulting the owner except for production promotion. Taken and
+recorded: six contract roles, `docs-<version>` project refs, 0.2.12
+published, 0.2.15 corrected on `docs-0.2.15`, a `planned` page status.
+Issued two work orders: [the website from the visitor's chair](../../work-orders/2026-09-28-website-visitor-experience.md),
+executed in the website repository and delivered there on branch
+`requests-from-devcapsule-2026-09-28` at `daa39fe`; and
+[the visitor content and producer migration](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md),
+executed here in `user-docs` (content), `website` (migration and pin) and
+this workstream (runbook and local workflow), delivered to the first two by
+mail at coordination `947f826ffc54` and `1326561eeba9`. The owner's design
+reference for the site is recorded in the website order. Documentation
+only; no build.
 
 Resumed 2026-09-28 in this checkout, now a released-0.2.15 capsule with the
 shipped `devcapsule0` on PATH and the development CLI in the source tree's
@@ -209,9 +228,19 @@ final, IntelliJ adding days. Nothing is registered until the owner decides.
 
 ## Planned Next Step
 
-Collect the owner's 0.2.15 dogfooding feedback as it arrives: defects go
-to bug records owned by maintenance with their evidence, not into this
-status. Then put the seven decisions in the proposal to the owner. On each decision:
+This workstream's own slices from the content work order, section 4, in
+order: (1) declare the `docs-<version>` project ref in `WORKFLOW-LOCAL.md`
+and create `docs-0.2.15` from `v0.2.15`, ready to receive user-docs'
+corrected guides; (2) add the three documentation obligations and the
+*Agent Freshness Review* section to the release runbook; (3) add the
+website publication as a candidate to the 0.2.16 proposal. When the owner
+selects `user-docs` or `website` in this checkout, those workstreams take
+their sections. Production promotion of the site stays the owner's single
+Actions run.
+
+Then collect the owner's 0.2.15 dogfooding feedback as it arrives: defects
+go to bug records owned by maintenance with their evidence, not into this
+status. Then put the seven decisions in the 0.2.16 proposal to the owner. On each decision:
 register 0.2.16 in the registry with its driver and scope, deliver the
 scope to the driver by mail as a work order, file the two first-session
 UX bug records with target 0.2.16, and disposition the intake items the
@@ -324,8 +353,13 @@ submodules were changed.
 
 ## Open Threads
 
-- Owner finding 2026-09-28, being defined problem by problem in the
-  design issue listed in the index; more problems are expected. Origin: the website at
+- Under the owner's grant of 2026-09-28, this workstream decides the
+  documentation and website plan alone; only production promotion and the
+  owner's later adjustments come back to the owner. The grant covers the
+  two work orders and the contract, not release scope. The decisions taken
+  are listed in the content work order, section 5.
+- Owner finding 2026-09-28, defined as P1-P7 in the design issue and
+  answered by the two work orders. Origin: the website at
   devcapsule.mycodespace.ai was last published 2026-09-21 and still pins the
   first-session guide to v0.2.12, although 0.2.14 and 0.2.15 have shipped.
   Three layers: the guide on `main` itself still says v0.2.12, so a republish
@@ -356,6 +390,7 @@ submodules were changed.
 
 ## Workstream Document Index
 
+- [Work order: the website from the visitor's chair](../../work-orders/2026-09-28-website-visitor-experience.md) and [work order: visitor content and producer migration](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md): issued 2026-09-28.
 - [Design: the content–website contract, version 1](2026-09-28-design-content-website-contract.md): proposed at the owner's direction; versioned `docs/`, roles for the distinguished pages, tokens, manifest, caching, six owner decisions.
 - [Design issue: the documentation is current when a release drops](2026-09-28-design-docs-current-at-release.md): work in progress, accumulating problem statements P1-P6 with evidence; no decision yet.
 - [0.2.16 planning proposal](2026-09-27-0216-release-planning.md): candidates, recommended scope, driver and the owner decisions; proposed 2026-09-27.
