@@ -1,6 +1,14 @@
+---
+description: Run DevCapsule on Windows through WSL2 and Docker Desktop's Linux integration, and open the capsule's desktop in your Windows browser.
+role: windows
+aliases:
+  - /docs/guides/windows-wsl2/
+weight: 2
+updated: 2026-09-28
+---
 # Windows: read this before installing
 
-DevCapsule v0.2.12 ships a **Linux Intel/AMD 64-bit executable**. On Windows,
+DevCapsule {{tag}} ships a **Linux Intel/AMD 64-bit executable**. On Windows,
 run it in a Linux distribution under **WSL2**, with Docker Desktop's Linux
 container integration enabled. PowerShell and Command Prompt cannot run the
 executable directly; Windows on ARM is not covered by this release.
@@ -28,8 +36,8 @@ integration setting. Keep your project under your Linux home directory, such
 as `~/hello-devcapsule`; Microsoft recommends the Linux filesystem for projects
 worked on with Linux tools in its [filesystem guidance](https://learn.microsoft.com/en-us/windows/wsl/filesystems).
 
-Now follow [your first session](first-session.md#1-get-devcapsule), running all
-host-terminal commands in this Linux terminal.
+Now follow [Install](../getting-started/install.md) and [your first session](../getting-started/first-session.md),
+running all host-terminal commands in this Linux terminal.
 
 ## Open the desktop in Windows
 
