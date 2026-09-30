@@ -20,6 +20,13 @@ No force-push or mainline implementation is needed.
 
 ## Producer Migration (2026-09-28)
 
+External state, 2026-09-30: this capsule's `/opt/xtras` holds Pagefind
+1.5.2 and Playwright 1.63.0 with Chromium under `/opt/xtras/playwright/browsers`,
+launchers in `/opt/xtras/bin`, `PLAYWRIGHT_BROWSERS_PATH` exported from the
+persistent shell profiles; personal installs at the owner's direction, mailed
+to project-management as a future-component request. Pagefind indexed the
+built site in 0.14 s; the website's W10 search bar would use it.
+
 2026-09-30, at the owner's explicit direction and from this checkout rather
 than a project-management selection, the owner overruling the workstream
 ceremony for three project-management documents: the contract promoted from
