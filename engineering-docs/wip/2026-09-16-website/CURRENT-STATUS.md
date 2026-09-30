@@ -6,7 +6,7 @@ Start date: `2026-09-16`
 
 State: paused 2026-09-30; the producer migration is merged (PR #152) and the versioned documentation is live at devcapsule.mycodespace.ai; the owner declared the effort done
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@b03863e6242d
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
 
 Branch association: `ws-website/contract-v1`, forked from `main` at `d9b9975` on 2026-09-28 under the `ws-` form; the earlier `website/initial-cut` is closed, everything it held is on `main`
 
