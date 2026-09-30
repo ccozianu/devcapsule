@@ -4,7 +4,7 @@ Mnemonic: `website`
 
 Start date: `2026-09-16`
 
-State: active 2026-09-28; producer migration to the content–website contract, version 1, with the pin advanced to the website's publication revision; awaiting the owner's PR
+State: paused 2026-09-30; the producer migration is merged (PR #152) and the versioned documentation is live at devcapsule.mycodespace.ai; the owner declared the effort done
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@b03863e6242d
 
@@ -19,6 +19,19 @@ the site live at `devcapsule.mycodespace.ai` before finishing the review.
 No force-push or mainline implementation is needed.
 
 ## Producer Migration (2026-09-28)
+
+**Done, 2026-09-30.** PR #152 merged the migration at `main` `2ec36b9`.
+The owner ran the test deployment and the production promotion; the live
+site's `build-info.json` records content revision `2ec36b9`, website
+revision `6759b9d`, contract 1, current 0.2.15, clean sources, built
+2026-09-28 21:08 UTC and served since 21:45 UTC. Checked live on
+2026-09-30: the home page, `/docs/`, `/docs/current/`, the current
+first-session guide rendering `v0.2.15` from its token, `/docs/0.2.14/`,
+`/releases/`, `/journal/`, `/sitemap.xml`. This closes W07-C (the README
+carries the markers), W08-C (manifest and front matter) and W12-C (the
+contract accepted on both sides). The owner declared the effort done and
+this workstream pauses; W04-C, W09-C and W11-C remain its retained tasks,
+and W00's sitemap submission is the website project's.
 
 Resumed 2026-09-28 at the owner's "just do it" after project-management's
 work order and the website repository's execution of all six slices of its
