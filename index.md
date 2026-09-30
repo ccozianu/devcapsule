@@ -93,6 +93,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Specifications
 
+- [The content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md)
 - [IDE profile prototypes](engineering-docs/specifications/product/ide-profile-prototypes.md)
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)

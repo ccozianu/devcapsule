@@ -138,9 +138,9 @@ obligations of the driving workstream, in the order the checklist meets them:
    single run in the website repository. Publication on the tag itself is
    a follow-up in the 0.2.16 planning.
 
-The contract these follow is the content–website contract, version 1, under
-`engineering-docs/wip/2026-08-09-project-management/`; the ideal structure of
-the documentation is in the 2026-09-28 visitor-content work order.
+The contract these follow is [the content–website contract, version 1](../../specifications/product/content-website-contract.md);
+the ideal structure of the documentation is in
+[the 2026-09-28 visitor-content work order](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md).
 
 ## Agent Freshness Review
 

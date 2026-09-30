@@ -20,6 +20,17 @@ No force-push or mainline implementation is needed.
 
 ## Producer Migration (2026-09-28)
 
+2026-09-30, at the owner's explicit direction and from this checkout rather
+than a project-management selection, the owner overruling the workstream
+ceremony for three project-management documents: the contract promoted from
+its open-work directory to `engineering-docs/specifications/product/`,
+marked accepted and naming the website's `CONTRACT.md` as authoritative;
+`WORKFLOW-LOCAL.md` and the release runbook now link it, and the local
+*Release Policy* says a release includes its documentation and names
+`docs/versions.yaml`; R-DOCS-003 set to accepted with a *Delivered* note.
+The website's own `CONTRACT.md` still links the contract at its old
+open-work path, a one-line fix for that project.
+
 **Done, 2026-09-30.** PR #152 merged the migration at `main` `2ec36b9`.
 The owner ran the test deployment and the production promotion; the live
 site's `build-info.json` records content revision `2ec36b9`, website

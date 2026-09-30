@@ -43,7 +43,12 @@ builds and publishes candidates through GitHub Actions; gates each candidate
 on a resolved main disposition, using ancestry, patch equivalence or the
 documented evidence record described in the guide; requires downloaded-artifact smoke
 evidence for acceptance; and keeps the acceptance record under
-`engineering-docs/releases/`.
+`engineering-docs/releases/`. Since 2026-09-28 a release also includes its
+documentation: the guide's *Documentation Is Part Of The Release* names the
+obligations, the documentation is published per
+[the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md),
+and `docs/versions.yaml` on `main` is the authored list of documented
+versions, promoted after every final tag.
 
 ## Documentation Refs
 
@@ -59,8 +64,8 @@ named in `docs/versions.yaml` as that version's `source` for as long as it
 exists; without it, the version's source is its final tag. The candidate gate
 does not apply to it; the website's build check does. Anyone may commit to
 it on the owner's or `project-management`'s direction; `user-docs` normally
-authors the corrections. See the content–website contract, version 1, under
-`engineering-docs/wip/2026-08-09-project-management/`.
+authors the corrections. See
+[the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md).
 
 ## Blog Entries
 

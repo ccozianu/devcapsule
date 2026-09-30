@@ -3,7 +3,7 @@ id: R-DOCS-003
 title: Website Content Carries Explicit Front Matter And A Versions Manifest
 type: requirement
 kind: concrete-requirement
-status: proposed
+status: accepted
 priority: wanted
 source_of_truth: repo
 verification:
@@ -22,6 +22,20 @@ product owner the same day. It has two parts: per-page front matter, and a
 versions manifest that gives the documentation the PostgreSQL shape, where the
 version is in the URL, `current` is the canonical copy, and every page carries
 a switcher. Landing-page section identities (W07) remain out of scope.
+
+## Delivered
+
+Accepted 2026-09-22 in principle and delivered 2026-09-28 as
+[the content–website contract, version 1](../../specifications/product/content-website-contract.md),
+whose authoritative text is the website repository's `CONTRACT.md`. The
+contract keeps this record's front matter and manifest, adds `role`, a
+`planned` status, version tokens with a typed-version check, `source-version`
+and the consumer's `legacy: true`, and takes the version of each directory
+from its source. `docs/versions.yaml` exists on `main` since PR #152 and the
+versioned documentation is live. The two questions this record left open are
+answered: documentation-only fixes to a released version go on a
+`docs-<version>` ref declared in `WORKFLOW-LOCAL.md`, and `current` is
+0.2.15.
 
 ## Statement
 
