@@ -32,7 +32,23 @@ source tree, so every bit of context about the project is available to all
 the LLMs and all the humans working on it.
 
 What's most important: the next human onboarding a DevCapsule project has
-to just `git clone`, and do a `devcapsule project run`.
+to just `git clone`, then `devcapsule project init` to review and approve
+what the project asks to run on their computer, and then
+`devcapsule project run`. That middle step is not ceremony, it is the whole
+point: nothing runs on your machine that you haven't seen and said yes to.
+Not a base image, not a vendor download, not the host access an LLM would
+love to have. You don't let software you're not aware of run on your
+computer, and neither does DevCapsule.
+
+What it buys you as a developer:
+
+- **Onboarding in minutes, not hours or days.** Clone, approve, run.
+- **A reproducible development environment**, with state-of-the-art software
+  engineering at your fingertips. Or go your own way!
+- **Tame the LLM.** The `rm -rf $HOME` stories stop at the capsule's wall.
+  Then unleash it where it belongs: writing the code, solving the problem.
+- **Leave and come back.** A month later, your IDE, your agents and your
+  tools are exactly as you left them.
 
 The only dependency we want on the local machine is either Linux or Windows
 (Mac maybe next month), a working Docker installation (use WSL2 on Windows)
