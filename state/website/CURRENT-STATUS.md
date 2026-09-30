@@ -547,6 +547,7 @@ W00 remains the highest website priority; this split does not reprioritize it.
 
 ## Documents
 
+- [Design idea: site search with Pagefind](2026-09-30-design-site-search-pagefind.md) — saved 2026-09-30, deferred; not 0.2.16 unless time is left (W10).
 - [Work order](../../work-orders/2026-09-16-website-autonomy.md)
 - [Transferred test publication input bug](../../bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
 - [Website developer guide](../../../website/README.md)
