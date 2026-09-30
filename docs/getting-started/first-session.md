@@ -31,7 +31,7 @@ for a few decisions. For this exercise:
 |---|---|
 | Project creator | Your email address or a project URL. It identifies the project; it is not a sign-in. |
 | Select the default agent? | `no` for now. [Adding an agent](../working-with-ai/choose-an-agent.md) takes one command later. |
-| Recommend `docker-daemon`, `network`, `development-sudo` or `host-browser`? | Press Enter at each to keep `none`. The exercise needs no extra host access; [Containment](../containment/the-boundary.md) explains each. |
+| Recommend `docker-daemon`, `development-sudo` or `host-browser`? | Press Enter at each to keep `none`. The exercise needs no extra host access; [Containment](../containment/the-boundary.md) explains each. |
 | Authorize this checkout to execute the base image? | Press Enter to accept the displayed image. |
 
 The base image is named after the build that produced it, so the prompt can

@@ -45,10 +45,13 @@ It prints every value and reason first and writes only when you press `y`.
 ## Grant for one run only
 
 ```bash
-~/.local/bin/devcapsule project run --authorize network host
+~/.local/bin/devcapsule project run --authorize host-browser true
 ```
 
-Run-once answers use the same grammar and are never recorded. Everything
+Run-once answers use the same grammar and are never recorded. Only an
+authorization the project declares can be answered at all, run-once or
+recorded; `config show` lists the declared ones, and the error names them
+when you ask for another. Everything
 after `--` goes verbatim to `docker run`; the options the launcher composes
 itself, such as `--network` and `--memory`, are refused with the sanctioned
 alternative named.
@@ -69,7 +72,7 @@ without the access.
 
 | Authorization | Values |
 |---|---|
-| `network` | `host`; omitted means the ordinary bridge |
+| `network` | `host`; omitted means the ordinary bridge; declared only by projects that need it |
 | `docker-daemon` | `host-socket`; omitted means no daemon |
 | `development-sudo` | `true`, `false` |
 | `host-browser` | `true`, `false` |
