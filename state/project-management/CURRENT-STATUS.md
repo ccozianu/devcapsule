@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-28 at owner direction; the pair moves to user-docs for the 0.2.15 content as a matter of urgency; work orders delivered; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
+State: paused 2026-10-01 at owner direction; the pair moves to component-upgrades for the consent design ruling; owner decisions of 2026-10-01 recorded (IntelliJ in 0.2.16 under component-catalog, in-capsule project commands a 0.2.16 fix, eclipse-surface archived); 0.2.16 driver and remaining decisions still awaited; 25 undecided intake items
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@48de1e1b1d15
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -29,7 +29,7 @@ Afternoon of 2026-09-28: the owner found the website unpublished since
 2026-09-21 and its guides pinned to v0.2.12, defined the problem with the
 agent in [the documentation-currency design issue](2026-09-28-design-docs-current-at-release.md)
 (P1-P7, the per-version system S1, the pre-V1 support commitment D1 with
-approved wording), directed [the content–website contract, version 1](2026-09-28-design-content-website-contract.md),
+approved wording), directed [the content–website contract, version 1](../../specifications/product/content-website-contract.md),
 and then granted this workstream the remaining decisions and the plan, to be
 run without consulting the owner except for production promotion. Taken and
 recorded: six contract roles, `docs-<version>` project refs, 0.2.12
@@ -219,12 +219,60 @@ The [proposal](2026-09-27-0216-release-planning.md) recommends 0.2.16 as
 agent freshness review, release notes as a gated artifact, the named
 build-context fix, the in-capsule guard bug, triage of the seven
 untargeted maintenance bugs, the two first-session UX fixes as bugs, and
-the first-session guide refresh. The checkout-naming default and an
-IntelliJ surface are the owner's options; the upgrade experience,
+the first-session guide refresh, and, by owner decision on 2026-10-01,
+IntelliJ IDEA as a second JetBrains surface (C12), validated by the
+parametrized IDE smoke test. The checkout-naming default is the owner's
+remaining option; the upgrade experience,
 mycodespace and the legacy L1-L13 capabilities are decisions, not 0.2.16
 implementation. Driver recommended: maintenance, cutting from `main` as an
 ordinary release. Estimate: one to two weeks of pair time after 0.2.15 is
 final, IntelliJ adding days. Nothing is registered until the owner decides.
+
+## Owner Decisions Of 2026-10-01
+
+Taken in this checkout, recorded here and in the proposal's addendum:
+
+1. **C12 is in 0.2.16.** IntelliJ IDEA as a second JetBrains surface; the
+   parametrized IDE smoke test makes a new surface cheap to accept.
+2. **An IDE is a component.** `component-catalog` is where new components
+   are accepted and tested, and owns IntelliJ and any later surface.
+   `component-upgrades` owns the code that wires components: orchestration,
+   upgrades, channels. Its name undersells that remit and stays; a rename
+   operation is not worth building. This is the standing routing rule for
+   component work from now on.
+3. **`eclipse-surface` concluded unsuccessfully and is archived** at
+   `engineering-docs/archive/2026-09-09-eclipse-surface/`. It had no
+   branch, no work and one unread fan-out notice, taken and acknowledged
+   in its log. Its entry survey is `component-catalog`'s starting material
+   for Eclipse. Row removed from the registry; index updated.
+
+4. **In-capsule `project` commands are a 0.2.16 fix.** Reproduced on
+   v0.2.15 in this capsule: `config show` refused from the project tree,
+   `config list`/`config show`/`versions show` failing from `/opt`, `info`
+   working everywhere. Ruling: inside a capsule every `project` subcommand
+   selects the capsule's project automatically. Bug records 2026-09-24
+   (now major, maintenance) and 2026-09-26 retargeted to 0.2.16 with the
+   three causes and the fix shape; proposal candidate C8 broadened.
+5. **Workstream selection is `devcapsule project workflow --select
+   <name>`**, not a top-level `workflow select`; inside a capsule it
+   inherits the automatic project selection above. Design request for
+   `workflow-improvements`, with the website-submodule tooling (a pin fact
+   in the brief, a pre-commit invariant on the gitlink, the owning
+   workstream declared in the `[workflow]` table), once the owner confirms
+   the local submodule rule.
+
+6. **Consent design.** The owner found that compatibility and consent
+   had been conflated and that consent prompts are too many to mean
+   anything. Problem statement and candidates recorded in the
+   [consent design issue](2026-10-01-design-consent-and-vendor-trust.md):
+   vendor terms once per vendor product per user, trust bound to a
+   verified channel rather than signatures, host access as the real
+   question. The owner intends to rule and fix it in `component-upgrades`.
+
+Delivered by mail to `component-catalog` the same day
+(`2026-10-01-project-management-ide-surfaces-are-yours.md`): the fold-in
+and the IntelliJ target, so it can lift its frozen-scope row and plan. The
+formal 0.2.16 work order still follows registration.
 
 ## Planned Next Step
 
@@ -380,13 +428,13 @@ submodules were changed.
   Actions runs that no runbook step names. Decisions are the owner's: whether
   documentation refresh and website publication become release gates, and
   which workstream owns each.
-- Awaiting the human: the seven 0.2.16 decisions in the proposal, chiefly
-  scope, driver, IntelliJ in or out, and the release-notes artifact. The
-  registration waits on them; the runbook freshness section does not.
+- Awaiting the human: the remaining 0.2.16 decisions in the proposal,
+  chiefly scope, driver, and the release-notes tooling. IntelliJ was
+  decided in on 2026-10-01 and given to `component-catalog`. The registration
+  waits on them; the runbook freshness section does not.
 - Awaiting the owner's 0.2.15 dogfooding verdict, which may add bug
   records to the 0.2.16 triage candidate C9 or change the scope.
-- Weighed and unresolved: whether IntelliJ needs a new `ide-surfaces`
-  workstream or fits a rescoped `eclipse-surface`; whether C7, choosing a
+- Weighed and unresolved: whether C7, choosing a
   newer recommended base from `config`, is left with anything after the
   base-contract change. The upgrade experience is deliberately kept out of
   0.2.16 as implementation; a parallel design slice is proposed instead.
@@ -403,9 +451,10 @@ submodules were changed.
 ## Workstream Document Index
 
 - [Work order: the website from the visitor's chair](../../work-orders/2026-09-28-website-visitor-experience.md) and [work order: visitor content and producer migration](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md): issued 2026-09-28.
-- [Design: the content–website contract, version 1](2026-09-28-design-content-website-contract.md): proposed at the owner's direction; versioned `docs/`, roles for the distinguished pages, tokens, manifest, caching, six owner decisions.
+- [The content–website contract, version 1](../../specifications/product/content-website-contract.md): accepted 2026-09-28, promoted to the specifications on 2026-09-30; the website's `CONTRACT.md` is the authoritative text.
 - [Design issue: the documentation is current when a release drops](2026-09-28-design-docs-current-at-release.md): work in progress, accumulating problem statements P1-P6 with evidence; no decision yet.
 - [0.2.16 planning proposal](2026-09-27-0216-release-planning.md): candidates, recommended scope, driver and the owner decisions; proposed 2026-09-27.
+- [Design issue: consent that means something](2026-10-01-design-consent-and-vendor-trust.md): four questions under one word, vendor terms once per user, trust bound to a verified channel; opened 2026-10-01, undecided.
 - [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/agent-defaults scope, guard deferral and acceptance checks.
 
 - [0.2.14 release overview](../../releases/v0.2.14/README.md): maintained release checklist and evidence.
