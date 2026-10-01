@@ -4,9 +4,9 @@ Name: `user-docs`
 
 Start date: `2026-09-12`
 
-State: active 2026-09-28; writing the 0.2.15 documentation under the content work order as a matter of urgency; the ideal structure with planned stubs
+State: paused 2026-09-28 evening; UD-006 items 1-7 merged in PR #151 and carried onto docs-0.2.15; the pair moves to the website workstream for the producer migration at the owner's direction
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@48de1e1b1d15
 
 Branch association: `ws-user-docs/first-session`
 
@@ -151,6 +151,31 @@ or an immediate installation task.
    defect to send back. Owns `docs/guides/working-in-workstreams.md` from the
    same date.
 
+## Alignment Check With The Website, 2026-09-28
+
+The website executed all six slices of its work order on stacked branches,
+`publication` at `31e85b1` being the top; its `CONTRACT.md` matches the
+producer's design with its section 11a decisions and adds an additive
+`legacy: true` manifest field for pre-contract sources. Checked here with
+the submodule working tree on `publication`: `npm test` 21 passing; against
+this checkout with a scratch `docs/versions.yaml` and scratch journal front
+matter, neither committed, `npm run check:content` passed, 176 pages, all six
+roles resolved, 0.2.14 and 0.2.12 reused as legacy, and a full build passed
+`npm run check`. What the producer still owes, the website's four requests:
+the manifest; front matter on the six journal entries with `draft: true` on
+the two 2026-09-19 retrospectives; three quoted descriptions, fixed here at
+`1b60e59`; and the pin advance with the gate running the check, which lands
+together with the first two as the website workstream's migration change.
+An accidental pin advance swept into `84c4e1b` by a broad `git add` was
+restored at `c624e2f`; the pin moves with the migration, not this branch.
+
+## Proposed Improvements For 0.2.16 And After
+
+The list is [a dated note](2026-09-28-docs-improvements-for-0216.md),
+proposed 2026-09-28. By the owner's direction of the same day, deciding on
+it is a blocker for 0.2.16; the direction was mailed to
+`project-management`. Accepted items become UD tasks here when decided.
+
 ## Accepted Later Requirement: OpenCode Setup
 
 Owner direction, 2026-09-15: user-docs will test and document an adopter setup
@@ -284,6 +309,10 @@ without conflict and pushed.
 
 ## Open Threads
 
+- Paused 2026-09-28 evening so the same pair can do the website workstream's
+  producer migration, at the owner's "just do it". Resume with the owner's
+  decisions on the improvement list, then item 8 of UD-006. Nothing external
+  is running; the descriptions fix at `1b60e59` awaits this branch's PR.
 - 2026-09-24: at the owner's explicit direction, wrote the proposed
   [mycodespace design note](../../design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
   here while paused. It is product direction and belongs to
@@ -331,6 +360,7 @@ it is not a change to another workstream's handoff.
 
 ## Documents
 
+- [User documentation improvements for 0.2.16 and after](2026-09-28-docs-improvements-for-0216.md) — proposed 2026-09-28; deciding it blocks 0.2.16.
 - [R-DOCS-003 Website content carries explicit front matter and a versions manifest](../../requirements/product/r-docs-003-website-content-carries-front-matter.md) — producer side of the content–website contract, proposed 2026-09-22.
 - [How the website is published, and what it still lacks](../../implementation-notes/website/2026-09-22-website-publishing-contract.md) — mechanism, author rules, gap inventory.
 - [Website autonomy work order](../../work-orders/2026-09-16-website-autonomy.md) — agreed experiment brief handed to website.
