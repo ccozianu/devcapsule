@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: maintenance
 opened: 2026-08-03
+closed: 2026-09-25
 requirements: [R-DEV-001, R-STATE-001, R-FRAMEWORK-001]
 ---
 
@@ -142,3 +143,8 @@ moves credentials into an image or checkout-generated artifact.
 ## Official Source
 
 - [OpenAI Codex environment variables: core locations](https://learn.chatgpt.com/docs/config-file/environment-variables#core-locations)
+
+## Closure, 2026-09-25
+
+Owner ruling during 0.2.14 acceptance: the condition is no longer the case.
+The rc4 runtime plan sets CODEX_HOME for the codex component; the owner confirms the condition no longer occurs.

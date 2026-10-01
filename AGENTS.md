@@ -169,7 +169,11 @@ Synchronize normally by rebasing. Before editing, `devcapsule workflow claim
 pause; a claim informs and never refuses. To
 send an intake item to another workstream, deliver it by mail on the
 coordination branch, `devcapsule workflow mail send <recipient> <file>`,
-never through `main` and never by editing the recipient's directory. Take
+never through `main` and never by editing the recipient's directory. Work
+you discover belongs to another workstream travels to it the same way, as a
+patch in an item, and is reverted from your checkout, never committed on
+your branch; see *A misplaced change travels to its owner as a patch* in
+`WORKFLOW.md`. Take
 your own mail at session start and before pausing, `devcapsule workflow mail
 take`, then commit the taken items on the working branch; decide each with a
 decision-log entry and the file's deletion in one commit. Registrations, your

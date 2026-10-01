@@ -17,10 +17,10 @@ import uuid
 
 import pytest
 
-from devcapsule.base_image import BaseImageBuildOptions, build_base_image_spec, file_sha256
+from devcapsule.images.base import BaseImageBuildOptions, build_base_image_spec, file_sha256
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.container_runtime.contract import DisplayPlan, Identity, RuntimePlan
-from devcapsule.image_build import render_build_context
+from devcapsule.images.build import render_build_context
 from devcapsule.materialization import ArtifactSpec, ImageDetails, ensure_materialized_surface
 
 DEFAULT_BASE_IMAGE = str(tomllib.loads(
@@ -38,7 +38,20 @@ BUILD_NETWORK_ARGS = (
 
 
 def command(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(args, check=check, text=True, capture_output=True)
+    """Run a command, and when it fails, fail with its output in the message.
+
+    ``subprocess.run(check=True)`` raises without the captured streams, so a
+    failing ``docker build`` used to leave nothing to diagnose (the rc2
+    release run of 2026-09-24). The output stays captured for the callers
+    that read it; only the failure path changes.
+    """
+    completed = subprocess.run(args, check=False, text=True, capture_output=True)
+    if check and completed.returncode != 0:
+        raise AssertionError(
+            f"{' '.join(args)!r} exited {completed.returncode}\n"
+            f"--- stdout ---\n{completed.stdout[-4000:]}\n--- stderr ---\n{completed.stderr[-4000:]}"
+        )
+    return completed
 
 
 def create_jetbrains_fixture(path: Path) -> bytes:

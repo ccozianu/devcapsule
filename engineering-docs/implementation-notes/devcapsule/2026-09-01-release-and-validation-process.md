@@ -6,29 +6,61 @@ new versions. Project management owns this release-process decision and its
 documentation; completing it does not depend on delegation to another
 workstream. The guide was originally recorded on 2026-09-01.
 
-The normal sequence is **prepare → publish an RC → validate the downloaded RC
-→ record acceptance → integrate → tag the accepted source → verify the final
-release**. An ordinary CLI release reuses its pinned base. The workflow builds
-and publishes the artifacts; the operator supplies acceptance and performs
-integration and tagging.
+The normal sequence is **prepare and cut → account for fixes on main → publish
+an RC → validate the downloaded RC → record acceptance → integrate the acceptance
+record → tag the accepted source → verify the final release**. Repeat the fix
+and candidate steps as needed. An ordinary CLI release reuses its pinned base.
+The workflow builds and publishes artifacts; the operator supplies acceptance.
+GitHub PRs and workflow operations are owner-operated through the UI, as stated
+in `WORKFLOW-LOCAL.md`; agents prepare changes and push through ordinary Git.
+
+Owner clarification, 2026-09-22: release-blocking bugs must be addressed on main
+as well as on the release line, while main stays open to unrelated development.
+Merge when suitable; otherwise use cherry-picking, an adapted fix, or evidence
+that main is unaffected. *Release Fixes And Main* below defines that judgment.
+This supersedes the generic workflow's blanket merge-only restriction through
+the recorded local exception, pending the generic definition's correction.
+
+Requirements: `R-PRODUCT-006`.
+
+## Release Working Documents
+
+Maintain `engineering-docs/releases/vX.Y.Z/README.md` as the release overview,
+checklist and candidate history, with `bugs.md` for bug dispositions and next
+actions. Update these files as work proceeds; chat should highlight changes
+and decisions rather than repeatedly reproduce the inventory. Add further
+evidence files only when needed. See the [0.2.14 working directory](../../releases/v0.2.14/README.md).
+
+Linked bug records remain authoritative for status, severity, target, ownership
+and technical evidence; keep their working-table summaries reconciled. The
+driving workstream maintains these release documents, while its status file
+links here for resumption. Retain them after release. The existing sibling
+`vX.Y.Z.json` remains the machine-checked acceptance record, created only when
+an exact candidate is accepted; the working directory does not replace it.
 
 ## Operator Checklist
 
 The commands below use v0.2.11 as the worked example. For a new release,
 substitute its version and candidate number; never recreate or move an existing
 published tag. Run Git commands from the repository root. Python commands use
-the checkout-local environment described in the [developer setup](../../../DEVELOPING.md#developer-setup).
+the checkout-local environment described in the [developer environment](../../development/developer-environment.md).
 
-1. **Prepare a committed release slice.** Select the version and scope, record
-   the full preparation-baseline SHA, and run `nox -s build` from
-   `devcapsule-src` through `.venv/bin/python -m nox -s build`. Keep source edits
-   on the selected workstream branch. `release-X.Y.Z` is a retained ref to the
-   release source, not a change of editing workstream. A maintenance patch may
-   start from the previous final tag when main contains unrelated or unready
-   work. Choose its integration method before promoting it.
-2. **Publish the first candidate.** Create the matching release ref and an
-   immutable `vX.Y.Z-rc0` tag, then push them atomically using the commands in
-   *Release Identity And Trigger*. Wait for **Publish DevCapsule PEX** to pass
+1. **Prepare and cut.** The owner selects version, scope and the cut. The
+   workstream whose deliverable is the headline drives; maintenance drives a
+   patch to an already released version; project-management settles an unclear
+   driver. Integrate the driving workstream's prepared slice into main, then
+   create `release-X.Y.Z` at that merge commit and record its full SHA as the
+   preparation baseline. A maintenance patch may instead start at the prior
+   final tag. The release branch becomes the driving workstream's selection;
+   its former working branch closes for modification. Update its registry row
+   to `active; releasing X.Y.Z` with the release branch association. Set or
+   confirm the source version no later than the first release-branch commit,
+   and run `.venv/bin/python -m nox -s build` from `devcapsule-src`. Run the
+   *Agent Freshness Review* below and record its table in the release overview.
+2. **Account for main and publish the first candidate.** Follow *Release Fixes
+   And Main* and the current candidate gate below. Push the release branch for
+   review; verify the applicable main disposition before creating an immutable
+   `vX.Y.Z-rc0` tag. Wait for **Publish DevCapsule PEX** to pass
    and publish a non-draft GitHub prerelease with all three assets: the PEX,
    its checksum file, and `release-manifest.json`.
 3. **Validate the published candidate.** Download and checksum-check its PEX;
@@ -37,22 +69,31 @@ the checkout-local environment described in the [developer setup](../../../DEVEL
    in the CLI README. Use the full-base `--build-base` mode when validating
    the base recipe; ordinary CLI releases need not rebuild or publish a base.
    Record actual evidence for changed GUI, login, and provider behavior.
-   Fixture tests cannot supply that acceptance. For a source fix, commit it,
-   advance the release ref without dropping earlier candidates, and publish
-   the next RC number. Repeat until an exact candidate is accepted.
+   Fixture tests cannot supply that acceptance. Before accepting a candidate,
+   satisfy *Documentation Is Part Of The Release* below: the release branch's
+   `docs/` describes this version and passes the website's build check.
+   Make release-blocking fixes on
+   the release branch, account for the bug on main using the appropriate method,
+   and publish the next RC number without changing earlier tags. Repeat until
+   an exact candidate is accepted; do not add unrelated development to the release.
 4. **Record acceptance.** Run `prepare-promotion.py` as shown below with the
    accepted RC, preparation baseline, accepting operator, and evidence. Review
-   the generated record. For v0.2.11 the accepted candidate was **RC3**, not
-   RC0 or a later workstream tip. Commit the record on the integration side,
-   leaving the accepted candidate's source unchanged.
-5. **Integrate.** Deliver the release changes and acceptance record through
-   the normal PR process, then fetch and verify them on remote `main`. Follow
-   the repository's merge policy. If integration rewrites commit identities,
-   use the documented `reviewed` evidence method instead of claiming ancestry.
-   A scoped exception is a separately authorized alternative, not the normal
-   release path. Do not rebase the tested candidate to make it match main.
+   the generated record. Recheck the freshness review's vendor pointers; a
+   version that appeared meanwhile gets an adopt-or-hold decision, never a
+   silent replacement of the accepted candidate. For v0.2.11 the accepted candidate was **RC3**, not
+   RC0 or a later workstream tip. Commit the record after the accepted candidate
+   on the release branch, leaving the accepted candidate's source unchanged.
+5. **Integrate acceptance.** Deliver the acceptance record through the normal
+   PR process and verify it on remote main. If a whole-branch merge is unsuitable,
+   deliver the record separately along with the reviewed main dispositions;
+   do not carry incompatible release code into main merely to deliver its record.
+   Use `ancestry` only when it holds, and `reviewed` for an evidenced alternative.
+   A genuinely outstanding main fix needs explicit scope and follow-up; a failed
+   merge alone does not authorize leaving the bug in main. Do not rebase the
+   tested candidate to make it match main.
 6. **Publish the final tag at the accepted candidate commit.** Use the final
-   tagging commands below. Wait for the final backend run to finish. It
+   tagging commands below, and not before `engineering-docs/releases/vX.Y.Z/notes.md`
+   exists on the release branch. Wait for the final backend run to finish. It
    rebuilds version metadata, checks frozen inputs against the RC, and repeats
    the automated gates. A pushed tag alone does not mean a successful release.
 7. **Verify delivery.** Confirm the GitHub release is non-draft and is a final
@@ -61,7 +102,106 @@ the checkout-local environment described in the [developer setup](../../../DEVEL
    `./devcapsule.pex version --json`. Check its version, build mnemonic, and
    source revision against the final tag and acceptance record. Record the
    release URL, successful Actions run, and verification result in the owning
-   workstream's handoff. Retain the release branch and candidate tags.
+   workstream's handoff. Retain the release branch and candidate tags. After
+   final publication the release branch closes; resume ordinary work on a fresh
+   `ws-<name>/...` branch from main or conclude the driving workstream. Reopen
+   main with the next development version as `WORKFLOW-LOCAL.md` specifies.
+   Then promote the version in `docs/versions.yaml` on main, demote the
+   previous ones, and publish the website, per *Documentation Is Part Of The
+   Release*.
+
+## Documentation Is Part Of The Release
+
+Owner grant of 2026-09-28, exercised by `project-management`, after 0.2.15
+shipped while the website still documented v0.2.12: a release is not complete
+until the documentation describes it and the site serves it. Three
+obligations of the driving workstream, in the order the checklist meets them:
+
+1. **Before the final tag, the release's `docs/` is true for the version.**
+   On the release branch, every guide describes this version's behaviour,
+   names no version literally (the contract's tokens render it), and passes
+   the website's build check at the pinned consumer revision. Corrections
+   discovered after the tag go on the `docs-<version>` ref that
+   `WORKFLOW-LOCAL.md` declares, never on the closed release branch.
+2. **Before the final tag, the release notes exist** as
+   `engineering-docs/releases/vX.Y.Z/notes.md` on the release branch: plain
+   Markdown for adopters, what changed for them, compatibility exceptions
+   with remedies, tested agent versions and holdbacks from the freshness
+   review, deferred items. The GitHub release body is this file. Automating
+   that in the backend is release-tooling work, tracked in the 0.2.16
+   planning; until then the operator pastes it.
+3. **After the final tag, the manifest and the site follow.** On `main`,
+   `docs/versions.yaml` gains or promotes the version to `supported` and
+   `current` and demotes the previous ones under the owner's pre-V1 notice;
+   then the website is published, test deployment and candidate from this
+   repository's Website workflow, production promotion by the owner's
+   single run in the website repository. Publication on the tag itself is
+   a follow-up in the 0.2.16 planning.
+
+The contract these follow is [the content–website contract, version 1](../../specifications/product/content-website-contract.md);
+the ideal structure of the documentation is in
+[the 2026-09-28 visitor-content work order](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md).
+
+## Agent Freshness Review
+
+Owner direction of 2026-09-27, first applied in 0.2.15: every release tries
+to upgrade the supported AI agent CLIs to their then-current generally
+available versions, since newer clients reach newer models.
+
+For every release, review each supported agent CLI, today Codex, Claude Code
+and Antigravity, against its vendor's current generally available release,
+not beta or nightly channels. Record in the release overview a table of the
+date, the vendor source consulted, the current pin, the candidate and the
+disposition. Attempt the upgrades: acquire the exact artifacts through the
+trusted component mechanisms, verify checksums and platform compatibility,
+and validate configuration defaults, an ordinary tool action and state
+persistence on the selected versions before accepting new pins. Record a
+concrete reason and a follow-up for every holdback and for every feed that
+could not be checked. Keep checkout-selected version sets and acquisition
+consent intact; an upgrade grants nothing new.
+
+Recheck the vendor pointers before final acceptance. A version that appears
+during acceptance gets an adopt-or-hold decision recorded in the overview;
+adopting it means a new candidate and the relevant validation again, never a
+pin changed under an accepted candidate. The release notes carry the tested
+versions and the holdbacks. A newer CLI alone does not establish that an
+account can use a particular model; say what was verified.
+
+## Release Fixes And Main
+
+During stabilization, fix bugs that block the selected release. For each fix,
+inspect current main and use judgment in this order:
+
+1. **Merge when suitable.** Prefer merging the release branch into main when
+   the result preserves main's current behavior and the correction. Resolve
+   ordinary conflicts and validate the result; a textual conflict alone does
+   not make a merge unsuitable. Never hold unrelated workstreams out of main
+   merely to keep this merge easy.
+2. **Cherry-pick when a selective transfer fits.** Transfer the relevant fix
+   through an ordinary mainline PR when a whole-branch merge is inappropriate.
+   Retain its origin, for example with `git cherry-pick -x`, and test it on main.
+3. **Adapt the reasoning when the implementation differs.** If main's APIs,
+   architecture or dependencies have changed, correct the same failure in the
+   implementation main actually uses. Link the release fix and the main fix
+   in the bug record, with the validation for each. Textual patch identity is
+   neither necessary nor sufficient to establish this result.
+4. **Establish that main is unaffected when that is the case.** Identify the
+   failure's necessary conditions and explain why they cannot occur at the
+   inspected main revision, supported by relevant code reasoning and, where
+   useful, a focused regression check. An already-delivered fix may supply
+   that evidence. A failed cherry-pick or passing unrelated tests do not.
+
+Record the release revision, main revision and disposition with the bug. Keep
+the evidence proportional: enough for another engineer to assess the conclusion,
+without a separate approval round for the method. This is the owner's standing
+direction. Ancestry records history, not whether conflict resolution or a later
+revert preserved a fix. Review the behavior on each applicable line.
+
+The same judgment applies when a release-relevant fix is first discovered on
+main: selectively transfer or adapt it onto the release line, validating there,
+without importing unrelated mainline work. Never rebase a published release or
+move an existing candidate tag. Main's work and the release's stabilization can
+proceed concurrently.
 
 ## The Successful v0.2.11 Reference
 
@@ -84,13 +224,22 @@ distinction when using it as a template for a release with different changes.
 
 ## Release Identity And Trigger
 
-Prepare a release on `release-MAJOR.MINOR.PATCH` and push an immutable candidate
-tag such as `v0.2.11-rc1` at the prepared commit. A patch can start from the prior
-release tag rather than current main. `release-*` refs are durable release
-anchors, separate from workstream selection, as authorized on 2026-09-09.
+Prepare a release on `release-MAJOR.MINOR.PATCH`, selected by the driving
+workstream through its registry row. Start from the integrated cut commit, or
+the prior final tag for a maintenance patch. These commands illustrate the cut;
+use the version and full baseline SHA selected by the owner:
 
 ```text
-git branch release-0.2.11 HEAD
+git switch -c release-0.2.11 FULL_PREPARATION_BASE_SHA
+```
+
+Set or confirm the version, update the driving workstream's records, validate,
+commit and push the release branch. Account for the mainline result using
+*Release Fixes And Main* before tagging. Where merging is appropriate, the owner
+merges the release PR in the GitHub UI and the agent fetches main to verify it.
+Then tag the exact prepared commit on the release branch, not main's merge tip:
+
+```text
 git tag -a v0.2.11-rc0 -m 'DevCapsule 0.2.11 candidate 0'
 git push --atomic origin release-0.2.11 v0.2.11-rc0
 ```
@@ -100,31 +249,43 @@ previous tags unchanged. `.github/workflows/release-pex.yml` requires the tag's
 commit to belong to the matching release branch. Main stays open; do not rebase
 tested release source onto it.
 
-**A candidate builds only from source main already has.** Owner rule of
-2026-09-13, enforced by `scripts/release-protocol.py` for every candidate tag:
-each commit the release branch carries since it left main must be merged or
-cherry-picked to main (patch equivalence counts, so a cherry-pick with a
-different SHA is integrated) before the candidate is tagged. The only way past
-the gate is an explicit, documented exception committed on the release branch
-at `engineering-docs/releases/<tag>-integration-exception.json` — for example
-a patch to an old release too far from mainline — with `schema-version` 1,
+**Current candidate gate and its limits.** The 2026-09-22 decision changes the
+allowed integration methods; this guide retains the existing timing of resolving
+the main disposition before each candidate. `scripts/release-protocol.py` accepts
+commits reachable from main or patch-equivalent cherry-picks. Its check ignores
+merge commits and cannot establish semantic correctness, recognize an adapted
+implementation, or prove that a bug does not affect main. Human/agent review
+supplies those judgments; a green ancestry or patch check does not replace them.
+
+For an evidenced main disposition that this check cannot recognize, use its
+existing record at `engineering-docs/releases/<tag>-integration-exception.json`
+on the release branch before tagging. The schema requires `schema-version: 1`,
 the `tag`, `authorized-by`, `rationale`, `forward-port-owner` and `follow-up`.
-The gate embeds the outcome (`mainline`, or `exception` with the record and the
-unintegrated commits) in the candidate's release manifest, and a rerun keeps
-the published fact rather than recomputing it against a main that has moved
-on. In practice: open and merge the working branch's pull request first, then
-cut the candidate.
+For a routine adaptation or unaffected-main case, cite the owner's standing
+2026-09-22 direction in `authorized-by`, the exact main revision and bug evidence
+in `rationale`, and the responsible workstream in `forward-port-owner`. State
+the completed main disposition in `follow-up`, including when no further fix is
+needed. The field names are the existing gate's compatibility format, not a
+requirement to invent unfinished work or ask the owner to approve the method
+again. Account for release-only metadata as well as code changes.
+
+A genuinely unresolved main bug is different: the normal propagation obligation
+is not satisfied. Record the blocker and obtain an explicit owner decision before
+deferring it; merge difficulty alone is not that authority. The gate embeds
+`mainline` or the `exception` record and unmatched commits in the manifest.
+The release manifest preserves the captured evidence for retries.
 
 The tag supplies the package version of a *tagged* build. `scripts/build-pex.sh`
 stamps package metadata and `_build_info.json` in a temporary directory:
 `v0.2.11-rc1` becomes `0.2.11rc1`, and `v0.2.11` becomes `0.2.11`. The source
 version in `pyproject.toml` is what everything else reports — local builds
 (`v0.2.12-local-…`), source-form runs, `pip show devcapsule` after an editable
-install — so it must not lag the release. **Bump it to the release version in
-the first commit on the release branch** (`nox -s bump 0.2.12`), before the
-first candidate tag; the bump reaches main through the release's ordinary
-integration. Recorded 2026-09-13 after the baseline had silently stayed at
-0.2.10 through the v0.2.11 release and the first v0.2.12 candidate.
+install — so it must not lag the release. **Set or confirm the release version
+no later than the first release-branch commit**. The owner may have set it
+earlier; otherwise use `.venv/bin/python -m nox -s bump -- 0.2.11` for this
+worked example. Preserve main's intended development version when accounting
+for release metadata there. This retains the purpose of the 2026-09-13 fix
+for a baseline that lagged its releases, while accommodating an earlier owner bump.
 
 ## Automated Candidate Release
 
@@ -134,13 +295,23 @@ The tag workflow:
 2. Recovers exact existing assets, or builds the self-contained PEX.
 3. Records source identity, base digests, checksum, build-input hashes, dependency
    distribution fingerprints and the embedded Python fingerprint in the manifest.
-4. Runs packaging integration tests, a clean-machine proof with no Python or
-   networking, Docker component-install reuse and exact launcher delivery tests
-   for both surface families, and runtime-session tests on each pinned base.
-   Fixture IDEs do not claim real GUI or authenticated provider smoke.
-5. Retains build artifacts, creates a draft release, downloads and compares its
-   bytes, and repeats the clean-machine proof against the download.
+4. Runs the packaging integration tests against the built PEX. Nothing in
+   the workflow runs Docker: a hosted runner is an environment nobody
+   controls, and a proof that depends on it gates the candidate on the runner
+   (owner ruling 2026-09-24, after rc2 of 0.2.14 failed on a Docker build
+   that rc1 had passed hours earlier with identical test code).
+5. Retains build artifacts, creates a draft release, downloads the assets and
+   compares their bytes and checksum with the build.
 6. Publishes candidates as GitHub prereleases with Latest disabled.
+
+The Docker-backed proofs moved to local acceptance of the downloaded assets,
+run by the driving workstream and recorded in the release overview: the
+clean-machine proof (`nox -s pex_clean_machine` with `DEVCAPSULE_PEX_UNDER_TEST`
+set to the download), component-cache reuse and launcher delivery
+(`pytest -m e2e tests/e2e/test_component_cache.py`), and the runtime session
+on each pinned base (`tests/e2e/test_runtime_image.py` with
+`DEVCAPSULE_E2E_BASE_IMAGE`). A candidate is not accepted without them; they
+are simply run where the environment is known.
 
 An incomplete or inconsistent staged asset set fails explicitly. Recover partial
 uploads from the retained Actions artifact. Reruns verify and test the existing
@@ -149,7 +320,7 @@ bytes; they never replace published candidate assets or move tags.
 ## Acceptance And Final Promotion
 
 Accept an exact candidate's checksum and source commit with smoke/E2E evidence.
-Generate the reviewable record on the integration side:
+Generate the reviewable record on the release branch after candidate acceptance:
 
 ```text
 cd devcapsule-src
@@ -160,9 +331,11 @@ cd devcapsule-src
 
 The helper downloads and checksum-verifies the candidate and creates
 `engineering-docs/releases/v0.2.11.json`. It does not perform or invent smoke
-acceptance. Commit the record and integrate the candidate through normal PR
-delivery. Keep the release branch and accepted tag at their tested source commit;
-main can additionally contain the acceptance record and unrelated development.
+acceptance. Commit the record and deliver it to main through normal PR review,
+using a separate record delivery when merging the whole release branch is
+unsuitable. Keep the accepted tag at its tested source commit; the release branch
+may advance to carry its acceptance record. Main can contain that record and
+unrelated development without changing the candidate.
 
 The record has schema version 1, `tag`, `candidate-tag`, `source-revision`,
 `candidate-sha256`, `accepted-by`, a nonempty `evidence` list, and `integration`:
@@ -171,9 +344,12 @@ The record has schema version 1, `tag`, `candidate-tag`, `source-revision`,
   accepted candidate must be an ancestor of main, including ordinary merge commits.
 - `reviewed`: additionally supply `main-commits` (full SHAs), `reviewed-by`,
   `rationale`, and `covers-release-delta: true`. Every referenced commit must be
-  reachable from main. The reviewed assertion covers the entire baseline-to-RC
-  delta, including adaptations in a cherry-pick or squash; patch IDs alone do
-  not establish that claim.
+  reachable from main. Identify the integrated or examined main commits for
+  cherry-picked, adapted, already-fixed or unaffected-main dispositions. The
+  reviewed assertion accounts for the entire baseline-to-RC delta, including
+  release-only metadata; it does not claim the two trees are identical. Patch
+  IDs alone do not establish the behavioral result. Review the generated record
+  and select this method instead of the default when ancestry is inappropriate.
 - `exception`: additionally supply `authorized-by`, `rationale`,
   `forward-port-owner`, and `follow-up`. This is a scoped authorization in a
   reviewed engineering record, not a boolean bypass. Baseline still applies.
@@ -186,7 +362,8 @@ git push origin v0.2.11
 ```
 
 The backend checks release-branch membership, reads the record from a captured
-main revision, validates acceptance/integration, downloads the published candidate
+main revision, validates the acceptance/integration record's structural conditions,
+downloads the published candidate
 and verifies its checksum, then builds final-version bytes from exactly the same
 source SHA. It compares base, dependency and Python fingerprints with the candidate
 and reruns all automated gates before final publication. The final manifest embeds
@@ -282,9 +459,11 @@ This tests reuse itself rather than only the generated Dockerfile text.
 
 `nox -s build` remains the local gate. The explicit Docker cache/runtime check
 is `python -m pytest --no-cov -m e2e tests/e2e/test_component_cache.py` after
-building the local PEX and making `ubuntu:24.04` available. The release workflow
-runs it against the actual release artifact. Packaging tests also build a tag
-whose version differs from the source baseline and verify source remains clean.
+building the local PEX and making `ubuntu:24.04` available; run it, and the
+clean-machine and runtime-image checks above, locally against the downloaded
+release artifact, since the release workflow no longer runs Docker. Packaging
+tests also build a tag whose version differs from the source baseline and
+verify source remains clean.
 
 Product-owner GUI/login acceptance for changed component behavior remains part
 of development and integration. Fixture tests do not replace that evidence or

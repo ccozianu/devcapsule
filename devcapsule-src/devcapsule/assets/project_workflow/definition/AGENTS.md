@@ -38,7 +38,8 @@ take`, claim your slice with `devcapsule workflow claim "<slice>"` before
 editing and release it when you pause, and propose whether to synchronize with
 `main` now, from the list's facts: a changed definition or local workflow
 file is a must, otherwise weigh it and say why; send items with `devcapsule workflow mail
-send`; publish your status file with `devcapsule workflow publish` at each
+send`, including a patch for work that turns out to belong to another
+workstream, reverted from your checkout rather than committed on your branch; publish your status file with `devcapsule workflow publish` at each
 checkpoint and before pausing. Records reach `main` only inside your ordinary
 integration; nothing is merged for a record alone. A workstream-list row whose
 branch association names a `release-<version>` branch means that workstream is

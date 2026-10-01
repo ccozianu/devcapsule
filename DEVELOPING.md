@@ -2,230 +2,98 @@
 
 [Back to DevCapsule](README.md)
 
-DevCapsule creates reproducible, resumable development environments for humans
-and AI coding agents. It combines a real IDE, agent-ready development tooling,
-versioned project memory, and explicit boundaries around access to the host.
+DevCapsule creates reproducible, resumable development environments for
+humans and AI coding agents: a real IDE, agent-ready tooling, versioned
+project memory, and explicit boundaries around access to the host. The
+product is one Python distribution project in `devcapsule-src/`, shipped as
+a single Linux executable. This page is the brief; each subject has its own
+document under [`engineering-docs/development/`](engineering-docs/development/README.md).
 
-The active Python distribution project lives in `devcapsule-src/`; its import
-package remains `devcapsule`.
-Project lifecycle operations and workstation image operations now have
-separate noun-oriented command trees:
+## Contents
 
-```text
-devcapsule project [--path PATH] SUBCOMMAND [options]
-devcapsule images SUBCOMMAND [options]
-```
-
-The adopted target model is capability-first: projects declare what their
-environment needs, platform locks select concrete components, and
-developer-owned configuration authorizes host access.
-
-## Repository Layout
-
-- `devcapsule-src/` — active Python distribution project: packaging, tests,
-  runtime assets, and the `devcapsule/` import package.
-- `devcapsule-src/devcapsule/assets/project_workflow/` — reusable workflow
-  definitions and separate project-instance templates embedded in the PEX.
-- `docs/` — stable product guidance for DevCapsule users and adopters.
-- `website/` — separate website presentation project, pinned as a Git submodule;
-  landing, documentation, and blog content remain authored in this repository.
-- `engineering-docs/` — contributor- and agent-facing requirements,
-  specifications, decisions, design notes, implementation evidence, and
-  workflow records.
-- `docker4pycharm/` — the original shell-based PyCharm MVP that this project
-  was bootstrapped from, frozen at that point in time. It is reference
-  material, not the source of the active implementation, and no current
-  decision should be recorded there. Its maintained descendant is
-  `devcapsule-src/devcapsule/assets/docker4pycharm/`, which installed builds
-  extract for remaining legacy-compatible operations; the two have already
-  diverged. `bootstrap project` is now Python-native and does not use either
-  shell copy. Note that `devcapsule.compat.script_path()` still prefers the
-  frozen root copy for delegated commands such as `check-runtime-deps.sh`, so
-  source checkouts and installed builds can run different revisions. See
-  [`docker4pycharm/README.md`](docker4pycharm/README.md).
-- `.devcapsule/` — this project's capability declaration and platform lock.
-
-### Python package boundaries
-
-The source layout follows the responsibilities of the launcher and runtime:
-
-```text
-devcapsule/
-  commands/                 CLI grammar, dispatch and presentation
-  configuration/            Project declarations, local decisions and plans
-    model.py                Configuration value API
-    values.py               Ordinary values, types and omissions
-    bindings.py             Directory and secret-source bindings
-    authorization.py        Host/acquisition consent and base trust
-    nodes.py                Canonical node names and registry
-    review.py               Complete assessment and effective host decisions
-    resolution.py           Derived plan values and serialization
-    manifest.py             Project declaration validation and projection
-    fingerprints.py         Source fingerprints
-    freshness.py            Current and predecessor checkpoint freshness
-    documents.py            Versioned document admission and codecs
-    storage.py              File discovery, ownership and atomic writes
-    execution.py            Admission of a stored checkout for execution
-    operations.py           Initialization and persistent edit orchestration
-    history.py              Successful-run snapshots
-  components/               Trusted component declarations and contributions
-  launch/                   Host-side launch adapters
-    pycharm/                Legacy PyCharm-compatible launch/build interface
-  container_runtime/        In-container plan interpretation and supervision
-```
-
-Use `devcapsule.configuration` for the value API: `Configuration`, `Resolution`,
-`ConfigurationReview`, `HostAccess`, and `ProjectConfigurationError`. File and
-lifecycle adapters use the named `storage`, `execution`, `operations`, and
-`history` modules. The configuration core depends on domains and codecs; it
-does not depend on those adapters, CLI commands, image realization or launch.
-Internal configuration imports are acyclic, including imports inside functions.
-The architecture tests under `devcapsule-src/tests/configuration/` enforce these
-boundaries alongside the configuration laws and representation tests.
-
-`launch/pycharm` retains the existing compatibility interface; its command
-grammar lives in `commands/_pycharm.py`. The former `configurations/` package
-was launcher machinery and is no longer presented as the configuration model.
-The remaining top-level modules retain their existing responsibilities; this
-layout change establishes the configuration boundary without inventing new
-subsystems for unrelated code.
-
-The `-src` suffix is deliberate: in a default clone named `devcapsule`, the
-three layers are `devcapsule/devcapsule-src/devcapsule` (checkout,
-distribution project, import package) rather than three identically named
-directories.
+1. [Developer Setup](#developer-setup)
+2. [Source layout](#source-layout)
+3. [Testing](#testing)
+4. [Releasing](#releasing)
+5. [Website](#website)
+6. [Principles](#development-principles)
+7. [Where to read next](#where-to-read-next)
 
 ## Developer Setup
-
-The Python project uses Nox as its primary validation entry point. Bootstrap a
-checkout-local developer environment from the repository root, then invoke
-Nox through that environment explicitly:
 
 ```text
 cd devcapsule-src
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r dev-requirements.txt
 .venv/bin/python -m pip install -e . --no-deps
-.venv/bin/python -m nox -s tests
+.venv/bin/python -m nox -s build      # the full local gate, before any checkpoint
 ```
 
-Run the full local gate before handing off implementation changes:
+Setup, the gate's steps, building the executable, the shipped `devcapsule0`
+versus the development `devcapsule`, and working from inside a capsule:
+[Developer environment](engineering-docs/development/developer-environment.md).
 
-```text
-cd devcapsule-src
-.venv/bin/python -m nox -s build
-```
+## Source layout
 
-New base images contain tools and OS dependencies; the launcher supplies its own
-PEX during environment materialization. This is the [adopted default, unless
-explicitly overridden by user choice](engineering-docs/decisions/product/d-0009-launcher-delivers-identical-runtime.md):
-the outside launcher and inside runtime use identical executable bytes.
-Ordinary CLI releases reuse the pinned
-base. Component installations use independent BuildKit stages and copy their
-outputs into environments, preserving cache reuse across different formations.
+### Python package boundaries
 
-For source-form environment launches, first build the PEX (`nox -s pex`), then
-run that artifact, or set `DEVCAPSULE_RUNTIME_PEX` to its absolute path when
-invoking the source CLI. Rebuild and reselect it after runtime source changes.
+The repository's directories and the `devcapsule` package's responsibilities,
+including the enforced configuration boundary:
+[Source layout](engineering-docs/development/source-layout.md).
 
-Calling the virtualenv's interpreter directly is intentional: it works without
-shell activation and cannot silently fall through to `/usr/bin/python` because
-an activation script contains an obsolete path. Activation remains supported:
-`. .venv/bin/activate && python -m nox -s build`.
+## Testing
 
-Python virtualenv activation scripts and installed console-script shebangs
-embed the absolute directory where the environment was created. After moving
-or renaming the checkout or `devcapsule-src/`, recreate the disposable
-developer environment rather than carrying it to the new path:
+| Suite | Command | Document |
+|---|---|---|
+| Unit tests, with coverage; what the hosted runner runs | `nox -s tests` | [Unit tests](engineering-docs/development/unit-tests.md) |
+| Integration: the built executable, the CLI smoke, types, the docs contract | `nox -s integration`, inside `build` | [Integration tests](engineering-docs/development/integration-tests.md) |
+| End-to-end, with Docker: images, capsules, the IDE smoke | `nox -s e2e`, `nox -s ide-smoke`, … | [End-to-end tests](engineering-docs/development/e2e-tests.md) |
 
-```text
-cd devcapsule-src
-deactivate 2>/dev/null || true
-python3.12 -m venv --clear .venv
-.venv/bin/python -m pip install -r dev-requirements.txt
-.venv/bin/python -m pip install -e . --no-deps
-```
+The hosted runner runs no Docker; the end-to-end suites run locally and
+against downloaded candidates during release acceptance.
 
-The full gate includes compilation, shell syntax checks, pytest, type checks,
-CLI smoke tests, PEX construction, and PEX smoke tests. It always creates the
-local-only `dist/devcapsule-local.pex`. On a clean repository it also creates
-and smoke-tests `dist/devcapsule.pex` with the exact `HEAD` revision, without
-requiring that revision to have been pushed already. On a dirty repository it
-explicitly reports that the revision-bearing artifact was skipped. To
-deliberately discard cached Nox environments, add
-`--no-reuse-existing-virtualenvs`.
+## Releasing
 
-For CLI installation and usage, see
-[`devcapsule-src/README.md`](devcapsule-src/README.md).
-The initial binary distribution channel is GitHub Releases: pushing an RC or final
-`v*` tag runs the backend release workflow, which builds and clean-machine
-proves the self-contained Linux x86-64 PEX before publishing it with a SHA-256
-checksum, then downloads and proves the published bytes again.
+Follow [Releasing a new DevCapsule version](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md):
+an immutable candidate from a retained release branch, validated as
+downloaded, integrated with its acceptance record, tagged for final
+publication; documentation and the website are part of the release.
 
-## Website Development
+## Website
 
-For website development, initialize only the website submodule with
-`git submodule update --init website`, then run `./scripts/website.sh install`
-and `./scripts/website.sh preview`. Open the loopback URL printed by the server.
-`./scripts/website.sh build` creates and checks the static output. The website
-has its own Node-based checks and standalone DevCapsule setup; see
+Initialize the submodule with `git submodule update --init website`, then
+`./scripts/website.sh install` and `./scripts/website.sh preview`. The site
+has its own checks and publishing rules in
 [`website/README.md`](website/README.md) and
-[`website/PUBLISHING.md`](website/PUBLISHING.md). Website publication is manual
-and separate from a CLI release.
-
-## Releasing A New Version
-
-Follow [Releasing a new DevCapsule version](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md),
-the canonical operator guide based on the successful v0.2.11 release.
-It covers candidate publication, testing the downloaded executable, acceptance,
-PR integration, final tagging, download verification, and failure recovery.
-
-The sequence is: publish an immutable RC from a retained release branch,
-validate it, integrate the accepted source and promotion record, then tag that
-exact source for final publication. CI builds and verifies both releases.
-Ordinary CLI releases reuse the pinned base; maintenance releases can start
-from the previous final tag when main is not ready. The guide contains the
-commands and the actual v0.2.11 acceptance record.
+[`website/PUBLISHING.md`](website/PUBLISHING.md); the documentation it
+publishes follows the
+[content–website contract](engineering-docs/specifications/product/content-website-contract.md).
 
 ## Development Principles
 
-- Keep host filesystem, credentials, Docker, devices, and networking exposure
+- Keep host filesystem, credentials, Docker, devices and networking exposure
   explicit and documented.
-- Keep current behavior in user documentation; preserve obsolete behavior only
-  as clearly labelled historical reference.
-- Store requirements, decisions, bugs, validation evidence, and handoff state
-  in versioned files rather than only in chat history.
-- Add automated Nox-covered checks when practical; use manual validation for
-  host Docker, image, and GUI behavior that repository automation cannot cover.
+- Keep current behaviour in user documentation; preserve obsolete behaviour
+  only as clearly labelled history.
+- Store requirements, decisions, bugs, validation evidence and status in
+  versioned files, never only in chat.
+- Add automated, Nox-covered checks when practical; validate host Docker,
+  image and GUI behaviour manually where automation cannot reach.
 
-## Project Documentation
+## Where to read next
 
-- [Component freshness](docs/guides/component-freshness.md) — vendor signals,
-  user decisions, current service limits and V1 operational objectives.
-- [Component status operations](component-status/README.md) — compatibility
-  schema, diagnosis maintenance and publication.
-- [`index.md`](index.md) — complete documentation map.
-- [`AGENTS.md`](AGENTS.md) — mandatory instructions for coding agents.
-- [`WORKFLOW.md`](WORKFLOW.md) — human-agent development protocol.
-- [`REQUIREMENTS.md`](REQUIREMENTS.md) — project requirement overview and
-  index.
-- [`docs/README.md`](docs/README.md) — user-facing product documentation map.
-- [`engineering-docs/README.md`](engineering-docs/README.md) — engineering
-  documentation taxonomy and placement rules.
-- [`engineering-docs/decisions/product/`](engineering-docs/decisions/product/) — durable architectural decisions.
-- [`engineering-docs/specifications/product/`](engineering-docs/specifications/product/) — product specifications.
+- [`AGENTS.md`](AGENTS.md), mandatory instructions for coding agents, and
+  [`WORKFLOW.md`](WORKFLOW.md) with [`WORKFLOW-LOCAL.md`](WORKFLOW-LOCAL.md),
+  the human-agent protocol and this project's half of it.
+- [`CURRENT-STATUS.md`](CURRENT-STATUS.md), the open-workstream list;
+  this repository runs the workflow in `multiple-streams` mode.
+- [`REQUIREMENTS.md`](REQUIREMENTS.md), the requirement overview, and
+  [`engineering-docs/README.md`](engineering-docs/README.md), the placement
+  rules for everything under `engineering-docs/`.
+- [`docs/README.md`](docs/README.md), the product documentation, and
+  [`index.md`](index.md), the complete documentation map.
+- [`devcapsule-src/README.md`](devcapsule-src/README.md), the CLI source and
+  contributor reference.
 
-## License
-
-DevCapsule is licensed under the [Apache License 2.0](LICENSE). Third-party
-components acquired, installed, or used with DevCapsule remain subject to
-their respective owners' licenses and terms; see [NOTICE](NOTICE).
-
-## Current Status
-
-The `workflow-type` field in [`.devcapsule/devcapsule.toml`](.devcapsule/devcapsule.toml)
-selects the project-memory model. This repository uses `multiple-streams`, so
-[`CURRENT-STATUS.md`](CURRENT-STATUS.md) is the open-workstream registry and each
-selected track owns its detailed continuation state. Contributors and agents
-should follow [`WORKFLOW.md`](WORKFLOW.md) for routing and checkpoint rules;
-this page remains the stable developer brief.
+DevCapsule is licensed under the [Apache License 2.0](LICENSE); third-party
+components keep their own terms, see [NOTICE](NOTICE).

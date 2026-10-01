@@ -1,0 +1,15 @@
+{
+  "accepted-by": "github.com/ccozianu",
+  "candidate-sha256": "d5387d8a05a278bb0b8b109e9da0ea39c29d5a753e50013d9f09dc9e2a48d16a",
+  "candidate-tag": "v0.2.14-rc4",
+  "evidence": [
+    "Owner acceptance of v0.2.14-rc4 on 2026-09-24 on two host checkouts of this repository: on devcapsule-2 (last launched by rc2) and devcapsule (last launched by 0.2.12), 'project config list' and 'config show' behave as ruled, 'project run' launches PyCharm with devcapsule0 on the PATH, and the newly required antigravity-download decision is asked with its reason; https://github.com/ccozianu/devcapsule/releases/tag/v0.2.14-rc4 built by https://github.com/ccozianu/devcapsule/actions/runs/36071875949 under the Docker-free workflow. Local proofs against the downloaded rc4 (SHA-256 d5387d8a05a278bb0b8b109e9da0ea39c29d5a753e50013d9f09dc9e2a48d16a) on 2026-09-24: packaging integration 9 passed, clean-machine run without Python or network passed, component-cache reuse and launcher delivery 5 passed, runtime image on the pinned v0.2.12-rc5 base passed. Every 0.2.14 release-table row decided on 2026-09-25."
+  ],
+  "integration": {
+    "baseline": "21371084f7137624aed6c0581b12495a04b04fbb",
+    "method": "ancestry"
+  },
+  "schema-version": 1,
+  "source-revision": "abb785d7ad4069606fd3ab84009ca8efeabc22b9",
+  "tag": "v0.2.14"
+}

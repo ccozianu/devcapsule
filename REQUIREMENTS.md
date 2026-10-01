@@ -81,6 +81,7 @@ Current release/stabilization reality:
 - `R-PRODUCT-006` — [Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - `R-DOCS-001` — [Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - `R-DOCS-002` — [Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
+- `R-DOCS-003` — [Website Content Carries Explicit Front Matter And A Versions Manifest](engineering-docs/requirements/product/r-docs-003-website-content-carries-front-matter.md) (proposed)
 
 ### Developer Experience And Persistence
 

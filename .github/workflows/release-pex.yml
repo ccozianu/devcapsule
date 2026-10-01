@@ -117,29 +117,13 @@ jobs:
           DEVCAPSULE_EXPECTED_BUILD_MNEMONIC: ${{ env.RELEASE_TAG }}
         run: python -m pytest --no-cov -m integration tests/integration
 
-      - name: Pull the clean-machine proof image
-        run: docker pull ubuntu:24.04
-
-      - name: Prove the built PEX without Python or networking
-        env:
-          DEVCAPSULE_PEX_UNDER_TEST: ${{ github.workspace }}/devcapsule-src/dist/devcapsule.pex
-          DEVCAPSULE_EXPECTED_BUILD_MNEMONIC: ${{ env.RELEASE_TAG }}
-        run: python -m nox -s pex_clean_machine
-
-      - name: Verify component cache reuse and launcher delivery
-        env:
-          DEVCAPSULE_PEX_UNDER_TEST: ${{ github.workspace }}/devcapsule-src/dist/devcapsule.pex
-        run: python -m pytest --no-cov -m e2e tests/e2e/test_component_cache.py
-
-      - name: Verify pinned base availability and runtime sessions
-        env:
-          DEVCAPSULE_PEX_UNDER_TEST: ${{ github.workspace }}/devcapsule-src/dist/devcapsule.pex
-        run: |
-          python -c 'import json; print("\n".join(json.load(open("dist/release-manifest.json"))["base-references"]))' > "$RUNNER_TEMP/release-bases"
-          while IFS= read -r base; do
-            docker pull "$base"
-            DEVCAPSULE_E2E_BASE_IMAGE="$base" python -m pytest --no-cov -m e2e tests/e2e/test_runtime_image.py
-          done < "$RUNNER_TEMP/release-bases"
+      # No step here runs Docker. A hosted runner is an environment nobody
+      # controls, and a proof that depends on it gates the candidate on the
+      # runner rather than on the candidate (owner ruling 2026-09-24, after
+      # v0.2.14-rc2 failed on a Docker build the rc1 run had passed hours
+      # earlier). The clean-machine proof, component-cache reuse and
+      # runtime-session checks run in the local acceptance campaign against
+      # the downloaded assets; see the operator guide.
 
       - name: Retain the backend build
         uses: actions/upload-artifact@v4
@@ -174,12 +158,6 @@ jobs:
           cmp dist/devcapsule.pex "$published/devcapsule.pex"
           cmp dist/release-manifest.json "$published/release-manifest.json"
           chmod 0755 "$published/devcapsule.pex"
-
-      - name: Prove the downloaded PEX without Python or networking
-        env:
-          DEVCAPSULE_PEX_UNDER_TEST: ${{ runner.temp }}/published-release/devcapsule.pex
-          DEVCAPSULE_EXPECTED_BUILD_MNEMONIC: ${{ env.RELEASE_TAG }}
-        run: python -m nox -s pex_clean_machine
 
       - name: Publish the complete release
         run: |

@@ -4,6 +4,12 @@ This directory contains DevCapsule's Python CLI implementation, packaging and
 contributor reference. Current project commands use `devcapsule project …`;
 image operations use `devcapsule images …`.
 
+`devcapsule project info` (or `info --json`) provides a read-only overview of
+software, environment and persistent storage. It works from the host project's
+directory or descendants and anywhere inside its running capsule. See
+[extra tools and environment inspection](../docs/guides/your-project.md#install-extra-tools-0215)
+for the persistent `/opt/xtras` contract.
+
 ## User Setup
 
 To use DevCapsule, start with [your first session](../docs/guides/first-session.md):
@@ -239,7 +245,7 @@ Run the artifact directly:
 
 ```bash
 devcapsule-src/dist/devcapsule.pex --help
-devcapsule-src/dist/devcapsule.pex pycharm run --help
+devcapsule-src/dist/devcapsule.pex project run --help
 devcapsule-src/dist/devcapsule.pex pycharm build --help
 ```
 
@@ -301,8 +307,10 @@ excluded from the selected-executable smoke run. Without the selection variable,
 `nox -s e2e` retains its local build and contributor-bootstrap behavior.
 
 The GitHub backend owns release construction. Pushing `v0.2.11-rc0` on
-`release-0.2.11` runs source, packaging, clean-machine, component-cache and
-runtime-session gates, then publishes download-verified assets as a prerelease.
+`release-0.2.11` runs the source and packaging gates, then publishes
+download-verified assets as a prerelease. The workflow runs no Docker: the
+clean-machine, component-cache and runtime-session proofs are local acceptance
+steps against the downloaded assets.
 The assets include `devcapsule.pex`, its SHA-256 checksum, and a release manifest.
 Candidates do not require main integration and never become GitHub's Latest.
 
@@ -424,16 +432,16 @@ a capsule can bring its own desktop instead of borrowing the host's X session
 
 The repository-owned Python build plan is the inspectable source of truth:
 
-- [`devcapsule/base_image.py`](devcapsule/base_image.py) defines the curated
+- [`devcapsule/images/base.py`](devcapsule/images/base.py) defines the curated
   `ubuntu-24.04` and WIP `nvidia-cuda-devel` recipes, root images, managed-image
   labels, and independent tool-installation contributions.
 - [`devcapsule/launch/pycharm/_image_build.py`](devcapsule/launch/pycharm/_image_build.py)
   currently owns `BASE_APT_PACKAGES`, the exact Ubuntu package list shared by
   the Python-owned base planner. Despite that transitional module location,
   the base remains JetBrains-free.
-- [`devcapsule/image_tooling.py`](devcapsule/image_tooling.py) pins and verifies
+- [`devcapsule/images/tooling.py`](devcapsule/images/tooling.py) pins and verifies
   Node.js/npm, Eclipse Temurin, and Apache Maven for each supported architecture.
-- [`devcapsule/image_build.py`](devcapsule/image_build.py) shows how those
+- [`devcapsule/images/build.py`](devcapsule/images/build.py) shows how those
   components become the generated Dockerfile/build context and are executed
   through Docker buildx.
 - [`devcapsule/container_runtime/`](devcapsule/container_runtime/) is the
@@ -535,6 +543,36 @@ runtime-effect = "docker.memory-limit"
 description = "Hard memory limit applied to the checkout's project container."
 ```
 
+A declaration may also supply a typed `recommended` value. Resolution uses it
+when the checkout has neither an explicit value nor an explicit omission;
+`config list` labels it `project-recommended`. `config set NAME default` records
+the current recommendation, while `config unset NAME` follows it again. These
+ordinary-value defaults never grant host access or authorize downloads.
+
+For DevCapsule development, this repository declares:
+
+```toml
+[configuration.values."runtime.devcapsule-command"]
+type = "string"
+recommended = "devcapsule0"
+```
+
+The name `runtime.devcapsule-command` is reserved: DevCapsule applies the
+`devcapsule.command-name` runtime effect to it whether or not the declaration
+spells `runtime-effect`, and rejects any other effect on that name. This
+repository omits the attribute so that released clients before 0.2.14, which
+reject every effect they do not know, still read the manifest as an ordinary
+string value. An unknown effect is reported with the running version, since
+it usually means the project needs a newer DevCapsule.
+
+This names the shipped CLI `devcapsule0` so the development build can own
+`devcapsule`. Both names are real commands, not interactive shell aliases.
+The two supported values are `devcapsule` and `devcapsule0`; projects without
+this declaration use `devcapsule`. Explicit omission also uses the normal name.
+The change applies when materializing and launching the next environment;
+internal runtime integrations still use the identical PEX at its absolute path.
+This value is persistent checkout configuration, not a run-once `--set` effect.
+
 The developer selects a value for one checkout with the generic command:
 
 ```bash
@@ -546,15 +584,27 @@ devcapsule project config resolve
 `project config list` initializes the selected checkout's workstation-owned
 directory, minimal checkout input, and unresolved generated-plan placeholder
 when they do not exist, then prints every declared value, component binding,
-recommended authorization, and the generated resolution's readiness. It shows
+recommended authorization, and the generated resolution's state. It is a
+listing and nothing else: no advice, no commands to run. `project config show`
+prints the same listing followed by the configuration review: the pending
+decisions with their remedies, the recorded base beside the recommendation,
+and whether resolving is needed. A ready review over a fresh resolution says
+so and gives no resolve instruction. Every row carries a `SOURCE` column
+naming the document its status and value come from: `checkout` for the
+checkout input, `manifest` for a project recommendation or declaration,
+`lock` for the platform lock's recommendations and component declarations,
+`resolution` for the generated plan, `managed` for DevCapsule-owned state
+directories, and `environment` for a bound secret. `config show` expands
+those tokens in a `Sources:` block with each file's path and whether the
+generated resolution still reflects it. It shows
 the materialized checkout name and exact files. Repeated calls do not rewrite
 existing choices or a resolved plan. If the same portable project identity is
 already registered for another checkout, assign a distinct name first with
 `project checkout register NAME`; the list command never invents or inherits a
 checkout name.
 
-Value statuses distinguish configured, invalid, required-but-missing, and
-optional-but-unset values. Bindings show an explicit host directory, legacy
+Value statuses distinguish configured, project-recommended, explicitly omitted,
+invalid, required-but-missing, and optional-but-unset values. Bindings show an explicit host directory, legacy
 adoption, conflict, or managed-default storage. Authorizations show authorized,
 stale, required-but-missing, or recommended-but-missing decisions. Resolution
 is unresolved, fresh, or stale. Missing choices are reported without making a
@@ -647,6 +697,23 @@ codex login
 codex login status
 ```
 
+Claude Code and Antigravity also start with tool approvals disabled in
+checkout-managed state. Before either tool's first launch, DevCapsule creates
+`$CLAUDE_CONFIG_DIR/settings.json` (normally `~/.claude/settings.json`) with
+`permissions.defaultMode = "bypassPermissions"` and
+`skipDangerousModePermissionPrompt = true`, and
+`~/.gemini/antigravity-cli/settings.json` with
+`toolPermission = "always-proceed"`. Authentication and workspace trust still
+follow each tool's normal setup.
+
+For existing managed JSON settings, launches add only missing keys and preserve
+explicit choices and unrelated fields. Set a different permission mode to opt
+out; deleting the key restores the capsule default next launch. Invalid JSON,
+incompatible object structure and linked settings are left untouched with a
+diagnostic. Externally adopted state is never seeded: add these properties
+yourself there if you want the same behavior. Codex retains its absent-file-only
+TOML seeding described above.
+
 Codex falls back to file-backed authentication beneath `$CODEX_HOME` when no
 container keyring is available, so its login and configuration survive later
 launches. The component interface also declares `OPENAI_API_KEY` as an
@@ -708,7 +775,16 @@ reauthorization; a committed project change never grants access by itself.
 
 `base-image` authorizes one immutable published digest after the developer
 reviews its available checksum and scan evidence. It never trusts a mutable
-tag, repository, organization, publisher, or future digest. `docker-daemon
+tag, repository, organization, publisher, or future digest. The prompt and
+`config show` name the base by its contract, `<family>@<recipe>` such as
+`ubuntu-24.04@9`, which the lock records beside the digest; the release that
+built the image follows as provenance with a permalink to the recipe at that
+tag, and `config show` lists which locked components are validated for the
+base and why. Consent binds to the image: a lock that changes around an
+unchanged base, a component version bump for instance, keeps the consent,
+and only a moved recommendation asks again. Within a family a newer recipe
+only adds services, so a component validated on an older recipe runs on a
+newer one; a new family is an incompatible change and inherits no validation. `docker-daemon
 host-socket` exposes the host Docker control socket, effectively granting the
 container control over the host daemon. `network host` shares the host network
 namespace instead of the default Docker bridge. `development-sudo true`
@@ -738,7 +814,8 @@ devcapsule project run
 This is a developer-owned override, not a new project recommendation. At
 authorization time DevCapsule inspects the local image, validates its managed
 base metadata and platform, and records both the supplied name and immutable
-Docker image ID against the current lock. Resolve and run inspect it again;
+Docker image ID; the selection stays valid across lock changes, being bound
+to the image. Resolve and run inspect it again;
 removing or retagging the name fails instead of pulling or silently running a
 different image. Reauthorize after deliberately rebuilding the tag.
 `config list` reports this state as `authorized-local`, while
@@ -803,8 +880,7 @@ is unchanged.
 External hyperlinks use a separate, opt-in host integration. Authorize
 `host-browser` persistently with `devcapsule project config authorize
 host-browser true`, or for one launch with `project run --authorize
-host-browser true` (`run-image` and `pycharm run` keep their dedicated
-`--host-browser` flag) to let `xdg-open` inside the capsule ask a
+host-browser true` to let `xdg-open` inside the capsule ask a
 launcher-owned Unix-socket broker to open an absolute HTTP(S) URL in the
 physical host's default browser. The protocol does not expose the host
 desktop session bus, accept commands or filesystem paths, or invoke a shell.
@@ -988,40 +1064,34 @@ Use `devcapsule project --path /path/to/checkout SUBCOMMAND` when operating
 outside a checkout. Otherwise project commands discover the nearest
 `.devcapsule/devcapsule.toml` upward from the current directory.
 
-DevCapsule uses a configuration-first command model:
-
-```text
-devcapsule CONFIGURATION ACTION [options]
-```
-
-`CONFIGURATION` names a legacy launch tree; `pycharm` is the remaining
-implemented configuration. The active public-default image builds bundle
-pinned Node.js/npm but no ambient AI-agent CLI. The transitional
-`codium_with_claude` and `vscode_with_claude` trees were retired on
-2026-08-31: VSCodium is now the neutral `codium` interactive-surface
-component, selected by the `frontend-ide` capability and launched through
-the ordinary `devcapsule project run` path.
-
-End users should be able to:
-
-- discover available configurations with `devcapsule --help`;
-- build or update a configuration image when that configuration supports
-  `build`;
-- run a configuration against a selected project with `run`;
-- pass configuration-specific options without exposing unrelated host state;
-- use the same command shape from source installs and from the PEX artifact.
+Run PyCharm and other selected IDE surfaces through the configured project:
 
 ```bash
 python -m devcapsule --help
-devcapsule pycharm run --project /path/to/project
-devcapsule pycharm run
-devcapsule pycharm run --project /path/to/project --config-mode project
-devcapsule pycharm run --profile codex --project-state-root /path/to/workspace/.state
-devcapsule project --path /path/to/project run-image pycharm-isolated:latest
+devcapsule project run
+devcapsule project --path /path/to/project run
+devcapsule project --path /path/to/project run --print-command > launch.sh
+```
+
+For a directory without DevCapsule configuration, start with
+`devcapsule project --path /path/to/project init`. Select the required
+capabilities and review the developer-owned authorizations before running.
+
+`pycharm run` is retired in 0.2.14. It no longer launches a container or
+accepts legacy image/profile options; use the project path above. This is an
+intentional release compatibility exception: the sole current user already
+uses `project run`, and the old entrypoint bypassed configured host-access
+choices. There is no replacement direct-image launch command in this release.
+Future capability decisions are tracked in the
+[V1 work item](../engineering-docs/work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+The earlier `codium_with_claude` and `vscode_with_claude` command trees are
+also retired; VSCodium is selected through the `frontend-ide` capability.
+
+PyCharm image utilities remain available:
+
+```bash
 devcapsule pycharm build --pycharm /path/to/pycharm.tar.gz
 devcapsule pycharm check-runtime
-devcapsule bootstrap
-devcapsule bootstrap project --project /path/to/project
 ```
 
 ### Project Workflow Bootstrap
@@ -1047,103 +1117,44 @@ See the repository's
 [`project workflow bootstrap specification`](../engineering-docs/specifications/product/project-workflow-bootstrap.md)
 for the definition/instance boundary and idempotency contract.
 
-`pycharm build` and `codium_with_claude build` use Ubuntu 24.04 and install
-Python plus a pinned Node.js archive under `/opt/node/node-{version}`, expose
-that runtime through `/opt/node/current` and `/usr/local/bin`. The Codium image also installs
-VSCodium plus `xterm` for basic X11 validation and `strace` for process-level
-diagnostics. Update the pinned versions in source when intentionally advancing
-the public-default tooling baseline. Use
-`--image`, `--base-image`,
-`--network`, and repeatable `--extra-apt-package` options to customize a build.
-Pass `--ide-archive PATH` to install VSCodium from a local `.tar.gz` (or other
-tar format recognized by Python) containing an executable `bin/codium`. In
-that mode the build does not configure or contact the VSCodium apt repository;
-the archive is installed under `/opt/codium`. The pinned Node.js archive and
-checksum file are still fetched during the image build from their configured
-upstream source.
+`pycharm build` uses Ubuntu 24.04 and installs Python and pinned Node.js/npm
+alongside the supplied PyCharm archive or directory. Customize it with
+`--image`, `--base-image`, `--network`, and repeatable `--extra-apt-package`.
+This retained image-building utility does not replace project initialization
+or the configured environment materialization used by `project run`.
 
-`codium_with_claude run` currently targets Linux X11. It mounts the selected
-project at `/workspace/project` by default, a persistent VSCodium/Claude home
-(by default `~/.config/devcapsule/codium-with-claude`) at
-`/ide-global-settings`, a project-local state directory (by default
-`.devcapsule/codium-state`) at `/ide-project-state`, and the host X11 socket
-read-only. `--profile NAME` moves the shared global state under
-`~/.config/devcapsule-codium-with-claude-NAME/state`. `--project-state-root
-DIR` mirrors per-project state outside the source tree, and `--project-mount`
-overrides the in-container project path explicitly. It passes `DISPLAY` and
-uses ordinary Docker bridge networking so VSCodium and Claude Code can reach
-their services. It does not mount the Docker socket, SSH agent, host home,
-devices, or other credentials by default. Claude authentication written under
-its container home persists in the explicit global state directory. No
-agent-specific host credential/state directory is mounted automatically.
-Use `--debug-shell` to run interactive Bash through the normal image
-entrypoint with the same project, state, and X11 mounts instead of starting
-VSCodium.
-Use `--network MODE` to select an explicit Docker network mode for either the
-normal IDE or `--debug-shell` path. The default remains Docker bridge
-networking. `--network host` is useful for host-bound development services and
-debugging, but shares the host network namespace and therefore weakens network
-isolation.
-Normal launches execute VSCodium's Electron binary directly so it remains the
-foreground container process. They do not use the `bin/codium` CLI wrapper,
-which detaches the GUI and exits before the IDE session ends.
+Project launch preserves home and IDE state through declared bindings, including
+`home`, `pycharm/config`, `pycharm/plugins`, `pycharm/system`, `pycharm/log`, and
+`pycharm/cache`. Use `project config list` to inspect them and
+`project config bind NAME host-directory:/path/to/directory` to select an
+explicit location, then `project config resolve`. Separate concurrent PyCharm
+sessions must use separate IDE configuration directories. Legacy profile and
+state-root flags are no longer a public launch interface.
 
-The local-archive build path restores root ownership and mode `4755` on
-VSCodium's Chromium sandbox helper after safe archive extraction strips the
-setuid bit. This path and foreground launching were manually validated on
-2026-07-13. Do not adopt `--no-sandbox` as a normal workaround. The evidence
-and validation record are documented in
-`../engineering-docs/completed-tasks/devcapsule/2026-07-13-vscodium-sandbox-and-foreground-launch.md`.
-
-Known parity gap: `codium_with_claude run` now shares `--profile`,
-`--project-state-root`, and `--project-mount` with the common runtime-layout
-model, but it still lacks many of the Git credential, Docker capability,
-debugging, sudo, and additional filesystem options available from
-`pycharm run`. The intended shared versus IDE-specific behavior is tracked in
-`../engineering-docs/bugs/devcapsule/2026-07-13-codium-run-option-parity.md`.
-
-`pycharm run` defaults `--project` to the current directory. Its default
-persistent home is checkout-scoped beneath `$XDG_DATA_HOME/devcapsule/` and is
-mounted at `/home/devcapsule`; standard IDE, agent, and shell state beneath
-`HOME` naturally persists there. `--home DIR` or `DEVCAPSULE_HOME_DIR`
-selects a developer-owned alternative. The developer's actual host home is
-never mounted as the container home.
-
-PyCharm config and plugins are durable component state. PyCharm system data and
-tool caches use `$XDG_CACHE_HOME/devcapsule/`, while logs use
-`$XDG_STATE_HOME/devcapsule/`. For the current dogfood migration, existing
-`--global-settings`, `--plugins`, and `--project-state` values are adopted in
-place: their `home`, `config`, `plugins`, `system`, `log`, and `home/.cache`
-subdirectories are mounted independently at the new container destinations.
-
-`run-image IMAGE` is the expert, lock-independent PyCharm-compatible image path
-for construction and diagnosis. It passes `--pull=never` to Docker, so a
-missing local image fails instead of pulling or resolving another image. It
-defaults to no Docker-daemon access. Use
-`--docker-daemon host-socket` and `--development-sudo` only as explicit
-run-once relaxations. `--host-browser` is a separate run-once capability for
-opening HTTP(S) hyperlinks in the physical host browser; it does not imply
-Docker, network, sudo, or credential access. The broader capability-first
-state-management CLI remains under development.
-
-The first dogfood validation intentionally supplies the existing directories
-once, before the planned `state adopt` command persists those mappings:
+### Inspect the Docker launch command
 
 ```bash
-./dist/devcapsule.pex project --path "$HOST_PROJECT_ROOT" \
-  run-image mycodespace.ai/pycharm:debug-v018 \
-  --global-settings ~/.config/docker-pycharm-codex/state/ \
-  --plugins ~/.config/docker-pycharm-codex/plugins \
-  --project-mount /workspace/301e4208ef81-ChatGPT_Codex \
-  --project-state "$PROJECT_STATE" \
-  --docker-daemon host-socket \
-  --development-sudo
+devcapsule project --path /path/to/project run --print-command > launch.sh
 ```
 
-The explicit project mount preserves the absolute path already stored in the
-adopted PyCharm workspace and interpreter configuration. Omitting it during
-this migration makes saved paths such as
-`/workspace/301e4208ef81-ChatGPT_Codex/.venv/bin/python` appear missing.
+This prepares the currently selected environment through ordinary configuration
+and authorization checks, then prints the actual shell-quoted Docker command.
+It may acquire/build the image and prepare state; it does not launch the project
+container, open a desktop, check/select component updates or record successful use.
+Preparation messages go to stderr, keeping stdout suitable for a file or editor.
+Run-once configuration choices and accepted Docker passthrough options still apply.
+
+The output is for inspection and manual editing, **not a standalone replay script**.
+Comments identify temporary runtime files removed on return, helper sockets that
+require a live service, and environment dependencies. Persistent mounts still point
+at real project/IDE state. The developer must provide missing resources before
+manual execution and owns any changes to the command. Secret environment bindings
+remain variable names; their values are not copied into the output. Do not share
+output without reviewing its host paths and any raw arguments you supplied.
+
+The former `project run-image` arbitrary-image convenience command is removed.
+For an arbitrary image, use Docker directly; use the print option to inspect what
+DevCapsule would execute for a configured project.
 
 Unsupported command shapes such as top-level `devcapsule run`,
 `devcapsule run-image`, `devcapsule config`, `devcapsule state`, and

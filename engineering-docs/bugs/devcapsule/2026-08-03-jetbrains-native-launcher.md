@@ -80,3 +80,8 @@ Retire without implementation if controlled testing shows a concrete native
 launcher incompatibility with DevCapsule's foreground container lifecycle and
 the retained script behavior is documented. Reopen if the script launcher
 causes a functional problem rather than only a recommendation.
+
+## Disposition, 2026-09-25
+
+Owner ruling during 0.2.14 acceptance: deferred beyond 0.2.14 and marked
+minor; no functional failure was reported on any 0.2.14 candidate.

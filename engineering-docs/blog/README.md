@@ -6,32 +6,19 @@ how a human and an agent divide the work. The product owner opened this
 folder on 2026-09-06 with the view that the development of DevCapsule is
 an exercise as valuable as the software itself.
 
-## Conventions
+For the simple file conventions, see
+[Blog Entries in the local workflow](../../WORKFLOW-LOCAL.md#blog-entries).
 
-- One entry per Markdown file, named `YYYY-MM-DD-slug.md`. The date is the
-  day the entry was written, not the day of the events it describes.
-- Entries are plain Markdown and must read well in any Markdown preview.
-  They make no assumption about the blogging framework that will publish
-  them; front matter, tags, and layout hints are added by the publishing
-  step, not written here.
-- Links into this repository use permanent links: a commit on mainline
-  identified by its SHA, never a branch name. A link to a moving target
-  is a link that will lie.
-- An entry may quote the engineering records, the code, or a conversation
-  between the product owner and an agent. Quotations are lightly edited
-  for readability and say so; they never change what was decided.
-- Entries are records of what was understood at the time. A later entry
-  may correct an earlier one; the earlier one is not rewritten.
-
-## Structure
-
-Flat for now. Whether entries gain subfolders (by series, by author, by
-year), an index of their own, or images, is a decision handed to the
-`project-management` workstream together with where the blog is
-published: a GitHub-backed site or an account-storage-backed one.
+Every entry begins with a YAML front matter block carrying `description`,
+one sentence of at most 200 characters that the website shows as the
+entry's summary, and `draft: true` while the owner has not released it;
+a draft is excluded from production builds and shown labelled in preview.
+Nothing else framework-specific belongs in an entry. The block is authored
+here, per [R-DOCS-003](../requirements/product/r-docs-003-website-content-carries-front-matter.md).
 
 ## Entries
 
+- [What I have been up to lately](2026-09-30-what-i-have-been-up-to-lately.md) — the LinkedIn announcement of 2026-09-28, reproduced for linking from shorter-limit channels.
 - [Why give DevCapsule a spin before V1?](2026-09-21-why-try-devcapsule-before-v1.md) — invitation to early adopters and contributors; draft for owner review.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — Astra's account of the website experiment; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](2026-09-19-lessons-learned-in-ai-autonomy.md) — website experiment retrospective; draft awaiting owner editorial review.

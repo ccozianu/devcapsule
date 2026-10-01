@@ -16,7 +16,7 @@ from .authorization import AuthorizationChoice, AuthorizationReview, review_auth
 from .bindings import resolve_configuration_bindings, resolve_secret_bindings
 from .documents import AuthorizationScalar, ConfigurationScalar, ProjectConfigurationError, table
 from .nodes import build_node_registry
-from .values import resolve_configuration_values
+from .values import RuntimeEffects, resolve_configuration_values
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,7 @@ class HostAccess:
 @dataclass(frozen=True)
 class ConfigurationReview:
     values: dict[str, ConfigurationScalar]
-    runtime_effects: dict[str, int]
+    runtime_effects: RuntimeEffects
     bindings: dict[str, str]
     secret_bindings: dict[str, str]
     authorizations: tuple[AuthorizationReview, ...]
@@ -66,8 +66,24 @@ class ConfigurationReview:
     def ready(self) -> bool:
         return not self.problems and all(item.problem is None for item in self.authorizations)
 
-    def render(self, project: Path) -> str:
-        lines = ["Configuration review: " + ("ready to resolve." if self.ready else "decisions required.")]
+    def render(self, project: Path, *, resolution: str | None = None) -> str:
+        """Explain the pending decisions and whether resolving is still needed.
+
+        ``resolution`` is the generated resolution's state as the listing
+        reports it: ``fresh``, ``stale: <inputs>``, ``unresolved`` or
+        ``missing``. Callers that raise on an unready review pass nothing and
+        get the decisions with the resolve instruction. A ready review over a
+        fresh resolution says so and gives no instruction; the earlier text
+        told every fresh checkout to resolve (bug of 2026-09-24).
+        """
+        fresh = self.ready and resolution == "fresh"
+        if not self.ready:
+            head = "decisions required."
+        elif fresh:
+            head = "ready; the generated resolution is fresh."
+        else:
+            head = "ready to resolve."
+        lines = ["Configuration review: " + head]
         lines.extend(self.problems)
         # Always show the base selection beside its recommendation, including
         # valid local overrides. Show pending decisions together, never serially.
@@ -88,7 +104,12 @@ class ConfigurationReview:
                 "The selected base is checked before building."
             )
         resolve = shlex.join(["devcapsule", "project", "--path", str(project), "config", "resolve"])
-        lines.append(f"After settling your configuration choices, resolve explicitly: {resolve}")
+        if fresh:
+            lines.append(f"Nothing to resolve; 'project run' uses the current resolution. After changing a choice: {resolve}")
+        elif self.ready and resolution is not None and resolution.startswith("stale"):
+            lines.append(f"The generated resolution is {resolution}; resolve explicitly: {resolve}")
+        else:
+            lines.append(f"After settling your configuration choices, resolve explicitly: {resolve}")
         return "\n".join(lines)
 
     def require_ready(self, project: Path) -> None:
@@ -116,7 +137,7 @@ def review_configuration(
     build_node_registry(manifest, lock)
     problems: list[str] = []
     values: dict[str, ConfigurationScalar] = {}
-    effects: dict[str, int] = {}
+    effects: RuntimeEffects = {}
     bindings: dict[str, str] = {}
     secrets: dict[str, str] = {}
     authorizations: tuple[AuthorizationReview, ...] = ()

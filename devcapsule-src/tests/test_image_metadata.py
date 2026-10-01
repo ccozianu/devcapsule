@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from devcapsule.image_metadata import list_local_images, managed_labels
+from devcapsule.images.metadata import list_local_images, managed_labels
 
 
 def fake_image(
@@ -42,7 +42,7 @@ def test_list_local_images_selects_managed_labels_and_groups_aliases() -> None:
     )
     unrelated = fake_image("sha256:fedcba", ("devcapsule-looking:latest",), {})
 
-    with patch("devcapsule.image_metadata.docker.image.list", return_value=[managed, unrelated]):
+    with patch("devcapsule.images.metadata.docker.image.list", return_value=[managed, unrelated]):
         records = list_local_images()
 
     assert len(records) == 1
@@ -67,7 +67,7 @@ def test_list_local_images_marks_wip_base_recipe() -> None:
     )
 
     with patch(
-        "devcapsule.image_metadata.docker.image.list",
+        "devcapsule.images.metadata.docker.image.list",
         return_value=[fake_image("sha256:cafe", ("devcapsule-base:cuda",), labels)],
     ):
         records = list_local_images()
@@ -91,7 +91,7 @@ def test_list_local_images_keeps_unknown_and_invalid_metadata_visible() -> None:
         {"devcapsule.image.managed": "true", "devcapsule.metadata.version": "1"},
     )
 
-    with patch("devcapsule.image_metadata.docker.image.list", return_value=[unknown, invalid]):
+    with patch("devcapsule.images.metadata.docker.image.list", return_value=[unknown, invalid]):
         records = list_local_images()
 
     assert {record.kind for record in records} == {"unsupported-metadata", "invalid-metadata"}
@@ -104,7 +104,7 @@ def test_list_local_images_includes_legacy_only_when_requested() -> None:
         {"devcapsule.configuration": "pycharm"},
     )
 
-    with patch("devcapsule.image_metadata.docker.image.list", return_value=[legacy]):
+    with patch("devcapsule.images.metadata.docker.image.list", return_value=[legacy]):
         assert list_local_images() == ()
         records = list_local_images(include_legacy=True)
 

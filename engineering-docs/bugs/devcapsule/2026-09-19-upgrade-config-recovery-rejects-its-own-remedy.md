@@ -1,13 +1,29 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: maintenance
 opened: 2026-09-19
+closed: 2026-09-22
 requirements: [R-PRODUCT-001, R-PRODUCT-002, R-COMPAT-001]
 ---
 
 # Bug: Upgrade Configuration Recovery Rejects Its Own Remedy
+
+## Closure — 2026-09-22
+
+Closed at the owner's explicit direction after review of the implemented
+recovery fix, regression evidence and recorded acceptance. PR #117 merge
+`d2386bb` is verified as an ancestor of both main and `v0.2.14-rc0` (`d078b87`).
+The 2026-09-21 owner report and
+[graphical predecessor-configuration acceptance](../../wip/2026-09-18-maintenance/2026-09-21-record-maintenance-before-component-upgrades.md)
+establish successful use and normal successor exit; the earlier notes awaiting
+integration and host acceptance below are historical and superseded.
+
+This closes the demonstrated recovery/upgrade failure. It does not certify
+every historical configuration or complete RC0's end-user acceptance campaign;
+exact original host configuration bytes remain unavailable. The release keeps
+its predecessor-recovery checks, and the existing reopen conditions still apply.
 
 ## Symptom And Impact
 

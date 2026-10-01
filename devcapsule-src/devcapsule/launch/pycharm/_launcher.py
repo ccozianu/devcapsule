@@ -7,6 +7,7 @@ import json
 import os
 import pwd
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -50,6 +51,7 @@ from ...host_open import (
     HostOpenError,
     host_open_bridge,
 )
+from ..command_output import render_command
 from ...materialization import RUNTIME_PLAN_PATH
 from ...runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
 from ...project import ProjectMountError
@@ -114,6 +116,7 @@ class PycharmRunOptions:
     # ambient launcher options. Host observations and explicit secret sources
     # remain available in either mode.
     inherit_legacy_configuration: bool = True
+    command_report: Callable[[str], None] | None = None
     profile: str | None = None
     image: str | None = None
     name: str | None = None
@@ -249,6 +252,9 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                 command = ["docker", "run", *docker_args, config.image]
                 if not config.use_image_process:
                     command.extend(["/opt/pycharm/bin/pycharm.sh", config.project_mount])
+                if options.command_report is not None:
+                    options.command_report(describe_run_command(command, config, files))
+                    return 0  # Cleanup still runs; no container or display watcher.
                 stop_watching = Event()
                 if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
                     assert config.display_host_port is not None
@@ -275,6 +281,36 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                 cleanup_temp_runtime_files(files)
     except HostOpenError as exc:
         raise PycharmRunError(str(exc)) from exc
+
+
+def describe_run_command(command: list[str], config: PycharmRunConfig,
+                         files: TempRuntimeFiles) -> str:
+    comments = [
+        "Diagnostic Docker command; the project container has NOT been started.",
+        "Preparation may have acquired/built the selected image and prepared state directories.",
+        "This is not a standalone replay script. Review dependencies before manual execution.",
+        "Use the same host and Docker context/environment (including DOCKER_HOST if set).",
+        "Project and persistent-state mounts refer to existing host paths; edits can change host access.",
+        "The following local staging files are removed when this command returns.",
+        "Bind sources in the command may be translated to external Docker-daemon host paths.",
+    ]
+    for label, path in (
+        ("Xauthority", files.xauth_file if config.display_transport != CONTAINED_DISPLAY_TRANSPORT else None),
+        ("User identity", files.passwd_file), ("Group identity", files.group_file),
+        ("Shadow file", files.shadow_file), ("Sudo policy", files.sudoers_file),
+        ("Git token file", files.token_file), ("Runtime plan", files.runtime_plan_file),
+        ("Display token", files.display_token_file), ("Launch context", files.launch_context_file),
+    ):
+        if path is not None:
+            comments.append(f"Temporary {label}: {path}")
+    if config.host_browser_socket is not None:
+        comments.append("Host-browser socket requires a live broker; a broker owned by this invocation stops on return.")
+    if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
+        comments.append("Contained display needs its temporary token file; the chosen host port is not reserved for later use.")
+    if config.secret_environment:
+        comments.append("Required environment variables (values omitted): " + ", ".join(config.secret_environment))
+    comments.append("No successful-use history was recorded. Manual execution and any edits are your responsibility.")
+    return render_command(command, comments)
 
 
 def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
@@ -1504,19 +1540,20 @@ def current_host_user() -> HostUser:
 
 
 def config_lock_message(ide_config: Path, project: Path, project_state: Path) -> str:
+    inspect = shlex.join(["devcapsule", "project", "--path", str(project), "config", "list"])
     return f"""PyCharm config directory appears to be locked:
   {ide_config / ".lock"}
+Project state:
+  {project_state}
 
-The default shared config directory can only be used by one live PyCharm
-process at a time. For concurrent sessions against different projects, launch
-the second IDE with:
-  devcapsule pycharm run --project "{project}" --project-config
+One IDE configuration directory can only be used by one live PyCharm process
+at a time. Inspect this checkout's 'pycharm/config' binding with:
+  {inspect}
 
-That stores JetBrains idea.config.path under the per-project state directory:
-  {project_state / "config"}
-
-If you are sure this is a stale lock from a crashed IDE, remove the lock file
-or rerun with --ignore-config-lock to let PyCharm decide."""
+For concurrent sessions, bind 'pycharm/config' to a separate directory with
+'project config bind', then run 'project config resolve' before launching.
+If the lock is stale, confirm no IDE is using that directory before removing
+its .lock file and retrying 'devcapsule project run'."""
 
 
 def print_storage_summary(config: PycharmRunConfig) -> None:
@@ -1599,43 +1636,43 @@ Display:
 
 
 def print_host_docker_warning(config: PycharmRunConfig) -> None:
+    no_docker = shlex.join([
+        "devcapsule", "project", "--path", str(config.project), "run",
+        "--authorize", "docker-daemon", "none",
+    ])
     print(
         f"""========================================================================
-HOST DOCKER DAEMON IS CONNECTED TO THIS PYCHARM CONTAINER.
+HOST DOCKER DAEMON IS CONNECTED TO THIS CAPSULE.
 
 The launcher is mounting the host Docker socket:
   {config.host_docker_socket}
 
-Docker commands inside PyCharm/Codex operate on the host daemon. This is the
-default local-development convenience mode, but it gives tools inside the IDE
+Docker commands inside the capsule operate on the host daemon, giving tools
 broad control over host Docker images, containers, networks, and bind mounts.
 
-For an isolated inner daemon, run:
-  devcapsule pycharm run --project "{config.project}" --docker-in-docker
-
-For a higher-isolation session with no Docker access, run:
-  devcapsule pycharm run --project "{config.project}" --no-docker
+For a project session with no Docker access, run:
+  {no_docker}
 ========================================================================""",
         file=sys.stderr,
     )
 
 
 def print_dind_warning(config: PycharmRunConfig) -> None:
+    project_run = ["devcapsule", "project", "--path", str(config.project), "run"]
+    host_docker = shlex.join([*project_run, "--authorize", "docker-daemon", "host-socket"])
+    no_docker = shlex.join([*project_run, "--authorize", "docker-daemon", "none"])
     print(
         f"""========================================================================
-DOCKER-IN-DOCKER IS ENABLED FOR THIS PYCHARM CONTAINER.
+DOCKER-IN-DOCKER IS ENABLED FOR THIS CAPSULE.
 
-The launcher is starting this IDE container with --privileged, a writable
-root filesystem, and an inner Docker daemon. Use this when you want separate
-Docker images, containers, and volumes inside the PyCharm environment.
-The inner daemon does not manage bridge/iptables networking; use --network host
-for inner builds that need network access.
+This launch uses --privileged, a writable root filesystem, and an inner Docker
+daemon with separate Docker images, containers, and volumes. The inner daemon
+does not manage bridge/iptables networking; inner builds needing network access
+must explicitly select host networking.
 
-To use the default host Docker daemon instead, run:
-  devcapsule pycharm run --project "{config.project}" --docker
-
-To turn Docker off for a higher-isolation session, run:
-  devcapsule pycharm run --project "{config.project}" --no-docker
+Ordinary project launch supports host-daemon access or no Docker access:
+  {host_docker}
+  {no_docker}
 ========================================================================""",
         file=sys.stderr,
     )

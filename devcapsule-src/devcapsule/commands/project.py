@@ -21,8 +21,9 @@ import os
 import sys
 import termios
 import tty
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
+from devcapsule.launch.command_output import preparation_diagnostics
 from devcapsule.commands.framework import (
     Command,
     Group,
@@ -90,6 +91,7 @@ from devcapsule.recursive_successor import (
     inspect_successor,
     launch_successor,
 )
+from devcapsule.resolution_matrix import compatibility_report, known_base_image
 from devcapsule.configuration.authorization import (
     AuthorizationChoice,
     AuthorizationDeclaration,
@@ -119,6 +121,7 @@ from devcapsule.configuration.storage import (
 )
 from devcapsule.configuration.bindings import (
     configuration_binding_declarations,
+    managed_binding_path as _managed_binding_path,
     component_secret_inputs,
     resolve_secret_bindings,
 )
@@ -146,6 +149,24 @@ class ProjectCommandContext:
 def _project_context(context: object | None) -> ProjectCommandContext:
     assert isinstance(context, ProjectCommandContext)
     return context
+
+
+class ProjectInfoCommand(Command):
+    name = "info"
+    help = "Show project software, environment and persistent storage without changing state."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", action="store_true", help="Print the information as JSON.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.project_information import project_information, render_information
+
+        selected = _project_context(context)
+        report = project_information(selected.start_path(), runtime_fallback=selected.selected_path is None)
+        print(json.dumps(report, indent=2) if arguments.json else render_information(report))
+        return 0
 
 
 class ProjectListCommand(Command):
@@ -311,59 +332,148 @@ class ConfigurationListRow:
     name: str
     status: str
     value: str
+    # Which document the row's status and value come from, named by the
+    # tokens the Sources block of `config show` expands to paths: checkout,
+    # manifest, lock, resolution, managed, environment.
+    source: str
+
+
+@dataclass(frozen=True)
+class ConfigurationListing:
+    """What `config list` printed, for `config show` to explain further."""
+
+    root: Path
+    manifest: dict[str, Any]
+    manifest_path: Path
+    lock: dict[str, Any]
+    lock_path: Path
+    checkout: dict[str, Any]
+    input_path: Path
+    resolution_path: Path
+    resolution_row: ConfigurationListRow
+
+    def render_base(self) -> str:
+        """Name the base by its contract, say who built it and where the recipe
+        is, and say which locked components are validated for it and why."""
+        reference = self.lock.get("base", {}).get("reference")
+        image = known_base_image(str(reference)) if reference else None
+        lines = ["Base:"]
+        if image is None:
+            lines.append(f"  {reference}: not pinned by this DevCapsule's matrix.")
+        else:
+            lines.append(f"  {image.contract.describe()}")
+            lines.append(f"  at {image.reference}")
+            lines.append(f"  {image.built.describe()}")
+        lines.extend(f"  {line}" for line in compatibility_report(self.lock))
+        return "\n".join(lines)
+
+    def render_sources(self) -> str:
+        """Name every document behind the listing and whether the generated
+        resolution still reflects it. The tokens match the SOURCE column."""
+        resolved = load_resolution(self.resolution_path) if self.resolution_path.is_file() else {}
+        drifted = (
+            set(stale_resolution_inputs(self.manifest, self.lock, self.checkout, resolved))
+            if resolved.get("status") != "unresolved" and resolved else set()
+        )
+        def note(key: str) -> str:
+            if not resolved or resolved.get("status") == "unresolved":
+                return "not yet resolved"
+            return "changed since the resolution" if key in drifted else "as resolved"
+        lines = [
+            "Sources:",
+            f"  manifest     {self.manifest_path}  ({note('manifest')})",
+            f"  lock         {self.lock_path}  ({note('platform-lock')})",
+            f"  checkout     {self.input_path}  ({note('checkout-input')})",
+            "  workstation  absent (no workstation-level configuration exists yet)",
+            f"  resolution   {self.resolution_path}  (generated: {self.resolution_row.status})",
+            "  managed      DevCapsule-owned state directories under the XDG data home",
+            "  environment  the launching shell's environment variables",
+        ]
+        return "\n".join(lines)
+
+
+def _print_configuration_listing(context: object | None) -> ConfigurationListing | None:
+    """Print the checkout identity and the configuration table.
+
+    Returns the loaded documents and the resolution row for a caller that
+    adds the review, or ``None`` inside a capsule, where the runtime report
+    is the whole listing. The table is data: every declared value, binding,
+    secret input and authorization with its recorded status, and the
+    generated resolution's state. Advice belongs to ``config show``.
+    """
+    runtime_context = runtime_configuration.for_project(_project_context(context).start_path())
+    if runtime_context is not None:
+        print(runtime_context.configuration_report())
+        return None
+    root, manifest = manifest_for(_project_context(context).start_path())
+    lock_path, lock = lock_for(root, manifest)
+    input_path, resolution_path = checkout_record_paths(manifest, root)
+    if not input_path.is_file():
+        atomic_write(input_path, render_checkout(manifest, root, {}, {}))
+        print(f"Initialized checkout input: {input_path}")
+    if not resolution_path.is_file():
+        atomic_write(
+            resolution_path,
+            'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
+        )
+        print(f"Initialized resolution placeholder: {resolution_path}")
+    checkout = load_checkout(input_path, manifest, root)
+
+    identity = manifest["project"]
+    print(f"Project: {identity['creator']}/{identity['slug']}")
+    print(f"Checkout: {root}")
+    checkout_name = (
+        "default"
+        if input_path.name == "devcapsule.checkout.toml"
+        else input_path.name.removesuffix(".checkout.toml")
+    )
+    print(f"Checkout name: {checkout_name}")
+    print(f"Checkout input: {input_path}")
+    print(f"Generated plan: {resolution_path}")
+
+    resolution_row = _configuration_resolution_row(manifest, lock, checkout, resolution_path)
+    rows = [
+        *_configuration_value_rows(manifest, checkout),
+        *_configuration_binding_rows(lock, checkout),
+        *_component_secret_rows(lock, checkout),
+        *_configuration_authorization_rows(manifest, lock, checkout),
+        resolution_row,
+    ]
+    _print_configuration_rows(rows)
+    return ConfigurationListing(
+        root, manifest, root / ".devcapsule" / "devcapsule.toml", lock, lock_path,
+        checkout, input_path, resolution_path, resolution_row,
+    )
 
 
 class ConfigListCommand(Command):
     name = "list"
-    help = "Show configured values, bindings, authorizations, and resolution readiness."
+    help = "List configured values, bindings, authorizations, and the resolution state; data only."
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        runtime_context = runtime_configuration.for_project(_project_context(context).start_path())
-        if runtime_context is not None:
-            print(runtime_context.configuration_report())
+        _print_configuration_listing(context)
+        return 0
+
+
+class ConfigShowCommand(Command):
+    name = "show"
+    help = "Show the listing, the documents every row comes from, and the review: decisions, remedies, and whether to resolve."
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        listing = _print_configuration_listing(context)
+        if listing is None:
             return 0
-        root, manifest = manifest_for(_project_context(context).start_path())
-        _lock_path, lock = lock_for(root, manifest)
-        input_path, resolution_path = checkout_record_paths(manifest, root)
-        if not input_path.is_file():
-            atomic_write(input_path, render_checkout(manifest, root, {}, {}))
-            print(f"Initialized checkout input: {input_path}")
-        if not resolution_path.is_file():
-            atomic_write(
-                resolution_path,
-                'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
-            )
-            print(f"Initialized resolution placeholder: {resolution_path}")
-        checkout = load_checkout(input_path, manifest, root)
-
-        identity = manifest["project"]
-        print(f"Project: {identity['creator']}/{identity['slug']}")
-        print(f"Checkout: {root}")
-        checkout_name = (
-            "default"
-            if input_path.name == "devcapsule.checkout.toml"
-            else input_path.name.removesuffix(".checkout.toml")
-        )
-        print(f"Checkout name: {checkout_name}")
-        print(f"Checkout input: {input_path}")
-        print(f"Generated plan: {resolution_path}")
-
-        rows = [
-            *_configuration_value_rows(manifest, checkout),
-            *_configuration_binding_rows(lock, checkout),
-            *_component_secret_rows(lock, checkout),
-            *_configuration_authorization_rows(manifest, lock, checkout),
-            _configuration_resolution_row(
-                manifest,
-                lock,
-                checkout,
-                resolution_path,
-            ),
-        ]
-        _print_configuration_rows(rows)
+        row = listing.resolution_row
+        resolution = f"stale: {row.value}" if row.status == "stale" else row.status
         print("")
-        print(review_configuration(manifest, lock, checkout).render(root))
+        print(listing.render_sources())
+        print("")
+        print(listing.render_base())
+        print("")
+        print(review_configuration(listing.manifest, listing.lock, listing.checkout).render(
+            listing.root, resolution=resolution))
         return 0
 
 
@@ -603,8 +713,8 @@ class ConfigAuthorizeCommand(Command):
         print(f"Recommendation digest: {declaration.recommendation_digest}")
         print(f"Checkout input: {input_path}")
         print(
-            "This authorization applies only to the exact recorded value, image identity when "
-            "local, and current lock."
+            "This authorization applies to the exact recorded image, by digest or by local image "
+            "identity, and stays valid while the lock recommends that image."
         )
         print("Run 'devcapsule project config resolve' before materialization or launch.")
         return 0
@@ -666,6 +776,7 @@ class ConfigGroup(Group):
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
             ConfigListCommand.name: ConfigListCommand,
+            ConfigShowCommand.name: ConfigShowCommand,
             ConfigResolveCommand.name: ConfigResolveCommand,
             ConfigNeedCommand.name: ConfigNeedCommand,
             ConfigSetCommand.name: ConfigSetCommand,
@@ -888,10 +999,27 @@ class ProjectRunCommand(Command):
         parser.add_argument("--name", dest="container_name")
         parser.add_argument("--no-update-check", action="store_true",
                             help="Skip the daily interactive distribution refresh; cached critical notices still allow a decision.")
+        parser.add_argument("--print-command", action="store_true",
+                            help="Prepare the selected environment and print the Docker command instead of launching; comments identify transient dependencies.")
         add_carrier_options(parser, families=("set", "authorize"))
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        if not arguments.print_command:
+            return cls._run(arguments, context)
+        commands: list[str] = []
+        # Keep both Python narration and inherited child-process output off
+        # stdout. Emit only after preparation and its cleanup have succeeded.
+        with preparation_diagnostics():
+            result = cls._run(arguments, context, command_report=commands.append)
+        if result == 0:
+            for command in commands:
+                sys.stdout.write(command)
+        return result
+
+    @classmethod
+    def _run(cls, arguments: argparse.Namespace, context: object | None,
+             command_report: Callable[[str], None] | None = None) -> int:
         admitted = ExecutionConfiguration.load(_project_context(context).start_path(), force=arguments.force)
         # Reject invalid launch overrides before an optional upgrade can change
         # selection. Reload afterward so this launch and its success record use
@@ -903,7 +1031,7 @@ class ProjectRunCommand(Command):
                 reject_launcher_owned_docker_options(docker_options)
             except PycharmRunError as exc:
                 raise ProjectConfigurationError(str(exc)) from exc
-        if not offer_upgrades(admitted.project.root, refresh=not arguments.no_update_check):
+        if command_report is None and not offer_upgrades(admitted.project.root, refresh=not arguments.no_update_check):
             print("Launch cancelled; no session was started.")
             return 1
         admitted = ExecutionConfiguration.load(admitted.project.root, force=arguments.force)
@@ -1036,6 +1164,7 @@ class ProjectRunCommand(Command):
             PycharmRunOptions(
                 project=root,
                 inherit_legacy_configuration=False,
+                command_report=command_report,
                 project_mount=str(runtime["project-mount"]),
                 image=image,
                 name=arguments.container_name,
@@ -1070,6 +1199,8 @@ class ProjectRunCommand(Command):
                 display_transport=display_transport,
             )
         )
+        if command_report is not None:
+            return exit_code  # Printing is never evidence of successful use.
         if exit_code == 0:
             # D-0008: a zero exit proves this configuration; record it as a
             # known-good generation unless identical content already exists.
@@ -1149,72 +1280,6 @@ def _run_once_answers(
     return overrides, memory_override
 
 
-class ProjectRunImageCommand(Command):
-    name = "run-image"
-    help = (
-        "Run a local PyCharm-compatible image without project lock resolution. "
-        "Everything after '--' is handed verbatim to 'docker run'."
-    )
-    passthrough_dest = "docker_options"
-    passthrough_metavar = "DOCKER-RUN-OPTIONS"
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("image")
-        parser.add_argument("--project-mount", help="Absolute in-container project path.")
-        parser.add_argument("--home", type=Path)
-        parser.add_argument("--global-settings", type=Path)
-        parser.add_argument("--plugins", type=Path)
-        parser.add_argument("--project-state", type=Path)
-        parser.add_argument(
-            "--docker-daemon", choices=["none", "host-socket"], default="none"
-        )
-        parser.add_argument("--development-sudo", action="store_true")
-        parser.add_argument(
-            "--host-browser",
-            action=argparse.BooleanOptionalAction,
-            default=False,
-            help="Explicitly allow HTTP(S) links to open in the physical host's default browser.",
-        )
-        parser.add_argument("--name", dest="container_name")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        candidate = _project_context(context).start_path()
-        try:
-            project = discover_project(candidate)
-        except ProjectConfigurationError:
-            project = candidate.expanduser().resolve()
-        if not project.is_dir():
-            raise ProjectConfigurationError(f"Project directory does not exist: {project}")
-        docker_mode = (
-            DockerMode.host if arguments.docker_daemon == "host-socket" else DockerMode.none
-        )
-        docker_options = list(arguments.docker_options)
-        if docker_options:
-            reject_launcher_owned_docker_options(docker_options)
-            print(
-                "WARNING: passing raw docker run options: " + " ".join(docker_options),
-                file=sys.stderr,
-            )
-        return run_pycharm(
-            PycharmRunOptions(
-                project=project,
-                project_mount=arguments.project_mount,
-                image=arguments.image,
-                name=arguments.container_name,
-                persistent_home=arguments.home,
-                global_settings=arguments.global_settings,
-                project_state=arguments.project_state,
-                plugins=arguments.plugins,
-                docker_mode=docker_mode,
-                enable_sudo=arguments.development_sudo,
-                enable_host_browser=arguments.host_browser,
-                extra_docker_args=["--pull=never", *docker_options],
-            )
-        )
-
-
 class ProjectCommand(Group):
     name = "project"
     help = "Initialize, list, configure, and run DevCapsule project checkouts."
@@ -1238,13 +1303,14 @@ class ProjectCommand(Group):
         parsed_tokens = tokens[:tokens.index("--")] if "--" in tokens else tokens
         if tokens and not any(token in {"-h", "--help"} for token in parsed_tokens):
             read_only = tuple(tokens[:2]) in {("versions", "show"), ("config", "list")}
-            if not read_only and tokens[0] not in {"recursive-e2e", "list"} and len(tokens) >= (2 if tokens[0] in {"versions", "config", "state", "checkout"} else 1):
+            if not read_only and tokens[0] not in {"recursive-e2e", "list", "info"} and len(tokens) >= (2 if tokens[0] in {"versions", "config", "state", "checkout"} else 1):
                 runtime_configuration.require_launcher(context.start_path(), tokens)
         return context
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
+            ProjectInfoCommand.name: ProjectInfoCommand,
             ProjectListCommand.name: ProjectListCommand,
             ProjectInitCommand.name: ProjectInitCommand,
             CheckoutGroup.name: CheckoutGroup,
@@ -1253,7 +1319,6 @@ class ProjectCommand(Group):
             StateGroup.name: StateGroup,
             RecursiveE2EGroup.name: RecursiveE2EGroup,
             ProjectRunCommand.name: ProjectRunCommand,
-            ProjectRunImageCommand.name: ProjectRunImageCommand,
         }
 
 
@@ -1280,28 +1345,34 @@ def _configuration_value_rows(
     declarations = configuration_value_declarations(manifest)
     configuration = checkout.get("configuration", {})
     if not isinstance(configuration, dict):
-        return [ConfigurationListRow("value", "*", "invalid", "configuration is not a table")]
+        return [ConfigurationListRow("value", "*", "invalid", "configuration is not a table", "checkout")]
     raw_values = configuration.get("values", {})
     if not isinstance(raw_values, dict):
-        return [ConfigurationListRow("value", "*", "invalid", "values is not a table")]
+        return [ConfigurationListRow("value", "*", "invalid", "values is not a table", "checkout")]
 
     rows: list[ConfigurationListRow] = []
     for name, declaration in sorted(declarations.items()):
         if name not in raw_values:
-            status = "missing-required" if declaration.get("required", False) else "unset-optional"
-            rows.append(ConfigurationListRow("value", name, status, "-"))
+            if name in configuration.get("omitted-values", []):
+                rows.append(ConfigurationListRow("value", name, "omitted", "-", "checkout"))
+            elif "recommended" in declaration:
+                value = normalize_configuration_value(manifest, name, "default")
+                rows.append(ConfigurationListRow("value", name, "project-recommended", render_toml_scalar(value), "manifest"))
+            else:
+                status = "missing-required" if declaration.get("required", False) else "unset-optional"
+                rows.append(ConfigurationListRow("value", name, status, "-", "manifest (declared, no value)"))
             continue
         try:
             normalized = normalize_configuration_value(manifest, name, raw_values[name])
         except ProjectConfigurationError as exc:
-            rows.append(ConfigurationListRow("value", name, "invalid", str(exc)))
+            rows.append(ConfigurationListRow("value", name, "invalid", str(exc), "checkout"))
         else:
             rows.append(
-                ConfigurationListRow("value", name, "configured", render_toml_scalar(normalized))
+                ConfigurationListRow("value", name, "configured", render_toml_scalar(normalized), "checkout")
             )
     for name, value in sorted(raw_values.items(), key=lambda item: str(item[0])):
         if name not in declarations:
-            rows.append(ConfigurationListRow("value", str(name), "undeclared", repr(value)))
+            rows.append(ConfigurationListRow("value", str(name), "undeclared", repr(value), "checkout"))
     return rows
 
 
@@ -1312,20 +1383,23 @@ def _component_secret_rows(
     try:
         bindings = resolve_secret_bindings(lock, checkout)
     except ProjectConfigurationError as exc:
-        return [ConfigurationListRow("secret", "*", "invalid", str(exc))]
+        return [ConfigurationListRow("secret", "*", "invalid", str(exc), "checkout")]
     rows: list[ConfigurationListRow] = []
     for name, declaration in sorted(declarations.items()):
         source = bindings.get(name)
         if source is None:
             status = "missing-required" if declaration.required else "optional-unbound"
+            origin = "lock (declared, unbound)"
         else:
             status = "bound" if source in os.environ else "bound-unavailable"
+            origin = "checkout, environment" if status == "bound" else "checkout (variable unset in environment)"
         rows.append(
             ConfigurationListRow(
                 "secret",
                 name,
                 status,
                 f"{declaration.environment_variable} ({declaration.exposure})",
+                origin,
             )
         )
     return rows
@@ -1342,7 +1416,7 @@ def _configuration_binding_rows(
         bindings = configuration.get("bindings", {})
         raw_bindings = bindings.get("host-directory", {}) if isinstance(bindings, dict) else bindings
     if not isinstance(raw_bindings, dict):
-        return [ConfigurationListRow("binding", "*", "invalid", "host-directory is not a table")]
+        return [ConfigurationListRow("binding", "*", "invalid", "host-directory is not a table", "checkout")]
     state = checkout.get("state", {})
     adopted = state.get("adopted", {}) if isinstance(state, dict) else {}
     if not isinstance(adopted, dict):
@@ -1353,20 +1427,20 @@ def _configuration_binding_rows(
         bound = raw_bindings.get(name)
         legacy = adopted.get(name)
         if bound is not None and legacy is not None:
-            rows.append(ConfigurationListRow("binding", name, "conflict", "bound and adopted"))
+            rows.append(ConfigurationListRow("binding", name, "conflict", "bound and adopted", "checkout"))
         elif bound is not None:
             path = Path(str(bound)).expanduser().resolve()
             status = "bound" if isinstance(bound, str) and path.is_dir() else "invalid"
-            rows.append(ConfigurationListRow("binding", name, status, f"host-directory: {path}"))
+            rows.append(ConfigurationListRow("binding", name, status, f"host-directory: {path}", "checkout"))
         elif legacy is not None:
             path = Path(str(legacy)).expanduser().resolve()
             status = "adopted-legacy" if isinstance(legacy, str) and path.is_dir() else "invalid"
-            rows.append(ConfigurationListRow("binding", name, status, str(path)))
+            rows.append(ConfigurationListRow("binding", name, status, str(path), "checkout (state.adopted)"))
         else:
-            rows.append(ConfigurationListRow("binding", name, "managed-default", "managed directory"))
+            rows.append(ConfigurationListRow("binding", name, "managed-default", "managed directory", "managed (lock declares the slot)"))
     for name, value in sorted(raw_bindings.items(), key=lambda item: str(item[0])):
         if name not in declarations:
-            rows.append(ConfigurationListRow("binding", str(name), "undeclared", str(value)))
+            rows.append(ConfigurationListRow("binding", str(name), "undeclared", str(value), "checkout"))
     return rows
 
 
@@ -1375,15 +1449,27 @@ def _configuration_authorization_rows(
 ) -> list[ConfigurationListRow]:
     try:
         reviews = review_authorizations(manifest, lock, checkout)
+        declarations = authorization_declarations(manifest, lock)
     except ProjectConfigurationError as exc:
-        return [ConfigurationListRow("authorization", "*", "invalid", str(exc))]
-    return [
-        ConfigurationListRow(
-            "authorization", item.name, item.status,
-            item.recommended if item.recorded == "unanswered" else item.recorded,
+        return [ConfigurationListRow("authorization", "*", "invalid", str(exc), "checkout")]
+    rows = []
+    for item in reviews:
+        declaration = declarations.get(item.name)
+        # The base selection and vendor acquisitions are recommended by the
+        # lock; host access is recommended by the manifest's host tables.
+        recommender = "lock" if declaration is None or declaration.required else "manifest"
+        if item.recorded == "unanswered":
+            origin = f"{recommender} (recommendation, unanswered)"
+        else:
+            origin = "checkout" if item.status != "stale" else f"checkout (answer predates the {recommender} recommendation)"
+        rows.append(
+            ConfigurationListRow(
+                "authorization", item.name, item.status,
+                item.recommended if item.recorded == "unanswered" else item.recorded,
+                origin,
+            )
         )
-        for item in reviews
-    ]
+    return rows
 
 
 def _configuration_resolution_row(
@@ -1393,20 +1479,22 @@ def _configuration_resolution_row(
     resolution_path: Path,
 ) -> ConfigurationListRow:
     if not resolution_path.is_file():
-        return ConfigurationListRow("resolution", "generated", "missing", str(resolution_path))
+        return ConfigurationListRow("resolution", "generated", "missing", str(resolution_path), "resolution")
     resolved = load_resolution(resolution_path)
     if resolved.get("status") == "unresolved":
-        return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path))
+        return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path), "resolution")
     stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
     if stale:
-        return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale))
-    return ConfigurationListRow("resolution", "generated", "fresh", str(resolution_path))
+        return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale), "resolution (inputs changed: " + ", ".join(stale) + ")")
+    return ConfigurationListRow("resolution", "generated", "fresh", str(resolution_path), "resolution")
 
 
 def _print_configuration_rows(rows: list[ConfigurationListRow]) -> None:
-    headers = ("KIND", "NAME", "STATUS", "VALUE / RECOMMENDATION")
-    values = [(row.kind, row.name, row.status, row.value) for row in rows]
-    widths = [max(len(headers[index]), *(len(row[index]) for row in values)) for index in range(4)]
+    # SOURCE precedes the value: values carry digests and paths that push a
+    # trailing column past most terminal widths.
+    headers = ("KIND", "NAME", "STATUS", "SOURCE", "VALUE / RECOMMENDATION")
+    values = [(row.kind, row.name, row.status, row.source, row.value) for row in rows]
+    widths = [max(len(headers[index]), *(len(row[index]) for row in values)) for index in range(5)]
     print("")
     print("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
     for row in values:
@@ -1515,9 +1603,8 @@ def _component_state_mounts(
 def _seed_component_state(source: Path, declaration: Any) -> None:
     """Place a component's declared default files into its managed slot.
 
-    Written as the invoking user, before the daemon mounts the slot, and
-    only when the file is absent: the slot is developer-owned state, so an
-    existing file — however it got there — is never rewritten. Adopted
+    Written as the invoking user before the daemon mounts the slot. JSON
+    seeds may fill missing keys; explicit values always survive. Adopted
     directories never reach here (see the caller).
     """
 
@@ -1528,23 +1615,48 @@ def _seed_component_state(source: Path, declaration: Any) -> None:
         if seed.slot != declaration.slot_name:
             continue
         target = source / seed.relative_path
+        # A developer may link settings elsewhere. Do not follow or replace
+        # those links, including dangling links and linked parent directories.
+        relative_parts = Path(seed.relative_path).parts
+        if any(source.joinpath(*relative_parts[:i]).is_symlink()
+               for i in range(1, len(relative_parts) + 1)):
+            print(f"Warning: leaving linked component settings unchanged: {target}", file=sys.stderr)
+            continue
         if target.exists():
+            if not seed.merge_missing_json:
+                continue
+            try:
+                settings = json.loads(target.read_text(encoding="utf-8"))
+                defaults = json.loads(seed.content)
+                if not isinstance(settings, dict):
+                    raise ValueError("expected a JSON object")
+                if _fill_missing_settings(settings, defaults):
+                    atomic_write(target, json.dumps(settings, indent=2) + "\n")
+            except (ValueError, OSError) as exc:
+                # Do not echo file contents: settings may include credentials.
+                print(
+                    f"Warning: leaving component settings unchanged: {target} "
+                    f"({type(exc).__name__}); repair the JSON object to apply defaults.",
+                    file=sys.stderr,
+                )
             continue
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         atomic_write(target, seed.content)
 
 
-def _managed_binding_path(root: Path, declaration: Any) -> Path:
-    home = Path(os.environ.get("HOME", "~")).expanduser()
-    roots = {
-        "durable": Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share"),
-        "state": Path(os.environ.get("XDG_STATE_HOME") or home / ".local" / "state"),
-        "cache": Path(os.environ.get("XDG_CACHE_HOME") or home / ".cache"),
-    }
-    namespace = roots[declaration.kind] / "devcapsule" / "projects" / "by-path" / project_namespace(root)
-    if declaration.name == "home":
-        return namespace / "home"
-    return namespace / "components" / str(declaration.component_id) / str(declaration.slot_name)
+def _fill_missing_settings(settings: dict[str, Any], defaults: dict[str, Any]) -> bool:
+    """Add missing JSON keys in memory; reject incompatible object structure."""
+    changed = False
+    for key, value in defaults.items():
+        if key not in settings:
+            settings[key] = value
+            changed = True
+        elif isinstance(value, dict):
+            if not isinstance(settings[key], dict):
+                raise ValueError(f"expected an object for {key}")
+            changed = _fill_missing_settings(settings[key], value) or changed
+    return changed
+
 
 
 COMMAND = ProjectCommand

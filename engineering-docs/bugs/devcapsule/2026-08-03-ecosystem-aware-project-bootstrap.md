@@ -1,6 +1,6 @@
 ---
 status: confirmed
-severity: untriaged
+severity: minor
 target: none
 owner: maintenance
 opened: 2026-08-03
@@ -124,3 +124,8 @@ the security, persistence, failure, and external dogfood checks pass.
 Reopen if normal onboarding again requires undocumented language setup, if
 DevCapsule guesses and executes an unsafe bootstrap strategy, or if the
 implementation treats every ecosystem as a Python virtual environment.
+
+## Disposition, 2026-09-25
+
+Owner ruling during 0.2.14 acceptance: deferred beyond 0.2.14 and marked
+minor; no functional failure was reported on any 0.2.14 candidate.

@@ -43,7 +43,7 @@ writable-root controls that PyCharm has. That divergence is not an oversight to
 be patched; it is the predictable behavior of a design where every
 IDE-times-toolchain-times-agent combination is a separate hand-written artifact.
 
-**The declared value proposition is not implemented.** `docs/product/v1-announcement.md`
+**The declared value proposition is not implemented.** `engineering-docs/product/v1-announcement.md`
 promises that "the project can declare the IDE surface, runtime profile, state
 layout, allowed host resources, and the current project memory in version
 controlled files." Only project memory is actually declared today. The other

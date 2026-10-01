@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: component-catalog
 opened: 2026-09-05
+closed: 2026-09-25
 requirements: [R-PRODUCT-001]
 ---
 
@@ -152,3 +153,7 @@ The owner rebuilds a codex-carrying formation with the fixed client on a
 checkout whose `codex/home` slot is new (or whose `config.toml` is
 absent), sees the seeded configuration in place, and runs an agent turn
 that executes a shell command without an approval prompt.
+
+## Closure, 2026-09-25
+
+Owner ruling during 0.2.14 rc4 acceptance: closed. Codex is installed from the npm meta package and its platform artifact in every 0.2.14 formation build; the single plucked binary is gone.

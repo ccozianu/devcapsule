@@ -40,10 +40,51 @@ The [operator guide for releasing a new version](engineering-docs/implementation
 owned by `project-management`, is this project's release policy. It uses the
 default ref spelling, `release-X.Y.Z` with `vX.Y.Z-rcN` and `vX.Y.Z` tags;
 builds and publishes candidates through GitHub Actions; gates each candidate
-on mainline integration by ancestry, with a documented exception record for a
-maintenance release that cannot merge; requires downloaded-artifact smoke
+on a resolved main disposition, using ancestry, patch equivalence or the
+documented evidence record described in the guide; requires downloaded-artifact smoke
 evidence for acceptance; and keeps the acceptance record under
-`engineering-docs/releases/`.
+`engineering-docs/releases/`. Since 2026-09-28 a release also includes its
+documentation: the guide's *Documentation Is Part Of The Release* names the
+obligations, the documentation is published per
+[the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md),
+and `docs/versions.yaml` on `main` is the authored list of documented
+versions, promoted after every final tag.
+
+## Documentation Refs
+
+Owner grant of 2026-09-28, exercised by `project-management`: the project
+declares one ref kind of its own beside the workflow's, `docs-<version>`.
+A `docs-<version>` branch is forked from the final tag `v<version>` and
+carries documentation-only commits: changes under `docs/` and nothing else.
+It exists because the definition closes a release branch after its final
+tag while the website publishes each version's documentation from that
+version's own source; the branch is where a released version's guides are
+corrected after the fact. It is never merged anywhere, never rebased, and is
+named in `docs/versions.yaml` as that version's `source` for as long as it
+exists; without it, the version's source is its final tag. The candidate gate
+does not apply to it; the website's build check does. Anyone may commit to
+it on the owner's or `project-management`'s direction; `user-docs` normally
+authors the corrections. See
+[the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md).
+
+## Blog Entries
+
+When the human says "write a blog entry on topic X", write it:
+
+- Create `engineering-docs/blog/YYYY-MM-DD-short-topic.md` in the flat blog
+  directory. Use the date of writing; the website reads the date from the filename.
+- Begin with the front matter block the blog README describes, `description`
+  and, until the owner releases the entry, `draft: true`; then `# Title` and
+  plain Markdown prose. Use existing entries as examples. No other
+  website-specific markup is needed.
+- Attribute quoted material and identify any editing of quotations. For links
+  to repository evidence, use a mainline commit SHA so the reference stays stable.
+- Add the entry to `engineering-docs/blog/README.md` and root `index.md`.
+
+The website picks up these files. Its [publishing instructions](website/PUBLISHING.md)
+define deployment. The human's request supplies the topic and occasion; there
+is no separate blog proposal, schedule, or approval procedure. These instructions
+are local to DevCapsule.
 
 ## Validation Commands
 
@@ -84,6 +125,32 @@ networking for host-bound development services, and development sudo. The
 facts: the canonical repository and owner-operated pull-request delivery.
 The GitHub integration rules below govern agent access and the UI handoff.
 
+### Dogfooding CLI Selection
+
+Owner direction, 2026-09-24: this project's configuration recommends
+`runtime.devcapsule-command = "devcapsule0"`. Newly materialized development
+capsules expose the shipped runtime as `devcapsule0`, leaving `devcapsule` for
+our development installation. Use the shipped command deliberately when testing
+its released behavior; use the development CLI or explicit built PEX for current
+work. Do not silently fall back to the shipped CLI when development setup is
+missing. Other projects retain the standard command unless they explicitly opt
+into this exception. See DEVELOPING.md for checkout overrides and resolution.
+
+### Local Launch Networking
+
+Owner direction, 2026-09-24: always pursue host networking for this project's
+local development and release-validation launches, including launches from
+inside a DevCapsule. Use the RC runner's `--network host`, or ordinary
+`devcapsule project run --authorize network host`. This is standing authorization
+for those local launches; do not repeatedly ask for it. Prefer the supported
+run-once option over rewriting a checkout's saved configuration.
+
+Tests specifically exercising bridge networking, denied host access or network
+isolation must retain their declared network mode. If host networking cannot
+be used, record the concrete reason and the fallback; do not silently substitute
+bridge networking. This is a local operating rule, not a change to DevCapsule's
+product defaults or other projects' permissions.
+
 ## GitHub Integration: Owner Through The UI
 
 Owner direction, 2026-09-21: agents use ordinary Git operations with the
@@ -101,8 +168,46 @@ unless the owner explicitly changes it. Do not substitute a direct push to main
 for owner PR integration. Re-verify main through an SSH fetch after the owner
 reports the merge. Keep this rule until the owner explicitly changes it.
 
+## Commit Authorship
+
+Owner direction, 2026-09-22: commits made with an agent retain the human's Git
+author identity and add a `Co-authored-by` trailer for the contributing agent.
+Pushing credentials and the person merging a PR do not replace commit authorship.
+Before committing, check `git var GIT_AUTHOR_IDENT`; use the human's intended
+name and GitHub-associated email, not an inherited container placeholder. Set
+checkout-specific corrections with `git config --local user.name` and
+`git config --local user.email`, leaving other developers' identities alone.
+
+For Codex, the co-author display name is the actual model name followed by
+`Codex`, using this project's attribution address `noreply@openai.com`:
+
+```text
+Co-authored-by: GPT-6 Astra Codex <noreply@openai.com>
+```
+
+That is an example, not a model pin. Read the active session's model identity;
+do not infer it solely from a configured default or copy a prior session's name.
+If the actual model cannot be established, ask the human for the displayed model
+before claiming a specific identity. Credit only agents that contributed.
+Separate trailers from the message body with a blank line and verify the saved
+commit's author and trailers before pushing. Preserve trailers when composing a
+squash commit. This applies to future commits; do not rewrite merged history to
+add attribution. No change to SSH credentials or PR merge permissions is needed.
+
 ## Exceptions
 
+- **Release-fix propagation uses engineering judgment.** Owner direction,
+  2026-09-22, supersedes the generic release rule's blanket merge-only and
+  no-cherry-pick restrictions. Main stays open to other workstreams. Merge a
+  release fix when that produces a correct result on main without holding
+  unrelated work back; otherwise cherry-pick it, adapt its reasoning to main's
+  implementation, or establish with evidence that main does not have the bug.
+  A conflict alone is not proof that merging is unsuitable, and ancestry alone
+  is not proof that the fix works. Record the main disposition and its evidence
+  with the bug. Routine method selection needs no new owner approval. The
+  [release runbook](engineering-docs/implementation-notes/devcapsule/2026-09-01-release-and-validation-process.md)
+  describes the existing gate's evidence paths. Ends when the generic definition
+  incorporates this owner decision; its revision is routed to workflow-improvements.
 - **The root `WORKFLOW.md` is the source, not an installed copy.** The
   packaged definition under `devcapsule-src/devcapsule/assets/project_workflow/definition/`
   is derived from it and need not be byte-identical; the asset README says
@@ -113,5 +218,9 @@ reports the merge. Keep this rule until the owner explicitly changes it.
   2026-09-18 under the adoption exception the definition provides. Both are
   recorded in root `CURRENT-STATUS.md`. Neither ends.
 - **Branch names outside the `ws-` vocabulary.** Open workstreams registered
-  before 2026-09-18 keep their old branch names until they rename them, which
-  each does before the next release candidate is tagged. Ends then.
+  before 2026-09-18 keep their old branch names until they rename them. Owner
+  direction, 2026-09-22, defers the former pre-candidate deadline through the
+  0.2.14 release: publish 0.2.14, then complete the migration before beginning
+  substantive work on the next release. RC0 and later 0.2.14 candidates are not
+  held for this migration. Each workstream still owns its rename. Ends when
+  those renames are complete.

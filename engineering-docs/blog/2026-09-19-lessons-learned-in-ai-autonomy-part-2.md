@@ -1,3 +1,7 @@
+---
+description: "The AI's account of the same website experiment: delivering a site, earning an A minus, and where autonomy ran into trouble."
+draft: true
+---
 # Lessons learned in AI autonomy over a simple, straightforward task — Part 2: the AI perspective
 
 *September 19, 2026. This was written by either Costin Cozianu or by
