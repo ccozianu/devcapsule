@@ -139,7 +139,7 @@ def run_e2e_tests(session: nox.Session, *, release_smoke: bool = False) -> None:
         "pytest",
         "--no-cov",
         "-m",
-        "e2e and not recursive_e2e" + (" and not contributor_e2e" if release_smoke else "")
+        "e2e and not recursive_e2e and not ide_smoke" + (" and not contributor_e2e" if release_smoke else "")
         + ("" if session.env.get("DEVCAPSULE_E2E_BUILT_BASE") else " and not base_build_e2e"),
         str(PROJECT_ROOT / "tests" / "e2e"),
         env=environment,
@@ -394,6 +394,35 @@ def e2e(session: nox.Session) -> None:
     if options.build_base:
         build_e2e_base(session, network=options.build_network)
     run_e2e_tests(session, release_smoke=release_smoke)
+
+
+PLAYWRIGHT_VERSION = "1.63.0"
+"""Browser automation for the optional pixel evidence of the IDE smoke; pinned here, outside the lock."""
+
+
+@nox.session(name="ide-smoke", python="3.12")
+def ide_smoke(session: nox.Session) -> None:
+    """Launch each IDE surface in a fresh project and prove it comes alive.
+
+    Uses DEVCAPSULE_PEX_UNDER_TEST when set, else the local build. Pass
+    ``--display`` to install Playwright and Chromium into the session and keep a
+    screenshot of each desktop as evidence; without it the X11 facts alone decide.
+    """
+    install_locked(session)
+    parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
+    parser.add_argument("--display", action="store_true")
+    parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
+    options = parser.parse_args(session.posargs)
+    select_e2e_pex(session)
+    if options.display:
+        session.install(f"playwright=={PLAYWRIGHT_VERSION}")
+        session.run("playwright", "install", "chromium")
+    session.run(
+        "python", "-m", "pytest", "--no-cov", "-m", "ide_smoke",
+        *(["-k", " or ".join(options.surface)] if options.surface else []),
+        str(PROJECT_ROOT / "tests" / "e2e" / "test_ide_comes_alive.py"),
+        env={PEX_UNDER_TEST_ENV: session.env[PEX_UNDER_TEST_ENV]},
+    )
 
 
 @nox.session(python="3.12")

@@ -20,6 +20,28 @@ No force-push or mainline implementation is needed.
 
 ## Producer Migration (2026-09-28)
 
+2026-10-01, at the owner's direction: the developer documentation was split
+out of `DEVELOPING.md`, now a brief with a table of contents, into
+`engineering-docs/development/`: environment, source layout, and the unit,
+integration and end-to-end test documents, each written from the suite as
+it is (sixty unit modules, one integration module, eight end-to-end tests,
+their fixtures, resources, markers and sessions). Indexed; the runbook's
+link into the brief follows the move; the two anchors other documents use
+in the brief were kept.
+
+2026-10-01, on this branch at the owner's direction, outside this
+workstream's subject: the IDE smoke, `nox -s ide-smoke`, with
+`tests/e2e/ide_session.py` and `tests/e2e/test_ide_comes_alive.py`. Per IDE
+surface it initializes a fresh project with the executable under test,
+launches it, and proves the IDE came alive: desktop URL answers, an X11
+window of the IDE's class exists, and optionally a Playwright screenshot.
+Verified against the shipped 0.2.15 executable from inside this capsule:
+VSCodium passed in 16 s, PyCharm in 64 s, every container and record
+removed afterwards; the full build gate passed with the new test deselected
+by its marker. Evidence under `devcapsule-src/dist/e2e-evidence/ide-smoke/`.
+The product half belongs to maintenance or the catalog workstream when the
+owner routes it; it rides this branch only because the owner said so.
+
 External state, 2026-09-30: this capsule's `/opt/xtras` holds Pagefind
 1.5.2 and Playwright 1.63.0 with Chromium under `/opt/xtras/playwright/browsers`,
 launchers in `/opt/xtras/bin`, `PLAYWRIGHT_BROWSERS_PATH` exported from the
