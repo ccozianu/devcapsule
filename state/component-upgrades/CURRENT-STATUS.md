@@ -119,11 +119,18 @@ Scope and build the **0.2.16 consent slice**, named by the owner on
    host access asked only when the project recommends the less secure
    value; existing checkouts grandfathered, read through the sidecar.
 
+4. The launch-time upgrade prompt rewritten as a scheduling choice, now,
+   later or keep, with a one-time validation-gap disclosure and no vendor
+   authorization (D-0010 refinement of 2026-10-01).
+
+R-UPGRADE-001 carries the dated refinement of 2026-10-01 that reads its
+"acquisition consent remains enforced" as D-0011 defines it. Nothing of
+the consent design issue remains with the owner; all five questions are
+ruled.
+
 Before code: a short design note here naming the files, the read order
 (workstation record, then checkout record, then sidecar), the tests, and
-what `config show` prints for each source. Still with the owner: upgrades
-as a scheduling choice plus a validation-gap disclosure, and the dated
-refinement of R-UPGRADE-001.
+what `config show` and the upgrade prompt print for each source.
 
 Still open from before, unchanged: scope the R-UPGRADE-002 operational slice with the owner: independent monitor
 and alert routes, incident ownership, thresholds and supported adapter inventory.
