@@ -1,16 +1,50 @@
-# Workstream Current Status: Eclipse Interactive Surface
+# Workstream Final Status: Eclipse Interactive Surface
 
 Mnemonic: `eclipse-surface`
 
 Start date: 2026-09-09
 
-State: open; registered and awaiting the product owner's scoping instructions
+End date: 2026-10-01
+
+State: concluded unsuccessfully; folded into `component-catalog` by owner decision
 
 Integration target: `main`
 
 Delivery method: pull request
 
 Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`
+
+## Conclusion (2026-10-01)
+
+**Ended at the product owner's direction on 2026-10-01, without implementing
+anything.** The owner ruled that an IDE is a component, that
+`component-catalog` is where new components are accepted and tested, and
+that `component-upgrades` owns the code that wires components (orchestration,
+upgrades). A workstream per surface therefore has no place, and this one,
+registered for scoping that never came, concludes rather than waits.
+
+- **Last task:** the entry survey below, completed 2026-09-09. Its final
+  status: delivered to the owner; no scoping instruction followed.
+- **Branches and revisions:** none. No `eclipse-surface/` or
+  `ws-eclipse-surface/` branch was ever forked, locally or on the remote; the
+  registration merged to `main` on 2026-09-09 and this is the only record.
+- **Intake:** one item, the 2026-09-21 fan-out notice, taken and acknowledged
+  today; nothing forwarded, nothing owed.
+- **Where the work went:** Eclipse as a surface is `component-catalog`
+  content whenever the owner schedules it, and the survey below (licence,
+  shared-installation mechanism, the files an Eclipse integration touches)
+  is its starting material. The first new JetBrains surface, IntelliJ IDEA,
+  was targeted at release 0.2.16 the same day and is also
+  `component-catalog`'s; see the
+  [0.2.16 planning proposal](../../wip/2026-08-09-project-management/2026-09-27-0216-release-planning.md).
+- **Reconsideration:** none needed. A surface workstream is not the shape
+  the owner wants; the capability name `java-ide` and the package choice
+  remain open questions for whoever implements Eclipse.
+- **Custody record:** the [custody record](2026-09-09-outbox-reset-loss-record.md)
+  held here stays with this archive. `project-management` recorded on
+  2026-09-22 that the recovered mail and patch are historical custody
+  evidence, not outstanding delivery, and the outbox mechanism it describes
+  was retired with the coordination branch.
 
 ## Goal
 
@@ -152,9 +186,9 @@ forced llvmpipe software rendering — VSCodium needed `--no-sandbox` and a 640m
 
 ## Planned Next Step
 
-Return to the product owner with these findings and take scoping instructions.
-Nothing is committed to beyond the registration itself; no Eclipse package has
-been chosen, no capability name has been ruled, and no branch has been forked.
+None; concluded. Historically: return to the product owner with these
+findings and take scoping instructions. No Eclipse package was chosen, no
+capability name was ruled, and no branch was forked.
 
 ## Open Threads
 
