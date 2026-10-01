@@ -89,6 +89,7 @@ markers = [
   "e2e: builds or runs real Docker images and containers",
   "recursive_e2e: requires an authorized DevCapsule container with host-Docker access",
   "contributor_e2e: launches a clean contributor container from a host or recursive capsule",
+  "ide_smoke: launches a real IDE session per surface with the executable under test; opt-in through nox -s ide-smoke",
   "flaky: executes for visibility but has a temporarily non-blocking result",
 ]
 

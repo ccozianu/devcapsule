@@ -175,6 +175,18 @@ python3.12 -m venv --clear .venv
 .venv/bin/python -m pip install -e . --no-deps
 ```
 
+Two heavier suites are opt-in because they need Docker and real images.
+`nox -s e2e` runs the end-to-end tests. `nox -s ide-smoke` launches each IDE
+surface the product offers, VSCodium and PyCharm today, in a fresh project
+with the executable under test and proves the IDE comes alive: the desktop
+URL answers, and an X11 window of the IDE's class exists on the capsule's own
+display. Add `-- --display` to keep a screenshot of each desktop as evidence
+through Playwright, installed into the session; `-- --surface codium` limits
+the run. Evidence lands under `dist/e2e-evidence/ide-smoke/`. It runs on a
+host or inside a capsule with host Docker, and the first run on a machine
+acquires the IDE and builds its environment. `tests/e2e/ide_session.py` is the
+table of surfaces to extend when a new IDE joins the catalog.
+
 The full gate includes compilation, shell syntax checks, pytest, type checks,
 CLI smoke tests, PEX construction, and PEX smoke tests. It always creates the
 local-only `dist/devcapsule-local.pex`. On a clean repository it also creates

@@ -124,6 +124,18 @@ if (cmd === 'info') {
 await b.close();
 ```
 
+## First Step Taken: The IDE Smoke (2026-10-01)
+
+The deterministic half is now a test: `tests/e2e/test_ide_comes_alive.py`
+with `tests/e2e/ide_session.py`, run by `nox -s ide-smoke`. Per IDE surface
+it initializes a fresh project with the executable under test, launches it,
+and proves the IDE came alive without a vision model: the desktop URL
+answers, and the capsule's display holds an X11 top-level window of the
+IDE's class, read through the minimal X client. With `--display` it also
+keeps a Playwright screenshot and a distinct-colour count as evidence. The
+surfaces are a table, so a new IDE is one row. The scripted journey below
+builds on this session helper.
+
 ## What A Runner Would Add
 
 - A Markdown script format: one step per heading, the action in the
