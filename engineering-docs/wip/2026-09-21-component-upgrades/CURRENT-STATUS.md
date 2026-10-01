@@ -4,7 +4,7 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: paused; checkpoint merged and first hosted publication verified; V1 operational follow-up retained
+State: active 2026-10-01 at owner direction; resumed for the consent design ruling (vendor terms once per user, trust bound to a verified channel, workstation-level trust record); R-UPGRADE-002 follow-up retained
 
 Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
 
@@ -72,9 +72,41 @@ Session synchronization: fetched `origin/main` at `9bf2711`, verified it contain
 The updated workflow definition adds brief/claim operations; read and applied.
 Mail and owned open bug queues were empty. Workflow commands run from the root.
 
+## Resumed 2026-10-01: The Consent Design
+
+The owner resumed this workstream to rule on consent. Under the routing
+rule of 2026-10-01, `component-upgrades` owns the code that wires
+components (orchestration, upgrades, channels), which is where consent is
+asked and stored. The problem statement and candidates are in
+project-management's
+[consent design issue](../2026-08-09-project-management/2026-10-01-design-consent-and-vendor-trust.md),
+on `ws-project-management/coordination` until that branch integrates
+(commit `df68bcf`); it reaches `main` with project-management's next pull
+request. In one paragraph: four different questions are asked under one
+word, with inverted priority; the one real obligation is the user accepting
+a vendor's terms before DevCapsule downloads on their behalf; the owner's
+preference is a per-workstation record under the launcher's config root
+stating "I trust this vendor and agree for DevCapsule to download this
+software, in all its versions, on my behalf", given once; trust binds to
+a verified channel (vendor, origin, integrity method), not to signatures.
+
+Synchronized with `main` at `3038c48` by merge (`7445f3b`), 265 commits
+and the definition's three unread *Changes* entries (misplaced changes
+travel as patches; claims and the brief; the session-start synchronization
+judgment); no conflicts. Two untracked and one modified IDE project file
+under `.idea/` were set aside in the session scratchpad, not committed.
+Mail: one item, overtaken, decided in the log.
+
 ## Planned Next Step
 
-Scope the R-UPGRADE-002 operational slice with the owner: independent monitor
+The owner rules on the consent design issue: C-TERMS (terms once per
+vendor product per user), C-CHANNEL (trust bound to a verified channel),
+C-ASK (what remains a question), the workstation-level record, and the
+refinement of R-UPGRADE-001's "acquisition consent remains enforced". Then
+scope the first slice here. Not release content until the owner says
+which release.
+
+Still open from before, unchanged: scope the R-UPGRADE-002 operational slice with the owner: independent monitor
 and alert routes, incident ownership, thresholds and supported adapter inventory.
 The current checkpoint is on main and its public endpoint passed client acceptance.
 Do not archive while accepted follow-up remains, begin external service setup
