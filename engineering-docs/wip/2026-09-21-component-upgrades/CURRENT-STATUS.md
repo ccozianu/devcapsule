@@ -6,7 +6,7 @@ Start date: 2026-09-21
 
 State: active 2026-10-01 at owner direction; resumed for the consent design ruling (vendor terms once per user, trust bound to a verified channel, workstation-level trust record); R-UPGRADE-002 follow-up retained
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
 
 Integration target: `main`
 
