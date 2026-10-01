@@ -297,30 +297,37 @@ def desktop_page_answers(desktop_url: str, *, patience: float = 30.0) -> int:
             connection.close()
 
 
-def capture_desktop(desktop_url: str, destination: Path) -> dict[str, object] | None:
-    """Screenshot the desktop canvas through a headless browser; return pixel facts.
+def capture_desktop(desktop_url: str, evidence: Path) -> dict[str, object] | None:
+    """Record the desktop through a headless browser; return pixel facts.
 
-    Returns ``None`` when Playwright or its browser is not installed: the pixel
-    evidence is optional, the X11 facts are not. The canvas follows the browser
-    size (``resize=remote``), so a fixed viewport fixes the framebuffer too.
+    Leaves ``desktop.png``, the canvas when the IDE was judged alive, and
+    ``desktop.webm``, a recording of the whole browser session from connect
+    to capture, both under ``evidence``. Returns ``None`` when Playwright or
+    its browser is not installed: the pixel evidence is optional, the X11
+    facts are not. The canvas follows the browser size (``resize=remote``),
+    so a fixed viewport fixes the framebuffer too.
     """
     try:
         from playwright.sync_api import Error as PlaywrightError  # type: ignore[import-not-found,unused-ignore]
         from playwright.sync_api import sync_playwright  # type: ignore[import-not-found,unused-ignore]
     except ImportError:
         return None
+    viewport = {"width": 1600, "height": 1000}
     with sync_playwright() as playwright:
         try:
             browser = playwright.chromium.launch()
         except PlaywrightError:
             return None
         try:
-            page = browser.new_page(viewport={"width": 1600, "height": 1000})
+            context = browser.new_context(
+                viewport=viewport, record_video_dir=str(evidence), record_video_size=viewport
+            )
+            page = context.new_page()
             page.goto(desktop_url, wait_until="load")
             canvas = page.locator("canvas").first
             canvas.wait_for(state="visible", timeout=60_000)
             page.wait_for_timeout(4_000)
-            canvas.screenshot(path=str(destination))
+            canvas.screenshot(path=str(evidence / "desktop.png"))
             # Count distinct colours on a coarse grid: a bare desktop has a
             # handful, an IDE window has hundreds. Read in-page, so the test
             # needs no image library.
@@ -339,6 +346,11 @@ def capture_desktop(desktop_url: str, destination: Path) -> dict[str, object] | 
                 }"""
             )
             assert isinstance(pixel_facts, dict)
+            video = page.video
+            context.close()  # the recording is finalized by closing the context
+            if video is not None:
+                Path(video.path()).rename(evidence / "desktop.webm")
+                pixel_facts["video"] = "desktop.webm"
             return pixel_facts
         finally:
             browser.close()

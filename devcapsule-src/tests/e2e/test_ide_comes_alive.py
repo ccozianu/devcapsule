@@ -10,6 +10,8 @@ the executable recommends; runs inside a capsule as well as on a host.
 from __future__ import annotations
 
 import json
+import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -19,18 +21,31 @@ from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, desktop
 EVIDENCE_ROOT = Path(__file__).resolve().parents[2] / "dist" / "e2e-evidence" / "ide-smoke"
 
 
+@pytest.fixture(scope="session")
+def evidence_run() -> Path:
+    """One directory per test run under the evidence root, never overwritten.
+
+    Named by the UTC time and a short id; holds a subdirectory per surface and
+    ``run.json``, which each test writes with the executable it used.
+    """
+    run = EVIDENCE_ROOT / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{uuid.uuid4().hex[:6]}"
+    run.mkdir(parents=True)
+    return run
+
+
 @pytest.mark.e2e
 @pytest.mark.ide_smoke
 @pytest.mark.parametrize("surface", SURFACES, ids=[surface.name for surface in SURFACES])
-def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path) -> None:
-    evidence = EVIDENCE_ROOT / surface.name
+def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, evidence_run: Path) -> None:
+    evidence = evidence_run / surface.name
+    (evidence_run / "run.json").write_text(json.dumps({"executable": str(built_pex)}, indent=2) + "\n", encoding="utf-8")
     with ide_session(built_pex, surface, tmp_path, evidence) as session:
         # 1. The launcher published a desktop and the page behind it answers.
         assert desktop_page_answers(session.desktop_url) == 200, session.desktop_url
         # 2. The IDE owns a top-level window on the capsule's own display.
         window = wait_for_ide_window(session)
         # 3. Optional pixel evidence: the desktop renders more than a bare desktop.
-        pixels = capture_desktop(session.desktop_url, evidence / "desktop.png")
+        pixels = capture_desktop(session.desktop_url, evidence)
         if pixels is not None:
             distinct = pixels["distinctColours"]
             assert isinstance(distinct, int) and distinct >= 64, pixels

@@ -181,8 +181,9 @@ surface the product offers, VSCodium and PyCharm today, in a fresh project
 with the executable under test and proves the IDE comes alive: the desktop
 URL answers, and an X11 window of the IDE's class exists on the capsule's own
 display. Add `-- --display` to keep a screenshot of each desktop as evidence
-through Playwright, installed into the session; `-- --surface codium` limits
-the run. Evidence lands under `dist/e2e-evidence/ide-smoke/`. It runs on a
+through Playwright, installed into the session, together with a WebM
+recording of the browser session; `-- --surface codium` limits the run.
+Each run writes its evidence under `dist/e2e-evidence/ide-smoke/<time>-<id>/`. It runs on a
 host or inside a capsule with host Docker, and the first run on a machine
 acquires the IDE and builds its environment. `tests/e2e/ide_session.py` is the
 table of surfaces to extend when a new IDE joins the catalog.
