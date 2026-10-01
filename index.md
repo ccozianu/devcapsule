@@ -90,6 +90,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Design Decisions
 
 - [D-0010 Developer-Owned Component Version Sets And Recovery](engineering-docs/decisions/product/d-0010-developer-owned-version-sets.md)
+- [D-0011 Vendor Terms And Trust Are Given Once Per Workstation, Bound To A Verified Channel](engineering-docs/decisions/product/d-0011-vendor-trust-once-per-workstation.md)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)

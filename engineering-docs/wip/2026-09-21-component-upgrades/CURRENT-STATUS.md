@@ -97,14 +97,19 @@ judgment); no conflicts. Two untracked and one modified IDE project file
 under `.idea/` were set aside in the session scratchpad, not committed.
 Mail: one item, overtaken, decided in the log.
 
+Ruled the same day, recorded as
+[D-0011](../../decisions/product/d-0011-vendor-trust-once-per-workstation.md):
+vendor terms once per vendor product per user; trust bound to a verified
+channel; the workstation-level record under the launcher's config root.
+
 ## Planned Next Step
 
-The owner rules on the consent design issue: C-TERMS (terms once per
-vendor product per user), C-CHANNEL (trust bound to a verified channel),
-C-ASK (what remains a question), the workstation-level record, and the
-refinement of R-UPGRADE-001's "acquisition consent remains enforced". Then
-scope the first slice here. Not release content until the owner says
-which release.
+The owner rules on the two remaining questions of the design issue: what
+stays a question (host access as the visible per-checkout decision, the
+recommended base asking nothing, upgrades as scheduling plus a
+validation-gap disclosure) and the refinement of R-UPGRADE-001's
+"acquisition consent remains enforced". Then scope the first slice of
+D-0011 here. Not release content until the owner names the release.
 
 Still open from before, unchanged: scope the R-UPGRADE-002 operational slice with the owner: independent monitor
 and alert routes, incident ownership, thresholds and supported adapter inventory.
