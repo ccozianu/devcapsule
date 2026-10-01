@@ -104,16 +104,26 @@ channel; the workstation-level record under the launcher's config root.
 
 ## Planned Next Step
 
-The owner rules on what remains of the design issue: upgrades as
-scheduling plus a validation-gap disclosure (host access is settled by
-[D-0012](../../decisions/product/d-0012-host-access-asked-only-when-recommended.md):
-asked only when the project recommends the less secure value, existing
-checkouts grandfathered; the base image by the D-0011 refinement), and
-whether records carry the client version that last wrote them, which
-today they do not and which older clients would refuse at the checkout
-record's top level and the refinement of R-UPGRADE-001's
-"acquisition consent remains enforced". Then scope the first slice of
-D-0011 here. Not release content until the owner names the release.
+Scope and build the **0.2.16 consent slice**, named by the owner on
+2026-10-01, in this order:
+
+1. [D-0013](../../decisions/product/d-0013-provenance-sidecar-for-local-records.md):
+   the provenance sidecar beside each checkout, written on the next write
+   of a record, never on read; digest, client version, questions known.
+2. [D-0011](../../decisions/product/d-0011-vendor-trust-once-per-workstation.md):
+   the workstation trust record under the launcher's config root, one
+   statement per vendor product, channels as the provenance test;
+   DevCapsule's own base as a channel. Older clients keep reading the
+   checkout record.
+3. [D-0012](../../decisions/product/d-0012-host-access-asked-only-when-recommended.md):
+   host access asked only when the project recommends the less secure
+   value; existing checkouts grandfathered, read through the sidecar.
+
+Before code: a short design note here naming the files, the read order
+(workstation record, then checkout record, then sidecar), the tests, and
+what `config show` prints for each source. Still with the owner: upgrades
+as a scheduling choice plus a validation-gap disclosure, and the dated
+refinement of R-UPGRADE-001.
 
 Still open from before, unchanged: scope the R-UPGRADE-002 operational slice with the owner: independent monitor
 and alert routes, incident ownership, thresholds and supported adapter inventory.
