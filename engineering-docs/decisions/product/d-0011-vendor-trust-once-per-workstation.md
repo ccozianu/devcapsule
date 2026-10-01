@@ -124,6 +124,31 @@ machine adds nothing to that acceptance.
   wiring under the routing rule of 2026-10-01. No release carries it until
   the owner names one.
 
+### Owner refinement, 2026-10-01: DevCapsule's own base image is a channel
+
+Later the same day the owner ruled on the base image: the user is offered
+to trust `https://devcapsule.mycodespace.ai`, a TLS-anchored domain that
+names the GitHub project and the Docker Hub repository the bases are
+published to. That is a channel in this record's sense. Vendor:
+DevCapsule. Origin: the site, naming `github.com/ccozianu/devcapsule` and
+`docker.io/mycodespaceai/devcapsule-base`. Integrity: the digest the
+launcher's resolution matrix pins, so every pull is content-addressed.
+Trusted once per workstation like any vendor; a base from another
+registry, or a local image the user built, is a departure from the channel
+and asks.
+
+Two facts belong in the prompt. A user who downloaded and ran the launcher
+has already trusted DevCapsule, since the launcher ships the digests; the
+old base-image authorization for a DevCapsule-built base was redundant,
+and this statement makes the trust explicit rather than adding a check.
+And what is trusted in practice is the GitHub and Docker Hub accounts
+behind those names, the same shape as the registry case above.
+
+Consequence for the website: as the channel's origin it should carry a
+page listing the published base digests with their recipe tags, so the
+anchor is verifiable rather than decorative. A `user-docs` or `website`
+item, not a gate on this decision.
+
 ## Reopen If
 
 A vendor begins signing the artifacts DevCapsule acquires in a verifiable

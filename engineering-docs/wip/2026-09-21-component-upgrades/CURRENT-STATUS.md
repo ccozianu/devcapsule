@@ -104,10 +104,11 @@ channel; the workstation-level record under the launcher's config root.
 
 ## Planned Next Step
 
-The owner rules on the two remaining questions of the design issue: what
-stays a question (host access as the visible per-checkout decision, the
-recommended base asking nothing, upgrades as scheduling plus a
-validation-gap disclosure) and the refinement of R-UPGRADE-001's
+The owner rules on what remains of the design issue: host access as the
+visible per-checkout decision and what happens to existing checkouts;
+upgrades as scheduling plus a validation-gap disclosure (the base image
+is settled: DevCapsule's own base is a channel anchored at the website,
+D-0011 refinement of 2026-10-01) and the refinement of R-UPGRADE-001's
 "acquisition consent remains enforced". Then scope the first slice of
 D-0011 here. Not release content until the owner names the release.
 
