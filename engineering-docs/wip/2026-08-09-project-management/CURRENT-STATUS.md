@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-28 at owner direction; the pair moves to user-docs for the 0.2.15 content as a matter of urgency; work orders delivered; 0.2.16 proposal awaiting owner decisions; 25 undecided intake items
+State: paused 2026-10-01 at owner direction; the pair moves to component-upgrades for the consent design ruling; owner decisions of 2026-10-01 recorded (IntelliJ in 0.2.16 under component-catalog, in-capsule project commands a 0.2.16 fix, eclipse-surface archived); 0.2.16 driver and remaining decisions still awaited; 25 undecided intake items
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@48de1e1b1d15
 
