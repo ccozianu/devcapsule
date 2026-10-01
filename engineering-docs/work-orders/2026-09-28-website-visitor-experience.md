@@ -6,7 +6,7 @@ the `devcapsule-website` repository, single-stream, from its own
 `CURRENT-STATUS.md`. The producer-side companion is
 [the visitor content work order](2026-09-28-visitor-content-and-producer-migration.md)
 in DevCapsule. Both rest on
-[the content–website contract, version 1](../wip/2026-08-09-project-management/2026-09-28-design-content-website-contract.md).
+[the content–website contract, version 1](../specifications/product/content-website-contract.md).
 
 Status: open. Release: none; the site publishes on its own clock, and the
 first publication after this order is the one that documents 0.2.15.

@@ -1,3 +1,6 @@
+---
+description: "An invitation to early adopters and contributors: three claims you can verify in an afternoon, and where your time gets wasted today."
+---
 # Why give DevCapsule a spin before V1?
 
 *September 21, 2026. An invitation to early adopters and contributors as we

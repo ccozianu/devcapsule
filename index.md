@@ -33,6 +33,15 @@ status file; internal WIP/archive documents use the local index in that status.
   - Reference: [Configuration nodes](docs/reference/configuration-nodes.md); coming soon: [Command reference](docs/reference/cli.md), [project info fields](docs/reference/project-info.md)
 - [Engineering documentation](engineering-docs/README.md)
 
+## Development
+
+- [Development: how DevCapsule is built and tested](engineering-docs/development/README.md)
+- [Developer environment](engineering-docs/development/developer-environment.md)
+- [Source layout](engineering-docs/development/source-layout.md)
+- [Unit tests](engineering-docs/development/unit-tests.md)
+- [Integration tests](engineering-docs/development/integration-tests.md)
+- [End-to-end tests](engineering-docs/development/e2e-tests.md)
+
 ## Releases
 
 - [0.2.15 release notes](engineering-docs/releases/v0.2.15/notes.md)
@@ -93,6 +102,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Specifications
 
+- [The content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md)
 - [IDE profile prototypes](engineering-docs/specifications/product/ide-profile-prototypes.md)
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
@@ -129,6 +139,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Engineering Design Notes
 
+- [Spike: driving the getting-started scenario through pixels](engineering-docs/design-notes/devcapsule/2026-09-30-pixel-driven-getting-started-acceptance.md)
 - [Base images: how one is chosen, what its name is, and how a user could move to a newer one](engineering-docs/design-notes/devcapsule/2026-09-26-base-image-naming-and-selection.md)
 - [mycodespace: a lifetime namespace and archive for one programmer's projects](engineering-docs/design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
 - [Competitive comparison: agent workflows and the DevCapsule adopter choice](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
@@ -172,6 +183,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Development Blog
 
+- [What I have been up to lately](engineering-docs/blog/2026-09-30-what-i-have-been-up-to-lately.md)
 - [Why give DevCapsule a spin before V1?](engineering-docs/blog/2026-09-21-why-try-devcapsule-before-v1.md) — early-adopter and contributor invitation; draft for owner review.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — agent-authored retrospective; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md) — website autonomy experiment retrospective; draft for owner review.

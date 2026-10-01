@@ -29,7 +29,7 @@ Afternoon of 2026-09-28: the owner found the website unpublished since
 2026-09-21 and its guides pinned to v0.2.12, defined the problem with the
 agent in [the documentation-currency design issue](2026-09-28-design-docs-current-at-release.md)
 (P1-P7, the per-version system S1, the pre-V1 support commitment D1 with
-approved wording), directed [the content–website contract, version 1](2026-09-28-design-content-website-contract.md),
+approved wording), directed [the content–website contract, version 1](../../specifications/product/content-website-contract.md),
 and then granted this workstream the remaining decisions and the plan, to be
 run without consulting the owner except for production promotion. Taken and
 recorded: six contract roles, `docs-<version>` project refs, 0.2.12
@@ -403,7 +403,7 @@ submodules were changed.
 ## Workstream Document Index
 
 - [Work order: the website from the visitor's chair](../../work-orders/2026-09-28-website-visitor-experience.md) and [work order: visitor content and producer migration](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md): issued 2026-09-28.
-- [Design: the content–website contract, version 1](2026-09-28-design-content-website-contract.md): proposed at the owner's direction; versioned `docs/`, roles for the distinguished pages, tokens, manifest, caching, six owner decisions.
+- [The content–website contract, version 1](../../specifications/product/content-website-contract.md): accepted 2026-09-28, promoted to the specifications on 2026-09-30; the website's `CONTRACT.md` is the authoritative text.
 - [Design issue: the documentation is current when a release drops](2026-09-28-design-docs-current-at-release.md): work in progress, accumulating problem statements P1-P6 with evidence; no decision yet.
 - [0.2.16 planning proposal](2026-09-27-0216-release-planning.md): candidates, recommended scope, driver and the owner decisions; proposed 2026-09-27.
 - [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/agent-defaults scope, guard deferral and acceptance checks.

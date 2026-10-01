@@ -5,6 +5,7 @@ import json
 import hashlib
 import uuid
 import argparse
+import shutil
 from pathlib import Path
 
 import nox
@@ -138,7 +139,7 @@ def run_e2e_tests(session: nox.Session, *, release_smoke: bool = False) -> None:
         "pytest",
         "--no-cov",
         "-m",
-        "e2e and not recursive_e2e" + (" and not contributor_e2e" if release_smoke else "")
+        "e2e and not recursive_e2e and not ide_smoke" + (" and not contributor_e2e" if release_smoke else "")
         + ("" if session.env.get("DEVCAPSULE_E2E_BUILT_BASE") else " and not base_build_e2e"),
         str(PROJECT_ROOT / "tests" / "e2e"),
         env=environment,
@@ -271,6 +272,30 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "pycharm", "build", "--help", external=True)
 
 
+def check_docs_contract(session: nox.Session) -> None:
+    """Check docs/, the journal and the release notes against the website's contract.
+
+    The pinned website submodule owns the check (``npm run check:content``); this
+    runs it against the repository root as the content checkout, so a producer
+    change that would break the site fails here first. Skipped with a notice
+    when the submodule is not initialized or npm is absent, as on the hosted
+    test runner, where the documentation is not built.
+    """
+    website = REPO_ROOT / "website"
+    if not (website / "package.json").exists():
+        session.log("docs contract: website submodule not initialized; skipped")
+        return
+    if shutil.which("npm") is None:
+        session.log("docs contract: npm not available; skipped")
+        return
+    if not (website / "node_modules").exists():
+        session.run("npm", "--prefix", str(website), "ci", external=True)
+    session.run(
+        "npm", "--prefix", str(website), "run", "check:content",
+        env={"CONTENT_DIR": str(REPO_ROOT)}, external=True,
+    )
+
+
 def run_clean_machine_pex_test(session: nox.Session) -> None:
     environment: dict[str, str] = {}
     for name in ("DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE", PEX_UNDER_TEST_ENV):
@@ -371,6 +396,35 @@ def e2e(session: nox.Session) -> None:
     run_e2e_tests(session, release_smoke=release_smoke)
 
 
+PLAYWRIGHT_VERSION = "1.63.0"
+"""Browser automation for the optional pixel evidence of the IDE smoke; pinned here, outside the lock."""
+
+
+@nox.session(name="ide-smoke", python="3.12")
+def ide_smoke(session: nox.Session) -> None:
+    """Launch each IDE surface in a fresh project and prove it comes alive.
+
+    Uses DEVCAPSULE_PEX_UNDER_TEST when set, else the local build. Pass
+    ``--display`` to install Playwright and Chromium into the session and keep a
+    screenshot of each desktop as evidence; without it the X11 facts alone decide.
+    """
+    install_locked(session)
+    parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
+    parser.add_argument("--display", action="store_true")
+    parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
+    options = parser.parse_args(session.posargs)
+    select_e2e_pex(session)
+    if options.display:
+        session.install(f"playwright=={PLAYWRIGHT_VERSION}")
+        session.run("playwright", "install", "chromium")
+    session.run(
+        "python", "-m", "pytest", "--no-cov", "-m", "ide_smoke",
+        *(["-k", " or ".join(options.surface)] if options.surface else []),
+        str(PROJECT_ROOT / "tests" / "e2e" / "test_ide_comes_alive.py"),
+        env={PEX_UNDER_TEST_ENV: session.env[PEX_UNDER_TEST_ENV]},
+    )
+
+
 @nox.session(python="3.12")
 def recursive_dogfood_e2e(session: nox.Session) -> None:
     """Run explicit host-sensitive recursive dogfood checks."""
@@ -390,6 +444,12 @@ def recursive_dogfood_e2e(session: nox.Session) -> None:
     run_recursive_e2e_tests(session)
 
 
+@nox.session(name="docs-contract", python=False)
+def docs_contract(session: nox.Session) -> None:
+    """Run only the website content-contract check against this checkout."""
+    check_docs_contract(session)
+
+
 @nox.session(python="3.12")
 def build(session: nox.Session) -> None:
     install_locked(session)
@@ -402,5 +462,6 @@ def build(session: nox.Session) -> None:
     build_test_pex(session)
     smoke_pex(session)
     run_packaging_tests(session)
+    check_docs_contract(session)
     if build_public_pex_if_clean(session):
         smoke_pex(session, PUBLIC_PEX_PATH)

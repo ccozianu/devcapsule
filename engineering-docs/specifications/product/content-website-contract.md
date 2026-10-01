@@ -1,8 +1,23 @@
-# Design: The Content–Website Contract, Version 1
+# The Content–Website Contract, Version 1
 
-Date: 2026-09-28. Owner: `project-management`. Status: **proposed**, written
-at the owner's direction to run independently from the problems defined in
-[the documentation-currency design issue](2026-09-28-design-docs-current-at-release.md).
+Owner: `project-management`. Status: **accepted**, 2026-09-28, on both
+sides; live at `devcapsule.mycodespace.ai` since 2026-09-28 from
+DevCapsule `main` `2ec36b9` and website `6759b9d`. Promoted here from
+project-management's open-work directory on 2026-09-30.
+
+**Where the contract lives.** The authoritative text is
+[`CONTRACT.md` in the website repository](https://github.com/ccozianu/devcapsule-website/blob/main/CONTRACT.md),
+as its task W12 asked; it implements this document with the decisions of
+section 11a and records what the consumer added or interpreted, notably the
+`legacy: true` manifest field. This document is the producer's record: the
+design, its reasoning and the decisions taken. Where the two disagree, the
+consumer's text governs the build and the disagreement is a defect to fix
+here. The producer's obligations at release time are in the release
+runbook, *Documentation Is Part Of The Release*; the authored list of
+versions is `docs/versions.yaml` on `main`.
+
+Written at the owner's direction, 2026-09-28, from the problems defined in
+[the documentation-currency design issue](../../wip/2026-08-09-project-management/2026-09-28-design-docs-current-at-release.md).
 It extends [R-DOCS-003](../../requirements/product/r-docs-003-website-content-carries-front-matter.md),
 the producer's proposed requirement, and answers the website repository's
 W12, which asks for one authoritative contract there with the producer's
