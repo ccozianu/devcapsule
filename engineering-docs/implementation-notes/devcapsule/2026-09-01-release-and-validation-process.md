@@ -43,7 +43,7 @@ an exact candidate is accepted; the working directory does not replace it.
 The commands below use v0.2.11 as the worked example. For a new release,
 substitute its version and candidate number; never recreate or move an existing
 published tag. Run Git commands from the repository root. Python commands use
-the checkout-local environment described in the [developer setup](../../../DEVELOPING.md#developer-setup).
+the checkout-local environment described in the [developer environment](../../development/developer-environment.md).
 
 1. **Prepare and cut.** The owner selects version, scope and the cut. The
    workstream whose deliverable is the headline drives; maintenance drives a

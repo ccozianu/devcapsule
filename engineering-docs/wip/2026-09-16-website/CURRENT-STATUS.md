@@ -20,6 +20,15 @@ No force-push or mainline implementation is needed.
 
 ## Producer Migration (2026-09-28)
 
+2026-10-01, at the owner's direction: the developer documentation was split
+out of `DEVELOPING.md`, now a brief with a table of contents, into
+`engineering-docs/development/`: environment, source layout, and the unit,
+integration and end-to-end test documents, each written from the suite as
+it is (sixty unit modules, one integration module, eight end-to-end tests,
+their fixtures, resources, markers and sessions). Indexed; the runbook's
+link into the brief follows the move; the two anchors other documents use
+in the brief were kept.
+
 2026-10-01, on this branch at the owner's direction, outside this
 workstream's subject: the IDE smoke, `nox -s ide-smoke`, with
 `tests/e2e/ide_session.py` and `tests/e2e/test_ide_comes_alive.py`. Per IDE

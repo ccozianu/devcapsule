@@ -33,6 +33,15 @@ status file; internal WIP/archive documents use the local index in that status.
   - Reference: [Configuration nodes](docs/reference/configuration-nodes.md); coming soon: [Command reference](docs/reference/cli.md), [project info fields](docs/reference/project-info.md)
 - [Engineering documentation](engineering-docs/README.md)
 
+## Development
+
+- [Development: how DevCapsule is built and tested](engineering-docs/development/README.md)
+- [Developer environment](engineering-docs/development/developer-environment.md)
+- [Source layout](engineering-docs/development/source-layout.md)
+- [Unit tests](engineering-docs/development/unit-tests.md)
+- [Integration tests](engineering-docs/development/integration-tests.md)
+- [End-to-end tests](engineering-docs/development/e2e-tests.md)
+
 ## Releases
 
 - [0.2.15 release notes](engineering-docs/releases/v0.2.15/notes.md)
