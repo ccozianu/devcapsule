@@ -1,10 +1,10 @@
 # DevCapsule component update status
 
-Generated: 2026-09-30T06:50:55.822088+00:00. Valid until: 2026-10-03T06:50:55.822088+00:00.
+Generated: 2026-10-01T06:52:01.142796+00:00. Valid until: 2026-10-04T06:52:01.142796+00:00.
 
 If that deadline has passed, this page is stale. Probe success only establishes that the named adapter could read metadata from this runner. It does not certify installed software, security coverage, installation, or every released CLI.
 
-Source revision: `2ec36b9d59b43632caa94a2e324757fd5c4da2da`. Probe CLI: `0.2.16.dev0`.
+Source revision: `f81f47208f218a311cc7cc74ec5354069bd67f2f`. Probe CLI: `0.2.16.dev0`.
 
 [Machine-readable compatibility contract v1](compatibility-v1.json)
 
@@ -12,12 +12,12 @@ Source revision: `2ec36b9d59b43632caa94a2e324757fd5c4da2da`. Probe CLI: `0.2.16.
 
 | Component / adapter | Platform / baseline | Result | Candidates | Last successful probe | Consecutive failures | Detail |
 |---|---|---|---|---|---|---|
-| pycharm / pycharm-v1 | linux-amd64 / 2026.2.0.1 | ok | 2026.2.3 | 2026-09-30T06:50:55.822088&#43;00:00 | 0 | This release feed does not assess installed-version support. |
-| codium / codium-v1 | linux-amd64 / 1.126.04524 | ok | 1.135.06055 | 2026-09-30T06:50:55.822088&#43;00:00 | 0 | This release feed does not assess installed-version support. |
-| codex / codex-v1 | linux-amd64 / 0.153.4 | ok | 0.159.2 | 2026-09-30T06:50:55.822088&#43;00:00 | 0 |  |
-| claude-code / claude-code-v1 | linux-amd64 / 2.1.261 | ok | 2.1.285 | 2026-09-30T06:50:55.822088&#43;00:00 | 0 | This release feed does not assess installed-version support. |
-| antigravity-cli / antigravity-cli-v1 | linux-amd64 / 1.1.24 | ok | 1.2.14 | 2026-09-30T06:50:55.822088&#43;00:00 | 0 | This release feed does not assess installed-version support. |
-| postgresql-client / postgresql-client-v1 | linux-amd64 / 16 | ok | &#8212; | 2026-09-30T06:50:55.822088&#43;00:00 | 0 | Upstream major 16 support ends 2028-11-09&#59; distribution backports are not assessed. Latest upstream minor: 16.15&#59; installed minor is not recorded in this base lock. |
+| pycharm / pycharm-v1 | linux-amd64 / 2026.2.0.1 | ok | 2026.2.3 | 2026-10-01T06:52:01.142796&#43;00:00 | 0 | This release feed does not assess installed-version support. |
+| codium / codium-v1 | linux-amd64 / 1.126.04524 | ok | 1.135.06055 | 2026-10-01T06:52:01.142796&#43;00:00 | 0 | This release feed does not assess installed-version support. |
+| codex / codex-v1 | linux-amd64 / 0.153.4 | ok | 0.159.3 | 2026-10-01T06:52:01.142796&#43;00:00 | 0 |  |
+| claude-code / claude-code-v1 | linux-amd64 / 2.1.261 | ok | 2.1.286 | 2026-10-01T06:52:01.142796&#43;00:00 | 0 | This release feed does not assess installed-version support. |
+| antigravity-cli / antigravity-cli-v1 | linux-amd64 / 1.1.24 | ok | 1.2.14 | 2026-10-01T06:52:01.142796&#43;00:00 | 0 | This release feed does not assess installed-version support. |
+| postgresql-client / postgresql-client-v1 | linux-amd64 / 16 | ok | &#8212; | 2026-10-01T06:52:01.142796&#43;00:00 | 0 | Upstream major 16 support ends 2028-11-09&#59; distribution backports are not assessed. Latest upstream minor: 16.15&#59; installed minor is not recorded in this base lock. |
 
 ## Maintained diagnoses
 
