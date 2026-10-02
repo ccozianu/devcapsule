@@ -43,7 +43,7 @@ an exact candidate is accepted; the working directory does not replace it.
 The commands below use v0.2.11 as the worked example. For a new release,
 substitute its version and candidate number; never recreate or move an existing
 published tag. Run Git commands from the repository root. Python commands use
-the checkout-local environment described in the [developer setup](../../../DEVELOPING.md#developer-setup).
+the checkout-local environment described in the [developer environment](../../development/developer-environment.md).
 
 1. **Prepare and cut.** The owner selects version, scope and the cut. The
    workstream whose deliverable is the headline drives; maintenance drives a
@@ -55,7 +55,8 @@ the checkout-local environment described in the [developer setup](../../../DEVEL
    its former working branch closes for modification. Update its registry row
    to `active; releasing X.Y.Z` with the release branch association. Set or
    confirm the source version no later than the first release-branch commit,
-   and run `.venv/bin/python -m nox -s build` from `devcapsule-src`.
+   and run `.venv/bin/python -m nox -s build` from `devcapsule-src`. Run the
+   *Agent Freshness Review* below and record its table in the release overview.
 2. **Account for main and publish the first candidate.** Follow *Release Fixes
    And Main* and the current candidate gate below. Push the release branch for
    review; verify the applicable main disposition before creating an immutable
@@ -68,13 +69,18 @@ the checkout-local environment described in the [developer setup](../../../DEVEL
    in the CLI README. Use the full-base `--build-base` mode when validating
    the base recipe; ordinary CLI releases need not rebuild or publish a base.
    Record actual evidence for changed GUI, login, and provider behavior.
-   Fixture tests cannot supply that acceptance. Make release-blocking fixes on
+   Fixture tests cannot supply that acceptance. Before accepting a candidate,
+   satisfy *Documentation Is Part Of The Release* below: the release branch's
+   `docs/` describes this version and passes the website's build check.
+   Make release-blocking fixes on
    the release branch, account for the bug on main using the appropriate method,
    and publish the next RC number without changing earlier tags. Repeat until
    an exact candidate is accepted; do not add unrelated development to the release.
 4. **Record acceptance.** Run `prepare-promotion.py` as shown below with the
    accepted RC, preparation baseline, accepting operator, and evidence. Review
-   the generated record. For v0.2.11 the accepted candidate was **RC3**, not
+   the generated record. Recheck the freshness review's vendor pointers; a
+   version that appeared meanwhile gets an adopt-or-hold decision, never a
+   silent replacement of the accepted candidate. For v0.2.11 the accepted candidate was **RC3**, not
    RC0 or a later workstream tip. Commit the record after the accepted candidate
    on the release branch, leaving the accepted candidate's source unchanged.
 5. **Integrate acceptance.** Deliver the acceptance record through the normal
@@ -86,7 +92,8 @@ the checkout-local environment described in the [developer setup](../../../DEVEL
    merge alone does not authorize leaving the bug in main. Do not rebase the
    tested candidate to make it match main.
 6. **Publish the final tag at the accepted candidate commit.** Use the final
-   tagging commands below. Wait for the final backend run to finish. It
+   tagging commands below, and not before `engineering-docs/releases/vX.Y.Z/notes.md`
+   exists on the release branch. Wait for the final backend run to finish. It
    rebuilds version metadata, checks frozen inputs against the RC, and repeats
    the automated gates. A pushed tag alone does not mean a successful release.
 7. **Verify delivery.** Confirm the GitHub release is non-draft and is a final
@@ -99,6 +106,66 @@ the checkout-local environment described in the [developer setup](../../../DEVEL
    final publication the release branch closes; resume ordinary work on a fresh
    `ws-<name>/...` branch from main or conclude the driving workstream. Reopen
    main with the next development version as `WORKFLOW-LOCAL.md` specifies.
+   Then promote the version in `docs/versions.yaml` on main, demote the
+   previous ones, and publish the website, per *Documentation Is Part Of The
+   Release*.
+
+## Documentation Is Part Of The Release
+
+Owner grant of 2026-09-28, exercised by `project-management`, after 0.2.15
+shipped while the website still documented v0.2.12: a release is not complete
+until the documentation describes it and the site serves it. Three
+obligations of the driving workstream, in the order the checklist meets them:
+
+1. **Before the final tag, the release's `docs/` is true for the version.**
+   On the release branch, every guide describes this version's behaviour,
+   names no version literally (the contract's tokens render it), and passes
+   the website's build check at the pinned consumer revision. Corrections
+   discovered after the tag go on the `docs-<version>` ref that
+   `WORKFLOW-LOCAL.md` declares, never on the closed release branch.
+2. **Before the final tag, the release notes exist** as
+   `engineering-docs/releases/vX.Y.Z/notes.md` on the release branch: plain
+   Markdown for adopters, what changed for them, compatibility exceptions
+   with remedies, tested agent versions and holdbacks from the freshness
+   review, deferred items. The GitHub release body is this file. Automating
+   that in the backend is release-tooling work, tracked in the 0.2.16
+   planning; until then the operator pastes it.
+3. **After the final tag, the manifest and the site follow.** On `main`,
+   `docs/versions.yaml` gains or promotes the version to `supported` and
+   `current` and demotes the previous ones under the owner's pre-V1 notice;
+   then the website is published, test deployment and candidate from this
+   repository's Website workflow, production promotion by the owner's
+   single run in the website repository. Publication on the tag itself is
+   a follow-up in the 0.2.16 planning.
+
+The contract these follow is [the content–website contract, version 1](../../specifications/product/content-website-contract.md);
+the ideal structure of the documentation is in
+[the 2026-09-28 visitor-content work order](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md).
+
+## Agent Freshness Review
+
+Owner direction of 2026-09-27, first applied in 0.2.15: every release tries
+to upgrade the supported AI agent CLIs to their then-current generally
+available versions, since newer clients reach newer models.
+
+For every release, review each supported agent CLI, today Codex, Claude Code
+and Antigravity, against its vendor's current generally available release,
+not beta or nightly channels. Record in the release overview a table of the
+date, the vendor source consulted, the current pin, the candidate and the
+disposition. Attempt the upgrades: acquire the exact artifacts through the
+trusted component mechanisms, verify checksums and platform compatibility,
+and validate configuration defaults, an ordinary tool action and state
+persistence on the selected versions before accepting new pins. Record a
+concrete reason and a follow-up for every holdback and for every feed that
+could not be checked. Keep checkout-selected version sets and acquisition
+consent intact; an upgrade grants nothing new.
+
+Recheck the vendor pointers before final acceptance. A version that appears
+during acceptance gets an adopt-or-hold decision recorded in the overview;
+adopting it means a new candidate and the relevant validation again, never a
+pin changed under an accepted candidate. The release notes carry the tested
+versions and the holdbacks. A newer CLI alone does not establish that an
+account can use a particular model; say what was verified.
 
 ## Release Fixes And Main
 

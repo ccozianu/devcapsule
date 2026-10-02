@@ -43,7 +43,29 @@ builds and publishes candidates through GitHub Actions; gates each candidate
 on a resolved main disposition, using ancestry, patch equivalence or the
 documented evidence record described in the guide; requires downloaded-artifact smoke
 evidence for acceptance; and keeps the acceptance record under
-`engineering-docs/releases/`.
+`engineering-docs/releases/`. Since 2026-09-28 a release also includes its
+documentation: the guide's *Documentation Is Part Of The Release* names the
+obligations, the documentation is published per
+[the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md),
+and `docs/versions.yaml` on `main` is the authored list of documented
+versions, promoted after every final tag.
+
+## Documentation Refs
+
+Owner grant of 2026-09-28, exercised by `project-management`: the project
+declares one ref kind of its own beside the workflow's, `docs-<version>`.
+A `docs-<version>` branch is forked from the final tag `v<version>` and
+carries documentation-only commits: changes under `docs/` and nothing else.
+It exists because the definition closes a release branch after its final
+tag while the website publishes each version's documentation from that
+version's own source; the branch is where a released version's guides are
+corrected after the fact. It is never merged anywhere, never rebased, and is
+named in `docs/versions.yaml` as that version's `source` for as long as it
+exists; without it, the version's source is its final tag. The candidate gate
+does not apply to it; the website's build check does. Anyone may commit to
+it on the owner's or `project-management`'s direction; `user-docs` normally
+authors the corrections. See
+[the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md).
 
 ## Blog Entries
 
@@ -51,8 +73,10 @@ When the human says "write a blog entry on topic X", write it:
 
 - Create `engineering-docs/blog/YYYY-MM-DD-short-topic.md` in the flat blog
   directory. Use the date of writing; the website reads the date from the filename.
-- Start with `# Title`, then plain Markdown prose. Use existing entries as
-  examples. No frontmatter or website-specific markup is needed.
+- Begin with the front matter block the blog README describes, `description`
+  and, until the owner releases the entry, `draft: true`; then `# Title` and
+  plain Markdown prose. Use existing entries as examples. No other
+  website-specific markup is needed.
 - Attribute quoted material and identify any editing of quotations. For links
   to repository evidence, use a mainline commit SHA so the reference stays stable.
 - Add the entry to `engineering-docs/blog/README.md` and root `index.md`.

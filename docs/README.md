@@ -1,37 +1,46 @@
+---
+description: What the DevCapsule documentation covers, the three places to start, and how to find the version you run.
+role: overview
+weight: 0
+updated: 2026-09-28
+---
 # Use DevCapsule
 
-**[Start here: your first DevCapsule session](guides/first-session.md).**
-Download the executable, open an IDE, run a small program, then stop and resume.
-No contributor setup or AI account is needed for that first exercise.
+DevCapsule gives you a real IDE and a coding agent inside a capsule: a
+container that shares your project folder, keeps its own persistent state,
+and touches nothing else on your computer unless you say so. These pages
+describe the version named in this page's address; the switcher at the top
+lists the others.
 
-| What you want to do | Read this |
+## Start in one of three places
+
+| You want to | Read |
 |---|---|
-| Check your computer and install DevCapsule | [First session: before you start](guides/first-session.md#before-you-start) |
-| Use an existing repository or start a real project | [Use your own project](guides/your-project.md) |
-| Add Antigravity, Codex or Claude Code | [Add a coding agent](guides/your-project.md#add-a-coding-agent) |
-| Try or recover a component upgrade (v0.2.14 development client) | [Component version sets](guides/component-upgrades.md) |
-| Understand update signals, unknown status and service reliability | [Component freshness](guides/component-freshness.md) |
-| Use Windows | [WSL2: read before installing](guides/windows-wsl2.md) |
-| Coordinate several people and agents on one repository | [Work in workstreams](guides/working-in-workstreams.md) |
-| Return to work or recover a closed browser tab | [Stop and come back](guides/first-session.md#5-stop-and-come-back) |
-| Get past a failed step | [First-session troubleshooting](guides/first-session.md#if-something-gets-in-the-way) |
+| See it work in a quarter of an hour, with no account | [Your first session](getting-started/first-session.md) |
+| Bring a project you already have | [An existing repository](your-project/existing-repository.md) |
+| Put a coding agent to work at full speed, safely | [Choose an agent](working-with-ai/choose-an-agent.md) |
 
-The guides target the released Linux x86-64 executable. They distinguish what
-works now from the intended V1 experience on the [landing page](../README.md).
+## Everything else, by the question you have
+
+| Question | Section |
+|---|---|
+| How quickly can I do something useful? | [Getting started](getting-started/install.md): install, first session, stop and come back |
+| How do I bring my project here? | [Your project](your-project/existing-repository.md): existing repositories, new projects, what a project declares |
+| How do I get effective help from an AI? | [Working with AI](working-with-ai/choose-an-agent.md): agents, sign-in and defaults, instructions, models |
+| Can I do my normal work? | [Everyday development](everyday-development/clipboard-and-browser.md): IDEs, terminals, Git, running and debugging, previews |
+| How do I make the workspace mine? | [Configuration](configuration/inspect.md): inspect, project versus personal, extra tools, IDE preferences |
+| What can the capsule and its agents touch? | [Containment](containment/the-boundary.md): the boundary, granting and withdrawing access |
+| Can I leave and come back? | [Sessions](sessions/start-stop-reconnect.md): start, stop, reconnect, what persists |
+| Can someone else pick up the work? | [Collaboration](collaboration/working-in-workstreams.md): people and agents on one repository |
+| How do I stay current without breaking things? | [Updates](updates/supported-versions.md): supported versions, launcher and component updates |
+| When something goes wrong? | [Troubleshooting](troubleshooting/first-session.md) |
+| Does it run on my machine? | [Platforms](platforms/linux.md): Linux, Windows via WSL2, macOS |
+| What exactly does this command do? | [Reference](reference/configuration-nodes.md) |
+
+Pages marked *coming soon* exist so you can see the shape of the
+documentation; their content follows in later releases.
 
 ## Developing DevCapsule
 
-To change DevCapsule itself, use [For developers](../DEVELOPING.md).
-The [repository documentation index](../index.md) also lists engineering records
-and the detailed CLI/contributor reference.
-
-## Background And Earlier Material
-
-These are positioning drafts or historical notes, not setup instructions for
-the current release:
-
-- [Historical Docker4PyCharm AI plugin and ChatGPT setup](guides/docker4pycharm-ai-plugin-and-chatgpt-setup.md)
-- [Draft pitch](product/draft-pitch.md)
-- [LinkedIn announcement draft](product/linkedin-announcement.md)
-- [V1 announcement draft](product/v1-announcement.md)
-- [Working backwards press release](product/working-backwards-press-release.md)
+To change DevCapsule itself, read [For developers](../DEVELOPING.md) and the
+[repository documentation index](../index.md).
