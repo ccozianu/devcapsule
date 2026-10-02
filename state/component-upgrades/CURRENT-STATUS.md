@@ -4,7 +4,7 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: active 2026-10-01 at owner direction; resumed for the consent design ruling (vendor terms once per user, trust bound to a verified channel, workstation-level trust record); R-UPGRADE-002 follow-up retained
+State: paused 2026-10-02; the consent design is fully ruled (D-0011, D-0012, D-0013, D-0010 and R-UPGRADE-001 refinements) and the 0.2.16 consent slice is the next task; the pair moves to maintenance for the 0.2.16 bug triage; R-UPGRADE-002 follow-up retained
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
 
@@ -215,6 +215,22 @@ intentionally left. Git push is available; owner GitHub
 PR creation/merge remains the delivery arrangement.
 
 ## Open Threads
+
+### Paused 2026-10-02
+
+- Last task: recording the owner's consent rulings; complete, all five
+  questions ruled, records pushed. Nothing uncommitted.
+- Next resumable task: the design note for the 0.2.16 consent slice,
+  then the sidecar (D-0013) first, because the trust record and the
+  host-access rule read through it.
+- The in-capsule half of the trust record waits on maintenance's
+  in-capsule project-command fix; build the host side first.
+- The website owes a page of published base digests for the trust
+  channel's anchor; sent to project-management as part of the 0.2.16
+  candidate mail, not tracked here.
+- The branch is nine commits of documentation ahead of `main`; the owner
+  merges on GitHub.
+
 
 ### Awaiting The Human
 
