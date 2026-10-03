@@ -51,3 +51,44 @@ renegotiated in every session.
 Where real use has shown an opinion wrong, we change it and keep the record
 of why; the *Changes* section of `WORKFLOW.md` is that history. Hold us to
 it.
+
+## What We Believe
+
+A workflow is a set of habits, and habits come from somewhere. Ours come
+from a tradition that is older than most of the tools we use, and we would
+rather name it than pretend to have invented it.
+
+We believe in the generation that taught the field to think: Wirth, Parnas,
+Dijkstra, Nygaard, Liskov. From them we take four convictions that every
+rule in this workflow is quietly trying to serve. That software is made of
+modules, and that a module is a unit of understanding before it is a unit of
+code. That the best interface hides the decision most likely to change, which
+is what information hiding has meant since Parnas said it. That concerns
+kept separate stay understandable, and concerns allowed to mingle do not.
+And that abstraction is not a luxury of the theorist but the working
+engineer's only real defense against complexity: the power to say less and
+mean exactly as much.
+
+We believe those convictions have found their modern, practical form in two
+books, and we recommend them to anyone who adopts this workflow. Not as a
+requirement, since nothing here depends on having read them, but as a
+courtesy to yourself: with them in hand, the shape of what follows will feel
+less like our opinion and more like common sense written down.
+
+*Software Engineering at Google*, by Winters, Manshreck and Wright, gives the
+discipline its most useful one-line definition, programming integrated over
+time, and shows what changes when a codebase must outlive the people, the
+tools and the assumptions it started with. Nearly everything this workflow
+asks of you about records, decisions and hand-offs is an answer to that
+sentence, applied to a team in which some of the programmers are machines.
+
+*A Philosophy of Software Design*, by John Ousterhout, is the clearest
+account we know of why complexity accumulates and how a designer pushes
+back: deep modules, interfaces simpler than their implementations, and the
+patient removal of the small complexities that nobody meant to add. We ask
+the same of the software you build with this workflow, and of the workflow
+itself, which is why it tries to stay small.
+
+If you already hold these beliefs, you will find this workflow familiar and,
+we hope, a relief. If you do not, we ask only that you try it for one
+project and judge it by what it saved you.
