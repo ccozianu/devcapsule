@@ -1,9 +1,10 @@
 ---
-status: confirmed
-severity: untriaged
-target: 0.2.14
+status: closed
+severity: minor
+target: none
 owner: contained-display
 opened: 2026-09-24
+closed: 2026-10-03
 requirements: [R-PRODUCT-001, R-PRODUCT-002]
 ---
 
@@ -66,3 +67,24 @@ record's independent release severity still needs triage.
   network/display combination was exercised.
 - Add automated coverage at the opener boundary and actual desktop acceptance;
   a running IDE alone does not establish this contract.
+
+## Closed, 2026-10-03
+
+Owner verification on the released 0.2.15: with `host-browser` granted,
+links open from the IDE terminal under host X11 and, after a relaunch, under
+the contained noVNC display, through the host-open bridge (`BROWSER` set to
+the delivered runtime's `host-open` command, socket present). The bridge is
+not defective. The 2026-10-02 report of links not opening in this
+repository's own capsule was a checkout without the grant, remedied by
+`config authorize host-browser true` and a relaunch.
+
+What remains, a click doing nothing when the bridge is not granted, is not
+a defect by the owner's ruling: no promised behavior is wrong, the capsule
+is doing what the denial says. It is a desktop feature, a graphical
+notification from the contained desktop's own notification mechanism
+saying that host-browser is not granted and how to grant it, and it is
+recorded as a backlog entry in project-management's coordination backlog,
+*Notification When A Host Bridge Is Not Granted*. The target of shipped
+0.2.14 is removed with the closure.
+
+Reopen only if a granted bridge fails to open a link under either display.

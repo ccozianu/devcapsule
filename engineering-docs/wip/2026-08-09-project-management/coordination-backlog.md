@@ -7,6 +7,23 @@ Items here are deliberately not assigned to V1 until someone weighs their cost
 against the release. An item leaves this backlog when a release target is
 chosen and an owning workstream accepts it.
 
+## Notification When A Host Bridge Is Not Granted
+
+Opened: 2026-10-03, from the closure of the
+[URL-opening bug record](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md)
+at the owner's ruling. A backlog entry, not a bug: the capsule behaves as
+its denial says.
+
+When a capsule has no `host-browser` grant and something asks to open a URL,
+the user today gets nothing: `BROWSER` is unset and `xdg-open` finds no
+handler. The owner wants this handled by the contained desktop's own
+notification mechanism, a graphical notice that host-browser is not granted
+and the one command that grants it, rather than by text on a terminal that
+the click may not have come from. The contained desktop has no notification
+daemon today (no `notify-send`, no daemon in the runtime image); the entry
+includes choosing one frugal enough for the desktop the project keeps.
+Likely owner: `contained-display`. Priority: `later`; no release target.
+
 ## File Locking Protocol
 
 Opened: 2026-08-15
