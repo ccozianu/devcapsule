@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-10-03 mid-triage; one of the untargeted bugs decided, the pair moves to workflow-improvements for the information model and returns to finish the list; 0.2.15 published and reopened
+State: active 2026-10-04; resumed for the 0.2.16 maintenance plate: finish the triage, the in-capsule project-command fix, named build contexts, the first-session UX bugs, release notes and gate tooling; 0.2.15 published and reopened
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
 Integration target: `main`
 
@@ -128,7 +128,17 @@ Owner's version expectation, recorded here until the version scheme in
 series the project jumps to 0.9, which hosts V1's betas and release
 candidates. Bug targets may name 0.9 on that basis.
 
-### Paused 2026-10-03, mid-triage
+### Resumed 2026-10-04
+
+Synchronized with `main` at `17532fd` by merge; the five definition changes
+since the last read (two files for humans, information model, validation
+commands required and printed by the brief, validation vocabulary and its
+checkpoint trigger, integration is a merge commit) are read and apply from
+now: this branch merges `main` in, never rebases, and its deliverables
+land as merge commits. The other checkout has claimed `component-catalog`
+for IntelliJ; this one takes the maintenance plate.
+
+### Paused 2026-10-03, mid-triage (historical)
 
 - Last task: the 0.2.16 bug triage with the owner; one record decided
   (multi-line exec rendering, minor, 0.9). Nothing uncommitted.
