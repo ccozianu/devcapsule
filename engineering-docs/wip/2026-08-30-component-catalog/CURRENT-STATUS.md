@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: active 2026-10-03; bringing IntelliJ IDEA into the catalog as an optional IDE surface, targeted at 0.2.16; implementation not yet started
+State: active 2026-10-03; work order drafted for Playwright and IntelliJ IDEA components with a shared Codex/gpt-6-astra graphical smoke driver; awaiting execution marching order
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -19,8 +19,11 @@ Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`
 ## Goal And Scope
 
 Accept and test IDE surfaces and agent CLIs as regular catalog components.
-The current task is to make IntelliJ IDEA an option alongside the existing
-IDE surfaces, using the existing JetBrains adapter where appropriate.
+The requested scope is IntelliJ IDEA as an optional IDE surface, Playwright
+as a reusable component for future development capsules, and a shared
+agent-driven graphical smoke harness using Codex with `gpt-6-astra`.
+The [work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
+records the proposed execution plan and acceptance evidence.
 
 The owner's 2026-10-01 decision, delivered by project-management and confirmed
 in this checkout on 2026-10-03, assigns IntelliJ to this workstream for
@@ -38,6 +41,12 @@ belong here; component orchestration, upgrades and channels belong to
   current workflow definition and local rules. No synchronization was
   needed at this checkpoint. Future synchronization of the published
   branch merges `main` in, following the current integration policy.
+- Read the graphical and recursive tests from main at `69ced64`. The current
+  IDE smoke has deterministic HTTP/window checks and optional Playwright
+  capture; no LLM driver is implemented in the inspected path.
+- The owner requested the work order before granting autonomous execution.
+  `/opt/xtras` is authorized for the exercise's Playwright bootstrap; the
+  deliverable must also supply it as a component in fresh capsules.
 - The registry and this status now identify the IntelliJ continuation.
   No runtime code or product requirements were changed by this setup.
 - No open bug records owned by `component-catalog` were found on this
@@ -47,24 +56,20 @@ belong here; component orchestration, upgrades and channels belong to
 
 ## Planned Next Step
 
-Scope and implement IntelliJ IDEA as a selectable IDE component for 0.2.16.
-First read the project-management decision and release-planning addendum,
-then inspect the existing PyCharm component and JetBrains launch adapter.
-Identify any unresolved edition, distribution, licensing or persistence
-choices before investing in implementation; do not infer product decisions
-from what is easiest to code.
-
-Done means: a developer can select and launch IntelliJ through the ordinary
-project path, with its component declaration, required documentation and
-relevant checks in place. Acceptance includes an IntelliJ row in the
-existing parametrized IDE smoke test, proving the IDE starts and owns a
-`jetbrains-idea` window. This checkpoint claims no implementation or
-acceptance evidence.
+Await the owner's execution marching order for the
+[Playwright, IntelliJ and agent-smoke work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md).
+Then verify the existing component/JetBrains contracts, scope any unresolved
+edition or acquisition choices, and implement the acceptance ladder. Keep
+session orchestration, the reusable browser scenario and the Codex/model
+adapter separate; no provider-specific copied test class. No implementation
+or model-driven acceptance run has been performed yet.
 
 ## Open Threads
 
-- The next session reloads the current workflow, project-management records,
-  requirements and component implementation before selecting the first slice.
+- The owner's autonomous-execution grant is pending; the work order is the
+  reviewable scope for it. Reload the current workflow and project-management
+  records when resuming. Model availability and IntelliJ acquisition details
+  have not been verified; do not silently change `gpt-6-astra`.
 - 0.2.16 is the assigned target; release driver, cut and formal work order
   remain project-management responsibilities. Re-verify their latest state.
 - The workflow migration notice is accepted. Publish status and use
@@ -77,6 +82,19 @@ acceptance evidence.
   steps and external-state claims are historical, not current instructions.
 
 ## Validation
+
+Work-order checkpoint (2026-10-03): work order/status links and
+`git diff --check` pass. No runtime or test source changed. The required gate
+was attempted again with a short scratch path outside the checkout and the
+fixture's mocked home mount. `/var/tmp` is a 1 GB tmpfs here; pytest filled it,
+so the run was terminated and its owned `/var/tmp/cc-order-tests` directory
+removed. Version, syntax and mypy checks had passed; no full gate pass is
+claimed. Log: `.git/component-catalog-work-order-build.log`. Before the next
+gate, choose scratch outside the source tree and the fixture's mocked mounts,
+with sufficient disk space and a short path for Unix sockets. Do not repeat
+these unsuitable locations.
+
+Previous status checkpoint:
 
 Status and routing update only. `git diff --check` and the new status links
 pass; the historical record is byte-identical to the previous status.
@@ -94,6 +112,8 @@ socket-path and project-discovery failures and is not the retained result.
 
 ## Workstream Document Index
 
+- [Playwright, IntelliJ and agent-smoke work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md):
+  primary execution scope, acceptance ladder and autonomy boundaries.
 - [Project-management status](../2026-08-09-project-management/CURRENT-STATUS.md):
   read *Owner Decisions Of 2026-10-01* for surface ownership and IntelliJ scope.
 - [0.2.16 planning](../2026-08-09-project-management/2026-09-27-0216-release-planning.md):
