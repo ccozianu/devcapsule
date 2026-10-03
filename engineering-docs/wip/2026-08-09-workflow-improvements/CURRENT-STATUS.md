@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: paused 2026-10-03 for merge; preamble, information model (work in progress), validation vocabulary, merge-commit rule and the discoverability fix are on the branch and gated; eight intake items taken and undecided; the pair moves to another workstream
 
-Definition read: WORKFLOW.md@9d21b0c66458, WORKFLOW-LOCAL.md@6ff07c49a7ea
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
 Integration target: `main`
 
