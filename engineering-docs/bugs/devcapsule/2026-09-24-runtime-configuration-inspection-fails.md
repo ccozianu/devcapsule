@@ -1,8 +1,8 @@
 ---
 status: confirmed
-severity: untriaged
-target: v1
-owner: component-upgrades
+severity: major
+target: 0.2.16
+owner: maintenance
 opened: 2026-09-24
 requirements: [R-UPGRADE-001, R-PRODUCT-001]
 ---
@@ -116,3 +116,74 @@ Owner ruling: discovery of the configuration inside the capsule from a
 directory outside the project, such as `/opt`, is minor and is sent to the
 V1 release to decide; it does not hold 0.2.14. The recursive test launcher's
 missing mounts remain a test-harness fix on the same record.
+
+## Owner ruling, 2026-10-01: fix it for 0.2.16, whole and not by halves
+
+The owner, inside a 0.2.15 capsule, hit both failures again and ruled that
+inside a capsule every `project` subcommand selects the capsule's own
+project automatically, from any working directory, exactly as `project info`
+does since 0.2.15; the read-only ones then answer, the mutating ones then
+say to run the launcher. "Time to kill this bug once and for all." Fields
+changed accordingly: `target` 0.2.16, `severity` major (the product claims
+read-only inspection inside the capsule and from `/opt` there is no
+workaround), `owner` `maintenance` under the owner's routing rule of the
+same day: `component-upgrades` owns component wiring, defects in the project
+CLI are maintenance's. Recorded by `project-management` at the owner's
+direction.
+
+### Reproduction on the published v0.2.15, 2026-10-01
+
+Installed launcher `devcapsule0` reporting `DevCapsule v0.2.15 (package
+0.2.15)`, inside the dogfood capsule for this repository, which has
+`/etc/devcapsule/launch-context.json` and `/etc/devcapsule/checkout` mounted.
+
+| Working directory | Command | Result |
+|---|---|---|
+| project mount | `project config show` | Exit 2: `This command needs launcher-owned configuration or state. Inside this capsule that configuration is read-only. Run outside the capsule: devcapsule project --path <host path> config show` |
+| project mount | `project config list` | works: `Runtime context: read-only launcher configuration for the next launch.` |
+| project mount | `project versions show` | works |
+| project mount | `project info` | works |
+| `/opt` | `project config show`, `config list`, `versions show` | Exit 2: `No .devcapsule/devcapsule.toml found from /opt; run 'devcapsule project init'.` |
+| `/opt` | `project info` | works: `Context: running capsule (captured at launch)` |
+
+### Confirmed causes, read from the source at `fd49bd1`
+
+Three separate defects in two files produce the owner's transcript; the
+fallback mechanism itself exists and `project info` already uses it.
+
+1. **`config show` is refused as launcher-only although it is read-only.**
+   `ProjectCommand.make_context` in `devcapsule/commands/project.py`
+   admits only `("versions", "show")` and `("config", "list")` before
+   calling `runtime_configuration.require_launcher`. `ConfigShowCommand`
+   shares `_print_configuration_listing` with `config list`, which prints
+   the runtime report and returns `None`, and `show` then returns 0. The
+   allowlist is simply out of date.
+2. **No fallback to the capsule's project for `config list`, `config show`
+   and `versions show`.** `_print_configuration_listing` and
+   `version_sets.inspect` call `runtime_configuration.for_project(start)`
+   without `fallback=True`. From `/opt`, discovery fails, `for_project`
+   returns `None` because the start directory is not the runtime root, and
+   the caller falls through to `manifest_for(start)`, which raises the
+   "No .devcapsule/devcapsule.toml" error. `ProjectInfoCommand` passes
+   `runtime_fallback=selected.selected_path is None` and works; the other
+   three need the same.
+3. **The guard runs before argparse validates the subcommand**, the defect
+   of the 2026-09-26 record, in the same function.
+
+`require_launcher` also calls `for_project(start)` without the fallback, so
+from `/opt` a mutating command reaches the "no devcapsule.toml" error
+instead of the launcher message; the fix should give it the same fallback.
+
+### Fix shape and close criteria
+
+Replace the token allowlist with the rule the ruling states: the `project`
+group resolves its project as `info` does (explicit `--path` wins,
+otherwise discovery, otherwise the capsule's runtime context), every
+implemented read-only command answers from the runtime context, and
+`require_launcher` is reached only for a valid, mutating subcommand. Tests
+in `tests/test_project_commands.py` and `tests/test_version_sets.py` cover
+the four commands from the project root, a descendant and an unrelated
+directory with a patched launch context, plus the unknown-subcommand case.
+Close when the owner reruns the table above on a 0.2.16 candidate and every
+row works. The recursive test launcher's missing mounts (cause 1 of the
+original record) stay a test-harness task on this record.

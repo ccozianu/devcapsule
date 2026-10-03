@@ -11,3 +11,4 @@ The note is one line. The reasoning is in this workstream's
 
 | Item | Dispositioned | Outcome | Note |
 |---|---|---|---|
+| `2026-09-21-workflow-improvements-definition-changed-please-publish.md` | 2026-10-01 | acknowledged | Fan-out notice needing no decision; this workstream never published state or forked a branch, and concludes today, so there is nothing to publish or rename. |

@@ -52,18 +52,18 @@ accepted" names the workstream that would implement, following the rule that
 
 | ID | Candidate | Source | Size | Owner if accepted | Recommendation |
 |---|---|---|---|---|---|
-| C1 | Candidate acceptance of the base-contract naming and consent binding already on `main` | `5051f4f`, `3692950` | validation only | release driver | **In**, by construction; the first acceptance obligation of the release |
+| C1 | Prove from a downloaded candidate that the base-image change already on `main` works: the base is named by its contract (`ubuntu-24.04@9`, no more `v0.2.12-rc5`), consent sticks to the image rather than the whole lock, and `config show` reports compatibility | `5051f4f`, `3692950` | validation only, no code | release driver | **In**, by construction; the first acceptance obligation of the release. Acceptance also counts every prompt a fresh user meets from download to a running IDE, with its wording, as the baseline for the [consent design issue](2026-10-01-design-consent-and-vendor-trust.md) |
 | C2 | 0.2.15's additions reach `main` before the cut: xtras, `project info`, agent defaults, agent pins | 0.2.15 overview; rc0 exception record | merge or port, small | `maintenance` | **In**, as the cut's prerequisite; without it 0.2.16 would regress 0.2.15 |
 | C3 | Agent freshness review as a standing runbook section, executed for every release | intake 2026-09-27 (owner direction) | runbook edit: hours; execution: per release | `project-management` writes it; the driver executes | **In**; acknowledged today as a task of this workstream |
 | C4 | Release notes as a release artifact: `releases/<tag>/notes.md` required by the final gate, passed to the GitHub release body, 0.2.14 backfilled; the website page later through W12 | intake 2026-09-26 | gate and backend: days; notes: hours | `maintenance` for gate and backend; `user-docs`/website for the page | **In** for gate, backend and backfill; page deferred to the website contract |
 | C5 | Named build contexts so a launcher change no longer transfers 4.8 GB | 0.2.15 plan item 1; installed-IDE reuse bug | days, bounded | `maintenance` | **In**; the owner's daily rebuild cost, root cause recorded |
 | C6 | `v0.2.12-rc5` mnemonic shown as the base's name | 0.2.15 plan item 2 | none | none | **Covered by C1**; verify at acceptance, no separate work |
 | C7 | Choosing the newer recommended base per checkout from `project config`, and `config list` rendering by the configured schema | 0.2.15 plan item 3; intake 2026-09-13 and 2026-09-14 | unknown until C1 is inspected | `component-upgrades` under R-UPGRADE-001 | **Not committed**; inspect what C1 already answers, then decide the remainder |
-| C8 | In-capsule `project <unknown>` guard diagnostic | bug 2026-09-26, minor, deferred from 0.2.15 | small | `maintenance` | **In** |
+| C8 | In-capsule `project` commands: every subcommand selects the capsule's project from any directory, read-only ones answer, the guard follows argparse | bugs 2026-09-24 (major) and 2026-09-26, owner ruling 2026-10-01 | small, three causes in two files | `maintenance` | **In**; owner: "kill this bug once and for all" |
 | C9 | Triage the seven untargeted `maintenance` bugs so severity and target mean something | early-adopter input, item 1 | an owner afternoon | `maintenance` with the owner | **In**, before the cut; decides which of the seven join C8 |
 | C10 | First-session UX: a concise ready/stopped/error summary instead of streamed desktop diagnostics; Ctrl+C ends with a result, not a traceback | intake 2026-09-15, items 2 and 3 (item 1 is closed by C1) | small each | `maintenance`, as bug records | **In**; file both as bugs with target 0.2.16 |
 | C11 | Checkout-naming default: the directory's last component when unique; a vanished default record does not hold the slot | intake 2026-09-25, item 2 | small | `maintenance` | **In if adopted**; the owner ruled the current behavior not a bug, so this is a product choice |
-| C12 | IntelliJ IDEA as a second JetBrains surface on the existing adapter | 0.2.15 plan, owner's surface wish | days | a feature workstream, not `maintenance` | **Owner's option**; the one surface that fits a short release. VS Code, Eclipse and the Antigravity IDE are out of 0.2.16 |
+| C12 | IntelliJ IDEA as a second JetBrains surface on the existing adapter | 0.2.15 plan, owner's surface wish | days | a feature workstream, not `maintenance` | **In**, owner decision 2026-10-01 (see the addendum). VS Code, Eclipse and the Antigravity IDE are out of 0.2.16 |
 | C13 | Managed agent-CLI updates and the upgrade experience (messages, obsolescence, pin advance) | intake 2026-09-03, 2026-09-21 adopter story ("utmost importance") | design first; implementation is V1-sized | `component-upgrades` | **Out of 0.2.16 implementation**; propose a bounded design slice to start in parallel, so 0.2.17 can carry the first piece |
 | C14 | mycodespace direction and this repository's submodule migration | intake 2026-09-25, item 1 | decision | owner | **Decision, not release content** |
 | C15 | Legacy launch capabilities L1-L13 and the configuration-free-directory question | work order 2026-09-22; V1 gate | decision session first | owner, then assigned | **Decision session, not 0.2.16 implementation** unless the session selects a slice |
@@ -77,7 +77,8 @@ accepted" names the workstream that would implement, following the rule that
 
 **0.2.16: what `main` already carries, made releasable, plus the bounded
 cleanup 0.2.15 set aside.** Concretely C1 through C5, C8 through C10, and
-C16, with C11 and C12 as the owner's options.
+C16, with C11 as the owner's option. C12, IntelliJ, joined the scope by
+owner decision on 2026-10-01; see the addendum.
 
 Why this shape:
 
@@ -114,16 +115,16 @@ mostly in C4 and C5, neither of which has been designed in code yet.
   If the owner wants a calendar bound, one to two weeks after 0.2.15's final
   tag is consistent with the estimate above.
 - **IntelliJ, if chosen,** is built on its own workstream branch and merged
-  to `main` before the cut, like any other content. The cheapest home is a
-  bounded `ide-surfaces` workstream that absorbs the registered but unscoped
-  `eclipse-surface`; opening one is a lifecycle decision for the owner.
+  to `main` before the cut, like any other content. Home decided
+  2026-10-01: `component-catalog`; see the addendum.
 
 ## Decisions Asked Of The Owner
 
 1. Adopt the recommended scope, C1 to C5, C8 to C10 and C16, or amend it.
 2. C11, the checkout-naming default: adopt the proposal or keep today's rule.
-3. C12, IntelliJ: in or out of 0.2.16; if in, whether to open a bounded
-   `ide-surfaces` workstream for it, folding `eclipse-surface` in.
+3. C12, IntelliJ: **decided in, 2026-10-01, owned by `component-catalog`.**
+   `eclipse-surface` is concluded and archived. Nothing left to decide
+   here beyond the driver, item 4.
 4. Driver: `maintenance`, or a feature workstream if IntelliJ is the headline.
 5. C4 and C20: the notes artifact is adopted as content under the owner's
    2026-09-28 grant and the runbook now requires it before a final tag; the
@@ -161,6 +162,54 @@ The documentation-currency design issue and the two work orders of
 narrowed to automation. The website publication that documents 0.2.15 is
 not gated on 0.2.16; 0.2.16 is the first release whose runbook carries the
 documentation obligations, so its driver should budget for them.
+
+## Addendum 2026-10-01
+
+**C12 is in scope: IntelliJ IDEA is a 0.2.16 target, by owner decision.**
+The owner's reason: the IDE smoke test now proves from the outside that a
+surface comes alive, so adding a surface is cheap to validate. The code
+agrees: `tests/e2e/test_ide_comes_alive.py` is parametrized over the
+`SURFACES` table in `tests/e2e/ide_session.py`, one row per IDE naming its
+capabilities, its X11 window class and a ready timeout; today the rows are
+`codium` and `pycharm`. IntelliJ's acceptance is one more row
+(`jetbrains-idea` window class) once the launcher offers the surface, and
+the evidence directory per surface comes with it.
+
+The owner settled the home the same day: **an IDE is a component, so
+IntelliJ is `component-catalog` content**, the workstream that accepts and
+tests new components. `component-upgrades` owns the code that wires
+components (orchestration, upgrades); its name is narrower than that remit
+and stays, since a rename operation would cost more than it returns.
+`eclipse-surface` concluded without work and is archived; Eclipse, if ever,
+is `component-catalog` content too. No `ide-surfaces` workstream opens.
+
+Left for the owner: **headline and driver.** Under *Taking A Release Over*,
+if IntelliJ is the release's headline, `component-catalog` drives and
+`maintenance` contributes the fixes; otherwise `maintenance` drives as
+recommended and IntelliJ merges to `main` before the cut like any other
+content. The recommendation stands: `maintenance` drives, IntelliJ is
+content. `component-catalog`'s registry row still says its scope is frozen
+at the final smoke slice; the owner's direction lifts that, and the
+workstream records it when it takes the notice sent today.
+
+**C8 broadened, 2026-10-01.** The owner reproduced on v0.2.15 that
+`project config show` is refused inside the capsule from the project tree
+and that `config list`, `config show` and `versions show` fail from `/opt`,
+and ruled that inside a capsule every `project` subcommand selects the
+capsule's project automatically. The 2026-09-24 record carries the
+reproduction, the three causes and the fix shape; both records now target
+0.2.16 with `maintenance` as owner. The owner also fixed the shape of the
+workstream-selection command discussed the same day: `devcapsule project
+workflow --select <name>`, under the `project` group, which inside a capsule
+must therefore pass the same automatic selection; that goes to
+`workflow-improvements` with the submodule tooling request.
+
+Size unchanged: days on the existing JetBrains adapter, which is PyCharm
+shaped today (`components/pycharm.py`, `launch/pycharm/`), so the work is
+generalizing the adapter's installation, image build and launch over a
+second JetBrains product rather than writing a new one. The cut trigger
+gains a condition: IntelliJ on `main` with its smoke row passing, or the
+owner drops it from the cut.
 
 ## What This Proposal Does Not Decide
 
