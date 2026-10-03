@@ -9,6 +9,11 @@ This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
 
+Two files beside this one are marked *for humans*: [`PREAMBLE.md`](PREAMBLE.md),
+why this workflow is opinionated and for whom, and
+[`INFORMATION-MODEL.md`](INFORMATION-MODEL.md), the kinds of thing it stores
+and how they relate. They explain; this file rules.
+
 ## Purpose And Principles
 
 This document structures how a human and a coding agent build software
@@ -92,7 +97,8 @@ Three tiebreaks, in order:
 
 ### How To Read This Document
 
-Humans: the *Glossary* names everything in plain words; the *Multiple-Stream
+Humans: `PREAMBLE.md` says why the workflow is what it is, and
+`INFORMATION-MODEL.md` draws what it stores; read those first. Here, the *Glossary* names everything in plain words; the *Multiple-Stream
 Workflow* and *Markdown Roles* sections carry the structure; the rest is
 detail you can consult when it becomes relevant. Explanation and examples
 written for people live in the project's user documentation, which explains
@@ -102,6 +108,12 @@ Agents: read the whole applicable path before acting, treat the numbered
 restrictions and procedures as binding, and treat prose as the reasoning that
 explains them. Where a rule and this preamble appear to disagree, the rule
 governs and the disagreement is a defect worth reporting.
+
+**The *for humans* marker.** A file or section that opens with *For humans*
+carries explanation, not rules. An agent skips it in ordinary work. It
+returns to the preamble when it must decide something the rules do not
+settle, alone or together with the human, and to the model when the
+question is what kind a thing is.
 
 ### Vocabulary
 
@@ -329,6 +341,11 @@ Declaration* for what that version means and who keeps it correct.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
+- **Two files for humans.** `PREAMBLE.md`, why the workflow is opinionated
+  and for whom, and `INFORMATION-MODEL.md` are installed and refreshed beside
+  this file and marked *for humans*: explanation, not rules, which an agent
+  skips in ordinary work; *How To Read This Document* says when it returns.
+  No migration.
 - **Information model.** `INFORMATION-MODEL.md`, installed beside this
   file, names every kind of thing the workflow stores, its home, its controlled fields, what it may point at,
   and how a thing moves between kinds; *Bug Or Feature* is the test by
@@ -456,9 +473,8 @@ release's tag.
 The kinds of thing this workflow stores, their homes and controlled fields,
 how a thing moves between kinds, the test that tells a bug from a feature,
 and where the validation kinds are declared, are in `INFORMATION-MODEL.md`
-beside this file: the big picture, written for people, installed and
-refreshed with this document. The rules here assume it and do not repeat
-it.
+beside this file, marked *for humans*, installed and refreshed with this
+document. The rules here assume it and do not repeat it.
 
 ## Checkouts, Branches, And Workstreams
 

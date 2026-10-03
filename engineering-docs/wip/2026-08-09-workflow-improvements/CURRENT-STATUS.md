@@ -125,6 +125,18 @@ records the choice under *Integration Method* and retires the rebase ruling
 for this branch; the August merge-strategy note carries the adoption. The
 owner's later wish, a one-subject squash mode, is backlog item 0.
 
+Then the preamble: the owner wants the workflow to explain itself to
+adopters, since it has become opinionated. `PREAMBLE.md`, in both layers
+and installed by bootstrap with tests: meant for most kinds of software
+project, binding only where it speaks with named escape hatches, opinions
+borrowed from recognized practice and said from where. The owner's
+reading-order rule: humans need the ideology, agents do not; `PREAMBLE.md`
+and `INFORMATION-MODEL.md` open with a *for humans* marker, defined in *How
+To Read This Document*, which an agent skips in ordinary work and returns
+to when it must decide something the rules do not settle. `WORKFLOW.md`
+links both from its first screen; `AGENTS.md` says the same in one
+sentence.
+
 ## Last Task And Status
 
 Last task: the patch-handoff rule, from `project-management`'s 2026-09-22

@@ -1,5 +1,9 @@
 # Information Model
 
+*For humans.* This file explains; the rules are in `WORKFLOW.md`. An agent
+skips it in ordinary work and reads it when the question is what kind a
+thing is.
+
 The big picture of the workflow, for people. `WORKFLOW.md` beside this file
 holds the rules an agent works under and is long by necessity; this file is
 short by design and says what kinds of thing the workflow stores, how they

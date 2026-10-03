@@ -64,6 +64,7 @@ Maintain `index.md` when permanent Markdown files are added, removed, renamed,
 or moved. Preserve existing project-specific instructions when extending this
 file; refresh the reusable definition only when the developer explicitly asks.
 
-`INFORMATION-MODEL.md`, installed beside `WORKFLOW.md`, is the big picture for
-people: the kinds of thing the workflow stores and how they relate. Read it
-when the question is what kind a thing is.
+`PREAMBLE.md` and `INFORMATION-MODEL.md`, installed beside `WORKFLOW.md`, are
+marked *for humans*: explanation, not rules. Skip them in ordinary work; read
+the preamble when you must decide something the rules do not settle, alone or
+with the human, and the model when the question is what kind a thing is.

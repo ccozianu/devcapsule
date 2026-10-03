@@ -21,6 +21,7 @@ DEFINITION_ASSETS: Mapping[Path, str] = {
     Path("AGENTS.md"): "definition/AGENTS.md",
     Path("WORKFLOW.md"): "definition/WORKFLOW.md",
     Path("INFORMATION-MODEL.md"): "definition/INFORMATION-MODEL.md",
+    Path("PREAMBLE.md"): "definition/PREAMBLE.md",
 }
 COMMON_TEMPLATES: Mapping[Path, str] = {
     Path("README.md"): "templates/common/README.md.template",
