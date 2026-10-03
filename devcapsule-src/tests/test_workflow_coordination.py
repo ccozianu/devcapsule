@@ -380,6 +380,16 @@ def test_brief_prints_the_session_context(repos, capsys) -> None:
     # No local workflow file yet: the brief says so instead of staying silent.
     assert "## Validation commands: no WORKFLOW-LOCAL.md" in text
 
+    # The template's untouched placeholder is named as such, not printed as
+    # if it were a command.
+    (sender / "WORKFLOW-LOCAL.md").write_text(
+        "# Local\n\n## Validation Commands\n\nWhat a pair runs before a checkpoint and before\n"
+        "integration, and where the full description lives.\n",
+        encoding="utf-8",
+    )
+    text = brief(sender, "alpha")
+    assert "## Validation commands: still the template's placeholder in WORKFLOW-LOCAL.md" in text
+
     # The local file's Validation Commands section is printed verbatim, and
     # only that section, so the session knows how to build and test first.
     (sender / "WORKFLOW-LOCAL.md").write_text(

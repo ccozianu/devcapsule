@@ -729,7 +729,17 @@ def _validation_commands(root: Path) -> list[str]:
         body.pop()
     if not body:
         return [f"## Validation commands: {DEFINITION_FILES[1]} has no *Validation Commands* section; see the developer brief before running any check"]
+    if " ".join(line.strip() for line in body) == TEMPLATE_VALIDATION_PLACEHOLDER:
+        return [f"## Validation commands: still the template's placeholder in {DEFINITION_FILES[1]}; "
+                "write the environment and the build, test, start and smoke-test commands there before the next checkpoint"]
     return [f"## Validation commands, from {DEFINITION_FILES[1]}", *body]
+
+
+# The sentence bootstrap's template leaves under *Validation Commands*; a
+# local file still carrying it has not told the next session anything.
+TEMPLATE_VALIDATION_PLACEHOLDER = (
+    "What a pair runs before a checkpoint and before integration, and where the full description lives."
+)
 
 
 def _unread_changes(git: _Git, row: WorkstreamState, main_ref: str) -> list[str]:
