@@ -72,10 +72,27 @@ Then a not-so-secret human secret intervened: large language models love
 long files, and humans do not. The model came out of the two-thousand-line
 rules document and into a short file of its own, with a diagram at the top
 and a marker on the first line: *for humans*. An agent skips it in ordinary
-work and returns to it when the question is what kind a thing is. We will
-restate it next in the spirit of the higher-order entity-relationship model
-of Thalheim and Schewe, in plain sentences of a few fixed shapes, so that a
-reader can operate with the text without reading the book.
+work and returns to it when the question is what kind a thing is.
+
+One detail for the reader who enjoys this sort of thing: when the question
+came up of what the model itself is written in, we refused to improvise a
+meta-model of our own and went looking for a known one. Codd's relational
+model fits our record fields exactly, since "a question answerable from the
+fields alone" is his idea, but it has no notion of a thing changing state
+and it would flatten our set-valued fields into tables that no Markdown file
+has. Chen's entity-relationship model is what people draw, but our relations
+are often over other relations: a decision superseding a decision, a release
+delivering a work order's scoping of a requirement to a workstream. So we
+picked the higher-order entity-relationship model, HERM, of Bernhard
+Thalheim and Klaus-Dieter Schewe, which allows exactly that, keeps
+structured attributes and integrity constraints inside the schema, and
+treats operations as designed together with the structure. We use it in
+spirit, not in notation. The model's introduction gives a reader the five
+words needed, entity, entity type, relationship, relationship type and
+higher-order, and the body is written in plain sentences of a few fixed
+shapes, so that nobody has to read the book to operate with the text. The
+diagrams, when they come, will be drawn from the text rather than the other
+way round.
 
 ## A preamble, and a merge rule
 
