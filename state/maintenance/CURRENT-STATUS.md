@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-03; 0.2.16 bug triage with the owner in progress (the untargeted maintenance bugs, one decided); 0.2.15 published and reopened
+State: paused 2026-10-03 mid-triage; one of the untargeted bugs decided, the pair moves to workflow-improvements for the information model and returns to finish the list; 0.2.15 published and reopened
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
 
@@ -127,6 +127,23 @@ Owner's version expectation, recorded here until the version scheme in
 0.3 marks the growth in capability since the first 0.2; from the 0.3.x
 series the project jumps to 0.9, which hosts V1's betas and release
 candidates. Bug targets may name 0.9 on that basis.
+
+### Paused 2026-10-03, mid-triage
+
+- Last task: the 0.2.16 bug triage with the owner; one record decided
+  (multi-line exec rendering, minor, 0.9). Nothing uncommitted.
+- Next resumable task: continue the triage from the ecosystem-bootstrap
+  record (2026-08-03). The owner's test for the remaining records: a
+  record that violates no requirement and breaks no promised behavior is
+  a feature, not a bug; it leaves the bug queue for the V1 scope ledger by
+  mail to project-management. Ecosystem bootstrap fails that test and is
+  the first to move; the information model being written in
+  workflow-improvements is what makes the test a rule.
+- Owner intent for the release name, recorded for project-management's
+  registration: if 0.2.16 delivers its full planned scope, new IDE
+  surfaces included, it is released as **0.3.0**, marking how far the
+  product is beyond the first 0.2. The release branch's first commit sets
+  the version under the local scheme; the owner names it then.
 
 ## Planned Next Step
 
