@@ -44,8 +44,7 @@ smoke-test step, write here, runnable as written from a named directory:
 - **Gate**: which of the above run before a checkpoint and before integration.
 
 Say `none` for a kind this project does not have, with the reason. See
-*Validation* under *Information Model* in `WORKFLOW.md` for what each kind
-means. A step that is not written here does not exist for the next agent.
+*Validation* in `INFORMATION-MODEL.md` for what each kind means. A step that is not written here does not exist for the next agent.
 
 ## Host Capabilities
 

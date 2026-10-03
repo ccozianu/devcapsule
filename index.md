@@ -17,6 +17,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Claude compatibility pointer](CLAUDE.md)
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
+- [Information model: the kinds of thing the workflow stores and how they relate](INFORMATION-MODEL.md)
 - [This project's local workflow](WORKFLOW-LOCAL.md)
 - [Product documentation](docs/README.md), versioned per release under the content–website contract; pages marked *coming soon* are planned stubs
   - Getting started: [Install](docs/getting-started/install.md), [Your first session](docs/getting-started/first-session.md), [Stop and come back](docs/getting-started/stop-and-come-back.md)
@@ -177,6 +178,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Packaged project workflow asset boundary](devcapsule-src/devcapsule/assets/project_workflow/README.md)
 - [Packaged generic agent instructions](devcapsule-src/devcapsule/assets/project_workflow/definition/AGENTS.md)
 - [Packaged generic workflow definition](devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md)
+- [Packaged information model](devcapsule-src/devcapsule/assets/project_workflow/definition/INFORMATION-MODEL.md)
 - [PyCharm image vibe-coding bootstrap template](devcapsule-src/devcapsule/assets/pycharm/image-assets/vibe-coding-process.md)
 - [Legacy-compatible PyCharm bootstrap template copy](devcapsule-src/devcapsule/assets/docker4pycharm/image-assets/vibe-coding-process.md)
 - [TypeScript five-in-a-row sample project](devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow/README.md)

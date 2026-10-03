@@ -4,8 +4,8 @@ These assets deliberately separate two layers that coexist in the DevCapsule
 repository but have different ownership:
 
 - `definition/` contains reusable protocol files. DevCapsule distributes these
-  bytes and `devcapsule bootstrap project` installs them as `AGENTS.md` and
-  `WORKFLOW.md` in adopter repositories.
+  bytes and `devcapsule bootstrap project` installs them as `AGENTS.md`, `WORKFLOW.md`
+  and `INFORMATION-MODEL.md` in adopter repositories.
 - `templates/` contains initial project-memory instances. Bootstrap renders
   these into files such as `CURRENT-STATUS.md`, `REQUIREMENTS.md`, `index.md`,
   `WORKFLOW-LOCAL.md` (the project's own half of the workflow, never refreshed),

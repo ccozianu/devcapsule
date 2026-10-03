@@ -265,8 +265,8 @@ remain understood as synonyms for one release and are then retired.
 - **Backlog entry**: a wanted capability or improvement that is not yet a
   requirement, with a priority, in a living list named for what it is under
   `project-management`'s open-work directory. The everyday word is
-  "feature". Not a bug record; see *Bug Or Feature* under *Information
-  Model*.
+  "feature". Not a bug record; see *Bug Or Feature* in
+  `INFORMATION-MODEL.md`.
 - **Work order**: a scoped hand-over of requirements, decisions and backlog
   entries to a workstream, with finish criteria, under
   `engineering-docs/work-orders/`. An optional kind; delivered by mail like
@@ -329,8 +329,8 @@ Declaration* for what that version means and who keeps it correct.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
-- **Information model.** *Information Model* names every kind of thing the
-  workflow stores, its home, its controlled fields, what it may point at,
+- **Information model.** `INFORMATION-MODEL.md`, installed beside this
+  file, names every kind of thing the workflow stores, its home, its controlled fields, what it may point at,
   and how a thing moves between kinds; *Bug Or Feature* is the test by
   field, and the *Glossary* gains **backlog entry** and **work order**.
   Migration: a bug record that violates no requirement and no promised
@@ -346,7 +346,7 @@ with its version. Rules changed since 0.2.14:
 - **Validation vocabulary and the checkpoint that keeps it true.** The
   *Glossary* names the validation kinds, environment, unit, integration,
   end-to-end, smoke, gate, candidate gate, acceptance evidence, the same in
-  every ecosystem; *Information Model* says they are declared in the local
+  every ecosystem; `INFORMATION-MODEL.md` says they are declared in the local
   file's *Validation commands*, `none` allowed with a reason; *Checkpoint
   Triggers* gains the change of how the software is built, tested, started
   or smoke-tested; the local file template carries the structure and the
@@ -445,77 +445,12 @@ release's tag.
 
 ## Information Model
 
-Everything the workflow stores is one of a small number of kinds. Each kind
-has one home, controlled fields where a question must be answerable from the
-fields alone, and a fixed set of things it may point at. This section is the
-map: the kinds, how a thing moves from one kind to another, and the test
-that tells a bug from a feature. A document that fits no kind is a project
-document, and the local workflow file names its kind. The *Glossary* defines
-the words; this section defines the relations.
-
-### The Kinds
-
-| Kind | Home | Controlled fields | May point at |
-|---|---|---|---|
-| Requirement | `engineering-docs/requirements/`, `R-<AREA>-###` | `status`, `priority` | decision records that explain it; bug records that threaten it; the tasks and work orders that implement or validate it |
-| Decision record | `engineering-docs/decisions/`, `D-####` | `status`, dates, `decided-by`, `supersedes` | the requirements it serves; the records it supersedes |
-| Bug record | `engineering-docs/bugs/` | `status`, `severity`, `target`, `owner`, `opened`, `closed`, `requirements` | the requirements it threatens; the release it targets; the completed-task record that holds its evidence |
-| Backlog entry | a living list named for what it is, under `project-management`'s open-work directory: a backlog, a ledger | `priority`; an owner once assigned | the requirement it will become or serve; the work order that takes it |
-| Work order | `engineering-docs/work-orders/`; an optional kind a project may leave unused | the recipient workstream; finish criteria | the requirements, decisions and backlog entries it scopes |
-| Intake item | a workstream's `intake/`, then its decision log | none; its decision is a log row | whatever it hands over |
-| Status file and records | the open-work directory | `state`, the next task | everything above, by link |
-| Release record | `engineering-docs/releases/` | version, tag, evidence, notes | the bug records whose `target` names it; the work orders it delivered |
-| Exception | the local workflow file, or the record it concerns | the reason; the condition that ends it | the rule it departs from |
-
-### How A Thing Moves
-
-- **An intake item ends as exactly one thing**: a bug record, a backlog
-  entry, a requirement, a task in the recipient's status file, or a forward
-  to `project-management`. Never two, never none; see *Workstream Intake*.
-- **A backlog entry** becomes a requirement when the product owner accepts
-  it, or a work order when a workstream is to build it. A backlog entry
-  never becomes a bug record.
-- **A bug record** ends `closed` or `retired`. It never becomes a feature:
-  when the fix would need behavior the product never promised, the record
-  is retired with that reason and a backlog entry is opened in its place,
-  pointing back at it.
-- **A requirement** moves through its statuses; a decision record says why
-  it reads as it does. A requirement is never a queue of work: the tasks
-  are in status files, the wishes are in the backlog.
-- **A release** owns no records of its own beyond the release record. Its
-  content is named from the outside: bug records by `target`, requirements
-  by `priority` relative to it, work orders by the release they are cut for.
-
-### Bug Or Feature
-
-The test is by field, so that the question is never a matter of taste. A
-**bug record** needs a requirement it threatens, or a documented behavior
-the product promises, that is observed wrong or unsafe; its `requirements`
-field names the former and its symptom section the latter. When no
-requirement is violated and no promised behavior is wrong, the thing is a
-**backlog entry**, however large the gap it describes; "feature" is the
-everyday word for it. `severity` belongs to bug records and `priority` to
-backlog entries and requirements; neither is used for the other, and a
-backlog entry with a `target` is a planning statement, not a gate.
-
-The test applies at filing and at triage alike. A bug queue that holds
-wishes hides both: the wishes get no priority and the defects get no
-attention. The filer who is unsure files a backlog entry; `project-management`
-can always open the bug record when the requirement turns up.
-
-### Validation
-
-The validation kinds in the *Glossary*, environment, unit, integration,
-end-to-end, smoke, gate, candidate gate and acceptance evidence, are not
-records. They are declared, per project, in the local workflow file's
-*Validation commands*: for each kind, the command runnable as written, or
-`none` with the reason, so that silence is never ambiguous. The gate names
-which kinds run before a checkpoint and before integration; the candidate
-gate names which run on a candidate; the release record keeps the
-acceptance evidence. A checkpoint that introduces or changes how any kind
-runs updates that section in the same commit, which is what lets the next
-agent, on any project and in any ecosystem, build the software and prove
-it runs without guessing.
+The kinds of thing this workflow stores, their homes and controlled fields,
+how a thing moves between kinds, the test that tells a bug from a feature,
+and where the validation kinds are declared, are in `INFORMATION-MODEL.md`
+beside this file: the big picture, written for people, installed and
+refreshed with this document. The rules here assume it and do not repeat
+it.
 
 ## Checkouts, Branches, And Workstreams
 
@@ -2432,7 +2367,7 @@ session on that track should actually consider doing.
 
 ## Bug Intake
 
-Before filing, apply *Bug Or Feature* under *Information Model*: a record
+Before filing, apply *Bug Or Feature* in `INFORMATION-MODEL.md`: a record
 here needs a requirement it threatens or a promised behavior observed wrong;
 a wish, however large, is a backlog entry.
 

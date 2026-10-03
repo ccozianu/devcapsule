@@ -92,7 +92,7 @@ Every command runs from `devcapsule-src`; the environment is the virtual
 environment under `devcapsule-src/.venv`, where `nox`, `pytest`, `mypy` and
 the package's dependencies live and nowhere else on the machine, inside a
 capsule as well as on a host. The kinds are the definition's; see
-*Validation* under *Information Model* in `WORKFLOW.md`.
+*Validation* in `INFORMATION-MODEL.md`.
 
 - **Environment**: if `.venv` is absent, create it:
 

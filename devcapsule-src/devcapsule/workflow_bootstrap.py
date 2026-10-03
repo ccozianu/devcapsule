@@ -20,6 +20,7 @@ ASSET_PACKAGE = "devcapsule.assets.project_workflow"
 DEFINITION_ASSETS: Mapping[Path, str] = {
     Path("AGENTS.md"): "definition/AGENTS.md",
     Path("WORKFLOW.md"): "definition/WORKFLOW.md",
+    Path("INFORMATION-MODEL.md"): "definition/INFORMATION-MODEL.md",
 }
 COMMON_TEMPLATES: Mapping[Path, str] = {
     Path("README.md"): "templates/common/README.md.template",

@@ -76,7 +76,9 @@ After `WORKFLOW.md`, read `WORKFLOW-LOCAL.md`, this project's own half of the
 workflow: the version scheme, release policy, validation commands, host
 capabilities, and recorded exceptions that only this project can decide.
 `WORKFLOW.md` binds wherever it speaks; the local file governs where it is
-silent. See *The Project's Local Workflow* in `WORKFLOW.md`. Its *Validation
+silent. See *The Project's Local Workflow* in `WORKFLOW.md`. `INFORMATION-MODEL.md` beside them is the big
+picture for people, the kinds of thing the workflow stores and how they
+relate; read it when the question is what kind a thing is. Its *Validation
 Commands* section is how this project is built and tested, environment
 included; follow it before reporting any check as not runnable.
 
