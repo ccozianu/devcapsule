@@ -10,7 +10,7 @@ until after the 0.2.14 cut. Resumed 2026-09-16 by the product owner at the
 release-candidate check the 2026-08-30 freeze scheduled; since then the owner
 directed each slice and lifted the freeze for it.
 
-Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@77bff93ea2c6, WORKFLOW-LOCAL.md@39bae456ae83
 
 Integration target: `main`
 
