@@ -12,6 +12,20 @@ rule that `WORKFLOW.md` does not also state or point at; a reader who wants
 the marching orders reads that file, a reader who wants to understand them
 reads this one first.
 
+The model is written in the spirit of the higher-order entity-relationship
+model of Thalheim and Schewe, chosen because it describes records like ours
+without forcing them into tables. You need none of the theory to read what
+follows, only its five words. An *entity* is one thing the workflow stores,
+such as this bug record; an *entity type* is the kind it belongs to, such as
+bug record. A *relationship* connects entities, and a *relationship type*
+says which kinds it connects and how many of each, such as "owns, over
+(workstream, bug record), exactly one workstream per bug." A relationship
+may be *higher-order*: one of the things it connects is itself a
+relationship, such as a release delivering a work order's scoping of a
+requirement to a workstream. Everything below is said in those terms, in
+plain sentences, and the diagrams, when they come, will be drawn from the
+text rather than the other way round.
+
 ```text
             a wish, a report, a hand-over
                         │
