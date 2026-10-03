@@ -4,13 +4,9 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-22 so the pair can work another workstream. Every round
-through 2026-09-21 is merged; the patch-handoff rule is held on the branch
-until after the 0.2.14 cut. Resumed 2026-09-16 by the product owner at the
-release-candidate check the 2026-08-30 freeze scheduled; since then the owner
-directed each slice and lifted the freeze for it.
+State: active 2026-10-03 at owner direction; the information model is written on the branch for the owner's review; eight intake items taken on resume and not yet decided; the plate's doctor, review and adopters items unchanged
 
-Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@77bff93ea2c6, WORKFLOW-LOCAL.md@39bae456ae83
 
 Integration target: `main`
 
@@ -55,6 +51,33 @@ the outbox's history are in the
 - Only this workstream has published state; the other eight rows await their
   owners' first publish. Two messages of ours wait in `project-management`'s
   and `user-docs`' mailboxes.
+
+## Resumed 2026-10-03: The Information Model
+
+The owner's direction: with a little cleanup the workflow can be called
+mature, and the cleanup is an information model. The 0.2.16 bug triage in
+`maintenance` had just found a feature filed as a bug in 2026-08, because
+the bug record was the only kind with fields and nothing in the definition
+said where a wanted capability lives before it is a requirement.
+
+Written on this branch, in root `WORKFLOW.md` and the packaged definition
+alike (commit on this branch, 86 lines each): a top-level *Information
+Model* section before *Checkouts, Branches, And Workstreams*, with the
+table of kinds (home, controlled fields, what each may point at), *How A
+Thing Moves* (an intake item ends as exactly one thing; a backlog entry
+never becomes a bug; a bug never becomes a feature, it is retired and a
+backlog entry opened), and *Bug Or Feature*, the test by field. The
+*Glossary* gains **backlog entry** and **work order**; *Bug Intake* points
+at the test; *Changes* gains an **Unreleased** entry, which the bump
+script stamps with the release version, carrying the one migration step.
+The owner reviews in the pull request. The unit suite could not be run in
+this capsule (no `nox`); the change is prose only.
+
+Resume facts: rebased onto `main` at `3038c48` (the owner's standing rule
+for this branch is rebase, not merge); the eight waiting mail items were
+taken into `intake/` and are not yet decided; three `.idea/` files `main`
+tracks were set aside in the session scratchpad under the owner's
+2026-10-01 ruling that `.idea/` is ignored.
 
 ## Last Task And Status
 
@@ -108,6 +131,13 @@ Every earlier task, the first through the twenty-first, is in the
 each under its own heading.
 
 ## Next Resumable Task
+
+First: the owner reviews the information model. Then decide the eight
+intake items; several (release-fix propagation, tag-based release records,
+the four 0.2.14 gaps, the bootstrap mode bug and its owner direction) are
+definition changes that belong in the same *Unreleased* entry. Then the
+plate as recorded below.
+
 
 Build `workflow doctor`, item 1 of *Plate, In Order*: one run that reports
 unpublished state, waiting mail, definition changed since last read, an old
