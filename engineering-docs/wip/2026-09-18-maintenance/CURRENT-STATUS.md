@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-03; 0.2.16 bug triage with the owner in progress (the untargeted maintenance bugs, one decided); 0.2.15 published and reopened
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
 
 Integration target: `main`
 
