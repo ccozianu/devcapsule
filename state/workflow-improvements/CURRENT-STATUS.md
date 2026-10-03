@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-10-03 at owner direction; the information model is written on the branch for the owner's review; eight intake items taken on resume and not yet decided; the plate's doctor, review and adopters items unchanged
 
-Definition read: WORKFLOW.md@0a0db1f1c609, WORKFLOW-LOCAL.md@e653b7612748
+Definition read: WORKFLOW.md@80df10e66f0a, WORKFLOW-LOCAL.md@0a88650ae9ac
 
 Integration target: `main`
 
@@ -114,6 +114,16 @@ install and refresh). `WORKFLOW.md` keeps a short pointer section under
 the same heading so its cross-references hold; `AGENTS.md` names the file
 in one sentence; the template and the local file point at it. The file
 is 101 lines.
+
+Then the owner adopted the merge-commit rule: integration is one merge
+commit per reviewed deliverable, `main` read by first parent, pushed history
+never rewritten, squash as a recorded local exception. Written into
+*Development And Checkpoints*, both delivery paths of *Successful
+Completion*, *Staying Current With `main`* and the *Unreleased* entry; the
+template's *Exceptions* shows the squash form; this repository's local file
+records the choice under *Integration Method* and retires the rebase ruling
+for this branch; the August merge-strategy note carries the adoption. The
+owner's later wish, a one-subject squash mode, is backlog item 0.
 
 ## Last Task And Status
 
@@ -279,6 +289,15 @@ and listed so they are not forgotten.
 | 20 | Packaged-versus-root definition drift | V1 | ours, via 3 | listed by 3 |
 
 ## Backlog
+
+**0. One-subject squash integration, as a supported mode.** Added 2026-10-03
+by the product owner, for later. Develop freely on a branch and land one
+squashed commit on one subject, fixing one bug or building one feature, so
+that `main` never carries a task's intermediate states; the Google-style
+discipline, which needs tooling or review habit to keep a branch to one
+subject. The merge-commit rule adopted the same day answers the concern by
+reading `main` by first parent; this item is the stricter form, to be
+designed with its consequence for records that cite commits. Not scheduled.
 
 **1. Bring merge strategy and commit identity into end-user documentation.**
 Added 2026-08-17 by the product owner. The engineering source is written —
@@ -450,6 +469,9 @@ resume changed every question. Short by design.
 - **Do not merge this branch before the 0.2.14 cut.** Owner's direction of
   2026-09-22: the release's scope is not enlarged from here. Everything on
   the branch from that date waits for the cut.
+- **Rebase ruling retired.** The owner's rule that this branch rebases onto
+  `main` is superseded on 2026-10-03 by the definition's merge-commit rule;
+  this branch now merges `main` in like every other pushed branch.
 - **Whether a releasing workstream needs its own state.** Decided no for now;
   see *Fifteenth Task*. Reopen if a resume during a release goes wrong for
   lack of it.
