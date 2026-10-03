@@ -90,6 +90,9 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Design Decisions
 
 - [D-0010 Developer-Owned Component Version Sets And Recovery](engineering-docs/decisions/product/d-0010-developer-owned-version-sets.md)
+- [D-0011 Vendor Terms And Trust Are Given Once Per Workstation, Bound To A Verified Channel](engineering-docs/decisions/product/d-0011-vendor-trust-once-per-workstation.md)
+- [D-0012 Host Access Is Asked Only When The Project Recommends The Less Secure Value](engineering-docs/decisions/product/d-0012-host-access-asked-only-when-recommended.md)
+- [D-0013 A Provenance Sidecar Beside Each Checkout Records Which Client Wrote It](engineering-docs/decisions/product/d-0013-provenance-sidecar-for-local-records.md)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)

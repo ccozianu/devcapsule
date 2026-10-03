@@ -36,6 +36,20 @@ launch. Confirmation discloses validation gaps; changed acquisition consent is
 separate. Failed preparation preserves the usable selection and asks before
 continuing. A notice without a replacement still offers a decision.
 
+Owner refinement, 2026-10-01: "acquisition consent remains enforced" above
+means, from this date, enforced once per vendor product per workstation
+through the user's trust record under the launcher's configuration root,
+with the component's distribution channel (vendor, origin, integrity
+method) as the proof of where the software came from; see D-0011. The
+per-checkout acquisition prompts are no longer how consent is enforced,
+and a reader of this requirement must not reinstate them. The launch-time
+upgrade prompt of the 2026-09-21 refinement is a scheduling choice, upgrade
+now, remind me later, or keep the current version, plus a one-time
+disclosure when DevCapsule has not validated the newer version with the
+rest of the selected set; it never asks the developer to vouch for the
+vendor again. Host-access decisions follow D-0012 and record provenance
+follows D-0013.
+
 Discovery must not require the developer to run a separate command first:
 interactive launch attempts a daily refresh, with an explicit skip option and
 cached fallback. Noninteractive launch neither prompts nor upgrades and performs
