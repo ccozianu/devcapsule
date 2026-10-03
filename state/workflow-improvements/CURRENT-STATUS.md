@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-10-03 at owner direction; the information model is written on the branch for the owner's review; eight intake items taken on resume and not yet decided; the plate's doctor, review and adopters items unchanged
 
-Definition read: WORKFLOW.md@bfd5abebc795, WORKFLOW-LOCAL.md@59c19ce84621
+Definition read: WORKFLOW.md@0a0db1f1c609, WORKFLOW-LOCAL.md@e653b7612748
 
 Integration target: `main`
 
@@ -104,6 +104,16 @@ that section in the same commit; the brief names an untouched placeholder
 instead of printing it. The *Glossary* gains the validation vocabulary,
 the same in every ecosystem, and *Information Model* a *Validation*
 subsection. This project's own local file is filled in that structure.
+
+Owner direction the same day: humans do not read long files; the model is
+the big-picture layer for people, agents work from the rules. Moved out of
+`WORKFLOW.md` into `INFORMATION-MODEL.md`, with a diagram at the top, in
+both layers: the root file and `definition/INFORMATION-MODEL.md`, which
+bootstrap now installs and refreshes beside `WORKFLOW.md` (tests cover
+install and refresh). `WORKFLOW.md` keeps a short pointer section under
+the same heading so its cross-references hold; `AGENTS.md` names the file
+in one sentence; the template and the local file point at it. The file
+is 101 lines.
 
 ## Last Task And Status
 
