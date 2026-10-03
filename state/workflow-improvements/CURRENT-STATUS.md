@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-10-03 at owner direction; the information model is written on the branch for the owner's review; eight intake items taken on resume and not yet decided; the plate's doctor, review and adopters items unchanged
 
-Definition read: WORKFLOW.md@80df10e66f0a, WORKFLOW-LOCAL.md@0a88650ae9ac
+Definition read: WORKFLOW.md@1ae9b22f9c23, WORKFLOW-LOCAL.md@0a88650ae9ac
 
 Integration target: `main`
 
@@ -124,6 +124,18 @@ template's *Exceptions* shows the squash form; this repository's local file
 records the choice under *Integration Method* and retires the rebase ruling
 for this branch; the August merge-strategy note carries the adoption. The
 owner's later wish, a one-subject squash mode, is backlog item 0.
+
+Then the preamble: the owner wants the workflow to explain itself to
+adopters, since it has become opinionated. `PREAMBLE.md`, in both layers
+and installed by bootstrap with tests: meant for most kinds of software
+project, binding only where it speaks with named escape hatches, opinions
+borrowed from recognized practice and said from where. The owner's
+reading-order rule: humans need the ideology, agents do not; `PREAMBLE.md`
+and `INFORMATION-MODEL.md` open with a *for humans* marker, defined in *How
+To Read This Document*, which an agent skips in ordinary work and returns
+to when it must decide something the rules do not settle. `WORKFLOW.md`
+links both from its first screen; `AGENTS.md` says the same in one
+sentence.
 
 ## Last Task And Status
 
