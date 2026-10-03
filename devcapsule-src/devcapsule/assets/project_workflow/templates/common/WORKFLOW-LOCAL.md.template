@@ -56,3 +56,7 @@ the justification for each.
 
 Every recorded departure from `WORKFLOW.md`, each with its reason and, where
 one exists, the condition that ends it. Empty means none.
+
+For example, a project that integrates by squash merge instead of the
+definition's merge commit records it here, with the consequence: records
+cite pull requests and tags, never branch commits.

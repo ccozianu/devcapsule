@@ -352,6 +352,14 @@ with its version. Rules changed since 0.2.14:
   or smoke-tested; the local file template carries the structure and the
   obligation. Migration: a project fills the kinds it has at its next
   checkpoint.
+- **Integration is a merge commit.** *Development And Checkpoints*: one
+  merge commit per reviewed deliverable, never fast-forward, never squash;
+  `main` is read by first parent; pushed history is never rewritten.
+  *Successful Completion* follows in both delivery paths, and *Staying
+  Current With `main`* no longer assumes a configurable strategy. A project
+  that prefers squash records the exception in its local file with the
+  consequence for cited commits. Migration: set the hosting platform's merge
+  method to merge commits; nothing already on `main` changes.
 
 #### 0.2.14
 
@@ -1373,19 +1381,20 @@ published branch rewrites shared history and needs a force-push; do that only
 when the branch is known to be unshared, and prefer merging `main` in
 otherwise. Rebase what only you have; merge what others may have.
 
-**After your own delivery lands, reset rather than rebase.** Under a squash or
-rebase merge, a branch whose pull request has merged holds no content `main`
-lacks, but its commits have different identities from the ones `main` now
-carries. Rebasing then replays commits one at a time onto a `main` that already
+**After your own delivery lands, reset rather than rebase.** Under a merge
+commit the branch is simply an ancestor of `main` and synchronizing is a
+fast-forward. Under the squash or rebase exception, a branch whose pull
+request has merged holds no content `main` lacks, but its commits have
+different identities from the ones `main` now carries. Rebasing then replays commits one at a time onto a `main` that already
 contains their final effect, which conflicts on intermediate states even though
 the end states agree. Confirm the branch has nothing unique — comparing trees,
 not commit identities, since the identities are guaranteed to differ — and hard
 reset it to `main`. Rebase is for carrying unlanded work forward; it is the
 wrong tool for a branch with nothing left to carry.
 
-This rule is about keeping a workstream branch current with `main`. It says
-nothing about how work is delivered *to* `main`, which follows repository
-policy and its configured merge strategy or merge queue.
+This rule is about keeping a workstream branch current with `main`. How work
+is delivered *to* `main` is the merge-commit rule under *Development And
+Checkpoints*.
 
 **Conflicts split by kind.** Mechanical conflicts — reformatting, moved
 sections, adjacent edits — are ordinary agent work; resolve them and say so.
@@ -1420,11 +1429,19 @@ complete. A checkpoint is a statement about project state and belongs in the
 status file; a commit is a save point. Every checkpoint is committed, but most
 commits are not checkpoints.
 
-Commits reach `main` through the repository's configured merge strategy, so
-whether frequent commits become individual commits on `main` is a property of
-that strategy rather than of this rule. Write commit messages that would read
-well either way, and do not let uncertainty about the merge boundary become a
-reason to delay committing.
+**Integration is a merge commit.** A workstream reaches `main` through one
+merge commit per reviewed deliverable, never a fast-forward and never a
+squash. `main`'s first-parent history is then the story, one entry per
+delivery, titled as such, and that is how `main` is read: `git log
+--first-parent`, `git bisect --first-parent`. The branch's own commits stay
+reachable unchanged below that line, so every SHA a record cites remains a
+real commit in every clone, and the order of decisions the small commits
+preserved survives the moment the work is shared. Pushed history is never
+rewritten: synchronize a pushed branch by merging `main` into it, and rebase
+only what has never been pushed; see *Staying Current With `main`*. A project
+that prefers squash records it in its local file under *Exceptions*, with
+the consequence stated: its records may cite pull requests and tags, never
+branch commits, because those commits stop existing when the branch does.
 
 Keep all unfinished workstream documentation beneath:
 
@@ -1678,9 +1695,10 @@ Never append or merge the workstream status text into that workstream list.
 3. Add the finishing commit only when the pull request is otherwise ready to
    merge, then allow any checks or approvals invalidated by that commit to run
    again.
-4. Merge through the hosting platform using the repository's configured merge,
-   squash, rebase, or merge-queue policy. The agent may perform this action
-   when authorized; otherwise ask the human or designated reviewer.
+4. Merge through the hosting platform as a merge commit, under *Development
+   And Checkpoints*; the platform's squash and rebase options are used only
+   when the local file records that exception. The agent may perform this
+   action when authorized; otherwise ask the human or designated reviewer.
 5. Verify from the updated remote ref that `main` contains the merged final
    tree and that the workstream-list entry and open-work directory are absent.
 
@@ -1698,13 +1716,14 @@ permits direct integration:
    Reset local `main` only when every local-only commit is proven already
    upstream, reporting that evidence; otherwise stop and ask the human rather
    than choosing or discarding history.
-2. Rebase the frozen integration branch onto local `main` and rerun required
+2. Bring the frozen integration branch up to local `main`: merge `main` into
+   it if it was ever pushed, rebase it only if it was not; rerun required
    validation. Resolve mechanical conflicts and ask the human when intent is
    required.
-3. Fast-forward local `main` with
-   `git merge --ff-only <integration-branch>`. If this fails because `main`
-   moved, do not create a non-fast-forward merge; repeat synchronization and
-   rebase.
+3. Merge the branch into local `main` with `git merge --no-ff
+   <integration-branch>`, titled as the delivery, so that `main`'s
+   first-parent history gains one entry. If `main` moved meanwhile, repeat
+   from step 1.
 4. Push `main` normally to its integration remote, normally with
    `git push origin main`. Never force-push `main`. If credentials, approval,
    or repository policy prevent publication, ask the human to perform it. If

@@ -228,6 +228,16 @@ commit's author and trailers before pushing. Preserve trailers when composing a
 squash commit. This applies to future commits; do not rewrite merged history to
 add attribution. No change to SSH credentials or PR merge permissions is needed.
 
+## Integration Method
+
+Merge commits, as the definition prescribes since 2026-10-03: one merge per
+reviewed deliverable, `main` read by first parent, pushed branches
+synchronized by merging `main` in. The hosting platform's merge method is set
+accordingly. The owner's earlier ruling that `ws-workflow-improvements/v1`
+rebases onto `main` is retired by this rule; that branch merges like the
+others from now on. The engineering source for the choice is
+[merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md).
+
 ## Exceptions
 
 - **Release-fix propagation uses engineering judgment.** Owner direction,
