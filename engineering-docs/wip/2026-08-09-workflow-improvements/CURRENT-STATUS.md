@@ -4,13 +4,9 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: paused 2026-09-22 so the pair can work another workstream. Every round
-through 2026-09-21 is merged; the patch-handoff rule is held on the branch
-until after the 0.2.14 cut. Resumed 2026-09-16 by the product owner at the
-release-candidate check the 2026-08-30 freeze scheduled; since then the owner
-directed each slice and lifted the freeze for it.
+State: paused 2026-10-03 for merge; preamble, information model (work in progress), validation vocabulary, merge-commit rule and the discoverability fix are on the branch and gated; eight intake items taken and undecided; the pair moves to another workstream
 
-Definition read: WORKFLOW.md@60772d54f11b, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
 Integration target: `main`
 
@@ -55,6 +51,96 @@ the outbox's history are in the
 - Only this workstream has published state; the other eight rows await their
   owners' first publish. Two messages of ours wait in `project-management`'s
   and `user-docs`' mailboxes.
+
+## Resumed 2026-10-03: The Information Model
+
+The owner's direction: with a little cleanup the workflow can be called
+mature, and the cleanup is an information model. The 0.2.16 bug triage in
+`maintenance` had just found a feature filed as a bug in 2026-08, because
+the bug record was the only kind with fields and nothing in the definition
+said where a wanted capability lives before it is a requirement.
+
+Written on this branch, in root `WORKFLOW.md` and the packaged definition
+alike (commit on this branch, 86 lines each): a top-level *Information
+Model* section before *Checkouts, Branches, And Workstreams*, with the
+table of kinds (home, controlled fields, what each may point at), *How A
+Thing Moves* (an intake item ends as exactly one thing; a backlog entry
+never becomes a bug; a bug never becomes a feature, it is retired and a
+backlog entry opened), and *Bug Or Feature*, the test by field. The
+*Glossary* gains **backlog entry** and **work order**; *Bug Intake* points
+at the test; *Changes* gains an **Unreleased** entry, which the bump
+script stamps with the release version, carrying the one migration step.
+The owner reviews in the pull request. The unit suite could not be run in
+this capsule (no `nox`); the change is prose only.
+
+Resume facts: rebased onto `main` at `3038c48` (the owner's standing rule
+for this branch is rebase, not merge); the eight waiting mail items were
+taken into `intake/` and are not yet decided; three `.idea/` files `main`
+tracks were set aside in the session scratchpad under the owner's
+2026-10-01 ruling that `.idea/` is ignored.
+
+### Bug fixed the same day: how to build and test was not discoverable
+
+The agent reported the unit suite as not runnable for lack of `nox` and
+`pytest`; both were in `devcapsule-src/.venv`, documented in the brief and
+pointed at from the local file. The owner ruled it a workflow bug, not only
+an agent slip: a state-of-the-art process must let any agent on any project
+find out how the software is built and tested. Filed and fixed as
+[2026-10-03-agents-cannot-discover-how-to-build-and-test](../../bugs/devcapsule/2026-10-03-agents-cannot-discover-how-to-build-and-test.md):
+*Validation commands* is the local file's one required heading, the
+reporting contract forbids "tool missing" before that section was
+followed, `workflow brief` prints the section verbatim with a test, the
+local file states the environment inline, and `AGENTS.md` points at it.
+Unit tests and the type check pass from the virtual environment.
+
+Same day, the owner's follow-up on a fresh project handed from one agent
+to another: nothing expressly told the first agent to write down how the
+software is built, tested, started and smoke-tested. Now it does, in three
+places: the local file template's *Validation Commands* carries the
+obligation and the structure (environment, unit, integration, end-to-end,
+smoke, gate; `none` with a reason); *Checkpoint Triggers* gains the change
+of how the software is built, tested, started or smoke-tested, updating
+that section in the same commit; the brief names an untouched placeholder
+instead of printing it. The *Glossary* gains the validation vocabulary,
+the same in every ecosystem, and *Information Model* a *Validation*
+subsection. This project's own local file is filled in that structure.
+
+Owner direction the same day: humans do not read long files; the model is
+the big-picture layer for people, agents work from the rules. Moved out of
+`WORKFLOW.md` into `INFORMATION-MODEL.md`, with a diagram at the top, in
+both layers: the root file and `definition/INFORMATION-MODEL.md`, which
+bootstrap now installs and refreshes beside `WORKFLOW.md` (tests cover
+install and refresh). `WORKFLOW.md` keeps a short pointer section under
+the same heading so its cross-references hold; `AGENTS.md` names the file
+in one sentence; the template and the local file point at it. The file
+is 101 lines.
+
+Then the owner adopted the merge-commit rule: integration is one merge
+commit per reviewed deliverable, `main` read by first parent, pushed history
+never rewritten, squash as a recorded local exception. Written into
+*Development And Checkpoints*, both delivery paths of *Successful
+Completion*, *Staying Current With `main`* and the *Unreleased* entry; the
+template's *Exceptions* shows the squash form; this repository's local file
+records the choice under *Integration Method* and retires the rebase ruling
+for this branch; the August merge-strategy note carries the adoption. The
+owner's later wish, a one-subject squash mode, is backlog item 0.
+
+Then the preamble: the owner wants the workflow to explain itself to
+adopters, since it has become opinionated. `PREAMBLE.md`, in both layers
+and installed by bootstrap with tests: meant for most kinds of software
+project, binding only where it speaks with named escape hatches, opinions
+borrowed from recognized practice and said from where. The owner's
+reading-order rule: humans need the ideology, agents do not; `PREAMBLE.md`
+and `INFORMATION-MODEL.md` open with a *for humans* marker, defined in *How
+To Read This Document*, which an agent skips in ordinary work and returns
+to when it must decide something the rules do not settle. `WORKFLOW.md`
+links both from its first screen; `AGENTS.md` says the same in one
+sentence.
+Then, at the owner's direction, the root copies of both were removed: the
+packaged definition directory is their only source in this repository,
+and the root `WORKFLOW.md`, `AGENTS.md`, local file and index link there;
+the asset README records this as the one justified link difference.
+Adopters still receive them beside `WORKFLOW.md` from bootstrap.
 
 ## Last Task And Status
 
@@ -108,6 +194,12 @@ Every earlier task, the first through the twenty-first, is in the
 each under its own heading.
 
 ## Next Resumable Task
+
+Decide the eight intake items; several (release-fix propagation, tag-based release records,
+the four 0.2.14 gaps, the bootstrap mode bug and its owner direction) are
+definition changes that belong in the same *Unreleased* entry. Then the
+plate as recorded below.
+
 
 Build `workflow doctor`, item 1 of *Plate, In Order*: one run that reports
 unpublished state, waiting mail, definition changed since last read, an old
@@ -213,6 +305,15 @@ and listed so they are not forgotten.
 | 20 | Packaged-versus-root definition drift | V1 | ours, via 3 | listed by 3 |
 
 ## Backlog
+
+**0. One-subject squash integration, as a supported mode.** Added 2026-10-03
+by the product owner, for later. Develop freely on a branch and land one
+squashed commit on one subject, fixing one bug or building one feature, so
+that `main` never carries a task's intermediate states; the Google-style
+discipline, which needs tooling or review habit to keep a branch to one
+subject. The merge-commit rule adopted the same day answers the concern by
+reading `main` by first parent; this item is the stricter form, to be
+designed with its consequence for records that cite commits. Not scheduled.
 
 **1. Bring merge strategy and commit identity into end-user documentation.**
 Added 2026-08-17 by the product owner. The engineering source is written —
@@ -384,6 +485,15 @@ resume changed every question. Short by design.
 - **Do not merge this branch before the 0.2.14 cut.** Owner's direction of
   2026-09-22: the release's scope is not enlarged from here. Everything on
   the branch from that date waits for the cut.
+- **Paused 2026-10-03 for merge.** The full gate passed (`nox -s build`,
+  two minutes, exit 0) on the branch's tip before the pause; the public
+  executable was not built because the website submodule pointer is
+  modified in this checkout, which is the owner's. The freshly built local
+  executable packages `PREAMBLE.md` and `INFORMATION-MODEL.md`. Next on
+  resume: the eight intake items, then the HERM restatement of the model.
+- **Rebase ruling retired.** The owner's rule that this branch rebases onto
+  `main` is superseded on 2026-10-03 by the definition's merge-commit rule;
+  this branch now merges `main` in like every other pushed branch.
 - **Whether a releasing workstream needs its own state.** Decided no for now;
   see *Fifteenth Task*. Reopen if a resume during a release goes wrong for
   lack of it.

@@ -4,8 +4,9 @@ These assets deliberately separate two layers that coexist in the DevCapsule
 repository but have different ownership:
 
 - `definition/` contains reusable protocol files. DevCapsule distributes these
-  bytes and `devcapsule bootstrap project` installs them as `AGENTS.md` and
-  `WORKFLOW.md` in adopter repositories.
+  bytes and `devcapsule bootstrap project` installs them as `AGENTS.md`, `WORKFLOW.md`,
+  `INFORMATION-MODEL.md` and `PREAMBLE.md` in adopter repositories; the last
+  two are marked *for humans*.
 - `templates/` contains initial project-memory instances. Bootstrap renders
   these into files such as `CURRENT-STATUS.md`, `REQUIREMENTS.md`, `index.md`,
   `WORKFLOW-LOCAL.md` (the project's own half of the workflow, never refreshed),
@@ -20,7 +21,12 @@ existing definitions only with `--refresh-workflow-definition`.
 
 The root DevCapsule repository is itself an instance of this workflow, but its
 `WORKFLOW.md` serves the needs of developing DevCapsule and need not be
-byte-identical to the general-purpose definition shipped to adopters. Packaging
+byte-identical to the general-purpose definition shipped to adopters.
+The two files marked *for humans*, `PREAMBLE.md` and `INFORMATION-MODEL.md`,
+have no root copy in this repository: the packaged ones under `definition/`
+are the only source, and the root `WORKFLOW.md` and `AGENTS.md` link there
+instead of beside themselves, which is the one place their links differ from
+the packaged copies. Packaging
 coverage verifies that a built PEX installs the definition selected from this
 asset directory. The root `CURRENT-STATUS.md`, `.devcapsule/` declaration, and
 `engineering-docs/wip/` records are also DevCapsule-specific instance state.

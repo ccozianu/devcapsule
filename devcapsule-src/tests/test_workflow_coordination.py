@@ -377,6 +377,29 @@ def test_brief_prints_the_session_context(repos, capsys) -> None:
     assert "## Mail: 1 waiting" in text and "- 2026-09-21-beta-hello.md" in text
     assert "## Definition: nothing new since last read" in text
     assert "- suggested: nothing to synchronize" in text
+    # No local workflow file yet: the brief says so instead of staying silent.
+    assert "## Validation commands: no WORKFLOW-LOCAL.md" in text
+
+    # The template's untouched placeholder is named as such, not printed as
+    # if it were a command.
+    (sender / "WORKFLOW-LOCAL.md").write_text(
+        "# Local\n\n## Validation Commands\n\nRequired; write the commands here.\n"
+        "A step that is not written here does not exist for the next agent.\n",
+        encoding="utf-8",
+    )
+    text = brief(sender, "alpha")
+    assert "## Validation commands: still the template's placeholder in WORKFLOW-LOCAL.md" in text
+
+    # The local file's Validation Commands section is printed verbatim, and
+    # only that section, so the session knows how to build and test first.
+    (sender / "WORKFLOW-LOCAL.md").write_text(
+        "# Local\n\n## Version Scheme\n\nPEP 440.\n\n## Validation Commands\n\n"
+        "```text\ncd src\n.venv/bin/python -m nox -s build\n```\n\n## Exceptions\n\nNone.\n",
+        encoding="utf-8",
+    )
+    text = brief(sender, "alpha")
+    assert "## Validation commands, from WORKFLOW-LOCAL.md\n```text\ncd src\n.venv/bin/python -m nox -s build\n```\n" in text
+    assert "PEP 440" not in text and "## Exceptions" not in text
 
     # main gains a rule the workstream has not read: the brief names it.
     (recipient / "WORKFLOW.md").write_text(
