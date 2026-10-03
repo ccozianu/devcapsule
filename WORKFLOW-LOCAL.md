@@ -88,10 +88,30 @@ are local to DevCapsule.
 
 ## Validation Commands
 
-`nox -s build` from `devcapsule-src` is the local gate before a checkpoint
-and before integration. The [developer brief](DEVELOPING.md) describes the
-environment, the individual sessions, and the host-sensitive end-to-end runs
-that are not part of the gate.
+The environment is the virtual environment under `devcapsule-src/.venv`;
+`nox`, `pytest` and the package's dependencies live there and nowhere else
+on the machine, inside a capsule as well as on a host.
+
+```text
+cd devcapsule-src
+.venv/bin/python -m nox -s build                       # the local gate, before a checkpoint and before integration
+.venv/bin/python -m pytest -q tests/<module>.py        # one module while working
+```
+
+If `.venv` is absent, create it first:
+
+```text
+cd devcapsule-src
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r dev-requirements.txt
+.venv/bin/python -m pip install -e . --no-deps
+```
+
+Inside a capsule `/tmp` is a 2 GB tmpfs that the gate's scratch overflows;
+run it with `PYTEST_ADDOPTS="--basetemp=/opt/devcapsule-gate/pytest"` or
+another directory with room. The [developer brief](DEVELOPING.md) describes
+the individual sessions and the host-sensitive end-to-end runs that are not
+part of the gate.
 
 ## Reasoning And Code Navigation
 

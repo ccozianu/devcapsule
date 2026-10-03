@@ -76,7 +76,9 @@ After `WORKFLOW.md`, read `WORKFLOW-LOCAL.md`, this project's own half of the
 workflow: the version scheme, release policy, validation commands, host
 capabilities, and recorded exceptions that only this project can decide.
 `WORKFLOW.md` binds wherever it speaks; the local file governs where it is
-silent. See *The Project's Local Workflow* in `WORKFLOW.md`.
+silent. See *The Project's Local Workflow* in `WORKFLOW.md`. Its *Validation
+Commands* section is how this project is built and tested, environment
+included; follow it before reporting any check as not runnable.
 
 `WORKFLOW.md` uses the vocabulary of the Workflow Patterns initiative as its
 reference vocabulary: process, case, sub-process, task, work item, resource,

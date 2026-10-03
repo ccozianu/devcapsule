@@ -79,6 +79,20 @@ taken into `intake/` and are not yet decided; three `.idea/` files `main`
 tracks were set aside in the session scratchpad under the owner's
 2026-10-01 ruling that `.idea/` is ignored.
 
+### Bug fixed the same day: how to build and test was not discoverable
+
+The agent reported the unit suite as not runnable for lack of `nox` and
+`pytest`; both were in `devcapsule-src/.venv`, documented in the brief and
+pointed at from the local file. The owner ruled it a workflow bug, not only
+an agent slip: a state-of-the-art process must let any agent on any project
+find out how the software is built and tested. Filed and fixed as
+[2026-10-03-agents-cannot-discover-how-to-build-and-test](../../bugs/devcapsule/2026-10-03-agents-cannot-discover-how-to-build-and-test.md):
+*Validation commands* is the local file's one required heading, the
+reporting contract forbids "tool missing" before that section was
+followed, `workflow brief` prints the section verbatim with a test, the
+local file states the environment inline, and `AGENTS.md` points at it.
+Unit tests and the type check pass from the virtual environment.
+
 ## Last Task And Status
 
 Last task: the patch-handoff rule, from `project-management`'s 2026-09-22

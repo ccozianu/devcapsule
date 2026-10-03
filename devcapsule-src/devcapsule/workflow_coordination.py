@@ -698,7 +698,38 @@ def brief(
     else:
         verdict = "nothing to synchronize"
     out.append(f"- suggested: {verdict}")
+    out.append("")
+    out.extend(_validation_commands(root))
     return "\n".join(out) + "\n"
+
+
+def _validation_commands(root: Path) -> list[str]:
+    """The local workflow file's *Validation Commands* section, verbatim, so
+    the session knows how this project is built and tested before it runs
+    anything. A check is reported as not runnable only after this section
+    was followed; see *The Project's Local Workflow* in the definition."""
+    path = root / DEFINITION_FILES[1]
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return [f"## Validation commands: no {DEFINITION_FILES[1]}; see the developer brief before running any check"]
+    body: list[str] = []
+    inside = False
+    for line in lines:
+        if line.startswith("## "):
+            if inside:
+                break
+            inside = line[3:].strip().lower() == "validation commands"
+            continue
+        if inside:
+            body.append(line)
+    while body and not body[0].strip():
+        body.pop(0)
+    while body and not body[-1].strip():
+        body.pop()
+    if not body:
+        return [f"## Validation commands: {DEFINITION_FILES[1]} has no *Validation Commands* section; see the developer brief before running any check"]
+    return [f"## Validation commands, from {DEFINITION_FILES[1]}", *body]
 
 
 def _unread_changes(git: _Git, row: WorkstreamState, main_ref: str) -> list[str]:

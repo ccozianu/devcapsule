@@ -308,6 +308,13 @@ with its version. Rules changed since 0.2.14:
   Migration: a bug record that violates no requirement and no promised
   behavior is retired with that reason and reopened as a backlog entry at
   the next triage; nothing else changes shape.
+- **Validation commands are required, and the brief prints them.** *The
+  Project's Local Workflow* makes the local file's *Validation commands*
+  section required: the environment and the commands, runnable as written;
+  *Agent Reporting Contract* forbids reporting a check as not runnable
+  without having followed it; `workflow brief` prints the section at
+  session start. Migration: a local file whose section only points
+  elsewhere states the environment inline.
 
 #### 0.2.14
 
@@ -656,8 +663,15 @@ each answers:
 - **Release policy.** Ref spelling if it differs from the default, how a
   candidate is built and published, what the candidate gate checks, what
   acceptance evidence is required, and where the acceptance record lives.
-- **Validation commands.** What a pair runs before a checkpoint and before
-  integration, and where the full description lives.
+- **Validation commands.** The one heading that is required, not
+  recommended: how to obtain the environment the project's ecosystem needs,
+  the interpreter, the virtual environment or the build tool, and the
+  commands a pair runs before a checkpoint and before integration, each
+  runnable as written from a named directory. The section is what lets any
+  agent on any project build the software and run its tests without
+  guessing; `workflow brief` prints it at session start. An agent that
+  cannot run a check follows this section first. "The tool is missing" is a
+  finding only after that, reported with the step that failed.
 - **Host capabilities.** What the project needs from the machine and the
   hosting service that this document cannot assume: branch permissions,
   runners, credentials, and their declared justifications.
@@ -2133,6 +2147,11 @@ For each meaningful slice, the agent should report in this order:
 
 Keep reports concise. The user should not need to reconstruct the state from a
 long chronology.
+
+A check reported as not runnable names the step of the local workflow
+file's *Validation commands* that failed. An agent never reports a tool or
+a dependency as absent without having followed that section; the project
+wrote it so that the question has an answer.
 
 ## Decision And Escalation Rules
 
