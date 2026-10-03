@@ -12,3 +12,4 @@ The note is one line. The reasoning is in this workstream's
 | Item | Dispositioned | Outcome | Note |
 |---|---|---|---|
 | `2026-09-08-project-management-sync-item-never-arrived.md` | 2026-09-09 | acknowledged; completed | Corrected the historical delivery claim in the final archive and preserved original commit 802adafa; reconstructed alternatives are identified separately. |
+| `2026-10-01-project-management-ide-surfaces-are-yours.md` | 2026-10-03 | acknowledged | IntelliJ IDEA is the next task, targeted at 0.2.16; new surfaces belong here, orchestration stays with component-upgrades, Eclipse remains unscheduled; historical Antigravity freeze lifted. |
