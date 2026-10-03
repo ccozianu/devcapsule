@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: active 2026-10-03; work order drafted for Playwright and IntelliJ IDEA components with a shared Codex/gpt-6-astra graphical smoke driver; awaiting execution marching order
+State: active 2026-10-03; work order drafted for Playwright and IntelliJ IDEA components with a shared Codex/gpt-6-astra graphical smoke driver; autonomous execution authorized; implementing components and shared Codex/Claude drivers
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -37,14 +37,15 @@ belong here; component orchestration, upgrades and channels belong to
   `ws-component-catalog/antigravity-cli` remains intact as history; do not
   resume its obsolete delivery tasks or merge its intermediate changes as
   a prerequisite to IntelliJ.
-- The continuation branch starts at current `main`, `69ced64`, with the
+- The continuation branch started at `69ced64` and merged current main
+  `17532fd` on 2026-10-03 before implementation, with the
   current workflow definition and local rules. No synchronization was
   needed at this checkpoint. Future synchronization of the published
   branch merges `main` in, following the current integration policy.
 - Read the graphical and recursive tests from main at `69ced64`. The current
   IDE smoke has deterministic HTTP/window checks and optional Playwright
   capture; no LLM driver is implemented in the inspected path.
-- The owner requested the work order before granting autonomous execution.
+- The owner accepted and extended the work order on 2026-10-03.
   `/opt/xtras` is authorized for the exercise's Playwright bootstrap; the
   deliverable must also supply it as a component in fresh capsules.
 - The registry and this status now identify the IntelliJ continuation.
@@ -56,18 +57,17 @@ belong here; component orchestration, upgrades and channels belong to
 
 ## Planned Next Step
 
-Await the owner's execution marching order for the
-[Playwright, IntelliJ and agent-smoke work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md).
-Then verify the existing component/JetBrains contracts, scope any unresolved
-edition or acquisition choices, and implement the acceptance ladder. Keep
-session orchestration, the reusable browser scenario and the Codex/model
-adapter separate; no provider-specific copied test class. No implementation
-or model-driven acceptance run has been performed yet.
+Execute the accepted [work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md):
+Playwright and IntelliJ components, one shared graphical scenario with
+parameterized AI action driver and visual success recognizer. Codex with
+`gpt-6-astra` is the default and required IntelliJ acceptance; provide the
+Claude CLI/Fable 5.1 alternative on a best-effort basis. Begin with component
+and CLI contract verification, then focused tests and real successor smoke.
 
 ## Open Threads
 
-- The owner's autonomous-execution grant is pending; the work order is the
-  reviewable scope for it. Reload the current workflow and project-management
+- The owner granted autonomous execution and requested the Claude/Fable 5.1
+  alternative on 2026-10-03. Reload the current workflow and project-management
   records when resuming. Model availability and IntelliJ acquisition details
   have not been verified; do not silently change `gpt-6-astra`.
 - 0.2.16 is the assigned target; release driver, cut and formal work order

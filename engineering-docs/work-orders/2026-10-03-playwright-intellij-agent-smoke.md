@@ -2,8 +2,9 @@
 
 Date: 2026-10-03
 
-Status: proposed execution work order; requested outcomes recorded, awaiting
-the owner's marching order before implementation.
+Status: accepted for autonomous execution by the owner on 2026-10-03;
+extended the same day to include a parameterized AI driver and success
+recognizer with Codex/GPT-6 Astra as default and Claude/Fable 5.1 as an alternative.
 
 Owner: `component-catalog`, branch `ws-component-catalog/intellij-idea`.
 IntelliJ's assigned release target remains 0.2.16. This order does not cut or
@@ -21,6 +22,9 @@ drive its graphical desktop through Playwright to prove its IDE is usable.
 IntelliJ IDEA becomes an ordinary selectable IDE component and is the first
 acceptance run for this order. The driving tool is **Codex** and the driving
 model is **`gpt-6-astra`**, selected explicitly and recorded in the evidence.
+Provide an alternative **Claude CLI / Fable 5.1** adapter on a best-effort
+basis, using the same scenario, observation and success-recognition contract.
+Verify its actual supported model identifier rather than guessing an alias.
 
 This must work in future instances of the DevCapsule development environment.
 The current capsule may bootstrap Playwright under `/opt/xtras/` as explicitly
@@ -107,8 +111,19 @@ Separate three responsibilities in the existing harness:
 Use one small driver contract carrying the task, browser-tool access, evidence
 destination and limits, and returning actions, observed results, model identity
 and a success/failure/inconclusive outcome. Exact interfaces follow inspection.
-Do not build a general agent platform or a second full provider integration
-merely to demonstrate extensibility; a fake driver can test the contract.
+Implement Codex and Claude CLI adapters behind this contract. Parameterize
+both the action driver and the recognizer of success, sharing prompts,
+scenario logic, evidence processing and validation. Codex/GPT-6 Astra is
+the default and required IntelliJ acceptance path; exercise Claude/Fable 5.1
+on PyCharm and VSCodium when available. Missing alternative-model access is
+reported explicitly without weakening the required Codex proof. A fake
+driver tests protocol failures without invoking a paid model.
+
+The owner reports that Claude/Fable 5.1 previously recognized PyCharm and
+VSCodium success by interactively examining captured browser movies. Support
+visual recognition from screenshots and sampled recording frames through
+the same parameterized recognizer; preserve the complete recording as evidence.
+Do not assume a CLI can consume a video directly without verifying it.
 
 The model must actually observe and act through Playwright against the
 successor's graphical desktop. A scripted screenshot followed by an LLM saying
@@ -164,18 +179,18 @@ to `gpt-6-astra` is a blocker, not authorization to substitute another model.
 Evidence per run includes source SHA, executable checksum, component/browser
 versions, image and container identities, selected and reported tool/model
 identity, launch logs, independent readiness facts, screenshots/video or trace,
-  agent actions and verdict, the unique marker result, timeouts and cleanup.
+agent actions and verdict, the unique marker result, timeouts and cleanup.
 Separate facts from the model's interpretation. Keep credentials and desktop
 access tokens out of shareable records; use the existing evidence locations.
 
 ## Execution authority and stopping points
 
-This turn prepares the order. The owner's subsequent marching order starts
-implementation. Under that grant, routine design choices, component acquisition,
+The owner authorized execution on 2026-10-03. Under that grant, routine
+design choices, component acquisition,
 the authorized `/opt/xtras` bootstrap, local builds, recursive launches, bounded
 model-driven tests, fixes, commits and branch delivery proceed without repeated
 permission. Use the existing host-Docker and host-network authorization and
-the owner's authorized Codex authentication; do not copy broad credential state
+the owner's authorized Codex and Claude authentication; do not copy broad credential state
 into disposable successors. Record how the agent driver accesses its credentials.
 
 Ask only when product intent remains consequential, required credentials/model
