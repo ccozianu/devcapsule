@@ -176,13 +176,16 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-COMPAT-001 Client Upgrades Require No User Action For Existing Projects](engineering-docs/requirements/devcapsule/r-compat-001-client-upgrades-require-no-user-action.md)
 - [Packaged project workflow asset boundary](devcapsule-src/devcapsule/assets/project_workflow/README.md)
 - [Packaged generic agent instructions](devcapsule-src/devcapsule/assets/project_workflow/definition/AGENTS.md)
-- [Packaged generic workflow definition](devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md)
+- [Packaged generic workflow definition (the root `WORKFLOW.md` is its source)](devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md)
+- [Information model, for humans: the kinds of thing the workflow stores and how they relate](devcapsule-src/devcapsule/assets/project_workflow/definition/INFORMATION-MODEL.md)
+- [Preamble, for humans: why the workflow is opinionated, and for whom](devcapsule-src/devcapsule/assets/project_workflow/definition/PREAMBLE.md)
 - [PyCharm image vibe-coding bootstrap template](devcapsule-src/devcapsule/assets/pycharm/image-assets/vibe-coding-process.md)
 - [Legacy-compatible PyCharm bootstrap template copy](devcapsule-src/devcapsule/assets/docker4pycharm/image-assets/vibe-coding-process.md)
 - [TypeScript five-in-a-row sample project](devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow/README.md)
 
 ## Development Blog
 
+- [The workflow explains itself](engineering-docs/blog/2026-10-03-the-workflow-explains-itself.md) — preamble, information model, merge rule, and a bug filed against ourselves; draft for owner review.
 - [What I have been up to lately](engineering-docs/blog/2026-09-30-what-i-have-been-up-to-lately.md)
 - [Why give DevCapsule a spin before V1?](engineering-docs/blog/2026-09-21-why-try-devcapsule-before-v1.md) — early-adopter and contributor invitation; draft for owner review.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — agent-authored retrospective; draft for owner review.
