@@ -383,8 +383,8 @@ def test_brief_prints_the_session_context(repos, capsys) -> None:
     # The template's untouched placeholder is named as such, not printed as
     # if it were a command.
     (sender / "WORKFLOW-LOCAL.md").write_text(
-        "# Local\n\n## Validation Commands\n\nWhat a pair runs before a checkpoint and before\n"
-        "integration, and where the full description lives.\n",
+        "# Local\n\n## Validation Commands\n\nRequired; write the commands here.\n"
+        "A step that is not written here does not exist for the next agent.\n",
         encoding="utf-8",
     )
     text = brief(sender, "alpha")

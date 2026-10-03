@@ -93,6 +93,18 @@ followed, `workflow brief` prints the section verbatim with a test, the
 local file states the environment inline, and `AGENTS.md` points at it.
 Unit tests and the type check pass from the virtual environment.
 
+Same day, the owner's follow-up on a fresh project handed from one agent
+to another: nothing expressly told the first agent to write down how the
+software is built, tested, started and smoke-tested. Now it does, in three
+places: the local file template's *Validation Commands* carries the
+obligation and the structure (environment, unit, integration, end-to-end,
+smoke, gate; `none` with a reason); *Checkpoint Triggers* gains the change
+of how the software is built, tested, started or smoke-tested, updating
+that section in the same commit; the brief names an untouched placeholder
+instead of printing it. The *Glossary* gains the validation vocabulary,
+the same in every ecosystem, and *Information Model* a *Validation*
+subsection. This project's own local file is filled in that structure.
+
 ## Last Task And Status
 
 Last task: the patch-handoff rule, from `project-management`'s 2026-09-22

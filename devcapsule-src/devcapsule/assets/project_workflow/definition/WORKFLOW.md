@@ -278,6 +278,34 @@ remain understood as synonyms for one release and are then retired.
 - **Exception**: a recorded departure from a rule, with its reason and the
   condition that ends it, in the local workflow file or in the record it
   concerns. Not silence: a rule that does not exist needs no exception.
+**Validation.** The kinds of check a project may have, named the same way in
+every ecosystem; the local workflow file's *Validation commands* says which
+ones this project has and how each runs.
+
+- **Environment**: what must exist on the machine before any check runs,
+  the interpreter, the build tool, the dependencies, and how to obtain it.
+  Declared first, because every other kind assumes it.
+- **Unit test**: exercises code in one process with no network, no
+  subprocess and no external service; runs wherever the environment exists,
+  in seconds to minutes. Always in the gate.
+- **Integration test**: crosses a packaging or process boundary, a built
+  artifact, a subprocess, an external tool, a local service the project can
+  start itself, and still runs on any developer machine. In the gate when it
+  does.
+- **End-to-end test**: exercises the delivered software the way a user
+  would, with real infrastructure: containers, browsers, services. Opt-in or
+  run on a candidate; its evidence is kept.
+- **Smoke test**: the smallest end-to-end check that the software starts and
+  answers; what "it runs" means for the project. Run on every candidate and
+  after every deployment.
+- **Gate**: the fixed set of checks a pair runs before a checkpoint and
+  before integration; passes or fails as a whole. Not the candidate gate.
+- **Candidate gate**: the checks a release candidate must pass before
+  acceptance, with the acceptance evidence the release record keeps.
+- **Acceptance evidence**: the recorded proof, from a downloaded or deployed
+  candidate, that it does what the release claims; kept in the release
+  record, never inferred from the gate.
+
 - **Judgment where this document is silent**: the standing permission to
   resolve an uncovered situation and keep working, with the obligation to
   record what was done. The older name was "latitude".
@@ -315,6 +343,15 @@ with its version. Rules changed since 0.2.14:
   without having followed it; `workflow brief` prints the section at
   session start. Migration: a local file whose section only points
   elsewhere states the environment inline.
+- **Validation vocabulary and the checkpoint that keeps it true.** The
+  *Glossary* names the validation kinds, environment, unit, integration,
+  end-to-end, smoke, gate, candidate gate, acceptance evidence, the same in
+  every ecosystem; *Information Model* says they are declared in the local
+  file's *Validation commands*, `none` allowed with a reason; *Checkpoint
+  Triggers* gains the change of how the software is built, tested, started
+  or smoke-tested; the local file template carries the structure and the
+  obligation. Migration: a project fills the kinds it has at its next
+  checkpoint.
 
 #### 0.2.14
 
@@ -465,6 +502,20 @@ The test applies at filing and at triage alike. A bug queue that holds
 wishes hides both: the wishes get no priority and the defects get no
 attention. The filer who is unsure files a backlog entry; `project-management`
 can always open the bug record when the requirement turns up.
+
+### Validation
+
+The validation kinds in the *Glossary*, environment, unit, integration,
+end-to-end, smoke, gate, candidate gate and acceptance evidence, are not
+records. They are declared, per project, in the local workflow file's
+*Validation commands*: for each kind, the command runnable as written, or
+`none` with the reason, so that silence is never ambiguous. The gate names
+which kinds run before a checkpoint and before integration; the candidate
+gate names which run on a candidate; the release record keeps the
+acceptance evidence. A checkpoint that introduces or changes how any kind
+runs updates that section in the same commit, which is what lets the next
+agent, on any project and in any ecosystem, build the software and prove
+it runs without guessing.
 
 ## Checkouts, Branches, And Workstreams
 
@@ -2126,7 +2177,10 @@ Create or refresh durable state when any of these happen:
 - manual validation changes project state;
 - a new bug, decision, or requirement appears;
 - the session ends with unfinished but resumable work;
-- the active next step changes.
+- the active next step changes;
+- the way the software is built, tested, started or smoke-tested was
+  introduced or changed: the same commit updates the local workflow file's
+  *Validation commands*.
 
 If the user and agent are moving quickly, prefer more frequent small selected-
 status file updates over one large retrospective rewrite.

@@ -88,30 +88,44 @@ are local to DevCapsule.
 
 ## Validation Commands
 
-The environment is the virtual environment under `devcapsule-src/.venv`;
-`nox`, `pytest` and the package's dependencies live there and nowhere else
-on the machine, inside a capsule as well as on a host.
+Every command runs from `devcapsule-src`; the environment is the virtual
+environment under `devcapsule-src/.venv`, where `nox`, `pytest`, `mypy` and
+the package's dependencies live and nowhere else on the machine, inside a
+capsule as well as on a host. The kinds are the definition's; see
+*Validation* under *Information Model* in `WORKFLOW.md`.
 
-```text
-cd devcapsule-src
-.venv/bin/python -m nox -s build                       # the local gate, before a checkpoint and before integration
-.venv/bin/python -m pytest -q tests/<module>.py        # one module while working
-```
+- **Environment**: if `.venv` is absent, create it:
 
-If `.venv` is absent, create it first:
+  ```text
+  cd devcapsule-src
+  python3.12 -m venv .venv
+  .venv/bin/python -m pip install -r dev-requirements.txt
+  .venv/bin/python -m pip install -e . --no-deps
+  ```
 
-```text
-cd devcapsule-src
-python3.12 -m venv .venv
-.venv/bin/python -m pip install -r dev-requirements.txt
-.venv/bin/python -m pip install -e . --no-deps
-```
-
-Inside a capsule `/tmp` is a 2 GB tmpfs that the gate's scratch overflows;
-run it with `PYTEST_ADDOPTS="--basetemp=/opt/devcapsule-gate/pytest"` or
-another directory with room. The [developer brief](DEVELOPING.md) describes
-the individual sessions and the host-sensitive end-to-end runs that are not
-part of the gate.
+  Inside a capsule `/tmp` is a 2 GB tmpfs that the gate's scratch overflows;
+  run with `PYTEST_ADDOPTS="--basetemp=/opt/devcapsule-gate/pytest"` or
+  another directory with room.
+- **Unit tests**: `.venv/bin/python -m nox -s tests`, with coverage; one
+  module while working: `.venv/bin/python -m pytest -q tests/<module>.py`.
+  See [unit tests](engineering-docs/development/unit-tests.md).
+- **Integration tests**: `.venv/bin/python -m nox -s integration`, which
+  runs the built executable and subprocesses without Docker; `nox -s
+  typecheck` and `nox -s docs-contract` are integration checks too. See
+  [integration tests](engineering-docs/development/integration-tests.md).
+- **End-to-end tests**: `.venv/bin/python -m nox -s e2e`, plus
+  `pex_clean_machine`, `recursive_dogfood_e2e` and `ide-smoke`; each needs
+  Docker and is opt-in; evidence lands under `devcapsule-src/dist/e2e-evidence/`.
+  See [end-to-end tests](engineering-docs/development/e2e-tests.md).
+- **Smoke test**: `.venv/bin/python -m nox -s smoke` starts the built
+  executable and proves its commands answer; `nox -s ide-smoke` launches
+  each IDE surface in a fresh project and proves from the outside that the
+  IDE comes alive (desktop URL answers, the IDE owns a window).
+- **Gate**: `.venv/bin/python -m nox -s build`, before a checkpoint and
+  before integration: distribution version, Python and shell syntax, type
+  check, unit tests, CLI smoke, the executable built and smoked, packaging
+  tests, the documentation contract. The end-to-end suites are not in it;
+  the [developer brief](DEVELOPING.md) says when they run.
 
 ## Reasoning And Code Navigation
 
