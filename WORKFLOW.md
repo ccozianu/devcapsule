@@ -9,10 +9,12 @@ This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
 
-Two files beside this one are marked *for humans*: [`PREAMBLE.md`](PREAMBLE.md),
+Two files are marked *for humans*: [`PREAMBLE.md`](devcapsule-src/devcapsule/assets/project_workflow/definition/PREAMBLE.md),
 why this workflow is opinionated and for whom, and
-[`INFORMATION-MODEL.md`](INFORMATION-MODEL.md), the kinds of thing it stores
-and how they relate. They explain; this file rules.
+[`INFORMATION-MODEL.md`](devcapsule-src/devcapsule/assets/project_workflow/definition/INFORMATION-MODEL.md), the kinds of thing it
+stores and how they relate. They explain; this file rules. In this
+repository they live with the packaged definition; bootstrap installs them
+beside this file in an adopter's.
 
 ## Purpose And Principles
 
@@ -473,8 +475,8 @@ release's tag.
 The kinds of thing this workflow stores, their homes and controlled fields,
 how a thing moves between kinds, the test that tells a bug from a feature,
 and where the validation kinds are declared, are in `INFORMATION-MODEL.md`
-beside this file, marked *for humans*, installed and refreshed with this
-document. The rules here assume it and do not repeat it.
+marked *for humans*, installed and refreshed with this document (in this
+repository, under the packaged definition directory). The rules here assume it and do not repeat it.
 
 ## Checkouts, Branches, And Workstreams
 

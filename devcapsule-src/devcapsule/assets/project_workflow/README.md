@@ -21,7 +21,12 @@ existing definitions only with `--refresh-workflow-definition`.
 
 The root DevCapsule repository is itself an instance of this workflow, but its
 `WORKFLOW.md` serves the needs of developing DevCapsule and need not be
-byte-identical to the general-purpose definition shipped to adopters. Packaging
+byte-identical to the general-purpose definition shipped to adopters.
+The two files marked *for humans*, `PREAMBLE.md` and `INFORMATION-MODEL.md`,
+have no root copy in this repository: the packaged ones under `definition/`
+are the only source, and the root `WORKFLOW.md` and `AGENTS.md` link there
+instead of beside themselves, which is the one place their links differ from
+the packaged copies. Packaging
 coverage verifies that a built PEX installs the definition selected from this
 asset directory. The root `CURRENT-STATUS.md`, `.devcapsule/` declaration, and
 `engineering-docs/wip/` records are also DevCapsule-specific instance state.

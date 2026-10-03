@@ -136,6 +136,11 @@ To Read This Document*, which an agent skips in ordinary work and returns
 to when it must decide something the rules do not settle. `WORKFLOW.md`
 links both from its first screen; `AGENTS.md` says the same in one
 sentence.
+Then, at the owner's direction, the root copies of both were removed: the
+packaged definition directory is their only source in this repository,
+and the root `WORKFLOW.md`, `AGENTS.md`, local file and index link there;
+the asset README records this as the one justified link difference.
+Adopters still receive them beside `WORKFLOW.md` from bootstrap.
 
 ## Last Task And Status
 
