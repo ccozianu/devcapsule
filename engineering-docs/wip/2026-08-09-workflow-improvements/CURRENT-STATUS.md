@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-10-03 at owner direction; the information model is written on the branch for the owner's review; eight intake items taken on resume and not yet decided; the plate's doctor, review and adopters items unchanged
 
-Definition read: WORKFLOW.md@77bff93ea2c6, WORKFLOW-LOCAL.md@39bae456ae83
+Definition read: WORKFLOW.md@d4027611ed64, WORKFLOW-LOCAL.md@f70d908a7037
 
 Integration target: `main`
 
