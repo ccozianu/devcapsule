@@ -78,8 +78,19 @@ acceptance evidence.
 
 ## Validation
 
-Status and routing update only. Validation results are recorded at the
-checkpoint after the required checks run.
+Status and routing update only. `git diff --check` and the new status links
+pass; the historical record is byte-identical to the previous status.
+The required `nox -s build` was attempted on unchanged runtime source:
+version, syntax and mypy checks passed; pytest reported 1,088 passed,
+one failed, 22 deselected, one xfailed and one xpassed. The failure is
+`test_host_daemon.py::test_unmountable_staging_fails_loudly`: the expected
+`PycharmRunError` was not raised with scratch under
+`/home/devcapsule/cc-status-tests`. Later gate stages did not run.
+Revisit the test scratch setup before implementation validation; no runtime
+fix or full gate pass is claimed. Local log:
+`.git/component-catalog-status-build-short-path.log`. An earlier attempt
+used an overly long scratch path inside the project; that setup produced
+socket-path and project-discovery failures and is not the retained result.
 
 ## Workstream Document Index
 
