@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-04; resumed for the 0.2.16 maintenance plate: finish the triage, the in-capsule project-command fix, named build contexts, the first-session UX bugs, release notes and gate tooling; 0.2.15 published and reopened
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
 Integration target: `main`
 
