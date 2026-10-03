@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27; 0.2.15 published; 0.2.16.dev0 reopening merged; owner dogfooding released 0.2.15
+State: active 2026-10-03; 0.2.16 bug triage with the owner in progress (the untargeted maintenance bugs, one decided); 0.2.15 published and reopened
 
 Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
 
@@ -96,6 +96,37 @@ the definition.
 Owner subsequently agreed to RC0 after the agent slice, with xtras and
 project info in the next candidate. See the current evidence and next step
 above; the original fix-only gate is historical.
+
+## Resumed 2026-10-03: 0.2.16 Bug Triage
+
+Resumed at owner direction for candidate C9 of project-management's 0.2.16
+proposal: triage the untargeted maintenance bugs with the owner so severity
+and target mean something before the cut. Synchronized with `main` at
+`3038c48` by merge (`b2fc861`); one registry-row conflict resolved by
+keeping `main`'s project-management row and this workstream's own row.
+Three `.idea/` files that `main` tracks were set aside in the session
+scratchpad, not committed; the owner ruled on 2026-10-01 that `.idea/` is
+ignored in this repository and 0.2.16 documents the rule.
+
+Decided so far:
+
+- 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
+  owner expects to host V1's betas and candidates; no attention unless it
+  recurs in a release campaign.
+
+Still to decide: ecosystem-aware project bootstrap (2026-08-03), JetBrains
+runtime slow under X11 alpha compositing (2026-08-03), JetBrains native
+launcher (2026-08-03), detached successors not cleaned up (2026-08-15),
+installed IDE not reused by Docker (2026-09-24, the root cause behind the
+named-build-contexts candidate), project group guard (2026-09-26, already
+retargeted to 0.2.16 on project-management's branch with the in-capsule
+inspection record, pending that branch's merge).
+
+Owner's version expectation, recorded here until the version scheme in
+`WORKFLOW-LOCAL.md` is amended by project-management: 0.2.x continues; a
+0.3 marks the growth in capability since the first 0.2; from the 0.3.x
+series the project jumps to 0.9, which hosts V1's betas and release
+candidates. Bug targets may name 0.9 on that basis.
 
 ## Planned Next Step
 

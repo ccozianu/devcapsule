@@ -1,7 +1,7 @@
 ---
 status: confirmed
-severity: untriaged
-target: none
+severity: minor
+target: 0.9
 owner: maintenance
 opened: 2026-07-16
 requirements: []
@@ -12,6 +12,20 @@ requirements: []
 Date: 2026-07-16
 
 Status note (pre-vocabulary, kept as evidence): open
+
+## Triage, 2026-10-03: minor, parked for the 0.9 series
+
+Owner ruling during the 0.2.16 triage: the current recipes join their
+commands on one line, so the trigger never fires, and no build has
+reproduced the defect in the 0.2.14 or 0.2.15 campaigns. Severity minor.
+Target **0.9**, the series the owner expects to host V1's betas and
+release candidates (the owner's stated expectation, not yet a version-scheme
+rule: 0.2.x, then a 0.3 marking the growth in capability since the first
+0.2, then a jump to 0.9 for V1's betas and candidates). Until then this
+record gets no attention unless the defect recurs in a release campaign,
+which reopens the disposition. The cheap guard noted in triage, refusing an
+exec argument that contains a newline in the renderer, is available if it
+does; the composition redesign below stays a design item, not a defect.
 
 ## Release Disposition And Required Follow-Up — 2026-09-22
 
