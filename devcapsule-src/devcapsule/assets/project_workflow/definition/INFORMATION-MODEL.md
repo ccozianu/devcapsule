@@ -4,6 +4,13 @@
 skips it in ordinary work and reads it when the question is what kind a
 thing is.
 
+*Work in progress.* This model is published early, at the speed of a 0.2
+release, so that the vocabulary and the bug-or-feature test can be used
+now. Its formal shape is not finished: the body below is still a table and
+prose, the restatement in the sentence forms the introduction promises is
+pending, and the diagrams do not exist yet. Expect it to change between
+releases; the *Changes* section of `WORKFLOW.md` records each step.
+
 The big picture of the workflow, for people. `WORKFLOW.md` beside this file
 holds the rules an agent works under and is long by necessity; this file is
 short by design and says what kinds of thing the workflow stores, how they

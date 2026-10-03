@@ -345,7 +345,7 @@ with its version. Rules changed since 0.2.14:
   and for whom, and `INFORMATION-MODEL.md` are installed and refreshed beside
   this file and marked *for humans*: explanation, not rules, which an agent
   skips in ordinary work; *How To Read This Document* says when it returns.
-  No migration.
+  The model is published as work in progress and says so. No migration.
 - **Information model.** `INFORMATION-MODEL.md`, installed beside this
   file, names every kind of thing the workflow stores, its home, its controlled fields, what it may point at,
   and how a thing moves between kinds; *Bug Or Feature* is the test by

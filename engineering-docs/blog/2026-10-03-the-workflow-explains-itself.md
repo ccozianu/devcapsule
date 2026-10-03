@@ -94,6 +94,12 @@ shapes, so that nobody has to read the book to operate with the text. The
 diagrams, when they come, will be drawn from the text rather than the other
 way round.
 
+We are publishing the model as work in progress, and it says so on its
+first screen. The vocabulary and the bug-or-feature test are usable today;
+the restatement in HERM's terms and the diagrams are not done. At the speed
+of a 0.2 release, getting the meta-formalism to perfection before anyone can
+use the words would be the wrong order.
+
 ## A preamble, and a merge rule
 
 Humans need the ideology; agents do not. So the preamble is its own file
