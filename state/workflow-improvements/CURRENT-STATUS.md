@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-10-03 at owner direction; the information model is written on the branch for the owner's review; eight intake items taken on resume and not yet decided; the plate's doctor, review and adopters items unchanged
 
-Definition read: WORKFLOW.md@1ae9b22f9c23, WORKFLOW-LOCAL.md@0a88650ae9ac
+Definition read: WORKFLOW.md@9d21b0c66458, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
 Integration target: `main`
 
@@ -136,6 +136,11 @@ To Read This Document*, which an agent skips in ordinary work and returns
 to when it must decide something the rules do not settle. `WORKFLOW.md`
 links both from its first screen; `AGENTS.md` says the same in one
 sentence.
+Then, at the owner's direction, the root copies of both were removed: the
+packaged definition directory is their only source in this repository,
+and the root `WORKFLOW.md`, `AGENTS.md`, local file and index link there;
+the asset README records this as the one justified link difference.
+Adopters still receive them beside `WORKFLOW.md` from bootstrap.
 
 ## Last Task And Status
 
