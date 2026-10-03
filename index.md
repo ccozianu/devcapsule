@@ -185,6 +185,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Development Blog
 
+- [The workflow explains itself](engineering-docs/blog/2026-10-03-the-workflow-explains-itself.md) — preamble, information model, merge rule, and a bug filed against ourselves; draft for owner review.
 - [What I have been up to lately](engineering-docs/blog/2026-09-30-what-i-have-been-up-to-lately.md)
 - [Why give DevCapsule a spin before V1?](engineering-docs/blog/2026-09-21-why-try-devcapsule-before-v1.md) — early-adopter and contributor invitation; draft for owner review.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — agent-authored retrospective; draft for owner review.

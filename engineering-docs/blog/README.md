@@ -18,6 +18,7 @@ here, per [R-DOCS-003](../requirements/product/r-docs-003-website-content-carrie
 
 ## Entries
 
+- [The workflow explains itself](2026-10-03-the-workflow-explains-itself.md) — a preamble for adopters, an information model for people, a merge rule, and a bug filed against ourselves; draft for owner review.
 - [What I have been up to lately](2026-09-30-what-i-have-been-up-to-lately.md) — the LinkedIn announcement of 2026-09-28, reproduced for linking from shorter-limit channels.
 - [Why give DevCapsule a spin before V1?](2026-09-21-why-try-devcapsule-before-v1.md) — invitation to early adopters and contributors; draft for owner review.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — Astra's account of the website experiment; draft for owner review.
