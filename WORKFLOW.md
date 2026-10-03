@@ -9,6 +9,13 @@ This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
 
+Two files are marked *for humans*: [`PREAMBLE.md`](devcapsule-src/devcapsule/assets/project_workflow/definition/PREAMBLE.md),
+why this workflow is opinionated and for whom, and
+[`INFORMATION-MODEL.md`](devcapsule-src/devcapsule/assets/project_workflow/definition/INFORMATION-MODEL.md), the kinds of thing it
+stores and how they relate. They explain; this file rules. In this
+repository they live with the packaged definition; bootstrap installs them
+beside this file in an adopter's.
+
 ## Purpose And Principles
 
 This document structures how a human and a coding agent build software
@@ -92,7 +99,8 @@ Three tiebreaks, in order:
 
 ### How To Read This Document
 
-Humans: the *Glossary* names everything in plain words; the *Multiple-Stream
+Humans: `PREAMBLE.md` says why the workflow is what it is, and
+`INFORMATION-MODEL.md` draws what it stores; read those first. Here, the *Glossary* names everything in plain words; the *Multiple-Stream
 Workflow* and *Markdown Roles* sections carry the structure; the rest is
 detail you can consult when it becomes relevant. Explanation and examples
 written for people live in the project's user documentation, which explains
@@ -102,6 +110,12 @@ Agents: read the whole applicable path before acting, treat the numbered
 restrictions and procedures as binding, and treat prose as the reasoning that
 explains them. Where a rule and this preamble appear to disagree, the rule
 governs and the disagreement is a defect worth reporting.
+
+**The *for humans* marker.** A file or section that opens with *For humans*
+carries explanation, not rules. An agent skips it in ordinary work. It
+returns to the preamble when it must decide something the rules do not
+settle, alone or together with the human, and to the model when the
+question is what kind a thing is.
 
 ### Vocabulary
 
@@ -262,6 +276,15 @@ remain understood as synonyms for one release and are then retired.
 - **Bug record**: a file under `engineering-docs/bugs/` with controlled
   `status`, `severity`, `target`, and `owner` fields. Routed by `owner`, never
   by intake.
+- **Backlog entry**: a wanted capability or improvement that is not yet a
+  requirement, with a priority, in a living list named for what it is under
+  `project-management`'s open-work directory. The everyday word is
+  "feature". Not a bug record; see *Bug Or Feature* in
+  `INFORMATION-MODEL.md`.
+- **Work order**: a scoped hand-over of requirements, decisions and backlog
+  entries to a workstream, with finish criteria, under
+  `engineering-docs/work-orders/`. An optional kind; delivered by mail like
+  any item. Not a requirement, and not the workstream's status file.
 - **Priority**: for requirements and backlog items, one of `gating`, the next
   release does not ship without it; `wanted`, high value, the release ships
   without it; `optional`, taken if cheap; `later`, not for this release. Not
@@ -269,6 +292,34 @@ remain understood as synonyms for one release and are then retired.
 - **Exception**: a recorded departure from a rule, with its reason and the
   condition that ends it, in the local workflow file or in the record it
   concerns. Not silence: a rule that does not exist needs no exception.
+**Validation.** The kinds of check a project may have, named the same way in
+every ecosystem; the local workflow file's *Validation commands* says which
+ones this project has and how each runs.
+
+- **Environment**: what must exist on the machine before any check runs,
+  the interpreter, the build tool, the dependencies, and how to obtain it.
+  Declared first, because every other kind assumes it.
+- **Unit test**: exercises code in one process with no network, no
+  subprocess and no external service; runs wherever the environment exists,
+  in seconds to minutes. Always in the gate.
+- **Integration test**: crosses a packaging or process boundary, a built
+  artifact, a subprocess, an external tool, a local service the project can
+  start itself, and still runs on any developer machine. In the gate when it
+  does.
+- **End-to-end test**: exercises the delivered software the way a user
+  would, with real infrastructure: containers, browsers, services. Opt-in or
+  run on a candidate; its evidence is kept.
+- **Smoke test**: the smallest end-to-end check that the software starts and
+  answers; what "it runs" means for the project. Run on every candidate and
+  after every deployment.
+- **Gate**: the fixed set of checks a pair runs before a checkpoint and
+  before integration; passes or fails as a whole. Not the candidate gate.
+- **Candidate gate**: the checks a release candidate must pass before
+  acceptance, with the acceptance evidence the release record keeps.
+- **Acceptance evidence**: the recorded proof, from a downloaded or deployed
+  candidate, that it does what the release claims; kept in the release
+  record, never inferred from the gate.
+
 - **Judgment where this document is silent**: the standing permission to
   resolve an uncovered situation and keep working, with the obligation to
   record what was done. The older name was "latitude".
@@ -286,6 +337,48 @@ One entry per DevCapsule release that changed a rule, newest first, each with
 the step a project takes to adopt it where one exists. The `version` in this
 file's frontmatter names the release this text ships in; see *Workflow
 Declaration* for what that version means and who keeps it correct.
+
+#### Unreleased
+
+Entered on the working branch; the release that ships it stamps this entry
+with its version. Rules changed since 0.2.14:
+
+- **Two files for humans.** `PREAMBLE.md`, why the workflow is opinionated
+  and for whom, and `INFORMATION-MODEL.md` are installed and refreshed beside
+  this file and marked *for humans*: explanation, not rules, which an agent
+  skips in ordinary work; *How To Read This Document* says when it returns.
+  The model is published as work in progress and says so. No migration.
+- **Information model.** `INFORMATION-MODEL.md`, installed beside this
+  file, names every kind of thing the workflow stores, its home, its controlled fields, what it may point at,
+  and how a thing moves between kinds; *Bug Or Feature* is the test by
+  field, and the *Glossary* gains **backlog entry** and **work order**.
+  Migration: a bug record that violates no requirement and no promised
+  behavior is retired with that reason and reopened as a backlog entry at
+  the next triage; nothing else changes shape.
+- **Validation commands are required, and the brief prints them.** *The
+  Project's Local Workflow* makes the local file's *Validation commands*
+  section required: the environment and the commands, runnable as written;
+  *Agent Reporting Contract* forbids reporting a check as not runnable
+  without having followed it; `workflow brief` prints the section at
+  session start. Migration: a local file whose section only points
+  elsewhere states the environment inline.
+- **Validation vocabulary and the checkpoint that keeps it true.** The
+  *Glossary* names the validation kinds, environment, unit, integration,
+  end-to-end, smoke, gate, candidate gate, acceptance evidence, the same in
+  every ecosystem; `INFORMATION-MODEL.md` says they are declared in the local
+  file's *Validation commands*, `none` allowed with a reason; *Checkpoint
+  Triggers* gains the change of how the software is built, tested, started
+  or smoke-tested; the local file template carries the structure and the
+  obligation. Migration: a project fills the kinds it has at its next
+  checkpoint.
+- **Integration is a merge commit.** *Development And Checkpoints*: one
+  merge commit per reviewed deliverable, never fast-forward, never squash;
+  `main` is read by first parent; pushed history is never rewritten.
+  *Successful Completion* follows in both delivery paths, and *Staying
+  Current With `main`* no longer assumes a configurable strategy. A project
+  that prefers squash records the exception in its local file with the
+  consequence for cited commits. Migration: set the hosting platform's merge
+  method to merge commits; nothing already on `main` changes.
 
 #### 0.2.14
 
@@ -376,6 +469,14 @@ There is no 0.2.13. Rules changed since 0.2.12:
 
 Unversioned. The definition shipped in each release is readable at that
 release's tag.
+
+## Information Model
+
+The kinds of thing this workflow stores, their homes and controlled fields,
+how a thing moves between kinds, the test that tells a bug from a feature,
+and where the validation kinds are declared, are in `INFORMATION-MODEL.md`
+marked *for humans*, installed and refreshed with this document (in this
+repository, under the packaged definition directory). The rules here assume it and do not repeat it.
 
 ## Checkouts, Branches, And Workstreams
 
@@ -574,8 +675,15 @@ each answers:
 - **Release policy.** Ref spelling if it differs from the default, how a
   candidate is built and published, what the candidate gate checks, what
   acceptance evidence is required, and where the acceptance record lives.
-- **Validation commands.** What a pair runs before a checkpoint and before
-  integration, and where the full description lives.
+- **Validation commands.** The one heading that is required, not
+  recommended: how to obtain the environment the project's ecosystem needs,
+  the interpreter, the virtual environment or the build tool, and the
+  commands a pair runs before a checkpoint and before integration, each
+  runnable as written from a named directory. The section is what lets any
+  agent on any project build the software and run its tests without
+  guessing; `workflow brief` prints it at session start. An agent that
+  cannot run a check follows this section first. "The tool is missing" is a
+  finding only after that, reported with the step that failed.
 - **Host capabilities.** What the project needs from the machine and the
   hosting service that this document cannot assume: branch permissions,
   runners, credentials, and their declared justifications.
@@ -1337,19 +1445,20 @@ published branch rewrites shared history and needs a force-push; do that only
 when the branch is known to be unshared, and prefer merging `main` in
 otherwise. Rebase what only you have; merge what others may have.
 
-**After your own delivery lands, reset rather than rebase.** Under a squash or
-rebase merge, a branch whose pull request has merged holds no content `main`
-lacks, but its commits have different identities from the ones `main` now
-carries. Rebasing then replays commits one at a time onto a `main` that already
+**After your own delivery lands, reset rather than rebase.** Under a merge
+commit the branch is simply an ancestor of `main` and synchronizing is a
+fast-forward. Under the squash or rebase exception, a branch whose pull
+request has merged holds no content `main` lacks, but its commits have
+different identities from the ones `main` now carries. Rebasing then replays commits one at a time onto a `main` that already
 contains their final effect, which conflicts on intermediate states even though
 the end states agree. Confirm the branch has nothing unique — comparing trees,
 not commit identities, since the identities are guaranteed to differ — and hard
 reset it to `main`. Rebase is for carrying unlanded work forward; it is the
 wrong tool for a branch with nothing left to carry.
 
-This rule is about keeping a workstream branch current with `main`. It says
-nothing about how work is delivered *to* `main`, which follows repository
-policy and its configured merge strategy or merge queue.
+This rule is about keeping a workstream branch current with `main`. How work
+is delivered *to* `main` is the merge-commit rule under *Development And
+Checkpoints*.
 
 **Conflicts split by kind.** Mechanical conflicts — reformatting, moved
 sections, adjacent edits — are ordinary agent work; resolve them and say so.
@@ -1384,11 +1493,19 @@ complete. A checkpoint is a statement about project state and belongs in the
 status file; a commit is a save point. Every checkpoint is committed, but most
 commits are not checkpoints.
 
-Commits reach `main` through the repository's configured merge strategy, so
-whether frequent commits become individual commits on `main` is a property of
-that strategy rather than of this rule. Write commit messages that would read
-well either way, and do not let uncertainty about the merge boundary become a
-reason to delay committing.
+**Integration is a merge commit.** A workstream reaches `main` through one
+merge commit per reviewed deliverable, never a fast-forward and never a
+squash. `main`'s first-parent history is then the story, one entry per
+delivery, titled as such, and that is how `main` is read: `git log
+--first-parent`, `git bisect --first-parent`. The branch's own commits stay
+reachable unchanged below that line, so every SHA a record cites remains a
+real commit in every clone, and the order of decisions the small commits
+preserved survives the moment the work is shared. Pushed history is never
+rewritten: synchronize a pushed branch by merging `main` into it, and rebase
+only what has never been pushed; see *Staying Current With `main`*. A project
+that prefers squash records it in its local file under *Exceptions*, with
+the consequence stated: its records may cite pull requests and tags, never
+branch commits, because those commits stop existing when the branch does.
 
 Keep all unfinished workstream documentation beneath:
 
@@ -1642,9 +1759,10 @@ Never append or merge the workstream status text into that workstream list.
 3. Add the finishing commit only when the pull request is otherwise ready to
    merge, then allow any checks or approvals invalidated by that commit to run
    again.
-4. Merge through the hosting platform using the repository's configured merge,
-   squash, rebase, or merge-queue policy. The agent may perform this action
-   when authorized; otherwise ask the human or designated reviewer.
+4. Merge through the hosting platform as a merge commit, under *Development
+   And Checkpoints*; the platform's squash and rebase options are used only
+   when the local file records that exception. The agent may perform this
+   action when authorized; otherwise ask the human or designated reviewer.
 5. Verify from the updated remote ref that `main` contains the merged final
    tree and that the workstream-list entry and open-work directory are absent.
 
@@ -1662,13 +1780,14 @@ permits direct integration:
    Reset local `main` only when every local-only commit is proven already
    upstream, reporting that evidence; otherwise stop and ask the human rather
    than choosing or discarding history.
-2. Rebase the frozen integration branch onto local `main` and rerun required
+2. Bring the frozen integration branch up to local `main`: merge `main` into
+   it if it was ever pushed, rebase it only if it was not; rerun required
    validation. Resolve mechanical conflicts and ask the human when intent is
    required.
-3. Fast-forward local `main` with
-   `git merge --ff-only <integration-branch>`. If this fails because `main`
-   moved, do not create a non-fast-forward merge; repeat synchronization and
-   rebase.
+3. Merge the branch into local `main` with `git merge --no-ff
+   <integration-branch>`, titled as the delivery, so that `main`'s
+   first-parent history gains one entry. If `main` moved meanwhile, repeat
+   from step 1.
 4. Push `main` normally to its integration remote, normally with
    `git push origin main`. Never force-push `main`. If credentials, approval,
    or repository policy prevent publication, ask the human to perform it. If
@@ -2052,6 +2171,11 @@ For each meaningful slice, the agent should report in this order:
 Keep reports concise. The user should not need to reconstruct the state from a
 long chronology.
 
+A check reported as not runnable names the step of the local workflow
+file's *Validation commands* that failed. An agent never reports a tool or
+a dependency as absent without having followed that section; the project
+wrote it so that the question has an answer.
+
 ## Decision And Escalation Rules
 
 Escalate to the human when:
@@ -2073,7 +2197,10 @@ Create or refresh durable state when any of these happen:
 - manual validation changes project state;
 - a new bug, decision, or requirement appears;
 - the session ends with unfinished but resumable work;
-- the active next step changes.
+- the active next step changes;
+- the way the software is built, tested, started or smoke-tested was
+  introduced or changed: the same commit updates the local workflow file's
+  *Validation commands*.
 
 If the user and agent are moving quickly, prefer more frequent small selected-
 status file updates over one large retrospective rewrite.
@@ -2276,6 +2403,10 @@ The selected status file's active task list should contain only work that the ne
 session on that track should actually consider doing.
 
 ## Bug Intake
+
+Before filing, apply *Bug Or Feature* in `INFORMATION-MODEL.md`: a record
+here needs a requirement it threatens or a promised behavior observed wrong;
+a wish, however large, is a backlog entry.
 
 Use the relevant scope beneath `engineering-docs/bugs/` when a bug needs
 durable evidence before it is fixed, retired, or converted into a completed

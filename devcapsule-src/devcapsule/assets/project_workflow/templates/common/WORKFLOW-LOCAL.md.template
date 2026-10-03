@@ -31,8 +31,20 @@ where the acceptance record lives.
 
 ## Validation Commands
 
-What a pair runs before a checkpoint and before integration, and where the
-full description lives.
+Required; `devcapsule workflow brief` prints this section at every session
+start. Before the first checkpoint that adds a build, test, start or
+smoke-test step, write here, runnable as written from a named directory:
+
+- **Environment**: what must exist on the machine and how to obtain it.
+- **Unit tests**: the command.
+- **Integration tests**: the command, and what it needs beyond the environment.
+- **End-to-end tests**: the command, what infrastructure it needs, and where
+  its evidence is kept.
+- **Smoke test**: how the software is started and what proves it answers.
+- **Gate**: which of the above run before a checkpoint and before integration.
+
+Say `none` for a kind this project does not have, with the reason. See
+*Validation* in `INFORMATION-MODEL.md` for what each kind means. A step that is not written here does not exist for the next agent.
 
 ## Host Capabilities
 
@@ -44,3 +56,7 @@ the justification for each.
 
 Every recorded departure from `WORKFLOW.md`, each with its reason and, where
 one exists, the condition that ends it. Empty means none.
+
+For example, a project that integrates by squash merge instead of the
+definition's merge commit records it here, with the consequence: records
+cite pull requests and tags, never branch commits.

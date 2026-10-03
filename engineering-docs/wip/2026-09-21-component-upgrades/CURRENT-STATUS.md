@@ -4,9 +4,9 @@ Mnemonic: `component-upgrades`
 
 Start date: 2026-09-21
 
-State: paused; checkpoint merged and first hosted publication verified; V1 operational follow-up retained
+State: paused 2026-10-02; the consent design is fully ruled (D-0011, D-0012, D-0013, D-0010 and R-UPGRADE-001 refinements) and the 0.2.16 consent slice is the next task; the pair moves to maintenance for the 0.2.16 bug triage; R-UPGRADE-002 follow-up retained
 
-Definition read: WORKFLOW.md@a1002b6f5e67, WORKFLOW-LOCAL.md@ed70f3147563
+Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
 
 Integration target: `main`
 
@@ -72,9 +72,67 @@ Session synchronization: fetched `origin/main` at `9bf2711`, verified it contain
 The updated workflow definition adds brief/claim operations; read and applied.
 Mail and owned open bug queues were empty. Workflow commands run from the root.
 
+## Resumed 2026-10-01: The Consent Design
+
+The owner resumed this workstream to rule on consent. Under the routing
+rule of 2026-10-01, `component-upgrades` owns the code that wires
+components (orchestration, upgrades, channels), which is where consent is
+asked and stored. The problem statement and candidates are in
+project-management's
+[consent design issue](../2026-08-09-project-management/2026-10-01-design-consent-and-vendor-trust.md),
+on `ws-project-management/coordination` until that branch integrates
+(commit `df68bcf`); it reaches `main` with project-management's next pull
+request. In one paragraph: four different questions are asked under one
+word, with inverted priority; the one real obligation is the user accepting
+a vendor's terms before DevCapsule downloads on their behalf; the owner's
+preference is a per-workstation record under the launcher's config root
+stating "I trust this vendor and agree for DevCapsule to download this
+software, in all its versions, on my behalf", given once; trust binds to
+a verified channel (vendor, origin, integrity method), not to signatures.
+
+Synchronized with `main` at `3038c48` by merge (`7445f3b`), 265 commits
+and the definition's three unread *Changes* entries (misplaced changes
+travel as patches; claims and the brief; the session-start synchronization
+judgment); no conflicts. Two untracked and one modified IDE project file
+under `.idea/` were set aside in the session scratchpad, not committed.
+Mail: one item, overtaken, decided in the log.
+
+Ruled the same day, recorded as
+[D-0011](../../decisions/product/d-0011-vendor-trust-once-per-workstation.md):
+vendor terms once per vendor product per user; trust bound to a verified
+channel; the workstation-level record under the launcher's config root.
+
 ## Planned Next Step
 
-Scope the R-UPGRADE-002 operational slice with the owner: independent monitor
+Scope and build the **0.2.16 consent slice**, named by the owner on
+2026-10-01, in this order:
+
+1. [D-0013](../../decisions/product/d-0013-provenance-sidecar-for-local-records.md):
+   the provenance sidecar beside each checkout, written on the next write
+   of a record, never on read; digest, client version, questions known.
+2. [D-0011](../../decisions/product/d-0011-vendor-trust-once-per-workstation.md):
+   the workstation trust record under the launcher's config root, one
+   statement per vendor product, channels as the provenance test;
+   DevCapsule's own base as a channel. Older clients keep reading the
+   checkout record.
+3. [D-0012](../../decisions/product/d-0012-host-access-asked-only-when-recommended.md):
+   host access asked only when the project recommends the less secure
+   value; existing checkouts grandfathered, read through the sidecar.
+
+4. The launch-time upgrade prompt rewritten as a scheduling choice, now,
+   later or keep, with a one-time validation-gap disclosure and no vendor
+   authorization (D-0010 refinement of 2026-10-01).
+
+R-UPGRADE-001 carries the dated refinement of 2026-10-01 that reads its
+"acquisition consent remains enforced" as D-0011 defines it. Nothing of
+the consent design issue remains with the owner; all five questions are
+ruled.
+
+Before code: a short design note here naming the files, the read order
+(workstation record, then checkout record, then sidecar), the tests, and
+what `config show` and the upgrade prompt print for each source.
+
+Still open from before, unchanged: scope the R-UPGRADE-002 operational slice with the owner: independent monitor
 and alert routes, incident ownership, thresholds and supported adapter inventory.
 The current checkpoint is on main and its public endpoint passed client acceptance.
 Do not archive while accepted follow-up remains, begin external service setup
@@ -157,6 +215,22 @@ intentionally left. Git push is available; owner GitHub
 PR creation/merge remains the delivery arrangement.
 
 ## Open Threads
+
+### Paused 2026-10-02
+
+- Last task: recording the owner's consent rulings; complete, all five
+  questions ruled, records pushed. Nothing uncommitted.
+- Next resumable task: the design note for the 0.2.16 consent slice,
+  then the sidecar (D-0013) first, because the trust record and the
+  host-access rule read through it.
+- The in-capsule half of the trust record waits on maintenance's
+  in-capsule project-command fix; build the host side first.
+- The website owes a page of published base digests for the trust
+  channel's anchor; sent to project-management as part of the 0.2.16
+  candidate mail, not tracked here.
+- The branch is nine commits of documentation ahead of `main`; the owner
+  merges on GitHub.
+
 
 ### Awaiting The Human
 

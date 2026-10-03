@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: minor
-target: none
+target: 0.2.16
 owner: maintenance
 opened: 2026-09-26
 requirements: [R-PRODUCT-001]
@@ -81,3 +81,15 @@ The same decision adds `project info` and persistent `/opt/xtras` to 0.2.15;
 see the [accepted work order](../../work-orders/2026-09-27-project-environment-discovery.md).
 `project info` must work inside the capsule, including outside the project
 directory. The deferral does not excuse failure of that new command.
+
+## Owner ruling, 2026-10-01
+
+Targeted at 0.2.16 together with the
+[in-capsule inspection record](2026-09-24-runtime-configuration-inspection-fails.md),
+whose ruling of the same date covers this: the `project` group validates
+the subcommand first, resolves the capsule's project automatically, and
+reaches the launcher guard only for a valid mutating command. The owner's
+broader report of 2026-09-27, that project subcommands fail inside the
+capsule regardless of directory, is now established on v0.2.15 and
+recorded there with its three causes; this record keeps the
+argparse-before-guard half. Recorded by `project-management`.
