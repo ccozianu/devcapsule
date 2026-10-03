@@ -110,6 +110,9 @@ ignored in this repository and 0.2.16 documents the rule.
 
 Decided so far:
 
+- 2026-09-26 init discards answers: closed 2026-10-04 on the owner's
+  heuristic confirmation against released 0.2.15, with the RC0 and RC1
+  downloaded-candidate proofs; 0.2.15's one blocking record is done.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
