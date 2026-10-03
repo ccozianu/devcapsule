@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active 2026-10-03 at owner direction; the information model is written on the branch for the owner's review; eight intake items taken on resume and not yet decided; the plate's doctor, review and adopters items unchanged
+State: paused 2026-10-03 for merge; preamble, information model (work in progress), validation vocabulary, merge-commit rule and the discoverability fix are on the branch and gated; eight intake items taken and undecided; the pair moves to another workstream
 
 Definition read: WORKFLOW.md@9d21b0c66458, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -195,8 +195,7 @@ each under its own heading.
 
 ## Next Resumable Task
 
-First: the owner reviews the information model. Then decide the eight
-intake items; several (release-fix propagation, tag-based release records,
+Decide the eight intake items; several (release-fix propagation, tag-based release records,
 the four 0.2.14 gaps, the bootstrap mode bug and its owner direction) are
 definition changes that belong in the same *Unreleased* entry. Then the
 plate as recorded below.
@@ -486,6 +485,12 @@ resume changed every question. Short by design.
 - **Do not merge this branch before the 0.2.14 cut.** Owner's direction of
   2026-09-22: the release's scope is not enlarged from here. Everything on
   the branch from that date waits for the cut.
+- **Paused 2026-10-03 for merge.** The full gate passed (`nox -s build`,
+  two minutes, exit 0) on the branch's tip before the pause; the public
+  executable was not built because the website submodule pointer is
+  modified in this checkout, which is the owner's. The freshly built local
+  executable packages `PREAMBLE.md` and `INFORMATION-MODEL.md`. Next on
+  resume: the eight intake items, then the HERM restatement of the model.
 - **Rebase ruling retired.** The owner's rule that this branch rebases onto
   `main` is superseded on 2026-10-03 by the definition's merge-commit rule;
   this branch now merges `main` in like every other pushed branch.
