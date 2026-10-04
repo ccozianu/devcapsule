@@ -49,7 +49,7 @@ def drive_scenario(page: Any, session: SessionFacts, evidence: Path, driver: Vis
         "You may trust this test-owned project, accept the IDE's free-use terms, "
         "dismiss onboarding and decline telemetry. Use free functionality; do not start "
         "trials, subscribe or sign in. If startup shows a welcome screen, open the project "
-        f"at {session.workspace}. "
+        f"at {session.project_path or session.workspace}. "
         "Use click/double_click with screenshot coordinates, type with literal text, "
         "press with Playwright keys such as Control+Shift+n or Enter, or wait up to 10 seconds. "
         "Declare done only after the editor shows the saved marker; fail if blocked. "

@@ -70,6 +70,7 @@ class SessionFacts:
     workspace: Path
     launcher_log: Path
     launcher: subprocess.Popen[bytes] | None = None
+    project_path: str | None = None
 
 
 def command(*args: str, check: bool = True, timeout: float = 120.0) -> subprocess.CompletedProcess[str]:
@@ -181,7 +182,9 @@ def launched_ide(executable: Path, surface: IdeSurface, workspace: Path,
     facts = SessionFacts(surface, container, "", workspace, log_path, launcher)
     try:
         url = wait_for_desktop_url(launcher, log_path)
-        yield SessionFacts(surface, container, url, workspace, log_path, launcher)
+        runtime = json.loads(command("docker", "exec", container, "cat", "/etc/devcapsule/runtime-plan.json").stdout)
+        assert runtime["component"]["id"] == surface.name
+        yield SessionFacts(surface, container, url, workspace, log_path, launcher, runtime["project_path"])
     finally:
         stop_session(facts)
         absent = command("docker", "inspect", container, check=False).returncode != 0
