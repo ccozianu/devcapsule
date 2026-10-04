@@ -60,19 +60,37 @@ class VendorDiscovery:
 
 
 class JetBrainsDiscovery(VendorDiscovery):
+    product_keys: tuple[str, ...] = ("PCP", "PY")
     source = "https://data.services.jetbrains.com/products/releases?code=PY&latest=true&type=release"
 
     def _check(self, current: str, platform: str) -> ChannelReport:
         document = read_json(self.source)
         # PY currently maps to PCP; admit the two observed product keys explicitly.
-        releases = document.get("PCP", document.get("PY"))
+        releases = next((document[key] for key in self.product_keys if key in document), None)
         if not isinstance(releases, list) or len(releases) != 1 or releases[0]["type"] != "release":
-            raise ValueError("expected one PyCharm release")
+            raise ValueError("expected one JetBrains release")
         release = releases[0]
         artifact = release["downloads"]["linux" if platform == "linux-amd64" else "linuxARM64"]
         if not artifact.get("link") or not artifact.get("checksumLink"):
             raise ValueError("platform download/checksum missing")
         return _available(self.source, current, release["version"])
+
+
+class IntelliJDiscovery(JetBrainsDiscovery):
+    product_keys = ("IIU",)
+    source = "https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&type=release"
+
+
+class PlaywrightDiscovery(VendorDiscovery):
+    source = "https://pypi.org/pypi/playwright/json"
+
+    def _check(self, current: str, platform: str) -> ChannelReport:
+        release = read_json(self.source)
+        if not any(item.get("packagetype") == "bdist_wheel" and not item.get("yanked")
+                   for item in release["urls"]):
+            raise ValueError("published wheel missing")
+        return _available(self.source, current, release["info"]["version"],
+                          "Requires a reviewed wheel and matching browser pin update")
 
 
 class CodiumDiscovery(VendorDiscovery):

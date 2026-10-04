@@ -3,7 +3,7 @@
 devcapsule-lock-format-version = 1
 resolution-matrix-version = "embedded-24"
 platform = "linux-amd64"
-capabilities-digest = "5cdc12b4401e0bc220367bd81ea73d7406ab4248d103d789ce99e55ca8f66d56"
+capabilities-digest = "cbf92e8769b55db9fc409ded11f1a3dc5bf15f85e3fa1116c5d9ef871871877d"
 
 [base]
 reference = "docker.io/mycodespaceai/devcapsule-base@sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c"
@@ -11,30 +11,14 @@ build-mnemonic = "v0.2.12-rc5"
 contract = "ubuntu-24.04@9"
 
 [components]
-interactive-surface = "pycharm"
+interactive-surface = "intellij"
 
-[components.pycharm]
-version = "2026.2.0.1"
-variant = "professional"
+[components.intellij]
+version = "2026.2.3"
+variant = "unified"
 delivery-policy = "local-materialization"
-url = "https://download.jetbrains.com/python/pycharm-2026.2.0.1.tar.gz"
-sha256 = "4a37cb2d15703553c61e814d8e014bfa47308508470de5f968c4e9645b771675"
-
-[components.antigravity-cli]
-version = "1.2.12"
-delivery-policy = "local-materialization"
-acquisition-authorization = "antigravity-download"
-license = "Proprietary"
-terms-url = "https://antigravity.google/terms/"
-distribution = "user-acquired-not-redistributed"
-
-[components.antigravity-cli.artifacts]
-
-[components.antigravity-cli.artifacts.linux-amd64]
-url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.2.12-5784551402897408/linux-x64/cli_linux_x64.tar.gz"
-sha256 = "26c7c4c661d6c9beda734fcf305031056a6ea46e697c4533e8151179724e2950"
-archive-member = "antigravity"
-upstream-sha512 = "d5f0fe7433cb7c43ea878c07627a4fdb82d218f3bef5e6436266f5d9fdd2df145523453b9be0c4250391a64a007f5f42f7faff797bc2b2d502e7efb4874e383a"
+url = "https://download.jetbrains.com/idea/idea-2026.2.3.tar.gz"
+sha256 = "68751c8ae4d49407251cd197df795fbed91b6fdc85d10c73c4649a99e496ab37"
 
 [components.playwright]
 version = "1.63.0"
@@ -85,35 +69,6 @@ format = "zip-directory"
 url = "https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1011/ffmpeg-linux.zip"
 sha256 = "ebc74fc5b94830176a3c2914ae96bd8bc7f6a91f4f33890230f84a172ee61ccc"
 destination = "/opt/playwright/browsers/ffmpeg-1011"
-
-[components.claude-code]
-version = "2.1.283"
-delivery-policy = "local-materialization"
-acquisition-authorization = "claude-code-download"
-license = "Proprietary"
-terms-url = "https://www.anthropic.com/legal/commercial-terms"
-distribution = "user-acquired-not-redistributed"
-
-[components.claude-code.artifacts]
-
-[components.claude-code.artifacts.linux-amd64]
-url = "https://downloads.claude.ai/claude-code-releases/2.1.283/linux-x64/claude"
-sha256 = "1859583ce32920595c61ef868bee52e1b1594f7486db209935e01f1e5e804ae2"
-
-[components.codex]
-version = "0.157.1"
-delivery-policy = "local-materialization"
-license = "Apache-2.0"
-npm-package = "@openai/codex"
-url = "https://registry.npmjs.org/@openai/codex/-/codex-0.157.1.tgz"
-sha256 = "813e2a944f4474b7e1826d9ce8bf696ad8d80c68f43f7a7067beec51fa8f5b73"
-
-[components.codex.artifacts]
-
-[components.codex.artifacts.linux-amd64]
-npm-package = "@openai/codex-linux-x64"
-url = "https://registry.npmjs.org/@openai/codex/-/codex-0.157.1-linux-x64.tgz"
-sha256 = "7f12677740f439fe4884c7031d9d703e571cecf5ea9fa3a05abd1bbccc2162a8"
 
 [materialization]
 recipe = "jetbrains-local-materialization"

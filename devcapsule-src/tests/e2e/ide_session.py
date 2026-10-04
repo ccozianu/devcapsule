@@ -49,6 +49,7 @@ class IdeSurface:
 SURFACES: tuple[IdeSurface, ...] = (
     IdeSurface("codium", ("frontend-ide", "node"), "codium", ready_timeout=180.0),
     IdeSurface("pycharm", ("python-ide", "python"), "jetbrains-pycharm", ready_timeout=420.0),
+    IdeSurface("intellij", ("java-ide", "java", "browser-automation"), "jetbrains-idea", ready_timeout=420.0),
 )
 
 CREATOR = "e2e@devcapsule.test"
@@ -68,6 +69,8 @@ class SessionFacts:
     desktop_url: str
     workspace: Path
     launcher_log: Path
+    launcher: subprocess.Popen[bytes] | None = None
+    project_path: str | None = None
 
 
 def command(*args: str, check: bool = True, timeout: float = 120.0) -> subprocess.CompletedProcess[str]:
@@ -119,8 +122,8 @@ def remove_project_records(slug: str) -> list[Path]:
 def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence: Path) -> Iterator[SessionFacts]:
     """Initialize and run a fresh project for ``surface``; stop and clean up on exit.
 
-    The project consents to the base image the executable recommends and to
-    nothing else: no agent, no host access. The launcher's output goes to a log
+    The project consents to the recommended base and local-test host networking.
+    The launcher's output goes to a log
     kept with the evidence; the desktop URL is read from it.
     """
     run_id = uuid.uuid4().hex[:8]
@@ -128,41 +131,65 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
     container = f"devcapsule-e2e-ide-{surface.name}-{run_id}"
     workspace = workspace_root(tmp_path) / slug
     workspace.mkdir(parents=True)
+    (workspace / "smoke.txt").write_text("DevCapsule graphical smoke fixture.\n", encoding="utf-8")
     evidence.mkdir(parents=True, exist_ok=True)
-    launcher_log = evidence / "launcher.log"
     environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
-    launcher: subprocess.Popen[bytes] | None = None
     try:
         init = subprocess.run(
             [str(executable), "project", "init",
              *(flag for need in surface.needs for flag in ("--need", need)),
              "--creator", CREATOR, "--slug", slug,
-             "--authorize", "base-image", "default", "--less-pedantic"],
+             "--authorize", "base-image", "default",
+             "--authorize", "network", "host", "Local graphical smoke requires host networking.",
+             "--less-pedantic"],
             cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
             check=False, timeout=300.0,
         )
         (evidence / "init.log").write_text(init.stdout + init.stderr, encoding="utf-8")
         assert init.returncode == 0, f"project init failed for {surface.name}:\n{init.stdout}\n{init.stderr}"
-        with launcher_log.open("wb") as log:
-            launcher = subprocess.Popen(
-                [str(executable), "project", "run", "--no-update-check", "--name", container],
-                cwd=workspace, env=environment, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-            )
-        desktop_url = wait_for_desktop_url(launcher, launcher_log)
-        yield SessionFacts(surface, container, desktop_url, workspace, launcher_log)
+        with launched_ide(executable, surface, workspace, evidence, container) as facts:
+            yield facts
     finally:
-        if launcher is not None:
-            command("docker", "stop", "--time", "30", container, check=False, timeout=60.0)
-            try:
-                launcher.wait(timeout=90.0)
-            except subprocess.TimeoutExpired:
-                launcher.kill()
-                launcher.wait(timeout=30.0)
-            command("docker", "rm", "--force", container, check=False, timeout=60.0)
         shutil.rmtree(workspace, ignore_errors=True)
         (evidence / "removed-records.json").write_text(
             json.dumps([str(path) for path in remove_project_records(slug)], indent=2) + "\n", encoding="utf-8"
         )
+
+
+def stop_session(facts: SessionFacts) -> None:
+    command("docker", "stop", "--time", "30", facts.container, check=False, timeout=60.0)
+    if facts.launcher is not None:
+        try:
+            facts.launcher.wait(timeout=90.0)
+        except subprocess.TimeoutExpired:
+            facts.launcher.kill()
+            facts.launcher.wait(timeout=30.0)
+    command("docker", "rm", "--force", facts.container, check=False, timeout=60.0)
+
+
+@contextmanager
+def launched_ide(executable: Path, surface: IdeSurface, workspace: Path,
+                 evidence: Path, container: str) -> Iterator[SessionFacts]:
+    """Launch an initialized project, also used for a bounded persistence relaunch."""
+    evidence.mkdir(parents=True, exist_ok=True)
+    log_path = evidence / "launcher.log"
+    with log_path.open("wb") as log:
+        launcher = subprocess.Popen(
+            [str(executable), "project", "run", "--no-update-check", "--name", container],
+            cwd=workspace, env=dict(os.environ, BROWSER="true"), stdout=log,
+            stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+        )
+    facts = SessionFacts(surface, container, "", workspace, log_path, launcher)
+    try:
+        url = wait_for_desktop_url(launcher, log_path)
+        runtime = json.loads(command("docker", "exec", container, "cat", "/etc/devcapsule/runtime-plan.json").stdout)
+        assert runtime["component"]["id"] == surface.name
+        yield SessionFacts(surface, container, url, workspace, log_path, launcher, runtime["project_path"])
+    finally:
+        stop_session(facts)
+        absent = command("docker", "inspect", container, check=False).returncode != 0
+        (evidence / "cleanup.json").write_text(json.dumps({"container_removed": absent}) + "\n", encoding="utf-8")
+        assert absent, f"Test-owned container remains: {container}"
 
 
 def wait_for_desktop_url(launcher: subprocess.Popen[bytes], launcher_log: Path) -> str:
@@ -262,6 +289,8 @@ def wait_for_ide_window(facts: SessionFacts) -> dict[str, object]:
         seen = top_level_windows(facts.container)
         for window in seen:
             if facts.surface.window_class.lower() in str(window["class"]).lower():
+                if str(window.get("name", "")).lower() == "start failed":
+                    raise AssertionError(f"{facts.surface.name} displayed a startup failure dialog")
                 return window
         if time.monotonic() > deadline:
             raise AssertionError(
@@ -297,7 +326,7 @@ def desktop_page_answers(desktop_url: str, *, patience: float = 30.0) -> int:
             connection.close()
 
 
-def capture_desktop(desktop_url: str, evidence: Path) -> dict[str, object] | None:
+def capture_desktop(session: SessionFacts, evidence: Path) -> dict[str, object] | None:
     """Record the desktop through a headless browser; return pixel facts.
 
     Leaves ``desktop.png``, the canvas when the IDE was judged alive, and
@@ -312,18 +341,16 @@ def capture_desktop(desktop_url: str, evidence: Path) -> dict[str, object] | Non
         from playwright.sync_api import sync_playwright  # type: ignore[import-not-found,unused-ignore]
     except ImportError:
         return None
+    from tests.e2e.browser_session import smoke_browser
+
     viewport = {"width": 1600, "height": 1000}
-    with sync_playwright() as playwright:
-        try:
-            browser = playwright.chromium.launch()
-        except PlaywrightError:
-            return None
-        try:
+    try:
+        with sync_playwright() as playwright, smoke_browser(playwright, session, evidence) as browser:
             context = browser.new_context(
                 viewport=viewport, record_video_dir=str(evidence), record_video_size=viewport
             )
             page = context.new_page()
-            page.goto(desktop_url, wait_until="load")
+            page.goto(session.desktop_url, wait_until="load")
             canvas = page.locator("canvas").first
             canvas.wait_for(state="visible", timeout=60_000)
             page.wait_for_timeout(4_000)
@@ -349,8 +376,9 @@ def capture_desktop(desktop_url: str, evidence: Path) -> dict[str, object] | Non
             video = page.video
             context.close()  # the recording is finalized by closing the context
             if video is not None:
-                Path(video.path()).rename(evidence / "desktop.webm")
+                video.save_as(str(evidence / "desktop.webm"))
+                video.delete()
                 pixel_facts["video"] = "desktop.webm"
             return pixel_facts
-        finally:
-            browser.close()
+    except PlaywrightError:
+        return None

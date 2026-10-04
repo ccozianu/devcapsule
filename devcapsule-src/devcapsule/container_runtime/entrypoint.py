@@ -13,6 +13,7 @@ bridge); see ``display.py``. A headless job declares no display at all.
 from __future__ import annotations
 
 import os
+from contextlib import nullcontext
 from pathlib import Path
 import sys
 from typing import Sequence
@@ -69,7 +70,9 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
             foreground=True,
             working_directory=plan.project_path,
         )
-    return Supervisor((*infrastructure, child)).run()
+    guard = jetbrains.session_lock(plan) if plan.component.adapter == "jetbrains" and job is None else nullcontext()
+    with guard:
+        return Supervisor((*infrastructure, child)).run()
 
 
 def main(argv: Sequence[str] | None = None) -> int:

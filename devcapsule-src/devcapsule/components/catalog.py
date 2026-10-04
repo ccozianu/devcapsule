@@ -9,6 +9,8 @@ from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
 from devcapsule.components.claude_code import DEFINITION as CLAUDE_CODE
 from devcapsule.components.codex import DEFINITION as CODEX
 from devcapsule.components.codium import DEFINITION as CODIUM
+from devcapsule.components.intellij import DEFINITION as INTELLIJ
+from devcapsule.components.playwright import DEFINITION as PLAYWRIGHT
 from devcapsule.components.postgresql_client import DEFINITION as POSTGRESQL_CLIENT
 from devcapsule.components.pycharm import DEFINITION as PYCHARM
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
@@ -23,15 +25,18 @@ class ComponentCatalogError(ValueError):
 INTERACTIVE_SURFACES: dict[str, ComponentDefinition] = {
     PYCHARM.id: PYCHARM,
     CODIUM.id: CODIUM,
+    INTELLIJ.id: INTELLIJ,
 }
 
 COMPONENTS: dict[str, ComponentDefinition] = {
     PYCHARM.id: PYCHARM,
     CODIUM.id: CODIUM,
+    INTELLIJ.id: INTELLIJ,
     CODEX.id: CODEX,
     CLAUDE_CODE.id: CLAUDE_CODE,
     ANTIGRAVITY_CLI.id: ANTIGRAVITY_CLI,
     POSTGRESQL_CLIENT.id: POSTGRESQL_CLIENT,
+    PLAYWRIGHT.id: PLAYWRIGHT,
 }
 
 

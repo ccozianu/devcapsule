@@ -10,13 +10,15 @@ the executable recommends; runs inside a capsule as well as on a host.
 from __future__ import annotations
 
 import json
+import hashlib
+import os
 import time
 import uuid
 from pathlib import Path
 
 import pytest
 
-from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, desktop_page_answers, ide_session, wait_for_ide_window
+from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, command, desktop_page_answers, ide_session, launched_ide, stop_session, wait_for_ide_window
 
 EVIDENCE_ROOT = Path(__file__).resolve().parents[2] / "dist" / "e2e-evidence" / "ide-smoke"
 
@@ -38,14 +40,20 @@ def evidence_run() -> Path:
 @pytest.mark.parametrize("surface", SURFACES, ids=[surface.name for surface in SURFACES])
 def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, evidence_run: Path) -> None:
     evidence = evidence_run / surface.name
-    (evidence_run / "run.json").write_text(json.dumps({"executable": str(built_pex)}, indent=2) + "\n", encoding="utf-8")
+    (evidence_run / "run.json").write_text(json.dumps({
+        "executable": str(built_pex),
+        "sha256": hashlib.sha256(built_pex.read_bytes()).hexdigest(),
+        "version": command(str(built_pex), "version", "--json").stdout,
+    }, indent=2) + "\n", encoding="utf-8")
     with ide_session(built_pex, surface, tmp_path, evidence) as session:
         # 1. The launcher published a desktop and the page behind it answers.
         assert desktop_page_answers(session.desktop_url) == 200, session.desktop_url
         # 2. The IDE owns a top-level window on the capsule's own display.
         window = wait_for_ide_window(session)
         # 3. Optional pixel evidence: the desktop renders more than a bare desktop.
-        pixels = capture_desktop(session.desktop_url, evidence)
+        pixels = capture_desktop(session, evidence)
+        if os.environ.get("DEVCAPSULE_SMOKE_DISPLAY") == "1":
+            assert pixels is not None, "Required Playwright browser evidence is unavailable"
         if pixels is not None:
             distinct = pixels["distinctColours"]
             assert isinstance(distinct, int) and distinct >= 64, pixels
@@ -58,3 +66,50 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
             "pixels": pixels if pixels is not None else "not captured: Playwright and its browser are optional",
         }
         (evidence / "facts.json").write_text(json.dumps(facts, indent=2) + "\n", encoding="utf-8")
+        identity = command("docker", "inspect", "--format", '{{json .Id}} {{json .Image}}', session.container)
+        (evidence / "container-identity.txt").write_text(identity.stdout, encoding="utf-8")
+        child_digest = command("docker", "exec", session.container, "sha256sum", "/opt/devcapsule/bin/devcapsule.pex").stdout.split()[0]
+        assert child_digest == hashlib.sha256(built_pex.read_bytes()).hexdigest(), "Child runtime differs from selected executable"
+        if "browser-automation" in surface.needs:
+            browser = command("docker", "exec", "-e", "PLAYWRIGHT_BROWSERS_PATH=/opt/playwright/browsers",
+                              session.container, "/opt/playwright/venv/bin/python", "-c",
+                              "import json; from playwright.sync_api import sync_playwright; "
+                              "p=sync_playwright().start(); b=p.chromium.launch(); page=b.new_page(); "
+                              "page.set_content('<h1>component browser alive</h1>'); "
+                              "print(json.dumps({'version':b.version,'text':page.locator('h1').inner_text()})); "
+                              "b.close(); p.stop()")
+            (evidence / "component-browser.json").write_text(browser.stdout, encoding="utf-8")
+            assert json.loads(browser.stdout)["text"] == "component browser alive"
+        if os.environ.get("DEVCAPSULE_SMOKE_AGENT") == "1":
+            from tests.e2e.visual_smoke import run_visual_smoke
+
+            result = run_visual_smoke(session, evidence)
+            if os.environ.get("DEVCAPSULE_SMOKE_RELAUNCH") == "1":
+                assert surface.name == "intellij"
+                before = editor_font_size(session.container)
+                assert before == 17, f"IDE did not persist the UI-selected font size: {before}"
+                stop_session(session)
+                with launched_ide(built_pex, surface, session.workspace, evidence / "relaunch",
+                                  session.container + "-relaunch") as resumed:
+                    assert desktop_page_answers(resumed.desktop_url) == 200
+                    resumed_window = wait_for_ide_window(resumed)
+                    pixels = capture_desktop(resumed, evidence / "relaunch")
+                    assert pixels is not None
+                    after = editor_font_size(resumed.container)
+                    assert after == before
+                    assert result["marker"] in (resumed.workspace / "smoke.txt").read_text()
+                    # A retained file and a window class do not establish a
+                    # usable editor: repeat the interaction after relaunch.
+                    run_visual_smoke(resumed, evidence / "relaunch")
+                    (evidence / "persistence.json").write_text(json.dumps({
+                        "editor_font_before": before, "editor_font_after": after,
+                        "saved_marker_retained": True, "window": resumed_window,
+                    }, indent=2) + "\n", encoding="utf-8")
+
+
+def editor_font_size(container: str) -> float:
+    probe = command("docker", "exec", container, "python3", "-c",
+                    "import xml.etree.ElementTree as E; "
+                    "root=E.parse('/ide-config/options/editor-font.xml'); "
+                    "print(next(x.attrib['value'] for x in root.iter('option') if x.attrib.get('name')=='FONT_SIZE'))")
+    return float(probe.stdout.strip())
