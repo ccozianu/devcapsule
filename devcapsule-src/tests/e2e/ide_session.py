@@ -321,7 +321,7 @@ def desktop_page_answers(desktop_url: str, *, patience: float = 30.0) -> int:
             connection.close()
 
 
-def capture_desktop(desktop_url: str, evidence: Path) -> dict[str, object] | None:
+def capture_desktop(session: SessionFacts, evidence: Path) -> dict[str, object] | None:
     """Record the desktop through a headless browser; return pixel facts.
 
     Leaves ``desktop.png``, the canvas when the IDE was judged alive, and
@@ -336,18 +336,16 @@ def capture_desktop(desktop_url: str, evidence: Path) -> dict[str, object] | Non
         from playwright.sync_api import sync_playwright  # type: ignore[import-not-found,unused-ignore]
     except ImportError:
         return None
+    from tests.e2e.browser_session import smoke_browser
+
     viewport = {"width": 1600, "height": 1000}
-    with sync_playwright() as playwright:
-        try:
-            browser = playwright.chromium.launch()
-        except PlaywrightError:
-            return None
-        try:
+    try:
+        with sync_playwright() as playwright, smoke_browser(playwright, session, evidence) as browser:
             context = browser.new_context(
                 viewport=viewport, record_video_dir=str(evidence), record_video_size=viewport
             )
             page = context.new_page()
-            page.goto(desktop_url, wait_until="load")
+            page.goto(session.desktop_url, wait_until="load")
             canvas = page.locator("canvas").first
             canvas.wait_for(state="visible", timeout=60_000)
             page.wait_for_timeout(4_000)
@@ -373,8 +371,9 @@ def capture_desktop(desktop_url: str, evidence: Path) -> dict[str, object] | Non
             video = page.video
             context.close()  # the recording is finalized by closing the context
             if video is not None:
-                Path(video.path()).rename(evidence / "desktop.webm")
+                video.save_as(str(evidence / "desktop.webm"))
+                video.delete()
                 pixel_facts["video"] = "desktop.webm"
             return pixel_facts
-        finally:
-            browser.close()
+    except PlaywrightError:
+        return None

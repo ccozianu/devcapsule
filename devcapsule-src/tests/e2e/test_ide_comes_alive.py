@@ -51,7 +51,7 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
         # 2. The IDE owns a top-level window on the capsule's own display.
         window = wait_for_ide_window(session)
         # 3. Optional pixel evidence: the desktop renders more than a bare desktop.
-        pixels = capture_desktop(session.desktop_url, evidence)
+        pixels = capture_desktop(session, evidence)
         if os.environ.get("DEVCAPSULE_SMOKE_DISPLAY") == "1":
             assert pixels is not None, "Required Playwright browser evidence is unavailable"
         if pixels is not None:
@@ -93,7 +93,7 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
                                   session.container + "-relaunch") as resumed:
                     assert desktop_page_answers(resumed.desktop_url) == 200
                     resumed_window = wait_for_ide_window(resumed)
-                    pixels = capture_desktop(resumed.desktop_url, evidence / "relaunch")
+                    pixels = capture_desktop(resumed, evidence / "relaunch")
                     assert pixels is not None
                     after = editor_font_size(resumed.container)
                     assert after == before
