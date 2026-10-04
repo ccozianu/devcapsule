@@ -1030,7 +1030,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     },
     edges=(
         _VerifiedEdge("eclipse", "2026-09-R", _BASE_FAMILY_UBUNTU_24_04,
-                      "provisional: owner-directed Eclipse Java package; noVNC saved-edit acceptance pending"),
+                      "Codex/gpt-6-astra noVNC saved-edit smoke passed on v0.2.12-rc5; 2026-10-04 run 20261004T090121Z-ea0a5b; child Playwright browser, WebKitGTK and persistent home configuration verified"),
         _VerifiedEdge("dotnet-sdk", "10.0.401", _BASE_FAMILY_UBUNTU_24_04,
                       "SDK 10.0.401 built and ran a net10.0 console app as the capsule user on v0.2.12-rc5; 2026-10-04 run 20261004T081836Z-932fc8"),
         _VerifiedEdge("rider", "2026.2.3.1", _BASE_FAMILY_UBUNTU_24_04,
