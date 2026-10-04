@@ -1,5 +1,5 @@
 who: Costin Cozianu
 branch: ws-maintenance/post-0.2.15
-slice: 0.2.16 maintenance plate: triage, then the in-capsule project-command fix
-since: 2026-10-03T23:44:24+00:00
-expires: 2026-10-04T11:44:24+00:00
+slice: 0.2.16 bug triage with the owner
+since: 2026-10-04T08:09:45+00:00
+expires: 2026-10-04T20:09:45+00:00
