@@ -94,7 +94,7 @@ absent. The defect is closed by that validation.
 
 ![IntelliJ after relaunch with both saved markers](assets/2026-10-04-intellij-relaunch.png)
 
-The retained final screenshot is also human-reviewed: it shows the working
+The implementing agent also reviewed the retained final screenshot: it shows the working
 editor with both markers. The script-launcher and Java-options notifications
 are visible; neither prevented the tested interaction.
 
