@@ -29,6 +29,19 @@ No release or website publishing.
 
 ## Current State
 
+- Owner follow-up: recovered the host launch using an already-built executable
+  in the shared `dist` folder, then directed the lessons toward a 0.3 release.
+  Exact executable identity remains unknown. This recovery does not validate
+  the separate released-launcher rollback path or constitute a blanket decision
+  to require development builds for every checkout.
+- Sent `2026-10-04-component-catalog-0-3-launcher-bootstrap-lessons.md` to
+  `project-management` by coordination mail: owner’s 0.3 direction, evidence,
+  and agent-proposed compatibility, safe-transition, independent recovery and
+  cold-restart acceptance requirements. Detailed scope, owners, timing and the
+  relationship to 0.2.16 are pending release planning. No version was bumped.
+- This follow-up changes records only; main is current, the prior full gate
+  remains the source/configuration validation, and the content check was rerun.
+
 - New owned bug: [unreleased Playwright breaks checkout launch](../../bugs/devcapsule/2026-10-04-unreleased-playwright-breaks-checkout-launch.md).
   The original component commit also changed the shared need and lock, making
   the checkout depend on a launcher that has not shipped in a final release.
@@ -107,6 +120,11 @@ after that confirmation. Fetch and verify main after the owner reports merge.
   and the successful final-gate follow-up by mail. No unrelated fix was committed.
 
 ## Open Threads
+
+- Project management must disposition the 0.3 planning handoff. A stronger
+  product guarantee is needed beyond the current local compatibility rule;
+  consent/recovery design must align with component-upgrades. The proposed
+  acceptance criteria are recommendations, not an approved full release scope.
 
 - Awaiting the human: compatibility-repair PR merge, host launcher identity
   and confirmation of `project run`. Blog editorial release and existing website

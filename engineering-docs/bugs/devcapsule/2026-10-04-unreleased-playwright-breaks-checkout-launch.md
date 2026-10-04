@@ -80,3 +80,17 @@ source/executable smokes and the documentation contract. Log:
 initially lacked that scratch parent; an alternate `/var/tmp` attempt exhausted
 its 1 GB tmpfs. Recreating the documented scratch directory on the large overlay
 resolved those setup failures. No product-code change was needed.
+
+## Owner recovery and 0.3 planning follow-up
+
+The owner subsequently reported a successful recovery using an already-built
+executable in the shared `dist` folder. Its exact identity is not yet recorded.
+This is a different path from the proposed manifest/lock rollback and does not
+confirm that rollback on the host. The defect stays fixed pending that check.
+
+The owner wants these lessons addressed for a 0.3 release. Component-catalog
+sent `2026-10-04-component-catalog-0-3-launcher-bootstrap-lessons.md` to
+project-management on the coordination branch, with proposed compatibility,
+safe-transition, independent bootstrap/recovery and cold-restart acceptance
+requirements. Scope and sequencing, including the relationship to 0.2.16,
+remain decisions for release planning with the owner.
