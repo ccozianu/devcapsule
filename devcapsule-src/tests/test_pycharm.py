@@ -13,7 +13,6 @@ from devcapsule.components.pycharm import runtime_template as pycharm_runtime_te
 from devcapsule.components.codex import runtime_template as codex_runtime_template
 from devcapsule.components.codium import runtime_template as codium_runtime_template
 from devcapsule.launch.pycharm import (
-    ContainerLifecycle,
     DockerMode,
     IdeConfigMode,
     PycharmRunOptions,
@@ -338,17 +337,11 @@ def test_detached_lifecycle_changes_only_the_docker_process_flags(tmp_path: Path
         runtime_plan_file=tmp_path / "runtime-plan",
     )
 
-    foreground = build_docker_args(config, files, env)
-    detached = build_docker_args(
-        config,
-        files,
-        env,
-        lifecycle=ContainerLifecycle.detached,
-    )
+    args = build_docker_args(config, files, env)
 
-    assert foreground[:2] == ["--rm", "-i"]
-    assert detached[0] == "--detach"
-    assert foreground[2:] == detached[1:]
+    # The launcher owns exactly one lifecycle: attached, removed on exit.
+    assert args[:2] == ["--rm", "-i"]
+    assert "--detach" not in args and "-d" not in args
 
 
 def test_jcef_disclosure_is_printed_for_component_policy(

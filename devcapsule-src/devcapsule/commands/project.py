@@ -89,6 +89,7 @@ from devcapsule.recursive_orchestrator import (
 from devcapsule.recursive_successor import (
     RecursiveSuccessorError,
     inspect_successor,
+    SuccessorResult,
     launch_successor,
 )
 from devcapsule.resolution_matrix import compatibility_report, known_base_image
@@ -923,14 +924,21 @@ class RecursiveLaunchSuccessorCommand(Command):
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         root = _recursive_project_root(_project_context(context))
+
+        def report(result: SuccessorResult) -> None:
+            # Printed once the successor runs and its inspection passed; the
+            # command then stays attached until the container exits, like
+            # `project run`. The successor's own output is in the run's log.
+            print(result.to_json() if arguments.as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True), flush=True)
+
         try:
             result = launch_successor(
-                root, arguments.run_id, runtime_plan_path=arguments.runtime_plan
+                root, arguments.run_id, runtime_plan_path=arguments.runtime_plan, on_running=report
             )
         except RecursiveSuccessorError as exc:
             raise ProjectConfigurationError(str(exc)) from exc
-        print(result.to_json() if arguments.as_json else json.dumps(result.to_mapping(), indent=2, sort_keys=True))
-        return 0
+        report(result)
+        return 0 if result.exit_code == 0 else (result.exit_code or 1)
 
 
 class RecursiveInspectSuccessorCommand(Command):

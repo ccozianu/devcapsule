@@ -10,12 +10,11 @@ from pathlib import Path
 import re
 import subprocess
 import time
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from devcapsule.build_info import current_build_info
 from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions
 from devcapsule.launch.pycharm._launcher import (
-    ContainerLifecycle,
     PycharmRunError,
     build_docker_args,
     build_run_config,
@@ -62,6 +61,9 @@ OWNER_MARKER = ".devcapsule-e2e-owner.json"
 MILESTONE_MANIFEST = "milestone-manifest.json"
 EXPECTED_PLAN = "expected-plan.json"
 SUCCESSOR_ROLE = "successor"
+# Files an attached launch leaves in the run directory beside the manifest.
+CONTAINER_ID_FILE = "container.id"
+SUCCESSOR_LOG = "successor.log"
 RUN_ID_ENV = "DEVCAPSULE_RUN_ID"
 RUN_ID_PATTERN = re.compile(r"[0-9a-f]{16,64}")
 
@@ -79,9 +81,12 @@ class SuccessorResult:
     state: str
     checks: Mapping[str, str]
     # The contained display's per-run URL, or None under host X11 passthrough.
-    # The detached launch has no foreground watcher to open it, so it is
-    # reported here for the operator to open.
+    # The launcher's own terminal shows the successor's log, not a desktop, so
+    # the URL is reported here for the operator to open.
     display_url: str | None = None
+    # The container's exit status once the attached launch has ended; None
+    # while it runs.
+    exit_code: int | None = None
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -92,6 +97,7 @@ class SuccessorResult:
             "image_id": self.image_id,
             "display_url": self.display_url,
             "state": self.state,
+            "exit_code": self.exit_code,
             "checks": dict(self.checks),
         }
 
@@ -111,8 +117,20 @@ def launch_successor(
     runtime_plan_path: Path = RUNTIME_PLAN_PATH,
     environ: Mapping[str, str] | None = None,
     workspace_root: Path = WORKSPACE_ROOT,
+    on_running: Callable[[SuccessorResult], None] | None = None,
+    container_id_timeout: float = 120.0,
 ) -> SuccessorResult:
-    """Launch one retained successor using the normal resolved-project Docker planner."""
+    """Launch one retained successor using the normal resolved-project Docker planner.
+
+    The launch is the ordinary attached one: this call returns only when the
+    successor container has exited, exactly as ``project run`` returns when
+    a developer's capsule ends. Once the container runs and its inspection
+    passes, ``on_running`` receives the running report (the command prints
+    it), the run manifest records ``stage-6-running``, and the call blocks.
+    On exit the manifest records ``stage-6-exited`` with the exit code,
+    Docker has already removed the container (``--rm``), and the successor's
+    own output is retained in ``successor.log`` under the run directory.
+    """
 
     env = dict(os.environ if environ is None else environ)
     run_root, manifest = _load_owned_run(workspace_root, run_id)
@@ -165,13 +183,9 @@ def launch_successor(
     files = prepare_temp_runtime_files(config, launch_env)
     launched = False
     container_id: str | None = None
+    process: subprocess.Popen[bytes] | None = None
     try:
-        args = build_docker_args(
-            config,
-            files,
-            launch_env,
-            lifecycle=ContainerLifecycle.detached,
-        )
+        args = build_docker_args(config, files, launch_env)
         context = _launch_context(report, config.persistent_home, args)
         host_args = _translate_bind_sources(args, context)
         if files.sudoers_file is not None:
@@ -192,22 +206,23 @@ def launch_successor(
                 },
             },
         )
-        completed = subprocess.run(
-            ["docker", "run", *host_args, config.image],
-            check=False,
-            env=launch_env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        if completed.returncode != 0:
-            detail = completed.stderr.strip()
-            raise RecursiveSuccessorError(
-                "detached successor launch failed" + (f": {detail}" if detail else "")
+        # Docker writes the container ID to the cidfile as soon as the container
+        # is created, which is how an attached launch learns the identity it
+        # must inspect while it runs.
+        cidfile = run_root / CONTAINER_ID_FILE
+        cidfile.unlink(missing_ok=True)
+        successor_log = run_root / SUCCESSOR_LOG
+        with successor_log.open("ab") as log:
+            process = subprocess.Popen(
+                ["docker", "run", "--cidfile", str(cidfile), *host_args, config.image],
+                env=launch_env,
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
             )
-        container_id = completed.stdout.strip()
-        if re.fullmatch(r"[0-9a-f]{64}", container_id) is None:
-            raise RecursiveSuccessorError("Docker did not return one exact successor container ID")
+        container_id = _wait_for_container_id(
+            process, cidfile, successor_log, timeout=container_id_timeout
+        )
         inspection = _inspect_container(container_id, launch_env)
         checks = _validate_inspection(
             inspection,
@@ -216,26 +231,22 @@ def launch_successor(
             source_revision=source_revision,
         )
         launched = True
-        _write_manifest(
-            run_root,
-            {
-                **manifest,
-                "state": "stage-6-running",
-                "launch": {
-                    "source_revision": source_revision,
-                    "container_id": container_id,
-                    "container_name": name,
-                    "image_id": realized.image.identity,
-                    "formation_identity": realized.image.labels.get(
-                        "devcapsule.materialization.identity", ""
-                    ),
-                    "expected_plan_digest": plan.digest(),
-                    "role": SUCCESSOR_ROLE,
-                    "staging_retained": True,
-                },
-            },
-        )
-        return SuccessorResult(
+        launch_record = {
+            "source_revision": source_revision,
+            "container_id": container_id,
+            "container_name": name,
+            "image_id": realized.image.identity,
+            "formation_identity": realized.image.labels.get(
+                "devcapsule.materialization.identity", ""
+            ),
+            "expected_plan_digest": plan.digest(),
+            "role": SUCCESSOR_ROLE,
+            "lifecycle": "attached",
+            "successor_log": SUCCESSOR_LOG,
+            "staging_retained": True,
+        }
+        _write_manifest(run_root, {**manifest, "state": "stage-6-running", "launch": launch_record})
+        running = SuccessorResult(
             run_id,
             container_id,
             name,
@@ -244,10 +255,43 @@ def launch_successor(
             checks,
             successor_display_url,
         )
+        if on_running is not None:
+            on_running(running)
+        exit_code = process.wait()
+        _write_manifest(
+            run_root,
+            {
+                **manifest,
+                "state": "stage-6-exited",
+                "launch": {**launch_record, "exit_code": exit_code, "container_removed": True},
+            },
+        )
+        return SuccessorResult(
+            run_id,
+            container_id,
+            name,
+            realized.image.identity,
+            "exited",
+            checks,
+            successor_display_url,
+            exit_code,
+        )
     except (HostContextError, OSError, PycharmRunError) as exc:
         raise RecursiveSuccessorError(str(exc)) from exc
     finally:
-        if not launched:
+        if launched:
+            # The container has exited, or is being stopped by the same signal
+            # that interrupted the wait; the bind-mounted identity files are
+            # no longer needed. The staging directory, manifest and log stay
+            # as the run's evidence.
+            cleanup_temp_runtime_files(files)
+        else:
+            if process is not None and process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=30.0)
+                except subprocess.TimeoutExpired:
+                    process.kill()
             if container_id is not None and re.fullmatch(r"[0-9a-f]{64}", container_id):
                 remove_successor_container(run_id, environ=launch_env)
             cleanup_temp_runtime_files(files)
@@ -255,6 +299,49 @@ def launch_successor(
                 staging.rmdir()
             except OSError:
                 pass
+
+
+def _wait_for_container_id(
+    process: "subprocess.Popen[bytes]",
+    cidfile: Path,
+    successor_log: Path,
+    *,
+    timeout: float,
+    poll_interval: float = 0.2,
+) -> str:
+    """The successor's container ID, read from Docker's cidfile once it exists.
+
+    Fails if the attached ``docker run`` exits first, quoting the end of the
+    successor log, or if the ID does not appear within ``timeout`` seconds.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            candidate = cidfile.read_text(encoding="utf-8").strip()
+        except OSError:
+            candidate = ""
+        if re.fullmatch(r"[0-9a-f]{64}", candidate):
+            return candidate
+        if process.poll() is not None:
+            raise RecursiveSuccessorError(
+                f"successor exited with status {process.returncode} before reporting its container ID"
+                + _log_tail(successor_log)
+            )
+        if time.monotonic() >= deadline:
+            raise RecursiveSuccessorError(
+                f"successor did not report its container ID within {timeout:g} seconds"
+                + _log_tail(successor_log)
+            )
+        time.sleep(poll_interval)
+
+
+def _log_tail(path: Path, lines: int = 20) -> str:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    kept = text.splitlines()[-lines:]
+    return (":\n" + "\n".join(kept)) if kept else ""
 
 
 def successor_container_name(run_id: str) -> str:
@@ -305,6 +392,11 @@ def inspect_successor(
     launch = manifest.get("launch")
     if not isinstance(launch, dict):
         raise RecursiveSuccessorError("run manifest has no successor launch evidence")
+    if manifest.get("state") == "stage-6-exited":
+        raise RecursiveSuccessorError(
+            f"successor has exited with status {launch.get('exit_code')} and Docker removed it; "
+            "launch it again to inspect it"
+        )
     required = (
         "container_id",
         "container_name",
