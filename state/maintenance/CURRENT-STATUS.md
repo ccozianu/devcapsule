@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-04; resumed for the 0.2.16 maintenance plate: finish the triage, the in-capsule project-command fix, named build contexts, the first-session UX bugs, release notes and gate tooling; 0.2.15 published and reopened
+State: paused 2026-10-04, mid-triage; the 0.2.16 maintenance plate: finish the triage (five owner decisions listed under Open Threads), the in-capsule project-command fix, named build contexts, the first-session UX bugs, release notes and gate tooling; 0.2.15 published and reopened
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -110,17 +110,41 @@ ignored in this repository and 0.2.16 documents the rule.
 
 Decided so far:
 
+- 2026-09-26 init discards answers: closed 2026-10-04 on the owner's
+  heuristic confirmation against released 0.2.15, with the RC0 and RC1
+  downloaded-candidate proofs; 0.2.15's one blocking record is done.
+- 2026-08-03 JetBrains Runtime alpha compositing: retired 2026-10-04, an
+  observation with no defect in two months, on a display connection the
+  contained desktop has since replaced.
+- 2026-08-03 PyCharm native launcher: confirmed, target 0.9, with the
+  triage findings in the record (no recorded reason for the script; one
+  environment variable couples the runtime to it; the binary honours the
+  same); a minimal change plus the IDE smoke test as the end-to-end proof.
+- 2026-08-15 detached successors: fixed 2026-10-04, target 0.2.16. The
+  detached lifecycle had no reason to exist; `launch-successor` is now the
+  ordinary attached launch with a cidfile, and the lifecycle enum is gone.
+  Unit suite (1093 passed), typecheck and the gate's test session are green.
+  The new recursive end-to-end test is blocked in this capsule by a stale
+  capsule-local resolution that the in-capsule guard will not let anyone
+  refresh; that is the next item's territory.
+- 2026-10-04 recursive successor cannot refresh its capsule-local
+  resolution: filed at the owner's direction, confirmed, minor, 0.2.16, with
+  three fix options and option A recommended; waits on the owner's choice.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
 
-Still to decide: ecosystem-aware project bootstrap (2026-08-03), JetBrains
-runtime slow under X11 alpha compositing (2026-08-03), JetBrains native
-launcher (2026-08-03), detached successors not cleaned up (2026-08-15),
-installed IDE not reused by Docker (2026-09-24, the root cause behind the
-named-build-contexts candidate), project group guard (2026-09-26, already
-retargeted to 0.2.16 on project-management's branch with the in-capsule
-inspection record, pending that branch's merge).
+Still to decide, as of the pause of 2026-10-04 (second session):
+ecosystem-aware project bootstrap (2026-08-03; fails the owner's test, so
+it is a feature: proposed to leave the queue by mail to project-management
+for the V1 scope ledger), the recursive successor's stale resolution
+(2026-10-04; option A, B or C), installed IDE not reused by Docker
+(2026-09-24; design review with the owner, the root cause behind the
+named-build-contexts candidate), and the intake item from component-catalog
+on the host-network run-once launch (see Open Threads). The project group
+guard (2026-09-26) and in-capsule configuration inspection (2026-09-24) are
+owner maintenance, target 0.2.16, by the owner's decisions of 2026-10-01;
+they are the in-capsule project-command fix on the plate.
 
 Owner's version expectation, recorded here until the version scheme in
 `WORKFLOW-LOCAL.md` is amended by project-management: 0.2.x continues; a
@@ -137,6 +161,13 @@ checkpoint trigger, integration is a merge commit) are read and apply from
 now: this branch merges `main` in, never rebases, and its deliverables
 land as merge commits. The other checkout has claimed `component-catalog`
 for IntelliJ; this one takes the maintenance plate.
+
+### Paused 2026-10-04, second session, mid-triage
+
+Main merged in at `5e9cd94` (`581ffe2`); PR #164 had already integrated
+this branch's tip, so the merge brought only component-catalog's IntelliJ
+and Playwright work. Component-catalog's mail on the host-network run-once
+launch was taken into intake and committed. No source was changed.
 
 ### Paused 2026-10-03, mid-triage (historical)
 
@@ -828,6 +859,26 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Pause of 2026-10-04 (second session). Awaiting the owner, in triage order:
+  (1) ecosystem bootstrap leaves the bug queue for the V1 scope ledger, yes
+  or no; (2) option A, B or C for the recursive successor's stale
+  capsule-local resolution, A recommended; (3) whether the installed-IDE
+  Docker reuse design review happens in the 0.2.16 plate; (4) the project
+  group guard and in-capsule inspection records are treated as decided for
+  0.2.16 unless the owner objects; (5) the component-catalog intake item.
+- Intake item, host-network run-once launch rejected: component-catalog's
+  diagnosis is incomplete. `_RUN_ONCE_AUTHORIZATIONS` includes `network` on
+  `main` and here; the node exists only on projects whose manifest
+  recommends `host.network.mode` (`authorization_declarations` builds it
+  from `CURATED_HOST_RECOMMENDATIONS`, and `WORKSTATION_CAPABILITY_DEFAULTS`
+  deliberately omits it because raw `--network` was the run-once form,
+  which run help now refuses). This repository recommends it, so the
+  WORKFLOW-LOCAL command works here; the smoke's fresh project does not.
+  Product choice for the owner: make network a universal authorization node,
+  or amend WORKFLOW-LOCAL to say the command presupposes the recommendation
+  (recommended). Undecided; the item stays in intake.
+- The claim on the triage slice was released at this pause.
 
 - Final 0.2.15 publication and download verification are complete.
 - PR #149 is merged and verified; main is reopened at 0.2.16.dev0.
