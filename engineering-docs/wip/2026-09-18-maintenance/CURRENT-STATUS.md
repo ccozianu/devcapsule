@@ -120,6 +120,13 @@ Decided so far:
   triage findings in the record (no recorded reason for the script; one
   environment variable couples the runtime to it; the binary honours the
   same); a minimal change plus the IDE smoke test as the end-to-end proof.
+- 2026-08-15 detached successors: fixed 2026-10-04, target 0.2.16. The
+  detached lifecycle had no reason to exist; `launch-successor` is now the
+  ordinary attached launch with a cidfile, and the lifecycle enum is gone.
+  Unit suite (1093 passed), typecheck and the gate's test session are green.
+  The new recursive end-to-end test is blocked in this capsule by a stale
+  capsule-local resolution that the in-capsule guard will not let anyone
+  refresh; that is the next item's territory.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
