@@ -49,7 +49,8 @@ merge, fetch and verify remote main contains the finished tree.
 
 - Full `nox -s build` passed: 1,150 tests, one existing xfail and xpass, mypy,
   CLI and executable smokes, nine packaging checks and docs contract.
-  Log: `.git/eclipse-final-build.log`. Isolated packaging repeat: nine passed.
+  Logs: `.git/eclipse-final-build.log` and `.git/eclipse-delivery-build.log`
+  (complete final delivery tree). Isolated packaging repeat: nine passed.
 - The saved-edit smoke used the child's Playwright component with a deliberately
   unavailable parent browser path. Both model driver and recognizer used the
   existing Codex/GPT-6 Astra harness. Log: `.git/eclipse-accepted-smoke.log`.
