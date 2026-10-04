@@ -17,6 +17,7 @@ of each; this is what it contains.
 | `/opt/xtras` | durable | Alias of `~/xtras`; [extra tools](../configuration/extra-tools.md) |
 | `~/.claude`, `~/.codex`, `~/.gemini` | durable | Each agent's configuration and sign-in |
 | The IDE's configuration and plugins | durable | Settings, extensions, keymaps |
+| Eclipse's `/ide-workspace` | durable | Workspace preferences, project references and local history; keep source in the project folder |
 | The IDE's log and system directories | state, cache | Reconstructable; caches may be cleared |
 | `~/.cache` | cache | Reconstructable |
 | `/tmp` and the container's own filesystem | temporary | Gone when the container is removed |

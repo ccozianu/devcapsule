@@ -84,6 +84,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Component status service contract and operations](component-status/README.md)
 
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
+- [Eclipse Java component and recorded smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-eclipse-validation.md)
 - [Linux .NET SDK and Rider validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md)
 - [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
 

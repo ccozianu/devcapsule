@@ -42,6 +42,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # deliberate pin advance they are regenerated in the same commit, so any
 # other diff in generated locks is a regression.
 GOLDEN_NEEDS = {
+    "eclipse-browser": ["eclipse-ide", "java", "browser-automation"],
     "pycharm-minimal": ["python", "python-ide"],
     "dogfood": ["antigravity-agent", "browser-automation", "claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"],
     "rider-dotnet": ["dotnet-ide", "browser-automation"],
@@ -107,6 +108,7 @@ def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
         "docker-cli",
         "dotnet",
         "dotnet-ide",
+        "eclipse-ide",
         "frontend-ide",
         "java",
         "java-ide",

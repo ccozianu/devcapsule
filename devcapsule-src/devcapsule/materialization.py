@@ -128,6 +128,13 @@ class SurfaceMaterialization:
 
 
 SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
+    "eclipse": SurfaceMaterialization(
+        component_id="eclipse", family="eclipse",
+        recipe_id="eclipse-local-materialization", recipe_version="3",
+        installation_path="/opt/eclipse",
+        archive_probes=("eclipse", "eclipse.ini", "configuration/config.ini"),
+        requires_variant=True, post_install=(),
+    ),
     "rider": SurfaceMaterialization(
         component_id="rider", family="jetbrains",
         recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
@@ -376,7 +383,7 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     )
     _validated_sha256(artifact.sha256, "Locked component SHA-256")
     ancillary_artifacts: list[LockedArtifactDeclaration] = []
-    for definition in ancillary_definitions:
+    for definition in (_interactive, *ancillary_definitions):
         metadata = _required_mapping(components, definition.id, "components")
         for locked_artifact in definition.locked_artifacts(metadata, platform):
             _validated_sha256(
@@ -473,6 +480,7 @@ def surface_materialization_spec(
     artifact: ArtifactSpec,
     ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...] = (),
     npm_projects: tuple[NpmProject, ...] = (),
+    native_package_directory: Path | None = None,
     platform: str,
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
@@ -519,6 +527,7 @@ def surface_materialization_spec(
                 (profile.installation_path,),
             ),
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
+            *_native_package_components(ancillary_files, native_package_directory),
             *_ancillary_contributions(ancillary_files, npm_projects),
             # The image supplies the alias; the runtime creates its writable
             # target in the persistent home as the capsule user. Never replace
@@ -707,6 +716,7 @@ def ensure_materialized_surface(
                 for index, (acquired, declaration) in enumerate(ancillary_acquisitions)
             )
             npm_projects = _npm_projects(ancillary_files, temporary)
+            native_packages = _prepare_native_packages(ancillary_files, temporary / "native-packages")
             build(
                 surface_materialization_spec(
                     base_reference=base_reference,
@@ -717,6 +727,7 @@ def ensure_materialized_surface(
                     artifact=artifact,
                     ancillary_files=ancillary_files,
                     npm_projects=npm_projects,
+                    native_package_directory=native_packages,
                     platform=platform,
                     recipe_id=recipe_id,
                     recipe_version=recipe_version,
@@ -839,7 +850,7 @@ def _prepare_locked_artifact(
         return destination
     if declaration.artifact_format == "tar-gz-member" and declaration.archive_member is not None:
         return _extract_archive_member(acquired, declaration.archive_member, destination)
-    if declaration.artifact_format == "npm-package":
+    if declaration.artifact_format in {"npm-package", "deb-package"}:
         # The verified tarball travels whole; npm unpacks it inside the build.
         shutil.copyfile(acquired, destination)
         destination.chmod(0o600)
@@ -860,7 +871,7 @@ def _prepare_locked_artifact(
 # already checksummed. The tarballs stay beside the manifest so the recorded
 # package-lock.json keeps describing an install npm could repeat.
 
-ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package", "python-wheel", "zip-directory", "tar-gz-directory")
+ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package", "python-wheel", "zip-directory", "tar-gz-directory", "deb-package")
 # Root-run inside the build; node and npm come from the base image. The cache
 # is pointed at a scratch path and removed in the same step and log files
 # are disabled, so no layer carries npm's working state; scripts are refused
@@ -893,6 +904,7 @@ def _ancillary_contributions(
     files: tuple[tuple[Path, LockedArtifactDeclaration], ...],
     projects: tuple[NpmProject, ...],
 ) -> tuple[ContributionComponent, ...]:
+    files = tuple((path, item) for path, item in files if item.artifact_format != "deb-package")
     contributions = []
     for component_id in sorted({item.component_id for _path, item in files}):
         selected = [(path, item) for path, item in files if item.component_id == component_id]
@@ -920,6 +932,43 @@ def _ancillary_contributions(
             exports,
         ))
     return tuple(contributions)
+
+
+def _native_package_components(
+    files: tuple[tuple[Path, LockedArtifactDeclaration], ...],
+    directory: Path | None,
+) -> tuple[DirectoryComponent | ExecComponent, ...]:
+    """Install checksummed distribution packages in the final image, offline.
+
+    dpkg executes the selected distribution's maintainer scripts, just as apt
+    would. Dependencies must all be pinned or already supplied by the base;
+    missing dependencies fail the build rather than downloading anything.
+    """
+    packages = [(path, item) for path, item in files if item.artifact_format == "deb-package"]
+    if not packages:
+        return ()
+    if directory is None:
+        raise CliError("Native packages must be staged before image construction.")
+    paths = [f"/tmp/devcapsule-native-debs/{item.sha256}.deb" for _path, item in packages]
+    quoted = " ".join(shell_quote(path) for path in paths)
+    return (
+        DirectoryComponent(directory, "/tmp/devcapsule-native-debs"),
+        ExecComponent(("sh", "-ec", f"DEBIAN_FRONTEND=noninteractive dpkg --install {quoted}; rm -f {quoted}")),
+    )
+
+
+def _prepare_native_packages(
+    files: tuple[tuple[Path, LockedArtifactDeclaration], ...], directory: Path,
+) -> Path | None:
+    packages = [(path, item) for path, item in files if item.artifact_format == "deb-package"]
+    if not packages:
+        return None
+    directory.mkdir()
+    for path, item in packages:
+        target = directory / f"{_validated_sha256(item.sha256, 'Native package SHA-256')}.deb"
+        shutil.copyfile(path, target)
+        target.chmod(0o644)
+    return directory
 
 
 def npm_install_step(destination: str) -> tuple[str, ...]:

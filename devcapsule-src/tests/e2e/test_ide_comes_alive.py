@@ -70,6 +70,21 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
         (evidence / "container-identity.txt").write_text(identity.stdout, encoding="utf-8")
         child_digest = command("docker", "exec", session.container, "sha256sum", "/opt/devcapsule/bin/devcapsule.pex").stdout.split()[0]
         assert child_digest == hashlib.sha256(built_pex.read_bytes()).hexdigest(), "Child runtime differs from selected executable"
+        if surface.name == "eclipse":
+            package = command("docker", "exec", "--user", f"{os.getuid()}:{os.getgid()}",
+                              session.container, "python3", "-c",
+                              "import json, os; from pathlib import Path; "
+                              "root=Path('/opt/eclipse'); "
+                              "print(json.dumps({'ini':(root/'eclipse.ini').read_text(), "
+                              "'jdt':[p.name for p in (root/'plugins').glob('org.eclipse.jdt.core_*.jar')], "
+                              "'installation_writable':os.access(root/'configuration',os.W_OK), "
+                              "'user_configurations':[str(p) for p in Path.home().glob('.eclipse/**/configuration')]}))")
+            (evidence / "eclipse-package.json").write_text(package.stdout, encoding="utf-8")
+            payload = json.loads(package.stdout)
+            assert "org.eclipse.epp.package.java.product" in payload["ini"]
+            assert payload["jdt"], "Java Development Tools are missing from the package"
+            assert not payload["installation_writable"]
+            assert payload["user_configurations"], "Eclipse did not create its configuration in persistent home"
         if surface.name == "rider":
             sdk = command("docker", "exec", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(session.project_path),
                           session.container, "dotnet", "--info")
@@ -96,6 +111,10 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
             from tests.e2e.visual_smoke import run_visual_smoke
 
             result = run_visual_smoke(session, evidence)
+            if surface.name == "eclipse":
+                log = command("docker", "exec", session.container, "cat", "/ide-workspace/.metadata/.log")
+                (evidence / "eclipse-workspace.log").write_text(log.stdout, encoding="utf-8")
+                assert "no underlying browser available" not in log.stdout
             if os.environ.get("DEVCAPSULE_SMOKE_RELAUNCH") == "1":
                 assert surface.name in {"intellij", "rider"}
                 before = editor_font_size(session.container)

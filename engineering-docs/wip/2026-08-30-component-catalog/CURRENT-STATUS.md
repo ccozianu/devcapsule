@@ -4,9 +4,9 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-04 for owner PR integration; .NET SDK and Rider components implemented; SDK build/run and noVNC startup passed; licensed editor interaction remains unverified
+State: paused 2026-10-04 for owner PR integration; Eclipse Java Developers component and recorded noVNC saved-edit smoke passed
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@963fb34f12db
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
 
 Branch association: `ws-component-catalog/intellij-idea`
 
@@ -19,65 +19,63 @@ Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`, `
 ## Goal And Scope
 
 Maintain the optional IDE/tool component catalog and shared noVNC smoke harness.
-The owner requested autonomous Linux .NET SDK-first, Rider-second delivery on
-2026-10-04, continuing the IntelliJ work. This slice does not cut a release.
+The owner requested Eclipse IDE for Java Developers on 2026-10-04, following
+IntelliJ/Rider, with a recorded Playwright smoke. No release or website publishing.
 
 ## Current State
 
-- `dotnet` adds SDK 10.0.401; `dotnet-ide` selects Rider 2026.2.3.1 plus the SDK.
-  Vendor archives were verified in full and are pinned by SHA-256. The SDK's
-  SHA-512 also matched Microsoft metadata. Stable releases exclude .NET 11 RC.
-- The complete SDK installs under `/opt/dotnet`, available on PATH with
-  DOTNET_ROOT set and telemetry off. Rider uses independent `rider/*` state
-  slots and the shared JetBrains adapter/recovery. No host credentials enter.
-- The SDK built and ran a package-free C# fixture as the normal capsule user.
-  The Rider noVNC startup smoke passed with the child Playwright component.
-- The stronger AI saved-edit test correctly failed at mandatory JetBrains
-  activation. No sign-in, trial or purchase was performed. Licensed editing,
-  Rider's SDK detection and editor-state persistence are not claimed validated.
-- Implementation is committed as `4df3e4f`; validation details and a sanitized
-  screenshot are in the linked permanent record. The final delivery gate passed.
-- The earlier IntelliJ/Playwright slice has landed: synchronization fast-forwarded
-  628c038 to main 5e9cd94. A fresh SSH fetch before delivery found zero commits
-  behind main. Mailbox/intake are empty; no open component-catalog bugs.
+- `eclipse-ide` selects Eclipse Java Developers 2026-09 R; `java-ide` remains
+  IntelliJ. The whole package and native WebKitGTK dependencies are pinned and
+  verified; native packages install offline with build networking disabled.
+- Runtime uses the ordinary capsule user, a read-only install, persistent home
+  configuration and the separate `eclipse/workspace` state slot. The component
+  discovery adapter reads stable Java package availability, without auto-upgrades.
+- Accepted smoke `20261004T090121Z-ea0a5b` saved a marker through noVNC/Playwright,
+  independently checked it on disk and visually recognized the editor. Original
+  movie and final screenshot are committed with the permanent record below.
+- Implementation: `370abad`, native-library/harness correction `f926036`.
+  The accepted executable identifies `f926036` and matches the child checksum.
+- Entry synchronization fast-forwarded to main `a3d88e3`, which includes Rider
+  through PR #165. Latest fetch: zero commits behind main. No open owned bugs,
+  waiting mail or intake. No workflow declaration/version was changed.
 
 ## Planned Next Step
 
-The owner opens and merges the PR through the GitHub UI, titled **Add .NET SDK and
-JetBrains Rider components with noVNC startup smoke**. After the owner reports
-merge, fetch and verify remote main contains the finished tree. An activated
-Rider session is needed only for additional saved-edit/persistence acceptance.
+The owner opens and merges the PR through the GitHub UI, titled **Add Eclipse
+IDE for Java Developers with recorded noVNC smoke**. After the owner reports
+merge, fetch and verify remote main contains the finished tree.
 
 ## Validation And External State
 
-- Full `nox -s build` passed for implementation: 1,138 tests, existing one xfailed
-  and one xpassed result, mypy, executable smokes, nine packaging tests and docs
-  contract. Final gate also passed with the same counts; logs: `.git/rider-build.log`
-  and `.git/rider-final-build.log`.
-- `20261004T081323Z-95cbac`: SDK and startup passed; Codex/Astra saved-edit failed
-  explicitly at licensing, with `marker_saved: false`.
-- `20261004T081836Z-932fc8`: startup/SDK smoke passed, child component browser,
-  parent browser deliberately unavailable. Log: `.git/rider-startup-smoke.log`.
-- Both owned containers, workspaces and checkout records were verified removed.
-  Vendor artifacts and image cache remain reusable. Raw evidence stays under
-  `devcapsule-src/dist/e2e-evidence/ide-smoke/`; no desktop tokens are published.
-- Scratch under `/opt/xtras/rider-work`; final gate uses `/opt/devcapsule-gate`.
-  The website gitlink is unchanged. No release or website publication performed.
+- Full `nox -s build` passed: 1,150 tests, one existing xfail and xpass, mypy,
+  CLI and executable smokes, nine packaging checks and docs contract.
+  Logs: `.git/eclipse-final-build.log` and `.git/eclipse-delivery-build.log`
+  (complete final delivery tree). Isolated packaging repeat: nine passed.
+- The saved-edit smoke used the child's Playwright component with a deliberately
+  unavailable parent browser path. Both model driver and recognizer used the
+  existing Codex/GPT-6 Astra harness. Log: `.git/eclipse-accepted-smoke.log`.
+- Owned test containers, workspaces and checkout records are removed. Acquired
+  artifacts and materialized images remain reusable caches. Scratch and the
+  exact accepted executable remain under `/opt/xtras/eclipse-work`.
+- Raw evidence stays in `devcapsule-src/dist/e2e-evidence/ide-smoke/`; desktop
+  access tokens are not published. The movie is retained as original WebM.
+- Two packaging checks transiently read local editable metadata instead of the
+  release executable's wheel; maintenance received reproduction, proposed fix
+  and the successful final-gate follow-up by mail. No unrelated fix was committed.
 
 ## Open Threads
 
-- Awaiting the human: owner PR merge; JetBrains activation if deeper Rider
-  editor acceptance is desired. Startup smoke is complete without activation.
-- Previous blog editorial release and native video publication remain owner/
-  website follow-ups; the website already received the recorded intake item.
-- No unresolved implementation choice. Optional .NET workloads and additional
-  SDK versions were deliberately excluded; the whole pinned SDK is installed.
-- Raw videos/transcripts remain local rather than committed. No verbatim session
-  record was requested. Existing `.git/recovery/` files remain untouched.
-- Legacy migration/outbox housekeeping and the earlier network-authorization
-  mismatch remain with their recorded owners; see the historical handoff.
+- Awaiting the human: owner PR merge. Previous IntelliJ blog editorial release
+  and website video publication remain the existing owner/website follow-ups.
+- No unresolved implementation choice. Java build/debug, Maven/Gradle builds,
+  Marketplace installation and restart preference acceptance are not claimed.
+- Rider licensed-editor acceptance remains unverified as recorded in its report.
+- Raw transcripts stay local. No verbatim session record was requested. Existing
+  `.git/recovery/` files and the website gitlink remain untouched.
 
 ## Workstream Document Index
+
+- [Eclipse package, native libraries, movie and validation](../../implementation-notes/devcapsule/2026-10-04-eclipse-validation.md) — current slice acceptance
 
 - [SDK/Rider provenance, commands, evidence and limitations](../../implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md) — acceptance and resumption
 - [Repeatable E2E commands](../../development/e2e-tests.md#rider-and-net-sdk-smoke) — run the smoke

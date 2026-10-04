@@ -82,6 +82,20 @@ to installing `xprop` in every image.
   the browser session.
 - The release runbook says which of these the acceptance record cites.
 
+## Eclipse Java smoke
+
+```sh
+.venv/bin/python -m nox -s ide-smoke -- --agent --surface eclipse --component-browser
+```
+
+The shared scenario launches Eclipse IDE for Java Developers in a fresh
+`eclipse-ide` project, uses the child's Playwright component to control noVNC,
+opens `smoke.txt` in the editor, saves a unique marker and visually recognizes
+the result. The test independently reads the saved file. Evidence includes the
+original `eclipse/agent-desktop.webm` movie and chronological PNG frames.
+Use `--display` instead of `--agent` for startup/window/pixel evidence only.
+The JetBrains-specific `--relaunch` preference check does not apply to Eclipse.
+
 ## Rider and .NET SDK smoke
 
 ```sh
