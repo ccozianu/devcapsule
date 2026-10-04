@@ -6,7 +6,7 @@ Start date: 2026-08-30
 
 State: paused 2026-10-04 for owner PR integration and host launch verification; shared-checkout compatibility restored, local rule and regression guards added
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@d008030481fe
 
 Branch association: `ws-component-catalog/intellij-idea`
 
