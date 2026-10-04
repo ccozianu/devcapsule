@@ -8,6 +8,7 @@ from typing import Any, Callable
 import pytest
 
 from devcapsule.recursive_successor import (
+    _wait_for_container_id,
     EXPECTED_PLAN,
     MILESTONE_MANIFEST,
     OWNER_MARKER,
@@ -335,3 +336,46 @@ def test_successor_result_reports_the_contained_display_url() -> None:
     result = SuccessorResult("a" * 16, "b" * 64, "devcapsule-e2e-successor", "sha256:" + "c" * 64, "running", {}, "http://127.0.0.1:40000/vnc.html?x")
     assert result.to_mapping()["display_url"] == "http://127.0.0.1:40000/vnc.html?x"
     assert SuccessorResult("a" * 16, "b" * 64, "n", "i", "running", {}).to_mapping()["display_url"] is None
+
+
+class _FakeProcess:
+    """A stand-in for the attached ``docker run`` process."""
+
+    def __init__(self, returncode: int | None) -> None:
+        self.returncode = returncode
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+
+def test_container_id_is_read_from_the_cidfile_while_the_launch_runs(tmp_path: Path) -> None:
+    cidfile = tmp_path / "container.id"
+    cidfile.write_text(CONTAINER_ID + "\n", encoding="utf-8")
+
+    assert _wait_for_container_id(_FakeProcess(None), cidfile, tmp_path / "successor.log", timeout=1.0) == CONTAINER_ID  # type: ignore[arg-type]
+
+
+def test_a_launch_that_exits_before_reporting_its_id_fails_with_the_log_tail(tmp_path: Path) -> None:
+    log = tmp_path / "successor.log"
+    log.write_text("docker: Error response from daemon: no such image\n", encoding="utf-8")
+
+    with pytest.raises(RecursiveSuccessorError, match="exited with status 125") as failure:
+        _wait_for_container_id(_FakeProcess(125), tmp_path / "container.id", log, timeout=1.0)  # type: ignore[arg-type]
+    assert "no such image" in str(failure.value)
+
+
+def test_an_id_that_never_appears_times_out(tmp_path: Path) -> None:
+    with pytest.raises(RecursiveSuccessorError, match="did not report its container ID"):
+        _wait_for_container_id(_FakeProcess(None), tmp_path / "container.id", tmp_path / "log", timeout=0.3, poll_interval=0.05)  # type: ignore[arg-type]
+
+
+def test_an_exited_successor_is_reported_rather_than_inspected(retained_run: Path, fake_docker: Any) -> None:
+    fake_docker()
+    manifest_path = retained_run / RUN_ID / MILESTONE_MANIFEST
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["state"] = "stage-6-exited"
+    manifest["launch"]["exit_code"] = 0
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(RecursiveSuccessorError, match="has exited with status 0"):
+        inspect_successor(RUN_ID, environ={}, workspace_root=retained_run)

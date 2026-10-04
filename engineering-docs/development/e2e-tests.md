@@ -37,6 +37,7 @@ packages, for hosts whose bridge network has no DNS.
 | `test_built_base.py` | `e2e`, `base_build_e2e` | The full base built by the selected release's own CLI has the tools and no embedded runtime |
 | `test_contributor_bootstrap.py` | `e2e`, `contributor_e2e` | A first-time contributor bootstraps in a disposable base, from a host or from inside a capsule |
 | `test_recursive_local_clone.py` | `e2e`, `recursive_e2e` | The recursive E2E local-clone protocol, from a dogfood capsule |
+| `test_recursive_successor_attached_launch.py` | `e2e`, `recursive_e2e` | `launch-successor` is the ordinary attached launch: it stays attached while the successor runs, the independent inspection passes meanwhile, and stopping the container ends the command with Docker having removed it and the run directory holding the log and manifest |
 | `test_ide_comes_alive.py` | `e2e`, `ide_smoke` | Each IDE surface comes alive in a fresh project: the desktop URL answers, an X11 window of the IDE's class exists on the capsule's display; optionally a screenshot and a recording |
 
 ## Drivers and helpers

@@ -1,9 +1,10 @@
 ---
-status: reported
+status: retired
 severity: minor
 target: none
 owner: maintenance
 opened: 2026-08-03
+closed: 2026-10-04
 requirements: [R-ENV-001, R-DEV-001]
 ---
 
@@ -69,3 +70,16 @@ or produces a visible regression.
 
 Owner ruling during 0.2.14 acceptance: deferred beyond 0.2.14 and marked
 minor; no functional failure was reported on any 0.2.14 candidate.
+
+## Retired, 2026-10-04
+
+Owner ruling in the 0.2.16 triage. The record holds an observation, not a
+defect: JetBrains Runtime printed that it detected slow X11 and reduced
+image compositing, and in two months no rendering defect, crash or
+unacceptable latency was reported on any launch, candidate or release. By
+the bug-or-feature test of the information model, no requirement is
+threatened and no promised behavior is wrong, so it does not belong in the
+bug queue; and since 0.2.12 the IDE draws on the capsule's contained
+display, a different X11 connection from the one the runtime measured.
+Reopen only if a rendering defect or a measured latency problem is
+reported on the contained display, with the warning present.

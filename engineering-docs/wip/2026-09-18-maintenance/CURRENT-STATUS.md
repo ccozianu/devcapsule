@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27; 0.2.15 published and verified; 0.2.16.dev0 reopening validated, awaiting owner UI merge
+State: active 2026-10-04; resumed for the 0.2.16 maintenance plate: finish the triage, the in-capsule project-command fix, named build contexts, the first-session UX bugs, release notes and gate tooling; 0.2.15 published and reopened
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
 Integration target: `main`
 
@@ -23,6 +23,15 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+Close-out PR #149 is merged at main `6980b60`. SSH fetch verified its tree
+matches the delivered 0f6578d exactly and all three version copies read
+0.2.16.dev0. This checkout fast-forwarded to main before this records-only
+pause. No build rerun is needed: the integrated tree is the validated tree.
+The owner now wants to dogfood the actual released 0.2.15 before judging
+its everyday quality. Release verification and prior acceptance stand;
+ongoing dogfooding feedback is pending, with no further work requested.
+
 
 **0.2.15 is published and verified.** The owner merged the promotion; SSH
 fetch found PR #148 and PR #146 at main 82a1b5d, with exactly the tested
@@ -88,20 +97,92 @@ Owner subsequently agreed to RC0 after the agent slice, with xtras and
 project info in the next candidate. See the current evidence and next step
 above; the original fix-only gate is historical.
 
+## Resumed 2026-10-03: 0.2.16 Bug Triage
+
+Resumed at owner direction for candidate C9 of project-management's 0.2.16
+proposal: triage the untargeted maintenance bugs with the owner so severity
+and target mean something before the cut. Synchronized with `main` at
+`3038c48` by merge (`b2fc861`); one registry-row conflict resolved by
+keeping `main`'s project-management row and this workstream's own row.
+Three `.idea/` files that `main` tracks were set aside in the session
+scratchpad, not committed; the owner ruled on 2026-10-01 that `.idea/` is
+ignored in this repository and 0.2.16 documents the rule.
+
+Decided so far:
+
+- 2026-09-26 init discards answers: closed 2026-10-04 on the owner's
+  heuristic confirmation against released 0.2.15, with the RC0 and RC1
+  downloaded-candidate proofs; 0.2.15's one blocking record is done.
+- 2026-08-03 JetBrains Runtime alpha compositing: retired 2026-10-04, an
+  observation with no defect in two months, on a display connection the
+  contained desktop has since replaced.
+- 2026-08-03 PyCharm native launcher: confirmed, target 0.9, with the
+  triage findings in the record (no recorded reason for the script; one
+  environment variable couples the runtime to it; the binary honours the
+  same); a minimal change plus the IDE smoke test as the end-to-end proof.
+- 2026-08-15 detached successors: fixed 2026-10-04, target 0.2.16. The
+  detached lifecycle had no reason to exist; `launch-successor` is now the
+  ordinary attached launch with a cidfile, and the lifecycle enum is gone.
+  Unit suite (1093 passed), typecheck and the gate's test session are green.
+  The new recursive end-to-end test is blocked in this capsule by a stale
+  capsule-local resolution that the in-capsule guard will not let anyone
+  refresh; that is the next item's territory.
+- 2026-10-04 recursive successor cannot refresh its capsule-local
+  resolution: filed at the owner's direction, confirmed, minor, 0.2.16, with
+  three fix options and option A recommended; waits on the owner's choice.
+- 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
+  owner expects to host V1's betas and candidates; no attention unless it
+  recurs in a release campaign.
+
+Still to decide: ecosystem-aware project bootstrap (2026-08-03), JetBrains
+runtime slow under X11 alpha compositing (2026-08-03), JetBrains native
+launcher (2026-08-03), detached successors not cleaned up (2026-08-15),
+installed IDE not reused by Docker (2026-09-24, the root cause behind the
+named-build-contexts candidate), project group guard (2026-09-26, already
+retargeted to 0.2.16 on project-management's branch with the in-capsule
+inspection record, pending that branch's merge).
+
+Owner's version expectation, recorded here until the version scheme in
+`WORKFLOW-LOCAL.md` is amended by project-management: 0.2.x continues; a
+0.3 marks the growth in capability since the first 0.2; from the 0.3.x
+series the project jumps to 0.9, which hosts V1's betas and release
+candidates. Bug targets may name 0.9 on that basis.
+
+### Resumed 2026-10-04
+
+Synchronized with `main` at `17532fd` by merge; the five definition changes
+since the last read (two files for humans, information model, validation
+commands required and printed by the brief, validation vocabulary and its
+checkpoint trigger, integration is a merge commit) are read and apply from
+now: this branch merges `main` in, never rebases, and its deliverables
+land as merge commits. The other checkout has claimed `component-catalog`
+for IntelliJ; this one takes the maintenance plate.
+
+### Paused 2026-10-03, mid-triage (historical)
+
+- Last task: the 0.2.16 bug triage with the owner; one record decided
+  (multi-line exec rendering, minor, 0.9). Nothing uncommitted.
+- Next resumable task: continue the triage from the ecosystem-bootstrap
+  record (2026-08-03). The owner's test for the remaining records: a
+  record that violates no requirement and breaks no promised behavior is
+  a feature, not a bug; it leaves the bug queue for the V1 scope ledger by
+  mail to project-management. Ecosystem bootstrap fails that test and is
+  the first to move; the information model being written in
+  workflow-improvements is what makes the test a rule.
+- Owner intent for the release name, recorded for project-management's
+  registration: if 0.2.16 delivers its full planned scope, new IDE
+  surfaces included, it is released as **0.3.0**, marking how far the
+  product is beyond the first 0.2. The release branch's first commit sets
+  the version under the local scheme; the owner names it then.
+
 ## Planned Next Step
 
-Owner opens and merges `ws-maintenance/post-0.2.15` into main through the
-GitHub UI: validated 0.2.16.dev0 reopening and release close-out records.
-After the owner merges, fetch and verify the version triplet and records on
-main. Publication itself is complete; no additional final tag or acceptance
-is needed. Project-management already has the verified release and pending
-reopening via coordination mail.
-The adopter notes in the release overview can be pasted into the GitHub
-release body by the owner under the UI-only integration rule.
-
-No 0.2.16 implementation scope is inferred. Project-management owns its
-sequencing in the separate active checkout. Remain on maintenance unless the
-owner explicitly selects another workstream.
+Wait for the owner's real-use feedback on released 0.2.15. Triage any reported
+problem against the published executable and route it by ownership; do not
+start new implementation or infer 0.2.16 scope. Release publication and main's
+0.2.16.dev0 reopening are complete. No further PR or release action is required
+for this slice. This records-only pause is published through coordination and
+will reach main with the next substantive maintenance integration.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -769,8 +850,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 ## Open Threads
 
 - Final 0.2.15 publication and download verification are complete.
-- Awaiting owner UI merge, then verify the post-release PR reopening main at
-  0.2.16.dev0. Full build passed; no implementation work remains in this slice.
+- PR #149 is merged and verified; main is reopened at 0.2.16.dev0.
+  Await owner dogfooding feedback on released 0.2.15; no new scope is inferred.
   User-facing release notes are prepared in the release overview; GitHub's
   final release body currently contains its generated changelog link.
 - Project-management receives final identity/acceptance and reopening state;
