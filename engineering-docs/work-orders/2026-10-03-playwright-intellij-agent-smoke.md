@@ -11,6 +11,12 @@ The [validation record](../implementation-notes/devcapsule/2026-10-04-intellij-p
 contains accepted runs, the relaunch defect found and fixed, source identities,
 gate results and the final editor screenshot.
 
+Owner extension, 2026-10-04: write a development blog about the work and
+add/link the IntelliJ test movies. The [draft entry](../blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md)
+includes the original successful first-session and post-restart WebM recordings
+with linked screenshot posters. The current website supports repository download
+links; native video asset publication was mailed to its owning workstream.
+
 Owner: `component-catalog`, branch `ws-component-catalog/intellij-idea`.
 IntelliJ's assigned release target remains 0.2.16. This order does not cut or
 publish a release.

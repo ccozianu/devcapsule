@@ -98,6 +98,41 @@ The implementing agent also reviewed the retained final screenshot: it shows the
 editor with both markers. The script-launcher and Java-options notifications
 are visible; neither prevented the tested interaction.
 
+## Blog recordings
+
+The owner-requested [blog entry](../../blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md)
+preserves the two original `agent-desktop.webm` files from accepted run
+`20261004T005804Z-c554e8`, with the final screenshot of each phase. Copies
+under `engineering-docs/blog/assets/2026-10-04-intellij/` are byte-identical
+to the retained evidence; no trimming, transcoding or speed adjustment occurred.
+Chromium decoded both movies at 1600×1000 and sampled frames were reviewed.
+
+| Blog file | Source within the run's `intellij/` directory | Duration | Bytes | SHA-256 |
+|---|---|---|---|---|
+| `first-session.webm` | `agent-desktop.webm` | 166.28 s | 10522080 | `c42eb8a0282e9dc035ee88cc61f65ec9ce752f3cbd96f03368d9c5c9ea356614` |
+| `after-restart.webm` | `relaunch/agent-desktop.webm` | 66.48 s | 4454131 | `ff85e95f6cccc0fd7ea32f3e99224877b8feeb073c08b38503ff48da827a3724` |
+
+The pinned website consumer copies image assets but does not copy WebM or
+rewrite `<video>` sources. The entry therefore uses ordinary Markdown linked
+posters and movie links with `?raw=true`. The builder turns these into GitHub
+blob links pinned to the content revision; the query requests the raw file.
+Production builds from main will pin the links to that mainline commit.
+The movies remain repository-hosted downloads rather than embedded site assets.
+The draft is included in preview and excluded from production until owner release.
+Native video publishing is handed to the website workstream; its implementation
+and the website gitlink are unchanged here.
+
+Publication checks on 2026-10-04: `scripts/website.sh build` passed (186 HTML
+pages, 13,529 local links/assets/anchors). Chromium loaded the draft and both
+posters, verified the two distinct rendered movie URLs, and played each copied
+WebM without a media error. A production content build excluded the draft.
+This validates preview rendering and the download-link construction, not an
+embedded player or a deployed website. The website mail is
+`2026-10-04-component-catalog-blog-video-publication.md`, coordination commit
+`ad17bb1d3605`. The documentation addition also passed the required full
+`nox -s build` gate: 1,117 tests and nine packaging tests, with the existing
+expected-failure/expected-pass results. Log: `.git/intellij-blog-build.log`.
+
 ## Gates and boundaries
 
 `nox -s build` passed at `d6d3566`: syntax, mypy, 1,117 passing tests,

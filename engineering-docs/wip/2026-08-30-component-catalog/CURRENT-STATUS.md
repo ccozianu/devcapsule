@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-04 for owner PR integration; IntelliJ and Playwright components implemented and validated; Codex/Astra IntelliJ initial and relaunch smoke passed; Claude/Fable PyCharm and VSCodium smoke passed
+State: paused 2026-10-04 for owner PR integration and blog editorial release; IntelliJ and Playwright components implemented and validated; Codex/Astra IntelliJ initial and relaunch smoke passed; Claude/Fable PyCharm and VSCodium smoke passed
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -59,6 +59,14 @@ its obsolete delivery tasks are not prerequisites to this slice.
   apart from the intake README. No unresolved implementation task remains
   in the accepted slice; remote-main integration remains with the owner.
 
+- The owner-requested [blog draft](../../blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md)
+  now includes both original successful IntelliJ WebM recordings (2m46s and
+  1m06s) and linked posters. Website preview, movie playback and draft exclusion
+  checks passed. Native video hosting is outside the current consumer contract;
+  the website workstream received mail at coordination `ad17bb1d3605`.
+- The blog continuation fetched main again: zero behind and no workflow changes,
+  so no synchronization was needed. No open bugs owned by component-catalog.
+
 ## Planned Next Step
 
 The owner opens and merges the PR from `ws-component-catalog/intellij-idea`
@@ -66,7 +74,10 @@ into `main` through the GitHub UI. Suggested title:
 **Add IntelliJ and Playwright components with reusable AI graphical smoke tests**.
 After the owner reports the merge, fetch over SSH and verify that remote main
 contains the finished tree before treating integration as complete.
-Coordinate the assigned 0.2.16 release through project-management.
+Review the new blog draft and remove `draft: true` when releasing it; website
+publication follows the existing owner-operated UI flow. The two recordings
+are available through repository download links. Coordinate the assigned
+0.2.16 release through project-management.
 
 ## Validation
 
@@ -91,9 +102,17 @@ for source checksums, commands, limitations and a committed final screenshot.
 Evidence: `devcapsule-src/dist/e2e-evidence/ide-smoke/`. Gate scratch:
 `/opt/devcapsule-gate`, outside the checkout and fixture-mocked mounts.
 Logs: `.git/intellij-recovery-build.log`, `.git/intellij-recovery-smoke.log`.
+The blog continuation also passed the required full gate (1,117 tests and nine
+packaging tests), logged in `.git/intellij-blog-build.log`; website build/check
+is in `.git/intellij-blog-website-build.log`. No IDE rerun was needed for this
+documentation-only addition.
 
 ## Open Threads
 
+- Native video publishing is a website follow-up, delivered as
+  `2026-10-04-component-catalog-blog-video-publication.md`; the current blog
+  intentionally uses supported repository downloads. Owner editorial release
+  and publication remain pending.
 - Owner PR integration is pending; no GitHub API or direct-main push is
   authorized. The release driver and cut remain project-management's work.
 - Codex JSONL omits a server-reported model id. Evidence records explicit
@@ -108,15 +127,16 @@ Logs: `.git/intellij-recovery-build.log`, `.git/intellij-recovery-smoke.log`.
   housekeeping: no legacy ref was removed. Preserve unlanded records before
   any future removal, as directed by the accepted migration notice.
 - Local bootstrap tools remain under `/opt/xtras`; cached vendor artifacts
-  and materialized images are retained for reuse. Raw videos, model transcripts
-  and failed intermediate runs remain local, with ephemeral desktop tokens in
-  raw logs. Permanent records preserve the sanitized conclusions and final
-  screenshot. No verbatim session record was requested or created.
+  and materialized images are retained for reuse. Model transcripts and failed intermediate runs remain local, with ephemeral
+  desktop tokens in raw logs. The two accepted IntelliJ interaction videos are
+  now committed beside the blog at the owner's request; other raw videos stay
+  local. Permanent records preserve the conclusions, checksums and screenshots. No verbatim session record was requested or created.
 - Earlier website recovery files remain under `.git/recovery/`. Their preserved
   contents were not changed or discarded by this slice.
 
 ## Workstream Document Index
 
+- [Development blog and test movies](../../blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md)
 - [Accepted work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
 - [Validation and final screenshot](../../implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
 - [Repeatable E2E commands](../../development/e2e-tests.md#ai-driven-graphical-acceptance)
