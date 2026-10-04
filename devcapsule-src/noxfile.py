@@ -68,6 +68,7 @@ def select_e2e_pex(session: nox.Session) -> bool:
     selected = session.env.get(PEX_UNDER_TEST_ENV) or os.environ.get(PEX_UNDER_TEST_ENV)
     if not selected:
         build_test_pex(session)
+        session.env[PEX_UNDER_TEST_ENV] = str(TEST_PEX_PATH)
         return False
     path = Path(selected).expanduser().resolve(strict=True)
     output = session.run(str(path), "version", "--json", external=True, silent=True)

@@ -14,6 +14,18 @@ import noxfile
 RELEASE_WORKFLOW = noxfile.REPO_ROOT / ".github" / "workflows" / "release-pex.yml"
 
 
+def test_ide_smoke_forwards_the_locally_built_executable(monkeypatch) -> None:
+    session = Mock()
+    session.env = {}
+    session.posargs = ["--surface", "eclipse"]
+    monkeypatch.delenv(noxfile.PEX_UNDER_TEST_ENV, raising=False)
+    build = Mock()
+    monkeypatch.setattr(noxfile, "build_test_pex", build)
+    noxfile.ide_smoke(session)
+    build.assert_called_once_with(session)
+    assert session.run.call_args.kwargs["env"][noxfile.PEX_UNDER_TEST_ENV] == str(noxfile.TEST_PEX_PATH)
+
+
 def test_release_workflow_scopes_source_repository_to_pex_build_step() -> None:
     workflow = RELEASE_WORKFLOW.read_text(encoding="utf-8")
     job_environment = workflow.split("    env:\n", 1)[1].split("    defaults:\n", 1)[0]

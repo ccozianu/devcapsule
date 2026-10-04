@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 
+from devcapsule.compat import CliError
 from devcapsule.components import ComponentDefinition, LockedArtifactDeclaration, SecretInputDeclaration, StateEnvironmentDeclaration
 from devcapsule.components.discovery import EclipseDiscovery
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
@@ -54,7 +55,23 @@ class EclipseComponent(ComponentDefinition):
         return ()
 
     def locked_artifacts(self, metadata: Mapping[str, object], platform: str) -> tuple[LockedArtifactDeclaration, ...]:
-        return ()  # The surface materializer verifies the complete vendor archive.
+        # The surface materializer handles the IDE archive; its native browser
+        # dependencies use the same acquisition/hash verification before an
+        # offline dpkg installation. The set is specific to the Ubuntu 24.04 base.
+        packages = metadata.get("native-packages")
+        if platform != "linux-amd64" or not isinstance(packages, dict) or not packages:
+            raise CliError("Eclipse requires pinned native-packages for linux-amd64.")
+        artifacts = []
+        for package, entry in packages.items():
+            if not isinstance(entry, dict) or any(not isinstance(entry.get(key), str) or not entry[key]
+                                                  for key in ("version", "url", "sha256")):
+                raise CliError(f"Malformed Eclipse native package {package!r}.")
+            artifacts.append(LockedArtifactDeclaration(
+                self.id, entry["version"], entry["url"], entry["sha256"],
+                f"/tmp/devcapsule-native-debs/{entry['sha256']}.deb", artifact_format="deb-package",
+                permissions=0o644,
+            ))
+        return tuple(artifacts)
 
 
 DEFINITION: ComponentDefinition = EclipseComponent()

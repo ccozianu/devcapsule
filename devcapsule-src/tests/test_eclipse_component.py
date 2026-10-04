@@ -25,7 +25,7 @@ def test_java_package_materializes_with_browser_and_its_own_workspace():
     assert "/eclipse-java-2026-09-R-linux-gtk-x86_64.tar.gz" in environment.artifact.url
     assert environment.recipe_id == "eclipse-local-materialization"
     assert surface_profile("eclipse").installation_path == "/opt/eclipse"
-    assert {a.component_id for a in environment.ancillary_artifacts} == {"playwright"}
+    assert {a.component_id for a in environment.ancillary_artifacts} == {"playwright", "eclipse"}
     assert runtime().slots_by_name() == {"eclipse/workspace": "/ide-workspace"}
     assert DEFINITION.runtime_template().persistence.home == "required"
     assert not DEFINITION.runtime_template().persistence.state_slots[0].concurrent
@@ -54,6 +54,7 @@ def test_entrypoint_supervises_eclipse_as_the_unprivileged_foreground_child(monk
     from devcapsule.container_runtime import entrypoint
     children = []
     monkeypatch.setattr(entrypoint, "prepare_filesystem", lambda *args: None)
+    monkeypatch.setattr(entrypoint.os, "environ", dict(entrypoint.os.environ))
     monkeypatch.setattr(entrypoint.os, "geteuid", lambda: 0)
     class Supervisor:
         def __init__(self, selected):
@@ -82,3 +83,24 @@ def test_discovery_only_considers_stable_java_packages_for_the_platform(monkeypa
     monkeypatch.setattr(discovery, "read_metadata", lambda _: b"missing package")
     with pytest.raises(CliError, match="expected one stable"):
         channel.check("2026-09-R", "linux-amd64")
+
+
+def test_native_packages_install_offline_in_final_image(tmp_path):
+    from devcapsule.materialization import surface_materialization_spec
+    document = tomllib.loads(MATRICES[Platform.LINUX_AMD64].resolve(["eclipse-ide"]).render_lock())
+    environment = parse_locked_environment(document)
+    files = tuple((tmp_path / str(i), item) for i, item in enumerate(environment.ancillary_artifacts))
+    build = surface_materialization_spec(
+        base_reference=environment.base_reference, base_identity="sha256:base", image="fixture",
+        surface_root=tmp_path, component_template=tmp_path / "template.json", ancillary_files=files,
+        native_package_directory=tmp_path / "native-packages",
+        artifact=environment.artifact, platform="linux-amd64", component_id="eclipse",
+        recipe_id=environment.recipe_id, recipe_version=environment.recipe_version,
+    ).build_plan()
+    assert not build.apt_packages
+    step = next(step for step in build.exec_steps if "dpkg --install" in " ".join(step.args))
+    for item in environment.ancillary_artifacts:
+        assert item.artifact_format == "deb-package"
+        assert item.sha256 + ".deb" in step.args[-1]
+    assert "apt-get" not in repr(build)
+    assert build.stages[0].exports == ("/opt/eclipse",)

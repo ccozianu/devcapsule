@@ -48,6 +48,7 @@ from devcapsule.images.contract import (
 from devcapsule.platforms import Platform
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.components.playwright_pin import PIN as PLAYWRIGHT_PIN
+from devcapsule.components.eclipse_native_pin import PACKAGES as ECLIPSE_NATIVE_PACKAGES
 from devcapsule.configuration.documents import (
     ProjectConfigurationError,
     canonical_digest,
@@ -668,6 +669,7 @@ _ECLIPSE_2026_09 = _ComponentPin(
     component_id="eclipse", version="2026-09-R",
     lock_table={
         "version": "2026-09-R", "variant": "java",
+        "native-packages": ECLIPSE_NATIVE_PACKAGES,
         "delivery-policy": "local-materialization",
         "terms-url": "https://www.eclipse.org/legal/epl-2.0/",
         "url": "https://download.eclipse.org/technology/epp/downloads/release/2026-09/R/eclipse-java-2026-09-R-linux-gtk-x86_64.tar.gz",
@@ -1177,7 +1179,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     # The materialization recipe follows the selected surface: each surface
     # family unpacks and fixes up its installation differently.
     materialization={
-        "eclipse": {"recipe": "eclipse-local-materialization", "recipe-version": "1"},
+        "eclipse": {"recipe": "eclipse-local-materialization", "recipe-version": "3"},
         "rider": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "intellij": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "pycharm": {

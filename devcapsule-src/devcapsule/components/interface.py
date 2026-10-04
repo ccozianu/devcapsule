@@ -69,6 +69,9 @@ class LockedArtifactDeclaration:
     ``artifact_format`` says how the verified download becomes image content:
 
     - ``file``: the download is the executable; it is copied to ``destination``.
+    - ``deb-package``: a checksummed native distribution package, installed by
+      dpkg in the final image with network disabled, including maintainer scripts.
+      All missing base dependencies must be separately pinned in the same lock.
     - ``tar-gz-member``: exactly one regular file, ``archive_member``, is
       extracted from the tarball and copied to ``destination``.
     - ``python-wheel``: verified wheels sharing a destination install offline
