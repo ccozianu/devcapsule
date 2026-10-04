@@ -7,7 +7,7 @@ version = "0.2.14.dev0"
 mode = "multiple-streams"
 
 [capabilities]
-need = ["antigravity-agent", "browser-automation", "claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"]
+need = ["antigravity-agent", "claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"]
 
 [project]
 name = "DevCapsule"

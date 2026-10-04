@@ -296,6 +296,7 @@ history; record current decisions in the active documents above.
 - [JetBrains embedded browser is suspended in the container](engineering-docs/bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md)
 - [Fresh clones require manual ecosystem bootstrap](engineering-docs/bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md)
 - [Component tooling is not added to the runtime path](engineering-docs/bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md)
+- [Unreleased Playwright breaks shared-checkout launch](engineering-docs/bugs/devcapsule/2026-10-04-unreleased-playwright-breaks-checkout-launch.md)
 - [IntelliJ relaunch stale directory lock](engineering-docs/bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md)
 - [PyCharm run-image network and Docker-option parity](engineering-docs/bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md)
 - [Codium grants ambient passwordless sudo by default](engineering-docs/bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md)

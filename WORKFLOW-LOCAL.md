@@ -177,6 +177,50 @@ work. Do not silently fall back to the shipped CLI when development setup is
 missing. Other projects retain the standard command unless they explicitly opt
 into this exception. See DEVELOPING.md for checkout overrides and resolution.
 
+### Keep The Development Checkout Launchable
+
+The shared `.devcapsule/devcapsule.toml` and platform locks are the bootstrap
+contract for contributors, including the owner returning to the checkout.
+They must remain usable with the latest final released DevCapsule launcher.
+Implementing a capability does not authorize adding it to this project's
+shared needs before that launcher supports it. A passing source-build gate
+or recursive smoke with a development executable does not prove released
+launcher compatibility.
+
+Before changing the shared needs, configuration vocabulary or locks:
+
+- Identify the launcher that will reopen the checkout: executable path,
+  `version --json`, and the released compatibility baseline. A CLI inside a
+  running capsule is not evidence of the owner's host CLI version.
+- Check both sides: the launcher must understand the manifest **and** every
+  locked component and its runtime/materialization metadata. Successful
+  resolution by a newer CLI is insufficient.
+- Use supported tooling to generate locks; do not invent or hand-patch their
+  digests, component tables or provenance. A recovery may restore a previously
+  compatible manifest/lock pair from Git, preserving unrelated changes.
+- Validate the changed pair with the released baseline, including runtime
+  planning. Record the command, executable identity and outcome in the selected
+  status file. A read-only planning check establishes compatibility at that
+  layer; call an actual launch verified only when it was exercised.
+- Keep unreleased component experiments in disposable test projects with an
+  explicitly selected development executable. Leave the working checkout's
+  shared needs and lock unchanged for those experiments.
+
+Requiring a newer launcher for the shared checkout is an owner decision.
+Before making that change, agree the target executable and a usable bootstrap
+or upgrade path; validate that path and retain a compatible recovery pair.
+Never silently replace the owner's launcher or turn a feature test into a
+new prerequisite for resuming work. At handoff, record any configuration/lock
+change, how it was produced and which launcher can consume it. For a mismatch,
+restore the compatible pair or carry out the agreed launcher upgrade; changing
+only the manifest leaves a stale lock, and changing only the lock leaves
+inconsistent capability needs.
+
+Keep `tests/test_repository_manifest_compatibility.py` (under `devcapsule-src`)
+aligned with the released vocabulary. Expand its frozen baseline only after
+the corresponding final release ships, with evidence from that release.
+The development catalog must not serve as its own compatibility oracle.
+
 ### Local Launch Networking
 
 Owner direction, 2026-09-24: always pursue host networking for this project's
