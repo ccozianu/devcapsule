@@ -81,6 +81,23 @@ class IntelliJDiscovery(JetBrainsDiscovery):
     source = "https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&type=release"
 
 
+class RiderDiscovery(JetBrainsDiscovery):
+    product_keys = ("RD",)
+    source = "https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release"
+
+
+class DotnetDiscovery(VendorDiscovery):
+    source = "https://builds.dotnet.microsoft.com/dotnet/release-metadata/releases-index.json"
+
+    def _check(self, current: str, platform: str) -> ChannelReport:
+        releases = read_json(self.source)["releases-index"]
+        stable = [exact_version(row["latest-sdk"]) for row in releases
+                  if row["support-phase"] in {"active", "maintenance"}
+                  and "-" not in row["latest-sdk"]]
+        latest = max(stable, key=lambda version: tuple(map(int, version.split("."))))
+        return _available(self.source, current, latest, "Latest supported stable SDK; reviewed pin required")
+
+
 class PlaywrightDiscovery(VendorDiscovery):
     source = "https://pypi.org/pypi/playwright/json"
 

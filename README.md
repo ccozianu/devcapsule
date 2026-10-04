@@ -18,7 +18,7 @@ on Linux x86-64; on Windows, [read the WSL2 notes first](docs/platforms/windows-
 - Open source, Apache-2.0
 
 <!-- website:benefits -->
-- **A real IDE in a capsule.** PyCharm, IntelliJ IDEA or VSCodium with the editing, debugging,
+- **A real IDE in a capsule.** PyCharm, IntelliJ IDEA, Rider or VSCodium with the editing, debugging,
   testing, plugins and persistent settings you expect, and the project's
   tools already in place. Zero time spent installing things per project.
   [Your first session](docs/getting-started/first-session.md)

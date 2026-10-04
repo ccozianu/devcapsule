@@ -40,6 +40,13 @@ single end-to-end pass/fail test.
 
 ## Related
 
+The 2026-10-04 Rider extension supplies the complete stable Linux .NET SDK
+as additive `dotnet` tooling and selects it automatically for `dotnet-ide`.
+Rider uses independent persistent state and vendor-managed licensing.
+The [Rider smoke](../../development/e2e-tests.md#rider-and-net-sdk-smoke)
+checks both a real C# build/run and visible startup through noVNC; editor
+acceptance is separately recorded when licensing permits the saved-edit scenario.
+
 The component-catalog slice implements this goal with optional IntelliJ IDEA
 (`java-ide`) and reusable Playwright/Chromium (`browser-automation`). IntelliJ
 uses the unified vendor distribution's free core functionality and the bundled

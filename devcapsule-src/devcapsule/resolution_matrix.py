@@ -46,6 +46,7 @@ from devcapsule.images.contract import (
     Provenance,
 )
 from devcapsule.platforms import Platform
+from devcapsule.components.catalog import COMPONENTS
 from devcapsule.components.playwright_pin import PIN as PLAYWRIGHT_PIN
 from devcapsule.configuration.documents import (
     ProjectConfigurationError,
@@ -69,7 +70,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-24"
+_MATRIX_VERSION = "embedded-25"
 
 
 # --------------------------------------------------------------------------
@@ -331,6 +332,10 @@ class ResolutionMatrix:
             component_id = self._ancillary_capabilities.get(capability)
             if component_id is not None:
                 required.append(component_id)
+        for component_id in required:
+            definition = COMPONENTS.get(component_id)
+            if definition is not None:
+                required.extend(item for item in definition.required_components() if item not in required)
         base_needs = {
             capability
             for capability in capabilities
@@ -484,10 +489,9 @@ class ResolutionMatrix:
             "interactive-surface": surface_id,
             surface_id: dict(chosen[surface_id].lock_table),
         }
-        for capability in capabilities:
-            component_id = self._ancillary_capabilities.get(capability)
-            if component_id is not None:
-                components[component_id] = dict(chosen[component_id].lock_table)
+        for component_id, pin in chosen.items():
+            if component_id != surface_id:
+                components[component_id] = dict(pin.lock_table)
         document: dict[str, Any] = {
             "devcapsule-lock-format-version": 1,
             "resolution-matrix-version": self._matrix_version,
@@ -635,6 +639,28 @@ _V0_2_12_BASE = _BasePin(
         ),
         "build-mnemonic": "v0.2.12-rc5",
         "contract": "ubuntu-24.04@9",
+    },
+)
+
+# Vendor release metadata and complete archive checksums verified 2026-10-04.
+_DOTNET_SDK_10_0_401 = _ComponentPin(
+    component_id="dotnet-sdk", version="10.0.401",
+    lock_table={
+        "version": "10.0.401", "platform": "linux-amd64",
+        "delivery-policy": "local-materialization", "license": "MIT",
+        "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-linux-x64.tar.gz",
+        "sha256": "137268c8ad939c064ff1ee2a6fdf0899d8725377114ea012fbd1ad5fa2550418",
+        "upstream-sha512": "51c8b999af9e8dd9998c9edc5944e19a90788862068acd38694e098889054ce8c23d4f0c5cccfa16bf187d044562359e5ee69a9f8ad0bbe913ba90311fbce25b",
+    },
+)
+
+_RIDER_2026_2_3_1 = _ComponentPin(
+    component_id="rider", version="2026.2.3.1",
+    lock_table={
+        "version": "2026.2.3.1", "delivery-policy": "local-materialization",
+        "license": "Proprietary", "terms-url": "https://www.jetbrains.com/legal/docs/toolbox/license/",
+        "url": "https://download.jetbrains.com/rider/JetBrains.Rider-2026.2.3.1.tar.gz",
+        "sha256": "fa4b09a5f7cf4b6635b093adc7313991778a8dc74f25614a2b8976b04dee5d4e",
     },
 )
 
@@ -973,6 +999,8 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "intellij": (_INTELLIJ_2026_2_3,),
+        "rider": (_RIDER_2026_2_3_1,),
+        "dotnet-sdk": (_DOTNET_SDK_10_0_401,),
         "playwright": (_ComponentPin("playwright", str(PLAYWRIGHT_PIN["version"]), PLAYWRIGHT_PIN),),
         "codium": (_CODIUM_1_126_04524,),
         "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1),
@@ -986,6 +1014,10 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
+        _VerifiedEdge("dotnet-sdk", "10.0.401", _BASE_FAMILY_UBUNTU_24_04,
+                      "provisional: owner-directed 2026-10-04; SDK build/run acceptance pending"),
+        _VerifiedEdge("rider", "2026.2.3.1", _BASE_FAMILY_UBUNTU_24_04,
+                      "provisional: owner-directed 2026-10-04; noVNC graphical startup acceptance pending"),
         _VerifiedEdge("intellij", "2026.2.3", _BASE_FAMILY_UBUNTU_24_04,
                       "Codex/gpt-6-astra saved-edit graphical smoke passed 2026-10-04 on "
                       "v0.2.12-rc5 base; source ada153c; run 20261004T002435Z-d44b57"),
@@ -1113,6 +1145,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     surface_capabilities={
         "python-ide": "pycharm",
         "java-ide": "intellij",
+        "dotnet-ide": "rider",
         "frontend-ide": "codium",
     },
     # Ancillary capabilities select additive components; the value is the
@@ -1123,10 +1156,12 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "antigravity-agent": "antigravity-cli",
         "postgresql-client": "postgresql-client",
         "browser-automation": "playwright",
+        "dotnet": "dotnet-sdk",
     },
     # The materialization recipe follows the selected surface: each surface
     # family unpacks and fixes up its installation differently.
     materialization={
+        "rider": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "intellij": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "pycharm": {
             "recipe": "jetbrains-local-materialization",

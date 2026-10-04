@@ -9,6 +9,8 @@ from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
 from devcapsule.components.claude_code import DEFINITION as CLAUDE_CODE
 from devcapsule.components.codex import DEFINITION as CODEX
 from devcapsule.components.codium import DEFINITION as CODIUM
+from devcapsule.components.dotnet_sdk import DEFINITION as DOTNET_SDK
+from devcapsule.components.rider import DEFINITION as RIDER
 from devcapsule.components.intellij import DEFINITION as INTELLIJ
 from devcapsule.components.playwright import DEFINITION as PLAYWRIGHT
 from devcapsule.components.postgresql_client import DEFINITION as POSTGRESQL_CLIENT
@@ -26,17 +28,20 @@ INTERACTIVE_SURFACES: dict[str, ComponentDefinition] = {
     PYCHARM.id: PYCHARM,
     CODIUM.id: CODIUM,
     INTELLIJ.id: INTELLIJ,
+    RIDER.id: RIDER,
 }
 
 COMPONENTS: dict[str, ComponentDefinition] = {
     PYCHARM.id: PYCHARM,
     CODIUM.id: CODIUM,
     INTELLIJ.id: INTELLIJ,
+    RIDER.id: RIDER,
     CODEX.id: CODEX,
     CLAUDE_CODE.id: CLAUDE_CODE,
     ANTIGRAVITY_CLI.id: ANTIGRAVITY_CLI,
     POSTGRESQL_CLIENT.id: POSTGRESQL_CLIENT,
     PLAYWRIGHT.id: PLAYWRIGHT,
+    DOTNET_SDK.id: DOTNET_SDK,
 }
 
 
@@ -71,6 +76,10 @@ def selected_component_definitions(
         if not isinstance(metadata, dict):
             raise ComponentCatalogError(f"components.{component_id} must be a table")
         ancillary.append(definition)
+    for definition in (interactive, *ancillary):
+        for required in definition.required_components():
+            if required not in components:
+                raise ComponentCatalogError(f"component {definition.id!r} requires {required!r} in the lock")
     return interactive, tuple(ancillary)
 
 

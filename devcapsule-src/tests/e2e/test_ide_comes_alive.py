@@ -70,6 +70,18 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
         (evidence / "container-identity.txt").write_text(identity.stdout, encoding="utf-8")
         child_digest = command("docker", "exec", session.container, "sha256sum", "/opt/devcapsule/bin/devcapsule.pex").stdout.split()[0]
         assert child_digest == hashlib.sha256(built_pex.read_bytes()).hexdigest(), "Child runtime differs from selected executable"
+        if surface.name == "rider":
+            sdk = command("docker", "exec", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(session.project_path),
+                          session.container, "dotnet", "--info")
+            (evidence / "dotnet-info.txt").write_text(sdk.stdout, encoding="utf-8")
+            assert "10.0.401" in sdk.stdout
+            build = command("docker", "exec", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(session.project_path),
+                            session.container, "dotnet", "build", "Smoke.csproj", "--nologo")
+            (evidence / "dotnet-build.txt").write_text(build.stdout + build.stderr, encoding="utf-8")
+            run = command("docker", "exec", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(session.project_path),
+                          session.container, "dotnet", "run", "--project", "Smoke.csproj", "--no-build")
+            (evidence / "dotnet-run.txt").write_text(run.stdout + run.stderr, encoding="utf-8")
+            assert run.stdout.strip() == "DevCapsule .NET smoke passed"
         if "browser-automation" in surface.needs:
             browser = command("docker", "exec", "-e", "PLAYWRIGHT_BROWSERS_PATH=/opt/playwright/browsers",
                               session.container, "/opt/playwright/venv/bin/python", "-c",
@@ -85,7 +97,7 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
 
             result = run_visual_smoke(session, evidence)
             if os.environ.get("DEVCAPSULE_SMOKE_RELAUNCH") == "1":
-                assert surface.name == "intellij"
+                assert surface.name in {"intellij", "rider"}
                 before = editor_font_size(session.container)
                 assert before == 17, f"IDE did not persist the UI-selected font size: {before}"
                 stop_session(session)

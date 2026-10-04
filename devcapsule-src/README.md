@@ -984,6 +984,35 @@ name in `docker run`, so Docker retains the canonical image's generic PEX
 entrypoint and runtime-plan CMD. Host-level launch validation and the remaining
 explicit runtime effects continue in Stage 3 of the active dogfood plan.
 
+### .NET SDK and Rider
+
+For a new .NET project on Linux x86-64:
+
+```bash
+devcapsule project init --need dotnet-ide
+devcapsule project run
+```
+
+`dotnet-ide` selects JetBrains Rider and automatically includes the pinned
+.NET SDK. To add the SDK to another IDE, include `dotnet` alongside that
+IDE's capability, for example `--need frontend-ide --need dotnet`.
+The current catalog pins SDK 10.0.401 and Rider 2026.2.3.1; resolution is
+offline and locks exact versions and SHA-256 checksums, never a moving
+`latest` installer. Updates require a reviewed catalog pin.
+
+The complete SDK, matching runtime, MSBuild and targeting packs install in
+`/opt/dotnet`, on `PATH` with `DOTNET_ROOT` set. The IDE's terminal can run
+`dotnet new`, `dotnet build` and `dotnet run`. SDK telemetry is disabled by
+default. NuGet packages and user tools use the persistent capsule home;
+no host SDK, NuGet configuration or credentials are imported. Additional
+workloads and SDK versions are not supplied by this component.
+
+Rider uses its bundled Java runtime and independent `rider/*` IDE state
+slots. JetBrains licensing is handled inside Rider; installing the component
+does not grant a license or activate a trial. The noVNC startup smoke and
+optional licensed editor interaction are described in the
+[E2E guide](../engineering-docs/development/e2e-tests.md).
+
 ### Capability-first dogfood path
 
 `devcapsule project init` initializes a project completely: it authors (or

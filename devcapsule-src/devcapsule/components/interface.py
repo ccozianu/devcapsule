@@ -73,6 +73,8 @@ class LockedArtifactDeclaration:
       extracted from the tarball and copied to ``destination``.
     - ``python-wheel``: verified wheels sharing a destination install offline
       into its ``venv/``, with the original wheels retained in ``wheels/``.
+    - ``tar-gz-directory``: bounded regular files and directories from a tar.gz,
+      preserving executable permissions without stripping a top-level directory.
     - ``zip-directory``: bounded, regular-file-only extraction copied to the
       destination directory, preserving executable permissions.
     - ``npm-package``: the download is an npm tarball, installed with npm's
@@ -124,6 +126,10 @@ class ComponentDefinition(ABC):
     def channel_omission_reason(self) -> str | None:
         """Contributors must document why updates cannot be checked."""
         return None
+
+    def required_components(self) -> tuple[str, ...]:
+        """Other catalog components required for this component to function."""
+        return ()
 
     def acquisition(self) -> AcquisitionContract | None:
         """The vendor acquisition this component requires, if any.

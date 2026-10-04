@@ -82,6 +82,24 @@ to installing `xprop` in every image.
   the browser session.
 - The release runbook says which of these the acceptance record cites.
 
+## Rider and .NET SDK smoke
+
+```sh
+.venv/bin/python -m nox -s ide-smoke -- --display --surface rider
+```
+
+A fresh `dotnet-ide` project resolves Rider plus the .NET SDK. The test
+requires the noVNC endpoint, a Rider window, browser pixels, SDK identity,
+and a successful build/run of a package-free `net10.0` console project as
+the capsule user. It retains SDK output, screenshots and the recording.
+An activation screen is startup evidence only, not editor acceptance.
+
+Add `--agent --component-browser` for the same saved-edit and visual
+recognition scenario as IntelliJ. This mode never signs in or activates a
+trial and fails if licensing prevents an edit. `--relaunch` is available
+for Rider and IntelliJ when editor access is available; it checks a UI-set
+font preference and repeats the edit after restart.
+
 ## AI-driven graphical acceptance
 
 From `devcapsule-src`, with host Docker, the recommended base image, and an

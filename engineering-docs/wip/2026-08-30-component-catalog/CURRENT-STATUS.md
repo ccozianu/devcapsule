@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-04 for owner PR integration and blog editorial release; IntelliJ and Playwright components implemented and validated; Codex/Astra IntelliJ initial and relaunch smoke passed; Claude/Fable PyCharm and VSCodium smoke passed
+State: active 2026-10-04; owner-directed Linux .NET SDK and Rider components with noVNC smoke acceptance
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -69,17 +69,30 @@ its obsolete delivery tasks are not prerequisites to this slice.
 
 ## Planned Next Step
 
-The owner opens and merges the PR from `ws-component-catalog/intellij-idea`
-into `main` through the GitHub UI. Suggested title:
-**Add IntelliJ and Playwright components with reusable AI graphical smoke tests**.
-After the owner reports the merge, fetch over SSH and verify that remote main
-contains the finished tree before treating integration as complete.
-Review the new blog draft and remove `draft: true` when releasing it; website
-publication follows the existing owner-operated UI flow. The two recordings
-are available through repository download links. Coordinate the assigned
-0.2.16 release through project-management.
+Implement standalone `dotnet` SDK capability, Rider's `dotnet-ide` surface and
+SDK dependency, then verify a C# build/run and real noVNC startup using the
+shared smoke harness. Run the full gate and deliver the branch for owner UI merge.
+
+## Current Slice
+
+The owner explicitly requested autonomous SDK-first, Rider-second delivery on
+2026-10-04. Latest stable vendor metadata selects SDK 10.0.401 (Linux x64) and
+Rider 2026.2.3.1. Exact artifacts are checksum pinned; prereleases are excluded.
+Rider licensing remains vendor-managed; GUI evidence must distinguish an
+activation screen from an editor. No purchase or account access is assumed.
+Synchronization was warranted by launcher and E2E changes on main; the published
+branch fast-forwarded from 628c038 to 5e9cd94, confirming the earlier IntelliJ
+slice has landed. Workflow files are unchanged. Mail and intake are empty and
+there are no open component-catalog bugs. The workflow declaration/source version
+mismatch is pre-existing and covered by this project's source-copy exception;
+neither version is changed in this slice.
 
 ## Validation
+
+The SDK/Rider implementation passed `nox -s build` on 2026-10-04: 1,138 tests,
+one existing xfailed and one existing xpassed result, mypy, executable smokes,
+nine packaging tests and the documentation contract. Log: `.git/rider-build.log`.
+The real Rider noVNC/SDK smoke is running; its result is not yet acceptance.
 
 See the [validation record](../../implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
 for source checksums, commands, limitations and a committed final screenshot.

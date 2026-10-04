@@ -44,6 +44,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_NEEDS = {
     "pycharm-minimal": ["python", "python-ide"],
     "dogfood": ["antigravity-agent", "browser-automation", "claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"],
+    "rider-dotnet": ["dotnet-ide", "browser-automation"],
+    "codium-dotnet": ["frontend-ide", "dotnet"],
     "intellij-browser": ["java", "java-ide", "browser-automation"],
     "codium-node": ["node", "frontend-ide"],
     "pycharm-full": [
@@ -103,6 +105,8 @@ def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
         "claude-code-agent",
         "codex-agent",
         "docker-cli",
+        "dotnet",
+        "dotnet-ide",
         "frontend-ide",
         "java",
         "java-ide",
