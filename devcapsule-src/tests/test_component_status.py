@@ -124,6 +124,8 @@ def test_truncated_status_response_cannot_break_the_original_check(tmp_path, mon
 
 
 @pytest.mark.parametrize("name,document", [
+    ("intellij", {"IIU": [{"type": "release", "version": "2026.2.3", "downloads": {"linux": {"link": "url", "checksumLink": "checksum"}}}]}),
+    ("playwright", {"info": {"version": "1.63.0"}, "urls": [{"packagetype": "bdist_wheel", "yanked": False}]}),
     ("pycharm", {"PCP": [{"type": "release", "version": "2026.2.3", "downloads": {"linux": {"link": "url", "checksumLink": "checksum"}}}]}),
     ("codium", {"tag_name": "1.135.06055", "draft": False, "prerelease": False, "assets": [{"name": "VSCodium-linux-x64-1.135.06055.tar.gz"}]}),
     ("claude-code", {"version": "2.1.278", "platforms": {"linux-x64": {"checksum": "digest"}}}),

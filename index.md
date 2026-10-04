@@ -84,6 +84,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Component status service contract and operations](component-status/README.md)
 
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
+- [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
 
 - [Distribution channel contract and implementation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)
 
@@ -112,6 +113,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Playwright, IntelliJ IDEA and reusable agent-driven IDE smoke](engineering-docs/work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
 - [The website, seen from the visitor's chair](engineering-docs/work-orders/2026-09-28-website-visitor-experience.md)
 - [The visitor content and the producer migration](engineering-docs/work-orders/2026-09-28-visitor-content-and-producer-migration.md)
 - [0.2.15 extra tools, project information and agent defaults](engineering-docs/work-orders/2026-09-27-project-environment-discovery.md)
@@ -188,6 +190,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Development Blog
 
+- [An AI takes IntelliJ for a test drive](engineering-docs/blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md) — shared AI graphical tests, the IntelliJ restart fix, and original recordings; draft for owner review.
 - [The workflow explains itself](engineering-docs/blog/2026-10-03-the-workflow-explains-itself.md) — preamble, information model, merge rule, and a bug filed against ourselves; draft for owner review.
 - [What I have been up to lately](engineering-docs/blog/2026-09-30-what-i-have-been-up-to-lately.md)
 - [Why give DevCapsule a spin before V1?](engineering-docs/blog/2026-09-21-why-try-devcapsule-before-v1.md) — early-adopter and contributor invitation; draft for owner review.
@@ -291,6 +294,7 @@ history; record current decisions in the active documents above.
 - [JetBrains embedded browser is suspended in the container](engineering-docs/bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md)
 - [Fresh clones require manual ecosystem bootstrap](engineering-docs/bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md)
 - [Component tooling is not added to the runtime path](engineering-docs/bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md)
+- [IntelliJ relaunch stale directory lock](engineering-docs/bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md)
 - [PyCharm run-image network and Docker-option parity](engineering-docs/bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md)
 - [Codium grants ambient passwordless sudo by default](engineering-docs/bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md)
 - [PyCharm build emits fragile multiline RUN shell quoting](engineering-docs/bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md)

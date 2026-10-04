@@ -41,6 +41,13 @@ Choose one IDE and initialize from the project root:
 |---|---|
 | JavaScript or TypeScript, VSCodium | `~/.local/bin/devcapsule project init --need frontend-ide --need node` |
 | Python, PyCharm | `~/.local/bin/devcapsule project init --need python-ide --need python` |
+| Java, IntelliJ IDEA | `~/.local/bin/devcapsule project init --need java-ide --need java` |
+
+IntelliJ uses the unified vendor distribution with free core functionality;
+paid features require your JetBrains license. Add `--need browser-automation`
+to include Python Playwright and Chromium for browser-driven tests. The
+component provides `DEVCAPSULE_PLAYWRIGHT_PYTHON` as its Python executable and
+`PLAYWRIGHT_BROWSERS_PATH` for its installed browser.
 
 The prompts are the ones [your first session](../getting-started/first-session.md#1-make-a-first-workspace)
 explains. Then `~/.local/bin/devcapsule project run` opens the IDE.

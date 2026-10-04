@@ -28,6 +28,7 @@ from devcapsule.components.catalog import (
     selected_component_definitions,
 )
 from devcapsule.components import LockedArtifactDeclaration
+from devcapsule.components.browser_artifacts import extract_zip, wheel_install_step, wheel_name
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.images.build import (
     CommandComponent,
@@ -126,6 +127,12 @@ class SurfaceMaterialization:
 
 
 SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
+    "intellij": SurfaceMaterialization(
+        component_id="intellij", family="jetbrains",
+        recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
+        installation_path="/opt/jetbrains/intellij", archive_probes=("bin/idea.sh",),
+        requires_variant=True, post_install=(),
+    ),
     "pycharm": SurfaceMaterialization(
         component_id="pycharm",
         family="jetbrains",
@@ -383,6 +390,8 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
                     f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
                     "an archive member."
                 )
+            if locked_artifact.artifact_format == "python-wheel":
+                wheel_name(locked_artifact.url)
             if locked_artifact.artifact_format == "npm-package":
                 if not locked_artifact.npm_package:
                     raise CliError(
@@ -813,7 +822,9 @@ def _prepare_locked_artifact(
     declaration: LockedArtifactDeclaration,
     destination: Path,
 ) -> Path:
-    if declaration.artifact_format == "file":
+    if declaration.artifact_format == "zip-directory":
+        return extract_zip(acquired, destination)
+    if declaration.artifact_format in {"file", "python-wheel"}:
         shutil.copyfile(acquired, destination)
         destination.chmod(0o700)
         return destination
@@ -840,7 +851,7 @@ def _prepare_locked_artifact(
 # already checksummed. The tarballs stay beside the manifest so the recorded
 # package-lock.json keeps describing an install npm could repeat.
 
-ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package")
+ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package", "python-wheel", "zip-directory")
 # Root-run inside the build; node and npm come from the base image. The cache
 # is pointed at a scratch path and removed in the same step and log files
 # are disabled, so no layer carries npm's working state; scripts are refused
@@ -877,16 +888,27 @@ def _ancillary_contributions(
     for component_id in sorted({item.component_id for _path, item in files}):
         selected = [(path, item) for path, item in files if item.component_id == component_id]
         npm = [project for project in projects if project.component_id == component_id]
+        wheel_destinations = sorted({item.destination for _path, item in selected if item.artifact_format == "python-wheel"})
+        destinations = sorted({item.destination for _path, item in selected})
+        # A parent export already includes nested browser directories. Copying
+        # them again would retain duplicate payloads in the final image layers.
+        exports = tuple(destination for destination in destinations
+                        if not any(destination != parent and Path(destination).is_relative_to(parent)
+                                   for parent in destinations))
         contributions.append(ContributionComponent(
             component_id,
             (
-                *(FileComponent(path, _artifact_image_path(item), permissions=item.permissions)
+                *((DirectoryComponent(path, item.destination) if item.artifact_format == "zip-directory"
+                   else FileComponent(path, _artifact_image_path(item), permissions=item.permissions))
                   for path, item in selected),
+                *(ExecComponent(wheel_install_step(destination, tuple(wheel_name(item.url)
+                    for _path, item in selected if item.artifact_format == "python-wheel" and item.destination == destination)))
+                  for destination in wheel_destinations),
                 *(FileComponent(project.package_json, f"{project.destination}/package.json", permissions=0o644)
                   for project in npm),
                 *(ExecComponent(npm_install_step(project.destination)) for project in npm),
             ),
-            tuple(sorted({item.destination for _path, item in selected})),
+            exports,
         ))
     return tuple(contributions)
 
@@ -929,6 +951,8 @@ def _artifact_image_path(declaration: LockedArtifactDeclaration) -> str:
     destination is the project directory and the tarball keeps its name.
     """
 
+    if declaration.artifact_format == "python-wheel":
+        return f"{declaration.destination}/wheels/{wheel_name(declaration.url)}"
     if declaration.artifact_format == "npm-package":
         return f"{declaration.destination}/{_npm_tarball_name(declaration)}"
     return declaration.destination
