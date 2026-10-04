@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: active 2026-10-03; implementing the accepted Playwright/IntelliJ work order; shared Codex/Claude driver implemented; first IntelliJ and VSCodium graphical acceptance passed; repeat and persistence checks in progress
+State: active 2026-10-03; implementing the accepted Playwright/IntelliJ work order; shared Codex/Claude driver implemented; first IntelliJ and VSCodium graphical acceptance passed; component-browser repeat passed; fixing the stale directory lock exposed by relaunch
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -79,6 +79,13 @@ real successor browser/IntelliJ acceptance and regression/lifecycle checks.
 
 ## Open Threads
 
+- The component-browser repeat passed its AI editor interaction, but a relaunch
+  screenshot showed `Start Failed` from stale JetBrains IPC and PID reuse. The
+  former window-only persistence assertion was a false positive.
+  [Bug and fix](../../bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md):
+  adapter session ownership and dead-socket recovery are implemented with focused
+  tests; rebuild and repeat the strengthened two-session AI acceptance.
+
 - The owner granted autonomous execution and requested the Claude/Fable 5.1
   alternative on 2026-10-03. Reload the current workflow and project-management
   records when resuming. Both model identifiers and screenshot input worked in local probes.
@@ -112,7 +119,7 @@ Workflow/tool mismatch found: the local guide says to use run-once
 `--authorize network host`, but this CLI rejects that authorization. The
 smoke harness instead records the already-authorized host network in its own
 disposable project via supported initialization, without changing the owner's
-checkout configuration. Send this mismatch to the workflow owner before pause.
+checkout configuration. Delivered to maintenance on coordination at `34cbad056e31`.
 
 
 Work-order checkpoint (2026-10-03): work order/status links and

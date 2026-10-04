@@ -3,10 +3,88 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Iterator
+from contextlib import contextmanager, ExitStack
+import errno
+import fcntl
+import os
 from pathlib import Path
+import socket
+import stat
+import sys
 from typing import Mapping
 
 from ..contract import RuntimePlan, RuntimePlanError
+
+
+@contextmanager
+def session_lock(runtime: RuntimePlan) -> Iterator[None]:
+    """Hold profile ownership across the IDE lifetime before recovering stale IPC.
+
+    IntelliJ 2026.2 stores a Unix socket in system/.port and its PID in
+    config/.lock. After a container stops, PID reuse can make its vendor
+    recovery mistake the new JVM for the previous process. A dead socket is
+    the liveness evidence; PID numbers from another namespace are not.
+    """
+    if runtime.component.configuration.get("recover_stale_directory_lock") is not True:
+        yield
+        return
+    mapping = runtime.component.configuration["state_slot_mapping"]
+    assert isinstance(mapping, dict)  # validated by plan() before this hook
+    slots = runtime.slots_by_name()
+    config = Path(slots[runtime.component.slot_name(str(mapping["config"]))])
+    system = Path(slots[runtime.component.slot_name(str(mapping["system"]))])
+    with ExitStack() as held:
+        for directory in sorted({config, system}):
+            fd = os.open(directory / ".devcapsule-session.lock",
+                         os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+            held.callback(os.close, fd)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise RuntimePlanError("JetBrains profile is already owned by another capsule session") from exc
+        recover_dead_socket(config / ".lock", system / ".port")
+        yield
+
+
+def recover_dead_socket(lock: Path, port: Path) -> None:
+    """Remove only the verified dead Unix socket and its regular PID file.
+
+    Caller holds both profile-directory guards. Live endpoints, symlinks,
+    legacy TCP port files, timeouts and permission failures are left intact.
+    """
+    try:
+        original_port = port.lstat()
+    except FileNotFoundError:
+        return
+    if not stat.S_ISSOCK(original_port.st_mode):
+        return
+    try:
+        original_lock = lock.lstat()
+    except FileNotFoundError:
+        original_lock = None
+    if original_lock is not None and (not stat.S_ISREG(original_lock.st_mode)
+                                     or not lock.read_text().strip().isdigit()):
+        raise RuntimePlanError("JetBrains PID lock has an unexpected format; leaving it intact")
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+        probe.settimeout(1)
+        try:
+            probe.connect(str(port))
+        except OSError as exc:
+            if exc.errno != errno.ECONNREFUSED:
+                raise RuntimePlanError("Cannot prove the JetBrains directory socket is stale; leaving it intact") from exc
+        else:
+            raise RuntimePlanError("JetBrains directory socket is live; this profile is already in use")
+    # An unmanaged process may have replaced an endpoint during the probe.
+    def identity(info: os.stat_result) -> tuple[int, ...]:
+        return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+
+    if identity(port.lstat()) != identity(original_port) or (original_lock is not None and identity(lock.lstat()) != identity(original_lock)):
+        raise RuntimePlanError("JetBrains lock changed during recovery; leaving it intact")
+    port.unlink()
+    if original_lock is not None:
+        lock.unlink()
+    print("devcapsule: recovered a stale JetBrains directory socket after exclusive profile acquisition", file=sys.stderr)
 
 
 @dataclass(frozen=True)

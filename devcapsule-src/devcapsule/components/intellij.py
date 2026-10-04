@@ -24,7 +24,7 @@ class IntelliJComponent(ComponentDefinition):
         return "IDE upgrades require a reviewed catalog pin and graphical acceptance."
 
     def runtime_template(self) -> ComponentRuntimeTemplate:
-        return jetbrains_template(self.id, "bin/idea.sh", "IDEA_PROPERTIES")
+        return jetbrains_template(self.id, "bin/idea.sh", "IDEA_PROPERTIES", recover_directory_lock=True)
 
     def state_environment(self) -> tuple[StateEnvironmentDeclaration, ...]:
         return ()

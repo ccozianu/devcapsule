@@ -286,6 +286,8 @@ def wait_for_ide_window(facts: SessionFacts) -> dict[str, object]:
         seen = top_level_windows(facts.container)
         for window in seen:
             if facts.surface.window_class.lower() in str(window["class"]).lower():
+                if str(window.get("name", "")).lower() == "start failed":
+                    raise AssertionError(f"{facts.surface.name} displayed a startup failure dialog")
                 return window
         if time.monotonic() > deadline:
             raise AssertionError(

@@ -3,7 +3,8 @@
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
 
 
-def jetbrains_template(component_id: str, launcher: str, properties_variable: str) -> ComponentRuntimeTemplate:
+def jetbrains_template(component_id: str, launcher: str, properties_variable: str,
+                       *, recover_directory_lock: bool = False) -> ComponentRuntimeTemplate:
     return ComponentRuntimeTemplate.from_mapping(
         {
             "version": 1,
@@ -14,6 +15,7 @@ def jetbrains_template(component_id: str, launcher: str, properties_variable: st
                     "JAVA_TOOL_OPTIONS": "-Dide.browser.jcef.sandbox.enable=false",
                 },
                 "configuration": {
+                    **({"recover_stale_directory_lock": True} if recover_directory_lock else {}),
                     "installation_path": f"/opt/jetbrains/{component_id}",
                     "launcher": launcher,
                     "properties_path": "/tmp/devcapsule-jetbrains.properties",
@@ -107,4 +109,3 @@ def _slot(
     if home_overlay:
         value["home_overlay"] = True
     return value
-

@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from tests.e2e.ai_driver import CliDriver, Decision, DriverError, cli_identity
-from tests.e2e.ide_session import SURFACES, SessionFacts
+from tests.e2e.ide_session import SURFACES, SessionFacts, wait_for_ide_window
 from tests.e2e.visual_smoke import drive_scenario
 
 
@@ -62,6 +62,13 @@ def test_positive_ai_verdict_cannot_pass_without_saved_edit(tmp_path: Path) -> N
         drive_scenario(FakePage(), session(tmp_path), tmp_path, driver, recognizer)
     assert recognizer.calls == 0
     assert '"status": "failed"' in (tmp_path / "agent-result.json").read_text()
+
+
+def test_start_failed_window_is_not_a_live_ide(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("tests.e2e.ide_session.top_level_windows",
+                        lambda container: [{"class": "jetbrains-idea", "name": "Start Failed"}])
+    with pytest.raises(AssertionError, match="startup failure"):
+        wait_for_ide_window(session(tmp_path))
 
 
 def test_action_limit_stops_waiting_model(tmp_path: Path) -> None:

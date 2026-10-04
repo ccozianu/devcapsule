@@ -98,6 +98,9 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
                     after = editor_font_size(resumed.container)
                     assert after == before
                     assert result["marker"] in (resumed.workspace / "smoke.txt").read_text()
+                    # A retained file and a window class do not establish a
+                    # usable editor: repeat the interaction after relaunch.
+                    run_visual_smoke(resumed, evidence / "relaunch")
                     (evidence / "persistence.json").write_text(json.dumps({
                         "editor_font_before": before, "editor_font_after": after,
                         "saved_marker_retained": True, "window": resumed_window,
