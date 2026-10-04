@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-04 for owner PR integration; Eclipse Java Developers component and recorded noVNC saved-edit smoke passed
+State: paused 2026-10-04 for owner PR integration; today’s IDE blog updated with .NET/Rider and Eclipse evidence and media
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
 
@@ -20,9 +20,17 @@ Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`, `
 
 Maintain the optional IDE/tool component catalog and shared noVNC smoke harness.
 The owner requested Eclipse IDE for Java Developers on 2026-10-04, following
-IntelliJ/Rider, with a recorded Playwright smoke. No release or website publishing.
+IntelliJ/Rider, with a recorded Playwright smoke. The owner then requested an
+update to today’s blog with the latest accomplishments and screenshots/movies.
+No release or website publishing.
 
 ## Current State
+
+- Today’s existing blog is now **An AI takes our IDEs for a test drive**, with
+  the .NET CLI build, Rider’s activation limit, Eclipse’s WebKitGTK fix and
+  accepted save. Four screenshots and three original movies are linked.
+  Existing media is reused without duplication or alteration; movie/report
+  links use verified mainline `ff6fde1`. Filename/URL and draft flag are retained.
 
 - `eclipse-ide` selects Eclipse Java Developers 2026-09 R; `java-ide` remains
   IntelliJ. The whole package and native WebKitGTK dependencies are pinned and
@@ -35,17 +43,27 @@ IntelliJ/Rider, with a recorded Playwright smoke. No release or website publishi
   movie and final screenshot are committed with the permanent record below.
 - Implementation: `370abad`, native-library/harness correction `f926036`.
   The accepted executable identifies `f926036` and matches the child checksum.
-- Entry synchronization fast-forwarded to main `a3d88e3`, which includes Rider
-  through PR #165. Latest fetch: zero commits behind main. No open owned bugs,
+- Eclipse is integrated through PR #166; remote main contains `d79b967`.
+  The blog follow-up fast-forwarded to `ff6fde1`, the accepted mainline, before
+  editing. Definition unchanged; synchronization is complete. No open owned bugs,
   waiting mail or intake. No workflow declaration/version was changed.
 
 ## Planned Next Step
 
-The owner opens and merges the PR through the GitHub UI, titled **Add Eclipse
-IDE for Java Developers with recorded noVNC smoke**. After the owner reports
-merge, fetch and verify remote main contains the finished tree.
+The owner opens and merges the blog follow-up PR through the GitHub UI, titled
+**Update today’s IDE blog with Rider and Eclipse results and movies**. Editorial
+release and website publication remain separate owner decisions. After merge,
+fetch and verify remote main contains this blog update.
 
 ## Validation And External State
+
+- Blog render check: draft preserved, four images resolved as site assets and
+  three distinct movie links. All pinned evidence links exist at the cited
+  mainline commit; original movie SHA-256 values match the acceptance records.
+  Both added screenshots were visually reviewed. No new GUI run was needed.
+- Blog follow-up full `nox -s build` passed: 1,150 unit tests, nine packaging
+  checks, type checks, executable smokes and content contract. Log:
+  `.git/ide-blog-build.log`. Only prose, indexes and workflow records changed.
 
 - Full `nox -s build` passed: 1,150 tests, one existing xfail and xpass, mypy,
   CLI and executable smokes, nine packaging checks and docs contract.
@@ -65,8 +83,10 @@ merge, fetch and verify remote main contains the finished tree.
 
 ## Open Threads
 
-- Awaiting the human: owner PR merge. Previous IntelliJ blog editorial release
-  and website video publication remain the existing owner/website follow-ups.
+- Awaiting the human: blog PR merge, editorial release and existing website
+  video-publication follow-up. Eclipse PR #166 is verified on remote main.
+- No new assets or website implementation changes; screenshots render through
+  the existing content contract and movie links open/download original WebMs.
 - No unresolved implementation choice. Java build/debug, Maven/Gradle builds,
   Marketplace installation and restart preference acceptance are not claimed.
 - Rider licensed-editor acceptance remains unverified as recorded in its report.
