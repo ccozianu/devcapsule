@@ -1015,9 +1015,9 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     },
     edges=(
         _VerifiedEdge("dotnet-sdk", "10.0.401", _BASE_FAMILY_UBUNTU_24_04,
-                      "provisional: owner-directed 2026-10-04; SDK build/run acceptance pending"),
+                      "SDK 10.0.401 built and ran a net10.0 console app as the capsule user on v0.2.12-rc5; 2026-10-04 run 20261004T081836Z-932fc8"),
         _VerifiedEdge("rider", "2026.2.3.1", _BASE_FAMILY_UBUNTU_24_04,
-                      "provisional: owner-directed 2026-10-04; noVNC graphical startup acceptance pending"),
+                      "noVNC HTTP/window/pixel startup passed on v0.2.12-rc5; 2026-10-04 run 20261004T081836Z-932fc8; editor use requires license activation"),
         _VerifiedEdge("intellij", "2026.2.3", _BASE_FAMILY_UBUNTU_24_04,
                       "Codex/gpt-6-astra saved-edit graphical smoke passed 2026-10-04 on "
                       "v0.2.12-rc5 base; source ada153c; run 20261004T002435Z-d44b57"),

@@ -85,7 +85,7 @@ to installing `xprop` in every image.
 ## Rider and .NET SDK smoke
 
 ```sh
-.venv/bin/python -m nox -s ide-smoke -- --display --surface rider
+.venv/bin/python -m nox -s ide-smoke -- --display --surface rider --component-browser
 ```
 
 A fresh `dotnet-ide` project resolves Rider plus the .NET SDK. The test

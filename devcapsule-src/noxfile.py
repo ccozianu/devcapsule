@@ -412,7 +412,7 @@ def ide_smoke(session: nox.Session) -> None:
     parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
     parser.add_argument("--display", action="store_true")
     parser.add_argument("--agent", action="store_true", help="require an AI-driven saved edit and visual recognition")
-    parser.add_argument("--component-browser", action="store_true", help="drive the child Playwright component; requires --agent")
+    parser.add_argument("--component-browser", action="store_true", help="drive the child Playwright component; requires --display or --agent")
     parser.add_argument("--relaunch", action="store_true", help="JetBrains: set editor font size through the UI and verify persistence")
     parser.add_argument("--driver", choices=("codex", "claude"), default="codex")
     parser.add_argument("--model", help="default: gpt-6-astra for Codex, claude-fable-5-1 for Claude")
@@ -422,8 +422,8 @@ def ide_smoke(session: nox.Session) -> None:
     parser.add_argument("--agent-timeout", type=int, default=900)
     parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
     options = parser.parse_args(session.posargs)
-    if options.component_browser and not options.agent:
-        session.error("--component-browser requires --agent")
+    if options.component_browser and not (options.agent or options.display):
+        session.error("--component-browser requires --display or --agent")
     if options.component_browser:
         session.env["DEVCAPSULE_SMOKE_COMPONENT_BROWSER"] = "1"
     if options.relaunch:
