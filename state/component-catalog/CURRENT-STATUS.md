@@ -6,7 +6,7 @@ Start date: 2026-08-30
 
 State: paused 2026-10-04 for owner PR integration; .NET SDK and Rider components implemented; SDK build/run and noVNC startup passed; licensed editor interaction remains unverified
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@d2484c3f523d
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@963fb34f12db
 
 Branch association: `ws-component-catalog/intellij-idea`
 
