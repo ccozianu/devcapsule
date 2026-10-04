@@ -116,6 +116,10 @@ Decided so far:
 - 2026-08-03 JetBrains Runtime alpha compositing: retired 2026-10-04, an
   observation with no defect in two months, on a display connection the
   contained desktop has since replaced.
+- 2026-08-03 PyCharm native launcher: confirmed, target 0.9, with the
+  triage findings in the record (no recorded reason for the script; one
+  environment variable couples the runtime to it; the binary honours the
+  same); a minimal change plus the IDE smoke test as the end-to-end proof.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
