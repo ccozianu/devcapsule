@@ -70,6 +70,16 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
         (evidence / "container-identity.txt").write_text(identity.stdout, encoding="utf-8")
         child_digest = command("docker", "exec", session.container, "sha256sum", "/opt/devcapsule/bin/devcapsule.pex").stdout.split()[0]
         assert child_digest == hashlib.sha256(built_pex.read_bytes()).hexdigest(), "Child runtime differs from selected executable"
+        if surface.name == "eclipse":
+            package = command("docker", "exec", session.container, "python3", "-c",
+                              "import json; from pathlib import Path; "
+                              "root=Path('/opt/eclipse'); "
+                              "print(json.dumps({'ini':(root/'eclipse.ini').read_text(), "
+                              "'jdt':[p.name for p in (root/'plugins').glob('org.eclipse.jdt.core_*.jar')]}))")
+            (evidence / "eclipse-package.json").write_text(package.stdout, encoding="utf-8")
+            payload = json.loads(package.stdout)
+            assert "org.eclipse.epp.package.java.product" in payload["ini"]
+            assert payload["jdt"], "Java Development Tools are missing from the package"
         if surface.name == "rider":
             sdk = command("docker", "exec", "--user", f"{os.getuid()}:{os.getgid()}", "--workdir", str(session.project_path),
                           session.container, "dotnet", "--info")

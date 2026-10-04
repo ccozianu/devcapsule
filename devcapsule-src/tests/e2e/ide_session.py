@@ -47,6 +47,7 @@ class IdeSurface:
 
 
 SURFACES: tuple[IdeSurface, ...] = (
+    IdeSurface("eclipse", ("eclipse-ide", "java", "browser-automation"), "eclipse", ready_timeout=420.0),
     IdeSurface("codium", ("frontend-ide", "node"), "codium", ready_timeout=180.0),
     IdeSurface("pycharm", ("python-ide", "python"), "jetbrains-pycharm", ready_timeout=420.0),
     IdeSurface("rider", ("dotnet-ide", "browser-automation"), "jetbrains-rider", ready_timeout=420.0),

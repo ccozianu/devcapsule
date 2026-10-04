@@ -11,8 +11,19 @@ Select one IDE capability in your project's `.devcapsule/devcapsule.toml`:
 |---|---|---|
 | `python-ide` | PyCharm | Python from the base |
 | `java-ide` | IntelliJ IDEA | Java and Maven from the base |
+| `eclipse-ide` | Eclipse IDE for Java Developers | Bundled Eclipse runtime; Java and Maven from the base |
 | `frontend-ide` | VSCodium | Node.js from the base |
 | `dotnet-ide` | JetBrains Rider | .NET SDK selected automatically |
+
+For Eclipse, run `devcapsule project init --need eclipse-ide --need java`, then
+`devcapsule project run`. Open the printed desktop link. In Eclipse, choose
+**File > Open Projects from File System** to import the mounted project folder
+(or **File > Import > Maven > Existing Maven Projects** for a Maven project).
+Keep source files in the mounted project folder; Eclipse's workspace at
+`/ide-workspace` stores preferences, project references and local history.
+It persists per checkout, along with Eclipse's user configuration in the
+capsule home. The complete Java Developers package includes JDT, Git, Maven
+and Gradle integration. Existing `java-ide` projects continue to use IntelliJ.
 
 For a new Rider project, run `devcapsule project init --need dotnet-ide`, then
 `devcapsule project run`. Open the desktop link printed by the launcher in

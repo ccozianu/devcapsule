@@ -125,6 +125,9 @@ capsule as well as on a host. The kinds are the definition's; see
   package-free C# fixture using the selected SDK and retains noVNC pixels.
   `--agent` additionally requires a saved edit and visual recognition; it
   fails if Rider licensing prevents editor access.
+  Eclipse: `nox -s ide-smoke -- --agent --surface eclipse --component-browser`
+  requires a noVNC editor save, independently checks the saved file, and keeps
+  the Playwright movie. Use `--display` instead of `--agent` for startup only.
 - **Gate**: `.venv/bin/python -m nox -s build`, before a checkpoint and
   before integration: distribution version, Python and shell syntax, type
   check, unit tests, CLI smoke, the executable built and smoked, packaging

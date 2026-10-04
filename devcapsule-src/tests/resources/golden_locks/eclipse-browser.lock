@@ -3,7 +3,7 @@
 devcapsule-lock-format-version = 1
 resolution-matrix-version = "embedded-26"
 platform = "linux-amd64"
-capabilities-digest = "cbf92e8769b55db9fc409ded11f1a3dc5bf15f85e3fa1116c5d9ef871871877d"
+capabilities-digest = "f33a0955fcbc278d1ac1279c8fda629319fe4f47c09739da0fd9244f187f3d44"
 
 [base]
 reference = "docker.io/mycodespaceai/devcapsule-base@sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c"
@@ -11,14 +11,16 @@ build-mnemonic = "v0.2.12-rc5"
 contract = "ubuntu-24.04@9"
 
 [components]
-interactive-surface = "intellij"
+interactive-surface = "eclipse"
 
-[components.intellij]
-version = "2026.2.3"
-variant = "unified"
+[components.eclipse]
+version = "2026-09-R"
+variant = "java"
 delivery-policy = "local-materialization"
-url = "https://download.jetbrains.com/idea/idea-2026.2.3.tar.gz"
-sha256 = "68751c8ae4d49407251cd197df795fbed91b6fdc85d10c73c4649a99e496ab37"
+terms-url = "https://www.eclipse.org/legal/epl-2.0/"
+url = "https://download.eclipse.org/technology/epp/downloads/release/2026-09/R/eclipse-java-2026-09-R-linux-gtk-x86_64.tar.gz"
+sha256 = "1a836dcedcc353567f164964ecb251bf0477cffb26dec1cc49bcf6ec12d82eca"
+upstream-sha512 = "483af23506520a37e96857dbafc74e36194152b10471c558b1c2a31b34053f5f20af4a5d88509acb7cfa38bd2aff3fa7e6e45159ff827260cdf8838c46bd73a4"
 
 [components.playwright]
 version = "1.63.0"
@@ -71,5 +73,5 @@ sha256 = "ebc74fc5b94830176a3c2914ae96bd8bc7f6a91f4f33890230f84a172ee61ccc"
 destination = "/opt/playwright/browsers/ffmpeg-1011"
 
 [materialization]
-recipe = "jetbrains-local-materialization"
+recipe = "eclipse-local-materialization"
 recipe-version = "1"

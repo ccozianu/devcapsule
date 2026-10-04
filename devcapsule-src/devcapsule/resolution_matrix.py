@@ -70,7 +70,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-25"
+_MATRIX_VERSION = "embedded-26"
 
 
 # --------------------------------------------------------------------------
@@ -664,6 +664,18 @@ _RIDER_2026_2_3_1 = _ComponentPin(
     },
 )
 
+_ECLIPSE_2026_09 = _ComponentPin(
+    component_id="eclipse", version="2026-09-R",
+    lock_table={
+        "version": "2026-09-R", "variant": "java",
+        "delivery-policy": "local-materialization",
+        "terms-url": "https://www.eclipse.org/legal/epl-2.0/",
+        "url": "https://download.eclipse.org/technology/epp/downloads/release/2026-09/R/eclipse-java-2026-09-R-linux-gtk-x86_64.tar.gz",
+        "sha256": "1a836dcedcc353567f164964ecb251bf0477cffb26dec1cc49bcf6ec12d82eca",
+        "upstream-sha512": "483af23506520a37e96857dbafc74e36194152b10471c558b1c2a31b34053f5f20af4a5d88509acb7cfa38bd2aff3fa7e6e45159ff827260cdf8838c46bd73a4",
+    },
+)
+
 _INTELLIJ_2026_2_3 = _ComponentPin(
     component_id="intellij", version="2026.2.3",
     lock_table={
@@ -999,6 +1011,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "intellij": (_INTELLIJ_2026_2_3,),
+        "eclipse": (_ECLIPSE_2026_09,),
         "rider": (_RIDER_2026_2_3_1,),
         "dotnet-sdk": (_DOTNET_SDK_10_0_401,),
         "playwright": (_ComponentPin("playwright", str(PLAYWRIGHT_PIN["version"]), PLAYWRIGHT_PIN),),
@@ -1014,6 +1027,8 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
+        _VerifiedEdge("eclipse", "2026-09-R", _BASE_FAMILY_UBUNTU_24_04,
+                      "provisional: owner-directed Eclipse Java package; noVNC saved-edit acceptance pending"),
         _VerifiedEdge("dotnet-sdk", "10.0.401", _BASE_FAMILY_UBUNTU_24_04,
                       "SDK 10.0.401 built and ran a net10.0 console app as the capsule user on v0.2.12-rc5; 2026-10-04 run 20261004T081836Z-932fc8"),
         _VerifiedEdge("rider", "2026.2.3.1", _BASE_FAMILY_UBUNTU_24_04,
@@ -1145,6 +1160,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     surface_capabilities={
         "python-ide": "pycharm",
         "java-ide": "intellij",
+        "eclipse-ide": "eclipse",
         "dotnet-ide": "rider",
         "frontend-ide": "codium",
     },
@@ -1161,6 +1177,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     # The materialization recipe follows the selected surface: each surface
     # family unpacks and fixes up its installation differently.
     materialization={
+        "eclipse": {"recipe": "eclipse-local-materialization", "recipe-version": "1"},
         "rider": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "intellij": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "pycharm": {

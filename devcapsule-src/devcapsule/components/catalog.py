@@ -12,6 +12,7 @@ from devcapsule.components.codium import DEFINITION as CODIUM
 from devcapsule.components.dotnet_sdk import DEFINITION as DOTNET_SDK
 from devcapsule.components.rider import DEFINITION as RIDER
 from devcapsule.components.intellij import DEFINITION as INTELLIJ
+from devcapsule.components.eclipse import DEFINITION as ECLIPSE
 from devcapsule.components.playwright import DEFINITION as PLAYWRIGHT
 from devcapsule.components.postgresql_client import DEFINITION as POSTGRESQL_CLIENT
 from devcapsule.components.pycharm import DEFINITION as PYCHARM
@@ -25,6 +26,7 @@ class ComponentCatalogError(ValueError):
 # Components a lock may name as its one interactive-surface. Every other
 # catalog component is ancillary; a definition never appears in both roles.
 INTERACTIVE_SURFACES: dict[str, ComponentDefinition] = {
+    ECLIPSE.id: ECLIPSE,
     PYCHARM.id: PYCHARM,
     CODIUM.id: CODIUM,
     INTELLIJ.id: INTELLIJ,
@@ -32,6 +34,7 @@ INTERACTIVE_SURFACES: dict[str, ComponentDefinition] = {
 }
 
 COMPONENTS: dict[str, ComponentDefinition] = {
+    ECLIPSE.id: ECLIPSE,
     PYCHARM.id: PYCHARM,
     CODIUM.id: CODIUM,
     INTELLIJ.id: INTELLIJ,

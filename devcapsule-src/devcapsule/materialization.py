@@ -128,6 +128,13 @@ class SurfaceMaterialization:
 
 
 SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
+    "eclipse": SurfaceMaterialization(
+        component_id="eclipse", family="eclipse",
+        recipe_id="eclipse-local-materialization", recipe_version="1",
+        installation_path="/opt/eclipse",
+        archive_probes=("eclipse", "eclipse.ini", "configuration/config.ini"),
+        requires_variant=True, post_install=(),
+    ),
     "rider": SurfaceMaterialization(
         component_id="rider", family="jetbrains",
         recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
