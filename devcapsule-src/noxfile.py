@@ -411,12 +411,33 @@ def ide_smoke(session: nox.Session) -> None:
     install_locked(session)
     parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
     parser.add_argument("--display", action="store_true")
+    parser.add_argument("--agent", action="store_true", help="require an AI-driven saved edit and visual recognition")
+    parser.add_argument("--driver", choices=("codex", "claude"), default="codex")
+    parser.add_argument("--model", help="default: gpt-6-astra for Codex, claude-fable-5-1 for Claude")
+    parser.add_argument("--recognizer", choices=("codex", "claude"), help="defaults to the action driver")
+    parser.add_argument("--recognizer-model")
+    parser.add_argument("--max-actions", type=int, default=30)
+    parser.add_argument("--agent-timeout", type=int, default=900)
     parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
     options = parser.parse_args(session.posargs)
     select_e2e_pex(session)
-    if options.display:
-        session.install(f"playwright=={PLAYWRIGHT_VERSION}")
-        session.run("playwright", "install", "chromium")
+    if options.display or options.agent:
+        wheels = os.environ.get("DEVCAPSULE_PLAYWRIGHT_WHEELS")
+        if wheels:
+            session.install("--no-index", "--find-links", wheels, f"playwright=={PLAYWRIGHT_VERSION}")
+        else:
+            session.install(f"playwright=={PLAYWRIGHT_VERSION}")
+            session.run("playwright", "install", "chromium")
+        session.env["DEVCAPSULE_SMOKE_DISPLAY"] = "1"
+    if options.agent:
+        session.env.update({
+            "DEVCAPSULE_SMOKE_AGENT": "1", "DEVCAPSULE_SMOKE_DRIVER": options.driver,
+            "DEVCAPSULE_SMOKE_MAX_ACTIONS": str(options.max_actions),
+            "DEVCAPSULE_SMOKE_TIMEOUT": str(options.agent_timeout),
+        })
+        for key in ("model", "recognizer", "recognizer_model"):
+            if value := getattr(options, key):
+                session.env[f"DEVCAPSULE_SMOKE_{key.upper()}"] = value
     session.run(
         "python", "-m", "pytest", "--no-cov", "-m", "ide_smoke",
         *(["-k", " or ".join(options.surface)] if options.surface else []),

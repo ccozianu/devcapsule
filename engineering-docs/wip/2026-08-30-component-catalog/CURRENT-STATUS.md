@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: active 2026-10-03; work order drafted for Playwright and IntelliJ IDEA components with a shared Codex/gpt-6-astra graphical smoke driver; autonomous execution authorized; implementing components and shared Codex/Claude drivers
+State: active 2026-10-03; implementing the accepted Playwright/IntelliJ work order; shared Codex/Claude driver implemented; full gate and real graphical acceptance in progress
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -23,7 +23,7 @@ The requested scope is IntelliJ IDEA as an optional IDE surface, Playwright
 as a reusable component for future development capsules, and a shared
 agent-driven graphical smoke harness using Codex with `gpt-6-astra`.
 The [work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
-records the proposed execution plan and acceptance evidence.
+records the accepted execution plan and acceptance evidence.
 
 The owner's 2026-10-01 decision, delivered by project-management and confirmed
 in this checkout on 2026-10-03, assigns IntelliJ to this workstream for
@@ -48,8 +48,17 @@ belong here; component orchestration, upgrades and channels belong to
 - The owner accepted and extended the work order on 2026-10-03.
   `/opt/xtras` is authorized for the exercise's Playwright bootstrap; the
   deliverable must also supply it as a component in fresh capsules.
-- The registry and this status now identify the IntelliJ continuation.
-  No runtime code or product requirements were changed by this setup.
+- Implemented IntelliJ 2026.2.3 unified distribution (`java-ide`) using the
+  shared JetBrains template, plus Playwright 1.63.0/Chromium 153.0.8010.12
+  (`browser-automation`) through verified offline wheels/browser archives.
+  Dogfood manifest and generated locks select Playwright.
+- Added one shared visual action/recognition scenario with Codex/GPT-6 Astra
+  default and Claude/`claude-fable-5-1` alternative. Both exact model CLI
+  text and image probes succeeded. Real IDE acceptance remains pending.
+- Full unit suite passes after adding discovery adapters and status-service
+  probe registrations; required gate has reached executable packaging.
+  Scratch is `/opt/devcapsule-gate`, outside the repo and mocked home mounts.
+  Local log: `.git/intellij-build-gate.log`.
 - No open bug records owned by `component-catalog` were found on this
   mainline baseline. Re-read the queue at the next session.
 - The website gitlink remains exactly the one on `main`; the owner reserves
@@ -61,23 +70,26 @@ Execute the accepted [work order](../../work-orders/2026-10-03-playwright-intell
 Playwright and IntelliJ components, one shared graphical scenario with
 parameterized AI action driver and visual success recognizer. Codex with
 `gpt-6-astra` is the default and required IntelliJ acceptance; provide the
-Claude CLI/Fable 5.1 alternative on a best-effort basis. Begin with component
-and CLI contract verification, then focused tests and real successor smoke.
+Claude CLI/Fable 5.1 alternative on a best-effort basis. Finish the gate, commit an identified source checkpoint, then perform the
+real successor browser/IntelliJ acceptance and regression/lifecycle checks.
 
 ## Open Threads
 
 - The owner granted autonomous execution and requested the Claude/Fable 5.1
   alternative on 2026-10-03. Reload the current workflow and project-management
-  records when resuming. Model availability and IntelliJ acquisition details
-  have not been verified; do not silently change `gpt-6-astra`.
+  records when resuming. Both model identifiers and screenshot input worked in local probes.
+  IntelliJ acquisition is in progress; its vendor checksum is pinned.
+  Do not silently change `gpt-6-astra`.
 - 0.2.16 is the assigned target; release driver, cut and formal work order
   remain project-management responsibilities. Re-verify their latest state.
 - The workflow migration notice is accepted. Publish status and use
   coordination mail. Before removing any legacy outbox refs, establish
   whether they hold unlanded records and preserve those records; no legacy
   ref is removed by this checkpoint.
-- No builds, containers or services were started for IntelliJ. The earlier
-  website recovery files remain in this checkout's `.git/recovery/`.
+- Bootstrap Playwright and browsers are under `/opt/xtras`; they are not
+  the managed component. Model probe evidence is under
+  `/opt/devcapsule-gate/visual-probes`. No IntelliJ launch yet at this checkpoint.
+  The earlier website recovery files remain in `.git/recovery/`.
 - Historical status is preserved verbatim in the record below. Its old next
   steps and external-state claims are historical, not current instructions.
 

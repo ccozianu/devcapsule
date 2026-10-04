@@ -2,6 +2,8 @@
   "format": 1,
   "advisories": [],
   "probes": [
+    {"component": "intellij", "platform": "linux-amd64", "version": "2026.2.3"},
+    {"component": "playwright", "platform": "linux-amd64", "version": "1.63.0"},
     {"component": "pycharm", "platform": "linux-amd64", "version": "2026.2.0.1"},
     {"component": "codium", "platform": "linux-amd64", "version": "1.126.04524"},
     {"component": "codex", "platform": "linux-amd64", "version": "0.153.4"},

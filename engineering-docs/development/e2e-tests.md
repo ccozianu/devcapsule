@@ -81,6 +81,62 @@ to installing `xprop` in every image.
   the browser session.
 - The release runbook says which of these the acceptance record cites.
 
+## AI-driven graphical acceptance
+
+From `devcapsule-src`, with host Docker, the recommended base image, and an
+authenticated Codex CLI on `PATH`:
+
+```sh
+.venv/bin/python -m nox -s ide-smoke -- --agent --surface intellij
+```
+
+The default action driver and visual recognizer are Codex with `gpt-6-astra`.
+The shared scenario opens `smoke.txt`, types a unique marker through the
+noVNC canvas using Playwright, saves it in the IDE and asks the recognizer to
+review chronological frames including the final editor. The test independently
+checks the saved file. A model verdict alone cannot pass. Each invocation
+creates one disposable project/capsule and keeps its evidence after cleanup.
+
+Use `--driver claude` for Claude CLI with `claude-fable-5-1`, and `--model`
+to override the driver's model. `--recognizer codex|claude` and
+`--recognizer-model` independently select the final visual reviewer. For example:
+
+```sh
+.venv/bin/python -m nox -s ide-smoke -- --agent --surface pycharm --driver claude
+.venv/bin/python -m nox -s ide-smoke -- --agent --surface codium --driver claude --recognizer codex
+```
+
+Both providers implement `tests/e2e/ai_driver.py`'s image/decision contract;
+`visual_smoke.py` owns the sole scenario and applies mouse/keyboard actions.
+CLIs run in an evidence directory with their tools disabled. They use the
+parent developer's existing authentication; no agent credentials are copied
+to the child IDE capsule. Codex's JSONL currently omits a reported model id,
+so the record distinguishes its explicit CLI selection from server-reported
+identity. Claude's structured result must report the selected model.
+
+Agent mode requires Playwright, Chromium and working model access; absence is
+a failure. Defaults bound the agent to 30 actions, 900 seconds overall and
+120 seconds per model invocation, without automatic retries. Set
+`--max-actions` or `--agent-timeout` for a deliberate different budget.
+The launch and IDE-window checks have their own finite deadlines.
+
+Select `browser-automation` in a development project's capabilities to install
+the Playwright component. It supplies Python Playwright and pinned Chromium
+under `/opt/playwright`, with `PLAYWRIGHT_BROWSERS_PATH`,
+`DEVCAPSULE_PLAYWRIGHT_PYTHON` and `DEVCAPSULE_PLAYWRIGHT_WHEELS` in its runtime
+environment. Nox installs its binding from those verified local wheels and
+uses the component browser without downloading another copy. The wheels
+currently target Linux x86-64 and CPython 3.12. They and the browser belong to
+the image; they need no persistent state slot. A host without the component
+uses Nox's explicitly pinned package/browser installation. The authorized
+one-off `/opt/xtras` bootstrap is separate from this managed installation.
+
+Evidence adds executable checksum/version, image/container identity,
+`ai-selection.json`, `agent-result.json`, per-action prompts, CLI events,
+usage where reported, screenshots and `agent-desktop.webm`. The recognizer
+consumes sampled PNG frames, not a claimed direct video input. Raw launcher
+logs contain the ephemeral desktop access URL; sanitize it before sharing.
+
 ## Running inside a capsule
 
 All of this runs from a capsule that has host Docker and host networking:

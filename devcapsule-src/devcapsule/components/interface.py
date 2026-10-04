@@ -71,6 +71,10 @@ class LockedArtifactDeclaration:
     - ``file``: the download is the executable; it is copied to ``destination``.
     - ``tar-gz-member``: exactly one regular file, ``archive_member``, is
       extracted from the tarball and copied to ``destination``.
+    - ``python-wheel``: verified wheels sharing a destination install offline
+      into its ``venv/``, with the original wheels retained in ``wheels/``.
+    - ``zip-directory``: bounded, regular-file-only extraction copied to the
+      destination directory, preserving executable permissions.
     - ``npm-package``: the download is an npm tarball, installed with npm's
       own layout into the ``destination`` directory under the dependency
       name ``npm_package``.  Every ``npm-package`` artifact sharing a

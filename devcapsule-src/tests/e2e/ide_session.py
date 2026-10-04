@@ -49,6 +49,7 @@ class IdeSurface:
 SURFACES: tuple[IdeSurface, ...] = (
     IdeSurface("codium", ("frontend-ide", "node"), "codium", ready_timeout=180.0),
     IdeSurface("pycharm", ("python-ide", "python"), "jetbrains-pycharm", ready_timeout=420.0),
+    IdeSurface("intellij", ("java-ide", "java", "browser-automation"), "jetbrains-idea", ready_timeout=420.0),
 )
 
 CREATOR = "e2e@devcapsule.test"
@@ -128,6 +129,7 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
     container = f"devcapsule-e2e-ide-{surface.name}-{run_id}"
     workspace = workspace_root(tmp_path) / slug
     workspace.mkdir(parents=True)
+    (workspace / "smoke.txt").write_text("DevCapsule graphical smoke fixture.\n", encoding="utf-8")
     evidence.mkdir(parents=True, exist_ok=True)
     launcher_log = evidence / "launcher.log"
     environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
@@ -145,7 +147,8 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
         assert init.returncode == 0, f"project init failed for {surface.name}:\n{init.stdout}\n{init.stderr}"
         with launcher_log.open("wb") as log:
             launcher = subprocess.Popen(
-                [str(executable), "project", "run", "--no-update-check", "--name", container],
+                [str(executable), "project", "run", "--no-update-check", "--name", container,
+                 "--authorize", "network", "host"],
                 cwd=workspace, env=environment, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
             )
         desktop_url = wait_for_desktop_url(launcher, launcher_log)

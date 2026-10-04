@@ -46,6 +46,7 @@ from devcapsule.images.contract import (
     Provenance,
 )
 from devcapsule.platforms import Platform
+from devcapsule.components.playwright_pin import PIN as PLAYWRIGHT_PIN
 from devcapsule.configuration.documents import (
     ProjectConfigurationError,
     canonical_digest,
@@ -68,7 +69,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-23"
+_MATRIX_VERSION = "embedded-24"
 
 
 # --------------------------------------------------------------------------
@@ -637,6 +638,16 @@ _V0_2_12_BASE = _BasePin(
     },
 )
 
+_INTELLIJ_2026_2_3 = _ComponentPin(
+    component_id="intellij", version="2026.2.3",
+    lock_table={
+        "version": "2026.2.3", "variant": "unified",
+        "delivery-policy": "local-materialization",
+        "url": "https://download.jetbrains.com/idea/idea-2026.2.3.tar.gz",
+        "sha256": "68751c8ae4d49407251cd197df795fbed91b6fdc85d10c73c4649a99e496ab37",
+    },
+)
+
 _PYCHARM_2026_2_0_1 = _ComponentPin(
     component_id="pycharm",
     version="2026.2.0.1",
@@ -961,6 +972,8 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
+        "intellij": (_INTELLIJ_2026_2_3,),
+        "playwright": (_ComponentPin("playwright", str(PLAYWRIGHT_PIN["version"]), PLAYWRIGHT_PIN),),
         "codium": (_CODIUM_1_126_04524,),
         "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1),
         "claude-code": (
@@ -973,6 +986,10 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
+        _VerifiedEdge("intellij", "2026.2.3", _BASE_FAMILY_UBUNTU_24_04,
+                      "provisional: component-catalog graphical acceptance pending"),
+        _VerifiedEdge("playwright", "1.63.0", _BASE_FAMILY_UBUNTU_24_04,
+                      "provisional: capsule bootstrap browser launch passed; component image acceptance pending"),
         _VerifiedEdge(
             "codex",
             "0.157.1",
@@ -1093,6 +1110,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     # ask one lock to carry two surfaces.
     surface_capabilities={
         "python-ide": "pycharm",
+        "java-ide": "intellij",
         "frontend-ide": "codium",
     },
     # Ancillary capabilities select additive components; the value is the
@@ -1102,10 +1120,12 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "claude-code-agent": "claude-code",
         "antigravity-agent": "antigravity-cli",
         "postgresql-client": "postgresql-client",
+        "browser-automation": "playwright",
     },
     # The materialization recipe follows the selected surface: each surface
     # family unpacks and fixes up its installation differently.
     materialization={
+        "intellij": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "pycharm": {
             "recipe": "jetbrains-local-materialization",
             "recipe-version": "1",

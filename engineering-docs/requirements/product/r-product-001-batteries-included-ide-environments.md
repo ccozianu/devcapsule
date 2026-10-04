@@ -40,6 +40,17 @@ single end-to-end pass/fail test.
 
 ## Related
 
+The component-catalog slice implements this goal with optional IntelliJ IDEA
+(`java-ide`) and reusable Playwright/Chromium (`browser-automation`). IntelliJ
+uses the unified vendor distribution's free core functionality and the bundled
+JetBrains Runtime; paid features remain subject to the user's vendor license.
+Its configuration, plugins, caches and logs use IntelliJ's own component
+namespace. Playwright is additive and does not select or replace an IDE.
+The [graphical acceptance scenario](../../development/e2e-tests.md#ai-driven-graphical-acceptance)
+exercises a visible saved edit in a fresh capsule and records both deterministic
+and model-observed evidence. This is a concrete validation signal, not the
+entire high-level goal's pass/fail definition.
+
 - `engineering-docs/decisions/product/d-0001-capability-first-cli-model.md`
 - `R-PRODUCT-002`
 - `R-PRODUCT-003`
