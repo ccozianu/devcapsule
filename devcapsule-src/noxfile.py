@@ -412,8 +412,8 @@ def ide_smoke(session: nox.Session) -> None:
     parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
     parser.add_argument("--display", action="store_true")
     parser.add_argument("--agent", action="store_true", help="require an AI-driven saved edit and visual recognition")
-    parser.add_argument("--component-browser", action="store_true", help="drive the child Playwright component; requires --agent")
-    parser.add_argument("--relaunch", action="store_true", help="IntelliJ: set editor font size through the UI and verify persistence")
+    parser.add_argument("--component-browser", action="store_true", help="drive the child Playwright component; requires --display or --agent")
+    parser.add_argument("--relaunch", action="store_true", help="JetBrains: set editor font size through the UI and verify persistence")
     parser.add_argument("--driver", choices=("codex", "claude"), default="codex")
     parser.add_argument("--model", help="default: gpt-6-astra for Codex, claude-fable-5-1 for Claude")
     parser.add_argument("--recognizer", choices=("codex", "claude"), help="defaults to the action driver")
@@ -422,13 +422,13 @@ def ide_smoke(session: nox.Session) -> None:
     parser.add_argument("--agent-timeout", type=int, default=900)
     parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
     options = parser.parse_args(session.posargs)
-    if options.component_browser and not options.agent:
-        session.error("--component-browser requires --agent")
+    if options.component_browser and not (options.agent or options.display):
+        session.error("--component-browser requires --display or --agent")
     if options.component_browser:
         session.env["DEVCAPSULE_SMOKE_COMPONENT_BROWSER"] = "1"
     if options.relaunch:
-        if not options.agent or options.surface != ["intellij"]:
-            session.error("--relaunch requires --agent --surface intellij")
+        if not options.agent or options.surface not in (["intellij"], ["rider"]):
+            session.error("--relaunch requires --agent --surface intellij or rider")
         session.env["DEVCAPSULE_SMOKE_RELAUNCH"] = "1"
     select_e2e_pex(session)
     if options.display or options.agent:

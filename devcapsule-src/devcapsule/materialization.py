@@ -28,6 +28,7 @@ from devcapsule.components.catalog import (
     selected_component_definitions,
 )
 from devcapsule.components import LockedArtifactDeclaration
+from devcapsule.components.directory_artifacts import extract_tar_directory
 from devcapsule.components.browser_artifacts import extract_zip, wheel_install_step, wheel_name
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.images.build import (
@@ -127,6 +128,12 @@ class SurfaceMaterialization:
 
 
 SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
+    "rider": SurfaceMaterialization(
+        component_id="rider", family="jetbrains",
+        recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
+        installation_path="/opt/jetbrains/rider", archive_probes=("bin/rider.sh",),
+        requires_variant=False, post_install=(),
+    ),
     "intellij": SurfaceMaterialization(
         component_id="intellij", family="jetbrains",
         recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
@@ -822,6 +829,8 @@ def _prepare_locked_artifact(
     declaration: LockedArtifactDeclaration,
     destination: Path,
 ) -> Path:
+    if declaration.artifact_format == "tar-gz-directory":
+        return extract_tar_directory(acquired, destination)
     if declaration.artifact_format == "zip-directory":
         return extract_zip(acquired, destination)
     if declaration.artifact_format in {"file", "python-wheel"}:
@@ -851,7 +860,7 @@ def _prepare_locked_artifact(
 # already checksummed. The tarballs stay beside the manifest so the recorded
 # package-lock.json keeps describing an install npm could repeat.
 
-ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package", "python-wheel", "zip-directory")
+ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package", "python-wheel", "zip-directory", "tar-gz-directory")
 # Root-run inside the build; node and npm come from the base image. The cache
 # is pointed at a scratch path and removed in the same step and log files
 # are disabled, so no layer carries npm's working state; scripts are refused
@@ -898,7 +907,7 @@ def _ancillary_contributions(
         contributions.append(ContributionComponent(
             component_id,
             (
-                *((DirectoryComponent(path, item.destination) if item.artifact_format == "zip-directory"
+                *((DirectoryComponent(path, item.destination) if item.artifact_format in {"zip-directory", "tar-gz-directory"}
                    else FileComponent(path, _artifact_image_path(item), permissions=item.permissions))
                   for path, item in selected),
                 *(ExecComponent(wheel_install_step(destination, tuple(wheel_name(item.url)

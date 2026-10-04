@@ -49,6 +49,7 @@ class IdeSurface:
 SURFACES: tuple[IdeSurface, ...] = (
     IdeSurface("codium", ("frontend-ide", "node"), "codium", ready_timeout=180.0),
     IdeSurface("pycharm", ("python-ide", "python"), "jetbrains-pycharm", ready_timeout=420.0),
+    IdeSurface("rider", ("dotnet-ide", "browser-automation"), "jetbrains-rider", ready_timeout=420.0),
     IdeSurface("intellij", ("java-ide", "java", "browser-automation"), "jetbrains-idea", ready_timeout=420.0),
 )
 
@@ -132,6 +133,12 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
     workspace = workspace_root(tmp_path) / slug
     workspace.mkdir(parents=True)
     (workspace / "smoke.txt").write_text("DevCapsule graphical smoke fixture.\n", encoding="utf-8")
+    if surface.name == "rider":
+        (workspace / "Smoke.csproj").write_text(
+            '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
+            '<TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>\n')
+        (workspace / "Program.cs").write_text('System.Console.WriteLine("DevCapsule .NET smoke passed");\n')
+        (workspace / "NuGet.Config").write_text('<configuration><packageSources><clear /></packageSources></configuration>\n')
     evidence.mkdir(parents=True, exist_ok=True)
     environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
     try:
