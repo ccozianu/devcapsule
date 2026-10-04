@@ -2,9 +2,14 @@
 
 Date: 2026-10-03
 
-Status: accepted for autonomous execution by the owner on 2026-10-03;
-extended the same day to include a parameterized AI driver and success
-recognizer with Codex/GPT-6 Astra as default and Claude/Fable 5.1 as an alternative.
+Status: implemented and validated 2026-10-04; awaiting owner PR integration.
+Accepted for autonomous execution by the owner on 2026-10-03, including
+parameterized action drivers and success recognizers: Codex/GPT-6 Astra by
+default and Claude/Fable 5.1 as an alternative.
+
+The [validation record](../implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
+contains accepted runs, the relaunch defect found and fixed, source identities,
+gate results and the final editor screenshot.
 
 Owner: `component-catalog`, branch `ws-component-catalog/intellij-idea`.
 IntelliJ's assigned release target remains 0.2.16. This order does not cut or

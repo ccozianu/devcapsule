@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: active 2026-10-03; implementing the accepted Playwright/IntelliJ work order; shared Codex/Claude driver implemented; first IntelliJ and VSCodium graphical acceptance passed; component-browser repeat passed; fixing the stale directory lock exposed by relaunch
+State: paused 2026-10-04 for owner PR integration; IntelliJ and Playwright components implemented and validated; Codex/Astra IntelliJ initial and relaunch smoke passed; Claude/Fable PyCharm and VSCodium smoke passed
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -14,154 +14,117 @@ Integration target: `main`
 
 Delivery method: pull request, merge commit; owner operates the GitHub UI
 
-Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`
+Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`, `R-DOCS-002`
 
 ## Goal And Scope
 
-Accept and test IDE surfaces and agent CLIs as regular catalog components.
-The requested scope is IntelliJ IDEA as an optional IDE surface, Playwright
-as a reusable component for future development capsules, and a shared
-agent-driven graphical smoke harness using Codex with `gpt-6-astra`.
-The [work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
-records the accepted execution plan and acceptance evidence.
+Deliver IntelliJ IDEA as an optional IDE surface and Playwright as an additive
+browser-automation component, with a shared, parameterized graphical AI smoke
+harness. Codex with `gpt-6-astra` is the default; Claude CLI with
+`claude-fable-5-1` is the tested alternative. Action driver and visual
+recognizer can be selected independently.
 
-The owner's 2026-10-01 decision, delivered by project-management and confirmed
-in this checkout on 2026-10-03, assigns IntelliJ to this workstream for
-0.2.16 and lifts the historical Antigravity scope freeze. New IDE components
-belong here; component orchestration, upgrades and channels belong to
-`component-upgrades`. Eclipse is not scheduled.
+The owner accepted autonomous execution of the
+[work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md).
+IntelliJ's release target is 0.2.16. This slice does not cut a release.
+Antigravity is done per the owner; its historical branch remains intact and
+its obsolete delivery tasks are not prerequisites to this slice.
 
 ## Current State
 
-- Antigravity is completed work per the owner. Its old branch
-  `ws-component-catalog/antigravity-cli` remains intact as history; do not
-  resume its obsolete delivery tasks or merge its intermediate changes as
-  a prerequisite to IntelliJ.
-- The continuation branch started at `69ced64` and merged current main
-  `17532fd` on 2026-10-03 before implementation, with the
-  current workflow definition and local rules. No synchronization was
-  needed at this checkpoint. Future synchronization of the published
-  branch merges `main` in, following the current integration policy.
-- Read the graphical and recursive tests from main at `69ced64`. The current
-  IDE smoke has deterministic HTTP/window checks and optional Playwright
-  capture; no LLM driver is implemented in the inspected path.
-- The owner accepted and extended the work order on 2026-10-03.
-  `/opt/xtras` is authorized for the exercise's Playwright bootstrap; the
-  deliverable must also supply it as a component in fresh capsules.
-- Implemented IntelliJ 2026.2.3 unified distribution (`java-ide`) using the
-  shared JetBrains template, plus Playwright 1.63.0/Chromium 153.0.8010.12
-  (`browser-automation`) through verified offline wheels/browser archives.
-  Dogfood manifest and generated locks select Playwright.
-- Added one shared visual action/recognition scenario with Codex/GPT-6 Astra
-  default and Claude/`claude-fable-5-1` alternative. Both exact model CLI
-  text and image probes succeeded. Codex/Astra IntelliJ and Claude/Fable VSCodium graphical acceptance passed
-  on 2026-10-04; evidence is under `devcapsule-src/dist/e2e-evidence/ide-smoke/`
-  at `20261004T002435Z-d44b57` and `20261004T002250Z-01def7` respectively.
-- The required gate passed at the implementation checkpoint, including
-  1,109 unit tests, packaging checks and the website content contract.
-  A new source checkpoint adds the component-browser repeat and lifecycle check;
-  run the gate again on that final source.
-  Scratch is `/opt/devcapsule-gate`, outside the repo and mocked home mounts.
-  Local log: `.git/intellij-build-gate.log`.
-- No open bug records owned by `component-catalog` were found on this
-  mainline baseline. Re-read the queue at the next session.
-- The website gitlink remains exactly the one on `main`; the owner reserves
-  pointer updates to the docs workstream.
+- IntelliJ IDEA 2026.2.3 (`java-ide`) uses the shared JetBrains template with
+  independent state slots. Its unified distribution's free editor passed the
+  smoke without license purchase, trial activation or sign-in.
+- Playwright 1.63.0/Chromium 153.0.8010.12 (`browser-automation`) installs
+  verified wheels and browser archives offline under `/opt/playwright`.
+  The repository's development manifest and generated lock select it.
+- One scenario drives screenshots, clicks and keyboard input, checks the
+  saved marker independently and requests final visual recognition. Codex
+  and Claude implement the same image/decision contract, with finite limits
+  and retained evidence. Credentials stay in the parent.
+- The component-browser repeat uses Chromium in the fresh child. The parent
+  binding was installed from the component's wheels, with its own browser
+  path deliberately nonexistent. Both initial and relaunch interactions passed.
+- The repeat exposed a real stale-directory-lock failure after `docker stop`.
+  IntelliJ now opts into exclusive profile guards and verified dead-socket
+  recovery. The test rejects startup-error windows and requires another
+  saved editor interaction after relaunch. The
+  [bug](../../bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md)
+  is closed by the corrected real run, not by its earlier false-positive check.
+- The continuation began at `69ced64` and merged main `17532fd` before
+  implementation. A fresh SSH fetch on 2026-10-04 found zero commits behind
+  main and no unread definition changes. Future synchronization of the
+  published branch merges main according to the current policy.
+- The website gitlink is unchanged from main. Mailbox and intake are empty
+  apart from the intake README. No unresolved implementation task remains
+  in the accepted slice; remote-main integration remains with the owner.
 
 ## Planned Next Step
 
-Execute the accepted [work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md):
-Playwright and IntelliJ components, one shared graphical scenario with
-parameterized AI action driver and visual success recognizer. Codex with
-`gpt-6-astra` is the default and required IntelliJ acceptance; provide the
-Claude CLI/Fable 5.1 alternative on a best-effort basis. Finish the gate, commit an identified source checkpoint, then perform the
-real successor browser/IntelliJ acceptance and regression/lifecycle checks.
-
-## Open Threads
-
-- The component-browser repeat passed its AI editor interaction, but a relaunch
-  screenshot showed `Start Failed` from stale JetBrains IPC and PID reuse. The
-  former window-only persistence assertion was a false positive.
-  [Bug and fix](../../bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md):
-  adapter session ownership and dead-socket recovery are implemented with focused
-  tests; rebuild and repeat the strengthened two-session AI acceptance.
-
-- The owner granted autonomous execution and requested the Claude/Fable 5.1
-  alternative on 2026-10-03. Reload the current workflow and project-management
-  records when resuming. Both model identifiers and screenshot input worked in local probes.
-  IntelliJ acquisition passed the vendor checksum; component-installed
-  Chromium launched and rendered HTML inside the first IntelliJ child.
-  Do not silently change `gpt-6-astra`.
-- 0.2.16 is the assigned target; release driver, cut and formal work order
-  remain project-management responsibilities. Re-verify their latest state.
-- The workflow migration notice is accepted. Publish status and use
-  coordination mail. Before removing any legacy outbox refs, establish
-  whether they hold unlanded records and preserve those records; no legacy
-  ref is removed by this checkpoint.
-- Bootstrap Playwright and browsers are under `/opt/xtras`; they are not
-  the managed component. Model probe evidence is under
-  `/opt/devcapsule-gate/visual-probes`. Both actual model-driven IDE tests passed at source `ada153c`.
-  PyCharm regression and a repeat using the browser in the child component
-  with a GUI-selected font-size persistence check remain in progress.
-  The earlier website recovery files remain in `.git/recovery/`.
-- Historical status is preserved verbatim in the record below. Its old next
-  steps and external-state claims are historical, not current instructions.
+The owner opens and merges the PR from `ws-component-catalog/intellij-idea`
+into `main` through the GitHub UI. Suggested title:
+**Add IntelliJ and Playwright components with reusable AI graphical smoke tests**.
+After the owner reports the merge, fetch over SSH and verify that remote main
+contains the finished tree before treating integration as complete.
+Coordinate the assigned 0.2.16 release through project-management.
 
 ## Validation
 
-2026-10-04 runtime checkpoint: `nox -s build` passed. The generated clean
-executable names source `ada153c` and SHA-256
-`5444230fb6f46b24e6faf619565565c947ae177a197551c97bde7a0a2d69a018`.
-IntelliJ/Codex and VSCodium/Claude passed the saved-file and visual-recognizer
-checks. The child runtime checksum matched the selected executable.
+See the [validation record](../../implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
+for source checksums, commands, limitations and a committed final screenshot.
 
-Workflow/tool mismatch found: the local guide says to use run-once
-`--authorize network host`, but this CLI rejects that authorization. The
-smoke harness instead records the already-authorized host network in its own
-disposable project via supported initialization, without changing the owner's
-checkout configuration. Delivered to maintenance on coordination at `34cbad056e31`.
+- Required `nox -s build` passed at runtime source `d6d3566`: syntax, mypy,
+  1,117 passing tests, the existing one xfailed and one xpassed result,
+  executable smokes, nine packaging tests and the website content contract.
+  The final harness path correction at `c5e0535` passed focused checks and
+  is exercised in the accepted repeat.
+- `20261004T002250Z-01def7`: Claude/Fable VSCodium passed.
+- `20261004T002435Z-d44b57`: Codex/Astra IntelliJ passed; the child component
+  browser independently launched and rendered HTML.
+- `20261004T003322Z-b53949`: Claude/Fable PyCharm passed.
+- `20261004T005804Z-c554e8`: corrected Codex/Astra IntelliJ component-browser
+  repeat passed, then passed again after container stop/relaunch. Font size
+  remained 17, the old marker remained, a new marker was saved and visually
+  recognized, and the log confirms stale-socket recovery. Both containers
+  and every listed project-record path were confirmed removed.
 
+Evidence: `devcapsule-src/dist/e2e-evidence/ide-smoke/`. Gate scratch:
+`/opt/devcapsule-gate`, outside the checkout and fixture-mocked mounts.
+Logs: `.git/intellij-recovery-build.log`, `.git/intellij-recovery-smoke.log`.
 
-Work-order checkpoint (2026-10-03): work order/status links and
-`git diff --check` pass. No runtime or test source changed. The required gate
-was attempted again with a short scratch path outside the checkout and the
-fixture's mocked home mount. `/var/tmp` is a 1 GB tmpfs here; pytest filled it,
-so the run was terminated and its owned `/var/tmp/cc-order-tests` directory
-removed. Version, syntax and mypy checks had passed; no full gate pass is
-claimed. Log: `.git/component-catalog-work-order-build.log`. Before the next
-gate, choose scratch outside the source tree and the fixture's mocked mounts,
-with sufficient disk space and a short path for Unix sockets. Do not repeat
-these unsuitable locations.
+## Open Threads
 
-Previous status checkpoint:
-
-Status and routing update only. `git diff --check` and the new status links
-pass; the historical record is byte-identical to the previous status.
-The required `nox -s build` was attempted on unchanged runtime source:
-version, syntax and mypy checks passed; pytest reported 1,088 passed,
-one failed, 22 deselected, one xfailed and one xpassed. The failure is
-`test_host_daemon.py::test_unmountable_staging_fails_loudly`: the expected
-`PycharmRunError` was not raised with scratch under
-`/home/devcapsule/cc-status-tests`. Later gate stages did not run.
-Revisit the test scratch setup before implementation validation; no runtime
-fix or full gate pass is claimed. Local log:
-`.git/component-catalog-status-build-short-path.log`. An earlier attempt
-used an overly long scratch path inside the project; that setup produced
-socket-path and project-discovery failures and is not the retained result.
+- Owner PR integration is pending; no GitHub API or direct-main push is
+  authorized. The release driver and cut remain project-management's work.
+- Codex JSONL omits a server-reported model id. Evidence records explicit
+  `--model gpt-6-astra` selection and the actual CLI version without inventing
+  a returned identity. Claude reported the requested Fable model in usage.
+- The local host-network instruction is rejected by this CLI's run-once
+  authorization grammar. Our test uses supported initialization of its own
+  disposable project. The mismatch was delivered to maintenance as
+  `2026-10-04-component-catalog-network-run-once-mismatch.md`, coordination
+  commit `34cbad056e31`; this slice does not change generic launcher policy.
+- The legacy workflow migration/outbox reconciliation remains historical
+  housekeeping: no legacy ref was removed. Preserve unlanded records before
+  any future removal, as directed by the accepted migration notice.
+- Local bootstrap tools remain under `/opt/xtras`; cached vendor artifacts
+  and materialized images are retained for reuse. Raw videos, model transcripts
+  and failed intermediate runs remain local, with ephemeral desktop tokens in
+  raw logs. Permanent records preserve the sanitized conclusions and final
+  screenshot. No verbatim session record was requested or created.
+- Earlier website recovery files remain under `.git/recovery/`. Their preserved
+  contents were not changed or discarded by this slice.
 
 ## Workstream Document Index
 
-- [Playwright, IntelliJ and agent-smoke work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md):
-  primary execution scope, acceptance ladder and autonomy boundaries.
-- [Project-management status](../2026-08-09-project-management/CURRENT-STATUS.md):
-  read *Owner Decisions Of 2026-10-01* for surface ownership and IntelliJ scope.
-- [0.2.16 planning](../2026-08-09-project-management/2026-09-27-0216-release-planning.md):
-  read C12 and its owner-decision addendum for the release target.
-- [Intake decisions](intake-dispositions.md): accepted handoffs and their disposition.
-- [Intake](intake/README.md): any received, undecided work.
-- [Historical Antigravity status](2026-10-03-record-antigravity-status.md):
-  prior implementation and acceptance history; consult only for historical evidence.
-- [Antigravity license analysis](antigravity-cli-license-and-redistribution-analysis.md):
-  historical agent-component licensing evidence, not IntelliJ licensing evidence.
-- [Release-candidates proposal](release-candidates-proposal.md): historical proposal;
-  current release policy is in WORKFLOW-LOCAL.md and the release runbook.
+- [Accepted work order](../../work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
+- [Validation and final screenshot](../../implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
+- [Repeatable E2E commands](../../development/e2e-tests.md#ai-driven-graphical-acceptance)
+- [Closed IntelliJ relaunch bug](../../bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md)
+- [Project-management status](../2026-08-09-project-management/CURRENT-STATUS.md)
+- [0.2.16 planning](../2026-08-09-project-management/2026-09-27-0216-release-planning.md)
+- [Intake decisions](intake-dispositions.md)
+- [Intake](intake/README.md)
+- [Historical Antigravity status](2026-10-03-record-antigravity-status.md)
+- [Antigravity license analysis](antigravity-cli-license-and-redistribution-analysis.md)
+- [Historical release-candidates proposal](release-candidates-proposal.md)

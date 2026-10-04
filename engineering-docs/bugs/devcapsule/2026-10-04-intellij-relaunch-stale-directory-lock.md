@@ -1,9 +1,10 @@
 ---
-status: fixing
+status: closed
 severity: blocking
 target: 0.2.16
 owner: component-catalog
 opened: 2026-10-04
+closed: 2026-10-04
 requirements: [R-PRODUCT-001, R-PRODUCT-002]
 ---
 
@@ -42,4 +43,13 @@ PyCharm's runtime declaration is unchanged.
 The test rejects `Start Failed` windows and requires another model-driven
 saved edit after relaunch, in addition to retained font size and the first
 saved marker. Socket recovery, live-owner preservation, profile exclusion and
-unexpected-file handling have focused tests. Real repeat validation is pending.
+unexpected-file handling have focused tests.
+
+Closed by validation on 2026-10-04: run `20261004T005804Z-c554e8`, runtime
+source `d6d3566` and harness `c5e0535`, passed the component-browser scenario
+and a real `docker stop`/relaunch. The relaunch log records stale-socket
+recovery, font size remains 17, the first marker remains, and Codex/Astra
+saves and visually recognizes a second marker in the working editor. Both
+containers and the run-owned project records were removed. The build gate
+passes with 1,117 tests and nine packaging integration tests. Branch delivery
+and owner PR integration are tracked in the workstream status.

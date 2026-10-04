@@ -53,8 +53,9 @@ ephemeral access tokens; this report omits them.
 | `20261004T002250Z-01def7` | VSCodium | Claude / Fable 5.1 | Passed, 4 browser actions then final recognition |
 | `20261004T002435Z-d44b57` | IntelliJ | Codex / GPT-6 Astra | Passed, 11 browser actions then final recognition; child component browser also launched and rendered HTML |
 | `20261004T003322Z-b53949` | PyCharm | Claude / Fable 5.1 | Passed, 10 browser actions then final recognition |
+| `20261004T005804Z-c554e8` | IntelliJ, then relaunch | Codex / GPT-6 Astra | Passed, 18 actions initially and 6 after relaunch; both browsers supplied by child component |
 
-These three runs used executable source `ada153c00637ab6561b7f4a13ea33321fb17b8ab`,
+The first three runs used executable source `ada153c00637ab6561b7f4a13ea33321fb17b8ab`,
 SHA-256 `5444230fb6f46b24e6faf619565565c947ae177a197551c97bde7a0a2d69a018`.
 Each child runtime's executable checksum matched. All three test containers
 were confirmed absent afterward; their unique workspaces and project records
@@ -80,15 +81,30 @@ the component-browser interaction, but screenshot review found `Start Failed`
 on relaunch despite the initial deterministic assertion passing. That result
 is rejected as persistence acceptance. The [stale-directory-lock bug](../../bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md)
 records the evidence, targeted adapter recovery and strengthened criterion.
-A corrected repeat remains pending at this record checkpoint.
+The corrected repeat `20261004T005804Z-c554e8` passed at runtime source
+`d6d356670ce34c7fb57f5b03a2344bf20eac2f0a`, executable SHA-256
+`7a109dcddaa6197e9f5ec79d046b2f36092431dd7ab44b48eb493933ca4ecf9d`,
+and harness `c5e0535`. Its relaunch log records recovery of the stale socket
+under exclusive profile ownership. Font size remained 17, the first marker
+remained on disk, and a second Codex/Astra interaction saved and visually
+confirmed a new marker. Both browser sessions ran in the child component;
+the parent still had no usable browser path. Both containers were removed,
+and every path in the removed-project-record list was independently confirmed
+absent. The defect is closed by that validation.
+
+![IntelliJ after relaunch with both saved markers](assets/2026-10-04-intellij-relaunch.png)
+
+The retained final screenshot is also human-reviewed: it shows the working
+editor with both markers. The script-launcher and Java-options notifications
+are visible; neither prevented the tested interaction.
 
 ## Gates and boundaries
 
-`nox -s build` passed at `0a928cf`: syntax, mypy, 1,111 passing unit tests,
+`nox -s build` passed at `d6d3566`: syntax, mypy, 1,117 passing tests,
 the existing one expected failure and one expected-pass result, executable
 smokes, nine packaging integration tests and the website content contract.
-The browser-connection refactor also passed targeted type checking and 30
-focused tests. The scratch root is `/opt/devcapsule-gate`, outside the source
+The final harness path correction also passed targeted type checking and
+focused tests, and is included in the successful corrected repeat. The scratch root is `/opt/devcapsule-gate`, outside the source
 tree and fixture-mocked home paths, with enough space for the gate.
 
 An initial smoke stopped before launch because this CLI rejects the local

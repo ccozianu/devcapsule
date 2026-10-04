@@ -186,6 +186,15 @@ example, a tool that stores everything conventionally declares `home =
 "required"`, `xdg = "home-relative"`, and no slots. DevCapsule must not add a
 tool-named field or mount to shared runtime code for such a component.
 
+IntelliJ's JetBrains adapter opts into session-long exclusive guards on its
+configuration and system directories. After obtaining both guards, it may
+recover a persisted Unix-domain directory socket that refuses connections and
+its regular numeric PID lock. Container PID reuse cannot establish liveness.
+A live endpoint, unexpected file format, symlink or inconclusive probe leaves
+the vendor IPC state intact. The guards remain held until the IDE session
+ends; saved configuration, plugins, indexes and logs retain their normal slots.
+See the [relaunch validation](../../implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md).
+
 Component-local names become namespaced logical names only when plans are
 combined: PyCharm's local `config` declaration becomes `pycharm/config`.
 Adapter configuration refers to component-local names; generic planning owns
