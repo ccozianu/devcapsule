@@ -127,6 +127,7 @@ class CliDriver:
             except subprocess.TimeoutExpired:
                 os.killpg(process.pid, signal.SIGKILL)
                 stdout, stderr = process.communicate()
+                metadata.update(timed_out=True, exit_code=process.returncode)
                 (evidence / "events.jsonl").write_text(stdout, encoding="utf-8")
                 (evidence / "stderr.txt").write_text(stderr, encoding="utf-8")
                 raise DriverError(f"{self.provider}/{self.model} exceeded its time limit") from None

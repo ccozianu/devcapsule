@@ -90,6 +90,14 @@ authenticated Codex CLI on `PATH`:
 .venv/bin/python -m nox -s ide-smoke -- --agent --surface intellij
 ```
 
+For the component and persistence acceptance repeat, add
+`--component-browser --relaunch`. The browser then runs from `/opt/playwright`
+inside the fresh child, accessed over a loopback Playwright connection with a
+random endpoint path. Agent CLIs and their authentication remain in the parent.
+The agent changes IntelliJ's editor font size to 17 through Settings; the test
+checks that preference and the saved marker across one bounded relaunch of the
+same project. The test closes its browser server and both owned sessions.
+
 The default action driver and visual recognizer are Codex with `gpt-6-astra`.
 The shared scenario opens `smoke.txt`, types a unique marker through the
 noVNC canvas using Playwright, saves it in the IDE and asks the recognizer to
@@ -143,7 +151,9 @@ All of this runs from a capsule that has host Docker and host networking:
 the launcher translates bind sources to host paths for nested launches, and
 the IDE smoke puts its projects under the persistent home's E2E workspace for
 that reason. `project recursive-e2e preflight --json` reports whether the
-capsule is ready. The hosted runner runs none of it; that is a rule, not a
+capsule is ready. This harness records host networking in its disposable
+project at initialization: the current CLI rejects the local workflow guide's
+run-once `--authorize network host` spelling. The hosted runner runs none of it; that is a rule, not a
 limitation to fix.
 
 ## Where the next end-to-end test goes

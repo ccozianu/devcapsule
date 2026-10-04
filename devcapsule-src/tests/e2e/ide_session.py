@@ -69,6 +69,7 @@ class SessionFacts:
     desktop_url: str
     workspace: Path
     launcher_log: Path
+    launcher: subprocess.Popen[bytes] | None = None
 
 
 def command(*args: str, check: bool = True, timeout: float = 120.0) -> subprocess.CompletedProcess[str]:
@@ -120,8 +121,8 @@ def remove_project_records(slug: str) -> list[Path]:
 def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence: Path) -> Iterator[SessionFacts]:
     """Initialize and run a fresh project for ``surface``; stop and clean up on exit.
 
-    The project consents to the base image the executable recommends and to
-    nothing else: no agent, no host access. The launcher's output goes to a log
+    The project consents to the recommended base and local-test host networking.
+    The launcher's output goes to a log
     kept with the evidence; the desktop URL is read from it.
     """
     run_id = uuid.uuid4().hex[:8]
@@ -131,41 +132,61 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
     workspace.mkdir(parents=True)
     (workspace / "smoke.txt").write_text("DevCapsule graphical smoke fixture.\n", encoding="utf-8")
     evidence.mkdir(parents=True, exist_ok=True)
-    launcher_log = evidence / "launcher.log"
     environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
-    launcher: subprocess.Popen[bytes] | None = None
     try:
         init = subprocess.run(
             [str(executable), "project", "init",
              *(flag for need in surface.needs for flag in ("--need", need)),
              "--creator", CREATOR, "--slug", slug,
-             "--authorize", "base-image", "default", "--less-pedantic"],
+             "--authorize", "base-image", "default",
+             "--authorize", "network", "host", "Local graphical smoke requires host networking.",
+             "--less-pedantic"],
             cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
             check=False, timeout=300.0,
         )
         (evidence / "init.log").write_text(init.stdout + init.stderr, encoding="utf-8")
         assert init.returncode == 0, f"project init failed for {surface.name}:\n{init.stdout}\n{init.stderr}"
-        with launcher_log.open("wb") as log:
-            launcher = subprocess.Popen(
-                [str(executable), "project", "run", "--no-update-check", "--name", container,
-                 "--authorize", "network", "host"],
-                cwd=workspace, env=environment, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-            )
-        desktop_url = wait_for_desktop_url(launcher, launcher_log)
-        yield SessionFacts(surface, container, desktop_url, workspace, launcher_log)
+        with launched_ide(executable, surface, workspace, evidence, container) as facts:
+            yield facts
     finally:
-        if launcher is not None:
-            command("docker", "stop", "--time", "30", container, check=False, timeout=60.0)
-            try:
-                launcher.wait(timeout=90.0)
-            except subprocess.TimeoutExpired:
-                launcher.kill()
-                launcher.wait(timeout=30.0)
-            command("docker", "rm", "--force", container, check=False, timeout=60.0)
         shutil.rmtree(workspace, ignore_errors=True)
         (evidence / "removed-records.json").write_text(
             json.dumps([str(path) for path in remove_project_records(slug)], indent=2) + "\n", encoding="utf-8"
         )
+
+
+def stop_session(facts: SessionFacts) -> None:
+    command("docker", "stop", "--time", "30", facts.container, check=False, timeout=60.0)
+    if facts.launcher is not None:
+        try:
+            facts.launcher.wait(timeout=90.0)
+        except subprocess.TimeoutExpired:
+            facts.launcher.kill()
+            facts.launcher.wait(timeout=30.0)
+    command("docker", "rm", "--force", facts.container, check=False, timeout=60.0)
+
+
+@contextmanager
+def launched_ide(executable: Path, surface: IdeSurface, workspace: Path,
+                 evidence: Path, container: str) -> Iterator[SessionFacts]:
+    """Launch an initialized project, also used for a bounded persistence relaunch."""
+    evidence.mkdir(parents=True, exist_ok=True)
+    log_path = evidence / "launcher.log"
+    with log_path.open("wb") as log:
+        launcher = subprocess.Popen(
+            [str(executable), "project", "run", "--no-update-check", "--name", container],
+            cwd=workspace, env=dict(os.environ, BROWSER="true"), stdout=log,
+            stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+        )
+    facts = SessionFacts(surface, container, "", workspace, log_path, launcher)
+    try:
+        url = wait_for_desktop_url(launcher, log_path)
+        yield SessionFacts(surface, container, url, workspace, log_path, launcher)
+    finally:
+        stop_session(facts)
+        absent = command("docker", "inspect", container, check=False).returncode != 0
+        (evidence / "cleanup.json").write_text(json.dumps({"container_removed": absent}) + "\n", encoding="utf-8")
+        assert absent, f"Test-owned container remains: {container}"
 
 
 def wait_for_desktop_url(launcher: subprocess.Popen[bytes], launcher_log: Path) -> str:

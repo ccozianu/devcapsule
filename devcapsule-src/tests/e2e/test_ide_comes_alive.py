@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, command, desktop_page_answers, ide_session, wait_for_ide_window
+from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, command, desktop_page_answers, ide_session, launched_ide, stop_session, wait_for_ide_window
 
 EVIDENCE_ROOT = Path(__file__).resolve().parents[2] / "dist" / "e2e-evidence" / "ide-smoke"
 
@@ -83,4 +83,30 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
         if os.environ.get("DEVCAPSULE_SMOKE_AGENT") == "1":
             from tests.e2e.visual_smoke import run_visual_smoke
 
-            run_visual_smoke(session, evidence)
+            result = run_visual_smoke(session, evidence)
+            if os.environ.get("DEVCAPSULE_SMOKE_RELAUNCH") == "1":
+                assert surface.name == "intellij"
+                before = editor_font_size(session.container)
+                assert before == 17, f"IDE did not persist the UI-selected font size: {before}"
+                stop_session(session)
+                with launched_ide(built_pex, surface, session.workspace, evidence / "relaunch",
+                                  session.container + "-relaunch") as resumed:
+                    assert desktop_page_answers(resumed.desktop_url) == 200
+                    resumed_window = wait_for_ide_window(resumed)
+                    pixels = capture_desktop(resumed.desktop_url, evidence / "relaunch")
+                    assert pixels is not None
+                    after = editor_font_size(resumed.container)
+                    assert after == before
+                    assert result["marker"] in (resumed.workspace / "smoke.txt").read_text()
+                    (evidence / "persistence.json").write_text(json.dumps({
+                        "editor_font_before": before, "editor_font_after": after,
+                        "saved_marker_retained": True, "window": resumed_window,
+                    }, indent=2) + "\n", encoding="utf-8")
+
+
+def editor_font_size(container: str) -> float:
+    probe = command("docker", "exec", container, "python3", "-c",
+                    "import xml.etree.ElementTree as E; "
+                    "root=E.parse('/ide-config/options/editor-font.xml'); "
+                    "print(next(x.attrib['value'] for x in root.iter('option') if x.attrib.get('name')=='FONT_SIZE'))")
+    return float(probe.stdout.strip())

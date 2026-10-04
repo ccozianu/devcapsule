@@ -37,6 +37,7 @@ def test_browser_contribution_installs_only_verified_wheels_offline(tmp_path: Pa
     assert len(artifacts) == 7
     assert all(len(item.sha256) == 64 for item in artifacts)
     contributions = _ancillary_contributions(tuple((tmp_path / str(i), item) for i, item in enumerate(artifacts)), ())
+    assert contributions[0].exports == ("/opt/playwright",)
     text = repr(contributions)
     assert "--no-index --no-deps" in text
     assert "python3 -m venv" in text

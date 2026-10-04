@@ -889,6 +889,12 @@ def _ancillary_contributions(
         selected = [(path, item) for path, item in files if item.component_id == component_id]
         npm = [project for project in projects if project.component_id == component_id]
         wheel_destinations = sorted({item.destination for _path, item in selected if item.artifact_format == "python-wheel"})
+        destinations = sorted({item.destination for _path, item in selected})
+        # A parent export already includes nested browser directories. Copying
+        # them again would retain duplicate payloads in the final image layers.
+        exports = tuple(destination for destination in destinations
+                        if not any(destination != parent and Path(destination).is_relative_to(parent)
+                                   for parent in destinations))
         contributions.append(ContributionComponent(
             component_id,
             (
@@ -902,7 +908,7 @@ def _ancillary_contributions(
                   for project in npm),
                 *(ExecComponent(npm_install_step(project.destination)) for project in npm),
             ),
-            tuple(sorted({item.destination for _path, item in selected})),
+            exports,
         ))
     return tuple(contributions)
 

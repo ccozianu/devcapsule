@@ -1,11 +1,14 @@
 """Failure boundaries for the shared graphical scenario, without paid calls."""
 from dataclasses import asdict
 from pathlib import Path
+import json
+import re
+import sys
 from typing import Any
 
 import pytest
 
-from tests.e2e.ai_driver import CliDriver, Decision, DriverError
+from tests.e2e.ai_driver import CliDriver, Decision, DriverError, cli_identity
 from tests.e2e.ide_session import SURFACES, SessionFacts
 from tests.e2e.visual_smoke import drive_scenario
 
@@ -73,3 +76,34 @@ def test_missing_cli_fails_explicitly(tmp_path: Path, monkeypatch: pytest.Monkey
     with pytest.raises(DriverError, match="unavailable codex"):
         CliDriver.select("codex").decide("test", (), tmp_path / "evidence", 1)
     assert (tmp_path / "evidence/invocation.json").is_file()
+
+
+def test_hung_cli_is_killed_and_recorded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    executable = tmp_path / "codex"
+    executable.write_text(f"#!{sys.executable}\nimport sys,time\n"
+                          "if '--version' in sys.argv: print('fake 1')\n"
+                          "else: time.sleep(30)\n")
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    cli_identity.cache_clear()
+    try:
+        with pytest.raises(DriverError, match="time limit"):
+            CliDriver.select("codex").decide("test", (), tmp_path / "evidence", 0.1)
+        record = json.loads((tmp_path / "evidence/invocation.json").read_text())
+        assert record["timed_out"] is True and record["exit_code"] == -9
+    finally:
+        cli_identity.cache_clear()
+
+
+def test_saved_edit_still_requires_visual_acceptance(tmp_path: Path) -> None:
+    class SavedEditDriver(FakeDriver):
+        def decide(self, prompt: str, images: tuple[Path, ...], evidence: Path, timeout: float) -> Decision:
+            marker = re.search(r"DEVCAPSULE_SMOKE_[a-f0-9]+", prompt)
+            assert marker is not None
+            (tmp_path / "smoke.txt").write_text(marker.group())
+            return decision()
+
+    recognizer = FakeDriver(decision("fail"))
+    with pytest.raises(DriverError, match="recognizer did not accept"):
+        drive_scenario(FakePage(), session(tmp_path), tmp_path, SavedEditDriver(decision()), recognizer)
+    assert recognizer.calls == 1

@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: active 2026-10-03; implementing the accepted Playwright/IntelliJ work order; shared Codex/Claude driver implemented; full gate and real graphical acceptance in progress
+State: active 2026-10-03; implementing the accepted Playwright/IntelliJ work order; shared Codex/Claude driver implemented; first IntelliJ and VSCodium graphical acceptance passed; repeat and persistence checks in progress
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -54,9 +54,13 @@ belong here; component orchestration, upgrades and channels belong to
   Dogfood manifest and generated locks select Playwright.
 - Added one shared visual action/recognition scenario with Codex/GPT-6 Astra
   default and Claude/`claude-fable-5-1` alternative. Both exact model CLI
-  text and image probes succeeded. Real IDE acceptance remains pending.
-- Full unit suite passes after adding discovery adapters and status-service
-  probe registrations; required gate has reached executable packaging.
+  text and image probes succeeded. Codex/Astra IntelliJ and Claude/Fable VSCodium graphical acceptance passed
+  on 2026-10-04; evidence is under `devcapsule-src/dist/e2e-evidence/ide-smoke/`
+  at `20261004T002435Z-d44b57` and `20261004T002250Z-01def7` respectively.
+- The required gate passed at the implementation checkpoint, including
+  1,109 unit tests, packaging checks and the website content contract.
+  A new source checkpoint adds the component-browser repeat and lifecycle check;
+  run the gate again on that final source.
   Scratch is `/opt/devcapsule-gate`, outside the repo and mocked home mounts.
   Local log: `.git/intellij-build-gate.log`.
 - No open bug records owned by `component-catalog` were found on this
@@ -78,7 +82,8 @@ real successor browser/IntelliJ acceptance and regression/lifecycle checks.
 - The owner granted autonomous execution and requested the Claude/Fable 5.1
   alternative on 2026-10-03. Reload the current workflow and project-management
   records when resuming. Both model identifiers and screenshot input worked in local probes.
-  IntelliJ acquisition is in progress; its vendor checksum is pinned.
+  IntelliJ acquisition passed the vendor checksum; component-installed
+  Chromium launched and rendered HTML inside the first IntelliJ child.
   Do not silently change `gpt-6-astra`.
 - 0.2.16 is the assigned target; release driver, cut and formal work order
   remain project-management responsibilities. Re-verify their latest state.
@@ -88,12 +93,27 @@ real successor browser/IntelliJ acceptance and regression/lifecycle checks.
   ref is removed by this checkpoint.
 - Bootstrap Playwright and browsers are under `/opt/xtras`; they are not
   the managed component. Model probe evidence is under
-  `/opt/devcapsule-gate/visual-probes`. No IntelliJ launch yet at this checkpoint.
+  `/opt/devcapsule-gate/visual-probes`. Both actual model-driven IDE tests passed at source `ada153c`.
+  PyCharm regression and a repeat using the browser in the child component
+  with a GUI-selected font-size persistence check remain in progress.
   The earlier website recovery files remain in `.git/recovery/`.
 - Historical status is preserved verbatim in the record below. Its old next
   steps and external-state claims are historical, not current instructions.
 
 ## Validation
+
+2026-10-04 runtime checkpoint: `nox -s build` passed. The generated clean
+executable names source `ada153c` and SHA-256
+`5444230fb6f46b24e6faf619565565c947ae177a197551c97bde7a0a2d69a018`.
+IntelliJ/Codex and VSCodium/Claude passed the saved-file and visual-recognizer
+checks. The child runtime checksum matched the selected executable.
+
+Workflow/tool mismatch found: the local guide says to use run-once
+`--authorize network host`, but this CLI rejects that authorization. The
+smoke harness instead records the already-authorized host network in its own
+disposable project via supported initialization, without changing the owner's
+checkout configuration. Send this mismatch to the workflow owner before pause.
+
 
 Work-order checkpoint (2026-10-03): work order/status links and
 `git diff --check` pass. No runtime or test source changed. The required gate

@@ -987,9 +987,11 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     },
     edges=(
         _VerifiedEdge("intellij", "2026.2.3", _BASE_FAMILY_UBUNTU_24_04,
-                      "provisional: component-catalog graphical acceptance pending"),
+                      "Codex/gpt-6-astra saved-edit graphical smoke passed 2026-10-04 on "
+                      "v0.2.12-rc5 base; source ada153c; run 20261004T002435Z-d44b57"),
         _VerifiedEdge("playwright", "1.63.0", _BASE_FAMILY_UBUNTU_24_04,
-                      "provisional: capsule bootstrap browser launch passed; component image acceptance pending"),
+                      "component-installed Chromium 153.0.8010.12 launched and rendered HTML "
+                      "2026-10-04 on v0.2.12-rc5 base; source ada153c; run 20261004T002435Z-d44b57"),
         _VerifiedEdge(
             "codex",
             "0.157.1",
