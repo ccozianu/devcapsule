@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-04 for owner PR integration; .NET SDK and Rider components implemented; SDK build/run and noVNC startup passed; licensed editor interaction remains unverified
+State: active 2026-10-04; adding Eclipse IDE for Java Developers and recorded noVNC/Playwright acceptance
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@963fb34f12db
 
@@ -19,34 +19,31 @@ Requirements: `R-PRODUCT-001`, `R-PRODUCT-002`, `R-SCOPE-001`, `R-DOCKER-001`, `
 ## Goal And Scope
 
 Maintain the optional IDE/tool component catalog and shared noVNC smoke harness.
-The owner requested autonomous Linux .NET SDK-first, Rider-second delivery on
-2026-10-04, continuing the IntelliJ work. This slice does not cut a release.
+The owner requested Eclipse IDE for Java Developers on 2026-10-04, following
+the IntelliJ/Rider integrations, with noVNC/Playwright smoke and a retained movie.
+Select it via `eclipse-ide`; preserve `java-ide` as IntelliJ. This slice does not cut a release.
 
 ## Current State
 
-- `dotnet` adds SDK 10.0.401; `dotnet-ide` selects Rider 2026.2.3.1 plus the SDK.
-  Vendor archives were verified in full and are pinned by SHA-256. The SDK's
-  SHA-512 also matched Microsoft metadata. Stable releases exclude .NET 11 RC.
-- The complete SDK installs under `/opt/dotnet`, available on PATH with
-  DOTNET_ROOT set and telemetry off. Rider uses independent `rider/*` state
-  slots and the shared JetBrains adapter/recovery. No host credentials enter.
-- The SDK built and ran a package-free C# fixture as the normal capsule user.
-  The Rider noVNC startup smoke passed with the child Playwright component.
-- The stronger AI saved-edit test correctly failed at mandatory JetBrains
-  activation. No sign-in, trial or purchase was performed. Licensed editing,
-  Rider's SDK detection and editor-state persistence are not claimed validated.
-- Implementation is committed as `4df3e4f`; validation details and a sanitized
-  screenshot are in the linked permanent record. The final delivery gate passed.
-- The earlier IntelliJ/Playwright slice has landed: synchronization fast-forwarded
-  628c038 to main 5e9cd94. A fresh SSH fetch before delivery found zero commits
-  behind main. Mailbox/intake are empty; no open component-catalog bugs.
+- Eclipse Java Developers 2026-09 R is pinned with SHA-256 and vendor-verified
+  SHA-512. Component, materialization, update discovery, runtime adapter and
+  isolated persistent workspace are implemented, with `eclipse-ide` selection.
+- The existing noVNC/Playwright/AI harness includes Eclipse and verifies the
+  installed Java package/JDT. Real graphical acceptance and movie retention
+  are next; the matrix evidence remains explicitly provisional.
+- Previous SDK/Rider delivery is on main through PR #165. Its validation and
+  licensed-editor limitation remain in the permanent report below.
 
 ## Planned Next Step
 
-The owner opens and merges the PR through the GitHub UI, titled **Add .NET SDK and
-JetBrains Rider components with noVNC startup smoke**. After the owner reports
-merge, fetch and verify remote main contains the finished tree. An activated
-Rider session is needed only for additional saved-edit/persistence acceptance.
+Implement the pinned Eclipse Java package, its runtime/state contract and shared
+smoke surface; validate a real noVNC saved edit and retain the movie. Run the
+full build gate, commit/push, and hand the owner a concrete PR for UI integration.
+
+Session entry: fetched main `a3d88e3`; PR #165 contains Rider. Fast-forwarded
+before the new slice. No workflow/local changes, no open owned bugs, no mail or
+intake. Root workflow version mismatch is the documented source-file exception;
+no definition refresh or declaration change was made.
 
 ## Validation And External State
 
