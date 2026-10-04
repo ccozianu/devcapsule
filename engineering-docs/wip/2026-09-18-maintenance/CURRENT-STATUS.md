@@ -127,6 +127,9 @@ Decided so far:
   The new recursive end-to-end test is blocked in this capsule by a stale
   capsule-local resolution that the in-capsule guard will not let anyone
   refresh; that is the next item's territory.
+- 2026-10-04 recursive successor cannot refresh its capsule-local
+  resolution: filed at the owner's direction, confirmed, minor, 0.2.16, with
+  three fix options and option A recommended; waits on the owner's choice.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
