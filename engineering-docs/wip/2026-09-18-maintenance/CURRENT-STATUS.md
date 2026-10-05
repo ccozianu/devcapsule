@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-05, triage complete; the 0.3.0 maintenance plate (the release formerly planned as 0.2.16, renamed by the owner on 2026-10-05): the fresh-workspace recursive test (option D), the in-capsule project-command fix, named build contexts then the installed-IDE reuse and reaping design, the universal network authorization node, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; 0.2.15 published and reopened
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
 
 Integration target: `main`
 
