@@ -189,6 +189,27 @@ project at initialization: the current CLI rejects the local workflow guide's
 run-once `--authorize network host` spelling. The hosted runner runs none of it; that is a rule, not a
 limitation to fix.
 
+## Fresh workspaces, by rule
+
+Owner ruling of 2026-10-05: every end-to-end test runs on a fresh
+workspace. It refuses a source checkout with uncommitted changes, clones
+the current branch from the local tree into its own run directory, resolves
+that clone under configuration roots isolated beneath the run directory,
+and runs against the clone. It never runs against the live checkout and
+never reads the capsule's own checkout records or resolution. This is what
+removes the circular dependency between the repository under test and the
+capsule that tests it: the capsule's configuration can go stale or be
+read-only without the test caring. Inside a capsule the run directory goes
+under the persistent home's E2E workspace, a host-backed path the daemon
+can bind; `/tmp` is a container-local tmpfs the host daemon cannot see.
+At the end the test makes a best-effort attempt to remove the workspace and
+free the space; a failure to clean up is reported, not fatal.
+
+`test_recursive_local_clone.py` follows the rule today;
+`test_recursive_successor_attached_launch.py` is brought into line by the
+2026-10-04 recursive-successor record's option D; the other suites follow
+as they are touched.
+
 ## Where the next end-to-end test goes
 
 A new proof that needs Docker goes in `tests/e2e/` with the `e2e` marker,

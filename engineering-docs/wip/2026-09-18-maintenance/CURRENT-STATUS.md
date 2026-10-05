@@ -128,8 +128,13 @@ Decided so far:
   capsule-local resolution that the in-capsule guard will not let anyone
   refresh; that is the next item's territory.
 - 2026-10-04 recursive successor cannot refresh its capsule-local
-  resolution: filed at the owner's direction, confirmed, minor, 0.2.16, with
-  three fix options and option A recommended; waits on the owner's choice.
+  resolution: decided 2026-10-05, option D, by the owner's design. The test
+  stops sharing the capsule's record: clean clone of the current branch
+  into a fresh host-backed workspace, dirty source refused, resolution under
+  isolated XDG roots, launch from the clone, best-effort cleanup. Options A,
+  B and C set aside. Same ruling, as a general rule now in the e2e test
+  doc: every end-to-end test runs on a fresh workspace, never the live
+  checkout. Implementation is on the 0.2.16 plate, not started.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
@@ -139,8 +144,7 @@ Decided so far:
   and the 2026-10-03 incident (an agent pair unable to bring `nox` into
   scope) shows how it fails. Sequenced after the larger 0.2.16 items.
 
-Still to decide, as of 2026-10-05: the recursive successor's stale resolution
-(2026-10-04; option A, B or C), installed IDE not reused by Docker
+Still to decide, as of 2026-10-05: installed IDE not reused by Docker
 (2026-09-24; design review with the owner, the root cause behind the
 named-build-contexts candidate), and the intake item from component-catalog
 on the host-network run-once launch (see Open Threads). The project group
@@ -862,9 +866,11 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decision
-  (1) is taken: ecosystem bootstrap stays a bug, target 0.3. Awaiting the
-  owner, in triage order: (2) option A, B or C for the recursive successor's stale
+- Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decisions
+  (1) and (2) are taken: ecosystem bootstrap stays a bug, target 0.3; the
+  recursive successor record goes by option D, the fresh-workspace test,
+  with the general rule in the e2e doc. Awaiting the owner, in triage
+  order: (2, done) option A, B or C for the recursive successor's stale
   capsule-local resolution, A recommended; (3) whether the installed-IDE
   Docker reuse design review happens in the 0.2.16 plate; (4) the project
   group guard and in-capsule inspection records are treated as decided for

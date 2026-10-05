@@ -80,10 +80,54 @@ lock moved, and nobody ran it to notice.
 Option A is the recommendation. Whichever is chosen, the preflight gains a
 check for a stale capsule-local resolution with the remedy that works.
 
+## Decision, 2026-10-05: option D, the test stops sharing the capsule's record
+
+Owner ruling during the 0.2.16 triage, after a reading of the code with the
+agent. Options A, B and C are set aside. They all keep what causes the bug:
+a checkout record shared between the capsule's ordinary configuration
+directory and the recursive launch, which nothing may refresh.
+
+The attached-launch test today runs against the live working tree, never
+checks for uncommitted changes, fakes the clean-clone stage by writing a
+`stage-5-materialized` manifest, and lets `launch_successor` read the
+capsule-local record through the ambient `XDG_CONFIG_HOME`. "Stage 5
+isolates HOME" exists only as a comment; the milestone plan of 2026-08-06
+(stage 5 confines checkout, resolution, cache and state to the run root;
+stage 6 rejects a dirty source and a stale resolution) was never built for
+this test. The sibling `test_recursive_local_clone.py` already has the
+pieces: a `git clone --local` into the run workspace, a hard failure on a
+dirty source, and isolated XDG roots under the run root.
+
+**Option D.** The test:
+
+1. refuses to run when the source checkout has uncommitted changes;
+2. clones the current branch from the local tree into a fresh run
+   workspace under the persistent home's E2E workspace, a host-backed path
+   the daemon can bind (not `/tmp`, which inside a capsule is a 2 GB
+   container-local tmpfs the host daemon cannot see);
+3. resolves the clone under XDG roots isolated beneath the run root. The
+   in-capsule guard does not fire: it keys on the project root equalling the
+   launch context's `runtime-root`, and the clone's root differs;
+4. launches the successor from that clone and that resolution;
+5. on a best-effort basis removes the workspace and frees the space at the
+   end.
+
+No product code changes. The preflight may still gain a named check for a
+stale resolution; that is a nicety, not the fix.
+
+**General rule, same ruling.** Every end-to-end test runs on a fresh
+workspace: a clean clone, its own resolution, isolated configuration roots,
+never the live checkout or the capsule's own records. This removes the
+circular dependency between the repository under test and the capsule that
+tests it. Cleanup at the end is best effort. The rule is recorded in
+[end-to-end tests](../../development/e2e-tests.md); suites that do not yet
+follow it are brought into line as they are touched.
+
 ## Verification target
 
 `tests/e2e/test_recursive_successor_attached_launch.py` passes inside a
-capsule whose lock moved after launch; `recursive-e2e preflight` names the
+capsule whose lock moved after launch, from a clean clone in a fresh
+workspace, with the capsule's own stale record left untouched; `recursive-e2e preflight` names the
 stale resolution before the fix and reports clean after it. Unit coverage
 for the preflight check.
 
