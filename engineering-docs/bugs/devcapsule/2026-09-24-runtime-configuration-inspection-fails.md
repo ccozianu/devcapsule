@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: major
 target: 0.3.0
 owner: maintenance
@@ -187,3 +187,42 @@ directory with a patched launch context, plus the unknown-subcommand case.
 Close when the owner reruns the table above on a 0.2.16 candidate and every
 row works. The recursive test launcher's missing mounts (cause 1 of the
 original record) stay a test-harness task on this record.
+
+## Fix, 2026-10-05, on `ws-maintenance/post-0.2.15`
+
+Whole and not by halves, as ruled: the `project` group now applies one
+declaration per subcommand instead of a token allowlist.
+
+- `CapsuleAccess` in `runtime_configuration.py` names what each leaf of the
+  `project` tree may do with the capsule's own project: `INSPECTS` (selects
+  it, answers read-only), `MUTATES` (selects it, refused inside in favour of
+  the launcher command), `CREATES_HERE` (`init`: acts in the working
+  directory, refused when that is the capsule's project), `INDEPENDENT`
+  (`list`, `recursive-e2e`). Every leaf declares its own; a test walks the
+  tree. `config show` is `INSPECTS`, which closes cause 1.
+- `capsule_project_root` selects the capsule's project when no project
+  encloses the working directory and the runtime context names one; the
+  group sets it on the command context before dispatch for every
+  `INSPECTS` and `MUTATES` leaf, which closes cause 2 for `config list`,
+  `config show`, `versions show` and every mutating command alike. An
+  explicit `--path` still wins, a nested project is still a launcher, and
+  an older capsule without the mounted context is still diagnosed.
+- `Group.resolve` in the command framework names the subcommand without
+  side effects; the group consults it before applying the access, so an
+  unknown name reaches the ordinary dispatch error, which closes cause 3
+  and the [guard record](2026-09-26-project-group-guard-hides-unknown-subcommand-in-capsule.md).
+
+Cause 1 of the first section, the recursive successor launched without the
+two read-only mounts, is not touched here: it belongs to the test launcher,
+which the [recursive-successor record](2026-10-04-recursive-successor-cannot-refresh-its-capsule-local-resolution.md)'s
+option D rewrites.
+
+Evidence: `tests/test_version_sets.py` (inspection from anywhere, mutation
+from anywhere, unknown subcommand, `init` acting where invoked),
+`tests/test_project_commands.py` (every leaf declares its access),
+`tests/test_command_framework.py` (resolution); and the source CLI run from
+`/opt` inside this repository's own 0.2.15 capsule: `config list`, `config
+show` and `versions show` answer from the runtime context, `config set`
+names the launcher command with the host path, `project --path $PWD
+bootstrap` reports an unknown command. Closes on the owner's confirmation
+with a 0.3.0 candidate.
