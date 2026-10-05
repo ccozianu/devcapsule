@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-10-04, mid-triage; the 0.2.16 maintenance plate: finish the triage (five owner decisions listed under Open Threads), the in-capsule project-command fix, named build contexts, the first-session UX bugs, release notes and gate tooling; 0.2.15 published and reopened
+State: active 2026-10-05, triage complete; the 0.3.0 maintenance plate (the release formerly planned as 0.2.16, renamed by the owner on 2026-10-05): the fresh-workspace recursive test (option D), the in-capsule project-command fix, named build contexts then the installed-IDE reuse and reaping design, the universal network authorization node, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; 0.2.15 published and reopened
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -134,7 +134,17 @@ Decided so far:
   isolated XDG roots, launch from the clone, best-effort cleanup. Options A,
   B and C set aside. Same ruling, as a general rule now in the e2e test
   doc: every end-to-end test runs on a fresh workspace, never the live
-  checkout. Implementation is on the 0.2.16 plate, not started.
+  checkout. Implementation is on the 0.3.0 plate, not started.
+- 2026-09-24 installed IDE not reused by Docker: decided 2026-10-05, in
+  the next release, 0.3.0, both halves (reuse across formations and
+  reaping), design review with the owner before code, named build contexts
+  first.
+- Component-catalog's intake item on the host-network run-once launch:
+  acknowledged 2026-10-05 as a bug by the owner's ruling, filed as
+  `2026-10-05-run-once-network-authorization-needs-a-recommendation.md`,
+  minor, target 0.3.0: `network` becomes a universal authorization node
+  like docker-daemon, development-sudo and host-browser. The local
+  workflow text stands.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
@@ -144,19 +154,23 @@ Decided so far:
   and the 2026-10-03 incident (an agent pair unable to bring `nox` into
   scope) shows how it fails. Sequenced after the larger 0.2.16 items.
 
-Still to decide, as of 2026-10-05: installed IDE not reused by Docker
-(2026-09-24; design review with the owner, the root cause behind the
-named-build-contexts candidate), and the intake item from component-catalog
-on the host-network run-once launch (see Open Threads). The project group
-guard (2026-09-26) and in-capsule configuration inspection (2026-09-24) are
-owner maintenance, target 0.2.16, by the owner's decisions of 2026-10-01;
-they are the in-capsule project-command fix on the plate.
+The triage is complete as of 2026-10-05. The project group guard
+(2026-09-26) and in-capsule configuration inspection (2026-09-24) are owner
+maintenance, target 0.3.0, by the owner's decisions of 2026-10-01, restated
+on 2026-10-05 without objection; they are the in-capsule project-command
+fix on the plate.
 
-Owner's version expectation, recorded here until the version scheme in
-`WORKFLOW-LOCAL.md` is amended by project-management: 0.2.x continues; a
-0.3 marks the growth in capability since the first 0.2; from the 0.3.x
-series the project jumps to 0.9, which hosts V1's betas and release
-candidates. Bug targets may name 0.9 on that basis.
+Owner's version decision of 2026-10-05, recorded here until project-management
+registers it and the version scheme in `WORKFLOW-LOCAL.md` is amended: the
+next release, planned as 0.2.16, is **0.3.0**, a marketing decision marking
+the jump forward from 0.2.15. `main` stays at 0.2.16.dev0 until the release
+branch's first commit sets the version, as the local scheme says. The
+maintenance-owned records that targeted 0.2.16 now target 0.3.0; the two
+other-owned ones (workflow-improvements' discoverability record,
+component-catalog's IntelliJ lock record) are their owners' to retarget and
+are named in the mail to project-management. Beyond 0.3.x the project
+jumps to 0.9, which hosts V1's betas and release candidates; bug targets
+may name 0.9 on that basis.
 
 ### Resumed 2026-10-04
 
@@ -871,11 +885,14 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   last on the plate; the recursive successor record goes by option D, the
   fresh-workspace test, with the general rule in the e2e doc; the
   installed-IDE reuse and reaping design is in the next release, which
-  the owner named 0.3.0 (mail to project-management sent). Awaiting the
-  owner, in triage order: (4) the project
-  group guard and in-capsule inspection records are treated as decided for
-  0.2.16 unless the owner objects; (5) the component-catalog intake item.
-- Intake item, host-network run-once launch rejected: component-catalog's
+  the owner named 0.3.0 (mail to project-management sent); (5) the
+  host-network run-once item is a bug by the owner's ruling, `network`
+  becomes a universal node, filed and dispositioned. (4), the in-capsule
+  project-command fix, stands as decided on 2026-10-01; restated on
+  2026-10-05 without objection. The triage is complete. Next: the owner
+  sequences the plate; no implementation has started.
+- Intake item, host-network run-once launch rejected (superseded 2026-10-05
+  by the bug record; kept as the trail): component-catalog's
   diagnosis is incomplete. `_RUN_ONCE_AUTHORIZATIONS` includes `network` on
   `main` and here; the node exists only on projects whose manifest
   recommends `host.network.mode` (`authorization_declarations` builds it
@@ -885,7 +902,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   WORKFLOW-LOCAL command works here; the smoke's fresh project does not.
   Product choice for the owner: make network a universal authorization node,
   or amend WORKFLOW-LOCAL to say the command presupposes the recommendation
-  (recommended). Undecided; the item stays in intake.
+  (recommended). Owner ruled 2026-10-05: universal node; it is a bug.
 - The claim on the triage slice was released at this pause.
 
 - Final 0.2.15 publication and download verification are complete.

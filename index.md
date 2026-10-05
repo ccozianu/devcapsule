@@ -262,6 +262,7 @@ history; record current decisions in the active documents above.
 - [RC1 in-capsule configuration inspection fails](engineering-docs/bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
 
 - [Installed IDE reuse before archive acquisition — design review pending](engineering-docs/bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md)
+- [`project run --authorize network host` is refused on a project that does not recommend host networking](engineering-docs/bugs/devcapsule/2026-10-05-run-once-network-authorization-needs-a-recommendation.md)
 
 - [A client upgrade turns an unanswered acquisition into a required decision — R-COMPAT-001](engineering-docs/bugs/devcapsule/2026-09-24-client-upgrade-requires-acquisition-decision.md)
 - [`config list` advises resolve on a fresh resolution](engineering-docs/bugs/devcapsule/2026-09-24-config-list-advises-resolve-on-fresh-resolution.md)
