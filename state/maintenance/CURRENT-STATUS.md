@@ -24,8 +24,16 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-**2026-10-05: the 0.3.0 triage is complete; the plate is set, nothing is
-implemented yet.** The decisions are listed under *Resumed 2026-10-03* and
+**2026-10-05, later: the in-capsule project-command fix is on the branch,
+status fixed, gate pending at the time of writing; see the two records.**
+The `project` group applies a per-subcommand `CapsuleAccess` after
+resolving the subcommand without side effects: the capsule's project is
+selected from any directory, read-only commands answer, mutating ones
+name the launcher, unknown names are unknown. Proven by unit tests and
+by the source CLI from `/opt` in this capsule. Next on the plate: the
+fresh-workspace recursive test (option D).
+
+**2026-10-05: the 0.3.0 triage is complete; the plate is set.** The decisions are listed under *Resumed 2026-10-03* and
 the records they changed. Two bounded things happened on the branch beyond
 records: the packaging version test now runs its check from a temp
 directory (component-catalog's patch, three cases green with the editable
@@ -41,7 +49,9 @@ last; the middle is the agent's suggested order until the owner sets it):
 1. The recursive-successor test on a fresh workspace, option D of its
    record, and the fresh-workspace rule for every end-to-end test.
 2. The in-capsule project-command fix (project group guard, inspection
-   record), extended by the requirement below.
+   record): fixed 2026-10-05 on this branch, awaiting the gate and the
+   owner's confirmation on a candidate. The requirement below extends the
+   same command group and is not started.
 3. Named build contexts, then the installed-IDE reuse and reaping design
    review with the owner.
 4. The universal `network` authorization node.
