@@ -1,7 +1,7 @@
 ---
 status: fixed
 severity: minor
-target: 0.2.16
+target: 0.3.0
 owner: maintenance
 opened: 2026-08-15
 requirements: [R-SCOPE-001, R-DOCKER-001, R-PRODUCT-002]

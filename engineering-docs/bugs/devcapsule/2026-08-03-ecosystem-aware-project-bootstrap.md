@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: minor
-target: 0.3
+target: 0.3.0
 owner: maintenance
 opened: 2026-08-03
 requirements: [R-PRODUCT-001, R-PRODUCT-004, R-DEV-001, R-FRAMEWORK-001]
@@ -25,11 +25,11 @@ onboarded in minutes, and a fresh clone that opens its IDE but cannot run
 its own tests breaks that promise. The owner's evidence is the 2026-10-03
 incident, where a capable agent pair in the dogfood capsule failed to bring
 `nox` into scope and run the unit tests; a student in a first programming
-course would be more lost still. The record stays a bug. Target **0.3**,
-the series marking the growth since the first 0.2 (the owner's stated
-version expectation, recorded in the maintenance status file). It is
-deliberately sequenced after the larger 0.2.16 items; no implementation
-starts until the owner brings it into the 0.3 plate.
+course would be more lost still. The record stays a bug. Target **0.3.0**,
+the next release, named so by the owner's decision of the same day (it was
+to be 0.2.16). It is deliberately sequenced after the larger items of that
+release: the recursive-successor test, the installed-IDE reuse and reaping
+design, the in-capsule project-command fix.
 
 ## Symptom
 

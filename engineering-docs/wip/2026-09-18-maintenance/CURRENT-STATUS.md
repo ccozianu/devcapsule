@@ -867,12 +867,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 ## Open Threads
 
 - Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decisions
-  (1) and (2) are taken: ecosystem bootstrap stays a bug, target 0.3; the
-  recursive successor record goes by option D, the fresh-workspace test,
-  with the general rule in the e2e doc. Awaiting the owner, in triage
-  order: (2, done) option A, B or C for the recursive successor's stale
-  capsule-local resolution, A recommended; (3) whether the installed-IDE
-  Docker reuse design review happens in the 0.2.16 plate; (4) the project
+  (1) to (3) are taken: ecosystem bootstrap stays a bug, target 0.3.0,
+  last on the plate; the recursive successor record goes by option D, the
+  fresh-workspace test, with the general rule in the e2e doc; the
+  installed-IDE reuse and reaping design is in the next release, which
+  the owner named 0.3.0 (mail to project-management sent). Awaiting the
+  owner, in triage order: (4) the project
   group guard and in-capsule inspection records are treated as decided for
   0.2.16 unless the owner objects; (5) the component-catalog intake item.
 - Intake item, host-network run-once launch rejected: component-catalog's

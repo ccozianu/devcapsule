@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: major
-target: 0.2.16
+target: 0.3.0
 owner: maintenance
 opened: 2026-09-24
 requirements: [R-UPGRADE-001, R-PRODUCT-001]

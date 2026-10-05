@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: minor
-target: 0.2.16
+target: 0.3.0
 owner: maintenance
 opened: 2026-10-04
 requirements: [R-PRODUCT-001, R-COMPAT-001]
