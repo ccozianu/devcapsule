@@ -179,47 +179,53 @@ into this exception. See DEVELOPING.md for checkout overrides and resolution.
 
 ### Keep The Development Checkout Launchable
 
-The shared `.devcapsule/devcapsule.toml` and platform locks are the bootstrap
-contract for contributors, including the owner returning to the checkout.
-They must remain usable with the latest final released DevCapsule launcher.
-Implementing a capability does not authorize adding it to this project's
-shared needs before that launcher supports it. A passing source-build gate
-or recursive smoke with a development executable does not prove released
-launcher compatibility.
+Owner correction, 2026-10-05: **be liberal in what we accept and conservative
+in what we produce**. Compatibility is a contract between contributors with
+different launchers, not a rule that every shared declaration must be understood
+by one frozen release. This supersedes the narrower 2026-10-04 rule.
 
-Before changing the shared needs, configuration vocabulary or locks:
+**DevCapsule commands are the only writers of this project's configuration.**
+This includes the shared manifest, platform locks, checkout configuration and
+generated resolutions. Do not edit them with an editor, script, TOML library
+or Git-file restoration to bypass a missing operation. Use the appropriate
+DevCapsule command; add a supported command when the operation is missing.
+Keep the manifest, locks and resolutions consistent through that operation.
+This rule covers the working project, not deliberately constructed test fixtures.
 
-- Identify the launcher that will reopen the checkout: executable path,
-  `version --json`, and the released compatibility baseline. A CLI inside a
-  running capsule is not evidence of the owner's host CLI version.
-- Check both sides: the launcher must understand the manifest **and** every
-  locked component and its runtime/materialization metadata. Successful
-  resolution by a newer CLI is insufficient.
-- Use supported tooling to generate locks; do not invent or hand-patch their
-  digests, component tables or provenance. A recovery may restore a previously
-  compatible manifest/lock pair from Git, preserving unrelated changes.
-- Validate the changed pair with the released baseline, including runtime
-  planning. Record the command, executable identity and outcome in the selected
-  status file. A read-only planning check establishes compatibility at that
-  layer; call an actual launch verified only when it was exercised.
-- Keep unreleased component experiments in disposable test projects with an
-  explicitly selected development executable. Leave the working checkout's
-  shared needs and lock unchanged for those experiments.
+Before any configuration change, identify the writing executable and run
+configuration validation using at least **`devcapsule0` from the running
+instance**. Record its path, `version --json`, validation command and result.
+Check the proposed result before applying it to the working project, then
+validate the written result. Also validate against the intended next-launch
+host executable when available; the in-capsule check is a minimum, not proof
+of which executable the host will use. Do not substitute validation solely
+with the code being developed.
 
-Requiring a newer launcher for the shared checkout is an owner decision.
-Before making that change, agree the target executable and a usable bootstrap
-or upgrade path; validate that path and retain a compatible recovery pair.
-Never silently replace the owner's launcher or turn a feature test into a
-new prerequisite for resuming work. At handoff, record any configuration/lock
-change, how it was produced and which launcher can consume it. For a mismatch,
-restore the compatible pair or carry out the agreed launcher upgrade; changing
-only the manifest leaves a stale lock, and changing only the lock leaves
-inconsistent capability needs.
+An inspection command is not automatically a validator. In the current runtime,
+`devcapsule0 project config list` reports recorded launcher configuration;
+`config resolve` writes a resolution and requires the launcher context.
+Neither establishes a read-only candidate-validation command inside the capsule.
+If the required validation or mutation operation is absent, implement it through
+the owning workstream before changing the working configuration. Record the gap;
+do not bypass it through direct file edits or call inspection a successful check.
 
-Keep `tests/test_repository_manifest_compatibility.py` (under `devcapsule-src`)
-aligned with the released vocabulary. Expand its frozen baseline only after
-the corresponding final release ships, with evidence from that release.
-The development catalog must not serve as its own compatibility oracle.
+**Self-hosting is a managed exception.** DevCapsule may deliberately develop
+inside DevCapsule using a newer development executable. Keep the known working
+`devcapsule0` baseline identifiable, validate the transition with it, record any
+compatibility gap and the explicit development-build exception, and retain an
+independent host restart/recovery path. A development build must not silently
+validate away its own bootstrap dependency or replace the user's host launcher.
+
+For 0.3, [R-CONFIG-001](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md)
+requires mandatory needs to be distinguished from optional enhancements.
+Unavailable optional capabilities produce warnings and a usable reduced local
+environment; unmet mandatory needs require an actionable refusal. Degradation
+must preserve the shared declaration and the guarantees of mandatory capabilities.
+Conservative writers preserve unrelated choices and compatible representations.
+This applies to adopter repositories receiving newer contributions, not just
+our self-hosting exception. Until that behavior is implemented, keep the current
+required-only checkout compatible; the existing vocabulary guards are an interim
+regression defense, not the complete future acceptance policy.
 
 ### Local Launch Networking
 

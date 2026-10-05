@@ -94,3 +94,17 @@ project-management on the coordination branch, with proposed compatibility,
 safe-transition, independent bootstrap/recovery and cold-restart acceptance
 requirements. Scope and sequencing, including the relationship to 0.2.16,
 remain decisions for release planning with the owner.
+
+## Owner correction, 2026-10-05
+
+[R-CONFIG-001](../../requirements/product/r-config-001-conservative-writers-tolerant-readers.md)
+records the missing general contract: conservative command-owned configuration
+writes, validation with at least the running `devcapsule0`, explicitly managed
+self-hosting, and mandatory/optional needs with warnings and graceful local
+degradation for adopters receiving newer repository contributions. The local
+rule now reflects that direction. The earlier Git-file restoration is historical
+containment, not a permitted future substitute for a missing DevCapsule command.
+The frozen-vocabulary guards cover today's required-only manifest; they do not
+satisfy the accepted optional-capability requirement. No configuration files were
+changed in this correction. Implementation is routed to project management and
+maintenance through `2026-10-05-component-catalog-conservative-writers-tolerant-readers.md`.

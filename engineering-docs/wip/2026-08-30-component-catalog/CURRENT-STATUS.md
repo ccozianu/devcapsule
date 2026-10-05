@@ -4,9 +4,9 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-04 for owner PR integration and host launch verification; shared-checkout compatibility restored, local rule and regression guards added
+State: paused 2026-10-05 for owner PR integration; command-only configuration rule corrected, R-CONFIG-001 accepted and routed for 0.3
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@d008030481fe
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
 Branch association: `ws-component-catalog/intellij-idea`
 
@@ -23,11 +23,26 @@ The owner requested Eclipse IDE for Java Developers on 2026-10-04, following
 IntelliJ/Rider, with a recorded Playwright smoke. The owner then requested an
 update to today’s blog with the latest accomplishments and screenshots/movies.
 The owner then reported `project run` rejecting Playwright and requested a
-local workflow rule to prevent this. Restore released-launcher compatibility
-for the shared checkout; keep unreleased component tests in disposable projects.
+local workflow rule to prevent this. The 2026-10-05 correction establishes
+command-only configuration writes, validation by the running `devcapsule0`,
+a managed self-hosting exception and mandatory/optional capability handling
+for all adopters. Capture the accepted 0.3 requirement and route implementation.
 No release or website publishing.
 
 ## Current State
+
+- Owner correction is canonical in accepted [R-CONFIG-001](../../requirements/product/r-config-001-conservative-writers-tolerant-readers.md)
+  and the rewritten local rule. Conservative writers, tolerant readers,
+  mandatory/optional needs and graceful local degradation are product direction;
+  exact schema/commands remain implementation work. The previous blanket
+  released-vocabulary rule is superseded; current guards are interim protection
+  for today's required-only configuration.
+- Sent `2026-10-05-component-catalog-conservative-writers-tolerant-readers.md`
+  to project-management and maintenance, correcting the prior planning handoff
+  and identifying missing command-based mutations/candidate validation. No
+  configuration, launcher or runtime was changed in this follow-up.
+- Main remains `242e13e`, zero commits behind and no definition change on entry;
+  no synchronization needed. One owned bug remains fixed pending host acceptance.
 
 - Owner follow-up: recovered the host launch using an already-built executable
   in the shared `dist` folder, then directed the lessons toward a 0.3 release.
@@ -39,8 +54,7 @@ No release or website publishing.
   and agent-proposed compatibility, safe-transition, independent recovery and
   cold-restart acceptance requirements. Detailed scope, owners, timing and the
   relationship to 0.2.16 are pending release planning. No version was bumped.
-- This follow-up changes records only; main is current, the prior full gate
-  remains the source/configuration validation, and the content check was rerun.
+- The prior 0.3 direction follow-up changed records only; its content check passed.
 
 - New owned bug: [unreleased Playwright breaks checkout launch](../../bugs/devcapsule/2026-10-04-unreleased-playwright-breaks-checkout-launch.md).
   The original component commit also changed the shared need and lock, making
@@ -49,9 +63,9 @@ No release or website publishing.
   from `ada153c^`; other pins and the Playwright component/tests are unchanged.
   No generated lock fields were hand-patched, and no host launcher was replaced.
 - Added the local shared-checkout compatibility rule and two regression guards
-  against final v0.2.15's frozen capability/component vocabulary. The default
-  follows the existing released-client manifest policy; the optional owner
-  question about deliberately requiring a development build remains unanswered.
+  against final v0.2.15's frozen capability/component vocabulary. The owner
+  has since clarified that self-hosting with a development build is an allowed,
+  managed exception and optional capabilities need tolerant consumption.
 - Entry synchronization fast-forwarded to accepted main `242e13e`; the blog
   update is integrated in PR #167. Definition unchanged; no waiting mail or
   intake and no previously open owned bugs. The new bug is owned here because
@@ -80,12 +94,25 @@ No release or website publishing.
 
 ## Planned Next Step
 
-The owner opens and merges the PR through the GitHub UI: **Keep the shared
-checkout launchable with released DevCapsule**. After pulling the repaired pair,
-confirm the host launcher path/version and `project run`; close the bug only
-after that confirmation. Fetch and verify main after the owner reports merge.
+The owner opens and merges the pending branch through the GitHub UI, titled
+**Define command-owned configuration and tolerant capability handling**. Fetch
+and verify main after merge. Project management dispositions the accepted 0.3 direction
+and coordinates missing command/validation work with maintenance. Do not change
+working project configuration through direct edits while those commands are absent.
 
 ## Validation And External State
+
+- Revised-rule/requirement full gate passed: 1,152 tests, nine packaging checks,
+  type checks, source/PEX smokes and content contract. Log:
+  `.git/config-contract-build-20261005.log`. Only rules, requirements, indexes
+  and records changed; the project manifest and platform lock are unchanged.
+
+- `devcapsule0 project config list` exit 0: recorded launcher inspection only,
+  not launch/candidate validation. CLI identity: `/usr/local/bin/devcapsule0`,
+  0.2.16.dev0 local-linux-x86_64, source unknown. `need` adds capabilities;
+  `resolve` writes and requires launcher context. Help exposes no removal,
+  classification or read-only candidate-validation command. Local log:
+  `.git/devcapsule0-config-preflight-20261005.log` (not published).
 
 - Repair full `nox -s build` passed: 1,152 unit tests, nine packaging checks,
   mypy, CLI/PEX smokes and content contract. Log: `.git/launcher-compat-build.log`.
@@ -123,21 +150,24 @@ after that confirmation. Fetch and verify main after the owner reports merge.
 
 - Project management must disposition the 0.3 planning handoff. A stronger
   product guarantee is needed beyond the current local compatibility rule;
-  consent/recovery design must align with component-upgrades. The proposed
-  acceptance criteria are recommendations, not an approved full release scope.
+  consent/recovery design must align with component-upgrades. R-CONFIG-001
+  is accepted owner direction; schema, command design and full release scope
+  remain open. Earlier agent suggestions are superseded where they conflict.
 
 - Awaiting the human: compatibility-repair PR merge, host launcher identity
   and confirmation of `project run`. Blog editorial release and existing website
   video-publication follow-up remain; Eclipse #166 and blog #167 are on main.
 - No new assets or website implementation changes; screenshots render through
   the existing content contract and movie links open/download original WebMs.
-- No unresolved implementation choice. Java build/debug, Maven/Gradle builds,
+- Earlier IDE validation limits: Java build/debug, Maven/Gradle builds,
   Marketplace installation and restart preference acceptance are not claimed.
 - Rider licensed-editor acceptance remains unverified as recorded in its report.
 - Raw transcripts stay local. No verbatim session record was requested. Existing
   `.git/recovery/` files and the website gitlink remain untouched.
 
 ## Workstream Document Index
+
+- [Conservative writers and tolerant readers](../../requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — accepted 0.3 direction
 
 - [Shared-checkout Playwright regression and recovery](../../bugs/devcapsule/2026-10-04-unreleased-playwright-breaks-checkout-launch.md) — current slice
 
