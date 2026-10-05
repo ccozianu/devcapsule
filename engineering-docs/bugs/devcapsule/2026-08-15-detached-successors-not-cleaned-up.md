@@ -139,3 +139,13 @@ capsule-local copy of the checkout resolution (Stage 5's isolated HOME),
 which was stale against the lock, and `config resolve` inside the capsule
 is refused by the in-capsule guard that the 2026-09-24 inspection record
 targets at 0.2.16. Close when that run passes.
+
+## Proof on source, 2026-10-05
+
+The attached-launch end-to-end test passes from a fresh workspace in this
+repository's 0.2.15 capsule (see the
+[recursive-successor record](2026-10-04-recursive-successor-cannot-refresh-its-capsule-local-resolution.md),
+run `8a543a0613a9c1f22d839102d592c995`): the launch stays attached, the
+successor is inspected while it runs, stopping it ends the command, Docker
+removes the container, the run directory keeps the log and manifest.
+Closes with the 2026-10-04 record on a 0.3.0 candidate.

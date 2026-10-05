@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: minor
 target: 0.3.0
 owner: maintenance
@@ -136,3 +136,40 @@ for the preflight check.
 The end-to-end test passes in this repository's capsule on a 0.2.16
 candidate, and the 2026-08-15 detached-successor record closes on the same
 run.
+
+## Fix, 2026-10-05, on `ws-maintenance/post-0.2.15`: option D built and proven
+
+`tests/e2e/fresh_workspace.py` is the fresh workspace every end-to-end
+test is to use: `require_clean_source` refuses a dirty source (submodule
+worktrees ignored, since the clone never recurses into them);
+`FreshWorkspace.create` clones HEAD with `git clone --local --no-hardlinks
+--no-checkout --no-recurse-submodules` under an allowlisted Git
+environment into an owned run directory under the persistent home's E2E
+workspace, checks out the exact revision detached, removes the local
+origin; `configure_like_this_capsule` answers the clone's authorizations
+and values as the mounted launch record answered them, through `config
+authorize`, `config set` and `config resolve` with `XDG_CONFIG_HOME`,
+`XDG_DATA_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME` under the run
+directory; `cleanup` removes the run directory, best effort.
+
+`test_recursive_successor_attached_launch.py` now builds that workspace
+first and drives `launch-successor` on the clone under the isolated
+roots. It also proves the capsule's own records under the capsule's
+configuration root are byte-for-byte untouched by the run. No product
+code changed; the guard, the stale capsule-local copy and Stage 5's HOME
+comment are all left exactly as they were, because the test no longer
+depends on them.
+
+Evidence, this repository's 0.2.15 capsule, 2026-10-05: the first run
+refused the dirty source (the uncommitted test files themselves); after
+the commit, run `8a543a0613a9c1f22d839102d592c995` cloned, configured and
+resolved under the run root, launched successor container `d625278fe691`
+from formation `devcapsule-local-pycharm:e8f9b0c12623d7d366ca`, passed all
+eleven inspection checks, was stopped, exited with Docker removing the
+container, and the run directory was removed: `1 passed in 9.35s`, the
+formation being cached. Docker's event log confirms create, start,
+exec and removal under the run's label.
+
+The preflight check for a stale resolution named above as a nicety is not
+added. Closes when the owner confirms on a 0.3.0 candidate; the
+2026-08-15 detached-successor record closes on the same run.
