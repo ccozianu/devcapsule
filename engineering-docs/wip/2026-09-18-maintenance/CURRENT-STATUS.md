@@ -133,11 +133,13 @@ Decided so far:
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
+- 2026-08-03 ecosystem-aware project bootstrap: stays a bug, minor, target
+  0.3, by the owner's ruling of 2026-10-05. The feature reclassification
+  was rejected: onboarding a developer in minutes is an implicit promise,
+  and the 2026-10-03 incident (an agent pair unable to bring `nox` into
+  scope) shows how it fails. Sequenced after the larger 0.2.16 items.
 
-Still to decide, as of the pause of 2026-10-04 (second session):
-ecosystem-aware project bootstrap (2026-08-03; fails the owner's test, so
-it is a feature: proposed to leave the queue by mail to project-management
-for the V1 scope ledger), the recursive successor's stale resolution
+Still to decide, as of 2026-10-05: the recursive successor's stale resolution
 (2026-10-04; option A, B or C), installed IDE not reused by Docker
 (2026-09-24; design review with the owner, the root cause behind the
 named-build-contexts candidate), and the intake item from component-catalog
@@ -860,9 +862,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Pause of 2026-10-04 (second session). Awaiting the owner, in triage order:
-  (1) ecosystem bootstrap leaves the bug queue for the V1 scope ledger, yes
-  or no; (2) option A, B or C for the recursive successor's stale
+- Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decision
+  (1) is taken: ecosystem bootstrap stays a bug, target 0.3. Awaiting the
+  owner, in triage order: (2) option A, B or C for the recursive successor's stale
   capsule-local resolution, A recommended; (3) whether the installed-IDE
   Docker reuse design review happens in the 0.2.16 plate; (4) the project
   group guard and in-capsule inspection records are treated as decided for
