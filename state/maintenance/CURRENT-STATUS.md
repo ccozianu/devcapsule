@@ -24,6 +24,60 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-05: the 0.3.0 triage is complete; the plate is set, nothing is
+implemented yet.** The decisions are listed under *Resumed 2026-10-03* and
+the records they changed. Two bounded things happened on the branch beyond
+records: the packaging version test now runs its check from a temp
+directory (component-catalog's patch, three cases green with the editable
+egg-info present), and the three component-catalog items are
+dispositioned. The branch is ahead of `main` by records and that one test
+change; the owner pushes and opens the PR.
+
+### The 0.3.0 maintenance plate
+
+In the owner's order so far (the bigger items first, ecosystem bootstrap
+last; the middle is the agent's suggested order until the owner sets it):
+
+1. The recursive-successor test on a fresh workspace, option D of its
+   record, and the fresh-workspace rule for every end-to-end test.
+2. The in-capsule project-command fix (project group guard, inspection
+   record), extended by the requirement below.
+3. Named build contexts, then the installed-IDE reuse and reaping design
+   review with the owner.
+4. The universal `network` authorization node.
+5. The first-session UX bugs, release notes and gate tooling.
+6. Ecosystem-aware project bootstrap.
+
+### Requirement: configuration validated and changed by commands only
+
+From the owner's correction of 2026-10-04 (component-catalog's item of
+2026-10-05, R-CONFIG-001 on its branch) and the owner's addition of
+2026-10-05. Schema names and command spellings are chosen in the design
+step with the owner; the behaviour is fixed:
+
+- **Read-only validation before launch.** A command that checks the
+  working-tree manifest and lock, plus a proposed change, for launch,
+  without writing anything. `config list` shows recorded launcher state
+  and is not that check.
+- **Commands for every configuration change.** This project's
+  configuration is written only by DevCapsule commands; `need` adds a
+  capability, and removal and mandatory/optional classification need
+  commands too, so no hand edits remain.
+- **`project config resolve --force`.** Shows the configuration that would
+  be produced if errors were skipped: a component the local launcher does
+  not know is skipped; a missing IDE surface falls back to the IDE of last
+  resort, bash (vim and the SDK are inside). It highlights what is skipped
+  and shows the totality that would be in place. It writes no local lock.
+- **`project run --force-config`.** Launches with that error-skipping
+  configuration and warns the user about every skip. Distinct from
+  today's `run --force`, which only accepts a stale resolution once.
+- Behind both: mandatory needs are split from optional enhancements;
+  optional ones warn and degrade, only a mandatory one refuses. This holds
+  for adopter projects whose contributors run a launcher that does not
+  know a newer declaration.
+
+### Earlier state
+
 Close-out PR #149 is merged at main `6980b60`. SSH fetch verified its tree
 matches the delivered 0f6578d exactly and all three version copies read
 0.2.16.dev0. This checkout fast-forwarded to main before this records-only
@@ -889,8 +943,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   host-network run-once item is a bug by the owner's ruling, `network`
   becomes a universal node, filed and dispositioned. (4), the in-capsule
   project-command fix, stands as decided on 2026-10-01; restated on
-  2026-10-05 without objection. The triage is complete. Next: the owner
-  sequences the plate; no implementation has started.
+  2026-10-05 without objection. The triage is complete. The three
+  component-catalog items are dispositioned (packaging patch applied and
+  green; the conservative-writers correction is the requirement under
+  *Current State*, with the owner's `resolve --force` and `run
+  --force-config` addition, mailed to project-management). Next: the
+  owner confirms the plate's order; no implementation has started.
 - Intake item, host-network run-once launch rejected (superseded 2026-10-05
   by the bug record; kept as the trail): component-catalog's
   diagnosis is incomplete. `_RUN_ONCE_AUTHORIZATIONS` includes `network` on
