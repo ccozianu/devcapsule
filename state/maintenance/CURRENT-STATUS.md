@@ -24,8 +24,18 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-05, latest: option D is built and proven; the recursive attached
+launch runs from a fresh workspace.** `tests/e2e/fresh_workspace.py` is the
+fresh-workspace rule as code; the attached-launch test uses it and passed
+in this capsule (run `8a543a0613a9c1f22d839102d592c995`, eleven inspection
+checks, container removed, workspace removed). The 2026-10-04 record and
+the 2026-08-15 record are status fixed, closing on a 0.3.0 candidate.
+Next on the plate: named build contexts. Seven older run directories
+under the persistent home's E2E workspace predate the cleanup rule; they
+are the owner's to remove.
+
 **2026-10-05, later: the in-capsule project-command fix is on the branch,
-status fixed, gate pending at the time of writing; see the two records.**
+status fixed, gate green; see the two records.**
 The `project` group applies a per-subcommand `CapsuleAccess` after
 resolving the subcommand without side effects: the capsule's project is
 selected from any directory, read-only commands answer, mutating ones
@@ -47,7 +57,8 @@ In the owner's order so far (the bigger items first, ecosystem bootstrap
 last; the middle is the agent's suggested order until the owner sets it):
 
 1. The recursive-successor test on a fresh workspace, option D of its
-   record, and the fresh-workspace rule for every end-to-end test.
+   record, and the fresh-workspace rule for every end-to-end test: done
+   2026-10-05, proven in this capsule, closing on a candidate.
 2. The in-capsule project-command fix (project group guard, inspection
    record): fixed 2026-10-05 on this branch, awaiting the gate and the
    owner's confirmation on a candidate. The requirement below extends the
