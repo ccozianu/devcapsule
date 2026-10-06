@@ -1,7 +1,7 @@
 ---
-status: confirmed
+status: fixed
 severity: minor
-target: 0.2.16
+target: 0.3.0
 owner: maintenance
 opened: 2026-09-26
 requirements: [R-PRODUCT-001]
@@ -93,3 +93,15 @@ broader report of 2026-09-27, that project subcommands fail inside the
 capsule regardless of directory, is now established on v0.2.15 and
 recorded there with its three causes; this record keeps the
 argparse-before-guard half. Recorded by `project-management`.
+
+## Fix, 2026-10-05, on `ws-maintenance/post-0.2.15`
+
+Fixed with the [inspection record](2026-09-24-runtime-configuration-inspection-fails.md),
+whose fix section has the design: the `project` group resolves the
+subcommand without side effects (`Group.resolve`) before applying any
+capsule policy, so an unknown name reaches the ordinary "unknown command"
+error with the group's choices, inside and outside a capsule. Verified by
+`test_runtime_unknown_subcommand_is_unknown_not_launcher_only` and by
+`project --path $PWD bootstrap` inside this repository's capsule. The
+nice-to-have pointer from `bootstrap` to `devcapsule bootstrap project` is
+not implemented. Closes on the owner's rerun with a 0.3.0 candidate.

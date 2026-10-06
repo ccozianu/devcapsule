@@ -2205,3 +2205,30 @@ def test_adopted_agent_settings_are_not_seeded(tmp_path: Path) -> None:
     mounts = _component_state_mounts(tmp_path, lock, configured, object(), {"claude-code", "antigravity-cli"})
     assert len(mounts) == 2
     assert list(claude.iterdir()) == list(gemini.iterdir()) == []
+
+
+def test_every_project_leaf_declares_its_capsule_access() -> None:
+    """The project group applies CapsuleAccess per leaf after resolving the
+    subcommand; a leaf without its own declaration would be a silent default."""
+    from devcapsule.commands.framework import Group
+    from devcapsule.commands.project import ProjectCommand
+    from devcapsule.runtime_configuration import CapsuleAccess
+
+    def leaves(group, prefix=()):
+        for name, entry in group.subcommands().items():
+            if isinstance(entry, type) and issubclass(entry, Group):
+                yield from leaves(entry, (*prefix, name))
+            else:
+                yield (*prefix, name), entry
+
+    declared = {path: leaf.__dict__.get("capsule_access") for path, leaf in leaves(ProjectCommand)}
+    assert all(isinstance(access, CapsuleAccess) for access in declared.values()), declared
+    assert declared[("config", "show")] is CapsuleAccess.INSPECTS
+    assert declared[("versions", "show")] is CapsuleAccess.INSPECTS
+    assert declared[("info",)] is CapsuleAccess.INSPECTS
+    assert declared[("run",)] is CapsuleAccess.MUTATES
+    assert declared[("versions", "select")] is CapsuleAccess.MUTATES
+    assert declared[("config", "resolve")] is CapsuleAccess.MUTATES
+    assert declared[("init",)] is CapsuleAccess.CREATES_HERE
+    assert declared[("list",)] is CapsuleAccess.INDEPENDENT
+    assert declared[("recursive-e2e", "preflight")] is CapsuleAccess.INDEPENDENT

@@ -81,6 +81,29 @@ def test_unknown_subcommand_lists_only_visible_commands() -> None:
     assert "secret" not in str(failure.value)
 
 
+class _Forest(Group):
+    name = "forest"
+    help = "Example group nesting another group."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {_Tree.name: _Tree, _Echo.name: _Echo}
+
+
+def test_resolve_names_the_leaf_through_nested_groups_without_side_effects(capsys) -> None:
+    _Echo.seen = None
+    assert _Tree.resolve(["--path", "/somewhere", "echo", "--value", "x"]) is _Echo
+    assert _Forest.resolve(["tree", "--path", "/p", "secret"]) is _HiddenLeaf
+    assert _Forest.resolve(["tree"]) is _Tree          # a bare group would print help
+    assert _Forest.resolve([]) is _Forest
+    assert _Forest.resolve(["bogus"]) is None
+    assert _Forest.resolve(["tree", "bogus"]) is None
+    assert _Forest.resolve(["-h"]) is None and _Tree.resolve(["--help", "echo"]) is None
+    assert _Tree.resolve(["--unknown-option", "echo"]) is None
+    assert capsys.readouterr() == ("", "")
+    assert _Echo.seen is None  # resolution never ran the leaf
+
+
 def test_group_without_subcommand_prints_help_and_succeeds(capsys) -> None:
     assert _Tree.invoke("tree", []) == 0
     output = capsys.readouterr().out

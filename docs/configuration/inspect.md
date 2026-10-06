@@ -49,7 +49,10 @@ state and its `SOURCE`, the document it comes from. `show` adds the files
 behind the resolution and the review: pending decisions with their remedies,
 your recorded base beside the project's current recommendation, and whether
 resolving is needed. Inside a capsule both are read-only views of the next
-launch, and the output names the launcher command to change anything.
+launch, and the output names the launcher command to change anything. They
+find the capsule's project from any directory, `/opt` included; a command
+that would change the configuration answers with that launcher command
+instead. A project nested inside the capsule keeps its own identity.
 
 Running versions, as opposed to the next launch's selection, are also on
 `~/.local/bin/devcapsule project versions show`; see

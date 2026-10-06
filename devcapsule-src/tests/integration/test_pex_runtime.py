@@ -300,9 +300,12 @@ def test_clean_revision_build_and_tag_derived_version(tmp_path: Path, release: s
     )
     if release:
         assert value["version"] == release[1:].replace("-rc", "rc")
+        # From an empty directory: PEX_INTERPRETER keeps an empty sys.path
+        # entry, and from the source tree importlib.metadata would find the
+        # editable install's egg-info before the embedded wheel.
         installed_version = subprocess.check_output(
             [str(output), "-c", "from importlib.metadata import version; print(version('devcapsule'))"],
-            env={**os.environ, "PEX_INTERPRETER": "1"}, text=True,
+            env={**os.environ, "PEX_INTERPRETER": "1"}, text=True, cwd=tmp_path,
         ).strip()
         assert installed_version == release[1:].replace("-rc", "rc")
         assert subprocess.check_output(["git", "-C", str(repository), "diff", "--exit-code"], text=True) == ""

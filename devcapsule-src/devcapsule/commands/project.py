@@ -14,14 +14,14 @@ embedded resolution matrix.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 import os
 import sys
 import termios
 import tty
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, ClassVar, Mapping
 
 from devcapsule.launch.command_output import preparation_diagnostics
 from devcapsule.commands.framework import (
@@ -35,6 +35,7 @@ from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
 from devcapsule import version_sets
 from devcapsule import runtime_configuration
+from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError
 from devcapsule.configuration.history import (
     record_known_good_configuration,
@@ -138,10 +139,19 @@ from devcapsule.configuration.freshness import (
 
 @dataclass(frozen=True)
 class ProjectCommandContext:
+    """What the ``project`` group selected for its subcommand.
+
+    ``selected_path`` is the user's ``--path``; it always wins.
+    ``capsule_root`` is the capsule's own project, set by the group when no
+    ``--path`` was given, no project encloses the working directory, and the
+    subcommand's :class:`CapsuleAccess` selects it; otherwise ``None``.
+    """
+
     selected_path: Path | None
+    capsule_root: Path | None = None
 
     def start_path(self) -> Path:
-        return self.selected_path or Path(".")
+        return self.selected_path or self.capsule_root or Path(".")
 
     def target_path(self) -> Path:
         return self.start_path().expanduser().resolve()
@@ -154,6 +164,7 @@ def _project_context(context: object | None) -> ProjectCommandContext:
 
 class ProjectInfoCommand(Command):
     name = "info"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
     help = "Show project software, environment and persistent storage without changing state."
 
     @classmethod
@@ -172,6 +183,7 @@ class ProjectInfoCommand(Command):
 
 class ProjectListCommand(Command):
     name = "list"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
     help = "List developer-owned checkout records from the XDG registry."
 
     @classmethod
@@ -210,6 +222,7 @@ class ProjectListCommand(Command):
 
 class ProjectInitCommand(Command):
     name = "init"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.CREATES_HERE
     help = (
         "Initialize the project: manifest, platform lock, owner checkout record, "
         "and a fresh resolution."
@@ -285,6 +298,7 @@ class ProjectInitCommand(Command):
 
 class CheckoutRegisterCommand(Command):
     name = "register"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = "Register this checkout under a distinct workstation-owned name."
 
     @classmethod
@@ -318,6 +332,7 @@ class CheckoutGroup(Group):
 
 class ConfigResolveCommand(Command):
     name = "resolve"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = "Validate the combined configuration and write the generated resolution."
 
     @classmethod
@@ -449,6 +464,7 @@ def _print_configuration_listing(context: object | None) -> ConfigurationListing
 
 class ConfigListCommand(Command):
     name = "list"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
     help = "List configured values, bindings, authorizations, and the resolution state; data only."
 
     @classmethod
@@ -459,6 +475,7 @@ class ConfigListCommand(Command):
 
 class ConfigShowCommand(Command):
     name = "show"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
     help = "Show the listing, the documents every row comes from, and the review: decisions, remedies, and whether to resolve."
 
     @classmethod
@@ -480,6 +497,7 @@ class ConfigShowCommand(Command):
 
 class ConfigSetCommand(Command):
     name = "set"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = "Set one ordinary value declared by the project configuration metadata."
 
     @classmethod
@@ -507,6 +525,7 @@ class ConfigSetCommand(Command):
 
 class ConfigBindCommand(Command):
     name = "bind"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = "Bind a declared logical resource to a developer-owned provider (PROVIDER:VALUE)."
 
     @classmethod
@@ -559,6 +578,7 @@ class ConfigBindCommand(Command):
 
 class ConfigUnsetCommand(Command):
     name = "unset"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = "Remove one recorded answer from this checkout."
 
     @classmethod
@@ -619,6 +639,7 @@ class ConfigUnsetCommand(Command):
 
 class ConfigAuthorizeCommand(Command):
     name = "authorize"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = (
         "Authorize project-recommended host access or select an exact inspected "
         "local DevCapsule base."
@@ -723,6 +744,7 @@ class ConfigAuthorizeCommand(Command):
 
 class ConfigNeedCommand(Command):
     name = "need"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = (
         "Add capabilities to the project's need; the lock regenerates, new "
         "acquisition gates elicit (--authorize NAME VALUE answers them), and "
@@ -789,6 +811,7 @@ class ConfigGroup(Group):
 
 class StateAdoptCommand(Command):
     name = "adopt"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = "Adopt an existing host directory for a declared state slot."
 
     @classmethod
@@ -852,6 +875,7 @@ def _add_runtime_plan_options(parser: argparse.ArgumentParser, *, host_paths: bo
 
 class RecursivePreflightCommand(Command):
     name = "preflight"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
     help = "Check recursive dogfood readiness for this capsule."
 
     @classmethod
@@ -873,6 +897,7 @@ class RecursivePreflightCommand(Command):
 
 class RecursiveRunCommand(Command):
     name = "run"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
     help = "Run the recursive dogfood E2E dry run."
 
     @classmethod
@@ -914,6 +939,7 @@ class RecursiveRunCommand(Command):
 
 class RecursiveLaunchSuccessorCommand(Command):
     name = "launch-successor"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
     help = "Launch a successor capsule from a retained materialization run."
 
     @classmethod
@@ -943,6 +969,7 @@ class RecursiveLaunchSuccessorCommand(Command):
 
 class RecursiveInspectSuccessorCommand(Command):
     name = "inspect-successor"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
     help = "Independently inspect a retained successor against its expected plan."
 
     @classmethod
@@ -983,6 +1010,7 @@ _RUN_ONCE_AUTHORIZATIONS = ("docker-daemon", "network", "development-sudo", "hos
 
 class ProjectRunCommand(Command):
     name = "run"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = (
         "Run the project from its platform lock and developer-owned resolution. "
         "Run-once answers use the config grammar (--authorize NAME VALUE, "
@@ -1303,16 +1331,29 @@ class ProjectCommand(Group):
 
     @classmethod
     def make_context(cls, arguments: argparse.Namespace, parent: object | None) -> object | None:
+        """Select the project and apply the subcommand's capsule access.
+
+        The subcommand is resolved first, without side effects: an unknown
+        name, help, or a bare nested group gets a plain context and the
+        dispatch reports it as it would outside a capsule. For a known leaf,
+        its declared :class:`CapsuleAccess` decides whether the capsule's own
+        project is selected when none encloses the working directory, and
+        whether the command is refused inside the capsule in favour of the
+        launcher.
+        """
         context = ProjectCommandContext(arguments.selected_path)
-        tokens = arguments.rest
-        # Help and the explicit recursive-dogfood interface retain their own
-        # contracts. Other operations on this capsule's project must declare
-        # an implemented read-only runtime path, or run through its launcher.
+        tokens: list[str] = list(arguments.rest)
         parsed_tokens = tokens[:tokens.index("--")] if "--" in tokens else tokens
-        if tokens and not any(token in {"-h", "--help"} for token in parsed_tokens):
-            read_only = tuple(tokens[:2]) in {("versions", "show"), ("config", "list")}
-            if not read_only and tokens[0] not in {"recursive-e2e", "list", "info"} and len(tokens) >= (2 if tokens[0] in {"versions", "config", "state", "checkout"} else 1):
-                runtime_configuration.require_launcher(context.start_path(), tokens)
+        if any(token in {"-h", "--help"} for token in parsed_tokens):
+            return context
+        leaf = cls.resolve(tokens)
+        if leaf is None or issubclass(leaf, Group):
+            return context
+        access = _capsule_access(leaf)
+        if access.selects_capsule_project and context.selected_path is None:
+            context = replace(context, capsule_root=runtime_configuration.capsule_project_root(Path(".")))
+        if access.needs_launcher:
+            runtime_configuration.require_launcher(context.start_path(), tokens)
         return context
 
     @classmethod
@@ -1328,6 +1369,19 @@ class ProjectCommand(Group):
             RecursiveE2EGroup.name: RecursiveE2EGroup,
             ProjectRunCommand.name: ProjectRunCommand,
         }
+
+
+def _capsule_access(leaf: type[Command]) -> CapsuleAccess:
+    """The access a ``project`` leaf declares for itself.
+
+    Every leaf of the tree declares one explicitly, which
+    ``test_project_commands`` checks by walking the tree; an inherited or
+    missing declaration is a programming error, never a default.
+    """
+    access = leaf.__dict__.get("capsule_access")
+    if not isinstance(access, CapsuleAccess):
+        raise AssertionError(f"{leaf.__name__} declares no capsule access.")
+    return access
 
 
 def _recursive_project_root(context: ProjectCommandContext) -> Path:
