@@ -13,10 +13,10 @@ from devcapsule.project import ProjectMountError, normalize_project_mount
 from devcapsule.runtime_command import RuntimeCommand
 
 from .authorization import authorized_base_selection
-from .documents import (
-    Artifact,
+from .file_formats import (
+    ConfigurationFileKind,
     ProjectConfigurationError,
-    admit_document,
+    validate_file_format,
     canonical_digest,
     quote_toml,
     render_toml_scalar,
@@ -136,7 +136,7 @@ class Resolution:
     """
 
     def __init__(self, document: Mapping[str, Any]) -> None:
-        admit_document(document, Artifact.resolution, "resolution")
+        validate_file_format(document, ConfigurationFileKind.resolution, "resolution")
         self._document = deepcopy(dict(document))
         runtime = table(self._document, "runtime")
         component = runtime.get("component")

@@ -14,7 +14,7 @@ from devcapsule import cli
 from devcapsule.components.codex import CODEX_CONFIG_SEED
 from devcapsule.launch.pycharm import DockerMode
 from devcapsule.materialization import ImageDetails, parse_locked_environment
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     canonical_digest,
 )

@@ -16,7 +16,7 @@ from devcapsule import cli
 from devcapsule.configuration import capability_commands as commands
 from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
 from devcapsule.configuration.capability_selection import generate_lock, selected_lock, usable_lock
-from devcapsule.configuration.documents import ProjectConfigurationError, render_document, render_checkout
+from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml, render_checkout
 from devcapsule.configuration.storage import checkout_record_paths, load_toml, lock_for
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
@@ -36,7 +36,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "project"
     (root / ".devcapsule").mkdir(parents=True)
     manifest = declaration(need=["python", "python-ide"])
-    (root / ".devcapsule/devcapsule.toml").write_text(render_document(manifest))
+    (root / ".devcapsule/devcapsule.toml").write_text(render_toml(manifest))
     (root / ".devcapsule/devcapsule.linux-amd64.lock").write_text(MATRIX.resolve(["python", "python-ide"]).render_lock())
     return root
 
@@ -198,8 +198,8 @@ def test_interrupted_shared_edit_recovers_to_one_complete_endpoint(project: Path
     before_manifest, before_lock = manifest_path.read_text(), lock_path.read_text()
     new_manifest = declaration(required=["python"])
     new_lock = generate_lock(CapabilityPolicy.read(new_manifest), MATRIX)
-    after_manifest, after_lock = render_document(new_manifest), render_document(new_lock)
-    journal.write_text(render_document({"before-manifest": before_manifest, "before-lock": before_lock,
+    after_manifest, after_lock = render_toml(new_manifest), render_toml(new_lock)
+    journal.write_text(render_toml({"before-manifest": before_manifest, "before-lock": before_lock,
                                        "after-manifest": after_manifest, "after-lock": after_lock}))
     lock_path.write_text(after_lock)
     if committed:
@@ -255,8 +255,8 @@ def test_optional_only_contribution_does_not_block_next_launch(project: Path) ->
     manifest["capabilities"]["optional"] = ["future-tool"]
     lock["components"]["future"] = {"version": "500"}
     lock["capability-providers"]["future-tool"] = ["future"]
-    manifest_path.write_text(render_document(manifest))
-    lock_path.write_text(render_document(lock))
+    manifest_path.write_text(render_toml(manifest))
+    lock_path.write_text(render_toml(lock))
     shared = shared_bytes(project)
     after = ExecutionConfiguration.load(project).project
     assert after.lock["components"] == before.lock["components"]
@@ -264,7 +264,7 @@ def test_optional_only_contribution_does_not_block_next_launch(project: Path) ->
     assert shared_bytes(project) == shared
     # Required changes are not blessed by that optional-only reconciliation.
     manifest["capabilities"]["sdk-major"]["python"] = 4
-    manifest_path.write_text(render_document(manifest))
+    manifest_path.write_text(render_toml(manifest))
     with pytest.raises(ProjectConfigurationError, match="SDK major 4"):
         ExecutionConfiguration.load(project)
 
@@ -311,7 +311,7 @@ def test_new_project_failure_writes_nothing(tmp_path: Path, monkeypatch: pytest.
 
 
 def test_local_reselection_retains_unrelated_version_pins(project: Path) -> None:
-    from devcapsule.configuration.documents import canonical_digest, selected_version_lock
+    from devcapsule.configuration.file_formats import canonical_digest, selected_version_lock
     commands.configure(project, required=["python"], optional=["browser-automation"])
     commands.configure(project, local=["python-ide", "codex-agent"])
     manifest = load_toml(commands.paths(project)[0])
@@ -320,8 +320,8 @@ def test_local_reselection_retains_unrelated_version_pins(project: Path) -> None
     lock = lock_for(project, manifest)[1]
     lock["components"]["playwright"]["version"] = "fixture-local-pin"
     lock["components"]["codex"]["version"] = "fixture-agent-pin"
-    checkout["version-set"] = {"format": 1, "lock": render_document(lock), "recommendation-digest": canonical_digest(load_toml(commands.paths(project)[1]))}
-    input_path.write_text(render_document(checkout))
+    checkout["version-set"] = {"format": 1, "lock": render_toml(lock), "recommendation-digest": canonical_digest(load_toml(commands.paths(project)[1]))}
+    input_path.write_text(render_toml(checkout))
     before = shared_bytes(project)
     commands.configure(project, local=["eclipse-ide", "codex-agent"])
     selected = selected_version_lock(load_toml(input_path))
@@ -343,7 +343,7 @@ def test_recovery_never_overwrites_independent_edits(project: Path, fault: str) 
         manifest.write_text("independent edit")
     if fault == "lock-conflict":
         lock.write_text("independent lock")
-    journal.write_text(render_document(values))
+    journal.write_text(render_toml(values))
     before = shared_bytes(project)
     with pytest.raises(ProjectConfigurationError):
         commands.recover(project)
@@ -355,7 +355,7 @@ def test_recovery_of_interrupted_initial_creation(tmp_path: Path) -> None:
     (root / ".devcapsule").mkdir(parents=True)
     manifest, lock, journal = commands.paths(root)
     lock.write_text("candidate-lock")
-    journal.write_text(render_document({"before-manifest": "", "before-lock": "",
+    journal.write_text(render_toml({"before-manifest": "", "before-lock": "",
                                        "after-manifest": "candidate-manifest", "after-lock": "candidate-lock"}))
     assert cli.main(["project", "--path", str(root), "config", "capabilities", "--recover"]) == 0
     assert not lock.exists() and not manifest.exists() and not journal.exists()
@@ -547,9 +547,9 @@ def test_wrong_platform_local_version_set_is_refused(project: Path) -> None:
     checkout = tomllib.loads(render_checkout(manifest, project, {}, {}))
     lock = load_toml(commands.paths(project)[1])
     lock["platform"] = "other-platform"
-    checkout["version-set"] = {"format": 1, "lock": render_document(lock), "recommendation-digest": "fixture"}
+    checkout["version-set"] = {"format": 1, "lock": render_toml(lock), "recommendation-digest": "fixture"}
     record.parent.mkdir(parents=True)
-    record.write_text(render_document(checkout))
+    record.write_text(render_toml(checkout))
     with pytest.raises(ProjectConfigurationError, match="another platform"):
         lock_for(project, manifest)
 
@@ -637,7 +637,7 @@ def test_check_rejects_corrupt_optional_pin_without_writing(project: Path) -> No
     candidate = load_toml(lock)
     candidate["components"]["dotnet-sdk"]["sha256"] = "invalid"
     candidate_path = project / "candidate.lock"
-    candidate_path.write_text(render_document(candidate))
+    candidate_path.write_text(render_toml(candidate))
     before = shared_bytes(project)
     with pytest.raises(CliError, match="SHA-256"):
         commands.check(project, manifest_path=manifest, lock_path=candidate_path)

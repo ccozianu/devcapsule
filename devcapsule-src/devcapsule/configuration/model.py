@@ -18,7 +18,7 @@ from typing import Any, Mapping
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 
 from .authorization import locked_base_reference
-from .documents import Artifact, ProjectConfigurationError, admit_document, table
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, table
 from .freshness import stale_resolution_inputs
 from .manifest import validate_manifest
 from .resolution import Resolution, render_resolution
@@ -39,8 +39,8 @@ class Configuration:
         self._lock = deepcopy(dict(lock))
         self._checkout = deepcopy(dict(checkout))
         validate_manifest(self._manifest, Path("manifest"))
-        admit_document(self._lock, Artifact.lock, "platform lock")
-        admit_document(self._checkout, Artifact.checkout, "checkout")
+        validate_file_format(self._lock, ConfigurationFileKind.lock, "platform lock")
+        validate_file_format(self._checkout, ConfigurationFileKind.checkout, "checkout")
         if "base" in self._lock:
             locked_base_reference(self._lock)
         identity = table(self._checkout, "project")

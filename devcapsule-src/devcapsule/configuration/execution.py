@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .documents import ProjectConfigurationError
+from .file_formats import ProjectConfigurationError
 from .model import Configuration
 from .resolution import Resolution
 from .review import ConfigurationReview

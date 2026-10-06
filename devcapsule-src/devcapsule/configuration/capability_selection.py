@@ -15,7 +15,7 @@ from devcapsule.components.catalog import COMPONENTS
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 from .capabilities import CapabilityPolicy, LocalCapabilities, names
-from .documents import ProjectConfigurationError, table
+from .file_formats import ProjectConfigurationError, table
 
 
 def matrix_for(lock: Mapping[str, Any]) -> ResolutionMatrix:
@@ -92,7 +92,7 @@ def selected_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
     IDE raise ProjectConfigurationError. ``warn`` prints optional omissions
     to stderr; False suppresses that output, not validation.
     """
-    from .documents import selected_version_lock
+    from .file_formats import selected_version_lock
     local = LocalCapabilities.read(checkout)
     policy = CapabilityPolicy.read(manifest)
     local.validate(policy)

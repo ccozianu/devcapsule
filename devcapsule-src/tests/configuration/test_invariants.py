@@ -13,17 +13,17 @@ import tomllib
 
 import pytest
 
-from devcapsule.configuration.documents import (
-    Artifact,
-    admit_document,
-    render_document,
+from devcapsule.configuration.file_formats import (
+    ConfigurationFileKind,
+    validate_file_format,
+    render_toml,
     table,
 )
 from devcapsule.configuration.review import (
     HostAccess,
     review_configuration,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     canonical_digest,
 )
@@ -47,28 +47,28 @@ from tests.test_upgrade_recovery import checkout, invoke, install_external_fakes
 def replace_document(path, edit):
     document = load_toml(path)
     edit(document)
-    path.write_text(render_document(document))
+    path.write_text(render_toml(document))
 
 
 def artifacts(checkout):
     project, record, resolution = checkout
     return {
-        Artifact.manifest: project / '.devcapsule/devcapsule.toml',
-        Artifact.lock: project / '.devcapsule/devcapsule.linux-amd64.lock',
-        Artifact.checkout: record,
-        Artifact.resolution: resolution,
+        ConfigurationFileKind.manifest: project / '.devcapsule/devcapsule.toml',
+        ConfigurationFileKind.lock: project / '.devcapsule/devcapsule.linux-amd64.lock',
+        ConfigurationFileKind.checkout: record,
+        ConfigurationFileKind.resolution: resolution,
     }
 
 
-@pytest.mark.parametrize('artifact', list(Artifact))
+@pytest.mark.parametrize('artifact', list(ConfigurationFileKind))
 @pytest.mark.parametrize('version', [None, False, True, 0, 1.0, '1', 2, 99])
 def test_schema_admission_distinguishes_version_from_truthiness(artifact, version):
     with pytest.raises(ProjectConfigurationError, match='unsupported'):
-        admit_document({artifact.value: version}, artifact, 'test input')
-    admit_document({artifact.value: 1}, artifact, 'test input')
+        validate_file_format({artifact.value: version}, artifact, 'test input')
+    validate_file_format({artifact.value: 1}, artifact, 'test input')
 
 
-@pytest.mark.parametrize('artifact', list(Artifact))
+@pytest.mark.parametrize('artifact', list(ConfigurationFileKind))
 @pytest.mark.parametrize('command', [
     ('config', 'resolve'), ('config', 'list'), ('run',), ('run', '--force'), ('init', '--regenerate'),
 ])
@@ -80,7 +80,7 @@ def test_unsupported_artifact_refuses_without_side_effects(checkout, monkeypatch
     launch = install_external_fakes(monkeypatch, events)
     # Resolve deliberately replaces generated output, so its old schema is
     # not an input. All readers, including --force and init repair, admit it.
-    if artifact is Artifact.resolution and command == ('config', 'resolve'):
+    if artifact is ConfigurationFileKind.resolution and command == ('config', 'resolve'):
         assert invoke(checkout[0], *command) == 0
     else:
         assert invoke(checkout[0], *command) == 2
@@ -148,13 +148,13 @@ def test_invalid_unrelated_answers_survive_an_edit_until_repaired(checkout):
                                   float('-inf'), [1, {'a.b': ['quoted', True]}]])
 def test_checkout_writer_round_trips_every_supported_scalar(value):
     document = {'key': value, 'nested': {'with.dots': value}, 'empty': {}}
-    assert tomllib.loads(render_document(document)) == document
+    assert tomllib.loads(render_toml(document)) == document
 
 
 def test_checkout_writer_nan_and_unsupported_scalar():
-    assert math.isnan(tomllib.loads(render_document({'x': float('nan')}))['x'])
+    assert math.isnan(tomllib.loads(render_toml({'x': float('nan')}))['x'])
     with pytest.raises(ProjectConfigurationError, match='left intact'):
-        render_document({'date': date(2026, 9, 20)})
+        render_toml({'date': date(2026, 9, 20)})
     assert table({}, 'missing', 'table') == {}
 
 

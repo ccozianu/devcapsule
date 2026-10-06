@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .documents import ProjectConfigurationError, table
+from .file_formats import ProjectConfigurationError, table
 
 
 def names(value: object, label: str) -> tuple[str, ...]:

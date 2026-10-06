@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import Any, Mapping
 from devcapsule.project import normalize_project_mount, ProjectMountError
 
-from .documents import Artifact, ProjectConfigurationError, admit_document
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format
 from .values import configuration_value_declarations
 from .capabilities import CapabilityPolicy
 
 
 def validate_manifest(value: Mapping[str, Any], path: Path) -> None:
-    admit_document(value, Artifact.manifest, path)
+    validate_file_format(value, ConfigurationFileKind.manifest, path)
     project = value.get("project")
     if not isinstance(project, dict) or not all(
         isinstance(project.get(key), str) and project[key] and "\x00" not in project[key]

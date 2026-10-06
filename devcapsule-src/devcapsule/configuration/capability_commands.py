@@ -14,7 +14,7 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 from .capabilities import CapabilityPolicy, LocalCapabilities
 from .capability_selection import generate_lock, selected_lock, usable_lock
-from .documents import Artifact, ProjectConfigurationError, admit_document, render_checkout, render_document, selected_version_lock
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, render_checkout, render_toml, selected_version_lock
 from .manifest import validate_manifest
 from .nodes import build_node_registry
 from .storage import atomic_write, checkout_record_paths, discover_project, load_toml, require_settled
@@ -75,8 +75,8 @@ def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any]) -> None:
     require_settled(root)
     transaction = {"before-manifest": manifest_path.read_text() if manifest_path.exists() else "",
                    "before-lock": lock_path.read_text() if lock_path.exists() else "",
-                   "after-manifest": render_document(manifest), "after-lock": render_document(lock)}
-    atomic_write(journal, render_document(transaction))
+                   "after-manifest": render_toml(manifest), "after-lock": render_toml(lock)}
+    atomic_write(journal, render_toml(transaction))
     try:
         atomic_write(lock_path, transaction["after-lock"], mode=0o644)
         atomic_write(manifest_path, transaction["after-manifest"], mode=0o644)
@@ -95,7 +95,7 @@ def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str
     grant host access.
     """
     validate_manifest(manifest, Path("manifest"))
-    admit_document(lock, Artifact.lock, "platform lock")
+    validate_file_format(lock, ConfigurationFileKind.lock, "platform lock")
     usable, notices = usable_lock(CapabilityPolicy.read(manifest), lock)
     check_formation(manifest, usable)
     return notices
@@ -190,7 +190,7 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
         check_documents(manifest, generated)
         if not preview:
             promote(root, manifest, generated)
-        return ("Preview; no files changed.\n" if preview else "Updated shared capability policy and lock.\n") + render_document(manifest["capabilities"])
+        return ("Preview; no files changed.\n" if preview else "Updated shared capability policy and lock.\n") + render_toml(manifest["capabilities"])
 
     input_path, _ = checkout_record_paths(manifest, root)
     if input_path.with_suffix(".activation.toml").exists():
@@ -200,7 +200,7 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
     else:
         import tomllib
         checkout = tomllib.loads(render_checkout(manifest, root, {}, {}))
-    admit_document(checkout, Artifact.checkout, input_path)
+    validate_file_format(checkout, ConfigurationFileKind.checkout, input_path)
     previous = LocalCapabilities.read(checkout)
     selection = LocalCapabilities(tuple(sorted(set(previous.selected if local is None else local))),
                                   tuple(sorted(set(previous.without if without is None else without))))
@@ -220,7 +220,7 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
             metadata = old_pins.get("components", {}).get(component)
             if metadata is not None:
                 pinned["components"][component] = deepcopy(metadata)
-    checkout["capabilities"] = {"selected": list(selection.selected), "without": list(selection.without), "lock": render_document(pinned)}
+    checkout["capabilities"] = {"selected": list(selection.selected), "without": list(selection.without), "lock": render_toml(pinned)}
     # A personal capability change preserves unrelated local version pins.
     version_record = checkout.pop("version-set", None)
     source = deepcopy(version_lock if version_lock is not None else lock)
@@ -232,11 +232,11 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
             source["components"].pop(old_surface, None)
     effective = selected_lock(manifest, source, checkout, warn=False)
     if version_record is not None:
-        version_record["lock"] = render_document(effective)
+        version_record["lock"] = render_toml(effective)
         checkout["version-set"] = version_record
     check_formation(manifest, effective)
     if not preview:
-        atomic_write(input_path, render_document(checkout))
+        atomic_write(input_path, render_toml(checkout))
     return ("Preview; no files changed." if preview else
             "Updated local capability selection; shared files unchanged. Run 'project config resolve' to review permissions and prepare launch.")
 
@@ -285,7 +285,7 @@ def initialize(root: Path, *, name: str | None, slug: str | None, creator: str |
         pins = matrix.resolve(sorted(set(required) | set(local)), allow_unverified=allow_unverified)
         checkout["capabilities"] = {"selected": sorted(set(local)), "without": [], "lock": pins.render_lock()}
         check_formation(manifest, selected_lock(manifest, lock, checkout, warn=False))
-    rendered_checkout = render_document(checkout)
+    rendered_checkout = render_toml(checkout)
     promote(root, manifest, lock)
     atomic_write(input_path, rendered_checkout)
     return ("Created project capability policy, platform lock and local checkout.\n"

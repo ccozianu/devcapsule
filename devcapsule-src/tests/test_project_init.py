@@ -18,7 +18,7 @@ from devcapsule.configuration.operations import (
     ProvidedAnswer,
     initialize_project,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
 )
 from devcapsule.platforms import Platform

@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from devcapsule.images.contract import Provenance
 from devcapsule.components.catalog import COMPONENTS
 
-from .documents import AuthorizationScalar, ProjectConfigurationError, canonical_digest
+from .file_formats import AuthorizationScalar, ProjectConfigurationError, canonical_digest
 
 
 OCI_REPOSITORY_COMPONENT_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")

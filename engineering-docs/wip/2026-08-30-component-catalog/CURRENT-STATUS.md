@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-06 after API documentation correction; confirmed omission/version-set defect still needs follow-up
+State: paused 2026-10-06 after configuration naming cleanup; confirmed omission/version-set defect still needs follow-up
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,12 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- Renamed the configuration format module to `file_formats.py`, with
+  `ConfigurationFileKind`, `validate_file_format` and `render_toml` replacing
+  vague names. Rewrote its docstrings to describe checks, TOML output and hashes
+  directly; updated callers, tests and the source-layout guide. Behavior is
+  unchanged. The historical correctness argument keeps its commit-pinned links.
 
 - Owner requested readable contracts at the code definitions. Added docstrings
   for capability values, their fields/methods, selection and command functions,
@@ -159,6 +165,17 @@ Release/adoption sequencing belongs to project-management. Do not migrate the
 self-hosting configuration or replace the launcher incidentally.
 
 ## Validation And External State
+
+- Configuration naming cleanup: full build gate passed (1,245 unit cases,
+  ten packaged integration cases, types, syntax, source/PEX smokes and content
+  contract). Log: `.git/config-file-formats-build.log`. The renamed module has
+  92% combined line/branch coverage. AST comparison of all 40 affected Python
+  files confirms only the declared renames and docstrings changed; test
+  assertions and file formats retain their behavior.
+- Sent maintenance `2026-10-06-component-catalog-configuration-format-names.md`
+  with a patch for its report's source link and symbol names. The IDE's
+  incidental edit to that report was reverted; maintenance owns its disposition.
+  No waiting mail on exit. The existing `.idea/project.iml` edit is untouched.
 
 - API documentation correction: full build gate passed, including 1,245 unit
   cases and ten packaged integration cases. Log: `.git/capability-api-docs-build.log`.

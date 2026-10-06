@@ -11,7 +11,7 @@ import tomllib
 import pytest
 
 from devcapsule.configuration import Configuration, Resolution, HostAccess, ProjectConfigurationError
-from devcapsule.configuration.documents import canonical_digest
+from devcapsule.configuration.file_formats import canonical_digest
 
 
 @pytest.fixture

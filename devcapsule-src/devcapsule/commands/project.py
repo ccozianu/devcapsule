@@ -104,7 +104,7 @@ from devcapsule.configuration.authorization import (
     render_authorization_value,
     review_authorizations,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     render_checkout,
     render_toml_scalar,

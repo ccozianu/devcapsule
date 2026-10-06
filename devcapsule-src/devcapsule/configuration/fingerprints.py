@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import Any, Mapping
 
-from .documents import canonical_digest, table, ProjectConfigurationError
+from .file_formats import canonical_digest, table, ProjectConfigurationError
 from .manifest import configuration_manifest
 
 

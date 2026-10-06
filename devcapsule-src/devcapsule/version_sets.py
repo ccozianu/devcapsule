@@ -19,7 +19,7 @@ from typing import Any, Callable, Mapping, Sequence
 from devcapsule.compat import CliError
 from devcapsule.components.catalog import COMPONENTS, selected_component_definitions
 from devcapsule.configuration.authorization import AuthorizationReview, authorization_declarations, authorized_base_selection, normalize_authorization_value
-from devcapsule.configuration.documents import canonical_digest, render_document, selected_version_lock
+from devcapsule.configuration.file_formats import canonical_digest, render_toml, selected_version_lock
 from devcapsule.configuration.model import Configuration
 from devcapsule.configuration.storage import (
     ResolvedProject, activate_configuration, atomic_write, checkout_record_paths,
@@ -236,7 +236,7 @@ def check(start: Path) -> str:
             lines.append(f"  Candidate {candidate.version}: {candidate.status} {candidate.detail}; availability is not DevCapsule validation.")
             if candidate.status == "available" and installable:
                 candidates.append(f"{definition.id}@{candidate.version}")
-    atomic_write(path, render_document({"checked-at": time.time(), "set": workspace.identity,
+    atomic_write(path, render_toml({"checked-at": time.time(), "set": workspace.identity,
                                        "candidates": candidates, "notices": notices, "successful-checks": successes,
                                        "report": "\n".join(lines)}))
     return "\n".join(lines)
@@ -271,7 +271,7 @@ def notice_decision(start: Path, notice: Mapping[str, Any], *, action: str | Non
     key = notice_key(notice)
     if action is not None:
         choices[key] = -1 if action == "dismiss" else time.time() + 7 * 86400
-        atomic_write(path, render_document(choices))
+        atomic_write(path, render_toml(choices))
     return choices.get(key, 0) != -1 and choices.get(key, 0) <= time.time()
 
 
@@ -300,7 +300,7 @@ def reminder(start: Path, *, action: str | None = None) -> str:
         elif candidate not in critical_candidates and choices.get(candidate, 0) != -1 and choices.get(candidate, 0) <= now:
             pending.append(candidate)
             choices[candidate] = now + 7 * 86400
-    atomic_write(choices_path, render_document(choices))
+    atomic_write(choices_path, render_toml(choices))
     if action:
         return "Candidates dismissed until a different version is discovered." if action == "dismiss" else "Candidates deferred for seven days."
     if not pending:
@@ -341,10 +341,10 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
         candidate["unverified-combinations"] = "; ".join(missing)
     else:
         candidate.pop("unverified-combinations", None)
-    proposal = {"format": 1, "from": workspace.identity, "lock": render_document(candidate),
+    proposal = {"format": 1, "from": workspace.identity, "lock": render_toml(candidate),
                 "component": component, "evidence": list(evidence), "unvalidated": list(missing)}
     identity = canonical_digest(proposal)
-    atomic_write(workspace.state / "previews" / f"{identity}.toml", render_document(proposal))
+    atomic_write(workspace.state / "previews" / f"{identity}.toml", render_toml(proposal))
     report(f"Preview {identity}\n{component}: {workspace.lock['components'][component]['version']} -> {selection.metadata['version']}")
     report(_diff(workspace.lock, candidate))
     report(f"Distribution status: {selection.status} {selection.detail}; this is not validation evidence.")
@@ -401,7 +401,7 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
     else:
         existing = checkout.get("version-set")
         digest = existing["recommendation-digest"] if existing else canonical_digest(workspace.recommendation())
-        checkout["version-set"] = {"format": 1, "lock": render_document(lock), "recommendation-digest": digest}
+        checkout["version-set"] = {"format": 1, "lock": render_toml(lock), "recommendation-digest": digest}
     from devcapsule.configuration.capability_selection import usable_lock
     from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
     lock, _ = usable_lock(CapabilityPolicy.read(workspace.manifest), lock, LocalCapabilities.read(checkout))
@@ -503,11 +503,11 @@ def record_success(selected: ResolvedProject, realized: RealizedEnvironment | No
     _retain(selected.lock, state, acquire=False)
     base = authorized_base_selection(selected.lock, selected.checkout)
     assert base is not None
-    record: dict[str, Any] = {"lock": render_document(selected.lock), "last-success": time.time(),
+    record: dict[str, Any] = {"lock": render_toml(selected.lock), "last-success": time.time(),
                              "base": {"reference": base.reference}}
     if base.local_image_identity:
         record["base"]["image-id"] = base.local_image_identity
-    atomic_write(state / "known-good" / f"{effective_set_id(selected.lock, selected.checkout)}.toml", render_document(record))
+    atomic_write(state / "known-good" / f"{effective_set_id(selected.lock, selected.checkout)}.toml", render_toml(record))
 
 
 def _known(workspace: Workspace) -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
@@ -586,8 +586,8 @@ def follow_project(start: Path, *, apply: bool = False, acquisitions: Sequence[t
 
 
 def _diff(before: Mapping[str, Any], after: Mapping[str, Any], path: str = "version-set.lock") -> str:
-    return "".join(difflib.unified_diff(render_document(before).splitlines(True), render_document(after).splitlines(True),
-                                       fromfile="a/" + path, tofile="b/" + path)) or "No software selection difference."
+    return "".join(difflib.unified_diff(render_toml(before).splitlines(True), render_toml(after).splitlines(True),
+                                        fromfile="a/" + path, tofile="b/" + path)) or "No software selection difference."
 
 
 def proposal(start: Path, output: Path) -> str:
@@ -601,7 +601,7 @@ def proposal(start: Path, output: Path) -> str:
     path = workspace.lock_path.relative_to(workspace.root).as_posix()
     # Diff against actual bytes so 'git apply' works even with lock comments.
     patch = "".join(difflib.unified_diff(workspace.lock_path.read_text().splitlines(True),
-        render_document(workspace.lock).splitlines(True), fromfile="a/" + path, tofile="b/" + path))
+                                         render_toml(workspace.lock).splitlines(True), fromfile="a/" + path, tofile="b/" + path))
     evidence = "# Local zero-exit launch only; not comprehensive DevCapsule validation.\n"
     base = workspace.checkout.get("authorization", {}).get("base-image", {})
     if base.get("image-id"):

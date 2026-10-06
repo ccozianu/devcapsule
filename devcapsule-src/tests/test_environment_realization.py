@@ -19,7 +19,7 @@ from devcapsule.configuration.storage import (
 from devcapsule.configuration.authorization import (
     authorization_declarations,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     canonical_digest,
 )
 

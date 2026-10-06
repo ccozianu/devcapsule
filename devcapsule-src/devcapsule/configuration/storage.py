@@ -11,7 +11,7 @@ from urllib.parse import quote
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 
 from .authorization import locked_base_reference
-from .documents import Artifact, ProjectConfigurationError, admit_document, table, selected_version_lock, render_document
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, table, selected_version_lock, render_toml
 from .manifest import validate_manifest
 from .nodes import build_node_registry
 
@@ -65,7 +65,7 @@ def load_toml(path: Path) -> dict[str, Any]:
 def load_checkout(path: Path, manifest: Mapping[str, Any], root: Path) -> dict[str, Any]:
     recover_activation(path)
     document = load_toml(path)
-    admit_document(document, Artifact.checkout, path)
+    validate_file_format(document, ConfigurationFileKind.checkout, path)
     recorded = table(document, "checkout").get("path")
     if not isinstance(recorded, str) or not recorded or Path(recorded).expanduser().resolve() != root:
         raise ProjectConfigurationError(f"{path} does not match observed checkout {root}.")
@@ -77,7 +77,7 @@ def load_checkout(path: Path, manifest: Mapping[str, Any], root: Path) -> dict[s
 
 def load_resolution(path: Path) -> dict[str, Any]:
     document = load_toml(path)
-    admit_document(document, Artifact.resolution, path)
+    validate_file_format(document, ConfigurationFileKind.resolution, path)
     return document
 
 
@@ -278,7 +278,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
             "The platform lock is authored on the project side and committed with the project."
         )
     value = load_toml(path)
-    admit_document(value, Artifact.lock, path)
+    validate_file_format(value, ConfigurationFileKind.lock, path)
     if "base" in value:
         locked_base_reference(value, source=str(path))
     # Every public consumer gets the same unambiguous vocabulary.
@@ -340,10 +340,10 @@ def activate_configuration(input_path: Path, checkout: Mapping[str, Any], resolu
     transaction = {
         "before-checkout": input_path.read_text(),
         "before-resolution": output.read_text() if output.exists() else "",
-        "after-checkout": render_document(checkout),
-        "after-resolution": render_document(resolution),
+        "after-checkout": render_toml(checkout),
+        "after-resolution": render_toml(resolution),
     }
-    atomic_write(journal, render_document(transaction))
+    atomic_write(journal, render_toml(transaction))
     try:
         atomic_write(output, transaction["after-resolution"])
         atomic_write(input_path, transaction["after-checkout"])

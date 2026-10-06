@@ -7,7 +7,7 @@ from devcapsule import configuration
 
 PACKAGE = "devcapsule.configuration"
 ADAPTERS = {"storage", "execution", "operations", "history", "capability_commands", "capability_selection"}
-CORE = {"documents", "manifest", "values", "bindings", "authorization", "nodes",
+CORE = {"file_formats", "manifest", "values", "bindings", "authorization", "nodes",
         "review", "fingerprints", "resolution", "freshness", "model", "capabilities"}
 
 

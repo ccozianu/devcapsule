@@ -7,7 +7,7 @@ from typing import Any, Mapping
 from devcapsule.build_info import BuildInfoError, current_build_info
 from devcapsule.runtime_command import RuntimeCommand
 
-from .documents import ConfigurationScalar, ProjectConfigurationError
+from .file_formats import ConfigurationScalar, ProjectConfigurationError
 
 
 CONFIGURATION_VALUE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$")
