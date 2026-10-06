@@ -87,6 +87,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Eclipse Java component and recorded smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-eclipse-validation.md)
 - [Linux .NET SDK and Rider validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md)
 - [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
+- [Image layers, the local cache, and how the final image is composed](engineering-docs/implementation-notes/devcapsule/2026-10-06-image-layers-local-cache-and-composition.md)
 
 - [Distribution channel contract and implementation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)
 

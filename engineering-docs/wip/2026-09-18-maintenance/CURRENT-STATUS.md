@@ -30,7 +30,8 @@ cache, archives unpacked once by digest. On the real 3.69 GB PyCharm tree
 a rebuild after a launcher change transfers 1.29 MB in 1.1 s instead of
 3.69 GB plus a 9 s copy; first build of a tree still sends it once. Gate
 green; record updated with the table and what is left for the reuse and
-reaping design review. Next on the plate: the universal `network` node,
+reaping design review. The design as built is written up for the owner in
+[image layers, the local cache, and composition](../../implementation-notes/devcapsule/2026-10-06-image-layers-local-cache-and-composition.md). Next on the plate: the universal `network` node,
 then that design review.
 
 **2026-10-05, latest: option D is built and proven; the recursive attached
