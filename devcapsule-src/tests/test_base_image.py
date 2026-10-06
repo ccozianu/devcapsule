@@ -55,7 +55,7 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     plan = build_base_image_spec(options).build_plan()
     context = tmp_path / "context"
     context.mkdir()
-    dockerfile = render_build_context(plan, context).read_text(encoding="utf-8")
+    dockerfile = render_build_context(plan, context).dockerfile.read_text(encoding="utf-8")
 
     assert plan.base_image == "ubuntu:24.04"
     assert "python3" in plan.apt_packages

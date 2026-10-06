@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -179,6 +180,55 @@ ENTRYPOINT_CONTRACT = (
     "/opt/devcapsule/bin/devcapsule.pex",
     "runtime",
 )
+
+
+UNPACKED_DIRECTORY = "unpacked"
+UNPACKED_MARKER = ".devcapsule-unpacked.json"
+
+
+def unpacked_tree(cache_root: Path, sha256: str, unpack: Callable[[Path], Path]) -> Path:
+    """The tree a verified archive unpacks to, kept under the cache by the archive's digest.
+
+    Unpacked once and reused by every later materialization of the same
+    artifact, whatever the formation: the build then reads an unchanged path,
+    which is what lets BuildKit send only what changed (nothing) instead of
+    the whole tree. ``unpack`` fills a fresh directory and returns the
+    installation root inside it; the root's relative path goes into the
+    completion marker, written last and renamed into place with the tree, so
+    an interrupted unpack is redone and never trusted. Two launchers
+    unpacking the same digest at once both finish; the second keeps the
+    first's tree, identical by construction.
+    """
+    home = cache_root / UNPACKED_DIRECTORY / sha256
+    marker = home / UNPACKED_MARKER
+    recorded = _unpacked_root(marker)
+    if recorded is not None:
+        return home / recorded
+    shutil.rmtree(home, ignore_errors=True)
+    partial = home.with_name(f"{home.name}.partial-{os.getpid()}")
+    shutil.rmtree(partial, ignore_errors=True)
+    partial.mkdir(parents=True)
+    relative = unpack(partial).relative_to(partial).as_posix()
+    (partial / UNPACKED_MARKER).write_text(
+        json.dumps({"schema_version": 1, "sha256": sha256, "root": relative}) + "\n", encoding="utf-8"
+    )
+    try:
+        partial.rename(home)
+    except OSError:
+        if _unpacked_root(marker) is None:
+            raise
+        shutil.rmtree(partial, ignore_errors=True)
+    return home / relative
+
+
+def _unpacked_root(marker: Path) -> str | None:
+    """The recorded installation root of a complete unpacked tree, or None."""
+    try:
+        document = json.loads(marker.read_text(encoding="utf-8"))
+        root = document["root"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return root if isinstance(root, str) and ".." not in Path(root).parts else None
 
 
 def cache_root(env: Mapping[str, str] | None = None) -> Path:
@@ -690,10 +740,14 @@ def ensure_materialized_surface(
         with tempfile.TemporaryDirectory(prefix="devcapsule-materialize-", dir=work_root) as temporary_value:
             temporary = Path(temporary_value)
             try:
-                surface_root = normalize_archive_directory(acquisition.path, temporary)
+                surface_root = unpacked_tree(
+                    cache_root, artifact.sha256,
+                    lambda destination: normalize_archive_directory(acquisition.path, destination),
+                )
             except OSError as exc:
                 raise CliError(
-                    f"Cannot unpack the verified {component_id} archive beneath {work_root}: {exc}"
+                    f"Cannot unpack the verified {component_id} archive beneath "
+                    f"{cache_root / UNPACKED_DIRECTORY}: {exc}"
                 ) from exc
             for probe in profile.archive_probes:
                 if not (surface_root / probe).is_file():
@@ -710,6 +764,7 @@ def ensure_materialized_surface(
                         acquired.path,
                         declaration,
                         temporary / f"{declaration.component_id}-{index}",
+                        cache_root=cache_root,
                     ),
                     declaration,
                 )
@@ -839,11 +894,17 @@ def _prepare_locked_artifact(
     acquired: Path,
     declaration: LockedArtifactDeclaration,
     destination: Path,
+    *,
+    cache_root: Path,
 ) -> Path:
+    # Directory artifacts (IDE trees, browsers) are the large ones; they are
+    # unpacked once under the cache by digest, like the surface archive.
     if declaration.artifact_format == "tar-gz-directory":
-        return extract_tar_directory(acquired, destination)
+        return unpacked_tree(cache_root, declaration.sha256,
+                             lambda tree: extract_tar_directory(acquired, tree))
     if declaration.artifact_format == "zip-directory":
-        return extract_zip(acquired, destination)
+        return unpacked_tree(cache_root, declaration.sha256,
+                             lambda tree: extract_zip(acquired, tree))
     if declaration.artifact_format in {"file", "python-wheel"}:
         shutil.copyfile(acquired, destination)
         destination.chmod(0o700)
