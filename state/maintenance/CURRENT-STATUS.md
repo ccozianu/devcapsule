@@ -24,6 +24,15 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-06: named build contexts are built and measured.** Directory
+inputs are named contexts read in place, one context root per launcher
+cache, archives unpacked once by digest. On the real 3.69 GB PyCharm tree
+a rebuild after a launcher change transfers 1.29 MB in 1.1 s instead of
+3.69 GB plus a 9 s copy; first build of a tree still sends it once. Gate
+green; record updated with the table and what is left for the reuse and
+reaping design review. Next on the plate: the universal `network` node,
+then that design review.
+
 **2026-10-05, latest: option D is built and proven; the recursive attached
 launch runs from a fresh workspace.** `tests/e2e/fresh_workspace.py` is the
 fresh-workspace rule as code; the attached-launch test uses it and passed
@@ -63,8 +72,8 @@ last; the middle is the agent's suggested order until the owner sets it):
    record): fixed 2026-10-05 on this branch, awaiting the gate and the
    owner's confirmation on a candidate. The requirement below extends the
    same command group and is not started.
-3. Named build contexts, then the installed-IDE reuse and reaping design
-   review with the owner.
+3. Named build contexts: done 2026-10-06, measured. Then the installed-IDE
+   reuse and reaping design review with the owner.
 4. The universal `network` authorization node.
 5. The first-session UX bugs, release notes and gate tooling.
 6. Ecosystem-aware project bootstrap.
