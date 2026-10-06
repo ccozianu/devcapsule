@@ -1,5 +1,5 @@
 who: Costin Cozianu
 branch: ws-maintenance/post-0.2.15
-slice: in-capsule project-command fix (guard after argparse, capsule project auto-selected)
-since: 2026-10-05T11:51:37+00:00
-expires: 2026-10-05T23:51:37+00:00
+slice: named build contexts: the IDE tree read in place, not sent in the context
+since: 2026-10-06T06:02:26+00:00
+expires: 2026-10-06T18:02:26+00:00
