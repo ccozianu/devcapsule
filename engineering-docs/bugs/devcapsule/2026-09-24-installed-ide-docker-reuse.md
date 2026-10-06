@@ -120,6 +120,53 @@ first step. The design questions above are reviewed with the owner before
 code, as directed on 2026-09-24; the agent prepares the design proposal
 when the plate reaches this item.
 
+## First step built, 2026-10-06: named build contexts, measured
+
+On `ws-maintenance/post-0.2.15`, commits `images: directory inputs are
+named build contexts ...` and its follow-up. Three parts, each needed; the
+first experiment showed why.
+
+1. **Directory inputs are named build contexts.** `render_build_context`
+   renders every `DirectoryCopy` as `COPY --from=NAME / DEST/` and returns
+   the `NAME=PATH` map (`RenderedBuildContext`); the builder passes it as
+   `--build-context`. Nothing is copied into the context root any more.
+2. **One context root per launcher cache.** BuildKit keys its incremental
+   transfer of local sources on the path of the main context root; a fresh
+   temporary root per build, which 0.2.15 uses, re-sends every tree in
+   full. Experiment on a 157 MB tree: 157 MB with root A, 157 MB again with
+   a fresh root B and the same named context, 4 KB with root A again.
+   `BuildxImageBuilder(context_root=<cache>/build-contexts/context)`
+   reuses one directory, serialized by a lock beside it.
+3. **Archives unpack once, by digest.** `unpacked_tree` keeps the surface
+   archive and directory artifacts under `<cache>/unpacked/<sha256>` with
+   a completion marker written last; every formation reads the same path.
+
+Measured 2026-10-06 in this repository's capsule on the real PyCharm
+2026.2.0.1 tree, 3.69 GB unpacked, a new label per build standing in for
+the launcher-digest change that makes every upgrade a new formation:
+
+| Rebuild after a launcher change | Context transfer | Wall |
+|---|---|---|
+| 0.2.15 way: copy the tree into a fresh context, plain `COPY` | 3.69 GB, plus a 9 s copy of the tree first | 21 s per rebuild, every time |
+| New way, first build of this tree | 3.69 GB | 23.5 s, once per IDE version |
+| New way, every later rebuild | 1.29 MB | 1.1 s |
+
+The unpack itself took 15 s once; the second call returned the tree in
+under a millisecond. The 4.28 GB transfer in the rc3 measurement above is
+therefore gone from every launcher upgrade, and so is the per-build copy
+of the tree in BuildKit's local-source cache, since the shared key no
+longer changes.
+
+Not done here, for the design review: the unpacked trees under
+`<cache>/unpacked` are never pruned (one per IDE version, 3.7 GB each for
+PyCharm; the archive cache already keeps the 1.2 GB tarball beside it),
+superseded formations are still not reaped, and installed Docker content
+is still not consulted before acquisition. Note for the proof: this
+capsule's `PEX`/`SCIE` environment makes the runtime digest that of the
+capsule's own launcher, so the recursive end-to-end test always reuses
+the formation here and cannot exercise a rebuild; the measurement ran the
+materializer's own pieces directly.
+
 ## Disposition, 2026-09-25
 
 Owner ruling: reuse of installed IDE and other component layers across
