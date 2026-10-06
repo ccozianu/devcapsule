@@ -7,6 +7,7 @@ from typing import Mapping
 
 from devcapsule.commands.framework import Command, Group
 from devcapsule import version_sets
+from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError
 from typing import Sequence
 
@@ -92,5 +93,9 @@ class VersionsGroup(Group):
             "dismiss": "Silence the checked candidate versions until different candidates appear.",
             "defer": "Silence checked candidates for seven days.",
         }
-        return {name: type("Versions_" + name, (VersionsCommand,), {"name": name, "help": help})
+        return {name: type("Versions_" + name, (VersionsCommand,), {
+            "name": name, "help": help,
+            # Only `show` answers inside a capsule; every other operation writes.
+            "capsule_access": CapsuleAccess.INSPECTS if name == "show" else CapsuleAccess.MUTATES,
+        })
                 for name, help in descriptions.items()}

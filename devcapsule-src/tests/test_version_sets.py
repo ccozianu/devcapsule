@@ -784,6 +784,103 @@ def test_runtime_show_tracks_running_and_next_sets_without_local_registration(jo
     assert f"{s.component}: 2.0.0" not in out
 
 
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_inspection_from_anywhere_selects_the_capsule_project(journey, monkeypatch, capsys, tmp_path):
+    """Owner ruling of 2026-10-01: inside a capsule every project subcommand
+    finds the capsule's project from any directory; read-only ones answer."""
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, snapshot, context = runtime_view(s, monkeypatch, tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "empty-runtime-config"))
+    before = s.record.read_bytes(), s.resolution.read_bytes()
+    outside = tmp_path / "opt"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+    capsys.readouterr()
+    for command in (["config", "list"], ["config", "show"], ["versions", "show"]):
+        assert cli.main(["project", *command]) == 0, command
+        out = capsys.readouterr().out
+        assert ("Runtime context" in out) or ("Running session" in out), command
+        assert str(s.root) in out  # the launcher remedy names the host checkout
+    # An explicit unrelated path must not silently select the hosting capsule.
+    assert invoke(outside, "config", "list") == 2
+    assert "No .devcapsule/devcapsule.toml" in capsys.readouterr().err
+    assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
+    assert not (tmp_path / "empty-runtime-config").exists()  # inspection wrote nothing
+    # A project nested inside the capsule keeps its own identity: a launcher,
+    # which initializes that project's own records as it would on a host.
+    nested = runtime_root / "nested"
+    shutil.copytree(s.root, nested)
+    monkeypatch.chdir(nested)
+    assert cli.main(["project", "config", "list"]) == 0
+    assert "Runtime context" not in capsys.readouterr().out
+    assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
+    # An older capsule without the mounted context is diagnosed, not guessed.
+    context.unlink()
+    monkeypatch.chdir(outside)
+    assert cli.main(["project", "config", "list"]) == 2
+    assert "no launcher configuration mount" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_mutation_from_anywhere_names_the_launcher(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_view(s, monkeypatch, tmp_path)
+    before = s.record.read_bytes(), s.resolution.read_bytes(), s.lock.read_bytes()
+    outside = tmp_path / "opt"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+    capsys.readouterr()
+    assert cli.main(["project", "config", "set", "anything", "value"]) == 2
+    err = capsys.readouterr().err
+    assert f"Run outside the capsule: devcapsule project --path {s.root} config set anything value" in err
+    assert cli.main(["project", "run"]) == 2
+    assert f"devcapsule project --path {s.root} run" in capsys.readouterr().err
+    assert (s.record.read_bytes(), s.resolution.read_bytes(), s.lock.read_bytes()) == before
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_unknown_subcommand_is_unknown_not_launcher_only(journey, monkeypatch, capsys, tmp_path):
+    """The 2026-09-26 record: `project --path $PWD bootstrap` inside a capsule
+    was refused as launcher-only, and the remedy repeated the unknown name."""
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
+    capsys.readouterr()
+    for arguments in (["project", "--path", str(runtime_root), "bootstrap"], ["project", "bootstrap"],
+                      ["project", "config", "bogus"]):
+        monkeypatch.chdir(runtime_root)
+        assert cli.main(arguments) == 2, arguments
+        err = capsys.readouterr().err
+        assert "unknown command" in err and "launcher" not in err, arguments
+    # Help for a mutating command is still help, inside the capsule.
+    assert invoke(runtime_root, "config", "set", "--help") == 0
+    assert "usage:" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_init_acts_where_it_is_invoked(journey, monkeypatch, tmp_path):
+    """`init` creates a project in the working directory and never selects the
+    capsule's project; the IDE smoke initializes a disposable project inside
+    a capsule this way."""
+    import argparse
+    from devcapsule.commands.project import ProjectCommand
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
+    outside = tmp_path / "opt"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+    selected = lambda *rest: ProjectCommand.make_context(argparse.Namespace(selected_path=None, rest=list(rest)), None)
+    assert selected("init").capsule_root is None
+    assert selected("list").capsule_root is None
+    assert selected("recursive-e2e", "preflight").capsule_root is None
+    assert selected("config", "list").capsule_root == runtime_root
+    assert selected("info").capsule_root == runtime_root
+    assert selected("config").capsule_root is None  # a bare group prints help
+
+
 @pytest.mark.parametrize("operation", [
     ("versions", "check"), ("versions", "preview", "codex", "latest"),
     ("versions", "select", "a" * 64), ("versions", "rollback"),

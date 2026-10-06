@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-10-04, mid-triage; the 0.2.16 maintenance plate: finish the triage (five owner decisions listed under Open Threads), the in-capsule project-command fix, named build contexts, the first-session UX bugs, release notes and gate tooling; 0.2.15 published and reopened
+State: active 2026-10-05, triage complete; the 0.3.0 maintenance plate (the release formerly planned as 0.2.16, renamed by the owner on 2026-10-05): the fresh-workspace recursive test (option D), the in-capsule project-command fix, named build contexts then the installed-IDE reuse and reaping design, the universal network authorization node, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; 0.2.15 published and reopened
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
 
 Integration target: `main`
 
@@ -23,6 +23,81 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-05, latest: option D is built and proven; the recursive attached
+launch runs from a fresh workspace.** `tests/e2e/fresh_workspace.py` is the
+fresh-workspace rule as code; the attached-launch test uses it and passed
+in this capsule (run `8a543a0613a9c1f22d839102d592c995`, eleven inspection
+checks, container removed, workspace removed). The 2026-10-04 record and
+the 2026-08-15 record are status fixed, closing on a 0.3.0 candidate.
+Next on the plate: named build contexts. Seven older run directories
+under the persistent home's E2E workspace predate the cleanup rule; they
+are the owner's to remove.
+
+**2026-10-05, later: the in-capsule project-command fix is on the branch,
+status fixed, gate green; see the two records.**
+The `project` group applies a per-subcommand `CapsuleAccess` after
+resolving the subcommand without side effects: the capsule's project is
+selected from any directory, read-only commands answer, mutating ones
+name the launcher, unknown names are unknown. Proven by unit tests and
+by the source CLI from `/opt` in this capsule. Next on the plate: the
+fresh-workspace recursive test (option D).
+
+**2026-10-05: the 0.3.0 triage is complete; the plate is set.** The decisions are listed under *Resumed 2026-10-03* and
+the records they changed. Two bounded things happened on the branch beyond
+records: the packaging version test now runs its check from a temp
+directory (component-catalog's patch, three cases green with the editable
+egg-info present), and the three component-catalog items are
+dispositioned. The branch is ahead of `main` by records and that one test
+change; the owner pushes and opens the PR.
+
+### The 0.3.0 maintenance plate
+
+In the owner's order so far (the bigger items first, ecosystem bootstrap
+last; the middle is the agent's suggested order until the owner sets it):
+
+1. The recursive-successor test on a fresh workspace, option D of its
+   record, and the fresh-workspace rule for every end-to-end test: done
+   2026-10-05, proven in this capsule, closing on a candidate.
+2. The in-capsule project-command fix (project group guard, inspection
+   record): fixed 2026-10-05 on this branch, awaiting the gate and the
+   owner's confirmation on a candidate. The requirement below extends the
+   same command group and is not started.
+3. Named build contexts, then the installed-IDE reuse and reaping design
+   review with the owner.
+4. The universal `network` authorization node.
+5. The first-session UX bugs, release notes and gate tooling.
+6. Ecosystem-aware project bootstrap.
+
+### Requirement: configuration validated and changed by commands only
+
+From the owner's correction of 2026-10-04 (component-catalog's item of
+2026-10-05, R-CONFIG-001 on its branch) and the owner's addition of
+2026-10-05. Schema names and command spellings are chosen in the design
+step with the owner; the behaviour is fixed:
+
+- **Read-only validation before launch.** A command that checks the
+  working-tree manifest and lock, plus a proposed change, for launch,
+  without writing anything. `config list` shows recorded launcher state
+  and is not that check.
+- **Commands for every configuration change.** This project's
+  configuration is written only by DevCapsule commands; `need` adds a
+  capability, and removal and mandatory/optional classification need
+  commands too, so no hand edits remain.
+- **`project config resolve --force`.** Shows the configuration that would
+  be produced if errors were skipped: a component the local launcher does
+  not know is skipped; a missing IDE surface falls back to the IDE of last
+  resort, bash (vim and the SDK are inside). It highlights what is skipped
+  and shows the totality that would be in place. It writes no local lock.
+- **`project run --force-config`.** Launches with that error-skipping
+  configuration and warns the user about every skip. Distinct from
+  today's `run --force`, which only accepts a stale resolution once.
+- Behind both: mandatory needs are split from optional enhancements;
+  optional ones warn and degrade, only a mandatory one refuses. This holds
+  for adopter projects whose contributors run a launcher that does not
+  know a newer declaration.
+
+### Earlier state
 
 Close-out PR #149 is merged at main `6980b60`. SSH fetch verified its tree
 matches the delivered 0f6578d exactly and all three version copies read
@@ -128,29 +203,49 @@ Decided so far:
   capsule-local resolution that the in-capsule guard will not let anyone
   refresh; that is the next item's territory.
 - 2026-10-04 recursive successor cannot refresh its capsule-local
-  resolution: filed at the owner's direction, confirmed, minor, 0.2.16, with
-  three fix options and option A recommended; waits on the owner's choice.
+  resolution: decided 2026-10-05, option D, by the owner's design. The test
+  stops sharing the capsule's record: clean clone of the current branch
+  into a fresh host-backed workspace, dirty source refused, resolution under
+  isolated XDG roots, launch from the clone, best-effort cleanup. Options A,
+  B and C set aside. Same ruling, as a general rule now in the e2e test
+  doc: every end-to-end test runs on a fresh workspace, never the live
+  checkout. Implementation is on the 0.3.0 plate, not started.
+- 2026-09-24 installed IDE not reused by Docker: decided 2026-10-05, in
+  the next release, 0.3.0, both halves (reuse across formations and
+  reaping), design review with the owner before code, named build contexts
+  first.
+- Component-catalog's intake item on the host-network run-once launch:
+  acknowledged 2026-10-05 as a bug by the owner's ruling, filed as
+  `2026-10-05-run-once-network-authorization-needs-a-recommendation.md`,
+  minor, target 0.3.0: `network` becomes a universal authorization node
+  like docker-daemon, development-sudo and host-browser. The local
+  workflow text stands.
 - 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
   owner expects to host V1's betas and candidates; no attention unless it
   recurs in a release campaign.
+- 2026-08-03 ecosystem-aware project bootstrap: stays a bug, minor, target
+  0.3, by the owner's ruling of 2026-10-05. The feature reclassification
+  was rejected: onboarding a developer in minutes is an implicit promise,
+  and the 2026-10-03 incident (an agent pair unable to bring `nox` into
+  scope) shows how it fails. Sequenced after the larger 0.2.16 items.
 
-Still to decide, as of the pause of 2026-10-04 (second session):
-ecosystem-aware project bootstrap (2026-08-03; fails the owner's test, so
-it is a feature: proposed to leave the queue by mail to project-management
-for the V1 scope ledger), the recursive successor's stale resolution
-(2026-10-04; option A, B or C), installed IDE not reused by Docker
-(2026-09-24; design review with the owner, the root cause behind the
-named-build-contexts candidate), and the intake item from component-catalog
-on the host-network run-once launch (see Open Threads). The project group
-guard (2026-09-26) and in-capsule configuration inspection (2026-09-24) are
-owner maintenance, target 0.2.16, by the owner's decisions of 2026-10-01;
-they are the in-capsule project-command fix on the plate.
+The triage is complete as of 2026-10-05. The project group guard
+(2026-09-26) and in-capsule configuration inspection (2026-09-24) are owner
+maintenance, target 0.3.0, by the owner's decisions of 2026-10-01, restated
+on 2026-10-05 without objection; they are the in-capsule project-command
+fix on the plate.
 
-Owner's version expectation, recorded here until the version scheme in
-`WORKFLOW-LOCAL.md` is amended by project-management: 0.2.x continues; a
-0.3 marks the growth in capability since the first 0.2; from the 0.3.x
-series the project jumps to 0.9, which hosts V1's betas and release
-candidates. Bug targets may name 0.9 on that basis.
+Owner's version decision of 2026-10-05, recorded here until project-management
+registers it and the version scheme in `WORKFLOW-LOCAL.md` is amended: the
+next release, planned as 0.2.16, is **0.3.0**, a marketing decision marking
+the jump forward from 0.2.15. `main` stays at 0.2.16.dev0 until the release
+branch's first commit sets the version, as the local scheme says. The
+maintenance-owned records that targeted 0.2.16 now target 0.3.0; the two
+other-owned ones (workflow-improvements' discoverability record,
+component-catalog's IntelliJ lock record) are their owners' to retarget and
+are named in the mail to project-management. Beyond 0.3.x the project
+jumps to 0.9, which hosts V1's betas and release candidates; bug targets
+may name 0.9 on that basis.
 
 ### Resumed 2026-10-04
 
@@ -860,14 +955,23 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Pause of 2026-10-04 (second session). Awaiting the owner, in triage order:
-  (1) ecosystem bootstrap leaves the bug queue for the V1 scope ledger, yes
-  or no; (2) option A, B or C for the recursive successor's stale
-  capsule-local resolution, A recommended; (3) whether the installed-IDE
-  Docker reuse design review happens in the 0.2.16 plate; (4) the project
-  group guard and in-capsule inspection records are treated as decided for
-  0.2.16 unless the owner objects; (5) the component-catalog intake item.
-- Intake item, host-network run-once launch rejected: component-catalog's
+- Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decisions
+  (1) to (3) are taken: ecosystem bootstrap stays a bug, target 0.3.0,
+  last on the plate; the recursive successor record goes by option D, the
+  fresh-workspace test, with the general rule in the e2e doc; the
+  installed-IDE reuse and reaping design is in the next release, which
+  the owner named 0.3.0 (mail to project-management sent); (5) the
+  host-network run-once item is a bug by the owner's ruling, `network`
+  becomes a universal node, filed and dispositioned. (4), the in-capsule
+  project-command fix, stands as decided on 2026-10-01; restated on
+  2026-10-05 without objection. The triage is complete. The three
+  component-catalog items are dispositioned (packaging patch applied and
+  green; the conservative-writers correction is the requirement under
+  *Current State*, with the owner's `resolve --force` and `run
+  --force-config` addition, mailed to project-management). Next: the
+  owner confirms the plate's order; no implementation has started.
+- Intake item, host-network run-once launch rejected (superseded 2026-10-05
+  by the bug record; kept as the trail): component-catalog's
   diagnosis is incomplete. `_RUN_ONCE_AUTHORIZATIONS` includes `network` on
   `main` and here; the node exists only on projects whose manifest
   recommends `host.network.mode` (`authorization_declarations` builds it
@@ -877,7 +981,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   WORKFLOW-LOCAL command works here; the smoke's fresh project does not.
   Product choice for the owner: make network a universal authorization node,
   or amend WORKFLOW-LOCAL to say the command presupposes the recommendation
-  (recommended). Undecided; the item stays in intake.
+  (recommended). Owner ruled 2026-10-05: universal node; it is a bug.
 - The claim on the triage slice was released at this pause.
 
 - Final 0.2.15 publication and download verification are complete.

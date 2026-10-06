@@ -37,7 +37,7 @@ packages, for hosts whose bridge network has no DNS.
 | `test_built_base.py` | `e2e`, `base_build_e2e` | The full base built by the selected release's own CLI has the tools and no embedded runtime |
 | `test_contributor_bootstrap.py` | `e2e`, `contributor_e2e` | A first-time contributor bootstraps in a disposable base, from a host or from inside a capsule |
 | `test_recursive_local_clone.py` | `e2e`, `recursive_e2e` | The recursive E2E local-clone protocol, from a dogfood capsule |
-| `test_recursive_successor_attached_launch.py` | `e2e`, `recursive_e2e` | `launch-successor` is the ordinary attached launch: it stays attached while the successor runs, the independent inspection passes meanwhile, and stopping the container ends the command with Docker having removed it and the run directory holding the log and manifest |
+| `test_recursive_successor_attached_launch.py` | `e2e`, `recursive_e2e` | From a fresh workspace (a clean clone, configured and resolved under its own roots; a dirty source is refused), `launch-successor` is the ordinary attached launch: it stays attached while the successor runs, the independent inspection passes meanwhile, stopping the container ends the command with Docker having removed it and the run directory holding the log and manifest, and the capsule's own records are untouched |
 | `test_ide_comes_alive.py` | `e2e`, `ide_smoke` | Each IDE surface comes alive in a fresh project: the desktop URL answers, an X11 window of the IDE's class exists on the capsule's display; optionally a screenshot and a recording |
 
 ## Drivers and helpers
@@ -188,6 +188,31 @@ capsule is ready. This harness records host networking in its disposable
 project at initialization: the current CLI rejects the local workflow guide's
 run-once `--authorize network host` spelling. The hosted runner runs none of it; that is a rule, not a
 limitation to fix.
+
+## Fresh workspaces, by rule
+
+Owner ruling of 2026-10-05: every end-to-end test runs on a fresh
+workspace. It refuses a source checkout with uncommitted changes, clones
+the current branch from the local tree into its own run directory, resolves
+that clone under configuration roots isolated beneath the run directory,
+and runs against the clone. It never runs against the live checkout and
+never reads the capsule's own checkout records or resolution. This is what
+removes the circular dependency between the repository under test and the
+capsule that tests it: the capsule's configuration can go stale or be
+read-only without the test caring. Inside a capsule the run directory goes
+under the persistent home's E2E workspace, a host-backed path the daemon
+can bind; `/tmp` is a container-local tmpfs the host daemon cannot see.
+At the end the test makes a best-effort attempt to remove the workspace and
+free the space; a failure to clean up is reported, not fatal.
+
+`tests/e2e/fresh_workspace.py` is the rule as code: `FreshWorkspace.create`
+refuses a dirty source and clones HEAD into an owned run directory,
+`configure_like_this_capsule` answers and resolves the clone under
+isolated roots through the ordinary commands, `environment` and `cli` run
+the launcher under test against the clone, `cleanup` removes the run
+directory. `test_recursive_successor_attached_launch.py` uses it;
+`test_recursive_local_clone.py` keeps its own protocol proof of the clone
+itself; the other suites follow as they are touched.
 
 ## Where the next end-to-end test goes
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from enum import Enum
 import json
 import os
 from pathlib import Path
@@ -20,6 +21,39 @@ from devcapsule.configuration.storage import ResolvedProject, discover_project, 
 
 CONTEXT_PATH = Path("/etc/devcapsule/launch-context.json")
 CONFIGURATION_PATH = Path("/etc/devcapsule/checkout")
+
+
+class CapsuleAccess(Enum):
+    """How a ``project`` subcommand treats the capsule's own project.
+
+    Inside a capsule the launcher's records are mounted read-only and the
+    launch context names the capsule's project. The owner's rule of
+    2026-10-01: every ``project`` subcommand finds that project from any
+    working directory, even one outside the project tree such as ``/opt``;
+    the read-only ones answer from the runtime context, the mutating ones
+    name the launcher command to run outside. Two kinds of command act
+    where they are invoked instead: ``init`` creates a project in the
+    working directory, and ``list`` and ``recursive-e2e`` have no project to
+    select. Every leaf of the ``project`` tree declares one of these; the
+    group applies it before dispatch, after the subcommand is known.
+    """
+
+    INSPECTS = "inspects"
+    """Selects the capsule's project and answers read-only."""
+    MUTATES = "mutates"
+    """Selects the capsule's project and is refused for it; the launcher runs it."""
+    CREATES_HERE = "creates-here"
+    """Never selects; refused when the working directory is the capsule's project."""
+    INDEPENDENT = "independent"
+    """Never selects, never refused: its own contract."""
+
+    @property
+    def selects_capsule_project(self) -> bool:
+        return self in {CapsuleAccess.INSPECTS, CapsuleAccess.MUTATES}
+
+    @property
+    def needs_launcher(self) -> bool:
+        return self in {CapsuleAccess.MUTATES, CapsuleAccess.CREATES_HERE}
 
 
 @dataclass(frozen=True)
@@ -86,6 +120,23 @@ class RuntimeConfiguration:
                 + render_document(shown)
                 + "\nTo change configuration, use the launcher outside this capsule: "
                 + self.launcher_command(["config", "list"]))
+
+
+def capsule_project_root(start: Path) -> Path | None:
+    """The capsule's project, when no project encloses ``start`` and this runtime names one.
+
+    ``None`` outside a capsule, or when ``start`` lies inside a project, which
+    is then the selected one: a project nested inside the capsule keeps its own
+    identity and is launched from here. An older capsule without the mounted
+    context raises the same diagnosis as inspection does.
+    """
+    try:
+        discover_project(start)
+        return None
+    except ProjectConfigurationError:
+        pass
+    context = for_project(start, fallback=True)
+    return None if context is None else context.root
 
 
 def for_project(start: Path, *, fallback: bool = False) -> RuntimeConfiguration | None:

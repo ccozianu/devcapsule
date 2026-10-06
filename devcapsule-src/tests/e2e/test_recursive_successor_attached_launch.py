@@ -1,36 +1,42 @@
-"""The recursive successor is launched attached, like any capsule, and leaves nothing behind.
+"""The recursive successor is launched attached, from a fresh workspace, and leaves nothing behind.
 
 Runs only inside a DevCapsule capsule with host-Docker access (the
-``recursive_e2e`` marker): the launcher under test realizes this
-repository's own environment and starts a successor capsule from it. The
-test drives ``launch-successor`` exactly as a developer holds ``project
-run``: it starts the command as a subprocess, waits until the run manifest
-says the successor is running, inspects it independently, stops the
-container, waits for the command to return, and proves that Docker removed
-the container and the run directory kept the evidence.
+``recursive_e2e`` marker). The test first makes itself a fresh workspace
+(``fresh_workspace.py``): it refuses a dirty source, clones this
+repository's HEAD into an owned run directory under the persistent home,
+answers the clone's configuration as this capsule's own checkout was
+answered, and resolves it under configuration roots isolated beneath the
+run directory. The capsule's own checkout records are never read or
+written; the 2026-10-04 record explains why that matters.
+
+It then drives ``launch-successor`` on the clone exactly as a developer
+holds ``project run``: it starts the command as a subprocess, waits until
+the run manifest says the successor is running, inspects it independently,
+stops the container, waits for the command to return, and proves that
+Docker removed the container and the run directory kept the evidence. At
+the end it removes the workspace, best effort.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import time
-import uuid
 
 import pytest
 
+from devcapsule.configuration.storage import config_root
 from devcapsule.recursive_successor import (
     CONTAINER_ID_FILE,
-    MILESTONE_MANIFEST,
-    OWNER_MARKER,
     SUCCESSOR_LOG,
-    WORKSPACE_ROOT,
     successor_container_name,
 )
 from devcapsule.recursive_dogfood import RUNTIME_PLAN_PATH
+
+from tests.e2e.fresh_workspace import FreshWorkspace
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 # Realizing the environment may build the formation on first use.
@@ -38,16 +44,8 @@ RUNNING_TIMEOUT = 900.0
 EXIT_TIMEOUT = 180.0
 
 
-def _cli(*arguments: str) -> list[str]:
-    return [sys.executable, "-m", "devcapsule", "project", "--path", str(REPO_ROOT), "recursive-e2e", *arguments]
-
-
-def _manifest(run_root: Path) -> dict[str, object]:
-    try:
-        value = json.loads((run_root / MILESTONE_MANIFEST).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return value if isinstance(value, dict) else {}
+def _tree(root: Path) -> dict[str, bytes]:
+    return {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
 
 
 def _first_json_object(text: str) -> dict[str, object]:
@@ -80,32 +78,38 @@ def _tail(path: Path, lines: int = 40) -> str:
 
 @pytest.mark.e2e
 @pytest.mark.recursive_e2e
-def test_attached_successor_launch_runs_inspects_and_leaves_nothing_behind(tmp_path: Path) -> None:
+def test_attached_successor_launch_from_a_fresh_workspace_leaves_nothing_behind(tmp_path: Path) -> None:
     assert RUNTIME_PLAN_PATH.is_file(), "the recursive E2E runs inside a DevCapsule capsule"
     docker = shutil.which("docker")
     assert docker is not None, "Docker CLI is required for the recursive E2E"
+    # The capsule's own records, stale or not, are neither read nor written.
+    own_records = config_root() / "projects"
+    own_before = _tree(own_records) if own_records.is_dir() else {}
 
-    run_id = uuid.uuid4().hex
+    # 0. A fresh workspace: a clean clone of HEAD, configured and resolved
+    #    under its own roots. A dirty source fails here, before any launch.
+    workspace = FreshWorkspace.create(REPO_ROOT)
+    run_id, run_root = workspace.run_id, workspace.run_root
     name = successor_container_name(run_id)
-    run_root = WORKSPACE_ROOT / run_id
-    run_root.mkdir(parents=True, mode=0o700)
-    (run_root / OWNER_MARKER).write_text(json.dumps({"schema_version": 1, "run_id": run_id}), encoding="utf-8")
-    (run_root / MILESTONE_MANIFEST).write_text(
-        json.dumps({"schema_version": 1, "run_id": run_id, "state": "stage-5-materialized"}), encoding="utf-8"
-    )
     launcher_log = tmp_path / "launch-successor.log"
     launcher: subprocess.Popen[bytes] | None = None
     try:
+        answers = workspace.configure_like_this_capsule()
+        assert answers["docker-daemon"] == "host-socket" and answers["network"] == "host", answers
+        assert (run_root / "xdg" / "config" / "devcapsule" / "projects").is_dir(), "the clone's record is under the run root"
+        _manifest = workspace.manifest  # the launch reads and updates this run's manifest
+        assert _manifest()["state"] == "stage-5-resolved"
+
         with launcher_log.open("wb") as log:
             launcher = subprocess.Popen(
-                _cli("launch-successor", "--run-id", run_id, "--json"),
-                stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                workspace.cli("recursive-e2e", "launch-successor", "--run-id", run_id, "--json"),
+                env=workspace.environment(), stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
             )
 
         # 1. The command stays attached while the successor runs, and the
         #    manifest says so before the command prints anything else.
         deadline = time.monotonic() + RUNNING_TIMEOUT
-        while _manifest(run_root).get("state") != "stage-6-running":
+        while _manifest().get("state") != "stage-6-running":
             if launcher.poll() is not None:
                 pytest.fail(
                     f"launch-successor exited {launcher.returncode} before the successor ran:\n"
@@ -114,7 +118,7 @@ def test_attached_successor_launch_runs_inspects_and_leaves_nothing_behind(tmp_p
             assert time.monotonic() < deadline, f"successor not running after {RUNNING_TIMEOUT:g}s:\n{_tail(launcher_log)}"
             time.sleep(1.0)
         assert launcher.poll() is None, "the launcher returned although the successor is running"
-        launch = _manifest(run_root)["launch"]
+        launch = _manifest()["launch"]
         assert isinstance(launch, dict) and launch["lifecycle"] == "attached"
         container_id = str(launch["container_id"])
         assert (run_root / CONTAINER_ID_FILE).read_text(encoding="utf-8").strip() == container_id
@@ -126,8 +130,8 @@ def test_attached_successor_launch_runs_inspects_and_leaves_nothing_behind(tmp_p
         #    passes against the same container.
         report = _first_json_object(launcher_log.read_text(encoding="utf-8", errors="replace"))
         assert report["state"] == "running" and report["container_id"] == container_id
-        inspected = subprocess.run(_cli("inspect-successor", "--run-id", run_id, "--json"),
-                                   text=True, capture_output=True, check=False)
+        inspected = subprocess.run(workspace.cli("recursive-e2e", "inspect-successor", "--run-id", run_id, "--json"),
+                                   env=workspace.environment(), text=True, capture_output=True, check=False)
         assert inspected.returncode == 0, inspected.stdout + inspected.stderr
         assert json.loads(inspected.stdout)["state"] == "inspection-passed"
 
@@ -135,15 +139,20 @@ def test_attached_successor_launch_runs_inspects_and_leaves_nothing_behind(tmp_p
         #    the container, and the run directory keeps the evidence.
         subprocess.run([docker, "stop", "--time", "30", name], text=True, capture_output=True, check=False)
         launcher.wait(timeout=EXIT_TIMEOUT)
-        final = _manifest(run_root)
+        final = _manifest()
         assert final.get("state") == "stage-6-exited", final
         finished = final["launch"]
         assert isinstance(finished, dict) and isinstance(finished.get("exit_code"), int) and finished.get("container_removed") is True
         assert subprocess.run([docker, "inspect", container_id], capture_output=True, check=False).returncode != 0, "Docker kept the successor"
         assert (run_root / SUCCESSOR_LOG).is_file()
         # An exited successor is reported as such, not inspected as alive.
-        again = subprocess.run(_cli("inspect-successor", "--run-id", run_id, "--json"), text=True, capture_output=True, check=False)
+        again = subprocess.run(workspace.cli("recursive-e2e", "inspect-successor", "--run-id", run_id, "--json"),
+                               env=workspace.environment(), text=True, capture_output=True, check=False)
         assert again.returncode != 0 and "has exited" in (again.stdout + again.stderr)
+        # 4. Nothing of the capsule's own configuration was touched, and the
+        #    successor's state lived under the run root.
+        assert (_tree(own_records) if own_records.is_dir() else {}) == own_before
+        assert not os.environ.get("XDG_CONFIG_HOME", "").startswith(str(run_root))
     finally:
         if launcher is not None and launcher.poll() is None:
             subprocess.run([docker, "stop", "--time", "10", name], capture_output=True, check=False)
@@ -152,4 +161,5 @@ def test_attached_successor_launch_runs_inspects_and_leaves_nothing_behind(tmp_p
             except subprocess.TimeoutExpired:
                 launcher.kill()
         subprocess.run([docker, "rm", "--force", name], capture_output=True, check=False)
-        shutil.rmtree(run_root, ignore_errors=True)
+        if not workspace.cleanup():
+            print(f"fresh workspace not fully removed, best effort: {run_root}")
