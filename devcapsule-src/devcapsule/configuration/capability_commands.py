@@ -21,12 +21,23 @@ from .storage import atomic_write, checkout_record_paths, discover_project, load
 
 
 def paths(root: Path) -> tuple[Path, Path, Path]:
+    """Return manifest, current-platform lock and recovery-journal paths.
+
+    ``root`` is the project directory. This only constructs paths.
+    """
     directory = root / ".devcapsule"
     return (directory / "devcapsule.toml", directory / f"devcapsule.{Platform.current()}.lock",
             directory / ".capability-transaction.toml")
 
 
 def recover(root: Path) -> None:
+    """Finish an interrupted shared edit, or do nothing if no journal exists.
+
+    The manifest chooses the before/after lock to restore. Refuse malformed
+    journals or independent edits with ProjectConfigurationError. Successful
+    recovery removes the journal. Use the same platform that began the edit;
+    callers must exclude concurrent writers. Filesystem errors propagate.
+    """
     manifest_path, lock_path, journal = paths(root)
     if not journal.exists():
         return
@@ -53,6 +64,13 @@ def recover(root: Path) -> None:
 
 
 def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any]) -> None:
+    """Persist an already-validated manifest/lock pair with a recovery journal.
+
+    Call ``check_documents`` first and exclude concurrent writers. Write the
+    lock before the manifest; attempt recovery on OSError. Failures propagate.
+    A pending journal raises ProjectConfigurationError. This updates shared
+    files only; it neither writes nor resolves a developer's checkout.
+    """
     manifest_path, lock_path, journal = paths(root)
     require_settled(root)
     transaction = {"before-manifest": manifest_path.read_text() if manifest_path.exists() else "",
@@ -69,6 +87,13 @@ def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any]) -> None:
 
 
 def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str, ...]:
+    """Validate shared documents offline and return optional-omission warnings.
+
+    Check schemas, required capabilities, SDK majors and usable artifact
+    metadata. Invalid configuration raises CliError or its configuration
+    subclass. This does not change inputs or files, download artifacts, or
+    grant host access.
+    """
     validate_manifest(manifest, Path("manifest"))
     admit_document(lock, Artifact.lock, "platform lock")
     usable, notices = usable_lock(CapabilityPolicy.read(manifest), lock)
@@ -77,7 +102,12 @@ def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str
 
 
 def check_formation(manifest: dict[str, Any], usable: dict[str, Any]) -> None:
-    """Validate executable metadata and declarations, without acquiring anything."""
+    """Check artifact metadata and declarations in an already-selected lock.
+
+    ``usable`` must contain only supported components, as returned by
+    ``usable_lock``. Raise CliError for invalid metadata or declarations.
+    No artifacts are downloaded and no launch permissions are granted.
+    """
     from devcapsule.components.catalog import COMPONENTS
     from devcapsule.materialization import parse_locked_environment, validate_locked_artifact
     from .authorization import locked_base_reference, authorization_declarations
@@ -95,7 +125,13 @@ def check_formation(manifest: dict[str, Any], usable: dict[str, Any]) -> None:
 
 
 def check(start: Path, *, manifest_path: Path | None = None, lock_path: Path | None = None) -> str:
-    """Read only: no checkout registration, resolution, recovery, Docker or network."""
+    """Return an offline validation report for the project containing ``start``.
+
+    Candidate paths override the shared manifest/current-platform lock paths.
+    A pending edit must be recovered first. Invalid documents raise CliError;
+    filesystem errors propagate. This reads only: it does not register a
+    checkout, recover an edit, download artifacts or test launch permissions.
+    """
     root = discover_project(start)
     default_manifest, default_lock, _ = paths(root)
     require_settled(root)
@@ -110,6 +146,20 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
               optional: Sequence[str] | None = None, majors: Sequence[str] | None = None,
               local: Sequence[str] | None = None, without: Sequence[str] | None = None,
               preview: bool = False, allow_unverified: bool = False) -> str:
+    """Replace project capability declarations or this checkout's local choices.
+
+    ``start`` locates the project. Supply one group: shared ``required``,
+    ``optional``, ``majors``; or local ``local``, ``without``. Name sequences
+    replace the corresponding lists; ``majors`` uses entries like ``python=3``.
+    None retains a field; an empty sequence clears it. IDE/agent additions
+    belong in ``local``. Host decisions are retained and never answered here.
+
+    Validate before writing and return a human-readable result. ``preview``
+    performs the same validation without writes. ``allow_unverified`` permits
+    catalog combinations lacking compatibility evidence. Invalid edits raise
+    CliError; I/O errors propagate. A successful edit still needs an explicit
+    configuration resolution before launch when local inputs have changed.
+    """
     root = discover_project(start)
     require_settled(root)
     manifest_path, lock_path, _ = paths(root)
@@ -194,7 +244,16 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
 def initialize(root: Path, *, name: str | None, slug: str | None, creator: str | None,
                mount: str | None, required: Sequence[str], optional: Sequence[str],
                majors: Sequence[str], local: Sequence[str], allow_unverified: bool = False) -> str:
-    """Create shared policy and optionally local pins; no implicit personal tools."""
+    """Create project policy, a platform lock and a local checkout record.
+
+    ``root`` must exist without shared config; ``creator`` is required.
+    Name/slug default from the directory, and mount to ``/workspace/<slug>``.
+    Capability arguments have the meanings in ``configure``; an empty ``local``
+    selects no IDE or agent. Validate all candidates before writing; invalid
+    input raises CliError. Shared promotion and the later local write are
+    separate operations, so an I/O failure can leave local setup incomplete.
+    Return setup instructions; permissions and launch resolution remain undone.
+    """
     from devcapsule.project import sanitize_name
     root = root.expanduser().resolve()
     if not root.is_dir():
@@ -235,6 +294,11 @@ def initialize(root: Path, *, name: str | None, slug: str | None, creator: str |
 
 
 def parse_majors(majors: Sequence[str]) -> dict[str, int]:
+    """Parse CLI entries such as ``python=3`` into capability-to-major pairs.
+
+    Raise ProjectConfigurationError for duplicate names or invalid syntax.
+    CapabilityPolicy.read subsequently checks positivity and required membership.
+    """
     result: dict[str, int] = {}
     for item in majors:
         name, separator, value = item.partition("=")

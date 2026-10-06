@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-06 after correctness review; confirmed omission/version-set defect needs follow-up before PR handoff
+State: paused 2026-10-06 after API documentation correction; confirmed omission/version-set defect still needs follow-up
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,12 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- Owner requested readable contracts at the code definitions. Added docstrings
+  for capability values, their fields/methods, selection and command functions,
+  and the matrix's provider/SDK queries. Examples explain capability names and
+  `sdk_major` pairs; contracts state validation, return values and write effects.
+  This changes docstrings only; the omission/version-set defect remains open.
 
 - Completed the owner-requested [commit-pinned correctness argument](../../implementation-notes/devcapsule/2026-10-06-configuration-correctness.md)
   for implementation and tests at `99ff26ac564368427f77773ac0a4c2beaa257eea`.
@@ -154,6 +160,11 @@ self-hosting configuration or replace the launcher incidentally.
 
 ## Validation And External State
 
+- API documentation correction: full build gate passed, including 1,245 unit
+  cases and ten packaged integration cases. Log: `.git/capability-api-docs-build.log`.
+  AST comparison confirms all four Python changes are docstrings only; runtime
+  behavior and tests are unchanged. Existing xfail/xpass outcomes remain.
+
 - Correctness-review checkpoint: required full `nox -s build` passed again
   (1,245 unit cases, ten packaged integration cases, type/syntax/version checks,
   source/PEX smokes and content contract). Log: `.git/config-correctness-build.log`.
@@ -230,6 +241,11 @@ self-hosting configuration or replace the launcher incidentally.
   and the successful final-gate follow-up by mail. No unrelated fix was committed.
 
 ## Open Threads
+
+- API documentation correction leaves the user's pre-existing `.idea/project.iml`
+  edit untouched and uncommitted. No other source changes were present on entry.
+  Entry brief again reported zero commits behind main and no definition changes;
+  no synchronization was needed for this follow-up.
 
 - The correctness review is complete; the implementation has a confirmed open
   omission/version-set defect. No fix or test modification is hidden in the

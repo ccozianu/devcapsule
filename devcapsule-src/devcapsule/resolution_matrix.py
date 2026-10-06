@@ -295,7 +295,13 @@ class ResolutionMatrix:
         )
 
     def providers(self, capability: str) -> tuple[str, ...]:
-        """Component dependency closure, or the empty tuple for a base service."""
+        """Return component IDs needed by a capability, including dependencies.
+
+        For example, ``dotnet-ide`` needs both Rider and the .NET SDK. Results
+        are sorted and unique. An empty tuple denotes a base-supplied service;
+        callers must still check that their selected base supplies it.
+        Raise ResolutionError for an unknown capability name.
+        """
         self.normalize([capability])
         component = self._surface_capabilities.get(capability) or self._ancillary_capabilities.get(capability)
         result = [component] if component else []
@@ -304,13 +310,23 @@ class ResolutionMatrix:
         return tuple(sorted(result))
 
     def local_capabilities(self) -> frozenset[str]:
-        """Personal interactive surfaces and coding agents."""
+        """Return IDE and coding-agent capability names owned by developers.
+
+        Shared-policy writers use this set to reject new personal preferences
+        in project declarations. Other capabilities may also be selected locally.
+        """
         return frozenset(self._surface_capabilities) | frozenset(
             name for name in self._ancillary_capabilities if name.endswith("-agent")
         )
 
     def sdk_major(self, capability: str, lock: Mapping[str, Any]) -> int | None:
-        """Known SDK major, derived from immutable catalog identity, not claims."""
+        """Return the selected SDK's major version, or None when not established.
+
+        For base SDKs, use catalog metadata for the lock's exact base reference.
+        For ``dotnet``, read the locked ``dotnet-sdk`` component's version.
+        This examines metadata, not an installed executable. None means unknown,
+        so callers enforcing a major-version constraint must reject it.
+        """
         reference = lock.get("base", {}).get("reference")
         base = next((item for item in self._bases if item.lock_table.get("reference") == reference), None)
         if base is not None and capability in base.sdk_majors:

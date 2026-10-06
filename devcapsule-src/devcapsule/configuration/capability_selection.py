@@ -19,6 +19,10 @@ from .documents import ProjectConfigurationError, table
 
 
 def matrix_for(lock: Mapping[str, Any]) -> ResolutionMatrix:
+    """Return this launcher's catalog for the lock's declared platform.
+
+    Raise ProjectConfigurationError if that platform is absent or unsupported.
+    """
     try:
         return MATRICES[Platform(str(lock.get("platform")))]
     except (ValueError, KeyError):
@@ -28,7 +32,15 @@ def matrix_for(lock: Mapping[str, Any]) -> ResolutionMatrix:
 def generate_lock(policy: CapabilityPolicy, matrix: ResolutionMatrix, *,
                   previous: Mapping[str, Any] | None = None,
                   allow_unverified: bool = False) -> dict[str, Any]:
-    """Conservative writer: known requirements; preserve opaque optional pins."""
+    """Build a shared lock for a validated policy, without writing files.
+
+    Resolve known capabilities using ``matrix``; a project need not choose an
+    IDE. Unknown optional names can survive only when ``previous`` supplies
+    their provider lists and nonconflicting metadata. Otherwise raise
+    ProjectConfigurationError, as for unsupported requirements or SDK majors.
+    ``allow_unverified`` permits catalog combinations without recorded
+    compatibility evidence. Inputs are unchanged; the returned lock is new.
+    """
     matrix.normalize(list(policy.required))
     accepted = list(policy.required)
     for capability in policy.optional:
@@ -56,6 +68,11 @@ def generate_lock(policy: CapabilityPolicy, matrix: ResolutionMatrix, *,
 
 
 def check_majors(policy: CapabilityPolicy, lock: Mapping[str, Any], matrix: ResolutionMatrix) -> None:
+    """Require the lock to establish every SDK major requested by the policy.
+
+    Raise ProjectConfigurationError for a mismatch or unknown major. Evidence
+    comes from ``matrix.sdk_major``; this does not execute an installed SDK.
+    """
     for capability, expected in policy.sdk_major:
         actual = matrix.sdk_major(capability, lock)
         if actual != expected:
@@ -67,7 +84,14 @@ def check_majors(policy: CapabilityPolicy, lock: Mapping[str, Any], matrix: Reso
 
 def selected_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
                   checkout: Mapping[str, Any], *, warn: bool = True) -> dict[str, Any]:
-    """Compose immutable inputs. Explicit version sets already contain local pins."""
+    """Return the checkout's effective lock without changing input documents.
+
+    Use its explicit version set when present; otherwise overlay its personal
+    component pins on ``shared``. Apply ``usable_lock`` to enforce required
+    capabilities and local choices. Missing local pins or a conflicting shared
+    IDE raise ProjectConfigurationError. ``warn`` prints optional omissions
+    to stderr; False suppresses that output, not validation.
+    """
     from .documents import selected_version_lock
     local = LocalCapabilities.read(checkout)
     policy = CapabilityPolicy.read(manifest)
@@ -107,7 +131,20 @@ def selected_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
 
 def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
                 local: LocalCapabilities = LocalCapabilities()) -> tuple[dict[str, Any], tuple[str, ...]]:
-    """Mandatory closure is invariant under every optional omission."""
+    """Return an effective lock and warning strings for omitted enhancements.
+
+    ``policy`` and ``local`` must be validated values; ``source`` supplies
+    pinned component metadata. Required and locally selected capabilities,
+    including their dependencies, must be available or this raises
+    ProjectConfigurationError. Optional omissions never remove those providers.
+    Unsupported or missing optional providers are skipped with a warning.
+
+    The returned lock is a filtered copy for execution, not a replacement for
+    persisted version pins. Inputs remain unchanged. A legacy policy without
+    optional, SDK or local choices returns an unfiltered copy for compatibility.
+    This checks provider availability; artifact integrity and host permissions
+    are checked by later admission stages.
+    """
     lock = deepcopy(dict(source))
     if not policy.layered and not policy.optional and not policy.sdk_major and not local.selected and not local.without:
         return lock, ()  # Old locks remain records, not requests to re-resolve.
