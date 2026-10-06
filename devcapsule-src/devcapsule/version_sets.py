@@ -402,6 +402,9 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
         existing = checkout.get("version-set")
         digest = existing["recommendation-digest"] if existing else canonical_digest(workspace.recommendation())
         checkout["version-set"] = {"format": 1, "lock": render_document(lock), "recommendation-digest": digest}
+    from devcapsule.configuration.capability_selection import usable_lock
+    from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+    lock, _ = usable_lock(CapabilityPolicy.read(workspace.manifest), lock, LocalCapabilities.read(checkout))
     declarations = authorization_declarations(workspace.manifest, lock)
     seen: set[str] = set()
     for name, value in acquisitions:
@@ -570,7 +573,10 @@ def rollback(start: Path, identity: str | None = None, *, reacquire: bool = Fals
 
 def follow_project(start: Path, *, apply: bool = False, acquisitions: Sequence[tuple[str, str]] = (), report: Callable[[str], None] = print) -> None:
     workspace = Workspace.load(start)
-    lock = workspace.recommendation()
+    from devcapsule.configuration.capability_selection import selected_lock
+    personal = deepcopy(workspace.checkout)
+    personal.pop("version-set", None)
+    lock = selected_lock(workspace.manifest, workspace.recommendation(), personal)
     report("Project recommendation diff:\n" + _diff(workspace.lock, lock))
     report("Following the project removes the local selection, retains current personal state and host decisions, and prepares for the next launch.")
     if apply:

@@ -109,7 +109,8 @@ class RuntimeConfiguration:
         lock = selected_version_lock(checkout)
         if lock is None:
             _, lock = recommendation_lock_for(root, manifest)
-        return manifest, lock, checkout
+        from .configuration.capability_selection import selected_lock
+        return manifest, selected_lock(manifest, lock, checkout), checkout
 
     def configuration_report(self) -> str:
         _, _, checkout = self.current()

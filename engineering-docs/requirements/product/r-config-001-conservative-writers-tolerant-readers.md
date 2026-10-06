@@ -57,6 +57,17 @@ silently reduce the project's mandatory needs. A more capable collaborator can
 still use the enhancement from the same shared project. Tolerant reading does
 not authorize ignoring constraints needed for integrity or host-access boundaries.
 
+### Project scope and developer ownership
+
+Owner refinement, 2026-10-06: the project describes the ideal developer
+experience. Do not introduce capability profiles per task or workstream.
+Required/optional describes necessity; project/developer describes ownership.
+The required Python SDK and its major version are a shared contract. Playwright
+is an optional project enhancement. IDE and coding-agent/provider selections
+belong to each developer, with local exact-version pins; they must not impose
+the original author's preferred agents on collaborators. Local choices cannot
+waive mandatory project constraints. Installing a tool grants no host access.
+
 ### Self-hosting requires a deliberate transition
 
 DevCapsule developed inside DevCapsule creates a circular dependency. This is
@@ -86,20 +97,22 @@ An inspection listing does not count as complete configuration validation.
   well as the candidate. Evidence identifies both executables and distinguishes
   parsing, resolution/runtime planning and an actual next-session launch.
 
-## Scope and current gaps
+## Implementation and rollout
 
-Accepted direction is not an implementation claim. Schema spelling, supported
-reader/writer compatibility range, dependency representation, exact command
-interfaces and release sequencing remain design work. Existing shipped binaries
-cannot retroactively learn an optional-capability contract; rollout must identify
-which readers implement it and provide a transition for older ones.
+The implementation uses project `required`, `optional` and `sdk-major`
+declarations, with developer selections in the local checkout record. The
+[configuration guide](../../../docs/configuration/capabilities.md) describes
+`init --required`, `config capabilities`, read-only `config check`, preview,
+omission and recovery. Legacy `need` inputs remain readable. Capability policy
+is project-scoped; no task/workstream profile is introduced.
 
-Inspection on 2026-10-05: the running `devcapsule0` provides `project config need`
-for additions, but no removal/classification or read-only candidate-validation
-command appears in its configuration command surface. Runtime `config list`
-reports recorded launcher state, while `config resolve` writes and requires the
-launcher context. These gaps must be filled with supported commands through
-their owning workstream; direct edits are not a fallback.
+Existing shipped binaries cannot retroactively learn this contract. Adoption
+requires a reader containing the implementation; release sequencing remains
+project-management's responsibility. Inspection on 2026-10-05 established that
+the running `devcapsule0` lacked read-only candidate checking and classification
+commands. The implementation does not replace that executable or migrate this
+self-hosting checkout's manifest/lock. Such migration still requires the
+baseline/candidate validation and independent restart path above.
 
 ## Related
 

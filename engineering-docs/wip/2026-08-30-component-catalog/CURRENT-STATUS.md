@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-05 for owner PR integration; command-only configuration rule corrected, R-CONFIG-001 accepted and routed for 0.3
+State: paused 2026-10-06 for owner PR integration; configuration contract implemented and validated
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -26,10 +26,47 @@ The owner then reported `project run` rejecting Playwright and requested a
 local workflow rule to prevent this. The 2026-10-05 correction establishes
 command-only configuration writes, validation by the running `devcapsule0`,
 a managed self-hosting exception and mandatory/optional capability handling
-for all adopters. Capture the accepted 0.3 requirement and route implementation.
+for all adopters. Implement the accepted configuration contract at the owner’s explicit request on
+2026-10-06: shared required/optional capabilities, SDK-major constraints, local
+IDE/agent selection, conservative CLI writers and tolerant readers. No task or
+workstream-specific capability profiles. New/changed code coverage must exceed
+90%, aiming for complete coverage; document the system ab initio in docs/.
 No release or website publishing.
 
 ## Current State
+
+- Owner-assigned configuration implementation is complete in this branch:
+  project required/optional capabilities, explicit Python/.NET SDK-major checks,
+  developer-local IDE/agent/tool pins and optional omissions; no task/workstream
+  profiles. New project creation uses `init --required`; changes use
+  `config capabilities`, with preview and interrupted-edit recovery. `config check`
+  validates candidate/shared documents and artifact metadata without writes.
+- Readers preserve shared bytes while omitting unsupported optional capabilities.
+  Optional-only contributions reconcile at launch when the mandatory baseline and
+  local answers are unchanged. Optional download failures can reduce one run;
+  mandatory dependencies and integrity failures cannot be waived. A reduced run
+  does not certify the full stored environment as known-good.
+- Local version pins for retained tools and all host decisions survive local
+  reselection. Following shared versions retains personal capabilities. SDK
+  constraints are checked again on local version-set selection and base overrides.
+- The ab-initio [capability guide](../../../docs/configuration/capabilities.md)
+  explains ownership, commands, validation, recovery and reader rollout. Legacy
+  `need` inputs/commands remain available; shared IDE/agent declarations must be
+  deliberately migrated. Fresh policy creation has no implicit IDE or agent.
+- No reply arrived to the optional IDE-default question: used the proposed
+  developer-choice behavior. Missing IDE selection gives an actionable command.
+- Merged origin/main at `1eb8e76` via `710fd04` before implementation. The owner
+  explicitly assigned this slice here, superseding the earlier maintenance
+  handoff; maintenance/project-management were notified by coordination mail.
+  No new intake items; the one previously fixed owned bug still awaits host acceptance.
+- Existing self-hosting manifest/lock and running `devcapsule0` are unchanged.
+  Current baseline identifies 0.2.16.dev0-local-linux-x86_64, source unknown.
+  The new source CLI accepts the existing shared contract via read-only check;
+  this is offline validation, not a new container launch. Adopting the new
+  representation on this host still needs the baseline/candidate transition
+  and independent restart path in R-CONFIG-001. No release/version bump.
+
+### Earlier checkpoints
 
 - Owner correction is canonical in accepted [R-CONFIG-001](../../requirements/product/r-config-001-conservative-writers-tolerant-readers.md)
   and the rewritten local rule. Conservative writers, tolerant readers,
@@ -41,7 +78,7 @@ No release or website publishing.
   to project-management and maintenance, correcting the prior planning handoff
   and identifying missing command-based mutations/candidate validation. No
   configuration, launcher or runtime was changed in this follow-up.
-- Main remains `242e13e`, zero commits behind and no definition change on entry;
+- At the 2026-10-05 checkpoint main was `242e13e`, zero commits behind and no definition change on entry;
   no synchronization needed. One owned bug remains fixed pending host acceptance.
 
 - Owner follow-up: recovered the host launch using an already-built executable
@@ -94,13 +131,38 @@ No release or website publishing.
 
 ## Planned Next Step
 
-The owner opens and merges the pending branch through the GitHub UI, titled
-**Define command-owned configuration and tolerant capability handling**. Fetch
-and verify main after merge. Project management dispositions the accepted 0.3 direction
-and coordinates missing command/validation work with maintenance. Do not change
-working project configuration through direct edits while those commands are absent.
+Owner opens/updates the branch PR in GitHub, titled **Separate project capability
+requirements from personal tools**. Merge by the configured merge-commit workflow;
+then fetch and verify the integrated tree. This implementation has not reached
+remote main yet. Release/adoption sequencing belongs to project-management.
+Do not migrate the working self-hosting configuration through direct edits or
+replace the host launcher as an incidental follow-up.
 
 ## Validation And External State
+
+- Final full `nox -s build` passed: **1,245 unit tests**, ten packaged-executable
+  integration tests, mypy, syntax/version checks, source/PEX smokes and documentation
+  contract. Log: `.git/config-policy-build.log`. One pre-existing xfail and one
+  pre-existing non-strict xpass remain; no skipped gate or new container launch.
+- New policy suite: **87 tests**, covering ownership, malformed/unknown inputs,
+  SDK mismatches, mandatory dependency closure, optional-only launch reconciliation,
+  download versus integrity failures, no-write preview/check, preservation of
+  opaque optional pins, local version pins and consent, crash endpoints and
+  conflicting edits. The packaged PEX also authors and validates an isolated
+  project and rejects an incompatible SDK major without changing shared bytes.
+- Changed production-code coverage against merge `710fd04`: **574/574 executable
+  lines (100%)**, **199/204 branches (97.55%)**. Measured from the full unit suite,
+  Coverage.py JSON and zero-context Git diff; `.git/measure-config-coverage.py`,
+  `.git/config-policy-coverage.json`, `.git/config-policy-diff-coverage.json` retain
+  the local calculation. Tests establish these finite cases and invariants;
+  coverage is not a proof that every possible environment is defect-free.
+- Pure configuration dependency checks were extended for the new modules and
+  pass. The initial architecture violation and legacy base-override regression
+  were fixed; no existing checks were weakened. The documentation frontmatter
+  was corrected to conform to the existing content contract.
+- Local artifact: `devcapsule-src/dist/devcapsule-local.pex`, built and exercised.
+  The dirty-tree gate intentionally leaves public `dist/devcapsule.pex` alone.
+
 
 - Revised-rule/requirement full gate passed: 1,152 tests, nine packaging checks,
   type checks, source/PEX smokes and content contract. Log:
@@ -148,11 +210,13 @@ working project configuration through direct edits while those commands are abse
 
 ## Open Threads
 
-- Project management must disposition the 0.3 planning handoff. A stronger
-  product guarantee is needed beyond the current local compatibility rule;
-  consent/recovery design must align with component-upgrades. R-CONFIG-001
-  is accepted owner direction; schema, command design and full release scope
-  remain open. Earlier agent suggestions are superseded where they conflict.
+- Awaiting owner PR integration and release sequencing. The implemented contract
+  requires a reader containing it; binaries already shipped cannot learn it
+  from configuration. Host rollout and a real next-session launch are not claimed.
+- SDK-major knowledge is explicit catalog data (currently Python and .NET).
+  Extra providers are not installed by naming an arbitrary model/vendor.
+- No additional product decision is needed to review this implementation. The
+  IDE-default question was optional; no implicit default was selected.
 
 - Awaiting the human: compatibility-repair PR merge, host launcher identity
   and confirmation of `project run`. Blog editorial release and existing website
@@ -166,6 +230,8 @@ working project configuration through direct edits while those commands are abse
   `.git/recovery/` files and the website gitlink remain untouched.
 
 ## Workstream Document Index
+
+- [Capability system guide](../../../docs/configuration/capabilities.md) — ab-initio user documentation
 
 - [Conservative writers and tolerant readers](../../requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — accepted 0.3 direction
 

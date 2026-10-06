@@ -231,8 +231,14 @@ def atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def require_settled(root: Path) -> None:
+    if (root / ".devcapsule" / ".capability-transaction.toml").exists():
+        raise ProjectConfigurationError("Interrupted configuration edit; run 'devcapsule project config capabilities --recover'. No candidate is admitted until recovery.")
+
+
 def manifest_for(project: Path) -> tuple[Path, dict[str, Any]]:
     root = discover_project(project)
+    require_settled(root)
     path = root / ".devcapsule" / "devcapsule.toml"
     value = load_toml(path)
     validate_manifest(value, path)
@@ -276,23 +282,32 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     if "base" in value:
         locked_base_reference(value, source=str(path))
     # Every public consumer gets the same unambiguous vocabulary.
-    build_node_registry(manifest, value)
+    from .capabilities import CapabilityPolicy
+    policy = CapabilityPolicy.read(manifest)
+    if not policy.layered and not policy.optional and not policy.sdk_major:
+        build_node_registry(manifest, value)
     return path, value
 
 
 def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
     """Effective software selection, independently of current host decisions."""
+    from .capability_selection import selected_lock
     record = find_checkout_record(manifest, root)
-    if record is not None:
-        checkout = load_checkout(record, manifest, root)
-        selected = selected_version_lock(checkout)
-        if selected is not None:
-            if selected.get("platform") != str(Platform.current()):
-                raise ProjectConfigurationError("Local version set is for another platform; follow the project explicitly.")
-            locked_base_reference(selected)
-            build_node_registry(manifest, selected)
-            return root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock", selected
-    return recommendation_lock_for(root, manifest)
+    checkout = load_checkout(record, manifest, root) if record is not None else {}
+    selected = selected_version_lock(checkout)
+    if selected is not None:
+        if selected.get("platform") != str(Platform.current()):
+            raise ProjectConfigurationError("Local version set is for another platform; follow the project explicitly.")
+        path, shared = root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock", selected
+    else:
+        path, shared = recommendation_lock_for(root, manifest)
+    value = selected_lock(manifest, shared, checkout)
+    if "base" in value:
+        locked_base_reference(value)
+    if not value.get("components", {}).get("interactive-surface"):
+        raise ProjectConfigurationError("Choose a local IDE: devcapsule project config capabilities --local python-ide (or another IDE capability).")
+    build_node_registry(manifest, value)
+    return path, value
 
 
 def recover_activation(input_path: Path) -> None:

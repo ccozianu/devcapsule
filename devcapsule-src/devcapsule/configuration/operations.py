@@ -394,6 +394,8 @@ def initialize_project(
         # follows from it.
         existing_manifest = load_toml(manifest_path)
         validate_manifest(existing_manifest, manifest_path)
+        if any(key in existing_manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
+            raise ProjectConfigurationError("This project uses required/optional capability policy. Use 'project config capabilities' to change it, or 'project config resolve' to prepare this checkout.")
         if lock_path.is_file():
             lock_for(root, existing_manifest)
         input_path, output_path = checkout_record_paths(existing_manifest, root)
@@ -1236,6 +1238,8 @@ def add_capability_need(
         )
     manifest = load_toml(manifest_path)
     validate_manifest(manifest, manifest_path)
+    if any(key in manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
+        raise ProjectConfigurationError("Use 'project config capabilities --required ...' to replace required capabilities; --optional and --local select the other scopes.")
     matrix = _current_matrix()
     current = matrix.normalize(manifest.get("capabilities", {}).get("need", []))
     requested = matrix.normalize([*current, *names])
@@ -1295,7 +1299,7 @@ def _rewrite_manifest_need(manifest_path: Path, need: tuple[str, ...]) -> None:
     if not replaced:
         raise ProjectConfigurationError(
             f"{manifest_path} has no single-line 'need = [...]' under [capabilities]; "
-            "edit the manifest by hand and run 'devcapsule project init --regenerate'."
+            "use 'devcapsule project config capabilities --required ...' to edit it through the supported writer."
         )
     atomic_write(manifest_path, "".join(lines), mode=0o644)
 

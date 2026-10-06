@@ -46,6 +46,11 @@ class Configuration:
         identity = table(self._checkout, "project")
         if any(identity.get(key) != self._manifest["project"][key] for key in ("creator", "slug")):
             raise ProjectConfigurationError("Checkout does not match the project's creator and slug.")
+        from .capabilities import CapabilityPolicy, LocalCapabilities
+        policy = CapabilityPolicy.read(self._manifest)
+        LocalCapabilities.read(self._checkout).validate(policy)
+        if policy.sdk_major and table(self._checkout, "authorization", "base-image").get("image-id"):
+            raise ProjectConfigurationError("A local base override cannot establish the project's SDK-major guarantee; select the pinned project base.")
         self._review = review_configuration(self._manifest, self._lock, self._checkout)
 
     def review(self) -> ConfigurationReview:
@@ -58,8 +63,8 @@ class Configuration:
         has_formation = "base" in self._lock and "materialization" in self._lock
         if component not in INTERACTIVE_SURFACES or (not image and not has_formation):
             raise ProjectConfigurationError(
-                "The V1 slice requires a lock selecting a known interactive surface "
-                "with either a completed image or formation inputs."
+                "Choose a local IDE with 'devcapsule project config capabilities --local python-ide' "
+                "(or another IDE capability); a known interactive surface and image/formation are required."
             )
         # require_ready is rendered by the file/CLI adapter with its actual path.
         return Resolution(tomllib.loads(render_resolution(

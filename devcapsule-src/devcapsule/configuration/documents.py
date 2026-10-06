@@ -76,7 +76,7 @@ def admit_document(document: Mapping[str, Any], artifact: Artifact, source: obje
         # This file is an input, not a plugin extension point. Refusing unknown
         # fields protects both their meaning and their bytes during an edit.
         shapes = {
-            (): {artifact.value, "project", "checkout", "configuration", "state", "host", "authorization", "version-set"},
+            (): {artifact.value, "project", "checkout", "configuration", "state", "host", "authorization", "version-set", "capabilities"},
             ("project",): {"creator", "slug"},
             ("checkout",): {"path"},
             ("configuration",): {"values", "omitted-values", "bindings"},
