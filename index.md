@@ -85,6 +85,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Component status service contract and operations](component-status/README.md)
 
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
+- [Capability configuration: implementation and test correctness](engineering-docs/implementation-notes/devcapsule/2026-10-06-configuration-correctness.md)
 - [Eclipse Java component and recorded smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-eclipse-validation.md)
 - [Linux .NET SDK and Rider validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md)
 - [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
@@ -256,6 +257,8 @@ history; record current decisions in the active documents above.
 - [Merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md)
 
 ## Bugs
+
+- [Optional omission loses a local version-set pin](engineering-docs/bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md)
 
 - [`project init` discards every interactive answer when a `--authorize` name is unknown — blocking 0.2.15](engineering-docs/bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md)
 - [Inside a capsule, `project <unknown>` is refused as launcher-only instead of as unknown](engineering-docs/bugs/devcapsule/2026-09-26-project-group-guard-hides-unknown-subcommand-in-capsule.md)

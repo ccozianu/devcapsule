@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-06 for owner PR integration; configuration contract implemented and validated
+State: paused 2026-10-06 after correctness review; confirmed omission/version-set defect needs follow-up before PR handoff
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,17 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- Completed the owner-requested [commit-pinned correctness argument](../../implementation-notes/devcapsule/2026-10-06-configuration-correctness.md)
+  for implementation and tests at `99ff26ac564368427f77773ac0a4c2beaa257eea`.
+  Source and tests are unchanged by this documentation review.
+- Review reproduced a [local version-set omission defect](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md):
+  clearing an optional omission does not restore its discarded provider/pin.
+  Owned here, confirmed, no fix yet; this qualifies the earlier completion claim.
+  The passing tests cover the separate behaviors but miss their interaction.
+- No new mainline synchronization: the argument concerns the exact entry commit,
+  entry brief reported zero commits behind main and the definition was current.
+  No waiting mail or intake on entry.
 
 - Owner-assigned configuration implementation is complete in this branch:
   project required/optional capabilities, explicit Python/.NET SDK-major checks,
@@ -131,14 +142,24 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Owner opens/updates the branch PR in GitHub, titled **Separate project capability
-requirements from personal tools**. Merge by the configured merge-commit workflow;
-then fetch and verify the integrated tree. This implementation has not reached
-remote main yet. Release/adoption sequencing belongs to project-management.
-Do not migrate the working self-hosting configuration through direct edits or
-replace the host launcher as an incidental follow-up.
+Address the confirmed optional-omission/version-set bug with a regression that
+combines the two behaviors, preserving exact pins and host decisions. The current
+owner request was a documentation review, so the cited implementation remains
+unchanged. Review the finding with the owner before resuming implementation.
+Then open/update the branch PR in GitHub, titled **Separate project capability
+requirements from personal tools**, using the configured merge-commit workflow.
+The owner operates the GitHub UI. Remote main does not yet contain this slice.
+Release/adoption sequencing belongs to project-management. Do not migrate the
+self-hosting configuration or replace the launcher incidentally.
 
 ## Validation And External State
+
+- Correctness-review checkpoint: required full `nox -s build` passed again
+  (1,245 unit cases, ten packaged integration cases, type/syntax/version checks,
+  source/PEX smokes and content contract). Log: `.git/config-correctness-build.log`.
+  All 44 commit-pinned source ranges and new relative links were checked against
+  Git/the filesystem. Source, tests and `.devcapsule` configuration are unchanged.
+  The isolated counterexample is documented; a passing gate does not close it.
 
 - Final full `nox -s build` passed: **1,245 unit tests**, ten packaged-executable
   integration tests, mypy, syntax/version checks, source/PEX smokes and documentation
@@ -210,6 +231,12 @@ replace the host launcher as an incidental follow-up.
 
 ## Open Threads
 
+- The correctness review is complete; the implementation has a confirmed open
+  omission/version-set defect. No fix or test modification is hidden in the
+  documentation checkpoint. The exact isolated reproduction is in the bug record.
+  The follow-up should separate persistent selected pins from runtime filtering;
+  detailed implementation alternatives have not yet been investigated.
+
 - Awaiting owner PR integration and release sequencing. The implemented contract
   requires a reader containing it; binaries already shipped cannot learn it
   from configuration. Host rollout and a real next-session launch are not claimed.
@@ -230,6 +257,9 @@ replace the host launcher as an incidental follow-up.
   `.git/recovery/` files and the website gitlink remain untouched.
 
 ## Workstream Document Index
+
+- [Commit-pinned implementation and test correctness](../../implementation-notes/devcapsule/2026-10-06-configuration-correctness.md) — owner-requested review
+- [Optional omission loses local version pin](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md) — confirmed follow-up
 
 - [Capability system guide](../../../docs/configuration/capabilities.md) — ab-initio user documentation
 
