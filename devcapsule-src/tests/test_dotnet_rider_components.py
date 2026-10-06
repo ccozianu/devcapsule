@@ -48,7 +48,8 @@ def test_sdk_is_additive_to_another_ide_and_installs_a_complete_directory(tmp_pa
         for name in ['dotnet', 'sdk/10.0.401/MSBuild.dll', 'shared/Microsoft.NETCore.App/10.0.12/coreclr.so']:
             entry = tarfile.TarInfo(name); entry.size = 3; entry.mode = 0o6755
             package.addfile(entry, io.BytesIO(b'sdk'))
-    root = _prepare_locked_artifact(archive, artifact, tmp_path / 'unpacked')
+    root = _prepare_locked_artifact(archive, artifact, tmp_path / 'unpacked', cache_root=tmp_path / 'cache')
+    assert root.is_relative_to(tmp_path / 'cache' / 'unpacked' / artifact.sha256)  # unpacked once, by digest
     assert (root / 'sdk/10.0.401/MSBuild.dll').read_bytes() == b'sdk'
     assert (root / 'dotnet').stat().st_mode & 0o7777 == 0o755
     contribution, = _ancillary_contributions(((root, artifact),), ())

@@ -207,7 +207,9 @@ def unpacked_tree(cache_root: Path, sha256: str, unpack: Callable[[Path], Path])
     shutil.rmtree(home, ignore_errors=True)
     partial = home.with_name(f"{home.name}.partial-{os.getpid()}")
     shutil.rmtree(partial, ignore_errors=True)
-    partial.mkdir(parents=True)
+    # The extractors create their destination themselves and refuse one that
+    # exists; only the parent is prepared here.
+    partial.parent.mkdir(parents=True, exist_ok=True)
     relative = unpack(partial).relative_to(partial).as_posix()
     (partial / UNPACKED_MARKER).write_text(
         json.dumps({"schema_version": 1, "sha256": sha256, "root": relative}) + "\n", encoding="utf-8"
