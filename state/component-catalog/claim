@@ -1,5 +1,0 @@
-who: Costin Cozianu
-branch: ws-component-catalog/intellij-idea
-slice: Implement project required/optional capabilities and developer-local selections, with SDK constraints, CLI validation and >90% changed-code coverage
-since: 2026-10-06T05:59:24+00:00
-expires: 2026-10-06T17:59:24+00:00
