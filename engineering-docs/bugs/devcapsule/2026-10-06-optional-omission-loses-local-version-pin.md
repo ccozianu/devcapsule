@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: minor
 target: none
 owner: component-catalog
 opened: 2026-10-06
+closed: 2026-10-08
 requirements: [R-CONFIG-001, R-UPGRADE-001]
 ---
 
@@ -142,3 +143,11 @@ if a writer of `version-set.lock` is added that persists an execution
 projection, or if `rollback` is changed to compose from known-good records
 without preserving omitted optional pins (currently a recorded limit, not a
 regression of this fix).
+
+## Closure, 2026-10-08
+
+Closed on the stated condition: the owner merged the review branch through
+[PR #171](https://github.com/ccozianu/devcapsule/pull/171) into
+`ws-component-catalog/intellij-idea` at `4575eae` and the workstream branch
+through [PR #170](https://github.com/ccozianu/devcapsule/pull/170) into `main`
+at `6ae1a01`. The reopening conditions above stand unchanged.
