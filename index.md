@@ -23,7 +23,7 @@ status file; internal WIP/archive documents use the local index in that status.
   - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
   - Working with AI: [Choose an agent](docs/working-with-ai/choose-an-agent.md), [Sign in and defaults](docs/working-with-ai/sign-in-and-defaults.md), [Instructions for agents](docs/working-with-ai/instructions-for-agents.md), [Hosted and local models](docs/working-with-ai/hosted-and-local-models.md) (coming soon), [Review and change agents](docs/working-with-ai/review-and-change-agents.md) (coming soon)
   - Everyday development: [Clipboard, keys and browser](docs/everyday-development/clipboard-and-browser.md); coming soon: [IDEs and terminals](docs/everyday-development/ides-and-terminals.md), [Git](docs/everyday-development/git.md), [Run, debug, test](docs/everyday-development/run-debug-test.md), [Previews and ports](docs/everyday-development/previews-and-ports.md)
-  - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
+  - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Capabilities and personal choices](docs/configuration/capabilities.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
   - Containment: [The boundary](docs/containment/the-boundary.md), [Granting and withdrawing access](docs/containment/granting-and-withdrawing.md)
   - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
   - Collaboration: [Work in workstreams with humans and agents](docs/collaboration/working-in-workstreams.md)
@@ -64,6 +64,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Root Requirement Records
 
+- [Conservative configuration writers and tolerant readers](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — R-CONFIG-001, accepted 0.3 direction.
 - [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
 - [R-UPGRADE-002 Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md)
 
@@ -84,6 +85,8 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Component status service contract and operations](component-status/README.md)
 
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
+- [Capability configuration: implementation and test correctness](engineering-docs/implementation-notes/devcapsule/2026-10-06-configuration-correctness.md)
+- [Capability configuration: persistent selection versus execution projection](engineering-docs/implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md)
 - [Eclipse Java component and recorded smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-eclipse-validation.md)
 - [Linux .NET SDK and Rider validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md)
 - [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
@@ -258,6 +261,7 @@ history; record current decisions in the active documents above.
 ## Bugs
 
 - [Unpacked archive cache publication and recovery](engineering-docs/bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md)
+- [Optional omission loses a local version-set pin](engineering-docs/bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md)
 
 - [`project init` discards every interactive answer when a `--authorize` name is unknown — blocking 0.2.15](engineering-docs/bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md)
 - [Inside a capsule, `project <unknown>` is refused as launcher-only instead of as unknown](engineering-docs/bugs/devcapsule/2026-09-26-project-group-guard-hides-unknown-subcommand-in-capsule.md)
@@ -300,6 +304,7 @@ history; record current decisions in the active documents above.
 - [JetBrains embedded browser is suspended in the container](engineering-docs/bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md)
 - [Fresh clones require manual ecosystem bootstrap](engineering-docs/bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md)
 - [Component tooling is not added to the runtime path](engineering-docs/bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md)
+- [Unreleased Playwright breaks shared-checkout launch](engineering-docs/bugs/devcapsule/2026-10-04-unreleased-playwright-breaks-checkout-launch.md)
 - [IntelliJ relaunch stale directory lock](engineering-docs/bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md)
 - [PyCharm run-image network and Docker-option parity](engineering-docs/bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md)
 - [Codium grants ambient passwordless sudo by default](engineering-docs/bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md)

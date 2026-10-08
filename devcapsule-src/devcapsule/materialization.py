@@ -258,6 +258,13 @@ def cache_root(env: Mapping[str, str] | None = None) -> Path:
     return XdgHomes.from_environment(env).cache
 
 
+class ArtifactUnavailable(CliError):
+    """A pinned URL could not be reached; integrity failures are a different error."""
+    def __init__(self, url: str, reason: object) -> None:
+        self.url = url
+        super().__init__(f"Cannot download locked artifact {url!r}: {reason}")
+
+
 def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
     algorithm = "sha256"
     expected = spec.sha256
@@ -297,7 +304,7 @@ def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
                 raise CliError(f"Artifact digest mismatch: expected {expected}, received {actual}.")
             temporary_path.replace(destination)
         except URLError as exc:
-            raise CliError(f"Cannot download locked artifact {spec.url!r}: {exc}") from exc
+            raise ArtifactUnavailable(spec.url, exc) from exc
         finally:
             if temporary_path is not None:
                 temporary_path.unlink(missing_ok=True)
@@ -427,6 +434,43 @@ def canonical_image_name(descriptor: Mapping[str, Any], component_id: str = "pyc
     return f"devcapsule-local-{component_id}:{formation_identity(descriptor)[:20]}"
 
 
+def validate_locked_artifact(locked_artifact: LockedArtifactDeclaration) -> None:
+    """Validate one component artifact without acquisition or filesystem effects."""
+    _validated_sha256(
+        locked_artifact.sha256,
+        f"Locked {locked_artifact.component_id} artifact SHA-256",
+    )
+    if locked_artifact.artifact_format not in ARTIFACT_FORMATS:
+        raise CliError(
+            f"Locked {locked_artifact.component_id} artifact format must be one of "
+            + ", ".join(repr(name) for name in ARTIFACT_FORMATS)
+            + "."
+        )
+    if (
+        locked_artifact.artifact_format == "tar-gz-member"
+        and not locked_artifact.archive_member
+    ):
+        raise CliError(
+            f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
+            "an archive member."
+        )
+    if locked_artifact.artifact_format == "python-wheel":
+        wheel_name(locked_artifact.url)
+    if locked_artifact.artifact_format == "npm-package":
+        if not locked_artifact.npm_package:
+            raise CliError(
+                f"Locked {locked_artifact.component_id} npm-package artifact must "
+                "name its npm package."
+            )
+        # Fail at lock-reading time, not mid-build, when the URL
+        # cannot name the tarball inside the image.
+        _npm_tarball_name(locked_artifact)
+    if not Path(locked_artifact.destination).is_absolute():
+        raise CliError(
+            f"Locked {locked_artifact.component_id} destination must be absolute."
+        )
+
+
 def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     platform = _required_string(lock, "platform", "platform lock")
     base = _required_mapping(lock, "base", "platform lock")
@@ -459,39 +503,7 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     for definition in (_interactive, *ancillary_definitions):
         metadata = _required_mapping(components, definition.id, "components")
         for locked_artifact in definition.locked_artifacts(metadata, platform):
-            _validated_sha256(
-                locked_artifact.sha256,
-                f"Locked {locked_artifact.component_id} artifact SHA-256",
-            )
-            if locked_artifact.artifact_format not in ARTIFACT_FORMATS:
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} artifact format must be one of "
-                    + ", ".join(repr(name) for name in ARTIFACT_FORMATS)
-                    + "."
-                )
-            if (
-                locked_artifact.artifact_format == "tar-gz-member"
-                and not locked_artifact.archive_member
-            ):
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
-                    "an archive member."
-                )
-            if locked_artifact.artifact_format == "python-wheel":
-                wheel_name(locked_artifact.url)
-            if locked_artifact.artifact_format == "npm-package":
-                if not locked_artifact.npm_package:
-                    raise CliError(
-                        f"Locked {locked_artifact.component_id} npm-package artifact must "
-                        "name its npm package."
-                    )
-                # Fail at lock-reading time, not mid-build, when the URL
-                # cannot name the tarball inside the image.
-                _npm_tarball_name(locked_artifact)
-            if not Path(locked_artifact.destination).is_absolute():
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} destination must be absolute."
-                )
+            validate_locked_artifact(locked_artifact)
             ancillary_artifacts.append(locked_artifact)
     recipe_id = _required_string(materialization, "recipe", "materialization")
     recipe_version = _required_string(materialization, "recipe-version", "materialization")

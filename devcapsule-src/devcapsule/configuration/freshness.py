@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import Any, Mapping
 
-from .documents import ProjectConfigurationError, canonical_digest
+from .file_formats import ProjectConfigurationError, canonical_digest
 from .fingerprints import resolution_source_digests
 from .resolution import same_effective_resolution
 

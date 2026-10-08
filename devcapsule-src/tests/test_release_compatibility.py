@@ -15,7 +15,7 @@ import tomllib
 from unittest.mock import patch
 
 from devcapsule import cli
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     canonical_digest,
 )
 

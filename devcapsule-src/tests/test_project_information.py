@@ -9,7 +9,7 @@ import tomllib
 import pytest
 
 from devcapsule import cli, runtime_configuration
-from devcapsule.configuration.documents import render_document
+from devcapsule.configuration.file_formats import render_toml
 from devcapsule.configuration.storage import checkout_record_paths
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
@@ -27,7 +27,7 @@ def project(tmp_path, monkeypatch):
     manifest = {"devcapsule-schema-version": 1,
                 "project": {"creator": "mailto:info@example.test", "slug": "info", "name": "Info fixture", "mount": "/workspace/info"},
                 "capabilities": {"need": ["python", "python-ide", "codex-agent", "claude-code-agent", "antigravity-agent"]}}
-    (config / "devcapsule.toml").write_text(render_document(manifest))
+    (config / "devcapsule.toml").write_text(render_toml(manifest))
     # Use the shipping lock schema without network access or initialization.
     lock = MATRICES[Platform.current()].resolve(manifest["capabilities"]["need"], allow_unverified=True).render_lock()
     (config / f"devcapsule.{Platform.current().value}.lock").write_text(lock)
@@ -76,7 +76,7 @@ def test_info_home_binding_and_default_checkout_isolation(project, tmp_path, cap
     assert home(first)["backing"] != home(second)["backing"]
     record, _ = checkout_record_paths(manifest, root)
     record.parent.mkdir(parents=True)
-    record.write_text(render_document({"devcapsule-checkout-schema-version": 1,
+    record.write_text(render_toml({"devcapsule-checkout-schema-version": 1,
         "project": {"creator": manifest["project"]["creator"], "slug": manifest["project"]["slug"]},
         "checkout": {"path": str(root)},
         "configuration": {"bindings": {"host-directory": {"home": "/external/shared-home"}}}}))

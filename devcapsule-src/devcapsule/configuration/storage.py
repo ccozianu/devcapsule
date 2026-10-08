@@ -11,7 +11,7 @@ from urllib.parse import quote
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 
 from .authorization import locked_base_reference
-from .documents import Artifact, ProjectConfigurationError, admit_document, table, selected_version_lock, render_document
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, table, selected_version_lock, render_toml
 from .manifest import validate_manifest
 from .nodes import build_node_registry
 
@@ -65,7 +65,7 @@ def load_toml(path: Path) -> dict[str, Any]:
 def load_checkout(path: Path, manifest: Mapping[str, Any], root: Path) -> dict[str, Any]:
     recover_activation(path)
     document = load_toml(path)
-    admit_document(document, Artifact.checkout, path)
+    validate_file_format(document, ConfigurationFileKind.checkout, path)
     recorded = table(document, "checkout").get("path")
     if not isinstance(recorded, str) or not recorded or Path(recorded).expanduser().resolve() != root:
         raise ProjectConfigurationError(f"{path} does not match observed checkout {root}.")
@@ -77,7 +77,7 @@ def load_checkout(path: Path, manifest: Mapping[str, Any], root: Path) -> dict[s
 
 def load_resolution(path: Path) -> dict[str, Any]:
     document = load_toml(path)
-    admit_document(document, Artifact.resolution, path)
+    validate_file_format(document, ConfigurationFileKind.resolution, path)
     return document
 
 
@@ -231,8 +231,14 @@ def atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def require_settled(root: Path) -> None:
+    if (root / ".devcapsule" / ".capability-transaction.toml").exists():
+        raise ProjectConfigurationError("Interrupted configuration edit; run 'devcapsule project config capabilities --recover'. No candidate is admitted until recovery.")
+
+
 def manifest_for(project: Path) -> tuple[Path, dict[str, Any]]:
     root = discover_project(project)
+    require_settled(root)
     path = root / ".devcapsule" / "devcapsule.toml"
     value = load_toml(path)
     validate_manifest(value, path)
@@ -272,27 +278,61 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
             "The platform lock is authored on the project side and committed with the project."
         )
     value = load_toml(path)
-    admit_document(value, Artifact.lock, path)
+    validate_file_format(value, ConfigurationFileKind.lock, path)
     if "base" in value:
         locked_base_reference(value, source=str(path))
     # Every public consumer gets the same unambiguous vocabulary.
-    build_node_registry(manifest, value)
+    from .capabilities import CapabilityPolicy
+    policy = CapabilityPolicy.read(manifest)
+    if not policy.layered and not policy.optional and not policy.sdk_major:
+        build_node_registry(manifest, value)
     return path, value
+
+
+def composition_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    """The checkout's persistent software selection, before execution filtering.
+
+    Return the current platform's shared lock path, the composed selection (the
+    explicit version set, or the shared lock with personal pins laid over it)
+    and the loaded checkout record, empty when the checkout is unregistered.
+    A version set for another platform raises ProjectConfigurationError.
+    """
+    from .capability_selection import compose_lock
+    record = find_checkout_record(manifest, root)
+    checkout = load_checkout(record, manifest, root) if record is not None else {}
+    selected = selected_version_lock(checkout)
+    if selected is not None:
+        if selected.get("platform") != str(Platform.current()):
+            raise ProjectConfigurationError("Local version set is for another platform; follow the project explicitly.")
+        path, shared = root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock", selected
+    else:
+        path, shared = recommendation_lock_for(root, manifest)
+    return path, compose_lock(manifest, shared, checkout), checkout
+
+
+def selection_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    """The checkout's persistent selection and its effective lock for this host.
+
+    Return the shared lock path, the composed selection from ``composition_for``
+    and its execution projection. The projection must name a base this
+    launcher knows and an IDE, or ProjectConfigurationError is raised with
+    the command that chooses one. Optional omissions are printed as warnings.
+    """
+    from .capability_selection import effective_lock
+    path, composed, checkout = composition_for(root, manifest)
+    value = effective_lock(manifest, composed, checkout)
+    if "base" in value:
+        locked_base_reference(value)
+    if not value.get("components", {}).get("interactive-surface"):
+        raise ProjectConfigurationError("Choose a local IDE: devcapsule project config capabilities --local python-ide (or another IDE capability).")
+    build_node_registry(manifest, value)
+    return path, composed, value
 
 
 def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
     """Effective software selection, independently of current host decisions."""
-    record = find_checkout_record(manifest, root)
-    if record is not None:
-        checkout = load_checkout(record, manifest, root)
-        selected = selected_version_lock(checkout)
-        if selected is not None:
-            if selected.get("platform") != str(Platform.current()):
-                raise ProjectConfigurationError("Local version set is for another platform; follow the project explicitly.")
-            locked_base_reference(selected)
-            build_node_registry(manifest, selected)
-            return root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock", selected
-    return recommendation_lock_for(root, manifest)
+    path, _, value = selection_for(root, manifest)
+    return path, value
 
 
 def recover_activation(input_path: Path) -> None:
@@ -325,10 +365,10 @@ def activate_configuration(input_path: Path, checkout: Mapping[str, Any], resolu
     transaction = {
         "before-checkout": input_path.read_text(),
         "before-resolution": output.read_text() if output.exists() else "",
-        "after-checkout": render_document(checkout),
-        "after-resolution": render_document(resolution),
+        "after-checkout": render_toml(checkout),
+        "after-resolution": render_toml(resolution),
     }
-    atomic_write(journal, render_document(transaction))
+    atomic_write(journal, render_toml(transaction))
     try:
         atomic_write(output, transaction["after-resolution"])
         atomic_write(input_path, transaction["after-checkout"])

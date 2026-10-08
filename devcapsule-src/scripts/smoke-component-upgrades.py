@@ -20,7 +20,7 @@ import subprocess
 import tarfile
 import tomllib
 
-from devcapsule.configuration.documents import render_document
+from devcapsule.configuration.file_formats import render_toml
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
@@ -47,7 +47,7 @@ def main() -> None:
         "project": {"name": "Component upgrade acceptance fixture", "creator": "mailto:fixture@example.invalid",
                     "slug": "component-upgrade-smoke", "mount": "/workspace/project"},
         "capabilities": {"need": ["python", "python-ide", "codex-agent"]}}
-    (config / "devcapsule.toml").write_text(render_document(manifest))
+    (config / "devcapsule.toml").write_text(render_toml(manifest))
     lock = tomllib.loads(MATRICES[Platform.current()].resolve(manifest["capabilities"]["need"], allow_unverified=True).render_lock())
     baseline = lock["components"]["codex"]["version"]
     payload = b'#!/bin/sh\nset -eu\ncodex --version | tee /workspace/project/observed-version.txt\n'
@@ -58,7 +58,7 @@ def main() -> None:
         stream.addfile(member, io.BytesIO(payload))
     lock["components"]["pycharm"].update(version="upgrade-fixture-1", url=archive.as_uri(), sha256=hashlib.sha256(archive.read_bytes()).hexdigest())
     lock_path = config / "devcapsule.linux-amd64.lock"
-    lock_path.write_text(render_document(lock))
+    lock_path.write_text(render_toml(lock))
     original = lock_path.read_bytes()
     log = root / "commands.log"
     def run(*command: str) -> str:

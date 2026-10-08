@@ -39,12 +39,12 @@ from .authorization import (
     normalize_authorization_value,
     render_authorization_value,
 )
-from .documents import (
+from .file_formats import (
     AuthorizationScalar,
     ProjectConfigurationError,
     quote_toml,
     render_checkout,
-    render_document,
+    render_toml,
     render_toml_scalar,
 )
 from .freshness import stale_resolution_inputs
@@ -174,7 +174,7 @@ class CheckoutRecord:
                         continue
                 result[key] = item
             return result
-        atomic_write(self.input_path, render_document(without_new_empty_tables(self.document, self._original)))
+        atomic_write(self.input_path, render_toml(without_new_empty_tables(self.document, self._original)))
 
 
 def resolve_checkout(start_path: Path) -> ResolveReport:
@@ -204,7 +204,7 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         local_base = required_local_image(base_selection.reference)
         validate_base_image(local_base, platform=str(lock["platform"]),
                             expected_identity=base_selection.local_image_identity)
-    atomic_write(output, render_document(resolution.document()))
+    atomic_write(output, render_toml(resolution.document()))
     return ResolveReport(
         resolution_path=output,
         lock_name=lock_path.name,
@@ -394,6 +394,8 @@ def initialize_project(
         # follows from it.
         existing_manifest = load_toml(manifest_path)
         validate_manifest(existing_manifest, manifest_path)
+        if any(key in existing_manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
+            raise ProjectConfigurationError("This project uses required/optional capability policy. Use 'project config capabilities' to change it, or 'project config resolve' to prepare this checkout.")
         if lock_path.is_file():
             lock_for(root, existing_manifest)
         input_path, output_path = checkout_record_paths(existing_manifest, root)
@@ -1236,6 +1238,8 @@ def add_capability_need(
         )
     manifest = load_toml(manifest_path)
     validate_manifest(manifest, manifest_path)
+    if any(key in manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
+        raise ProjectConfigurationError("Use 'project config capabilities --required ...' to replace required capabilities; --optional and --local select the other scopes.")
     matrix = _current_matrix()
     current = matrix.normalize(manifest.get("capabilities", {}).get("need", []))
     requested = matrix.normalize([*current, *names])
@@ -1295,7 +1299,7 @@ def _rewrite_manifest_need(manifest_path: Path, need: tuple[str, ...]) -> None:
     if not replaced:
         raise ProjectConfigurationError(
             f"{manifest_path} has no single-line 'need = [...]' under [capabilities]; "
-            "edit the manifest by hand and run 'devcapsule project init --regenerate'."
+            "use 'devcapsule project config capabilities --required ...' to edit it through the supported writer."
         )
     atomic_write(manifest_path, "".join(lines), mode=0o644)
 

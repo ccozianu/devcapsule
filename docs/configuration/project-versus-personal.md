@@ -1,7 +1,7 @@
 ---
 description: Which choices belong to the project and travel in Git, which are yours and stay on your computer, and what happens when the project changes.
 weight: 2
-updated: 2026-09-28
+updated: 2026-10-06
 ---
 # Project versus personal
 
@@ -12,13 +12,14 @@ Two kinds of decision shape a capsule, and they live in two places.
 `.devcapsule/devcapsule.toml` is the **manifest**: what the project needs,
 the values it declares, the host access it recommends and why. Beside it the
 **platform lock** pins the exact component versions and the base image that
-satisfy the need. Both are committed. Anyone who clones the repository and
-runs `project init` gets the same environment, and `project config need`
-changes them for everyone on the next commit.
+satisfy the shared requirements and optional enhancements. Both are committed.
+[Capabilities and personal choices](capabilities.md) explains how to declare
+required SDKs and their major versions, recommend optional tools and keep IDE
+and agent selections local. Use `project config capabilities` for those choices.
 
 ## Yours, on your computer
 
-Your checkout record holds what only you can decide: the authorizations you
+Your checkout record holds your IDE, agent and extra-tool selections, plus the authorizations you
 granted or refused, the values you set, the directories you bound, and the
 base image you consented to. Beside it, DevCapsule-managed directories hold
 the capsule's persistent home, the IDE's settings and plugins, and each
@@ -36,7 +37,9 @@ unset NAME` forgets your answer and follows it again.
 
 A project that changes its manifest or lock can make your recorded choices
 stale: the base moved, a recommendation changed, a new tool needs consent.
-`project run` then stops and asks you to resolve:
+`project run` asks you to resolve changes to the required environment or personal
+answers. An optional-only shared change can be reconciled when the required
+environment and permissions are unchanged. Inspect pending choices with:
 
 ```bash
 ~/.local/bin/devcapsule project config show

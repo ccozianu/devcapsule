@@ -65,6 +65,9 @@ def realize_environment(
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
+    if base_override is not None and selected.manifest.get("capabilities", {}).get("sdk-major"):
+        if base_override != selected.lock.get("base", {}).get("reference"):
+            raise CliError("A base override cannot establish the project's SDK-major guarantee; use its pinned compatible base.")
     locked = parse_locked_environment(selected.lock)
     reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout)
     problems = [
@@ -222,3 +225,39 @@ def component_formations(component_id: str) -> tuple[ImageDetails, ...]:
             if tag.startswith(f"{repository}:"):
                 details.append(image_details(tag, image))
     return tuple(details)
+
+
+def omit_unavailable_optional(selected: ResolvedProject, url: str) -> ResolvedProject | None:
+    """Derive a smaller run after a download failure, preserving mandatory closure.
+
+    No file changes and no integrity exception is caught. Returning None means
+    the failed artifact is mandatory (including developer-selected tools).
+    """
+    from copy import deepcopy
+    from dataclasses import replace
+    from devcapsule.components.catalog import COMPONENTS
+    from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+    from devcapsule.configuration.capability_selection import matrix_for, usable_lock
+    from devcapsule.configuration.model import Configuration
+    policy = CapabilityPolicy.read(selected.manifest)
+    if not policy.optional:
+        return None
+    matrix = matrix_for(selected.lock)
+    local = LocalCapabilities.read(selected.checkout)
+    failed = {name for name, metadata in selected.lock["components"].items()
+              if isinstance(metadata, dict) and name in COMPONENTS
+              and any(artifact.url == url for artifact in COMPONENTS[name].locked_artifacts(metadata, str(selected.lock["platform"])))}
+    mandatory = {component for capability in (*policy.required, *local.selected) for component in matrix.providers(capability)}
+    if not failed or failed & mandatory:
+        return None
+    omitted = {capability for capability in policy.optional if capability in matrix.capabilities()
+               and failed & set(matrix.providers(capability))}
+    if not omitted:
+        return None
+    choice = LocalCapabilities(local.selected, tuple(sorted(set(local.without) | omitted)))
+    lock, _ = usable_lock(policy, selected.lock, choice)
+    checkout = deepcopy(selected.checkout)
+    checkout.setdefault("capabilities", {})["without"] = list(choice.without)
+    configuration = Configuration(selected.manifest, lock, checkout)
+    configuration.review().require_ready(selected.root)
+    return replace(selected, lock=lock, checkout=checkout, resolution=configuration.resolve().document())

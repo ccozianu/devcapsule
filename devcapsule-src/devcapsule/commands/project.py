@@ -59,7 +59,8 @@ from devcapsule.configuration.nodes import (
     PROVIDER_HOST_DIRECTORY,
     build_node_registry,
 )
-from devcapsule.environment_realization import realize_environment, required_local_image
+from devcapsule.environment_realization import realize_environment, required_local_image, omit_unavailable_optional
+from devcapsule.materialization import ArtifactUnavailable
 from devcapsule.display_client import select_display_transport
 from devcapsule.materialization import ImageDetails, validate_base_image
 from devcapsule.project import project_namespace
@@ -103,7 +104,7 @@ from devcapsule.configuration.authorization import (
     render_authorization_value,
     review_authorizations,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     render_checkout,
     render_toml_scalar,
@@ -237,6 +238,10 @@ class ProjectInitCommand(Command):
             metavar="CAPABILITY",
             help="A capability the project needs; repeatable.",
         )
+        parser.add_argument("--required", nargs="*", metavar="CAPABILITY", help="Create a shared required/optional capability policy.")
+        parser.add_argument("--optional", nargs="*", default=[], metavar="CAPABILITY", help="Optional project enhancements.")
+        parser.add_argument("--local", nargs="*", default=[], metavar="CAPABILITY", help="Developer-local IDE/agent choices.")
+        parser.add_argument("--sdk-major", nargs="*", default=[], metavar="SDK=MAJOR", help="Required SDK major, for example python=3.")
         parser.add_argument("--name", dest="project_name", help="Project display name.")
         parser.add_argument("--slug", help="Project identity slug.")
         parser.add_argument("--creator", help="Project creator URL or email address.")
@@ -278,6 +283,17 @@ class ProjectInitCommand(Command):
             )
             for answer in carrier_answers(arguments)
         )
+        if arguments.required is not None:
+            if arguments.need or arguments.regenerate or arguments.less_pedantic or answers:
+                raise ProjectConfigurationError("--required initializes capability policy; use config commands for permissions and subsequent edits.")
+            from devcapsule.configuration.capability_commands import initialize
+            print(initialize(_project_context(context).target_path(), name=arguments.project_name,
+                             slug=arguments.slug, creator=arguments.creator, mount=arguments.project_mount,
+                             required=arguments.required, optional=arguments.optional, local=arguments.local,
+                             majors=arguments.sdk_major, allow_unverified=arguments.allow_unverified))
+            return 0
+        if arguments.optional or arguments.local or arguments.sdk_major:
+            raise ProjectConfigurationError("--optional, --local and --sdk-major require --required for a new project.")
         report = initialize_project(
             InitializeRequest(
                 directory=_project_context(context).target_path(),
@@ -791,6 +807,57 @@ class ConfigNeedCommand(Command):
         return 0
 
 
+class ConfigCheckCommand(Command):
+    name = "check"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
+    help = "Validate the project capability contract, or candidate files, without writing or launching."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--manifest", type=Path, help="Candidate manifest; defaults to the project's manifest.")
+        parser.add_argument("--lock", type=Path, help="Candidate platform lock; defaults to this platform's lock.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration.capability_commands import check
+        print(check(_project_context(context).start_path(), manifest_path=arguments.manifest, lock_path=arguments.lock))
+        return 0
+
+
+class ConfigCapabilitiesCommand(Command):
+    name = "capabilities"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Replace shared required/optional capabilities or developer-local selections; validate before writing."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--required", nargs="*", metavar="CAPABILITY", help="Replace required project capabilities.")
+        parser.add_argument("--optional", nargs="*", metavar="CAPABILITY", help="Replace optional project enhancements.")
+        parser.add_argument("--sdk-major", nargs="*", metavar="SDK=MAJOR", help="Replace required SDK-major constraints.")
+        parser.add_argument("--local", nargs="*", metavar="CAPABILITY", help="Replace personal IDE/agent/extra-tool choices.")
+        parser.add_argument("--without", nargs="*", metavar="CAPABILITY", help="Replace local omissions of project optional tools.")
+        parser.add_argument("--preview", action="store_true", help="Validate and display the candidate; write nothing.")
+        parser.add_argument("--unverified", action="store_true", help="Explicitly select an unverified combination.")
+        parser.add_argument("--recover", action="store_true", help="Finish or undo an interrupted shared configuration edit.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration.capability_commands import configure, recover
+        from devcapsule.configuration.storage import discover_project
+        start = _project_context(context).start_path()
+        if arguments.recover:
+            if any(getattr(arguments, key) is not None for key in ("required", "optional", "sdk_major", "local", "without")) or arguments.preview or arguments.unverified:
+                raise ProjectConfigurationError("--recover is a standalone operation.")
+            root = start.expanduser().resolve()
+            recover(root if (root / ".devcapsule/.capability-transaction.toml").exists() else discover_project(root))
+            print("Configuration transaction recovered (or none pending).")
+        else:
+            print(configure(start, required=arguments.required, optional=arguments.optional,
+                            majors=arguments.sdk_major, local=arguments.local, without=arguments.without,
+                            preview=arguments.preview, allow_unverified=arguments.unverified))
+        return 0
+
+
 class ConfigGroup(Group):
     name = "config"
     help = "Inspect and resolve layered project configuration."
@@ -799,6 +866,8 @@ class ConfigGroup(Group):
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
             ConfigListCommand.name: ConfigListCommand,
+            ConfigCheckCommand.name: ConfigCheckCommand,
+            ConfigCapabilitiesCommand.name: ConfigCapabilitiesCommand,
             ConfigShowCommand.name: ConfigShowCommand,
             ConfigResolveCommand.name: ConfigResolveCommand,
             ConfigNeedCommand.name: ConfigNeedCommand,
@@ -1113,8 +1182,23 @@ class ProjectRunCommand(Command):
         use_image_process = False
         image_labels: Mapping[str, str] = {}
         realized = None
+        degraded_download = False
         if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
-            realized = realize_environment(selected, report=print, prepare_base=prepare_display)
+            while True:
+                try:
+                    realized = realize_environment(selected, report=print, prepare_base=prepare_display)
+                    break
+                except ArtifactUnavailable as exc:
+                    smaller = omit_unavailable_optional(selected, exc.url)
+                    if smaller is None:
+                        raise
+                    omitted = set(selected.lock["components"]) - set(smaller.lock["components"])
+                    print(f"Warning: optional tools {', '.join(sorted(omitted))} unavailable: {exc}; continuing without those enhancements.", file=sys.stderr)
+                    selected = smaller
+                    lock, checkout, resolved = selected.lock, selected.checkout, selected.resolution
+                    review = review_configuration(manifest, lock, checkout)
+                    authorizations = review.resolved_authorizations()
+                    degraded_download = True
             image = realized.image.reference
             image_labels = realized.image.labels
             checkout_runtime_plan = project_runtime_plan(selected, realized.locked)
@@ -1237,7 +1321,7 @@ class ProjectRunCommand(Command):
         )
         if command_report is not None:
             return exit_code  # Printing is never evidence of successful use.
-        if exit_code == 0:
+        if exit_code == 0 and not degraded_download:
             # D-0008: a zero exit proves this configuration; record it as a
             # known-good generation unless identical content already exists.
             # Recording failure must never fail the successful run.

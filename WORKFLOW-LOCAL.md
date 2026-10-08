@@ -177,6 +177,56 @@ work. Do not silently fall back to the shipped CLI when development setup is
 missing. Other projects retain the standard command unless they explicitly opt
 into this exception. See DEVELOPING.md for checkout overrides and resolution.
 
+### Keep The Development Checkout Launchable
+
+Owner correction, 2026-10-05: **be liberal in what we accept and conservative
+in what we produce**. Compatibility is a contract between contributors with
+different launchers, not a rule that every shared declaration must be understood
+by one frozen release. This supersedes the narrower 2026-10-04 rule.
+
+**DevCapsule commands are the only writers of this project's configuration.**
+This includes the shared manifest, platform locks, checkout configuration and
+generated resolutions. Do not edit them with an editor, script, TOML library
+or Git-file restoration to bypass a missing operation. Use the appropriate
+DevCapsule command; add a supported command when the operation is missing.
+Keep the manifest, locks and resolutions consistent through that operation.
+This rule covers the working project, not deliberately constructed test fixtures.
+
+Before any configuration change, identify the writing executable and run
+configuration validation using at least **`devcapsule0` from the running
+instance**. Record its path, `version --json`, validation command and result.
+Check the proposed result before applying it to the working project, then
+validate the written result. Also validate against the intended next-launch
+host executable when available; the in-capsule check is a minimum, not proof
+of which executable the host will use. Do not substitute validation solely
+with the code being developed.
+
+An inspection command is not automatically a validator. In the current runtime,
+`devcapsule0 project config list` reports recorded launcher configuration;
+`config resolve` writes a resolution and requires the launcher context.
+Neither establishes a read-only candidate-validation command inside the capsule.
+If the required validation or mutation operation is absent, implement it through
+the owning workstream before changing the working configuration. Record the gap;
+do not bypass it through direct file edits or call inspection a successful check.
+
+**Self-hosting is a managed exception.** DevCapsule may deliberately develop
+inside DevCapsule using a newer development executable. Keep the known working
+`devcapsule0` baseline identifiable, validate the transition with it, record any
+compatibility gap and the explicit development-build exception, and retain an
+independent host restart/recovery path. A development build must not silently
+validate away its own bootstrap dependency or replace the user's host launcher.
+
+For 0.3, [R-CONFIG-001](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md)
+requires mandatory needs to be distinguished from optional enhancements.
+Unavailable optional capabilities produce warnings and a usable reduced local
+environment; unmet mandatory needs require an actionable refusal. Degradation
+must preserve the shared declaration and the guarantees of mandatory capabilities.
+Conservative writers preserve unrelated choices and compatible representations.
+This applies to adopter repositories receiving newer contributions, not just
+our self-hosting exception. Until that behavior is implemented, keep the current
+required-only checkout compatible; the existing vocabulary guards are an interim
+regression defense, not the complete future acceptance policy.
+
 ### Local Launch Networking
 
 Owner direction, 2026-09-24: always pursue host networking for this project's

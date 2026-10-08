@@ -15,7 +15,7 @@ from devcapsule.elicitation import (
     ElicitationIncomplete,
     Elicitor,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
 )
 
