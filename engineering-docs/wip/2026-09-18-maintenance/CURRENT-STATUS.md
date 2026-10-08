@@ -24,8 +24,9 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-**2026-10-08: PR #172 reviewed at `4be56a7`; fixes are on the separate
-`ws-maintenance/pr172-correctness` branch.** The owner requested no edits to
+**2026-10-08: PR #172 reviewed at `4be56a7`; fixes are in
+[PR #174](https://github.com/ccozianu/devcapsule/pull/174), from
+`ws-maintenance/pr172-correctness` into `ws-maintenance/post-0.2.15`.** The owner requested no edits to
 #172 and a stacked fix PR. Seven regressions failed before the correction;
 the focused suite now passes 69 tests. The unpack cache now locks each digest
 through inspection and publication, validates completion records and root
@@ -316,7 +317,7 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Await owner review of the stacked cache-correction PR against
+Await owner review of [PR #174](https://github.com/ccozianu/devcapsule/pull/174) against
 `ws-maintenance/post-0.2.15`; PR #172 is unchanged. After approval, the owner
 merges the fix into #172, then synchronizes and integrates that parent PR to main.
 The next product slice remains the universal network authorization node,
@@ -997,7 +998,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- 2026-10-08 review: await the stacked PR's owner review; no merge is authorized.
+- 2026-10-08 review: PR #174 awaits owner review; no merge is authorized.
+- SSH port 22 timed out at delivery. SSH through `ssh.github.com:443`, using
+  the existing `github.com` host-key identity and strict checking, succeeded.
+  No persistent SSH or remote configuration was changed.
 - Main synchronization is deferred for the owner-directed stack; read the
   newer local configuration rules before making any future configuration edit.
 - No Docker benchmark or IDE acceptance was repeated; prior measurements keep
