@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-08 with the omission/version-set fix proposed on a review branch; owner review of PR #170 and the review PR pending
+State: paused 2026-10-08 with the omission/version-set fix proposed in PR #171 into this branch; owner review of #171, then PR #170, pending
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -183,8 +183,8 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Owner reviews the review-branch pull request into `ws-component-catalog/intellij-idea`
-and merges it there, then PR #170 into `main`, titled **Separate project
+Owner reviews PR #171 into `ws-component-catalog/intellij-idea` and merges it there
+(its findings are also a comment on #170), then PR #170 into `main`, titled **Separate project
 capability requirements from personal tools**, using the configured merge-commit
 workflow; the owner operates the GitHub UI. On merge, close the omission bug
 record with the merge as validation. Decide the three open product threads below
@@ -203,7 +203,8 @@ Do not migrate the self-hosting configuration or replace the launcher incidental
   coverage of the changed modules under the focused suites: selection 99%,
   commands 97%; the uncovered arcs are named in the follow-up note. The
   reviewing environment pushes over SSH and has no GitHub API token; the
-  review PR is opened by the owner from the pushed branch.
+  review PR #171 was opened with `gh` once the owner installed it, and the
+  findings were posted as a comment on #170.
 
 - Configuration naming cleanup: full build gate passed (1,245 unit cases,
   ten packaged integration cases, types, syntax, source/PEX smokes and content
