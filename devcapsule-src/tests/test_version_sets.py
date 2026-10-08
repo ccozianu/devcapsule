@@ -981,3 +981,32 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
     assert invoke(runtime_root, "list") == 0
     out = capsys.readouterr().out
     assert str(s.root) in out and "/another/checkout" not in out
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_version_selection_keeps_an_omitted_optional_pin_for_later_restoration(journey, capsys):
+    from devcapsule.configuration.file_formats import selected_version_lock
+    from devcapsule.configuration.storage import load_toml, lock_for
+    manifest_path = journey.root / ".devcapsule/devcapsule.toml"
+    manifest = load_toml(manifest_path)
+    manifest["capabilities"] = {"required": ["python", "python-ide", "codex-agent"], "optional": ["browser-automation"]}
+    manifest_path.write_text(render_toml(manifest))
+    lock = load_toml(journey.lock)
+    playwright = tomllib.loads(MATRICES[Platform.current()].resolve(["python", "browser-automation"], project_only=True).render_lock())["components"]["playwright"]
+    lock["components"]["playwright"] = dict(playwright, version="fixture-shared-pin")
+    journey.lock.write_text(render_toml(lock))
+    assert invoke(journey.root, "config", "capabilities", "--without", "browser-automation") == 0
+    assert "playwright" not in lock_for(journey.root, manifest)[1]["components"]
+    def host_decisions():  # base-image is formation trust, renewed by an explicit selection
+        return {name: value for name, value in load_toml(journey.record)["authorization"].items() if name != "base-image"}
+    decisions = host_decisions()
+    preview_select(journey, capsys)
+    selected = selected_version_lock(load_toml(journey.record))
+    assert selected is not None
+    assert selected["components"]["playwright"]["version"] == "fixture-shared-pin"  # the omission is a run-time filter, not a loss
+    assert selected["components"]["codex"]["version"] == "2.0.0"
+    assert invoke(journey.root, "config", "capabilities", "--without") == 0
+    effective = lock_for(journey.root, manifest)[1]
+    assert effective["components"]["playwright"]["version"] == "fixture-shared-pin"
+    assert effective["components"]["codex"]["version"] == "2.0.0"
+    assert host_decisions() == decisions
