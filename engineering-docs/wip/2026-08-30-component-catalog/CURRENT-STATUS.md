@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-06 after configuration naming cleanup; confirmed omission/version-set defect still needs follow-up
+State: paused 2026-10-08 with the omission/version-set fix proposed on a review branch; owner review of PR #170 and the review PR pending
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,35 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- 2026-10-08, owner-directed correctness review of the configuration slice
+  (Claude Fable 5.1), on review branch `ws-component-catalog/intellij-idea-correctness`
+  branched from this workstream's branch, proposed as a pull request into
+  `ws-component-catalog/intellij-idea` because the reviewing environment has
+  no GitHub token to comment on PR #170 directly. The owner asked for failing
+  unit tests before each fix; the branch has three commits: showcase tests,
+  fix, records.
+- Fixed the confirmed omission/version-set defect by separating the checkout's
+  persistent selection (`compose_lock`) from its execution projection
+  (`usable_lock`); only the projection applies omissions and every version-set
+  writer persists the selection. The same review found and fixed three smaller
+  defects: locally selecting a project-optional tool re-pinned it from the
+  catalog instead of following the shared lock; a corrupt local pins document
+  crashed `config capabilities --local` with a traceback; `init --local
+  codex-agent` without an IDE was refused while `config capabilities --local`
+  accepted it. One message now names an unavailable local selection as such.
+  `configure` is split into project and local halves; the version-set
+  workspace carries the composition beside the effective lock.
+- Argument and limits are in the commit-pinned
+  [follow-up note](../../implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md);
+  the 2026-10-06 argument keeps its snapshot and now points at it. The bug
+  record is `fixed`, to be closed by the owner on merge. The user guide states
+  that an omission hides a tool without changing the selection.
+- Judgment call recorded: the review branch is not a registered workstream
+  branch. The owner directed it explicitly as the delivery vehicle for review
+  comments on PR #170; the workstream's branch association is unchanged, and
+  the records below are edited on the review branch so they travel with the
+  change they describe.
 
 - Renamed the configuration format module to `file_formats.py`, with
   `ConfigurationFileKind`, `validate_file_format` and `render_toml` replacing
@@ -154,17 +183,27 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Address the confirmed optional-omission/version-set bug with a regression that
-combines the two behaviors, preserving exact pins and host decisions. The current
-owner request was a documentation review, so the cited implementation remains
-unchanged. Review the finding with the owner before resuming implementation.
-Then open/update the branch PR in GitHub, titled **Separate project capability
-requirements from personal tools**, using the configured merge-commit workflow.
-The owner operates the GitHub UI. Remote main does not yet contain this slice.
-Release/adoption sequencing belongs to project-management. Do not migrate the
-self-hosting configuration or replace the launcher incidentally.
+Owner reviews the review-branch pull request into `ws-component-catalog/intellij-idea`
+and merges it there, then PR #170 into `main`, titled **Separate project
+capability requirements from personal tools**, using the configured merge-commit
+workflow; the owner operates the GitHub UI. On merge, close the omission bug
+record with the merge as validation. Decide the three open product threads below
+(rollback composition, corrupt-pin recovery, `proposal` exporting the
+projection) or hand them to `project-management`. Remote main does not yet
+contain this slice. Release/adoption sequencing belongs to project-management.
+Do not migrate the self-hosting configuration or replace the launcher incidentally.
 
 ## Validation And External State
+
+- Correctness review fix: full `nox -s build` passed on the review branch
+  (1,253 unit cases, ten packaged integration cases, mypy, syntax/version
+  checks, source/PEX smokes and content contract). Log:
+  `.git/correctness-review-build.log`. The six showcase tests fail at `17289b9`
+  and pass at the fix; two deselection guards were added with the fix. Branch
+  coverage of the changed modules under the focused suites: selection 99%,
+  commands 97%; the uncovered arcs are named in the follow-up note. The
+  reviewing environment pushes over SSH and has no GitHub API token; the
+  review PR is opened by the owner from the pushed branch.
 
 - Configuration naming cleanup: full build gate passed (1,245 unit cases,
   ten packaged integration cases, types, syntax, source/PEX smokes and content
@@ -259,6 +298,20 @@ self-hosting configuration or replace the launcher incidentally.
 
 ## Open Threads
 
+- Awaiting the owner: review and merge of the correctness review branch into
+  this workstream's branch, then PR #170. The review found no further defect in
+  the composition and persistence boundary; artifact integrity, authorization
+  and realization keep the earlier note's arguments and limits.
+- Product decisions surfaced by the review, not taken: (1) `versions rollback`
+  re-persists an execution snapshot, so a rollback to a run that omitted an
+  optional tool bakes the omission in; fixing it needs the composition recorded
+  beside the known-good lock. (2) A corrupt local pins document is refused and
+  left intact; there is no command-only recovery. (3) `versions proposal`
+  exports the effective lock, so personal IDE or omission state appears as a
+  project change; pre-existing and outside the slice's diff.
+- The `--local` selection of a tool the project already declares now follows
+  the project's pin; the owner may prefer refusing such a selection outright.
+
 - API documentation correction leaves the user's pre-existing `.idea/project.iml`
   edit untouched and uncommitted. No other source changes were present on entry.
   Entry brief again reported zero commits behind main and no definition changes;
@@ -292,7 +345,8 @@ self-hosting configuration or replace the launcher incidentally.
 ## Workstream Document Index
 
 - [Commit-pinned implementation and test correctness](../../implementation-notes/devcapsule/2026-10-06-configuration-correctness.md) — owner-requested review
-- [Optional omission loses local version pin](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md) — confirmed follow-up
+- [Persistent selection versus execution projection](../../implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md) — fix argument, commit-pinned
+- [Optional omission loses local version pin](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md) — fixed on the review branch, close on merge
 
 - [Capability system guide](../../../docs/configuration/capabilities.md) — ab-initio user documentation
 

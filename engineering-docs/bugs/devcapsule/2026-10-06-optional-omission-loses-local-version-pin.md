@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: minor
 target: none
 owner: component-catalog
@@ -117,3 +117,24 @@ The [correctness argument](../../implementation-notes/devcapsule/2026-10-06-conf
 explains which invariants still hold and why the existing tests missed this
 interaction. Owner is `component-catalog` because that open workstream owns this
 configuration implementation; the follow-up precedes its integration handoff.
+
+## Fix (2026-10-08)
+
+Fixed on review branch `ws-component-catalog/intellij-idea-correctness`, commit
+`236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98`, proposed as a pull request into
+the workstream branch. The implementation now distinguishes the checkout's
+persistent selection (`compose_lock`) from its execution projection
+(`usable_lock`); only the projection applies omissions, and every writer of a
+version-set record writes the selection. The regression combining the sentinel
+version-set pin with omit and restore is
+`tests/test_capability_policy.py::test_omitting_then_restoring_an_optional_keeps_the_version_set_pin`;
+the same interaction through `versions preview`/`select` is
+`tests/test_version_sets.py::test_version_selection_keeps_an_omitted_optional_pin_for_later_restoration`.
+Both failed on the reviewed commit and pass with the fix. The argument is the
+[2026-10-08 follow-up note](../../implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md).
+
+Close when the owner has merged the review branch and the workstream PR; reopen
+if a writer of `version-set.lock` is added that persists an execution
+projection, or if `rollback` is changed to compose from known-good records
+without preserving omitted optional pins (currently a recorded limit, not a
+regression of this fix).
