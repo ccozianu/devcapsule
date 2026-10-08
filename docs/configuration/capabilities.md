@@ -118,6 +118,12 @@ Only optional capabilities can be omitted this way. A dependency needed by a
 mandatory capability remains installed even if it also supplies an optional one.
 A local choice cannot waive the project's SDK major or remove a mandatory tool.
 
+An omission hides a tool from your launches; it does not change what your
+checkout has selected. Your version pins, including an explicit local version
+set, keep the omitted tool's exact version, and restoring the enhancement
+brings that version back. Selecting a tool the project already lists keeps the
+project's pin rather than taking a newer one from the launcher's catalog.
+
 ## Validate and recover
 
 ```sh

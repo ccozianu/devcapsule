@@ -334,6 +334,10 @@ coverage data is not replaced by another pytest session.
 
 ## 4. Counterexample: omission destroys a retained version-set pin
 
+*Follow-up, 2026-10-08:* this obligation is discharged in the
+[persistent selection versus execution projection](2026-10-08-configuration-composition-correctness.md)
+note, pinned to its own commit. This section is kept as the original snapshot.
+
 The guide promises that empty [`--without` restores enhancements, lines 100–119][promise].
 For an existing explicit local version set containing Playwright:
 

@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-06 after configuration naming cleanup; confirmed omission/version-set defect still needs follow-up
+State: paused 2026-10-08; Codex accepts the revised PR #171 for merge into the workstream branch; PR #170 awaits subsequent human review
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,92 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- 2026-10-08, Codex re-review at `522f239`: all three original independent
+  counterexamples now pass; the revised consent, artifact-pinning and preview
+  freshness paths address the findings without discarding hidden pins. The
+  retained-consent regression is also covered in the branch's tests. No further
+  blocking finding. Accepted for integration through
+  [PR #171](https://github.com/ccozianu/devcapsule/pull/171) into
+  `ws-component-catalog/intellij-idea`, with a merge commit as authorized by
+  the owner. PR #170 is not approved or merged by this acceptance.
+- The full-composition fingerprint is an accepted conservative tradeoff for
+  ephemeral previews: metadata-only changes can require a fresh preview, while
+  execution/known-good identities remain unchanged. Old previews lacking the
+  fingerprint safely require regeneration. The note now explicitly excludes
+  rollback from the persistence claim. No source changes made in this re-review.
+- Entry: zero commits behind main and unchanged workflow; no synchronization
+  needed. No waiting mail or undecided intake. Both owned bug records remain
+  fixed pending their documented closure conditions; the omission record calls
+  for integration of both #171 and #170. The existing IDE edit stays uncommitted.
+
+- 2026-10-08, response to the Codex review of PR #171 (Claude Fable 5.1). All
+  three findings were valid and are fixed on the review branch: `babbb96` adds
+  four reproducers (the two Codex counterexamples, the retained-consent variant
+  and the stale-preview case) that fail at `236fa3c`; `e9be77a` makes `select`
+  read consent declarations from the admitted projection, pin artifacts on the
+  projection and write only active entries back, and refuse a preview whose
+  composition fingerprint no longer matches. Hidden and opaque entries are
+  carried unchanged. `set_id` and known-good identities are untouched. The
+  follow-up note now states the converse invariant (consumers act on the
+  projection) and qualifies the persistence claim to the two command writers,
+  rollback excluded. Nothing was pushed back: each counterexample reproduced
+  as described.
+
+- 2026-10-08, owner-directed Codex review of PR #171 at `7c8e355`:
+  original six defects independently reproduced on test-only commit `3bc9eb6`;
+  all 252 capability-policy, version-set and upgrade-recovery cases pass on
+  the proposed tree. Composition/projection separation is justified, but
+  [changes requested on #171](https://github.com/ccozianu/devcapsule/pull/171#issuecomment-6056998885):
+  version selection reads omitted acquisition declarations and crashes for
+  absent Antigravity consent; artifact pinning attempts acquisition of an
+  unsupported optional provider. Both new counterexamples pass before the
+  fix and fail on the PR. A third counterexample shows preview freshness
+  ignores changed hidden pins and silently persists their old versions.
+- Next reviewer/author should fix those boundaries, add the counterexamples
+  as regressions, and qualify the universal persistence claim that excludes
+  rollback. Reproducer code and proposed corrections are in the PR comment;
+  scratch evidence is under `/opt/devcapsule-gate/pr171-review/`. No source
+  or test changes were made by this review. Existing rollback, corrupt-pin
+  recovery and proposal-export product threads remain for later discussion.
+- The owner explicitly authorized review/acceptance or comments on #171 via
+  the newly available `gh`; #170 stays for the human after #171 is resolved.
+  Activate with `source /opt/xtras/miniconda3/etc/profile.d/conda.sh` then
+  `conda activate gh`, without shell-startup-file edits. Both agents use the
+  PR author's GitHub account, so the review is a PR comment, not a formal
+  self-review. No PR was merged. Entry synchronization: zero commits behind
+  main, unchanged definition/local workflow; nothing to synchronize. No mail
+  or undecided intake. Owned bugs remain omission/version-set (fixed pending
+  acceptance) and Playwright launcher compatibility (fixed pending host acceptance).
+
+- 2026-10-08, owner-directed correctness review of the configuration slice
+  (Claude Fable 5.1), on review branch `ws-component-catalog/intellij-idea-correctness`
+  branched from this workstream's branch, proposed as a pull request into
+  `ws-component-catalog/intellij-idea` because the reviewing environment has
+  no GitHub token to comment on PR #170 directly. The owner asked for failing
+  unit tests before each fix; the branch has three commits: showcase tests,
+  fix, records.
+- Fixed the confirmed omission/version-set defect by separating the checkout's
+  persistent selection (`compose_lock`) from its execution projection
+  (`usable_lock`); only the projection applies omissions and every version-set
+  writer persists the selection. The same review found and fixed three smaller
+  defects: locally selecting a project-optional tool re-pinned it from the
+  catalog instead of following the shared lock; a corrupt local pins document
+  crashed `config capabilities --local` with a traceback; `init --local
+  codex-agent` without an IDE was refused while `config capabilities --local`
+  accepted it. One message now names an unavailable local selection as such.
+  `configure` is split into project and local halves; the version-set
+  workspace carries the composition beside the effective lock.
+- Argument and limits are in the commit-pinned
+  [follow-up note](../../implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md);
+  the 2026-10-06 argument keeps its snapshot and now points at it. The bug
+  record is `fixed`, to be closed by the owner on merge. The user guide states
+  that an omission hides a tool without changing the selection.
+- Judgment call recorded: the review branch is not a registered workstream
+  branch. The owner directed it explicitly as the delivery vehicle for review
+  comments on PR #170; the workstream's branch association is unchanged, and
+  the records below are edited on the review branch so they travel with the
+  change they describe.
 
 - Renamed the configuration format module to `file_formats.py`, with
   `ConfigurationFileKind`, `validate_file_format` and `render_toml` replacing
@@ -154,17 +240,46 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Address the confirmed optional-omission/version-set bug with a regression that
-combines the two behaviors, preserving exact pins and host decisions. The current
-owner request was a documentation review, so the cited implementation remains
-unchanged. Review the finding with the owner before resuming implementation.
-Then open/update the branch PR in GitHub, titled **Separate project capability
-requirements from personal tools**, using the configured merge-commit workflow.
-The owner operates the GitHub UI. Remote main does not yet contain this slice.
-Release/adoption sequencing belongs to project-management. Do not migrate the
-self-hosting configuration or replace the launcher incidentally.
+Finish the accepted PR #171 merge into `ws-component-catalog/intellij-idea` and
+verify its remote result. Then the human reviews PR #170 with Codex; no merge of
+#170 is authorized by this review exchange. Discuss rollback composition,
+command-only recovery from corrupt pins, and proposal export in that later
+review. Do not migrate self-hosting configuration or replace the launcher.
 
 ## Validation And External State
+
+- Codex acceptance recheck at `522f239`: the three independent PR-review
+  counterexamples pass. Full `nox -s build` passed with 1,257 passing unit
+  cases, one xfail, one pre-existing non-strict xpass, ten packaged integration
+  cases, types, syntax/version checks, source/PEX smokes and content contract.
+  Log: `/opt/devcapsule-gate/pr171-review/acceptance-build.log`. No containers,
+  self-hosting configuration changes or host-launcher replacement were needed.
+
+- Codex-review response: full `nox -s build` passed on the revised tree
+  (1,257 unit cases, ten packaged integration cases, mypy, syntax/version
+  checks, source/PEX smokes and content contract). Log:
+  `.git/correctness-review-build.log`. The four new reproducers fail at
+  `236fa3c` and pass at `e9be77a`; the earlier eight still pass.
+
+- Codex review handoff: full `nox -s build` passed (1,253 passing unit cases,
+  one xfail and one pre-existing non-strict xpass, ten packaged integration
+  cases, types, syntax/version checks,
+  source/PEX smokes and documentation contract). Log:
+  `/opt/devcapsule-gate/pr171-review/build.log`. This validates the existing
+  automated gate; it does not invalidate the three additional counterexamples
+  posted on #171. Only workstream/root status records changed in this handoff;
+  the pre-existing `.idea/project.iml` edit remains untouched and uncommitted.
+
+- Correctness review fix: full `nox -s build` passed on the review branch
+  (1,253 unit cases, ten packaged integration cases, mypy, syntax/version
+  checks, source/PEX smokes and content contract). Log:
+  `.git/correctness-review-build.log`. The six showcase tests fail at `17289b9`
+  and pass at the fix; two deselection guards were added with the fix. Branch
+  coverage of the changed modules under the focused suites: selection 99%,
+  commands 97%; the uncovered arcs are named in the follow-up note. The
+  reviewing environment pushes over SSH and has no GitHub API token; the
+  review PR #171 was opened with `gh` once the owner installed it, and the
+  findings were posted as a comment on #170.
 
 - Configuration naming cleanup: full build gate passed (1,245 unit cases,
   ten packaged integration cases, types, syntax, source/PEX smokes and content
@@ -259,6 +374,24 @@ self-hosting configuration or replace the launcher incidentally.
 
 ## Open Threads
 
+- Codex accepts the revised #171; its GitHub merge status is the external
+  integration record and must be checked on resumption. The owner and Codex
+  next review #170. There are no outstanding requests to Fable on #171.
+- Full-composition preview fingerprinting is deliberately conservative and
+  accepted; a narrower digest is not needed for this slice. Re-review found
+  no additional blocking defect. Counterexamples remain in the PR discussion
+  and regression suite; no raw session transcript is retained.
+
+- Product decisions surfaced by the review, not taken: (1) `versions rollback`
+  re-persists an execution snapshot, so a rollback to a run that omitted an
+  optional tool bakes the omission in; fixing it needs the composition recorded
+  beside the known-good lock. (2) A corrupt local pins document is refused and
+  left intact; there is no command-only recovery. (3) `versions proposal`
+  exports the effective lock, so personal IDE or omission state appears as a
+  project change; pre-existing and outside the slice's diff.
+- The `--local` selection of a tool the project already declares now follows
+  the project's pin; the owner may prefer refusing such a selection outright.
+
 - API documentation correction leaves the user's pre-existing `.idea/project.iml`
   edit untouched and uncommitted. No other source changes were present on entry.
   Entry brief again reported zero commits behind main and no definition changes;
@@ -292,7 +425,8 @@ self-hosting configuration or replace the launcher incidentally.
 ## Workstream Document Index
 
 - [Commit-pinned implementation and test correctness](../../implementation-notes/devcapsule/2026-10-06-configuration-correctness.md) — owner-requested review
-- [Optional omission loses local version pin](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md) — confirmed follow-up
+- [Persistent selection versus execution projection](../../implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md) — fix argument, commit-pinned
+- [Optional omission loses local version pin](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md) — fixed on the review branch, close on merge
 
 - [Capability system guide](../../../docs/configuration/capabilities.md) — ab-initio user documentation
 

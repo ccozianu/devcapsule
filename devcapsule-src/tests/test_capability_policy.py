@@ -642,3 +642,111 @@ def test_check_rejects_corrupt_optional_pin_without_writing(project: Path) -> No
     with pytest.raises(CliError, match="SHA-256"):
         commands.check(project, manifest_path=manifest, lock_path=candidate_path)
     assert shared_bytes(project) == before
+
+
+def test_omitting_then_restoring_an_optional_keeps_the_version_set_pin(project: Path) -> None:
+    from devcapsule.configuration.file_formats import canonical_digest, selected_version_lock
+    commands.configure(project, required=["python"], optional=["browser-automation"])
+    commands.configure(project, local=["python-ide"])
+    manifest = load_toml(commands.paths(project)[0])
+    input_path, _ = checkout_record_paths(manifest, project)
+    checkout = load_toml(input_path)
+    lock = lock_for(project, manifest)[1]
+    lock["components"]["playwright"]["version"] = "fixture-local-pin"
+    checkout["version-set"] = {"format": 1, "lock": render_toml(lock), "recommendation-digest": canonical_digest(load_toml(commands.paths(project)[1]))}
+    checkout["authorization"] = {"host-x11": {"value": False, "recommendation-digest": "fixture"}}
+    input_path.write_text(render_toml(checkout))
+    before = shared_bytes(project)
+    commands.configure(project, without=["browser-automation"])
+    assert "playwright" not in lock_for(project, manifest)[1]["components"]
+    selected = selected_version_lock(load_toml(input_path))
+    assert selected is not None
+    assert selected["components"]["playwright"]["version"] == "fixture-local-pin"  # persistent intent survives the omission
+    commands.configure(project, without=[])
+    assert lock_for(project, manifest)[1]["components"]["playwright"]["version"] == "fixture-local-pin"
+    assert load_toml(input_path)["authorization"] == checkout["authorization"]
+    assert shared_bytes(project) == before
+
+
+def test_locally_selecting_a_project_optional_tool_follows_the_shared_pin(project: Path) -> None:
+    commands.configure(project, required=["python"], optional=["browser-automation"])
+    _, lock_path, _ = commands.paths(project)
+    lock = load_toml(lock_path)
+    lock["components"]["playwright"]["version"] = "fixture-shared-pin"
+    lock_path.write_text(render_toml(lock))
+    commands.configure(project, local=["python-ide", "browser-automation"])
+    manifest = load_toml(commands.paths(project)[0])
+    assert lock_for(project, manifest)[1]["components"]["playwright"]["version"] == "fixture-shared-pin"
+
+
+def test_corrupt_local_pins_are_refused_without_changing_the_record(project: Path) -> None:
+    commands.configure(project, local=["codex-agent"])
+    manifest = load_toml(commands.paths(project)[0])
+    input_path, _ = checkout_record_paths(manifest, project)
+    checkout = load_toml(input_path)
+    checkout["capabilities"]["lock"] = "[bad"
+    input_path.write_text(render_toml(checkout))
+    before = input_path.read_bytes()
+    with pytest.raises(ProjectConfigurationError, match="pins"):
+        commands.configure(project, local=["codex-agent", "claude-code-agent"])
+    assert input_path.read_bytes() == before
+
+
+def test_new_project_may_select_an_agent_before_choosing_an_ide(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    root = tmp_path / "fresh"
+    root.mkdir()
+    commands.initialize(root, name=None, slug=None, creator="mailto:owner@example.test", mount=None,
+                        required=["python"], optional=[], majors=[], local=["codex-agent"])
+    manifest = load_toml(commands.paths(root)[0])
+    with pytest.raises(ProjectConfigurationError, match="Choose a local IDE"):
+        lock_for(root, manifest)
+    commands.configure(root, local=["codex-agent", "python-ide"])
+    assert set(lock_for(root, manifest)[1]["components"]) == {"interactive-surface", "pycharm", "codex"}
+
+
+def test_unavailable_local_selection_is_named_as_a_selection() -> None:
+    lock = generate_lock(CapabilityPolicy(("python",), layered=True), MATRIX)
+    with pytest.raises(ProjectConfigurationError, match="Selected capability 'codex-agent'"):
+        usable_lock(CapabilityPolicy(("python",), layered=True), lock, LocalCapabilities(("codex-agent",)))
+
+
+
+def version_set_with(project: Path, **pins: str) -> tuple[dict[str, Any], Path]:
+    """Record an explicit version set equal to the effective lock, with sentinel component versions."""
+    from devcapsule.configuration.file_formats import canonical_digest
+    manifest = load_toml(commands.paths(project)[0])
+    input_path, _ = checkout_record_paths(manifest, project)
+    checkout = load_toml(input_path)
+    lock = lock_for(project, manifest)[1]
+    for component, version in pins.items():
+        lock["components"][component]["version"] = version
+    checkout["version-set"] = {"format": 1, "lock": render_toml(lock), "recommendation-digest": canonical_digest(load_toml(commands.paths(project)[1]))}
+    input_path.write_text(render_toml(checkout))
+    return manifest, input_path
+
+
+def test_deselecting_a_project_optional_tool_keeps_its_version_set_pin(project: Path) -> None:
+    from devcapsule.configuration.file_formats import selected_version_lock
+    commands.configure(project, required=["python"], optional=["browser-automation"])
+    commands.configure(project, local=["python-ide", "browser-automation"])
+    manifest, input_path = version_set_with(project, playwright="fixture-local-pin")
+    commands.configure(project, local=["python-ide"])
+    selected = selected_version_lock(load_toml(input_path))
+    assert selected is not None
+    assert selected["components"]["playwright"]["version"] == "fixture-local-pin"  # the project still wants it
+    assert lock_for(project, manifest)[1]["components"]["playwright"]["version"] == "fixture-local-pin"
+
+
+def test_deselecting_an_agent_removes_its_pin_from_the_version_set(project: Path) -> None:
+    from devcapsule.configuration.file_formats import selected_version_lock
+    commands.configure(project, required=["python"])
+    commands.configure(project, local=["python-ide", "codex-agent"])
+    manifest, input_path = version_set_with(project, codex="fixture-agent-pin", pycharm="fixture-ide-pin")
+    commands.configure(project, local=["python-ide"])
+    selected = selected_version_lock(load_toml(input_path))
+    assert selected is not None
+    assert "codex" not in selected["components"]
+    assert selected["components"]["pycharm"]["version"] == "fixture-ide-pin"
+    assert selected["components"]["interactive-surface"] == "pycharm"
+    assert set(lock_for(project, manifest)[1]["components"]) == {"interactive-surface", "pycharm"}

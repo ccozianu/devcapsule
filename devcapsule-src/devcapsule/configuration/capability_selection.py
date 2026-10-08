@@ -1,8 +1,11 @@
 """Offline generation and tolerant consumption of capability locks.
 
-Shared bytes are never changed by consumption. Mandatory providers are checked
-first; optional provider closures are admitted only as whole units. Local
-component pins are overlaid on the shared base, then the same policy is checked.
+Shared bytes are never changed by consumption. Two steps are kept apart:
+``compose_lock`` builds the persistent selection (shared lock plus personal
+pins, or an explicit version set) and ``usable_lock`` projects it for one
+execution, checking mandatory providers first and admitting optional provider
+closures only as whole units. Only the projection applies omissions, so a
+persisted selection never loses what an omission merely hides.
 """
 from __future__ import annotations
 
@@ -82,51 +85,97 @@ def check_majors(policy: CapabilityPolicy, lock: Mapping[str, Any], matrix: Reso
             )
 
 
-def selected_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
-                  checkout: Mapping[str, Any], *, warn: bool = True) -> dict[str, Any]:
-    """Return the checkout's effective lock without changing input documents.
+def local_pins(checkout: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the checkout's personal provider pins as a parsed lock document.
 
-    Use its explicit version set when present; otherwise overlay its personal
-    component pins on ``shared``. Apply ``usable_lock`` to enforce required
-    capabilities and local choices. Missing local pins or a conflicting shared
-    IDE raise ProjectConfigurationError. ``warn`` prints optional omissions
-    to stderr; False suppresses that output, not validation.
+    The pins are the TOML text in ``capabilities.lock``, written by the local
+    capability command. A missing field means no pins: an empty dict. Raise
+    ProjectConfigurationError for a field that is not a string or not TOML.
+    The checkout is unchanged; the result is new.
+    """
+    encoded = table(checkout, "capabilities").get("lock")
+    if encoded is None:
+        return {}
+    if not isinstance(encoded, str):
+        raise ProjectConfigurationError("Local capabilities.lock must contain a TOML lock.")
+    try:
+        return tomllib.loads(encoded)
+    except tomllib.TOMLDecodeError as exc:
+        raise ProjectConfigurationError(f"Invalid local capability pins: {exc}") from exc
+
+
+def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
+                 checkout: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the checkout's persistent software selection, before any filtering.
+
+    An explicit version set is that selection and is returned as a copy.
+    Otherwise the result is ``shared`` with the checkout's personal pins laid
+    over it: exactly the providers of each locally selected capability, and
+    the IDE selector with its materialization when a selected capability
+    supplies the IDE. A selected IDE that differs from the shared lock's
+    IDE raises ProjectConfigurationError, as do missing or malformed pins and
+    an omission of something the project does not list as optional.
+    Omissions are not applied here; ``usable_lock`` filters for execution.
+    Input documents are unchanged.
     """
     from .file_formats import selected_version_lock
     local = LocalCapabilities.read(checkout)
-    policy = CapabilityPolicy.read(manifest)
-    local.validate(policy)
+    local.validate(CapabilityPolicy.read(manifest))
     selected = selected_version_lock(checkout)
-    lock = deepcopy(dict(selected if selected is not None else shared))
-    if selected is None and local.selected:
-        encoded = table(checkout, "capabilities").get("lock")
-        if not isinstance(encoded, str):
-            raise ProjectConfigurationError("Local capability pins are missing; run 'project config capabilities --local CAPABILITY ...'.")
-        try:
-            pins = tomllib.loads(encoded)
-        except tomllib.TOMLDecodeError as exc:
-            raise ProjectConfigurationError(f"Invalid local capability pins: {exc}") from exc
-        matrix = matrix_for(lock)
-        for capability in local.selected:
-            for component in matrix.providers(capability):
-                metadata = table(pins, "components").get(component)
-                if metadata is None:
-                    raise ProjectConfigurationError(f"Local selection is missing provider {component!r}; select local capabilities again.")
-                lock.setdefault("components", {})[component] = deepcopy(metadata)
-        surface = table(pins, "components").get("interactive-surface")
-        if surface:
-            previous_surface = lock["components"].get("interactive-surface")
-            if previous_surface and previous_surface != surface:
-                # A legacy required surface is still mandatory until explicitly
-                # migrated by its project owner.
-                raise ProjectConfigurationError("Local IDE conflicts with the project's required IDE; migrate the project declaration first.")
-            lock["components"]["interactive-surface"] = surface
-            lock["materialization"] = deepcopy(pins["materialization"])
-    usable, notices = usable_lock(policy, lock, local)
+    if selected is not None:
+        return selected
+    lock = deepcopy(dict(shared))
+    if not local.selected:
+        return lock
+    pins = local_pins(checkout)
+    if not pins:
+        raise ProjectConfigurationError("Local capability pins are missing; run 'project config capabilities --local CAPABILITY ...'.")
+    matrix = matrix_for(lock)
+    pinned = table(pins, "components")
+    overlaid: set[str] = set()
+    for capability in local.selected:
+        for component in matrix.providers(capability):
+            metadata = pinned.get(component)
+            if metadata is None:
+                raise ProjectConfigurationError(f"Local selection is missing provider {component!r}; select local capabilities again.")
+            lock.setdefault("components", {})[component] = deepcopy(metadata)
+            overlaid.add(component)
+    surface = pinned.get("interactive-surface")
+    if surface in overlaid:
+        shared_surface = lock["components"].get("interactive-surface")
+        if shared_surface and shared_surface != surface:
+            # A legacy required surface is still mandatory until explicitly
+            # migrated by its project owner.
+            raise ProjectConfigurationError("Local IDE conflicts with the project's required IDE; migrate the project declaration first.")
+        lock["components"]["interactive-surface"] = surface
+        lock["materialization"] = deepcopy(table(pins, "materialization"))
+    return lock
+
+
+def effective_lock(manifest: Mapping[str, Any], composed: Mapping[str, Any],
+                   checkout: Mapping[str, Any], *, warn: bool = True) -> dict[str, Any]:
+    """Return the execution projection of a composed selection.
+
+    Apply ``usable_lock`` with the manifest's policy and the checkout's local
+    choices. ``warn`` prints optional omissions to stderr; False suppresses
+    that output, not validation. Inputs are unchanged.
+    """
+    usable, notices = usable_lock(CapabilityPolicy.read(manifest), composed, LocalCapabilities.read(checkout))
     if warn:
         for notice in notices:
             print(f"Warning: {notice}", file=sys.stderr)
     return usable
+
+
+def selected_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
+                  checkout: Mapping[str, Any], *, warn: bool = True) -> dict[str, Any]:
+    """Return the checkout's effective lock without changing input documents.
+
+    This is ``effective_lock`` of ``compose_lock``: the persistent selection
+    (explicit version set, or ``shared`` plus personal pins) filtered by the
+    policy and local omissions. Errors and ``warn`` behave as in those two.
+    """
+    return effective_lock(manifest, compose_lock(manifest, shared, checkout), checkout, warn=warn)
 
 
 def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
@@ -166,11 +215,12 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
             raise ProjectConfigurationError("missing supported providers: " + ", ".join(missing))
         return providers
 
-    for capability in (*policy.required, *local.selected):
-        try:
-            keep.update(supply(capability))
-        except ProjectConfigurationError as exc:
-            raise ProjectConfigurationError(f"Required capability {capability!r} is unavailable: {exc}. Upgrade the launcher or select compatible components.") from exc
+    for role, capabilities in (("Required", policy.required), ("Selected", local.selected)):
+        for capability in capabilities:
+            try:
+                keep.update(supply(capability))
+            except ProjectConfigurationError as exc:
+                raise ProjectConfigurationError(f"{role} capability {capability!r} is unavailable: {exc}. Upgrade the launcher or select compatible components.") from exc
     check_majors(policy, lock, matrix)
     for capability in policy.optional:
         if capability in local.without:
