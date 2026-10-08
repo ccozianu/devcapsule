@@ -220,7 +220,8 @@ the launcher incidentally.
 ## Validation And External State
 
 - Codex review handoff: full `nox -s build` passed (1,253 passing unit cases,
-  two xfails, ten packaged integration cases, types, syntax/version checks,
+  one xfail and one pre-existing non-strict xpass, ten packaged integration
+  cases, types, syntax/version checks,
   source/PEX smokes and documentation contract). Log:
   `/opt/devcapsule-gate/pr171-review/build.log`. This validates the existing
   automated gate; it does not invalidate the three additional counterexamples
