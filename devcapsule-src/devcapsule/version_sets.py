@@ -21,9 +21,11 @@ from devcapsule.components.catalog import COMPONENTS, selected_component_definit
 from devcapsule.configuration.authorization import AuthorizationReview, authorization_declarations, authorized_base_selection, normalize_authorization_value
 from devcapsule.configuration.file_formats import canonical_digest, render_toml, selected_version_lock
 from devcapsule.configuration.model import Configuration
+from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+from devcapsule.configuration.capability_selection import usable_lock
 from devcapsule.configuration.storage import (
     ResolvedProject, activate_configuration, atomic_write, checkout_record_paths,
-    load_checkout, load_toml, lock_for, manifest_for, recommendation_lock_for,
+    load_checkout, load_toml, manifest_for, recommendation_lock_for, selection_for,
 )
 from devcapsule.environment_realization import RealizedEnvironment, realize_environment
 from devcapsule.materialization import ArtifactSpec, acquire_artifact, cache_root, parse_locked_environment, sha256_file
@@ -43,14 +45,16 @@ class Workspace:
     input_path: Path
     output_path: Path
     checkout: dict[str, Any]
+    composition: dict[str, Any]
+    """The persistent selection ``lock`` is projected from; version sets are authored from it."""
 
     @classmethod
     def load(cls, start: Path) -> Workspace:
         root, manifest = manifest_for(start)
-        lock_path, lock = lock_for(root, manifest)
+        lock_path, composition, lock = selection_for(root, manifest)
         input_path, output_path = checkout_record_paths(manifest, root)
         checkout = load_checkout(input_path, manifest, root)
-        return cls(root, manifest, lock_path, lock, input_path, output_path, checkout)
+        return cls(root, manifest, lock_path, lock, input_path, output_path, checkout, composition)
 
     @property
     def state(self) -> Path:
@@ -329,14 +333,16 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
         actual = workspace.lock["components"].get(dependency, {}).get("version")
         if actual != required:
             raise CliError(f"Candidate requires {dependency} {required}; current version is {actual}. Preview/select that dependency explicitly first.")
-    candidate = deepcopy(workspace.lock)
+    # The candidate is the whole persistent selection, so pins that a local
+    # omission merely hides survive; checks run on what would actually execute.
+    candidate = deepcopy(workspace.composition)
     candidate["components"][component] = deepcopy(dict(selection.metadata))
     # Check structural install contracts without downloading payloads. Published
     # SHA-512 identities are already exact; preparation additionally pins SHA-256.
-    structural = deepcopy(candidate)
+    structural = _projection(workspace, candidate)
     _placeholder_hashes(structural)
     parse_locked_environment(structural)
-    evidence, missing = _validation(candidate, workspace.checkout)
+    evidence, missing = _validation(_projection(workspace, candidate), workspace.checkout)
     if missing:
         candidate["unverified-combinations"] = "; ".join(missing)
     else:
@@ -346,7 +352,7 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
     identity = canonical_digest(proposal)
     atomic_write(workspace.state / "previews" / f"{identity}.toml", render_toml(proposal))
     report(f"Preview {identity}\n{component}: {workspace.lock['components'][component]['version']} -> {selection.metadata['version']}")
-    report(_diff(workspace.lock, candidate))
+    report(_diff(workspace.composition, candidate))
     report(f"Distribution status: {selection.status} {selection.detail}; this is not validation evidence.")
     report(f"Base: {candidate['base']['reference']}; platform: {candidate['platform']}.")
     report("Other component versions and base are preserved. Dependencies: " + (str(selection.requires) if selection.requires else "no companion change declared"))
@@ -360,6 +366,12 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
     report("Recovery: " + ("known-good sets available via 'versions rollback'." if _known(workspace) else "no known-good predecessor yet; successfully run the current set first."))
     report(f"Choose explicitly: devcapsule project versions select {identity}" + (" --unvalidated" if missing else ""))
     return identity
+
+
+def _projection(workspace: Workspace, lock: Mapping[str, Any], checkout: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """The execution view of a persistent selection under the checkout's local choices."""
+    local = LocalCapabilities.read(workspace.checkout if checkout is None else checkout)
+    return usable_lock(CapabilityPolicy.read(workspace.manifest), lock, local)[0]
 
 
 def _placeholder_hashes(value: dict[str, Any]) -> None:
@@ -402,9 +414,7 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
         existing = checkout.get("version-set")
         digest = existing["recommendation-digest"] if existing else canonical_digest(workspace.recommendation())
         checkout["version-set"] = {"format": 1, "lock": render_toml(lock), "recommendation-digest": digest}
-    from devcapsule.configuration.capability_selection import usable_lock
-    from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
-    lock, _ = usable_lock(CapabilityPolicy.read(workspace.manifest), lock, LocalCapabilities.read(checkout))
+    lock = _projection(workspace, lock, checkout)
     declarations = authorization_declarations(workspace.manifest, lock)
     seen: set[str] = set()
     for name, value in acquisitions:

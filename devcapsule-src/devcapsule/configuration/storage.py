@@ -289,9 +289,15 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     return path, value
 
 
-def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
-    """Effective software selection, independently of current host decisions."""
-    from .capability_selection import selected_lock
+def composition_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    """The checkout's persistent software selection, before execution filtering.
+
+    Return the current platform's shared lock path, the composed selection (the
+    explicit version set, or the shared lock with personal pins laid over it)
+    and the loaded checkout record, empty when the checkout is unregistered.
+    A version set for another platform raises ProjectConfigurationError.
+    """
+    from .capability_selection import compose_lock
     record = find_checkout_record(manifest, root)
     checkout = load_checkout(record, manifest, root) if record is not None else {}
     selected = selected_version_lock(checkout)
@@ -301,12 +307,31 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
         path, shared = root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock", selected
     else:
         path, shared = recommendation_lock_for(root, manifest)
-    value = selected_lock(manifest, shared, checkout)
+    return path, compose_lock(manifest, shared, checkout), checkout
+
+
+def selection_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    """The checkout's persistent selection and its effective lock for this host.
+
+    Return the shared lock path, the composed selection from ``composition_for``
+    and its execution projection. The projection must name a base this
+    launcher knows and an IDE, or ProjectConfigurationError is raised with
+    the command that chooses one. Optional omissions are printed as warnings.
+    """
+    from .capability_selection import effective_lock
+    path, composed, checkout = composition_for(root, manifest)
+    value = effective_lock(manifest, composed, checkout)
     if "base" in value:
         locked_base_reference(value)
     if not value.get("components", {}).get("interactive-surface"):
         raise ProjectConfigurationError("Choose a local IDE: devcapsule project config capabilities --local python-ide (or another IDE capability).")
     build_node_registry(manifest, value)
+    return path, composed, value
+
+
+def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
+    """Effective software selection, independently of current host decisions."""
+    path, _, value = selection_for(root, manifest)
     return path, value
 
 
