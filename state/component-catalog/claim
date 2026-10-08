@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-component-catalog/intellij-idea-correctness
+slice: Review PR #171: independently verify capability persistence fixes and respond on GitHub
+since: 2026-10-08T09:31:01+00:00
+expires: 2026-10-08T21:31:01+00:00
