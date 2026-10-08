@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import fcntl
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -187,50 +186,72 @@ UNPACKED_MARKER = ".devcapsule-unpacked.json"
 
 
 def unpacked_tree(cache_root: Path, sha256: str, unpack: Callable[[Path], Path]) -> Path:
-    """The tree a verified archive unpacks to, kept under the cache by the archive's digest.
+    """Return the cached installation tree of an already verified archive.
 
-    Unpacked once and reused by every later materialization of the same
-    artifact, whatever the formation: the build then reads an unchanged path,
-    which is what lets BuildKit send only what changed (nothing) instead of
-    the whole tree. ``unpack`` fills a fresh directory and returns the
-    installation root inside it; the root's relative path goes into the
-    completion marker, written last and renamed into place with the tree, so
-    an interrupted unpack is redone and never trusted. Two launchers
-    unpacking the same digest at once both finish; the second keeps the
-    first's tree, identical by construction.
+    ``sha256`` identifies the archive. Callers of the same key must use the
+    same extraction layout. ``unpack`` receives a nonexistent destination
+    and returns an existing directory inside it. Its exceptions propagate.
+
+    A per-digest lock covers inspection, recovery, extraction and publication,
+    including cache hits: no caller may remove another's completed tree after
+    observing an earlier miss. The marker is written last, then the directory
+    is renamed into place. A failed extraction is cleaned up; an abrupt exit
+    leaves a fixed staging path that the next caller recovers under the lock.
+    Completed trees stay at stable paths and are treated as immutable by users
+    of this cache. Marker validation checks structure, not file-content hashes.
     """
+    sha256 = _validated_sha256(sha256, "Unpacked archive SHA-256")
     home = cache_root / UNPACKED_DIRECTORY / sha256
     marker = home / UNPACKED_MARKER
-    recorded = _unpacked_root(marker)
-    if recorded is not None:
-        return home / recorded
-    shutil.rmtree(home, ignore_errors=True)
-    partial = home.with_name(f"{home.name}.partial-{os.getpid()}")
-    shutil.rmtree(partial, ignore_errors=True)
-    # The extractors create their destination themselves and refuse one that
-    # exists; only the parent is prepared here.
-    partial.parent.mkdir(parents=True, exist_ok=True)
-    relative = unpack(partial).relative_to(partial).as_posix()
-    (partial / UNPACKED_MARKER).write_text(
-        json.dumps({"schema_version": 1, "sha256": sha256, "root": relative}) + "\n", encoding="utf-8"
-    )
-    try:
-        partial.rename(home)
-    except OSError:
-        if _unpacked_root(marker) is None:
-            raise
-        shutil.rmtree(partial, ignore_errors=True)
-    return home / relative
+    with _exclusive_lock(cache_root / "locks" / "unpacked" / f"{sha256}.lock"):
+        recorded = _unpacked_root(marker, sha256)
+        if recorded is not None:
+            return home / recorded
+        _remove_unpacked_entry(home)
+        partial = home.with_name(f"{home.name}.partial")
+        _remove_unpacked_entry(partial)
+        # Extractors create the destination themselves; prepare only its parent.
+        partial.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            root = unpack(partial)
+            relative = root.relative_to(partial).as_posix()
+            (partial / UNPACKED_MARKER).write_text(
+                json.dumps({"schema_version": 1, "sha256": sha256, "root": relative}) + "\n",
+                encoding="utf-8",
+            )
+            if _unpacked_root(partial / UNPACKED_MARKER, sha256) is None:
+                raise CliError("Archive extractor did not return a directory inside its destination.")
+            partial.rename(home)
+        finally:
+            _remove_unpacked_entry(partial)
+        return home / relative
 
 
-def _unpacked_root(marker: Path) -> str | None:
-    """The recorded installation root of a complete unpacked tree, or None."""
+def _remove_unpacked_entry(path: Path) -> None:
+    """Remove an owned cache entry without traversing a replaced root symlink."""
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+
+
+def _unpacked_root(marker: Path, sha256: str) -> str | None:
+    """Read a supported completion record whose root still exists inside the entry."""
     try:
+        if marker.parent.is_symlink():
+            return None
         document = json.loads(marker.read_text(encoding="utf-8"))
+        if not isinstance(document, dict) or document.get("schema_version") != 1 or document.get("sha256") != sha256:
+            return None
         root = document["root"]
+        if not isinstance(root, str) or not root or Path(root).is_absolute() or ".." in Path(root).parts:
+            return None
+        directory = marker.parent / root
+        if not directory.is_dir() or not directory.resolve().is_relative_to(marker.parent.resolve()):
+            return None
     except (OSError, ValueError, KeyError, TypeError):
         return None
-    return root if isinstance(root, str) and ".." not in Path(root).parts else None
+    return root
 
 
 def cache_root(env: Mapping[str, str] | None = None) -> Path:

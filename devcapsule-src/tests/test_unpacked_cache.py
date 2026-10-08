@@ -129,3 +129,54 @@ def test_changed_digest_gets_a_different_tree(tmp_path: Path) -> None:
     replacement = unpacked_tree(tmp_path, "b" * 64, unpack_fixture)
     assert original != replacement
     assert (original / "binary").read_bytes() == (replacement / "binary").read_bytes()
+
+
+def test_abandoned_staging_tree_is_recovered(tmp_path: Path) -> None:
+    partial = tmp_path / "unpacked" / f"{DIGEST}.partial"
+    partial.mkdir(parents=True)
+    (partial / "abandoned").write_text("previous process died here")
+    root = unpacked_tree(tmp_path, DIGEST, unpack_fixture)
+    assert (root / "binary").read_bytes() == b"verified fixture"
+    assert not partial.exists()
+    assert not (root.parent / "abandoned").exists()
+
+
+@pytest.mark.parametrize("entry", ["file", "symlink"])
+def test_replaced_cache_entry_is_recovered_without_touching_target(tmp_path: Path, entry: str) -> None:
+    home = tmp_path / "unpacked" / DIGEST
+    home.parent.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "keep").write_text("unrelated")
+    if entry == "file":
+        home.write_text("incomplete")
+    else:
+        home.symlink_to(outside, target_is_directory=True)
+    root = unpacked_tree(tmp_path, DIGEST, unpack_fixture)
+    assert not home.is_symlink()
+    assert (root / "binary").read_bytes() == b"verified fixture"
+    assert (outside / "keep").read_text() == "unrelated"
+
+
+def test_extractor_must_return_an_existing_contained_directory(tmp_path: Path) -> None:
+    from devcapsule.compat import CliError
+
+    def invalid(destination: Path) -> Path:
+        destination.mkdir()
+        return destination / "missing"
+
+    with pytest.raises(CliError, match="directory inside its destination"):
+        unpacked_tree(tmp_path, DIGEST, invalid)
+    assert not list((tmp_path / "unpacked").iterdir())
+
+
+def test_rename_failure_is_reported_and_staging_is_cleaned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_rename(source: Path, target: Path) -> None:
+        raise OSError("publication failed")
+
+    monkeypatch.setattr(Path, "rename", fail_rename)
+    with pytest.raises(OSError, match="publication failed"):
+        unpacked_tree(tmp_path, DIGEST, unpack_fixture)
+    assert not list((tmp_path / "unpacked").iterdir())
