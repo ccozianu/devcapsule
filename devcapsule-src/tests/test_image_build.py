@@ -154,3 +154,48 @@ def test_buildx_builder_without_a_root_uses_a_temporary_context(tmp_path: Path) 
     used_context = build.call_args.args[0]
     assert used_context.name.startswith("devcapsule-buildx-context-") and not used_context.exists()
     assert build.call_args.kwargs["build_contexts"] == {}
+
+
+def test_named_contexts_preserve_distinct_contribution_inputs(tmp_path: Path) -> None:
+    from devcapsule.images.build import ContributionComponent, DirectoryComponent
+
+    first, second = tmp_path / "first", tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    (first / "payload").write_bytes(b"first")
+    (second / "payload").write_bytes(b"second")
+    contributions = (
+        ContributionComponent("ide", (DirectoryComponent(first, "/opt/ide"),), ("/opt/ide",)),
+        ContributionComponent("tool", (DirectoryComponent(second, "/opt/tool"),), ("/opt/tool",)),
+    )
+    for order in (contributions, tuple(reversed(contributions))):
+        spec = ImageBuildSpec("result:test", "base:test", order)
+        rendered = render_build_context(spec.build_plan(), tmp_path / "context")
+        assert rendered.named_contexts == {"ide-copy-dir-0": first, "tool-copy-dir-0": second}
+        dockerfile = rendered.dockerfile.read_text()
+        assert "COPY --from=ide-copy-dir-0 / /opt/ide/" in dockerfile
+        assert "COPY --from=tool-copy-dir-0 / /opt/tool/" in dockerfile
+        assert "COPY --link --from=ide /opt/ide /opt/ide" in dockerfile
+        assert "COPY --link --from=tool /opt/tool /opt/tool" in dockerfile
+    assert (first / "payload").read_bytes() == b"first"
+    assert (second / "payload").read_bytes() == b"second"
+
+
+def test_reused_context_preserves_sources_and_recovers_after_build_failure(tmp_path: Path) -> None:
+    from devcapsule.images.build import DirectoryComponent
+
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "payload").write_text("keep")
+    context = tmp_path / "context"
+    context.mkdir()
+    (context / "stale-link").symlink_to(source, target_is_directory=True)
+    spec = ImageBuildSpec("result:test", "base:test", (DirectoryComponent(source, "/opt/tool"),))
+    with patch("devcapsule.images.build.docker.build", side_effect=OSError("build failed")):
+        with pytest.raises(CliError, match="build failed"):
+            BuildxImageBuilder(context).build(spec)
+    with patch("devcapsule.images.build.docker.build") as build:
+        BuildxImageBuilder(context).build(spec)
+    assert build.call_count == 1
+    assert (source / "payload").read_text() == "keep"
+    assert sorted(path.name for path in context.iterdir()) == ["Dockerfile"]

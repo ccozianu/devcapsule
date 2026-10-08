@@ -71,10 +71,14 @@ serialized by a lock beside it, and the trees it attaches as named
 contexts stay where they were unpacked.
 
 The completion marker is written last and renamed into place with the
-tree. An unpack interrupted at any point leaves a directory without a
-marker, which the next launch removes and redoes. Two launchers unpacking
-the same digest at once both finish; the second finds the first's tree
-and discards its own, identical by construction.
+tree. A per-digest file lock covers checking, recovery, extraction and
+publication; a second launcher waits and reuses the completed tree. Failed
+extraction cleans its staging directory, and an abrupt exit leaves one
+fixed staging path for the next caller to recover under the same lock.
+Reuse checks the marker's schema, digest and contained, existing root;
+it does not re-hash the extracted contents. Completed trees are treated
+as immutable. These publication and recovery guarantees were corrected
+during the [PR #172 review](../../wip/2026-09-18-maintenance/2026-10-08-pr172-review.md).
 
 What is not cached: nothing is pruned. Verified archives, unpacked trees,
 superseded formations and BuildKit's cache entries accumulate until the

@@ -257,6 +257,8 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Unpacked archive cache publication and recovery](engineering-docs/bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md)
+
 - [`project init` discards every interactive answer when a `--authorize` name is unknown — blocking 0.2.15](engineering-docs/bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md)
 - [Inside a capsule, `project <unknown>` is refused as launcher-only instead of as unknown](engineering-docs/bugs/devcapsule/2026-09-26-project-group-guard-hides-unknown-subcommand-in-capsule.md)
 - [Usability: `bootstrap` never asks which workflow mode the user wants; a mode without an installed workflow is void](engineering-docs/bugs/devcapsule/2026-09-26-bootstrap-cannot-choose-the-workflow-mode.md)
