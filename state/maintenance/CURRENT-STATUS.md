@@ -4,15 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-05, triage complete; the 0.3.0 maintenance plate (the release formerly planned as 0.2.16, renamed by the owner on 2026-10-05): the fresh-workspace recursive test (option D), the in-capsule project-command fix, named build contexts then the installed-IDE reuse and reaping design, the universal network authorization node, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; 0.2.15 published and reopened
+State: paused 2026-10-08, correctness review of PR #172 complete; stacked fix awaits owner review; the 0.3.0 maintenance plate (the release formerly planned as 0.2.16, renamed by the owner on 2026-10-05): the fresh-workspace recursive test (option D), the in-capsule project-command fix, named build contexts then the installed-IDE reuse and reaping design, the universal network authorization node, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; 0.2.15 published and reopened
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
 
 Integration target: `main`
 
-Delivery method: pull request; agent pushes the branch, owner opens and merges on GitHub
+Delivery method: stacked pull request against `ws-maintenance/post-0.2.15`; owner authorized authenticated `gh` to create/update/consult PRs on 2026-10-08; merging remains with the owner
 
-Branch association: `ws-maintenance/post-0.2.15`; release-0.2.15 is closed and retained
+Branch association: `ws-maintenance/post-0.2.15` (PR #172); `ws-maintenance/pr172-correctness` (review fixes); release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -24,13 +24,38 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-08: PR #172 reviewed at `4be56a7`; fixes are in
+[PR #174](https://github.com/ccozianu/devcapsule/pull/174), from
+`ws-maintenance/pr172-correctness` into `ws-maintenance/post-0.2.15`.** The owner requested no edits to
+#172 and a stacked fix PR. Seven regressions failed before the correction;
+the focused suite now passes 69 tests. The unpack cache now locks each digest
+through inspection and publication, validates completion records and root
+containment, and cleans/reuses one staging path after failure. The full build
+gate passed: 1,177 unit cases, nine packaged integrations, mypy, source/PEX
+smokes and the documentation contract. See [review and evidence](2026-10-08-pr172-review.md).
+
+Synchronization exception: this owner-directed review branches from #172,
+leaving its source branch unchanged; main synchronization belongs to the parent
+integration. Main's newer configuration-writer rules were read; this review
+changes no project configuration. The explicit `gh` authorization supersedes
+the local UI-only delivery rule for consulting, creating and updating PRs.
+The isolated review worktree preserves the original checkout's dirty website.
+
+The three component-catalog messages were received and acknowledged. Their
+configuration implementation and format rename reached main through #170.
+The maintenance configuration argument is retained as a historical snapshot
+at `85bec27`; updating its old links/names is queued after this review stack
+integrates, together with the existing configuration follow-ups, not mixed
+into these cache corrections.
+
 **2026-10-06: named build contexts are built and measured.** Directory
 inputs are named contexts read in place, one context root per launcher
 cache, archives unpacked once by digest. On the real 3.69 GB PyCharm tree
 a rebuild after a launcher change transfers 1.29 MB in 1.1 s instead of
 3.69 GB plus a 9 s copy; first build of a tree still sends it once. Gate
 green; record updated with the table and what is left for the reuse and
-reaping design review. Next on the plate: the universal `network` node,
+reaping design review. The design as built is written up for the owner in
+[image layers, the local cache, and composition](../../implementation-notes/devcapsule/2026-10-06-image-layers-local-cache-and-composition.md). Next on the plate: the universal `network` node,
 then that design review.
 
 **2026-10-05, latest: option D is built and proven; the recursive attached
@@ -291,6 +316,15 @@ launch was taken into intake and committed. No source was changed.
   the version under the local scheme; the owner names it then.
 
 ## Planned Next Step
+
+Await owner review of [PR #174](https://github.com/ccozianu/devcapsule/pull/174) against
+`ws-maintenance/post-0.2.15`; PR #172 is unchanged. After approval, the owner
+merges the fix into #172, then synchronizes and integrates that parent PR to main.
+The next product slice remains the universal network authorization node,
+followed by the installed-IDE reuse/reaping design review. Configuration
+snapshot links are an acknowledged follow-up after integration.
+
+Historical planned steps (superseded by the current review):
 
 Wait for the owner's real-use feedback on released 0.2.15. Triage any reported
 problem against the published executable and route it by ownership; do not
@@ -964,6 +998,19 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- 2026-10-08 review: PR #174 awaits owner review; no merge is authorized.
+- SSH port 22 timed out at delivery. SSH through `ssh.github.com:443`, using
+  the existing `github.com` host-key identity and strict checking, succeeded.
+  No persistent SSH or remote configuration was changed.
+- Main synchronization is deferred for the owner-directed stack; read the
+  newer local configuration rules before making any future configuration edit.
+- No Docker benchmark or IDE acceptance was repeated; prior measurements keep
+  their original scope. Extracted-content hashing and cache pruning are not added.
+- The original checkout's website state remains untouched. The review worktree
+  and logs are retained; scratch test artifacts are regenerable.
+
+Earlier threads follow; read against the current review state above.
+
 - Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decisions
   (1) to (3) are taken: ecosystem bootstrap stays a bug, target 0.3.0,
   last on the plate; the recursive successor record goes by option D, the
@@ -1134,6 +1181,9 @@ Earlier open-thread history (read against the current scope above):
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
+- [Unpacked cache publication/recovery bug](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md): fixed on review branch; close after main integration.
 
 - [Released launchers reject the repository manifest](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md): blocking, fixed on branch, needs RC2.
 
