@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-08 with the Codex findings on PR #171 fixed and pushed; Codex re-review of #171 next, PR #170 reserved for subsequent human review
+State: paused 2026-10-08; Codex accepts the revised PR #171 for merge into the workstream branch; PR #170 awaits subsequent human review
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,24 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- 2026-10-08, Codex re-review at `522f239`: all three original independent
+  counterexamples now pass; the revised consent, artifact-pinning and preview
+  freshness paths address the findings without discarding hidden pins. The
+  retained-consent regression is also covered in the branch's tests. No further
+  blocking finding. Accepted for integration through
+  [PR #171](https://github.com/ccozianu/devcapsule/pull/171) into
+  `ws-component-catalog/intellij-idea`, with a merge commit as authorized by
+  the owner. PR #170 is not approved or merged by this acceptance.
+- The full-composition fingerprint is an accepted conservative tradeoff for
+  ephemeral previews: metadata-only changes can require a fresh preview, while
+  execution/known-good identities remain unchanged. Old previews lacking the
+  fingerprint safely require regeneration. The note now explicitly excludes
+  rollback from the persistence claim. No source changes made in this re-review.
+- Entry: zero commits behind main and unchanged workflow; no synchronization
+  needed. No waiting mail or undecided intake. Both owned bug records remain
+  fixed pending their documented closure conditions; the omission record calls
+  for integration of both #171 and #170. The existing IDE edit stays uncommitted.
 
 - 2026-10-08, response to the Codex review of PR #171 (Claude Fable 5.1). All
   three findings were valid and are fixed on the review branch: `babbb96` adds
@@ -222,14 +240,20 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Codex re-reviews PR #171 at `e9be77a` or later and accepts or comments there;
-Fable answers any further comment on the same branch. Only after #171 is
-resolved does the human review PR #170 with Codex. Do not merge #170 as part of
-this exchange. The rollback, corrupt-pin recovery and proposal-export threads
-remain explicit for that later review. Do not migrate the self-hosting
-configuration or replace the launcher incidentally.
+Finish the accepted PR #171 merge into `ws-component-catalog/intellij-idea` and
+verify its remote result. Then the human reviews PR #170 with Codex; no merge of
+#170 is authorized by this review exchange. Discuss rollback composition,
+command-only recovery from corrupt pins, and proposal export in that later
+review. Do not migrate self-hosting configuration or replace the launcher.
 
 ## Validation And External State
+
+- Codex acceptance recheck at `522f239`: the three independent PR-review
+  counterexamples pass. Full `nox -s build` passed with 1,257 passing unit
+  cases, one xfail, one pre-existing non-strict xpass, ten packaged integration
+  cases, types, syntax/version checks, source/PEX smokes and content contract.
+  Log: `/opt/devcapsule-gate/pr171-review/acceptance-build.log`. No containers,
+  self-hosting configuration changes or host-launcher replacement were needed.
 
 - Codex-review response: full `nox -s build` passed on the revised tree
   (1,257 unit cases, ten packaged integration cases, mypy, syntax/version
@@ -350,14 +374,14 @@ configuration or replace the launcher incidentally.
 
 ## Open Threads
 
-- PR #171 awaits Fable's response to the two confirmed select-path regressions
-  and composition-freshness finding. No implementation alternative was applied;
-  the PR comment provides reproducible evidence and suggested changes. #170
-  remains open and untouched by this review, for later owner review.
+- Codex accepts the revised #171; its GitHub merge status is the external
+  integration record and must be checked on resumption. The owner and Codex
+  next review #170. There are no outstanding requests to Fable on #171.
+- Full-composition preview fingerprinting is deliberately conservative and
+  accepted; a narrower digest is not needed for this slice. Re-review found
+  no additional blocking defect. Counterexamples remain in the PR discussion
+  and regression suite; no raw session transcript is retained.
 
-- Fable's earlier review covered composition and persistence; Codex's review
-  above additionally found execution-projection gaps in selection and preview
-  freshness. Acceptance of #171 is pending those corrections.
 - Product decisions surfaced by the review, not taken: (1) `versions rollback`
   re-persists an execution snapshot, so a rollback to a run that omitted an
   optional tool bakes the omission in; fixing it needs the composition recorded
