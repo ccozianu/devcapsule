@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-08; Codex accepts the revised PR #171 for merge into the workstream branch; PR #170 awaits subsequent human review
+State: paused 2026-10-08; PR #171 merged into the workstream branch and PR #170 merged into `main` (`6ae1a01`); the IntelliJ slice is on `main` and nothing is in flight; the pair moves to project-management
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -35,6 +35,16 @@ No release or website publishing.
 
 ## Current State
 
+- 2026-10-08, after the pause: the owner merged
+  [PR #171](https://github.com/ccozianu/devcapsule/pull/171) into
+  `ws-component-catalog/intellij-idea` at `4575eae` (10:04 UTC) and then
+  [PR #170](https://github.com/ccozianu/devcapsule/pull/170) into `main` at
+  `6ae1a01` (10:42 UTC). The workstream branch is fast-forwarded to `main`
+  (`3dfeece`); the review branch `ws-component-catalog/intellij-idea-correctness`
+  is fully contained in `main`. The omission bug record is closed on its stated
+  condition; the Playwright record stays `fixed` pending the owner's `project
+  run` confirmation. The owner directed the pair to `project-management`; this
+  entry records the integration only, no source changed.
 - 2026-10-08, Codex re-review at `522f239`: all three original independent
   counterexamples now pass; the revised consent, artifact-pinning and preview
   freshness paths address the findings without discarding hidden pins. The
@@ -240,11 +250,13 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Finish the accepted PR #171 merge into `ws-component-catalog/intellij-idea` and
-verify its remote result. Then the human reviews PR #170 with Codex; no merge of
-#170 is authorized by this review exchange. Discuss rollback composition,
-command-only recovery from corrupt pins, and proposal export in that later
-review. Do not migrate self-hosting configuration or replace the launcher.
+The IntelliJ slice is integrated and nothing is in flight. On resumption, start
+the next slice on a fresh sub-branch from `main`, and first bring the owner the
+product questions the #171 review deferred: rollback composition (`versions
+rollback` re-persists an execution snapshot), command-only recovery from a
+corrupt local pins document, and `versions proposal` exporting the effective
+lock. The Playwright record closes only on the owner's confirmed `project run`.
+Do not migrate self-hosting configuration or replace the launcher.
 
 ## Validation And External State
 
@@ -374,9 +386,9 @@ review. Do not migrate self-hosting configuration or replace the launcher.
 
 ## Open Threads
 
-- Codex accepts the revised #171; its GitHub merge status is the external
-  integration record and must be checked on resumption. The owner and Codex
-  next review #170. There are no outstanding requests to Fable on #171.
+- #171 and #170 are merged, checked on 2026-10-08 after the pause; the GitHub
+  merge records are the integration evidence. No request to Fable or Codex is
+  outstanding on either PR.
 - Full-composition preview fingerprinting is deliberately conservative and
   accepted; a narrower digest is not needed for this slice. Re-review found
   no additional blocking defect. Counterexamples remain in the PR discussion
@@ -426,7 +438,7 @@ review. Do not migrate self-hosting configuration or replace the launcher.
 
 - [Commit-pinned implementation and test correctness](../../implementation-notes/devcapsule/2026-10-06-configuration-correctness.md) — owner-requested review
 - [Persistent selection versus execution projection](../../implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md) — fix argument, commit-pinned
-- [Optional omission loses local version pin](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md) — fixed on the review branch, close on merge
+- [Optional omission loses local version pin](../../bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md) — closed 2026-10-08 on the merge of #171 and #170
 
 - [Capability system guide](../../../docs/configuration/capabilities.md) — ab-initio user documentation
 
