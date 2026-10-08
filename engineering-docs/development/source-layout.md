@@ -50,7 +50,7 @@ devcapsule/
     manifest.py             Project declaration validation and projection
     fingerprints.py         Source fingerprints
     freshness.py            Current and predecessor checkpoint freshness
-    documents.py            Versioned document admission and codecs
+    file_formats.py         Configuration format checks, TOML text and fingerprints
     storage.py              File discovery, ownership and atomic writes
     execution.py            Admission of a stored checkout for execution
     operations.py           Initialization and persistent edit orchestration

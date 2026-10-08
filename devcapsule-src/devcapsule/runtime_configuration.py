@@ -15,7 +15,7 @@ from pathlib import Path
 import shlex
 from typing import Any, Mapping, Sequence
 
-from devcapsule.configuration.documents import Artifact, ProjectConfigurationError, admit_document, render_document, selected_version_lock
+from devcapsule.configuration.file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, render_toml, selected_version_lock
 from devcapsule.configuration.storage import ResolvedProject, discover_project, load_toml, manifest_for, recommendation_lock_for
 
 
@@ -101,7 +101,7 @@ class RuntimeConfiguration:
         if self.checkout_path.with_suffix(".activation.toml").exists():
             raise ProjectConfigurationError("A launcher activation is in progress or needs recovery; retry after the launcher finishes. Runtime inspection never repairs host records.")
         checkout = load_toml(self.checkout_path)
-        admit_document(checkout, Artifact.checkout, self.checkout_path)
+        validate_file_format(checkout, ConfigurationFileKind.checkout, self.checkout_path)
         if checkout.get("checkout", {}).get("path") != self.document["launcher-root"]:
             raise ProjectConfigurationError("Mounted checkout record does not match this launch's checkout identity.")
         if any(checkout.get("project", {}).get(key) != identity[key] for key in ("creator", "slug")):
@@ -109,7 +109,8 @@ class RuntimeConfiguration:
         lock = selected_version_lock(checkout)
         if lock is None:
             _, lock = recommendation_lock_for(root, manifest)
-        return manifest, lock, checkout
+        from .configuration.capability_selection import selected_lock
+        return manifest, selected_lock(manifest, lock, checkout), checkout
 
     def configuration_report(self) -> str:
         _, _, checkout = self.current()
@@ -117,7 +118,7 @@ class RuntimeConfiguration:
         return ("Runtime context: read-only launcher configuration for the next launch.\n"
                 "Host paths and permissions below are recorded choices, not observations of this running session.\n"
                 "Use 'devcapsule project versions show' for running and next-launch software.\n\n"
-                + render_document(shown)
+                + render_toml(shown)
                 + "\nTo change configuration, use the launcher outside this capsule: "
                 + self.launcher_command(["config", "list"]))
 
@@ -177,7 +178,7 @@ def for_project(start: Path, *, fallback: bool = False) -> RuntimeConfiguration 
             raise ValueError("missing running version set")
         if not isinstance(running.get("identity"), str) or running.get("origin") not in {"local selection", "project recommendation"}:
             raise ValueError("invalid running version-set identity/origin")
-        admit_document(running["lock"], Artifact.lock, CONTEXT_PATH)
+        validate_file_format(running["lock"], ConfigurationFileKind.lock, CONTEXT_PATH)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise ProjectConfigurationError(f"Cannot read runtime launch context: {exc}. Relaunch with the updated launcher.") from exc
     return RuntimeConfiguration(document)

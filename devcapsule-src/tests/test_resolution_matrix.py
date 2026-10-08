@@ -12,7 +12,7 @@ from devcapsule.configuration.nodes import (
     build_node_registry,
 )
 from devcapsule.platforms import Platform
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     canonical_digest,
 )

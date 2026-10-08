@@ -9,7 +9,7 @@ from typing import Any
 from devcapsule.components.catalog import selected_component_definitions
 from devcapsule.configuration.bindings import configuration_binding_declarations, managed_binding_path
 from devcapsule.configuration.storage import find_checkout_record, load_checkout, lock_for, manifest_for
-from devcapsule.configuration.documents import ProjectConfigurationError
+from devcapsule.configuration.file_formats import ProjectConfigurationError
 
 
 ENVIRONMENT_PURPOSES = {

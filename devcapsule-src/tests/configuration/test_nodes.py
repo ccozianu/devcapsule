@@ -12,7 +12,7 @@ from devcapsule.configuration.nodes import (
     PROVIDER_HOST_ENVIRONMENT,
     build_node_registry,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
 )
 

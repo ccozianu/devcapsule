@@ -8,7 +8,7 @@ CLI commands or launch adapters.
 File adapters live in storage/execution, lifecycle orchestration in operations,
 and successful-run snapshots in history. These are separate from the value API.
 """
-from .documents import ProjectConfigurationError
+from .file_formats import ProjectConfigurationError
 from .model import Configuration
 from .resolution import Resolution
 from .review import ConfigurationReview, HostAccess

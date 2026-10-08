@@ -26,7 +26,7 @@ from devcapsule.components.channels import ChannelReport, ChannelSelection, Chan
 from devcapsule.components.codex import CodexComponent
 from devcapsule.components.interface import LockedArtifactDeclaration, AcquisitionContract
 from devcapsule.components.npm_channel import NpmChannel
-from devcapsule.configuration.documents import canonical_digest, render_document
+from devcapsule.configuration.file_formats import canonical_digest, render_toml
 from devcapsule.configuration.execution import ExecutionConfiguration
 from devcapsule.configuration.storage import load_toml, lock_for, manifest_for
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
@@ -89,7 +89,7 @@ def journey(tmp_path, monkeypatch, request):
     config.mkdir(parents=True)
     manifest = {"devcapsule-schema-version": 1, "project": {"creator": "mailto:unit@example.test", "slug": "upgrade", "name": "Upgrade fixture", "mount": "/workspace/project"},
                 "capabilities": {"need": ["python", "python-ide", "codex-agent"]}}
-    (config / "devcapsule.toml").write_text(render_document(manifest))
+    (config / "devcapsule.toml").write_text(render_toml(manifest))
     lock = tomllib.loads(MATRICES[Platform.current()].resolve(manifest["capabilities"]["need"], allow_unverified=True).render_lock())
     ide = archive(tmp_path / "ide.tgz", {"ide/bin/pycharm.sh": b"#!/bin/sh\nexit 0\n"})
     lock["components"]["pycharm"].update(url=ide.as_uri(), sha256=hashlib.sha256(ide.read_bytes()).hexdigest())
@@ -139,7 +139,7 @@ def journey(tmp_path, monkeypatch, request):
         lock["components"][component] = dict(COMPONENTS[component].distribution_channel().select("1.0.0", "linux-amd64").metadata)
         version_sets._pin_artifacts(lock["components"][component])
     path = config / "devcapsule.linux-amd64.lock"
-    path.write_text(render_document(lock))
+    path.write_text(render_toml(lock))
     assert invoke(root, "config", "authorize", "base-image", "default") == 0
     if licensed:
         assert invoke(root, "config", "authorize", "widget-acquisition", "true") == 0
@@ -275,7 +275,7 @@ def test_divergence_proposal_follow_and_offline_reminders(journey, capsys, monke
     assert invoke(s.root, "run") == 0
     upstream = load_toml(s.lock)
     upstream["components"]["pycharm"]["version"] = "upstream-new"
-    s.lock.write_text(render_document(upstream))
+    s.lock.write_text(render_toml(upstream))
     assert invoke(s.root, "versions", "show") == 0
     assert "changed since selection" in capsys.readouterr().out
     assert invoke(s.root, "run") == 0
@@ -354,7 +354,7 @@ def test_reminders_defer_new_candidate_and_offline_run(journey, monkeypatch, cap
     path = version_sets.state_directory(s.root) / "check.toml"
     saved = load_toml(path)
     saved["candidates"] = [s.component + "@3.0.0"]
-    path.write_text(render_document(saved))
+    path.write_text(render_toml(saved))
     assert s.component + "@3.0.0" in version_sets.reminder(s.root)
     def offline(*args, **kwargs):
         raise AssertionError("ordinary launch must not check a channel")
@@ -446,7 +446,7 @@ def test_candidate_acquisition_answers_do_not_renew_host_permissions(journey, ca
     assert invoke(s.root, "run") == 0 and launched_version(s) == "1.0.0"
     upstream = load_toml(s.lock)
     upstream["components"]["widget"] = s.metadata["3.0.0"]
-    s.lock.write_text(render_document(upstream))
+    s.lock.write_text(render_toml(upstream))
     assert invoke(s.root, "versions", "follow-project", "--apply") == 2
     assert invoke(s.root, "versions", "follow-project", "--apply", "--authorize", "widget-acquisition", "true") == 0
     assert invoke(s.root, "run") == 0 and launched_version(s) == "3.0.0"
@@ -630,7 +630,7 @@ def test_routine_dismissal_does_not_hide_new_critical_notice(journey, monkeypatc
     path = version_sets.state_directory(s.root) / "check.toml"
     saved = load_toml(path)
     saved["notices"][0]["identity"] = "new-vendor-issue-456"
-    path.write_text(render_document(saved))
+    path.write_text(render_toml(saved))
     monkeypatch.setattr("sys.stdin", TerminalInput("stop\n"))
     assert invoke(s.root, "run") == 1
     assert "Choose upgrade" in capsys.readouterr().out
@@ -777,7 +777,7 @@ def test_runtime_show_tracks_running_and_next_sets_without_local_registration(jo
     from devcapsule.configuration.storage import atomic_write
     current = load_toml(s.record)
     current.pop("version-set")
-    atomic_write(s.record, render_document(current))
+    atomic_write(s.record, render_toml(current))
     assert invoke(runtime_root, "versions", "show") == 0
     out = capsys.readouterr().out
     assert f"Selected for next launch — version set {running_id}" in out
@@ -907,7 +907,7 @@ def test_runtime_config_list_is_read_only_and_does_not_assess_host_paths(journey
     runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
     checkout = load_toml(s.record)
     checkout.setdefault("configuration", {})["bindings"] = {"host-directory": {"home": "/only/on/the/host"}}
-    s.record.write_text(render_document(checkout))
+    s.record.write_text(render_toml(checkout))
     before = s.record.read_bytes(), s.resolution.read_bytes()
     assert invoke(runtime_root, "config", "list") == 0
     out = capsys.readouterr().out
@@ -954,7 +954,7 @@ def test_runtime_rejects_another_checkout_without_hiding_running_versions(journe
         record["checkout"]["path"] = "/another/checkout"
     else:
         record["project"]["slug"] = "another-project"
-    s.record.write_text(render_document(record))
+    s.record.write_text(render_toml(record))
     assert invoke(runtime_root, "versions", "show") == 0
     out = capsys.readouterr().out
     assert "Running session" in out and "does not match this launch" in out
@@ -975,9 +975,120 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
     # A sibling does not become the active selection merely by being visible.
     wrong = load_toml(named)
     wrong["checkout"]["path"] = "/another/checkout"
-    (named.parent / "other.checkout.toml").write_text(render_document(wrong))
+    (named.parent / "other.checkout.toml").write_text(render_toml(wrong))
     assert invoke(runtime_root, "versions", "show") == 0
     assert "Same software selection" in capsys.readouterr().out
     assert invoke(runtime_root, "list") == 0
     out = capsys.readouterr().out
     assert str(s.root) in out and "/another/checkout" not in out
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_version_selection_keeps_an_omitted_optional_pin_for_later_restoration(journey, capsys):
+    from devcapsule.configuration.file_formats import selected_version_lock
+    from devcapsule.configuration.storage import load_toml, lock_for
+    manifest_path = journey.root / ".devcapsule/devcapsule.toml"
+    manifest = load_toml(manifest_path)
+    manifest["capabilities"] = {"required": ["python", "python-ide", "codex-agent"], "optional": ["browser-automation"]}
+    manifest_path.write_text(render_toml(manifest))
+    lock = load_toml(journey.lock)
+    playwright = tomllib.loads(MATRICES[Platform.current()].resolve(["python", "browser-automation"], project_only=True).render_lock())["components"]["playwright"]
+    lock["components"]["playwright"] = dict(playwright, version="fixture-shared-pin")
+    journey.lock.write_text(render_toml(lock))
+    assert invoke(journey.root, "config", "capabilities", "--without", "browser-automation") == 0
+    assert "playwright" not in lock_for(journey.root, manifest)[1]["components"]
+    def host_decisions():  # base-image is formation trust, renewed by an explicit selection
+        return {name: value for name, value in load_toml(journey.record)["authorization"].items() if name != "base-image"}
+    decisions = host_decisions()
+    preview_select(journey, capsys)
+    selected = selected_version_lock(load_toml(journey.record))
+    assert selected is not None
+    assert selected["components"]["playwright"]["version"] == "fixture-shared-pin"  # the omission is a run-time filter, not a loss
+    assert selected["components"]["codex"]["version"] == "2.0.0"
+    assert invoke(journey.root, "config", "capabilities", "--without") == 0
+    effective = lock_for(journey.root, manifest)[1]
+    assert effective["components"]["playwright"]["version"] == "fixture-shared-pin"
+    assert effective["components"]["codex"]["version"] == "2.0.0"
+    assert host_decisions() == decisions
+
+
+def omit_shared_optional(journey, capability, component):
+    """Declare a shared optional capability with its provider, then omit it locally."""
+    from devcapsule.configuration.storage import load_toml
+    path = journey.root / ".devcapsule/devcapsule.toml"
+    manifest = load_toml(path)
+    manifest["capabilities"] = {"required": ["python", "python-ide", "codex-agent"], "optional": [capability]}
+    path.write_text(render_toml(manifest))
+    lock = load_toml(journey.lock)
+    extra = tomllib.loads(MATRICES[Platform.current()].resolve(["python", capability], project_only=True).render_lock())
+    lock["components"][component] = extra["components"][component]
+    journey.lock.write_text(render_toml(lock))
+    assert invoke(journey.root, "config", "capabilities", "--without", capability) == 0
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_select_ignores_an_omitted_acquisition(journey, capsys):
+    from devcapsule.configuration.file_formats import selected_version_lock
+    from devcapsule.configuration.storage import load_toml
+    omit_shared_optional(journey, "antigravity-agent", "antigravity-cli")
+    preview_select(journey, capsys)
+    record = load_toml(journey.record)
+    assert "antigravity-download" not in record.get("authorization", {})  # no consent inferred for an omitted tool
+    selected = selected_version_lock(record)
+    assert selected is not None and "antigravity-cli" in selected["components"]  # the hidden pin is still kept
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_select_keeps_retained_consent_inactive_for_an_omitted_acquisition(journey, capsys):
+    from devcapsule.configuration.storage import load_toml
+    omit_shared_optional(journey, "antigravity-agent", "antigravity-cli")
+    assert invoke(journey.root, "config", "capabilities", "--without") == 0
+    assert invoke(journey.root, "config", "authorize", "antigravity-download", "true") == 0
+    assert invoke(journey.root, "config", "capabilities", "--without", "antigravity-agent") == 0
+    consent = load_toml(journey.record)["authorization"]["antigravity-download"]
+    preview_select(journey, capsys)
+    assert load_toml(journey.record)["authorization"]["antigravity-download"] == consent
+    assert "antigravity-cli" not in ExecutionConfiguration.load(journey.root).project.lock["components"]
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_preview_is_stale_when_a_hidden_pin_changes(journey, capsys):
+    from devcapsule.configuration.storage import load_toml
+    omit_shared_optional(journey, "browser-automation", "playwright")
+    identity = preview_select(journey, capsys, select=False)
+    before = version_sets.Workspace.load(journey.root)
+    shared = load_toml(journey.lock)
+    shared["components"]["playwright"]["version"] = "new-hidden-pin"
+    journey.lock.write_text(render_toml(shared))
+    after = version_sets.Workspace.load(journey.root)
+    assert before.composition != after.composition and before.identity == after.identity
+    capsys.readouterr()
+    assert invoke(journey.root, "versions", "select", identity, "--unvalidated") == 2
+    assert "preview again" in capsys.readouterr().err
+    assert "version-set" not in load_toml(journey.record)
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_select_does_not_acquire_an_unsupported_optional_provider(journey, capsys, monkeypatch):
+    from devcapsule.configuration.file_formats import selected_version_lock
+    from devcapsule.configuration.storage import load_toml
+    path = journey.root / ".devcapsule/devcapsule.toml"
+    manifest = load_toml(path)
+    manifest["capabilities"] = {"required": ["python", "python-ide", "codex-agent"], "optional": ["future-tool"]}
+    path.write_text(render_toml(manifest))
+    shared = load_toml(journey.lock)
+    # An opaque provider from a newer contributor; this reader cannot use its artifact.
+    future = {"version": "1", "url": "https://example.invalid/future.tgz", "integrity": "sha512-ZmFrZQ=="}
+    shared["components"]["future"] = dict(future)
+    shared["capability-providers"] = {"future-tool": ["future"]}
+    journey.lock.write_text(render_toml(shared))
+    original = version_sets.acquire_artifact
+    def acquire(spec, *args, **kwargs):
+        assert spec.url != future["url"], "attempted acquisition of an unsupported optional provider"
+        return original(spec, *args, **kwargs)
+    monkeypatch.setattr(version_sets, "acquire_artifact", acquire)
+    preview_select(journey, capsys)
+    selected = selected_version_lock(load_toml(journey.record))
+    assert selected is not None
+    assert selected["components"]["future"] == future  # preserved untouched, not interpreted
+    assert selected["components"]["codex"]["version"] == "2.0.0"

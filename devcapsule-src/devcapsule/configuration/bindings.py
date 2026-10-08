@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from devcapsule.components.catalog import ComponentCatalogError, selected_component_definitions, selected_runtime_templates
 
-from .documents import ProjectConfigurationError
+from .file_formats import ProjectConfigurationError
 from devcapsule.project import project_namespace
 
 

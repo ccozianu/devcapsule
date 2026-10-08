@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .documents import ProjectConfigurationError
+from .file_formats import ProjectConfigurationError
 from .model import Configuration
 from .resolution import Resolution
 from .review import ConfigurationReview
@@ -47,6 +47,16 @@ class ExecutionConfiguration:
         # Keep the complete, path-qualified recovery advice at the CLI boundary.
         if force or not configuration.stale_inputs(plan):
             review.require_ready(root)
+        stale = configuration.stale_inputs(plan)
+        # An optional-only shared change can be reconciled without waiving
+        # freshness for required tools, host decisions or personal answers.
+        # The baseline digest is present only in readers of this contract.
+        if stale and set(stale) <= {"manifest", "platform-lock"} and review.ready:
+            candidate = configuration.resolve()
+            baseline = candidate.document()["sources"].get("capability-baseline")
+            if baseline and baseline == resolution["sources"].get("capability-baseline"):
+                plan = candidate
+                resolution = candidate.document()
         stale = configuration.accept(plan, force=force)
         selected = ResolvedProject(root, manifest, lock_path, lock, input_path, checkout, output_path, resolution)
         return cls(selected, review, stale)
