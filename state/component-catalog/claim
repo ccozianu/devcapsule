@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-component-catalog/intellij-idea-correctness
+slice: Re-review and resolve PR #171 after Fable select-boundary fixes
+since: 2026-10-08T10:00:54+00:00
+expires: 2026-10-08T22:00:54+00:00
