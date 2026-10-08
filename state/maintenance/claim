@@ -1,5 +1,5 @@
 who: Costin Cozianu
-branch: ws-maintenance/post-0.2.15
-slice: named build contexts: the IDE tree read in place, not sent in the context
-since: 2026-10-06T06:02:26+00:00
-expires: 2026-10-06T18:02:26+00:00
+branch: ws-maintenance/pr172-correctness
+slice: Review PR #172: unpack cache correctness, named contexts and regression coverage
+since: 2026-10-08T19:01:51+00:00
+expires: 2026-10-09T07:01:51+00:00
