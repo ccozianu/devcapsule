@@ -347,8 +347,10 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
         candidate["unverified-combinations"] = "; ".join(missing)
     else:
         candidate.pop("unverified-combinations", None)
-    proposal = {"format": 1, "from": workspace.identity, "lock": render_toml(candidate),
-                "component": component, "evidence": list(evidence), "unvalidated": list(missing)}
+    # "from" is the execution identity; "selection" fingerprints the whole
+    # composition the candidate replaces, including pins an omission hides.
+    proposal = {"format": 1, "from": workspace.identity, "selection": canonical_digest(workspace.composition),
+                "lock": render_toml(candidate), "component": component, "evidence": list(evidence), "unvalidated": list(missing)}
     identity = canonical_digest(proposal)
     atomic_write(workspace.state / "previews" / f"{identity}.toml", render_toml(proposal))
     report(f"Preview {identity}\n{component}: {workspace.lock['components'][component]['version']} -> {selection.metadata['version']}")
@@ -401,6 +403,19 @@ def _pin_artifacts(value: dict[str, Any]) -> None:
     for item in value.values():
         if isinstance(item, dict):
             _pin_artifacts(item)
+
+
+def _pin_active_artifacts(workspace: Workspace, lock: dict[str, Any]) -> None:
+    """Pin SHA-256 identities for the components that would execute, in place.
+
+    The projection is pinned and its component entries are written back into
+    ``lock``; omitted or unsupported entries are neither downloaded nor changed.
+    """
+    active = _projection(workspace, lock)
+    _pin_artifacts(active)
+    for name, metadata in active["components"].items():
+        if isinstance(metadata, dict):
+            lock["components"][name] = metadata
 
 
 def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = False,
@@ -483,19 +498,20 @@ def select(start: Path, preview_id: str, *, unvalidated: bool = False, acquisiti
     proposal = load_toml(workspace.state / "previews" / f"{preview_id}.toml")
     if canonical_digest(proposal) != preview_id or proposal.get("format") != 1:
         raise CliError("Preview identity changed; preview again.")
-    if proposal["from"] != workspace.identity:
+    if proposal["from"] != workspace.identity or proposal.get("selection") != canonical_digest(workspace.composition):
         raise CliError("Selection changed since preview; preview again against the current set.")
     if proposal["unvalidated"] and not unvalidated:
         raise CliError("This set has not been validated by DevCapsule. Select with --unvalidated to try it deliberately.")
     lock = tomllib.loads(proposal["lock"])
-    # Consent is checked before downloading even metadata-pinned packages.
-    structural = deepcopy(lock)
+    # Consent, downloads and pinning concern only what would execute. Entries an
+    # omission hides, or that this reader cannot interpret, are carried unchanged.
+    structural = _projection(workspace, lock)
     _placeholder_hashes(structural)
     prepared = _selection(workspace, structural, acquisitions=acquisitions, authorize=authorize)
-    declarations = authorization_declarations(workspace.manifest, structural)
+    declarations = authorization_declarations(workspace.manifest, prepared.lock)
     accepted = [(name, "true" if prepared.checkout["authorization"][name]["value"] else "false")
                 for name, declaration in declarations.items() if declaration.kind == "acquisition"]
-    _pin_artifacts(lock)
+    _pin_active_artifacts(workspace, lock)
     selected = _selection(workspace, lock, acquisitions=accepted)
     _prepare_activate(workspace, selected, report)
 
