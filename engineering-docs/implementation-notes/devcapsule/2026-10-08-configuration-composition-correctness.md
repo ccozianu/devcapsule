@@ -1,14 +1,17 @@
 # Capability configuration: persistent selection versus execution projection
 
 Review date: 2026-10-08. Branch: `ws-component-catalog/intellij-idea-correctness`,
-proposed into `ws-component-catalog/intellij-idea`. Implementation and tests
-reviewed at commit `236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98`; the failing showcase tests are
-the previous commit `3bc9eb6a89deb9661f9d6bd23ede3b752c8344f7`. Every source link below fixes
-both the commit and its original line numbers. Paths are relative to the
-repository root. This note extends the
+proposed into `ws-component-catalog/intellij-idea` as PR #171. Implementation and
+tests reviewed at commit `e9be77a9234015790892da857a5834ace80b1c36`. The showcase tests for the
+original defects are commit `3bc9eb6a89deb9661f9d6bd23ede3b752c8344f7`; the
+first fix is `236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98`; the reproducers from
+the Codex review of #171 are `babbb96` and their fix is the reviewed commit.
+Every source link below fixes both the commit and its original line numbers.
+Paths are relative to the repository root. This note extends the
 [2026-10-06 argument](2026-10-06-configuration-correctness.md), which keeps its
 own snapshot and its counterexample; the obligation that failed there is
-discharged here, together with three smaller defects the same review found.
+discharged here, together with three smaller defects the same review found and
+three regressions the Codex review found at the selection boundary.
 
 **Conclusion:** with one representation invariant added, the omission argument
 closes. The persisted selection of a checkout never depends on which optional
@@ -45,8 +48,16 @@ The fix names the two values and keeps them apart:
   `E ∘ compose` with warning output, so every existing reader keeps its
   behavior while new writers can reach `S` alone.
 
-**Invariant P1:** every writer of a version-set record writes a value of `S`,
-never a value of `E`. The two writers are checked below.
+**Invariant P1:** each command writer of a version-set record, the local
+capability edit and `versions preview`/`select`, writes a value of `S`, never a
+value of `E`. `versions rollback` is a third writer and is excluded; section 4
+records why. The two command writers are checked below.
+
+**Invariant P2 (its converse):** every consumer that acts on a version-set
+candidate, by asking consent, downloading, pinning or realizing, acts on
+`E(candidate, W)`, never on the candidate itself. Entries that `E` hides are
+carried unchanged. The Codex review of #171 found three consumers that broke P2
+once the candidate became `S`; section 2.3 covers them.
 
 ## 2. Writers persist the selection
 
@@ -94,6 +105,34 @@ component replaced, which is P1.
 `follow_project` removes the version set rather than writing one, and realizes
 the projection, unchanged. `rollback` is discussed in section 4.
 
+### 2.3 Selection consumes the projection
+
+[`select`, lines 494–516][select] receives a candidate that is now `S`. At the
+first fix it still treated the candidate as `E` in three places, each reproduced
+by the Codex review and now a test:
+
+1. **Consent.** Acquisition declarations and the accepted answers replayed into
+   the final admission were collected from the unfiltered candidate, so a
+   component hidden by an omission either raised `KeyError` for an answer never
+   required, or had its retained inactive consent replayed as an acquisition.
+   Declarations are now read from `prepared.lock`, the lock `_selection` admitted,
+   which is the projection. A hidden tool neither needs nor replays consent.
+2. **Pinning and download.** `_pin_artifacts` recursed over the whole candidate,
+   downloading hidden providers and interpreting opaque metadata this reader does
+   not understand. [`_pin_active_artifacts`, lines 408–418][pin-active] pins the
+   projection and writes only its component entries back into the candidate.
+   Hidden and unsupported entries are byte-for-byte what the composition held.
+3. **Freshness.** A preview recorded only the execution identity, which hashes
+   the projection, so a hidden shared pin could change between preview and
+   select and the old value would be persisted as an explicit pin. The proposal
+   now also records a canonical digest of the composition, and `select` refuses
+   when either differs. Execution identities (`set_id`) are unchanged, so running
+   and known-good identities keep their meaning. A preview written before this
+   change lacks the field and is refused as stale.
+
+With these, `select` reads `S` only to persist it, and everything with an
+effect reads `E`. That is P2 for this writer.
+
 ## 3. Separate argument for the tests
 
 The showcase commit adds six tests that fail on the previous implementation,
@@ -112,17 +151,22 @@ error classes and messages; none re-implements the composition.
 | [`:729–738`][t-keep] | Deselecting a project-optional tool keeps its sentinel pin in the version set and in the effective lock, because the project still wants it. Exercises the *needed* guard of `release_deselected`. |
 | [`:741–752`][t-drop] | Deselecting an agent removes only its component; the IDE's sentinel pin and selector stay. Exercises removal of a non-IDE provider. |
 | [`test_version_sets.py:987–1012`][t-versions] | Through the CLI: with `--without browser-automation` active, `versions preview` and `select` record a version set that still holds the sentinel shared Playwright pin, and clearing the omission brings it back beside the upgraded component; host decisions other than renewed base trust are unchanged. |
+| [`:1030–1039`][t-consent-absent] | With shared optional `antigravity-agent` omitted locally, `preview`/`select` succeed, infer no `antigravity-download` consent, and keep the hidden provider in the version set. Failed with `KeyError` before the select fix. |
+| [`:1042–1052`][t-consent-kept] | Consent given while the tool was active is left exactly as recorded after it is omitted and a selection runs; the executed lock excludes the tool. Replaying it as an acquisition fails this. |
+| [`:1055–1069`][t-stale] | Change a shared pin that the current omission hides after previewing: the composition differs, the execution identity does not, and `select` exits 2 with *preview again* without writing a version set. |
+| [`:1072–1094`][t-opaque] | An opaque optional provider with `url`/`integrity` and no SHA-256: selection must not request its URL, and the version set carries its metadata unchanged beside the upgraded component. |
 
 The two deselection tests pass on the previous implementation as well; they are
 regression guards for the stated rule, not evidence of a defect. The version-set
 test is limited to the codex journey because the widget fixture's capability is
 unknown to the catalog and cannot be a required capability.
 
-Full unit suite on the review branch: 1,253 passing cases (the earlier 1,245
-plus the eight above) and two xfails; the previously non-strict xpass
-(the clock-dependent workflow claim test, a recorded flake) xfailed in that run. The build gate
-(`nox -s build`: distribution version, syntax, mypy, unit tests, source and
-PEX smokes, ten packaged integration cases, documentation contract) passed;
+Full unit suite on the review branch: 1,257 passing cases (the earlier 1,245
+plus the twelve above) and the two expected-failure outcomes recorded before
+(one xfail; the clock-dependent workflow claim test is a recorded flake that
+xpasses or xfails by run). The build gate (`nox -s build`: distribution
+version, syntax, mypy, unit tests, source and PEX smokes, ten packaged
+integration cases, documentation contract) passed;
 log `.git/correctness-review-build.log`, not shipped. Branch coverage of the
 changed modules under the policy, version-set, upgrade-recovery and project
 command suites: `capability_selection.py` 99%, `capability_commands.py` 97%,
@@ -136,9 +180,10 @@ selected capability this launcher no longer knows.
   lock that ran, which is a projection. `rollback` writes that lock as the
   version set, so a rollback to a run that omitted an optional capability bakes
   the omission in; clearing the omission afterwards will not restore the
-  provider. P1 does not hold for that writer. Fixing it needs the composition
-  to be recorded beside the known-good lock, a record-format decision left to
-  the owner.
+  provider. P1 is stated for the two command writers and does not hold for
+  this third one. Fixing it needs the composition to be recorded beside the
+  known-good lock, a record-format decision left to the owner for the #170
+  review.
 - **Unknown previously selected capabilities are left alone.** If a launcher
   downgrade makes a previously selected capability unknown, its providers stay
   in the version set when it is deselected. The projection still filters them.
@@ -155,20 +200,26 @@ selected capability this launcher no longer knows.
   integrity, authorization, realization and the legacy fast path keep the
   arguments and limits of the earlier note.
 
-[compose]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/configuration/capability_selection.py#L107-L152
-[usable]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/configuration/capability_selection.py#L181-L243
-[effective]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/configuration/capability_selection.py#L155-L178
-[local]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/configuration/capability_commands.py#L211-L253
-[release]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/configuration/capability_commands.py#L288-L310
-[pins]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/configuration/capability_commands.py#L256-L285
-[workspace]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/version_sets.py#L52-L58
-[storage]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/configuration/storage.py#L292-L337
-[preview]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/devcapsule/version_sets.py#L316-L368
-[t-omit]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_capability_policy.py#L647-L668
-[t-shared]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_capability_policy.py#L671-L679
-[t-corrupt]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_capability_policy.py#L682-L692
-[t-init]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_capability_policy.py#L695-L705
-[t-named]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_capability_policy.py#L708-L712
-[t-keep]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_capability_policy.py#L729-L738
-[t-drop]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_capability_policy.py#L741-L752
-[t-versions]: https://github.com/ccozianu/devcapsule/blob/236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98/devcapsule-src/tests/test_version_sets.py#L987-L1012
+[compose]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/configuration/capability_selection.py#L107-L152
+[usable]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/configuration/capability_selection.py#L181-L243
+[effective]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/configuration/capability_selection.py#L155-L178
+[local]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/configuration/capability_commands.py#L211-L253
+[release]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/configuration/capability_commands.py#L288-L310
+[pins]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/configuration/capability_commands.py#L256-L285
+[workspace]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/version_sets.py#L52-L58
+[storage]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/configuration/storage.py#L292-L337
+[preview]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/version_sets.py#L316-L370
+[t-omit]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_capability_policy.py#L647-L668
+[t-shared]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_capability_policy.py#L671-L679
+[t-corrupt]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_capability_policy.py#L682-L692
+[t-init]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_capability_policy.py#L695-L705
+[t-named]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_capability_policy.py#L708-L712
+[t-keep]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_capability_policy.py#L729-L738
+[t-drop]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_capability_policy.py#L741-L752
+[t-versions]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_version_sets.py#L987-L1012
+[select]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/version_sets.py#L494-L516
+[pin-active]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/devcapsule/version_sets.py#L408-L418
+[t-consent-absent]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_version_sets.py#L1030-L1039
+[t-consent-kept]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_version_sets.py#L1042-L1052
+[t-stale]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_version_sets.py#L1055-L1069
+[t-opaque]: https://github.com/ccozianu/devcapsule/blob/e9be77a9234015790892da857a5834ace80b1c36/devcapsule-src/tests/test_version_sets.py#L1072-L1094

@@ -124,8 +124,12 @@ Fixed on review branch `ws-component-catalog/intellij-idea-correctness`, commit
 `236fa3cc4eac0f2c05c3e72c2616da5a92b3fd98`, proposed as a pull request into
 the workstream branch. The implementation now distinguishes the checkout's
 persistent selection (`compose_lock`) from its execution projection
-(`usable_lock`); only the projection applies omissions, and every writer of a
-version-set record writes the selection. The regression combining the sentinel
+(`usable_lock`); only the projection applies omissions, and both command
+writers of a version-set record, the local capability edit and `versions
+preview`/`select`, write the selection (`versions rollback` is a recorded limit).
+The Codex review of PR #171 found that `select` still consumed the candidate as
+the execution lock; commit `e9be77a` makes consent, pinning and preview freshness
+act on the projection, with four more regression tests. The regression combining the sentinel
 version-set pin with omit and restore is
 `tests/test_capability_policy.py::test_omitting_then_restoring_an_optional_keeps_the_version_set_pin`;
 the same interaction through `versions preview`/`select` is

@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-08 awaiting Fable changes on PR #171 after Codex review; PR #170 reserved for subsequent human review
+State: paused 2026-10-08 with the Codex findings on PR #171 fixed and pushed; Codex re-review of #171 next, PR #170 reserved for subsequent human review
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,19 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- 2026-10-08, response to the Codex review of PR #171 (Claude Fable 5.1). All
+  three findings were valid and are fixed on the review branch: `babbb96` adds
+  four reproducers (the two Codex counterexamples, the retained-consent variant
+  and the stale-preview case) that fail at `236fa3c`; `e9be77a` makes `select`
+  read consent declarations from the admitted projection, pin artifacts on the
+  projection and write only active entries back, and refuse a preview whose
+  composition fingerprint no longer matches. Hidden and opaque entries are
+  carried unchanged. `set_id` and known-good identities are untouched. The
+  follow-up note now states the converse invariant (consumers act on the
+  projection) and qualifies the persistence claim to the two command writers,
+  rollback excluded. Nothing was pushed back: each counterexample reproduced
+  as described.
 
 - 2026-10-08, owner-directed Codex review of PR #171 at `7c8e355`:
   original six defects independently reproduced on test-only commit `3bc9eb6`;
@@ -209,15 +222,20 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Fable responds to the [Codex findings on PR #171](https://github.com/ccozianu/devcapsule/pull/171#issuecomment-6056998885)
-and updates that review branch; Codex re-reviews the resulting changes and
-accepts or comments there. Only after #171 is resolved does the human review
-PR #170 with Codex. Do not merge #170 as part of this exchange. The existing
-rollback, corrupt-pin recovery and proposal-export threads remain explicit
-for that later review. Do not migrate the self-hosting configuration or replace
-the launcher incidentally.
+Codex re-reviews PR #171 at `e9be77a` or later and accepts or comments there;
+Fable answers any further comment on the same branch. Only after #171 is
+resolved does the human review PR #170 with Codex. Do not merge #170 as part of
+this exchange. The rollback, corrupt-pin recovery and proposal-export threads
+remain explicit for that later review. Do not migrate the self-hosting
+configuration or replace the launcher incidentally.
 
 ## Validation And External State
+
+- Codex-review response: full `nox -s build` passed on the revised tree
+  (1,257 unit cases, ten packaged integration cases, mypy, syntax/version
+  checks, source/PEX smokes and content contract). Log:
+  `.git/correctness-review-build.log`. The four new reproducers fail at
+  `236fa3c` and pass at `e9be77a`; the earlier eight still pass.
 
 - Codex review handoff: full `nox -s build` passed (1,253 passing unit cases,
   one xfail and one pre-existing non-strict xpass, ten packaged integration
