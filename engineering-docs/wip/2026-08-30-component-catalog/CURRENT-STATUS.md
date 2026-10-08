@@ -4,7 +4,7 @@ Mnemonic: `component-catalog`
 
 Start date: 2026-08-30
 
-State: paused 2026-10-08 with the omission/version-set fix proposed in PR #171 into this branch; owner review of #171, then PR #170, pending
+State: paused 2026-10-08 awaiting Fable changes on PR #171 after Codex review; PR #170 reserved for subsequent human review
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -34,6 +34,32 @@ workstream-specific capability profiles. New/changed code coverage must exceed
 No release or website publishing.
 
 ## Current State
+
+- 2026-10-08, owner-directed Codex review of PR #171 at `7c8e355`:
+  original six defects independently reproduced on test-only commit `3bc9eb6`;
+  all 252 capability-policy, version-set and upgrade-recovery cases pass on
+  the proposed tree. Composition/projection separation is justified, but
+  [changes requested on #171](https://github.com/ccozianu/devcapsule/pull/171#issuecomment-6056998885):
+  version selection reads omitted acquisition declarations and crashes for
+  absent Antigravity consent; artifact pinning attempts acquisition of an
+  unsupported optional provider. Both new counterexamples pass before the
+  fix and fail on the PR. A third counterexample shows preview freshness
+  ignores changed hidden pins and silently persists their old versions.
+- Next reviewer/author should fix those boundaries, add the counterexamples
+  as regressions, and qualify the universal persistence claim that excludes
+  rollback. Reproducer code and proposed corrections are in the PR comment;
+  scratch evidence is under `/opt/devcapsule-gate/pr171-review/`. No source
+  or test changes were made by this review. Existing rollback, corrupt-pin
+  recovery and proposal-export product threads remain for later discussion.
+- The owner explicitly authorized review/acceptance or comments on #171 via
+  the newly available `gh`; #170 stays for the human after #171 is resolved.
+  Activate with `source /opt/xtras/miniconda3/etc/profile.d/conda.sh` then
+  `conda activate gh`, without shell-startup-file edits. Both agents use the
+  PR author's GitHub account, so the review is a PR comment, not a formal
+  self-review. No PR was merged. Entry synchronization: zero commits behind
+  main, unchanged definition/local workflow; nothing to synchronize. No mail
+  or undecided intake. Owned bugs remain omission/version-set (fixed pending
+  acceptance) and Playwright launcher compatibility (fixed pending host acceptance).
 
 - 2026-10-08, owner-directed correctness review of the configuration slice
   (Claude Fable 5.1), on review branch `ws-component-catalog/intellij-idea-correctness`
@@ -183,17 +209,23 @@ No release or website publishing.
 
 ## Planned Next Step
 
-Owner reviews PR #171 into `ws-component-catalog/intellij-idea` and merges it there
-(its findings are also a comment on #170), then PR #170 into `main`, titled **Separate project
-capability requirements from personal tools**, using the configured merge-commit
-workflow; the owner operates the GitHub UI. On merge, close the omission bug
-record with the merge as validation. Decide the three open product threads below
-(rollback composition, corrupt-pin recovery, `proposal` exporting the
-projection) or hand them to `project-management`. Remote main does not yet
-contain this slice. Release/adoption sequencing belongs to project-management.
-Do not migrate the self-hosting configuration or replace the launcher incidentally.
+Fable responds to the [Codex findings on PR #171](https://github.com/ccozianu/devcapsule/pull/171#issuecomment-6056998885)
+and updates that review branch; Codex re-reviews the resulting changes and
+accepts or comments there. Only after #171 is resolved does the human review
+PR #170 with Codex. Do not merge #170 as part of this exchange. The existing
+rollback, corrupt-pin recovery and proposal-export threads remain explicit
+for that later review. Do not migrate the self-hosting configuration or replace
+the launcher incidentally.
 
 ## Validation And External State
+
+- Codex review handoff: full `nox -s build` passed (1,253 passing unit cases,
+  two xfails, ten packaged integration cases, types, syntax/version checks,
+  source/PEX smokes and documentation contract). Log:
+  `/opt/devcapsule-gate/pr171-review/build.log`. This validates the existing
+  automated gate; it does not invalidate the three additional counterexamples
+  posted on #171. Only workstream/root status records changed in this handoff;
+  the pre-existing `.idea/project.iml` edit remains untouched and uncommitted.
 
 - Correctness review fix: full `nox -s build` passed on the review branch
   (1,253 unit cases, ten packaged integration cases, mypy, syntax/version
@@ -299,10 +331,14 @@ Do not migrate the self-hosting configuration or replace the launcher incidental
 
 ## Open Threads
 
-- Awaiting the owner: review and merge of the correctness review branch into
-  this workstream's branch, then PR #170. The review found no further defect in
-  the composition and persistence boundary; artifact integrity, authorization
-  and realization keep the earlier note's arguments and limits.
+- PR #171 awaits Fable's response to the two confirmed select-path regressions
+  and composition-freshness finding. No implementation alternative was applied;
+  the PR comment provides reproducible evidence and suggested changes. #170
+  remains open and untouched by this review, for later owner review.
+
+- Fable's earlier review covered composition and persistence; Codex's review
+  above additionally found execution-projection gaps in selection and preview
+  freshness. Acceptance of #171 is pending those corrections.
 - Product decisions surfaced by the review, not taken: (1) `versions rollback`
   re-persists an execution snapshot, so a rollback to a run that omitted an
   optional tool bakes the omission in; fixing it needs the composition recorded
