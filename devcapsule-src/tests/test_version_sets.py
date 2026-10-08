@@ -1010,3 +1010,85 @@ def test_version_selection_keeps_an_omitted_optional_pin_for_later_restoration(j
     assert effective["components"]["playwright"]["version"] == "fixture-shared-pin"
     assert effective["components"]["codex"]["version"] == "2.0.0"
     assert host_decisions() == decisions
+
+
+def omit_shared_optional(journey, capability, component):
+    """Declare a shared optional capability with its provider, then omit it locally."""
+    from devcapsule.configuration.storage import load_toml
+    path = journey.root / ".devcapsule/devcapsule.toml"
+    manifest = load_toml(path)
+    manifest["capabilities"] = {"required": ["python", "python-ide", "codex-agent"], "optional": [capability]}
+    path.write_text(render_toml(manifest))
+    lock = load_toml(journey.lock)
+    extra = tomllib.loads(MATRICES[Platform.current()].resolve(["python", capability], project_only=True).render_lock())
+    lock["components"][component] = extra["components"][component]
+    journey.lock.write_text(render_toml(lock))
+    assert invoke(journey.root, "config", "capabilities", "--without", capability) == 0
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_select_ignores_an_omitted_acquisition(journey, capsys):
+    from devcapsule.configuration.file_formats import selected_version_lock
+    from devcapsule.configuration.storage import load_toml
+    omit_shared_optional(journey, "antigravity-agent", "antigravity-cli")
+    preview_select(journey, capsys)
+    record = load_toml(journey.record)
+    assert "antigravity-download" not in record.get("authorization", {})  # no consent inferred for an omitted tool
+    selected = selected_version_lock(record)
+    assert selected is not None and "antigravity-cli" in selected["components"]  # the hidden pin is still kept
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_select_keeps_retained_consent_inactive_for_an_omitted_acquisition(journey, capsys):
+    from devcapsule.configuration.storage import load_toml
+    omit_shared_optional(journey, "antigravity-agent", "antigravity-cli")
+    assert invoke(journey.root, "config", "capabilities", "--without") == 0
+    assert invoke(journey.root, "config", "authorize", "antigravity-download", "true") == 0
+    assert invoke(journey.root, "config", "capabilities", "--without", "antigravity-agent") == 0
+    consent = load_toml(journey.record)["authorization"]["antigravity-download"]
+    preview_select(journey, capsys)
+    assert load_toml(journey.record)["authorization"]["antigravity-download"] == consent
+    assert "antigravity-cli" not in ExecutionConfiguration.load(journey.root).project.lock["components"]
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_preview_is_stale_when_a_hidden_pin_changes(journey, capsys):
+    from devcapsule.configuration.storage import load_toml
+    omit_shared_optional(journey, "browser-automation", "playwright")
+    identity = preview_select(journey, capsys, select=False)
+    before = version_sets.Workspace.load(journey.root)
+    shared = load_toml(journey.lock)
+    shared["components"]["playwright"]["version"] = "new-hidden-pin"
+    journey.lock.write_text(render_toml(shared))
+    after = version_sets.Workspace.load(journey.root)
+    assert before.composition != after.composition and before.identity == after.identity
+    capsys.readouterr()
+    assert invoke(journey.root, "versions", "select", identity, "--unvalidated") == 2
+    assert "preview again" in capsys.readouterr().err
+    assert "version-set" not in load_toml(journey.record)
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_select_does_not_acquire_an_unsupported_optional_provider(journey, capsys, monkeypatch):
+    from devcapsule.configuration.file_formats import selected_version_lock
+    from devcapsule.configuration.storage import load_toml
+    path = journey.root / ".devcapsule/devcapsule.toml"
+    manifest = load_toml(path)
+    manifest["capabilities"] = {"required": ["python", "python-ide", "codex-agent"], "optional": ["future-tool"]}
+    path.write_text(render_toml(manifest))
+    shared = load_toml(journey.lock)
+    # An opaque provider from a newer contributor; this reader cannot use its artifact.
+    future = {"version": "1", "url": "https://example.invalid/future.tgz", "integrity": "sha512-ZmFrZQ=="}
+    shared["components"]["future"] = dict(future)
+    shared["capability-providers"] = {"future-tool": ["future"]}
+    journey.lock.write_text(render_toml(shared))
+    original = version_sets.acquire_artifact
+    def acquire(spec, *args, **kwargs):
+        assert spec.url != future["url"], "attempted acquisition of an unsupported optional provider"
+        return original(spec, *args, **kwargs)
+    monkeypatch.setattr(version_sets, "acquire_artifact", acquire)
+    preview_select(journey, capsys)
+    selected = selected_version_lock(load_toml(journey.record))
+    assert selected is not None
+    assert selected["components"]["future"] == future  # preserved untouched, not interpreted
+    assert selected["components"]["codex"]["version"] == "2.0.0"
