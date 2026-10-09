@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192) and PR6 (#194) await the owner with their Codex reviews merged; PR7, decision pages (deliverable 5), is implemented on `ws-capsule-webconsole/decisions` and gated
+State: active; the second iteration is complete and awaits the owner: PR5 (#192), PR6 (#194) and PR7 (#196), stacked, each with its Codex review merged
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -58,6 +58,26 @@ write: same-origin only, on top of the `SameSite=Strict` cookie, and a
 refusal writes nothing. Run by hand with two intake items as a sample: the
 page rendered, a browser answered it, the answer file holds the choices;
 see [evidence/2026-10-09-decision-sample](evidence/2026-10-09-decision-sample/).
+
+**PR #196 is open against PR6's branch. Its review, PR #197 by the Codex
+and gpt-6-astra pair, was merged without a round.** Eight findings, all
+accepted: the answer's temporary file is created exclusively, so a planted
+symlink cannot redirect the write into a record; decision and answer reads
+open regular files only, never following a link, bounded at 1 MiB; the
+answer route requires exactly one `Origin` equal to the console's and
+checks the 64 KiB limit per chunk; JSON refusals and validation refusals
+are separate, so a refusal names the real fault; `format` must be the
+integer 1, timestamps must be ISO 8601, and a stored answer without one is
+refused rather than given the current time; the table builder keeps empty
+edge cells and requires unique columns and a separator row; the page shows
+the title as a heading, resolves record links from the project root and
+treats an item keyed `constructor` correctly. 56 more tests, including a
+Node run of the page script against the real renderer. Re-checked in a
+browser on the merged branch: the sample decision rendered with its
+heading and record links, a submission wrote the answer file with mode
+0600, safe because the console child runs as the capsule identity, the
+agent's own user; screenshots `decisions-merged-*.png` under
+`evidence/2026-10-09-console-pages/`.
 
 Judgments recorded for slice 7:
 
@@ -397,6 +417,10 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Build gate on the merged PR7 branch at `06d4943`, 2026-10-09: 1,333 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 238 tests;
+  successful.
 - Base recipe 11 rebuilt from PR7's revision `ec7c1b7`, 2026-10-09: the
   built-base test passed; the console smoke, now probing the records page,
   the raw route, the packaged renderer and the decisions listing, passed
