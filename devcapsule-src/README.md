@@ -510,6 +510,30 @@ mismatch reports that the selected PEX embeds `unknown`, rebuild
 `dist/devcapsule.pex` with the default `scripts/build-pex.sh`, inspect it with
 `dist/devcapsule.pex version --json`, and retry.
 
+### Checkout notifications
+
+What one checkout's DevCapsule environment tells its human, local to that
+checkout and never a record. An agent or a tool inside the capsule posts; the
+human reads under the web console's bell or with the same commands from the
+host. Unanswered decision pages of the console appear in the listing as the
+kind `decision`, linking to their page; they are never copied.
+
+```bash
+devcapsule project checkout notifications list [--unread] [--json]
+devcapsule project checkout notifications post --kind gate --title "Gate failed on main" \
+    --summary "Two unit cases; see the log." --link /records/engineering-docs/README.md
+devcapsule project checkout notifications read ID
+devcapsule project checkout notifications dismiss ID
+```
+
+The store is `$XDG_STATE_HOME/devcapsule/notifications/<id>.json` inside the
+capsule, which is the checkout's persistent home on the host; from the host
+the commands find that home as `project info` reports it, honoring
+`DEVCAPSULE_HOME_DIR`. `DEVCAPSULE_NOTIFICATIONS` names another directory
+outright. The document format is in `devcapsule/notifications.py`.
+Project-wide notifications, a coordinator reaching every collaborator, are a
+later source merged into the same listing (owner's note, 2026-10-09).
+
 ### Shared component installations
 
 Node, Temurin, and Maven install in separate BuildKit stages when building a

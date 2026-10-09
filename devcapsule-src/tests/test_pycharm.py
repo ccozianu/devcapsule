@@ -1370,6 +1370,8 @@ def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_pat
         assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
         published = [args[index + 1] for index, item in enumerate(args) if item == "--publish"]
         assert published == [f"127.0.0.1:{config.display_host_port}:6080", f"127.0.0.1:{config.console_host_port}:6081"]
+        # The origin crosses into the capsule so an agent can hand the human a link; the token does not.
+        assert f"DEVCAPSULE_CONSOLE_URL=http://127.0.0.1:{config.console_host_port}" in args
         assert config.console_token not in joined
         assert RuntimePlan.from_file(files.runtime_plan_file).console == config.runtime_plan.console  # type: ignore[arg-type]
         description = describe_run_command(args, config, files)

@@ -116,10 +116,20 @@ def display_url(port: int, token: str) -> str:
     return f"http://127.0.0.1:{port}/vnc.html?autoconnect=1&resize=remote&path={path}"
 
 
+CONSOLE_URL_ENV = "DEVCAPSULE_CONSOLE_URL"
+"""Inside the capsule: the console's host-side origin, without the token."""
+
+
+def console_origin(port: int) -> str:
+    """The console's host-side origin: what a link inside the capsule starts with."""
+
+    return f"http://127.0.0.1:{port}"
+
+
 def console_url(port: int, token: str) -> str:
     """The console's home page; the token travels once in the query and then in a cookie."""
 
-    return f"http://127.0.0.1:{port}/?token={quote(token, safe='')}"
+    return f"{console_origin(port)}/?token={quote(token, safe='')}"
 
 
 def accepts_connections(port: int, timeout: float = 0.5) -> bool:

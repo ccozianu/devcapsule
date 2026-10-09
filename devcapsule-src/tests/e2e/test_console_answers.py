@@ -157,6 +157,10 @@ def test_console_answers_with_and_without_a_display(built_pex: Path, tmp_path: P
         check_decision_round_trip(console, session.container, evidence / "with-display")
         runtime = json.loads(command("docker", "exec", session.container, "cat", "/etc/devcapsule/runtime-plan.json").stdout)
         assert runtime["console"]["token_path"] == "/run/devcapsule-console-token"
+        # Slice 8: the console's host-side origin is in the capsule's environment, without the token.
+        inside_origin = command("docker", "exec", session.container, "printenv", "DEVCAPSULE_CONSOLE_URL").stdout.strip()
+        assert inside_origin == console.split("/?", 1)[0], inside_origin
+        assert "token" not in inside_origin
         image = command("docker", "inspect", "--format", "{{.Config.Image}}", session.container).stdout.strip()
         plan = dict(runtime)
         # The headless project: the session's project declaration and its one

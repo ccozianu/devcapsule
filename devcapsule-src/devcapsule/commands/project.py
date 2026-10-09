@@ -34,6 +34,7 @@ from devcapsule.commands.framework import (
 from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
 from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
+from devcapsule import notifications
 from devcapsule import version_sets
 from devcapsule import runtime_configuration
 from devcapsule.runtime_configuration import CapsuleAccess
@@ -339,13 +340,138 @@ class CheckoutRegisterCommand(Command):
         return 0
 
 
-class CheckoutGroup(Group):
-    name = "checkout"
-    help = "Register additional local checkouts."
+def _notification_store(context: object | None) -> "notifications.NotificationStore":
+    """The checkout's store: its own state inside a capsule, its persistent home from the host."""
+    selected = _project_context(context)
+    try:
+        return notifications.store_for(selected.selected_path)
+    except (ProjectConfigurationError, OSError) as error:
+        raise ProjectConfigurationError(f"Cannot locate this checkout's notifications: {error}") from error
+
+
+def _render_notification_listing(document: dict[str, Any]) -> str:
+    """The human form of the listing: one line per entry, a star marking unread."""
+    entries = document["notifications"]
+    if not entries:
+        return f"No notifications under {document['directory']}.\n"
+    lines = []
+    for entry in entries:
+        if "error" in entry:
+            lines.append(f"  ! {entry['id']}: {entry['error']}")
+            continue
+        mark = "*" if entry["read-at"] is None else " "
+        link = f"  {entry['link']}" if entry["link"] else ""
+        lines.append(f"{mark} {entry['posted-at']}  {entry['kind']:<10}  {entry['id']}  {entry['title']}{link}")
+    return f"{document['unread']} unread of {len(entries)}; * marks unread.\n" + "\n".join(lines) + "\n"
+
+
+class NotificationsListCommand(Command):
+    name = "list"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
+    help = "List this checkout's notifications and its unanswered decisions, newest first."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--unread", action="store_true", help="Only the entries not yet read.")
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        document = notifications.listing_document(_notification_store(context), unread_only=arguments.unread)
+        print(json.dumps(document, indent=2, sort_keys=True) if arguments.as_json
+              else _render_notification_listing(document), end="")
+        return 0
+
+
+class NotificationsPostCommand(Command):
+    name = "post"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
+    help = "Post a notification to this checkout's human; capsule state only, never a record."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--kind", required=True, help="Lowercase letters, digits and hyphens; 'decision' is reserved.")
+        parser.add_argument("--title", required=True)
+        parser.add_argument("--summary", default="", help="Markdown shown under the title.")
+        parser.add_argument("--link", default="", help="A web console path to open, such as /records/README.md.")
+        parser.add_argument("--posted-by", dest="posted_by", default="", help="Who posts; default $USER or 'unknown'.")
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        store = _notification_store(context)
+        try:
+            posted = store.post(kind=arguments.kind, title=arguments.title, summary=arguments.summary,
+                                link=arguments.link, posted_by=arguments.posted_by or os.environ.get("USER") or "unknown")
+        except notifications.NotificationError as error:
+            raise ProjectConfigurationError(f"Cannot post the notification: {error}") from error
+        print(json.dumps(posted.to_mapping(), indent=2, sort_keys=True) if arguments.as_json
+              else f"Posted {posted.id}: {store.path(posted.id)}")
+        return 0
+
+
+class NotificationsReadCommand(Command):
+    name = "read"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
+    help = "Mark a notification read; a decision is read by answering it."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("notification_id", metavar="ID")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        try:
+            read = _notification_store(context).mark_read(arguments.notification_id)
+        except notifications.NotificationError as error:
+            raise ProjectConfigurationError(str(error)) from error
+        print(f"Read {read.id} at {read.read_at}")
+        return 0
+
+
+class NotificationsDismissCommand(Command):
+    name = "dismiss"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
+    help = "Remove a notification; a decision is removed by the agent that asked it."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("notification_id", metavar="ID")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        try:
+            _notification_store(context).dismiss(arguments.notification_id)
+        except notifications.NotificationError as error:
+            raise ProjectConfigurationError(str(error)) from error
+        print(f"Dismissed {arguments.notification_id}")
+        return 0
+
+
+class NotificationsGroup(Group):
+    name = "notifications"
+    help = "What this checkout's environment tells its human: list, post, read, dismiss."
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
-        return {CheckoutRegisterCommand.name: CheckoutRegisterCommand}
+        return {
+            NotificationsListCommand.name: NotificationsListCommand,
+            NotificationsPostCommand.name: NotificationsPostCommand,
+            NotificationsReadCommand.name: NotificationsReadCommand,
+            NotificationsDismissCommand.name: NotificationsDismissCommand,
+        }
+
+
+class CheckoutGroup(Group):
+    name = "checkout"
+    help = "This local checkout: register its name, and its notifications."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {
+            CheckoutRegisterCommand.name: CheckoutRegisterCommand,
+            NotificationsGroup.name: NotificationsGroup,
+        }
 
 
 class ConfigResolveCommand(Command):

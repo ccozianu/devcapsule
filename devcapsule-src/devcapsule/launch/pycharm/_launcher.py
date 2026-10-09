@@ -31,10 +31,12 @@ from ...container_runtime.contract import (
 from ...display_client import (
     CONSOLE_LABEL_TEXT,
     CONSOLE_TOKEN_DESTINATION,
+    CONSOLE_URL_ENV,
     CONTAINER_CONSOLE_PORT,
     CONTAINER_DISPLAY_PORT,
     DISPLAY_TOKEN_DESTINATION,
     allocate_loopback_port,
+    console_origin,
     console_url,
     default_opener,
     display_url,
@@ -915,6 +917,9 @@ def build_docker_args(
         f"PROJECT_PATH={config.project_mount}",
         "--env",
         f"DEVCAPSULE_CONTAINER_NAME={config.name}",
+        # The console's host-side origin, so an agent inside can hand the human
+        # a link; the token stays in its file and in the browser's cookie.
+        *_console_environment_args(config),
         "--env",
         "HOME=/home/devcapsule",
         "--env",
@@ -1068,6 +1073,12 @@ def build_docker_args(
         args.extend(["--memory", str(config.memory_limit_bytes)])
     args.extend(config.extra_docker_args)
     return args
+
+
+def _console_environment_args(config: PycharmRunConfig) -> list[str]:
+    if config.console_host_port is None:
+        return []
+    return ["--env", f"{CONSOLE_URL_ENV}={console_origin(config.console_host_port)}"]
 
 
 def _display_environment_args(config: PycharmRunConfig) -> list[str]:
