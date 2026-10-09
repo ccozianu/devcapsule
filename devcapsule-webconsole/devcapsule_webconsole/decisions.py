@@ -19,7 +19,9 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import sys
+import tempfile
 from typing import Any, Mapping, Sequence
 
 FORMAT = 1
@@ -111,14 +113,28 @@ def _text(value: object, where: str, *, required: bool = False) -> str:
         return ""
     if not isinstance(value, str) or (required and not value.strip()):
         raise DecisionError(f"{where} must be a {'non-empty ' if required else ''}string")
+    if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
+        raise DecisionError(f"{where} must contain valid Unicode text")
     return value
+
+
+def _timestamp(value: object, where: str, *, required: bool = False) -> str:
+    text = _text(value, where, required=required)
+    if text:
+        try:
+            datetime.fromisoformat(text)
+            if len(text) <= 10:
+                raise ValueError("a date alone is not a timestamp")
+        except ValueError as error:
+            raise DecisionError(f"{where} must be an ISO 8601 timestamp") from error
+    return text
 
 
 def decision_from_mapping(document: object) -> Decision:
     """Validate a decision document; every refusal names the field."""
     if not isinstance(document, dict):
         raise DecisionError("a decision must be a JSON object")
-    if document.get("format") != FORMAT:
+    if type(document.get("format")) is not int or document["format"] != FORMAT:
         raise DecisionError(f"format must be {FORMAT}")
     items_value = document.get("items")
     if not isinstance(items_value, list) or not items_value:
@@ -146,6 +162,8 @@ def decision_from_mapping(document: object) -> Decision:
         records_value = item_value.get("records", [])
         if not isinstance(records_value, list) or not all(isinstance(record, str) and record for record in records_value):
             raise DecisionError(f"{where}.records must be an array of paths")
+        for record in records_value:
+            _text(record, f"{where}.records")
         multiple = item_value.get("multiple", False)
         if not isinstance(multiple, bool):
             raise DecisionError(f"{where}.multiple must be true or false")
@@ -164,7 +182,7 @@ def decision_from_mapping(document: object) -> Decision:
         _text(document.get("title"), "title", required=True),
         tuple(items),
         _text(document.get("asked-by"), "asked-by"),
-        _text(document.get("asked-at"), "asked-at"),
+        _timestamp(document.get("asked-at"), "asked-at"),
         _text(document.get("context"), "context"),
     )
 
@@ -173,7 +191,7 @@ def answer_from_mapping(decision: Decision, document: object, *, answered_at: st
     """Validate an answer against its decision: known items, known options, one choice unless multiple."""
     if not isinstance(document, dict):
         raise DecisionError("an answer must be a JSON object")
-    if document.get("format", FORMAT) != FORMAT:
+    if type(document.get("format", FORMAT)) is not int or document.get("format", FORMAT) != FORMAT:
         raise DecisionError(f"format must be {FORMAT}")
     if document.get("id", decision.id) != decision.id:
         raise DecisionError(f"id must be {decision.id!r}")
@@ -220,25 +238,20 @@ class DecisionStore:
             return []
         found = []
         for path in self.directory.glob("*.json"):
-            if path.name.endswith(".answer.json") or KEY_PATTERN.fullmatch(path.stem) is None or not path.is_file():
+            if path.name.endswith(".answer.json") or KEY_PATTERN.fullmatch(path.stem) is None:
                 continue
-            found.append((path.stat().st_mtime, path.stem))
+            try:
+                metadata = path.lstat()
+            except FileNotFoundError:
+                continue  # The agent may discard a decision at any time.
+            if stat.S_ISDIR(metadata.st_mode):
+                continue
+            found.append((metadata.st_mtime, path.stem))
         return [decision_id for _, decision_id in sorted(found)]
 
     def read_decision(self, decision_id: str) -> Decision:
         path = self.decision_path(decision_id)
-        try:
-            raw = path.read_bytes()
-        except FileNotFoundError:
-            raise
-        except OSError as error:
-            raise DecisionError(f"cannot read {path.name}: {error}") from error
-        if len(raw) > MAXIMUM_DOCUMENT_BYTES:
-            raise DecisionError(f"{path.name} is larger than {MAXIMUM_DOCUMENT_BYTES} bytes")
-        try:
-            document = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError) as error:
-            raise DecisionError(f"{path.name} is not a JSON document: {error}") from error
+        document = _read_document(path)
         decision = decision_from_mapping(document)
         if decision.id != decision_id:
             raise DecisionError(f"{path.name} carries id {decision.id!r}; the file name is the id")
@@ -247,28 +260,51 @@ class DecisionStore:
     def read_answer(self, decision: Decision) -> Answer | None:
         path = self.answer_path(decision.id)
         try:
-            raw = path.read_bytes()
+            document = _read_document(path)
         except FileNotFoundError:
             return None
-        except OSError as error:
-            raise DecisionError(f"cannot read {path.name}: {error}") from error
-        try:
-            document = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError) as error:
-            raise DecisionError(f"{path.name} is not a JSON document: {error}") from error
         if not isinstance(document, dict):
             raise DecisionError(f"{path.name} must be a JSON object")
-        answered_at = document.get("answered-at")
-        return answer_from_mapping(decision, document, answered_at=answered_at if isinstance(answered_at, str) else _now())
+        answered_at = _timestamp(document.get("answered-at"), "answered-at", required=True)
+        return answer_from_mapping(decision, document, answered_at=answered_at)
 
     def write_answer(self, answer: Answer) -> Path:
         """Write the answer beside its decision: a temporary file, then one rename."""
         path = self.answer_path(answer.id)
         self.directory.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-        temporary.write_text(json.dumps(answer.to_mapping(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        temporary.replace(path)
+        # Exclusive creation prevents a planted symlink or another writer from
+        # sharing the temporary file. Rename replaces an answer symlink itself.
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
+                                             prefix=f".{path.name}.", suffix=".tmp", delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(json.dumps(answer.to_mapping(), indent=2, sort_keys=True) + "\n")
+            temporary.replace(path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
         return path
+
+
+def _read_document(path: Path) -> object:
+    """Read a bounded regular file without following an agent's symbolic link."""
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise DecisionError(f"{path.name} must be a regular file")
+            raw = stream.read(MAXIMUM_DOCUMENT_BYTES + 1)
+    except FileNotFoundError:
+        raise
+    except OSError as error:
+        raise DecisionError(f"cannot read {path.name}: {error}") from error
+    if len(raw) > MAXIMUM_DOCUMENT_BYTES:
+        raise DecisionError(f"{path.name} is larger than {MAXIMUM_DOCUMENT_BYTES} bytes")
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (ValueError, RecursionError) as error:
+        raise DecisionError(f"{path.name} is not a JSON document: {error}") from error
 
 
 def from_markdown_table(text: str, *, decision_id: str, title: str, asked_by: str = "", context: str = "") -> Decision:
@@ -281,13 +317,22 @@ def from_markdown_table(text: str, *, decision_id: str, title: str, asked_by: st
     rows = [line.strip() for line in text.splitlines() if line.strip().startswith("|")]
     if len(rows) < 3:
         raise DecisionError("the table needs a header row, a separator row and at least one item row")
-    header = [cell.strip().lower() for cell in rows[0].strip("|").split("|")]
+
+    def cells_of(row: str) -> list[str]:
+        return [cell.strip() for cell in row.removeprefix("|").removesuffix("|").split("|")]
+
+    header = [cell.lower() for cell in cells_of(rows[0])]
+    if len(set(header)) != len(header):
+        raise DecisionError("the table must have unique column names")
     for required in ("key", "title"):
         if required not in header:
             raise DecisionError(f"the table needs a {required!r} column")
+    separator = cells_of(rows[1])
+    if len(separator) != len(header) or not all(re.fullmatch(r":?-+:?", cell) for cell in separator):
+        raise DecisionError("the table needs a markdown separator row matching its header")
     items = []
     for row in rows[2:]:
-        cells = [cell.strip() for cell in row.strip("|").split("|")]
+        cells = cells_of(row)
         if len(cells) != len(header):
             raise DecisionError(f"row {row!r} has {len(cells)} cells; the header has {len(header)}")
         values = dict(zip(header, cells))
@@ -335,7 +380,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         answer = store.read_answer(decision)
         print(f"{decision.id}: {len(decision.items)} item(s); " + (f"answered {answer.answered_at}" if answer else "unanswered"))
         return 0
-    except (DecisionError, OSError) as error:
+    except (DecisionError, OSError, UnicodeError) as error:
         print(f"devcapsule-webconsole decisions: {error}", file=sys.stderr)
         return 2
 

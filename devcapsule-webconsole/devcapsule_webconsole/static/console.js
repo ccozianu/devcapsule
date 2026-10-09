@@ -455,15 +455,15 @@
     }
     const { decision, answer } = await api("/api/decisions/" + encodeURIComponent(id));
     document.title = decision.title + " · DevCapsule console";
-    const md = recordRenderer("decisions/" + id);
-    const head = el("div");
+    const md = recordRenderer("");
+    const head = el("div", {}, [el("h2", { text: decision.title })]);
     head.appendChild(facts([["Asked by", decision["asked-by"]], ["Asked at", decision["asked-at"]],
       ["Answered", answer ? answer["answered-at"] : "not yet"]]));
     const context = el("div", { class: "record" });
     context.innerHTML = md.render(decision.context || "");
     const form = el("form", { class: "decision" });
     for (const item of decision.items) {
-      const previous = answer && answer.answers[item.key];
+      const previous = answer && Object.hasOwn(answer.answers, item.key) ? answer.answers[item.key] : null;
       const block = el("fieldset", { class: "item" }, [el("legend", { text: item.title })]);
       const summary = el("div", { class: "record" });
       summary.innerHTML = md.render(item.summary || "");
