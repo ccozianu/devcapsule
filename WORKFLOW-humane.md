@@ -640,6 +640,33 @@ commands are exact, quotations are someone else's words, and tables already
 hold one fact per cell. Existing records are not rewritten, for the same
 reason old section names are not: records are history.
 
+### 9.6 rule 6 Diagrams first, in DOT
+
+**Rule.** An explanation with structure is given as a diagram first and prose
+second, in the DOT language, in a fenced `dot` block, rendered by Graphviz and
+related software; no other notation; an image only where no renderer is
+available, with the source beside it.
+
+**Intended effect.** A human parses the shape of a thing from a picture in
+seconds instead of reconstructing it from paragraphs, and every diagram in the
+repository is in one notation that both humans and agents write fluently.
+
+**Motivation.** Owner decision of 2026-10-09, from Karpathy's post of
+2026-10-02: "Instead of writing, ask your LLM to create a diagram. These can
+be a lot easier to process, parse, and understand." The point is general, not
+about workflows: whenever an agent would explain structure in prose, the
+diagram is the better output. DOT was chosen over Mermaid and PlantUML because
+it is the notation of graphs as mathematics knows them, nodes and edges, with
+decades of examples that make every model fluent in it, with layout engines
+that handle large graphs and clusters, and with renderers that run anywhere
+from the command line to a vendored JavaScript file in the capsule's web
+console. One notation rather than two keeps the choice out of every diagram.
+GitHub does not render DOT inline; the console does, and an image with the
+source beside it covers the rest. State machines are one case of structure,
+not the rule's subject; the first applications in front of the project are
+the configuration composition boundary, the three places an intake item can
+be, the console's process topology, and a release's branch and tag history.
+
 ### 9.8 and 9.9 Checkpoints and session close
 
 **Rule.** Refresh durable state at closure points, after manual validation, on

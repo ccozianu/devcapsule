@@ -120,6 +120,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [The capsule web console](engineering-docs/work-orders/2026-10-09-capsule-webconsole.md)
 - [Playwright, IntelliJ IDEA and reusable agent-driven IDE smoke](engineering-docs/work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
 - [The website, seen from the visitor's chair](engineering-docs/work-orders/2026-09-28-website-visitor-experience.md)
 - [The visitor content and the producer migration](engineering-docs/work-orders/2026-09-28-visitor-content-and-producer-migration.md)

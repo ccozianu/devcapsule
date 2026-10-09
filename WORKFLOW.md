@@ -246,6 +246,10 @@ with its version. Rules changed since 0.2.14:
   an agent to run the workstream to completion; topic 7.5 lets a workstream
   begin from one and link it. No migration: existing work orders stay as they
   are.
+- **Diagrams first, in DOT.** Topic 9.6 rule 6: an explanation with
+  structure is given as a diagram first, in the DOT language in a fenced
+  `dot` block rendered by Graphviz, with prose second; no other diagram
+  notation. No migration: existing prose is not redrawn.
 - **Controlled language for reports and records.** Topic 9.6 rule 5: every
   report to the human and every human-facing record text is written at about
   80% ASD-STE100, in the glossary's terms. Code, commands, quotations, and
@@ -1238,6 +1242,15 @@ session-resumption feature.
    session reports, status-file narrative, open threads, decision notes, bug
    prose, pull-request descriptions, and intake items. It does not cover
    code, commands, quoted material, or tables.
+6. When an explanation to the human has structure, give a diagram first and
+   prose second. Structure means a sequence, a hierarchy, a set of states and
+   transitions, a dependency graph, or a layout. Write the diagram in the DOT
+   language, in a fenced `dot` block in the markdown, so that Graphviz and
+   related software render it. Use no other diagram notation. Commit an
+   image only where a renderer is unavailable to the reader, and keep the
+   `dot` source beside it. This covers reports, status files, decision notes,
+   design notes, pull-request descriptions, and the humane companions. The
+   rule file stays text.
 
 ### 9.7 Responsibilities
 
