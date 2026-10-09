@@ -304,6 +304,10 @@ then 5, then 6.
   type check, smokes, documentation contract, then the console session;
   successful. Manual run against this capsule: the Processes page renders
   the real readings; screenshot under `evidence/2026-10-09-console-pages/`.
+- Base recipe 11 built locally from the public PEX of `9ac19b8`: the built-base
+  test passed with psutil importable offline; the console smoke, now probing
+  the monitor routes, passed with the display and headless. See the `r11-*`
+  files under `evidence/2026-10-09-console-smoke/`.
 - Slice 1 unit modules: 468 passed with `PYTEST_ADDOPTS` scratch under
   `/opt/devcapsule-gate/pytest`; `/tmp` overflowed at 2 GB first.
 - `mypy devcapsule`: no issues in 112 files.

@@ -22,3 +22,9 @@ built base recipe 10 with the public PEX of revision
   translated for the host daemon, token redacted.
 - `ide-smoke-codium-facts.json`: the IDE smoke on the built base, codium, passed; its new "console answers" fact is 200 and the tokenless probe was 403.
 - `merged-*-facts.json`: the same smoke rerun with the merged PR3 branch's executable (`0e5737e`, after review PR #189) on the same base: passed, same facts.
+
+## Recipe 11, slice 5 (live processes and resources), 2026-10-09
+
+- Base image: `devcapsule-base-e2e:webconsole-r11-181351`, id `sha256:f0ba2441c6e33a75d3971196ff75cb2d31fa9a219aed88b793878a401dcd6006`, built from the public PEX of `9ac19b8` over host networking; recipe-version 11.
+- `tests/e2e/test_built_base.py`: passed; the console venv imports psutil offline.
+- `tests/e2e/test_console_answers.py` with the monitor probes: passed with the display and headless. The `r11-*-facts.json` files add `processes_status` 200 with the console's own process listed and `resources_status` 200 with the cgroup available; `r11-with-display-resources.json` is the capsule's reading.

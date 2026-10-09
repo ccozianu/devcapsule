@@ -3,8 +3,10 @@
 Deliverable 1 of the capsule web console work order, as the smoke the
 acceptance evidence asks for: ``project run`` prints a console URL, the
 console answers on it, a tokenless request is refused, and a path outside
-the mount is refused. The headless case runs the same materialized image
-through the runtime's job mode, which starts no display at all.
+the mount is refused. Deliverable 3 adds the monitor: the processes and
+the cgroup reading answer from inside the capsule. The headless case runs
+the same materialized image through the runtime's job mode, which starts
+no display at all.
 """
 from __future__ import annotations
 
@@ -59,10 +61,13 @@ def check_console(url: str, evidence: Path, label: str) -> dict[str, object]:
     absolute_status, _ = fetch(f"{base}/api/project/file?path={quote('/etc/passwd', safe='')}", headers=headers)
     # The smoke workspace's one file; see ide_session.
     inside_status, inside = fetch(f"{base}/api/project/file?path=smoke.txt", headers=headers)
+    processes_status, processes = fetch(f"{base}/api/processes", headers=headers)
+    resources_status, resources = fetch(f"{base}/api/resources", headers=headers)
     facts = {
         "label": label, "home_status": home_status, "configuration_page_status": page_status,
         "configuration_api_status": configuration_status, "tokenless_status": refused_status,
         "traversal_status": traversal_status, "absolute_status": absolute_status, "inside_status": inside_status,
+        "processes_status": processes_status, "resources_status": resources_status,
     }
     (evidence / f"{label}-facts.json").write_text(json.dumps(facts, indent=2) + "\n", encoding="utf-8")
     (evidence / f"{label}-configuration.json").write_text(configuration, encoding="utf-8")
@@ -73,6 +78,15 @@ def check_console(url: str, evidence: Path, label: str) -> dict[str, object]:
     assert refused_status == 403 and "run token" in refused
     assert traversal_status == 403 and absolute_status == 403
     assert inside_status == 200 and inside == "DevCapsule graphical smoke fixture.\n"
+    # Deliverable 3: the capsule's own processes and its cgroup, from inside.
+    assert processes_status == 200, processes[:400]
+    listing = json.loads(processes)
+    assert listing["count"] >= 1 and any("devcapsule_webconsole" in row["command"] for row in listing["processes"])
+    assert resources_status == 200, resources[:400]
+    reading = json.loads(resources)
+    facts["resources_available"] = reading["available"]
+    assert reading["available"] is True and reading["memory"]["current-bytes"] > 0
+    (evidence / f"{label}-resources.json").write_text(resources, encoding="utf-8")
     return facts
 
 
