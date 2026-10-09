@@ -6,7 +6,7 @@ Start date: 2026-10-09
 
 State: active; PR1 (#184) awaits the owner; PR2, the console subproject, is implemented on `ws-capsule-webconsole/console-app` and gated, its review PR is next
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
+Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1)
 

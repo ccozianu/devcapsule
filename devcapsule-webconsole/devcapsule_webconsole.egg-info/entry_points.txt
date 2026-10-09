@@ -1,2 +1,0 @@
-[console_scripts]
-devcapsule-webconsole = devcapsule_webconsole.__main__:main
