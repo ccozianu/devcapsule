@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; slice 1 of the first iteration, the JSON contract, implemented on this branch and gated; the owner directs the work from the work order under the 2026-10-09 orchestration exception
+State: active; PR1, the JSON contract, is open against `main` as #184 with its review PR #185 merged after one round; PR2, the console subproject, is next
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
 
@@ -50,6 +50,17 @@ disagree. The work order's three mail items are accepted as the goal and
 dispositioned. R-CONSOLE-001 is accepted, as the work order asked for the
 first integration. The user documentation names the flags. The build gate
 ran on this branch before the checkpoint; see *Validation And External State*.
+
+**PR #184 is open against `main`. Its review, PR #185 by the Codex and
+gpt-6-astra pair, was merged into the branch after one round.** The review
+found one regression #184 had introduced: the next-launch identity was
+computed outside the error boundary, so a malformed local selection hid the
+running session. It also found a pre-existing confusion of a named checkout
+called `devcapsule` with the default checkout, now fixed on both sides of
+the mount with a `checkout-name` field in the launch context. The one
+round asked for validation of that optional field beside its neighbours;
+the pair delivered it with five rejection cases. The pair's gate and this
+workstream's gate on the merged branch are recorded below.
 
 Judgments recorded for this slice:
 
@@ -105,11 +116,10 @@ digraph stack {
 
 ## Planned Next Step
 
-1. Open PR1 against `main` and request PR1.1 from the Codex pair.
-2. Settle PR1.1. Then branch PR2 from this branch.
-3. PR2: the console subproject, runnable on a host against the installed
+1. Branch PR2 from this branch, after #185's merge.
+2. PR2: the console subproject, runnable on a host against the installed
    CLI, with its unit tests.
-4. PR3: deliverable 1's runtime and base work, with the smokes. Propose the
+3. PR3: deliverable 1's runtime and base work, with the smokes. Propose the
    base-release trigger in that pull request.
 
 Later iterations: deliverables 3 and 4 in the order this workstream chooses,
@@ -123,6 +133,11 @@ then 5, then 6.
 - Build gate `nox -s build` on this branch, 2026-10-09: 1,262 unit cases, 10
   packaged integrations, type check, source and PEX smokes, documentation
   contract; successful.
+- Review PR #185 gate, by the Codex pair in its worktree: 1,276 unit cases, 10
+  packaged integrations, type check, smokes; documentation contract skipped
+  there, the website submodule being absent from a worktree.
+- Build gate on the merged branch at `0ec121e`, 2026-10-09: 1276 passed unit cases, 10
+  packaged integrations, type check, smokes, documentation contract; successful.
 - No containers, images or ports in use.
 
 ## Open Threads
