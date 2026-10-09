@@ -21,3 +21,4 @@ built base recipe 10 with the public PEX of revision
 - `headless-docker-run-args.json`: the headless invocation, bind sources
   translated for the host daemon, token redacted.
 - `ide-smoke-codium-facts.json`: the IDE smoke on the built base, codium, passed; its new "console answers" fact is 200 and the tokenless probe was 403.
+- `merged-*-facts.json`: the same smoke rerun with the merged PR3 branch's executable (`0e5737e`, after review PR #189) on the same base: passed, same facts.

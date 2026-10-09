@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR1 (#184) and PR2 (#186) await the owner with their reviews merged; PR3, the runtime and base integration, is implemented on `ws-capsule-webconsole/runtime-base`, proven on a local base recipe 10 build, and ready for its pull request
+State: active; the first iteration is three stacked pull requests awaiting the owner, #184, #186 and #188, each with its Codex review merged; the owner merges to `main`
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -57,6 +57,18 @@ the same public revision as the runtime, fetched with git so the commit hash
 verifies the content. The smoke of deliverable 1 is an end-to-end test with
 and without a display, and the IDE smoke rows gained "console answers". A
 user page documents the console link, the token and the SSH forward.
+
+**PR #188 is open against PR2's branch. Its review, PR #189 by the Codex
+and gpt-6-astra pair, was merged without a round.** Seven findings, all
+accepted: two released sockets could hand the console the display's port,
+now retried; the readiness probe for an IPv6 wildcard listener used IPv4;
+the base installer expanded the source identity as shell code, now quoted
+and executed with stubs in seven integration cases; an unknown source
+identity reached the base builder, now refused before the build with a
+message naming the published-source PEX; the opener test could pass
+without opening, replaced by a deterministic one; coverage of token-file
+failures, cleanup and contract edges; and two corrections to the user page.
+The gate on the merged branch and the smoke rerun are recorded below.
 
 Judgments recorded for slice 3:
 
@@ -199,8 +211,14 @@ digraph stack {
 
 ## Planned Next Step
 
-1. Prove PR3 with a local base build and the console smoke, then open it
-   against PR2's branch and request PR3.1 from the Codex pair.
+The first iteration is delivered to the owner's review: #184, #186 and
+#188, stacked. On resumption, after the owner's merges or push-backs, the
+next iteration is deliverables 3 and 4 in the order this workstream
+chooses, then 5, then 6.
+
+Done in the first iteration:
+
+1. PR1, #184: `--json` on `config list` and `versions show`.
 2. Done in PR2: the console subproject, runnable on a host against the installed
    CLI, with its unit tests.
 3. PR3: deliverable 1's runtime and base work, with the smokes. Propose the
@@ -247,6 +265,16 @@ then 5, then 6.
   [evidence/2026-10-09-console-smoke](evidence/2026-10-09-console-smoke/).
 - IDE smoke, codium, on the built base: passed, with the new "console
   answers" fact at 200 and the tokenless probe refused.
+- Review PR #189 gate, by the Codex pair in its worktree: 1,327 unit cases, 17
+  packaged integrations, type check, smokes, then the console session;
+  documentation contract skipped there.
+- Build gate on the merged PR3 branch at `0e5737e`, 2026-10-09: 1,327 unit
+  cases, 17 packaged integrations including the seven installer-script
+  cases, type check of package and tests, smokes, documentation contract,
+  then the console session; successful.
+- Console smoke rerun with the merged branch's executable on the recipe 10
+  base, 2026-10-09: passed with the contained display and headless, same
+  facts; see the `merged-*` files in the evidence directory.
 - Manual run against this capsule's real CLI on loopback port 8765 with a
   fresh token: tokenless request refused, cookie set from the query token,
   traversal refused, four pages rendered and screenshotted with the website's
