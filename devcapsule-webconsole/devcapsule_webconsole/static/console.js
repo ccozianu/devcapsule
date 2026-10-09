@@ -210,6 +210,8 @@
     const REFRESH_MS = 3000;
     let paused = false;
     let timer = null;
+    let refreshing = false;
+    let lastStatus = "Loading…";
     const meters = el("div", { class: "meters" });
     const status = el("span", { text: "Loading…" });
     const button = el("button", { type: "button", text: "Pause" });
@@ -217,34 +219,48 @@
     button.addEventListener("click", () => {
       paused = !paused;
       button.textContent = paused ? "Resume" : "Pause";
+      if (timer !== null) { clearTimeout(timer); timer = null; }
+      status.textContent = lastStatus + (paused ? " · paused" : "");
       if (!paused) refresh();
     });
     container.replaceChildren(meters, el("div", { class: "toolbar" }, [button, status]), table);
 
     async function refresh() {
-      if (timer) { clearTimeout(timer); timer = null; }
+      if (paused || refreshing) return;
+      refreshing = true;
+      if (timer !== null) { clearTimeout(timer); timer = null; }
       try {
         const [resources, listing] = await Promise.all([api("/api/resources"), api("/api/processes")]);
+        if (paused) return;
         const cpu = resources.cpu || {}, memory = resources.memory || {}, pids = resources.pids || {};
         meters.replaceChildren(
           meter("CPU", cpu.percent === null || cpu.percent === undefined ? "—" : cpu.percent + " %", cpu.percent,
             resources.available
-              ? "of " + cpu["available-cpus"] + (cpu["limit-cpus"] ? " CPUs (cgroup quota)" : " CPUs (no quota)") +
+              ? "of " + cpu["available-cpus"] + (cpu["limit-cpus"] ? " CPUs (cgroup quota)" : " CPUs (no readable quota)") +
                 "; " + (cpu["usage-seconds"] === null ? "" : cpu["usage-seconds"] + " s used since start")
               : "the capsule's cgroup is not readable here"),
           meter("Memory", bytes(memory["current-bytes"]), memory.percent,
-            memory["limit-bytes"] ? "of " + bytes(memory["limit-bytes"]) + " limit" : "no memory limit" +
+            (memory["limit-bytes"] != null ? "of " + bytes(memory["limit-bytes"]) + " limit" : "limit unavailable or unlimited") +
             (memory["anon-bytes"] !== null && memory["anon-bytes"] !== undefined
               ? "; anonymous " + bytes(memory["anon-bytes"]) + ", file " + bytes(memory["file-bytes"]) : "")),
-          meter("Processes", listing.count, pids.max ? (pids.current / pids.max) * 100 : null,
-            pids.max ? pids.current + " of " + pids.max + " pids" : "no pid limit"),
+          meter("Tasks (threads)", scalar(pids.current), pids.current != null && pids.max > 0 ? (pids.current / pids.max) * 100 : null,
+            (pids.max != null ? "of " + pids.max + " task limit" : "limit unavailable or unlimited") +
+            "; " + listing.count + " processes listed"),
         );
         table.replaceChildren(table_(listing.processes));
-        status.textContent = "Sampled " + resources["sampled-at"] + " over " + resources["interval-seconds"] + " s" + (paused ? " · paused" : "");
+        lastStatus = "Sampled " + resources["sampled-at"] + " over " + resources["interval-seconds"] + " s";
+        status.textContent = lastStatus;
       } catch (error) {
-        fail(table, error);
+        if (!paused) {
+          meters.replaceChildren();
+          lastStatus = "Refresh failed";
+          status.textContent = lastStatus;
+          fail(table, error);
+        }
+      } finally {
+        refreshing = false;
+        if (!paused) timer = setTimeout(refresh, REFRESH_MS);
       }
-      if (!paused) timer = setTimeout(refresh, REFRESH_MS);
     }
 
     function table_(rows) {

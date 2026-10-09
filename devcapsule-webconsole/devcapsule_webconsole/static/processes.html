@@ -15,9 +15,10 @@
 <main>
 <h1>Processes and resources</h1>
 <p class="lead">The capsule's processes with their CPU and memory, and its use of CPU and memory against its limits, refreshed every few seconds. Reading only: nothing here stops or signals a process.</p>
+<p>Process CPU: 100% means one busy CPU. A process with several threads can exceed 100%. The CPU meter uses the capsule's capacity.</p>
 
 <div id="content"><p>Loading…</p></div>
 </main>
-<footer class="console-foot">Read-only. Every page shows what the <code>devcapsule</code> commands report; reload after a change made with a command.</footer>
+<footer class="console-foot">Read-only. This page samples processes and cgroup resources inside the capsule. Pause stops automatic refresh.</footer>
 </body>
 </html>
