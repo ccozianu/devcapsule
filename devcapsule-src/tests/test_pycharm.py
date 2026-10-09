@@ -1286,7 +1286,7 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
         return SimpleNamespace(returncode=0)
 
     with (
-        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", return_value=port),
+        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=[port, 1]),
         patch("devcapsule.launch.pycharm._launcher.write_user_files"),
         patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
         patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
@@ -1375,6 +1375,8 @@ def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_pat
         description = describe_run_command(args, config, files)
         assert f"Temporary Console token: {files.console_token_file}" in description
         assert "The web console needs its temporary token file" in description
+        assert config.console_token not in description
+        assert config.console_token not in config.runtime_plan.to_json()
     finally:
         cleanup_temp_runtime_files(files)
     assert not files.console_token_file.exists()
@@ -1397,6 +1399,97 @@ def test_web_console_under_host_networking_listens_on_host_loopback_directly(tmp
         assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
     finally:
         cleanup_temp_runtime_files(files)
+
+
+@pytest.mark.parametrize("network_mode", ["bridge", "host"])
+def test_console_retries_a_port_already_selected_for_the_display(tmp_path: Path, network_mode: str) -> None:
+    with patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=[41000, 41000, 41001]):
+        config = contained_config(tmp_path, network_mode=network_mode)
+    assert config.display_host_port == 41000
+    assert config.console_host_port == 41001
+    assert config.runtime_plan is not None and config.runtime_plan.console is not None
+    assert config.runtime_plan.console.port == (41001 if network_mode == "host" else 6081)
+
+
+def test_console_port_retries_are_bounded(tmp_path: Path) -> None:
+    with patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", return_value=41000) as allocate:
+        with pytest.raises(PycharmRunError, match="distinct display and web console ports"):
+            contained_config(tmp_path)
+    assert allocate.call_count == 11  # one display allocation, ten console attempts
+
+
+def test_console_mount_requires_its_token_file(tmp_path: Path) -> None:
+    config = contained_config(tmp_path)
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth", passwd_file=tmp_path / "passwd", group_file=tmp_path / "group",
+        display_token_file=tmp_path / "display-token", runtime_plan_file=tmp_path / "plan",
+    )
+    with pytest.raises(PycharmRunError, match="web console requires a generated token file"):
+        build_docker_args(config, files, base_env(tmp_path))
+
+
+@pytest.mark.parametrize("failure", ["write", "chmod", "later"])
+def test_console_token_is_removed_when_preparation_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+) -> None:
+    config = contained_config(tmp_path)
+    runtime = tmp_path / "runtime"
+    env = {**base_env(tmp_path), "XDG_RUNTIME_DIR": str(runtime)}
+    write_text = Path.write_text
+    chmod = Path.chmod
+
+    def fail_write(path: Path, data: str, **kwargs: object) -> int:
+        if path.name.startswith("devcapsule-console-token."):
+            raise OSError("token write failed")
+        return write_text(path, data, encoding="utf-8")
+
+    def fail_chmod(path: Path, mode: int) -> None:
+        if path.name.startswith("devcapsule-console-token."):
+            raise OSError("token chmod failed")
+        chmod(path, mode)
+
+    if failure == "write":
+        monkeypatch.setattr(Path, "write_text", fail_write)
+    elif failure == "chmod":
+        monkeypatch.setattr(Path, "chmod", fail_chmod)
+    message = "identity failed" if failure == "later" else f"token {failure} failed"
+    with patch("devcapsule.launch.pycharm._launcher.write_user_files",
+               side_effect=OSError(message) if failure == "later" else None):
+        with pytest.raises(OSError, match=message):
+            prepare_temp_runtime_files(config, env)
+    assert list(runtime.iterdir()) == []
+
+
+@pytest.mark.parametrize("report_only", [False, True])
+def test_console_launcher_cleans_up_after_command_reporting_or_docker_failure(
+    tmp_path: Path, report_only: bool,
+) -> None:
+    from unittest.mock import Mock
+
+    config = contained_config(tmp_path)
+    runtime = tmp_path / "runtime"
+    env = {**base_env(tmp_path), "XDG_RUNTIME_DIR": str(runtime)}
+    report = Mock()
+    options = PycharmRunOptions(project=config.project, command_report=report if report_only else None)
+    with (
+        patch("devcapsule.launch.pycharm._launcher.build_run_config", return_value=config),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.watch_display_ready") as watch,
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=OSError("docker failed")) as docker,
+    ):
+        if report_only:
+            assert run_pycharm(options, env) == 0
+            docker.assert_not_called()
+            watch.assert_not_called()
+            report.assert_called_once()
+            assert "Temporary Console token:" in report.call_args.args[0]
+            assert config.console_token not in report.call_args.args[0]
+        else:
+            with pytest.raises(OSError, match="docker failed"):
+                run_pycharm(options, env)
+            assert watch.call_count == 2
+            assert watch.call_args.args[3].is_set()
+    assert list(runtime.iterdir()) == []
 
 
 def test_web_console_runs_the_checkouts_source_under_the_self_hosting_exception(tmp_path: Path) -> None:
@@ -1440,69 +1533,65 @@ def test_console_disclosure_states_where_it_listens(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("display_transport", ["contained", "host-x11"])
+@pytest.mark.parametrize("custom_console_opener", [False, True])
 def test_run_pycharm_announces_the_console_url_and_opens_it_only_without_a_desktop(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], display_transport: str
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], display_transport: str, custom_console_opener: bool,
 ) -> None:
+    from threading import Event
+    from unittest.mock import Mock
+
     project = tmp_path / "project"
     project.mkdir()
     env = base_env(tmp_path)
-    if display_transport == "contained":
-        env.pop("DISPLAY")
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
-    opened_display: list[str] = []
-    announced: list[str] = []
-    listeners = []
-    ports = []
-    for _ in range(2):
-        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        listener.bind(("127.0.0.1", 0))
-        listener.listen(1)
-        listeners.append(listener)
-        ports.append(listener.getsockname()[1])
+    display_opener = Mock()
+    console_opener = Mock()
+    default_console_opener = Mock()
+    tokens = ["a" * 48, "b" * 48]
+    stops: list[Event] = []
 
-    def fake_docker_run(command: list[str], **_kwargs: object) -> SimpleNamespace:
-        deadline = time.monotonic() + 10
-        while len(announced) < 1 and time.monotonic() < deadline:
-            time.sleep(0.05)
-        return SimpleNamespace(returncode=0)
+    def ready(port: int, url: str, opener: object, stop: Event, **kwargs: object) -> None:
+        from typing import Callable
+
+        stops.append(stop)
+        assert not stop.is_set()
+        cast(Callable[[str], None], opener)(url)
 
     with (
-        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=ports),
+        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=[41000, 41001]),
+        patch("devcapsule.launch.pycharm._launcher.new_run_token", side_effect=tokens),
+        patch("devcapsule.launch.pycharm._launcher.watch_display_ready", side_effect=ready) as watcher,
         patch("devcapsule.launch.pycharm._launcher.write_user_files"),
         patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
-        patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
-        patch("devcapsule.launch.pycharm._launcher.default_opener", lambda env, label="Contained display": (
-            lambda url: announced.append(f"{label}: {url}"))),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run", return_value=SimpleNamespace(returncode=7)),
+        patch("devcapsule.launch.pycharm._launcher.default_opener", return_value=default_console_opener) as default,
     ):
-        try:
-            exit_code = run_pycharm(
-                PycharmRunOptions(
-                    project=project,
-                    project_mount="/workspace/project",
-                    docker_mode=DockerMode.none,
-                    network_mode="bridge",
-                    runtime_plan=external_runtime_plan(),
-                    use_image_process=True,
-                    display_transport=display_transport,
-                    open_display_url=opened_display.append,
-                ),
-                env,
-            )
-        finally:
-            for listener in listeners:
-                listener.close()
-    assert exit_code == 0
-    captured = capsys.readouterr()
-    console_port = ports[1] if display_transport == "contained" else ports[0]
-    console_line = next(line for line in captured.err.splitlines() if line.startswith("Web console: "))
-    assert console_line == f"Web console: http://127.0.0.1:{console_port}/?token=" + console_line.rsplit("token=", 1)[1]
-    url = console_line.removeprefix("Web console: ")
-    if display_transport == "contained":
-        # The desktop opens; the console is announced as ready, not opened.
-        assert opened_display == [display_url(ports[0], opened_display[0].rsplit("%3D", 1)[1])] if opened_display else True
-        assert f"Web console is ready; open it in a browser: {url}" in captured.err
-        assert announced == []
+        assert run_pycharm(PycharmRunOptions(
+            project=project, project_mount="/workspace/project", docker_mode=DockerMode.none,
+            network_mode="bridge", runtime_plan=external_runtime_plan(), use_image_process=True,
+            display_transport=display_transport, open_display_url=display_opener,
+            open_console_url=console_opener if custom_console_opener else None,
+        ), env) == 7
+    contained = display_transport == "contained"
+    console_port, token = (41001, tokens[1]) if contained else (41000, tokens[0])
+    url = f"http://127.0.0.1:{console_port}/?token={token}"
+    output = capsys.readouterr().err
+    assert f"Web console: {url}\n" in output
+    assert watcher.call_count == (2 if contained else 1)
+    assert watcher.call_args.args[:2] == (console_port, url)
+    assert watcher.call_args.kwargs == {"label": "Web console"}
+    assert all(stop is stops[0] and stop.is_set() for stop in stops)
+    assert list((tmp_path / "runtime").iterdir()) == []
+    if contained:
+        display_opener.assert_called_once_with(display_url(41000, tokens[0]))
     else:
-        assert announced == [f"Web console: {url}"]
-        assert opened_display == []
+        display_opener.assert_not_called()
+    if custom_console_opener:
+        console_opener.assert_called_once_with(url)
+        default.assert_not_called()
+    elif contained:
+        assert f"Web console is ready; open it in a browser: {url}" in output
+        default.assert_not_called()
+    else:
+        assert default.call_args.kwargs == {"label": "Web console"}
+        default_console_opener.assert_called_once_with(url)
