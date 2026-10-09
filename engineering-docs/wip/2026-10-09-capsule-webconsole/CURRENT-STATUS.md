@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR1 (#184) and PR2 (#186) await the owner with their reviews merged; PR3, the runtime and base integration, is implemented on `ws-capsule-webconsole/runtime-base` and being proven with a local base build
+State: active; PR1 (#184) and PR2 (#186) await the owner with their reviews merged; PR3, the runtime and base integration, is implemented on `ws-capsule-webconsole/runtime-base`, proven on a local base recipe 10 build, and ready for its pull request
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -239,7 +239,14 @@ then 5, then 6.
 - Build gate on PR3's branch, 2026-10-09: 1,299 unit cases, 10 packaged
   integrations, type check, smokes, documentation contract, then the console
   session; successful.
-- Base recipe 10 local build and the console smoke: SMOKE_PR3
+- Base recipe 10 built locally as `devcapsule-base-e2e:webconsole-161638` from the public PEX of
+  `7659c6d`, over host networking: the built-base test passed, the venv
+  imports the console offline. The console smoke passed with the contained
+  display and headless: home and configuration 200, tokenless 403, `..` and
+  absolute paths 403, a file inside the mount 200. See
+  [evidence/2026-10-09-console-smoke](evidence/2026-10-09-console-smoke/).
+- IDE smoke, codium, on the built base: passed, with the new "console
+  answers" fact at 200 and the tokenless probe refused.
 - Manual run against this capsule's real CLI on loopback port 8765 with a
   fresh token: tokenless request refused, cookie set from the query token,
   traversal refused, four pages rendered and screenshotted with the website's

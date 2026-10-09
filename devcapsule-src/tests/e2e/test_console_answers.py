@@ -12,6 +12,7 @@ import http.client
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import time
 from urllib.parse import quote, urlsplit
@@ -19,7 +20,8 @@ import uuid
 
 import pytest
 
-from tests.e2e.ide_session import SURFACES, command, ide_session, wait_for_console_url
+from devcapsule.host_daemon import current_container, requires_translation, translate_bind_sources
+from tests.e2e.ide_session import SURFACES, command, ide_session, wait_for_console_url, workspace_root
 
 EVIDENCE_ROOT = Path(__file__).resolve().parents[2] / "dist" / "e2e-evidence" / "console-smoke"
 SURFACE = next(surface for surface in SURFACES if surface.name == "codium")
@@ -55,7 +57,8 @@ def check_console(url: str, evidence: Path, label: str) -> dict[str, object]:
     refused_status, refused = fetch(f"{base}/api/configuration")
     traversal_status, _ = fetch(f"{base}/api/project/file?path={quote('../../etc/passwd', safe='')}", headers=headers)
     absolute_status, _ = fetch(f"{base}/api/project/file?path={quote('/etc/passwd', safe='')}", headers=headers)
-    inside_status, inside = fetch(f"{base}/api/project/file?path=README.md", headers=headers)
+    # The smoke workspace's one file; see ide_session.
+    inside_status, inside = fetch(f"{base}/api/project/file?path=smoke.txt", headers=headers)
     facts = {
         "label": label, "home_status": home_status, "configuration_page_status": page_status,
         "configuration_api_status": configuration_status, "tokenless_status": refused_status,
@@ -69,7 +72,7 @@ def check_console(url: str, evidence: Path, label: str) -> dict[str, object]:
     assert json.loads(configuration)["schema-version"] == 1
     assert refused_status == 403 and "run token" in refused
     assert traversal_status == 403 and absolute_status == 403
-    assert inside_status == 200 and inside.startswith("#")
+    assert inside_status == 200 and inside == "DevCapsule graphical smoke fixture.\n"
     return facts
 
 
@@ -78,6 +81,8 @@ def check_console(url: str, evidence: Path, label: str) -> dict[str, object]:
 def test_console_answers_with_and_without_a_display(built_pex: Path, tmp_path: Path) -> None:
     evidence = EVIDENCE_ROOT / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{uuid.uuid4().hex[:6]}"
     evidence.mkdir(parents=True)
+    staging = workspace_root(tmp_path) / f"console-headless-{uuid.uuid4().hex[:8]}"
+    staging.mkdir(parents=True)
     with ide_session(built_pex, SURFACE, tmp_path, evidence / "with-display") as session:
         # With a display: project run printed the console URL beside the desktop's.
         assert session.launcher is not None
@@ -88,36 +93,46 @@ def test_console_answers_with_and_without_a_display(built_pex: Path, tmp_path: P
         assert runtime["console"]["token_path"] == "/run/devcapsule-console-token"
         image = command("docker", "inspect", "--format", "{{.Config.Image}}", session.container).stdout.strip()
         plan = dict(runtime)
+        # The headless project: the session's project declaration and its one
+        # file, copied before the session removes its workspace.
+        shutil.copytree(session.workspace / ".devcapsule", staging / "project" / ".devcapsule")
+        shutil.copy2(session.workspace / "smoke.txt", staging / "project" / "smoke.txt")
 
     # Without a display: the same image, the runtime's job mode, no display
-    # section at all; the console still runs and still needs the token.
+    # section at all; the console still runs and still needs the token. The
+    # staging files live where the daemon can see them, translated as the
+    # launcher translates its own binds.
     headless_dir = evidence / "headless"
     headless_dir.mkdir()
     token = uuid.uuid4().hex
-    token_file = tmp_path / "console-token"
+    token_file = staging / "console-token"
     token_file.write_text(token + "\n", encoding="utf-8")
     token_file.chmod(0o644)
     plan.pop("display", None)
     plan["console"] = {"listen_address": "0.0.0.0", "port": 6081, "token_path": "/run/devcapsule-console-token"}
-    plan_file = tmp_path / "runtime-plan.json"
+    plan_file = staging / "runtime-plan.json"
     plan_file.write_text(json.dumps(plan) + "\n", encoding="utf-8")
     container = f"devcapsule-console-smoke-{uuid.uuid4().hex[:8]}"
     port = _free_port()
-    started = subprocess.Popen(
-        ["docker", "run", "--rm", "--name", container, "--entrypoint", "/opt/devcapsule/bin/devcapsule.pex",
-         "--publish", f"127.0.0.1:{port}:6081",
-         "--mount", f"type=bind,src={token_file},dst=/run/devcapsule-console-token,ro",
-         "--mount", f"type=bind,src={plan_file},dst=/etc/devcapsule/runtime-plan.json,ro",
-         "--mount", f"type=bind,src={session.workspace},dst={plan['project_path']},ro",
-         image, "runtime", "/etc/devcapsule/runtime-plan.json", "--", "sleep", "300"],
-        stdout=(headless_dir / "docker-run.log").open("wb"), stderr=subprocess.STDOUT,
-    )
+    docker_args = [
+        "docker", "run", "--rm", "--name", container, "--entrypoint", "/opt/devcapsule/bin/devcapsule.pex",
+        "--publish", f"127.0.0.1:{port}:6081",
+        "--mount", f"type=bind,src={token_file},dst=/run/devcapsule-console-token,ro",
+        "--mount", f"type=bind,src={plan_file},dst=/etc/devcapsule/runtime-plan.json,ro",
+        "--mount", f"type=bind,src={staging / 'project'},dst={plan['project_path']},ro",
+        image, "runtime", "/etc/devcapsule/runtime-plan.json", "--", "sleep", "300",
+    ]
+    if requires_translation(os.environ):
+        docker_args = translate_bind_sources(docker_args, current_container(os.environ))
+    (headless_dir / "docker-run-args.json").write_text(json.dumps(docker_args, indent=2) + "\n", encoding="utf-8")
+    started = subprocess.Popen(docker_args, stdout=(headless_dir / "docker-run.log").open("wb"), stderr=subprocess.STDOUT)
     try:
         facts = check_console(f"http://127.0.0.1:{port}/?token={token}", headless_dir, "headless")
         assert facts["home_status"] == 200
     finally:
         command("docker", "stop", "--time", "10", container, check=False, timeout=60.0)
         started.wait(timeout=60.0)
+        shutil.rmtree(staging, ignore_errors=True)
 
 
 def _free_port() -> int:
