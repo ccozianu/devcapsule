@@ -51,7 +51,7 @@ change you make with a command is on the page after a reload.
 When an agent hands you a decision in a chat, it ends its message with a
 link into the console, with the run token in it: follow it to see the full
 page and answer there, or answer in the chat. The agent prints that message
-with `python -m devcapsule_webconsole.decisions hand-off`.
+with `devcapsule project checkout decisions hand-off` inside the capsule.
 
 ## The link and the token
 

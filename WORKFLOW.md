@@ -1139,6 +1139,30 @@ one commit.
    commit, and integration. A patch is a proposal. A later patch supersedes an
    earlier one by a new item that says so.
 
+### 8.8 Handing a decision to the human
+
+1. A decision with several options, or several items each with options, is
+   handed to the human as a decision document, not as prose in a chat.
+   Build it from a markdown table with
+   `devcapsule project checkout decisions from-table` inside a capsule, and
+   write it into the capsule's decisions directory; see `DECISIONS.md` in
+   the web console's source for the document.
+2. Present it in the chat as well, with
+   `devcapsule project checkout decisions hand-off <file>`: the items
+   numbered with their options by key, ending with the link to the
+   console page when the capsule has a console. The human may answer in
+   the chat or on the page; a chat answer wins, and the agent then deletes
+   the document.
+3. The link carries the run's token. It belongs in the chat and never in
+   a record, a status file, or a commit message.
+4. Read the answer from the decisions directory, record the outcome in the
+   normal files, the status file or the decision log or the disposition log,
+   and delete the document and its answer in that commit. The document is
+   never a record.
+5. Anything else the environment tells the human goes through
+   `devcapsule project checkout notifications post`, never through a file
+   in the repository.
+
 ## 9. Sessions
 
 ### 9.1 Session start

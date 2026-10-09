@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199) and PR9 (#201) await the owner, stacked, each with its Codex review merged; PR10, the workflow instruction and the first real decision, is next on PR9's branch
+State: active; PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199) and PR9 (#201) await the owner, stacked, each with its Codex review merged; PR10, the hand-off rule and the first real decision, is on `ws-capsule-webconsole/hand-off-rule` and gated
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,32 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 8, workflow half (PR10).** The rule: topic 8.8 of
+this repository's `WORKFLOW.md`, "Handing a decision to the human", five
+sentences, with a pointer in `AGENTS.md`; the shipped definition under
+`devcapsule-src/devcapsule/assets/project_workflow/definition/` has
+another layout and belongs to workflow-improvements, which gets the same
+text at its next sync (noted in Open Threads). One CLI for agents:
+`devcapsule project checkout decisions from-table | check | hand-off`
+runs the console's installed module inside a capsule, the mounted source
+first when the runtime plan names one, and outside a capsule says where
+the module is. The first real decision: the 38 undecided items of
+project-management's intake, as one document in this capsule's decisions
+directory, with its table and hand-off text under
+`evidence/2026-10-09-intake-pass/`; this capsule runs no console, so the
+hand-off here names the page, and the owner's next launch on a base with
+the console lists it under the bell.
+
+Judgments recorded for slice 8's workflow half:
+
+- The rule lives in this repository's copy by the owner's word; the
+  shipped definition is another workstream's file.
+- The wrapper runs the console's module rather than importing it: the
+  console is not in the runtime PEX by binding decision 2, and the
+  subprocess boundary stays the contract.
+- The decision document is capsule state and is not committed; the table
+  and the hand-off text are evidence of the mechanism, as for the sample.
 
 **2026-10-09, slice 8, console half (PR9).** The hand-off:
 `python -m devcapsule_webconsole.decisions hand-off <decisions-dir>/<id>.json`
@@ -486,9 +512,8 @@ digraph stack {
      installed module, so an agent sees one CLI; `hand-off` prints the
      numbered text for chat and a closing line with the tokened link,
      which the cookie then carries for every later request.
-   - PR10, workflow: about six lines of instruction in the workflow
-     definition and in this repository's copy, and the first real decision
-     file as dogfood, the project-management intake pass.
+   - PR10, workflow: done on `ws-capsule-webconsole/hand-off-rule`; see
+     Current State.
 6. Deliverable 6, materialized views, in a third iteration.
 
 The first iteration is on `main`: #184 and #190, merged 2026-10-09. On resumption, after the owner's merges or push-backs, the
@@ -525,6 +550,10 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Slice 8 workflow half, PR10 branch, 2026-10-09: 1,454 unit cases, 17
+  packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful. `check` on the real decision document: 38 items, unanswered.
 - Build gate on the merged PR9 branch at `db7d85d`, 2026-10-09: 1,449 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;
@@ -639,6 +668,10 @@ then 5, then 6.
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on
   `project-management`'s branch. The mail item carries its substance.
+- The hand-off rule, topic 8.8, is in this repository's `WORKFLOW.md` only.
+  The shipped definition under `devcapsule-src/devcapsule/assets/` has
+  another layout and belongs to workflow-improvements; it takes the same
+  text at that workstream's next sync so adopters get it with 0.3.0.
 - Notifications are local for now, by the owner's decision of 2026-10-09: a
   mechanism between the human and the DevCapsule environment of one
   checkout, stored in that checkout's state home. Project-wide

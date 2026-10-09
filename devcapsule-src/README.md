@@ -534,6 +534,25 @@ outright. The document format is in `devcapsule/notifications.py`.
 Project-wide notifications, a coordinator reaching every collaborator, are a
 later source merged into the same listing (owner's note, 2026-10-09).
 
+### Checkout decisions
+
+The web console's decision tools from the runtime CLI, inside a capsule:
+
+```bash
+devcapsule project checkout decisions from-table TABLE.md --id ID --title TITLE [--asked-by WHO] [--context MD]
+devcapsule project checkout decisions check DECISIONS-DIR/ID.json
+devcapsule project checkout decisions hand-off DECISIONS-DIR/ID.json
+```
+
+Each runs `python -m devcapsule_webconsole.decisions` with the console the
+base installs under `/opt/devcapsule-webconsole`, or the checkout's mounted
+console source when the runtime plan names one. `hand-off` prints the
+decision as numbered chat text ending with the link into the console, with
+the run's token; the link belongs in the chat, never in a record. Outside a
+capsule the command says where the module is. The contract is
+`DECISIONS.md` in the console's source; the rule for agents is topic 8.8 of
+`WORKFLOW.md`.
+
 ### Shared component installations
 
 Node, Temurin, and Maven install in separate BuildKit stages when building a

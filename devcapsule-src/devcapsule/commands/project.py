@@ -18,6 +18,7 @@ from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 import os
+import subprocess
 import sys
 import termios
 import tty
@@ -465,15 +466,46 @@ class NotificationsGroup(Group):
         }
 
 
+class CheckoutDecisionsCommand(Command):
+    """``project checkout decisions ...``: the web console's decision tools, from one CLI.
+
+    The decision document is the console's contract (``DECISIONS.md`` in
+    its source), and the tools that build, check and hand off one live in
+    the console's package, which is not in the runtime PEX by the work
+    order's binding decision. Inside a capsule the console is installed in
+    the base, or mounted from the checkout under the self-hosting
+    exception; this command runs that module, so an agent sees one CLI.
+    Outside a capsule it says where the module is.
+    """
+
+    name = "decisions"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
+    help = "Build, check or hand off a decision document with the capsule's web console tools."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("arguments", nargs=argparse.REMAINDER, metavar="SUBCOMMAND ...",
+                            help="from-table, check or hand-off with their arguments, as "
+                                 "`python -m devcapsule_webconsole.decisions` takes them.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.console_tools import console_decisions_command
+
+        command = console_decisions_command(arguments.arguments)
+        return subprocess.run(command, check=False).returncode
+
+
 class CheckoutGroup(Group):
     name = "checkout"
-    help = "This local checkout: register its name, and its notifications."
+    help = "This local checkout: register its name, its notifications, its decisions."
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
             CheckoutRegisterCommand.name: CheckoutRegisterCommand,
             NotificationsGroup.name: NotificationsGroup,
+            CheckoutDecisionsCommand.name: CheckoutDecisionsCommand,
         }
 
 
