@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192) and PR6 (#194) await the owner with their Codex reviews merged; PR7, decision pages (deliverable 5), is in progress on `ws-capsule-webconsole/decisions`
+State: active; PR5 (#192) and PR6 (#194) await the owner with their Codex reviews merged; PR7, decision pages (deliverable 5), is implemented on `ws-capsule-webconsole/decisions` and gated
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,36 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 7: decision pages (deliverable 5).** The contract is
+`devcapsule-webconsole/DECISIONS.md`: an agent writes `<id>.json` into the
+capsule's decisions directory, `$XDG_STATE_HOME/devcapsule/decisions` by
+default; the console lists and renders it, the human chooses, the console
+writes `<id>.answer.json` beside it, and the agent reads the answer,
+records the outcome in the normal files and deletes both. A decision has
+a title, who asks, a markdown context, and items, each with a summary,
+records cited as paths, two or more options, and single or multiple
+choice. `python -m devcapsule_webconsole.decisions from-table` builds a
+decision from a markdown table, so any agent can produce one; `check`
+validates a document and its answer. The answer route is the console's one
+write: same-origin only, on top of the `SameSite=Strict` cookie, and a
+refusal writes nothing. Run by hand with two intake items as a sample: the
+page rendered, a browser answered it, the answer file holds the choices;
+see [evidence/2026-10-09-decision-sample](evidence/2026-10-09-decision-sample/).
+
+Judgments recorded for slice 7:
+
+- The answer lands under XDG state inside the capsule, never in the
+  project. The first use is project-management's intake pass, and nothing
+  the console writes may become a record by accident.
+- The console never deletes a decision or an answer: discarding is the
+  agent's step after it has recorded the outcome, so the human can submit
+  again until then and the latest answer stands.
+- The contract is one JSON object with a table-shaped item list, and the
+  table builder is part of the package, which is the "small enough to
+  produce from a markdown table" test of the work order.
+- Markdown in a decision renders with the same settings as a record: no
+  raw HTML, no active links from the content.
 
 **2026-10-09, slice 6: records and DOT (deliverable 4).** Any markdown file
 in the project renders in the browser: `index.md` is the front page, a
@@ -326,11 +356,12 @@ digraph stack {
 
 ## Planned Next Step
 
-1. PR5: deliverable 3, this branch.
-2. PR6, on PR5's branch: deliverable 4, records rendered with `markdown-it`
-   and DOT with a vendored browser Graphviz.
-3. PR7, on PR6's branch: deliverable 5, decision pages.
-4. A base recipe 11 build and the console smoke at PR5 and again at PR7.
+1. PR5, #192: deliverable 3.
+2. PR6, #194, on PR5's branch: deliverable 4.
+3. PR7, on PR6's branch: deliverable 5, this branch.
+4. A base rebuild from PR7's revision and the console smoke, with the
+   records and decision probes, as the second iteration's end-to-end proof.
+5. Deliverable 6, materialized views, in a third iteration.
 
 The first iteration is on `main`: #184 and #190, merged 2026-10-09. On resumption, after the owner's merges or push-backs, the
 next iteration is deliverables 3 and 4 in the order this workstream
@@ -360,6 +391,12 @@ then 5, then 6.
   successful. Manual run against this checkout: records index
   and this status file rendered in a browser, DOT drawn; screenshots under
   `evidence/2026-10-09-console-pages/`.
+- Slice 7 console session: strict mypy on 8 files, 182 tests. Build gate on
+  PR7's branch, 2026-10-09: 1,333 unit cases, 17 packaged integrations, type
+  check, smokes, documentation contract, then the console session;
+  successful. Manual run: a sample decision built from a table,
+  served, answered in a browser, written back; evidence under
+  `evidence/2026-10-09-decision-sample/`.
 - Build gate on the merged PR6 branch at `615bb86`, 2026-10-09: 1,333 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 156 tests;
