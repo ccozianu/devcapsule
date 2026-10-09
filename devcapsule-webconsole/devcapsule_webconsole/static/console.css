@@ -151,3 +151,12 @@ table.data td.keep, table.data th.keep { white-space: nowrap; overflow-wrap: nor
 .record .diagram-error { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; white-space: pre-wrap; }
 .crumbs { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; overflow-wrap: anywhere; }
 .crumbs a { color: var(--brand); text-decoration: none; }
+/* Decision pages. */
+form.decision fieldset.item { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 0.8rem 1.1rem 1rem; margin: 0 0 1.2rem; max-width: 56rem; }
+form.decision legend { font-weight: 600; padding: 0 0.4rem; }
+form.decision label.option { display: block; margin: 0.35rem 0; }
+form.decision .option-summary { color: var(--lead); }
+form.decision .note input, form.decision .note textarea { width: 100%; max-width: 56rem; font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--line); border-radius: 4px; margin-top: 0.5rem; }
+form.decision button[type="submit"] { font: inherit; padding: 0.4rem 1rem; background: var(--brand); color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+form.decision button[disabled] { opacity: 0.6; }
+.muted { color: var(--muted); }

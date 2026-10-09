@@ -14,6 +14,8 @@ from importlib import resources
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from .decisions import DECISIONS_ENV, default_directory
+
 PROJECT_ENV = "PROJECT_PATH"
 TOKEN_FILE_ENV = "DEVCAPSULE_CONSOLE_TOKEN_FILE"
 CLI_ENV = "DEVCAPSULE_CONSOLE_CLI"
@@ -34,6 +36,8 @@ class Settings:
     """The runtime CLI, run as a subprocess for every ``--json`` document."""
     token: str
     """The run token every request must carry."""
+    decisions: Path = Path("/nonexistent")
+    """The decisions directory: an agent's questions, the console's answers; capsule state, not records."""
     listen: str = DEFAULT_LISTEN
     port: int = DEFAULT_PORT
 
@@ -66,6 +70,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--project", type=Path, help=f"Project mount to read; default ${PROJECT_ENV}.")
     result.add_argument("--cli", help=f"Runtime CLI executable; default ${CLI_ENV}, then {DEFAULT_CLI!r} on PATH.")
     result.add_argument("--token-file", type=Path, help=f"File holding the run token; default ${TOKEN_FILE_ENV}.")
+    result.add_argument("--decisions", type=Path,
+                        help=f"Decisions directory; default ${DECISIONS_ENV}, then $XDG_STATE_HOME/devcapsule/decisions.")
     result.add_argument("--listen", default=DEFAULT_LISTEN, help=f"Address to bind; default {DEFAULT_LISTEN}.")
     result.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Port to bind; default {DEFAULT_PORT}.")
     return result
@@ -90,6 +96,7 @@ def settings_from_arguments(argv: Sequence[str], environ: Mapping[str, str]) -> 
         project=project.resolve(),
         cli=(cli,),
         token=read_token(token_file),
+        decisions=(arguments.decisions or default_directory(environ)).expanduser(),
         listen=arguments.listen,
         port=arguments.port,
     )

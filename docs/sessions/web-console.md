@@ -32,6 +32,11 @@ the inspection commands:
   `dot` block renders as a Graphviz diagram in the browser. Images and
   other linked files are served as they are. A record is read from the
   mounted project each time you open it, so an edit shows on reload.
+- **Decisions**: questions an agent working in the capsule has handed to
+  you, each with its options and the records cited beside them. Choose,
+  add a note, submit. The answer is written where the agent reads it, in
+  the capsule's state, never in the project; the agent records the outcome
+  in the project's files and discards the page.
 
 The pages show the commands' own output, read each time you load a page. A
 change you make with a command is on the page after a reload. Nothing on the
@@ -64,6 +69,7 @@ forwards the same way.
 
 ## What you cannot do from it
 
-The console has no write operation: no configuration change, no process
-control, no file edit. The commands remain the way to change anything, and
-the console shows what they recorded.
+The console has one write operation, the answer to a decision page, and it
+writes only into the capsule's own state. No configuration change, no
+process control, no file edit. The commands remain the way to change
+anything, and the console shows what they recorded.

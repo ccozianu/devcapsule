@@ -1,24 +1,30 @@
-"""The FastAPI application: pages, their JSON, the project-file readers, the monitor.
+"""The FastAPI application: pages, their JSON, the project-file readers, the monitor, the decisions.
 
-Every route is ``GET``. The pages are static files that fetch their facts
-from the ``/api`` routes, which run the runtime CLI, read the capsule's
-processes and cgroup, or read a file inside the project mount. The records
-page renders any markdown file of the project in the browser. The token
-gate wraps the whole application, static files included.
+Every route is ``GET`` but one: the answer to a decision page is the
+console's one write, which the work order allows. The pages are static
+files that fetch their facts from the ``/api`` routes, which run the
+runtime CLI, read the capsule's processes and cgroup, read a file inside
+the project mount, or read the decisions directory. The records page
+renders any markdown file of the project in the browser. The token gate
+wraps the whole application, static files included.
 """
 
 from __future__ import annotations
 
+import json
 import mimetypes
 from typing import Any, Callable
 
-from fastapi import FastAPI, Query, Response
+from fastapi import FastAPI, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from . import monitor
 from .cli import CommandError, RuntimeCli
+from .decisions import (
+    KEY_PATTERN, MAXIMUM_ANSWER_BYTES, Decision, DecisionError, DecisionStore, answer_from_mapping,
+)
 from .security import PathRefused, TokenGate, read_project_bytes, read_project_text
 from .settings import Settings
 
@@ -29,6 +35,7 @@ PAGES = {
     "/project": "project.html",
     "/processes": "processes.html",
     "/records": "records.html",
+    "/decisions": "decisions.html",
 }
 # What a raw project file is served as, by extension. Markdown is text so a
 # browser shows it; anything unknown is bytes a browser offers to save.
@@ -57,6 +64,76 @@ def create_app(settings: Settings) -> FastAPI:
         app.add_api_route(route, _page(settings, page), methods=["GET"], include_in_schema=False)
     # One page for every record: the script reads the path from the URL.
     app.add_api_route("/records/{record:path}", _page(settings, "records.html"), methods=["GET"], include_in_schema=False)
+    app.add_api_route("/decisions/{decision_id}", _page(settings, "decisions.html"), methods=["GET"], include_in_schema=False)
+    store = DecisionStore(settings.decisions)
+
+    def decision_or_response(decision_id: str) -> Decision | PlainTextResponse:
+        if KEY_PATTERN.fullmatch(decision_id) is None:
+            return PlainTextResponse(f"no decision {decision_id!r}\n", status_code=404)
+        try:
+            return store.read_decision(decision_id)
+        except FileNotFoundError:
+            return PlainTextResponse(f"no decision {decision_id!r}\n", status_code=404)
+        except DecisionError as error:
+            return PlainTextResponse(f"decision {decision_id!r} does not follow the contract: {error}\n", status_code=422)
+
+    @app.get("/api/decisions")
+    def list_decisions() -> JSONResponse:
+        entries: list[dict[str, Any]] = []
+        for decision_id in store.list_ids():
+            try:
+                decision = store.read_decision(decision_id)
+                answer = store.read_answer(decision)
+            except DecisionError as error:
+                entries.append({"id": decision_id, "title": None, "asked-by": None, "asked-at": None,
+                                "items": None, "answered-at": None, "error": str(error)})
+                continue
+            entries.append({"id": decision.id, "title": decision.title, "asked-by": decision.asked_by,
+                            "asked-at": decision.asked_at, "items": len(decision.items),
+                            "answered-at": answer.answered_at if answer else None})
+        return JSONResponse({"decisions": entries})
+
+    @app.get("/api/decisions/{decision_id}")
+    def show_decision(decision_id: str) -> Response:
+        decision = decision_or_response(decision_id)
+        if not isinstance(decision, Decision):
+            return decision
+        try:
+            answer = store.read_answer(decision)
+        except DecisionError as error:
+            return PlainTextResponse(f"answer for {decision_id!r} does not follow the contract: {error}\n", status_code=422)
+        return JSONResponse({"decision": decision.to_mapping(), "answer": answer.to_mapping() if answer else None})
+
+    @app.post("/api/decisions/{decision_id}/answer")
+    async def answer_decision(decision_id: str, request: Request) -> Response:
+        """The console's one write: the human's answer, beside the decision.
+
+        A same-origin request only: the token cookie is ``SameSite=Strict``,
+        and the ``Origin`` header, when a browser sends one, must name this
+        console. The body is validated against the decision before anything
+        is written; a refusal writes nothing.
+        """
+        origin = request.headers.get("origin")
+        if origin is not None and origin.rstrip("/") != f"{request.url.scheme}://{request.url.netloc}":
+            return PlainTextResponse("the answer must come from the console's own origin\n", status_code=403)
+        decision = decision_or_response(decision_id)
+        if not isinstance(decision, Decision):
+            return decision
+        body = await request.body()
+        if len(body) > MAXIMUM_ANSWER_BYTES:
+            return PlainTextResponse("the answer is too large\n", status_code=413)
+        try:
+            document = json.loads(body.decode("utf-8"))
+            answer = answer_from_mapping(decision, document)
+        except (UnicodeDecodeError, ValueError) as error:
+            return PlainTextResponse(f"the answer must be a JSON document: {error}\n", status_code=422)
+        except DecisionError as error:
+            return PlainTextResponse(f"the answer does not fit the decision: {error}\n", status_code=422)
+        try:
+            store.write_answer(answer)
+        except OSError as error:
+            return PlainTextResponse(f"cannot write the answer: {error}\n", status_code=500)
+        return JSONResponse({"answer": answer.to_mapping()})
 
     @app.get("/api/identity")
     def identity() -> JSONResponse:

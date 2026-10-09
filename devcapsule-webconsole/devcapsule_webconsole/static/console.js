@@ -431,6 +431,102 @@
     });
   };
 
+  // Decision pages (deliverable 5): the list, and one decision as a form.
+  // The form's submit is the console's one write; everything else reads.
+  pages.decisions = async function (container) {
+    const id = decodeURIComponent(window.location.pathname.replace(/^\/decisions\/?/, ""));
+    if (!id) {
+      const listing = await api("/api/decisions");
+      if (listing.decisions.length === 0) {
+        container.replaceChildren(el("p", { class: "notice", text: "No decision is waiting. An agent asks by writing a decision document into the capsule's decisions directory; see DECISIONS.md in the console's source." }));
+        return;
+      }
+      container.replaceChildren(table([
+        { key: (row) => row.title || row.id, label: "Decision" },
+        { key: "asked-by", label: "Asked by" }, { key: "asked-at", label: "Asked at" },
+        { key: "items", label: "Items", class: "num" },
+        { key: (row) => row.error ? "malformed: " + row.error : (row["answered-at"] ? "answered " + row["answered-at"] : "waiting"), label: "State" },
+      ], listing.decisions));
+      for (const [index, row] of listing.decisions.entries()) {
+        const cell = container.querySelectorAll("tbody tr")[index].firstChild;
+        cell.replaceChildren(el("a", { href: "/decisions/" + encodeURIComponent(row.id), text: cell.textContent }));
+      }
+      return;
+    }
+    const { decision, answer } = await api("/api/decisions/" + encodeURIComponent(id));
+    document.title = decision.title + " · DevCapsule console";
+    const md = recordRenderer("decisions/" + id);
+    const head = el("div");
+    head.appendChild(facts([["Asked by", decision["asked-by"]], ["Asked at", decision["asked-at"]],
+      ["Answered", answer ? answer["answered-at"] : "not yet"]]));
+    const context = el("div", { class: "record" });
+    context.innerHTML = md.render(decision.context || "");
+    const form = el("form", { class: "decision" });
+    for (const item of decision.items) {
+      const previous = answer && answer.answers[item.key];
+      const block = el("fieldset", { class: "item" }, [el("legend", { text: item.title })]);
+      const summary = el("div", { class: "record" });
+      summary.innerHTML = md.render(item.summary || "");
+      block.appendChild(summary);
+      if (item.records.length) {
+        block.appendChild(el("p", { class: "crumbs" }, [document.createTextNode("Records: ")].concat(
+          item.records.flatMap((record, index) => {
+            const resolved = resolveRecordLink("", record);
+            const link = el("a", { href: resolved ? recordUrl(resolved) : "#", text: record, target: "_blank" });
+            return index ? [document.createTextNode(" · "), link] : [link];
+          }))));
+      }
+      for (const option of item.options) {
+        const input = el("input", { type: item.multiple ? "checkbox" : "radio", name: item.key, value: option.key });
+        if (previous && previous.chosen.includes(option.key)) input.checked = true;
+        const label = el("label", { class: "option" }, [input, el("strong", { text: " " + option.label })]);
+        if (option.summary) {
+          const text = el("span", { class: "option-summary" });
+          text.innerHTML = " " + md.renderInline(option.summary);
+          label.appendChild(text);
+        }
+        block.appendChild(label);
+      }
+      const note = el("input", { type: "text", name: item.key + ":note", placeholder: "Note for this item (optional)" });
+      if (previous && previous.note) note.value = previous.note;
+      block.appendChild(el("div", { class: "note" }, [note]));
+      form.appendChild(block);
+    }
+    const overall = el("textarea", { name: ":note", rows: "3", placeholder: "Overall note (optional)" });
+    if (answer && answer.note) overall.value = answer.note;
+    const submit = el("button", { type: "submit", text: answer ? "Submit again" : "Submit the answer" });
+    const result = el("span", { class: "muted" });
+    form.appendChild(el("div", { class: "note" }, [overall]));
+    form.appendChild(el("div", { class: "toolbar" }, [submit, result]));
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const answers = {};
+      for (const item of decision.items) {
+        const chosen = Array.from(form.querySelectorAll('input[name="' + CSS.escape(item.key) + '"]:checked')).map((input) => input.value);
+        const noteValue = form.querySelector('input[name="' + CSS.escape(item.key + ":note") + '"]').value.trim();
+        if (chosen.length || noteValue) answers[item.key] = { chosen, note: noteValue };
+      }
+      submit.disabled = true;
+      result.textContent = "Writing…";
+      try {
+        const response = await fetch("/api/decisions/" + encodeURIComponent(id) + "/answer", {
+          method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers, note: overall.value.trim() }),
+        });
+        const bodyText = await response.text();
+        if (!response.ok) throw new Error(bodyText.trim() || "HTTP " + response.status);
+        const written = JSON.parse(bodyText).answer;
+        result.textContent = "Answer written at " + written["answered-at"] + "; the asking agent reads it from the decisions directory.";
+        submit.textContent = "Submit again";
+      } catch (error) {
+        result.textContent = "Not written: " + error.message;
+      } finally {
+        submit.disabled = false;
+      }
+    });
+    container.replaceChildren(head, context, form);
+  };
+
   document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page;
     const container = document.getElementById("content");

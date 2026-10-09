@@ -15,8 +15,10 @@ imports none of the runtime's internals. Its API is the runtime CLI's
   the pages' links and requests carry it from then on.
 - File reads resolve inside the project mount only. A path that escapes
   it, by `..`, by an absolute path or by a symbolic link, is refused.
-- The console changes nothing: every route is `GET`. The processes page
-  reads psutil and the cgroup; it never signals a process.
+- The console changes nothing but a decision's answer: every route is `GET`
+  except the answer to a decision page, which writes one file into the
+  capsule's decisions directory. See [DECISIONS.md](DECISIONS.md). The
+  processes page reads psutil and the cgroup; it never signals a process.
 - Records render in the browser with `markdown-it` and DOT with `viz.js`,
   both vendored under `devcapsule_webconsole/static/vendor/` with their
   provenance in `VENDORED.md`; no build step, no Node in the capsule. Raw

@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "id": "2026-10-09-sample-pass",
+  "title": "Sample intake pass",
+  "asked-by": "project-management",
+  "asked-at": "2026-10-09T18:50:34+00:00",
+  "context": "Two items from the **intake** queue, as a sample of the first use.",
+  "items": [
+    {
+      "key": "upgrade-experience",
+      "title": "Upgrade experience as a V1 feature",
+      "summary": "The component catalog asks whether upgrades belong to V1.",
+      "records": [
+        "engineering-docs/wip/2026-08-09-project-management/intake/2026-09-03-component-catalog-upgrade-experience-as-a-v1-feature.md"
+      ],
+      "options": [
+        {
+          "key": "accept",
+          "label": "Accept",
+          "summary": "Take it as a task."
+        },
+        {
+          "key": "decline",
+          "label": "Decline",
+          "summary": "Close it with a reason."
+        },
+        {
+          "key": "defer",
+          "label": "Defer",
+          "summary": "Leave it in intake."
+        }
+      ],
+      "multiple": false
+    },
+    {
+      "key": "release-notes-tooling",
+      "title": "Release-notes tooling",
+      "summary": "Generate notes from records, or keep writing them by hand?",
+      "records": [
+        "engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md"
+      ],
+      "options": [
+        {
+          "key": "generate",
+          "label": "Generate from records",
+          "summary": ""
+        },
+        {
+          "key": "hand",
+          "label": "Keep by hand",
+          "summary": ""
+        },
+        {
+          "key": "later",
+          "label": "Decide at 0.3.0",
+          "summary": ""
+        }
+      ],
+      "multiple": true
+    }
+  ]
+}
