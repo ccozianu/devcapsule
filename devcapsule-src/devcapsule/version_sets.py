@@ -152,6 +152,8 @@ def _describe_set(identity: str, origin: str, lock: Mapping[str, Any], base: Any
 
 def _render_set(described: Mapping[str, Any]) -> list[str]:
     lines = [f"Platform: {described['platform']}", f"Base: {described['base']}"]
+    if described.get("local-base-override"):
+        lines.append(f"Effective local base override: {described['local-base-override']} (project base above is a recommendation).")
     lines.extend(f"{name}: {version}" for name, version in described["components"].items())
     return lines
 
@@ -205,13 +207,15 @@ def _runtime_inspection(context: runtime_configuration.RuntimeConfiguration) -> 
     }
     try:
         _, lock, checkout = context.current()
+        identity = effective_set_id(lock, checkout)
+        following = _describe_set(
+            identity, "local selection" if selected_version_lock(checkout) else "project recommendation",
+            lock, base_of(lock, checkout.get("authorization", {}).get("base-image", {})))
     except CliError as exc:
+        # An unreadable next selection must not hide the immutable running set.
         document["next-launch-unavailable"] = str(exc)
         return document
-    identity = effective_set_id(lock, checkout)
-    document["next-launch"] = _describe_set(
-        identity, "local selection" if selected_version_lock(checkout) else "project recommendation",
-        lock, base_of(lock, checkout.get("authorization", {}).get("base-image", {})))
+    document["next-launch"] = following
     document["selection-changed"] = identity != running["identity"]
     return document
 
@@ -227,10 +231,7 @@ def inspect(start: Path) -> str:
         return _render_runtime_inspection(document)
     selected = document["selected"]
     lines = [f"Version set {selected['identity']}", f"Origin: {selected['origin']}"]
-    lines.extend(_render_set(selected)[:2])
-    if selected["local-base-override"]:
-        lines.append(f"Effective local base override: {selected['local-base-override']} (project base above is a recommendation).")
-    lines.extend(_render_set(selected)[2:])
+    lines.extend(_render_set(selected))
     recommendation = document["project-recommendation"]
     if recommendation is not None:
         if recommendation["status"] == "unavailable":

@@ -377,8 +377,15 @@ def test_project_config_list_json_carries_the_table_and_keeps_notices_off_stdout
         assert again == document
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         text = capsys.readouterr().out
-        printed = [line.split()[1] for line in text.splitlines()[text.splitlines().index("") + 2:]]
-        assert printed == [row["name"] for row in document["rows"]]
+        header, *printed = text.splitlines()[text.splitlines().index("") + 1:]
+        columns = ("KIND", "NAME", "STATUS", "SOURCE", "VALUE / RECOMMENDATION")
+        starts = [header.index(column) for column in columns]
+        ends = [*starts[1:], None]
+        assert [
+            [line[start:end].rstrip() for start, end in zip(starts, ends)] for line in printed
+        ] == [
+            [row[key] for key in ("kind", "name", "status", "source", "value")] for row in document["rows"]
+        ]
 
         assert cli.main(["project", "--path", str(project), "config", "set", "runtime.memory-limit", "2GiB"]) == 0
         capsys.readouterr()
@@ -386,7 +393,8 @@ def test_project_config_list_json_carries_the_table_and_keeps_notices_off_stdout
         assert {(row["kind"], row["name"]): row for row in changed["rows"]}[("value", "runtime.memory-limit")]["status"] == "configured"
 
 
-def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("name", ["second-checkout", "devcapsule"])
+def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, capsys, name: str) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
     first.mkdir()
@@ -397,12 +405,30 @@ def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, ca
         initialize_project(first)
         shutil.copytree(first / ".devcapsule", second / ".devcapsule")
         assert cli.main(["project", "--path", str(first), "config", "list"]) == 0
-        assert cli.main(["project", "--path", str(second), "checkout", "register", "second-checkout"]) == 0
+        assert cli.main(["project", "--path", str(second), "checkout", "register", name]) == 0
         capsys.readouterr()
         document, _ = _listing_document(second, capsys)
-        assert document["checkout"]["name"] == "second-checkout"
+        assert document["checkout"]["name"] == name
         assert document["checkout"]["launcher-path"] == str(second.resolve())
-        assert document["checkout"]["input"].endswith("second-checkout.checkout.toml")
+        assert document["checkout"]["input"].endswith(f"{name}.checkout.toml")
+        assert next(record for record in registered_checkouts() if record.checkout_path == second).checkout_name == name
+        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        assert f"Checkout name: {name}\n" in capsys.readouterr().out
+
+
+def test_checkout_record_name_rejects_a_non_record_path() -> None:
+    from devcapsule.configuration.storage import checkout_record_name
+
+    with pytest.raises(ValueError, match="not a DevCapsule checkout record path"):
+        checkout_record_name(Path("devcapsule.resolved.toml"))
+
+
+@pytest.mark.parametrize("command", [("config", "list"), ("versions", "show")])
+def test_json_help_names_the_schema_contract(command, capsys) -> None:
+    assert cli.main(["project", *command, "--help"]) == 0
+    help_text = capsys.readouterr().out
+    assert "--json" in help_text
+    assert "schema-version1" in "".join(help_text.split())
 
 
 def test_project_config_list_materializes_named_checkout_placeholder(
