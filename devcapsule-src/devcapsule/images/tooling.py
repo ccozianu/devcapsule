@@ -118,3 +118,54 @@ def maven_tooling_component() -> ExecComponent:
             " && ".join(commands),
         ),
     )
+
+
+WEBCONSOLE_ROOT = "/opt/devcapsule-webconsole"
+"""Where the base installs the capsule web console: its venv and the package.
+
+The runtime starts it from here (``container_runtime/console.py``); keep the
+two in step.
+"""
+WEBCONSOLE_VENV_PYTHON = f"{WEBCONSOLE_ROOT}/venv/bin/python"
+
+
+def webconsole_tooling_component(source_repository: str, source_revision: str) -> ExecComponent:
+    """Install the capsule web console from the verified public revision.
+
+    The console is the ``devcapsule-webconsole/`` subproject of the source
+    revision the runtime PEX was built from. Git fetches that exact commit,
+    which verifies the content against the commit hash. Its dependencies
+    come from the subproject's hash-pinned ``requirements.txt``, the build
+    toolchain from ``requirements-build.txt``, and the package itself is
+    installed from the checkout without build isolation, so nothing is
+    fetched that is not pinned by hash. The checkout is removed afterwards.
+    """
+
+    python = WEBCONSOLE_VENV_PYTHON
+    pip = f"{python} -m pip install --no-cache-dir --disable-pip-version-check"
+    commands = [
+        f'source_repository="{source_repository}"',
+        f'source_revision="{source_revision}"',
+        'checkout="$(mktemp -d)"',
+        'git -C "$checkout" init -q',
+        'git -C "$checkout" fetch -q --depth 1 "$source_repository" "$source_revision"',
+        'git -C "$checkout" checkout -q --detach FETCH_HEAD',
+        'test "$(git -C "$checkout" rev-parse HEAD)" = "$source_revision"',
+        'subproject="$checkout/devcapsule-webconsole"',
+        f'python3 -m venv "{WEBCONSOLE_ROOT}/venv"',
+        f'{pip} --require-hashes -r "$subproject/requirements.txt"',
+        f'{pip} --require-hashes -r "$subproject/requirements-build.txt"',
+        f'{pip} --no-deps --no-build-isolation "$subproject"',
+        f'{python} -c "import devcapsule_webconsole, fastapi, uvicorn"',
+        f'{python} -m devcapsule_webconsole --help >/dev/null',
+        'rm -rf "$checkout"',
+    ]
+    return ExecComponent(
+        args=(
+            "bash",
+            "-euxo",
+            "pipefail",
+            "-c",
+            " && ".join(commands),
+        ),
+    )

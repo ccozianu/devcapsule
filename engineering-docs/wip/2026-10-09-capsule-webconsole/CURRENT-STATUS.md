@@ -4,11 +4,11 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR1 (#184) and PR2 (#186, stacked on PR1) await the owner, each with its Codex review merged; PR3, the runtime and base integration, is next
+State: active; PR1 (#184) and PR2 (#186) await the owner with their reviews merged; PR3, the runtime and base integration, is implemented on `ws-capsule-webconsole/runtime-base` and being proven with a local base build
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
-Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1)
+Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1); `ws-capsule-webconsole/runtime-base` (PR3, stacked on PR2)
 
 Integration target: `main`
 
@@ -42,6 +42,45 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 3: the console runs and is reached.** The runtime plan
+gained a `console` section, like the display's: a listen address, a port
+and the token path, plus an optional `source_path` for the self-hosting
+exception. The launcher allocates a host loopback port and a per-run token
+whenever a runtime plan is launched, with or without a display, mounts the
+token read-only, publishes the port off host networking, prints the console
+URL, and watches readiness. The entrypoint starts the console as a supervised
+child beside the display's children, or alone in a headless job. Base recipe
+10 installs the console under `/opt/devcapsule-webconsole`: a venv built at
+image build from the subproject's hash-pinned files, the package itself from
+the same public revision as the runtime, fetched with git so the commit hash
+verifies the content. The smoke of deliverable 1 is an end-to-end test with
+and without a display, and the IDE smoke rows gained "console answers". A
+user page documents the console link, the token and the SSH forward.
+
+Judgments recorded for slice 3:
+
+- One page opens by itself. With a contained display the desktop opens and
+  the console is announced as ready, not opened; two tabs for one run would
+  be noise. Without a desktop the console opens, so a headless or
+  passthrough run still lands the developer on one page. The owner can
+  flip this.
+- The console runs whenever a runtime plan is launched. There is no option
+  to turn it off, because the work order makes it part of every capsule;
+  an older base without the console is announced and skipped, not refused,
+  since the runtime is launcher-supplied and runs on any base with the
+  display label.
+- The self-hosting exception is mechanical: when the launched project
+  carries `devcapsule-webconsole/devcapsule_webconsole/`, the console child
+  runs that source ahead of the image's copy through `PYTHONPATH`, with the
+  image's interpreter and dependencies, and says so. No separate mount: the
+  project is already mounted. Any other project runs the base's console.
+- The base fetches the console's source with `git fetch` by commit, which
+  verifies the content against the hash; an archive download would not.
+  The build toolchain is hash-pinned too, in `requirements-build.txt`, so
+  the venv install fetches nothing unpinned.
+- The console's readiness timeout is 60 s, three times the display's:
+  FastAPI's import on a cold host is slower than an X server's start.
 
 **2026-10-09, slice 2: the console subproject.** `devcapsule-webconsole/`
 is a second distribution: a FastAPI application, a static tree and tests,
@@ -160,7 +199,8 @@ digraph stack {
 
 ## Planned Next Step
 
-1. Branch PR3 from PR2's branch, after #187's merge.
+1. Prove PR3 with a local base build and the console smoke, then open it
+   against PR2's branch and request PR3.1 from the Codex pair.
 2. Done in PR2: the console subproject, runnable on a host against the installed
    CLI, with its unit tests.
 3. PR3: deliverable 1's runtime and base work, with the smokes. Propose the
@@ -194,6 +234,12 @@ then 5, then 6.
   cases, 10 packaged integrations, type check, smokes, documentation
   contract, then the console session with strict mypy and 89 tests;
   successful.
+- Slice 3 unit modules: 219 passed across the launcher, runtime, display,
+  base image and successor plan modules; mypy on the package and tests clean.
+- Build gate on PR3's branch, 2026-10-09: 1,299 unit cases, 10 packaged
+  integrations, type check, smokes, documentation contract, then the console
+  session; successful.
+- Base recipe 10 local build and the console smoke: SMOKE_PR3
 - Manual run against this capsule's real CLI on loopback port 8765 with a
   fresh token: tokenless request refused, cookie set from the query token,
   traversal refused, four pages rendered and screenshotted with the website's
@@ -209,9 +255,14 @@ then 5, then 6.
   file and is right. The console's home page shows what `project info`
   reports, so it is wrong there until the command is fixed. Mailed to
   `maintenance` on 2026-10-09 as a defect; the console will follow the fix.
-- Base-release cadence: a console change reaches adopters only with a base
-  image rebuild and publication, which the release runbook treats as rare.
-  A trigger for the release policy is proposed with PR3.
+- Base-release cadence, proposal for the owner with PR3: a change under
+  `devcapsule-webconsole/` that an adopter should see is a base-release
+  trigger, the same as a change to the display stack, because the console
+  ships only inside the base. Concretely, add to the release policy: a
+  release whose range touches `devcapsule-webconsole/` or
+  `images/base.py` publishes a base image, and the console's version in
+  `pyproject.toml` is bumped in that range. Development needs no release:
+  the self-hosting exception runs the checkout's source.
 - Dependencies in the base: Ubuntu's `python3-fastapi` and friends are old;
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on

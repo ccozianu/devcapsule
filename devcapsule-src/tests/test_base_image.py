@@ -84,7 +84,22 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "9") in plan.labels
+    assert ("devcapsule.base.recipe-version", "10") in plan.labels
+    # Recipe 10 installs the web console from the runtime's own verified
+    # revision, as an independently cached contribution (R-CONSOLE-001).
+    webconsole = next(stage for stage in plan.stages if stage.name == "webconsole")
+    assert webconsole.exports == ("/opt/devcapsule-webconsole",)
+    (install,) = webconsole.plan.exec_steps
+    script = install.args[-1]
+    assert 'git -C "$checkout" fetch -q --depth 1 "$source_repository" "$source_revision"' in script
+    assert 'source_repository="https://github.com/example/devcapsule"' in script
+    assert f'source_revision="{"a" * 40}"' in script
+    assert 'test "$(git -C "$checkout" rev-parse HEAD)" = "$source_revision"' in script
+    assert "--require-hashes -r \"$subproject/requirements.txt\"" in script
+    assert "--require-hashes -r \"$subproject/requirements-build.txt\"" in script
+    assert "--no-deps --no-build-isolation \"$subproject\"" in script
+    assert "python3 -m venv \"/opt/devcapsule-webconsole/venv\"" in script
+    assert ("devcapsule.base.webconsole", "/opt/devcapsule-webconsole") in plan.labels
     # Recipe 8 ships the contained display stack and says so, which is how
     # the launcher decides the capsule needs no host X session; recipe 9
     # adds the panel.

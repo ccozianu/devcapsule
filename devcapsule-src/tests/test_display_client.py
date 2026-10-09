@@ -111,3 +111,20 @@ def test_transport_selection_is_shared_and_stage_aware() -> None:
     )
     # Unanswered means the contained desktop: adopters do nothing to get the safe default.
     assert select_display_transport(contained, host_x11_answer=None)[0] == "contained"
+
+
+def test_console_url_carries_the_token_once_in_the_query() -> None:
+    from devcapsule.display_client import CONSOLE_TOKEN_DESTINATION, CONTAINER_CONSOLE_PORT, console_url, new_run_token
+
+    token = new_run_token()
+    assert console_url(45678, token) == f"http://127.0.0.1:45678/?token={token}"
+    assert console_url(1, "a b/c") == "http://127.0.0.1:1/?token=a%20b%2Fc"
+    assert CONSOLE_TOKEN_DESTINATION != "/run/devcapsule-display-token"
+    assert CONTAINER_CONSOLE_PORT != 6080
+
+
+def test_print_only_opener_names_what_it_announces(capsys) -> None:
+    from devcapsule.display_client import print_only_opener
+
+    print_only_opener("Web console")("http://127.0.0.1:1/?token=x")
+    assert capsys.readouterr().err == "Web console is ready; open it in a browser: http://127.0.0.1:1/?token=x\n"

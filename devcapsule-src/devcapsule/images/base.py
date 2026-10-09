@@ -40,9 +40,11 @@ from devcapsule.images.tooling import (
     TEMURIN_CURRENT,
     TEMURIN_CURRENT_BIN,
     TEMURIN_VERSION,
+    WEBCONSOLE_ROOT,
     maven_tooling_component,
     node_tooling_component,
     temurin_tooling_component,
+    webconsole_tooling_component,
 )
 from devcapsule.images.metadata import (
     BASE_KIND,
@@ -58,8 +60,11 @@ DEFAULT_OUTPUT_IMAGE = "devcapsule-base:latest"
 PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 # Recipe 8 added the contained display stack (DISPLAY_APT_PACKAGES) and the
 # label the launcher reads to select the contained transport; recipe 9 adds
-# the tint2 panel so a hidden window is always one click away.
-BASE_RECIPE_VERSION = "9"
+# the tint2 panel so a hidden window is always one click away; recipe 10
+# adds the capsule web console under /opt/devcapsule-webconsole, installed
+# from the same public revision as the runtime (R-CONSOLE-001).
+BASE_RECIPE_VERSION = "10"
+WEBCONSOLE_LABEL = "devcapsule.base.webconsole"
 # The capabilities a base satisfies by itself; components fill the rest.
 # Adding to this set keeps the family; removing from it opens a new one.
 BASE_SERVICES = frozenset({"python", "docker-cli", "node", "java", "maven", "postgresql-client"})
@@ -244,6 +249,14 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
         )
     if options.install_display:
         components.append(AptPackagesComponent(DISPLAY_APT_PACKAGES))
+    if options.install_baseline:
+        # The web console needs the baseline's python3-venv; its source is the
+        # runtime's own verified revision, so the base and the runtime agree.
+        components.append(ContributionComponent(
+            "webconsole",
+            (webconsole_tooling_component(build_info.source_repository, build_info.source_revision),),
+            (WEBCONSOLE_ROOT,),
+        ))
     components.extend(
         [
             LabelComponent(
@@ -261,6 +274,7 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
                     if options.install_display
                     else ()
                 )
+                + (((WEBCONSOLE_LABEL, WEBCONSOLE_ROOT),) if options.install_baseline else ())
                 + (
                     ("devcapsule.source.repository", build_info.source_repository),
                     ("devcapsule.source.revision", build_info.source_revision),

@@ -20,6 +20,9 @@ from devcapsule.launch.pycharm import (
 )
 from devcapsule.launch.pycharm._launcher import (
     display_disclosure,
+    describe_run_command,
+    console_development_source,
+    console_disclosure,
     HostUser,
     PycharmRunError,
     PycharmRunConfig,
@@ -44,6 +47,8 @@ from devcapsule.host_open import (
 )
 from devcapsule.project import plan_project
 
+from devcapsule.container_runtime.contract import ConsolePlan
+from devcapsule.display_client import display_url
 
 def base_env(tmp_path: Path) -> dict[str, str]:
     return {
@@ -87,8 +92,12 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
     try:
         assert files.runtime_plan_file is not None
         assert files.runtime_plan_file.stat().st_mode & 0o777 == 0o644
-        # The plan now records the transport explicitly, even for passthrough.
-        assert RuntimePlan.from_file(files.runtime_plan_file) == external_runtime_plan().with_display(DisplayPlan.host_x11())
+        # The plan now records the transport explicitly, even for passthrough,
+        # and the web console, which runs whenever the runtime runs.
+        written = RuntimePlan.from_file(files.runtime_plan_file)
+        assert written.display == DisplayPlan.host_x11()
+        assert written.console == ConsolePlan("0.0.0.0", 6081, "/run/devcapsule-console-token")
+        assert written == external_runtime_plan().with_display(DisplayPlan.host_x11()).with_console(written.console)
         args = build_docker_args(config, files, env)
         assert "JAVA_TOOL_OPTIONS=-Dide.browser.jcef.sandbox.enable=false" in args
         assert "SYS_ADMIN" not in args
@@ -150,6 +159,7 @@ def test_plan_driven_surface_mounts_declared_slots_instead_of_pycharm_paths(
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         runtime_plan_file=tmp_path / "runtime-plan",
     )
     args = build_docker_args(config, files, env)
@@ -235,6 +245,7 @@ def test_no_sudo_launches_keep_full_hardening_on_every_surface(
             xauth_file=tmp_path / "xauth",
             passwd_file=tmp_path / "passwd",
             group_file=tmp_path / "group",
+            console_token_file=tmp_path / "console-token",
             runtime_plan_file=tmp_path / "runtime-plan",
         )
 
@@ -272,6 +283,7 @@ def test_sudo_launches_grant_no_capabilities_beyond_dockers_default(
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         runtime_plan_file=tmp_path / "runtime-plan",
         shadow_file=tmp_path / "shadow",
         sudoers_file=tmp_path / "sudoers",
@@ -334,6 +346,7 @@ def test_detached_lifecycle_changes_only_the_docker_process_flags(tmp_path: Path
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         runtime_plan_file=tmp_path / "runtime-plan",
     )
 
@@ -396,6 +409,7 @@ def test_host_browser_bridge_is_explicit_in_plan_mount_environment_and_summary(
             xauth_file=tmp_path / "xauth",
             passwd_file=tmp_path / "passwd",
             group_file=tmp_path / "group",
+            console_token_file=tmp_path / "console-token",
             runtime_plan_file=tmp_path / "runtime-plan",
         )
         args = build_docker_args(config, files, env)
@@ -650,6 +664,7 @@ def test_sudoers_ownership_helper_is_constrained(tmp_path: Path) -> None:
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         sudoers_file=policy,
     )
     config = cast(
@@ -683,6 +698,7 @@ def test_sudoers_ownership_helper_failure_is_actionable(tmp_path: Path) -> None:
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         sudoers_file=policy,
     )
     config = cast(
@@ -891,7 +907,8 @@ def test_runtime_plan_serialization_failure_leaves_no_temporary_files(tmp_path: 
     runtime_directory = tmp_path / "runtime"
     config = cast(
         PycharmRunConfig,
-        SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan(), display_transport="host-x11"),
+        SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan(), display_transport="host-x11",
+                        console_host_port=None),
     )
     with (
         patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
@@ -913,6 +930,7 @@ def test_generated_passwd_home_matches_persistent_container_home(tmp_path: Path)
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
     )
     config = cast(PycharmRunConfig, SimpleNamespace(host_docker_gid=None, enable_sudo=False))
 
@@ -1220,7 +1238,8 @@ def test_host_x11_passthrough_still_needs_a_host_display_and_binds_it(tmp_path: 
         assert "type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix,ro" in args
         assert "XAUTHORITY=/tmp/.docker.xauth" in args
         assert "DISPLAY" in args
-        assert "--publish" not in args
+        published = [args[index + 1] for index, item in enumerate(args) if item == "--publish"]
+        assert published == [f"127.0.0.1:{config.console_host_port}:6081"]  # the console only; no display port
     finally:
         cleanup_temp_runtime_files(files)
 
@@ -1324,3 +1343,166 @@ def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_
     finally:
         cleanup_temp_runtime_files(files)
     assert not files.launch_context_file.exists()
+
+
+def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_path: Path) -> None:
+    """The console mirrors the display: one loopback port, one per-run token,
+    the token mounted read-only and never on the command line (R-CONSOLE-001)."""
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = contained_config(tmp_path)
+    assert config.console_host_port is not None and 1024 < config.console_host_port < 65536
+    assert config.console_host_port != config.display_host_port
+    assert len(config.console_token) == 48 and config.console_token != config.display_token
+    assert config.runtime_plan is not None
+    assert config.runtime_plan.console == ConsolePlan("0.0.0.0", 6081, "/run/devcapsule-console-token")
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.console_token_file is not None
+        assert files.console_token_file.stat().st_mode & 0o777 == 0o600
+        assert files.console_token_file.read_text(encoding="utf-8") == config.console_token + "\n"
+        args = build_docker_args(config, files, env)
+        joined = " ".join(args)
+        assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
+        published = [args[index + 1] for index, item in enumerate(args) if item == "--publish"]
+        assert published == [f"127.0.0.1:{config.display_host_port}:6080", f"127.0.0.1:{config.console_host_port}:6081"]
+        assert config.console_token not in joined
+        assert RuntimePlan.from_file(files.runtime_plan_file).console == config.runtime_plan.console  # type: ignore[arg-type]
+        description = describe_run_command(args, config, files)
+        assert f"Temporary Console token: {files.console_token_file}" in description
+        assert "The web console needs its temporary token file" in description
+    finally:
+        cleanup_temp_runtime_files(files)
+    assert not files.console_token_file.exists()
+
+
+def test_web_console_under_host_networking_listens_on_host_loopback_directly(tmp_path: Path) -> None:
+    config = contained_config(tmp_path, network_mode="host")
+    assert config.runtime_plan is not None and config.runtime_plan.console == ConsolePlan(
+        "127.0.0.1", config.console_host_port, "/run/devcapsule-console-token"  # type: ignore[arg-type]
+    )
+    env = base_env(tmp_path)
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        args = build_docker_args(config, files, env)
+        assert "--publish" not in args
+        assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+def test_web_console_runs_the_checkouts_source_under_the_self_hosting_exception(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    (project / "devcapsule-webconsole" / "devcapsule_webconsole").mkdir(parents=True)
+    (project / "devcapsule-webconsole" / "devcapsule_webconsole" / "__init__.py").write_text("", encoding="utf-8")
+    config = contained_config(tmp_path)
+    assert config.runtime_plan is not None and config.runtime_plan.console is not None
+    assert config.runtime_plan.console.source_path == "/workspace/project/devcapsule-webconsole"
+    assert console_development_source(tmp_path / "other", "/workspace/other") == ""
+
+
+def test_web_console_is_absent_without_a_runtime_plan(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config = build_run_config(
+        PycharmRunOptions(project=project, project_mount="/workspace/project", docker_mode=DockerMode.none),
+        base_env(tmp_path),
+    )
+    assert config.console_host_port is None and config.console_token == ""
+    assert console_disclosure(config) == ""
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, base_env(tmp_path))
+    try:
+        assert files.console_token_file is None
+        assert "devcapsule-console-token" not in " ".join(build_docker_args(config, files, base_env(tmp_path)))
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+def test_console_disclosure_states_where_it_listens(tmp_path: Path) -> None:
+    contained = contained_config(tmp_path)
+    text = console_disclosure(contained)
+    assert "Web console:" in text and "read-only" in text
+    assert f"container port 6081, published to host loopback port {contained.console_host_port}" in text
+    direct = contained_config(tmp_path, network_mode="host")
+    assert f"host loopback port {direct.console_host_port} (host networking)" in console_disclosure(direct)
+
+
+@pytest.mark.parametrize("display_transport", ["contained", "host-x11"])
+def test_run_pycharm_announces_the_console_url_and_opens_it_only_without_a_desktop(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], display_transport: str
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    if display_transport == "contained":
+        env.pop("DISPLAY")
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    opened_display: list[str] = []
+    announced: list[str] = []
+    listeners = []
+    ports = []
+    for _ in range(2):
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        listeners.append(listener)
+        ports.append(listener.getsockname()[1])
+
+    def fake_docker_run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        deadline = time.monotonic() + 10
+        while len(announced) < 1 and time.monotonic() < deadline:
+            time.sleep(0.05)
+        return SimpleNamespace(returncode=0)
+
+    with (
+        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=ports),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
+        patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
+        patch("devcapsule.launch.pycharm._launcher.default_opener", lambda env, label="Contained display": (
+            lambda url: announced.append(f"{label}: {url}"))),
+    ):
+        try:
+            exit_code = run_pycharm(
+                PycharmRunOptions(
+                    project=project,
+                    project_mount="/workspace/project",
+                    docker_mode=DockerMode.none,
+                    network_mode="bridge",
+                    runtime_plan=external_runtime_plan(),
+                    use_image_process=True,
+                    display_transport=display_transport,
+                    open_display_url=opened_display.append,
+                ),
+                env,
+            )
+        finally:
+            for listener in listeners:
+                listener.close()
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    console_port = ports[1] if display_transport == "contained" else ports[0]
+    console_line = next(line for line in captured.err.splitlines() if line.startswith("Web console: "))
+    assert console_line == f"Web console: http://127.0.0.1:{console_port}/?token=" + console_line.rsplit("token=", 1)[1]
+    url = console_line.removeprefix("Web console: ")
+    if display_transport == "contained":
+        # The desktop opens; the console is announced as ready, not opened.
+        assert opened_display == [display_url(ports[0], opened_display[0].rsplit("%3D", 1)[1])] if opened_display else True
+        assert f"Web console is ready; open it in a browser: {url}" in captured.err
+        assert announced == []
+    else:
+        assert announced == [f"Web console: {url}"]
+        assert opened_display == []

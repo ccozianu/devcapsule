@@ -7,7 +7,9 @@ until the session ends. The session's exit code is the child's, honestly.
 
 When the plan selects the contained display, the surface is preceded by the
 display's own infrastructure children (X server, window manager, browser
-bridge); see ``display.py``. A headless job declares no display at all.
+bridge); see ``display.py``. A headless job declares no display at all. When
+the plan carries a console section, the web console runs beside either; see
+``console.py``.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from typing import Sequence
 from . import contract as rtcontract
 
 from .components import eclipse, jetbrains, vscode
+from .console import console_child
 from .contract import RuntimePlan, RuntimePlanError
 from .display import prepare_contained_display
 from .filesystem import plan_filesystem, prepare_filesystem
@@ -48,16 +51,18 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
         command = eclipse.plan(plan).command
     else:
         raise RuntimePlanError(f"unsupported component adapter: {plan.component.adapter}")
+    def as_capsule_user(child_command: tuple[str, ...]) -> tuple[str, ...]:
+        return foreground_command(child_command, plan.identity)
+
     infrastructure: tuple[SupervisedChild, ...] = ()
+    if job is None and plan.display is not None and plan.display.is_contained:
+        contained = prepare_contained_display(plan, filesystem.environment["XDG_RUNTIME_DIR"], as_capsule_user)
+        os.environ.update(contained.environment)
+        infrastructure = contained.children
+    console = console_child(plan, as_capsule_user)
+    if console is not None:
+        infrastructure = (*infrastructure, console)
     if job is None:
-        if plan.display is not None and plan.display.is_contained:
-            contained = prepare_contained_display(
-                plan,
-                filesystem.environment["XDG_RUNTIME_DIR"],
-                lambda child_command: foreground_command(child_command, plan.identity),
-            )
-            os.environ.update(contained.environment)
-            infrastructure = contained.children
         child = SupervisedChild(
             name=plan.component.id,
             command=foreground_command(command, plan.identity),
