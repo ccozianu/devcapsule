@@ -35,3 +35,8 @@ built base recipe 10 with the public PEX of revision
 - `tests/e2e/test_built_base.py`: passed.
 - `tests/e2e/test_console_answers.py` with the records and decision probes: passed with the display and headless. The `decisions-*-facts.json` files add `records_page_status` 200, `raw_status` 200 with the fixture's bytes, `vendor_status` 200 for the packaged Graphviz renderer, and `decisions_status` 200 with an empty listing.
 - `decisions-decision-answer.json`: the round trip inside the capsule with the display. The test wrote a decision document into the capsule's default decisions directory through `docker exec`, the listing showed it, a `POST` with the console's origin answered it, and this file is what the capsule's agent would read back. A tokenless listing was refused with 403.
+
+## Slice 8 runtime half on the same base, 2026-10-09
+
+- Base image `devcapsule-base-e2e:webconsole-decisions-190749` again, with the PEX of `aea3caa`, the launcher that passes the console's origin into the capsule.
+- `tests/e2e/test_console_answers.py`: passed with the display and headless (`pr8-*-facts.json`). The new probe read `DEVCAPSULE_CONSOLE_URL` inside the capsule through `docker exec printenv` and found the console's host-side origin, without the token.
