@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-01 at owner direction; the pair moves to component-upgrades for the consent design ruling; owner decisions of 2026-10-01 recorded (IntelliJ in 0.2.16 under component-catalog, in-capsule project commands a 0.2.16 fix, eclipse-surface archived); 0.2.16 driver and remaining decisions still awaited; 25 undecided intake items
+State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
 
@@ -24,6 +24,24 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+Resumed 2026-10-09 (Claude Fable 5.1) at the owner's direction after the
+component-catalog slice integrated. Fast-forwarded to origin, then merged
+`main` in (clean; the branch was a strict ancestor), because the definition
+and local workflow changed since the last read: the two files *for humans*,
+the information model with *backlog entry* and *work order*, required
+validation commands, the validation vocabulary, and integration as a merge
+commit. Ten mailed items were taken into `intake/`; three record owner
+decisions already taken (the next release is **0.3.0**, not 0.2.16;
+IntelliJ and the configuration contract are integrated), one is a
+maintenance work-order proposal for persistent capsule diagnostics. No
+bugs are owned here. Sent `2026-10-09-project-management-protocol-state-transitions.md`
+to `workflow-improvements` at the owner's request: review the commands above
+the failsafe git layer as transitions between consistent states, after an
+interrupted `mail take` converged by design and a ten-second GitHub outage
+was survived only by the agent's own retry. The owner also asked why this
+switch, a routine operation, took so long for a human; findings are in the
+session summary and a second item is drafted, not sent.
 
 Afternoon of 2026-09-28: the owner found the website unpublished since
 2026-09-21 and its guides pinned to v0.2.12, defined the problem with the
@@ -275,6 +293,16 @@ and the IntelliJ target, so it can lift its frozen-scope row and plan. The
 formal 0.2.16 work order still follows registration.
 
 ## Planned Next Step
+
+Disposition pass over the ten items taken on 2026-10-09, starting with the
+0.3.0 rename: the proposal, the registry row and every "0.2.16" reference in
+this file follow the owner's 2026-10-05 decision; then the two integration
+notices from component-catalog, the diagnostics work-order routing from
+maintenance, and the two component-upgrades items. Each ends acknowledged or
+forwarded, recorded in `intake-dispositions.md` in the commit that removes it.
+Then the older 28.
+
+Earlier plan, kept for context:
 
 Done 2026-09-28 evening: the three slices below. `docs-0.2.15` is on origin
 at `a15ff8b`; `WORKFLOW-LOCAL.md` declares the ref; the runbook carries
