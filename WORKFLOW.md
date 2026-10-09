@@ -240,6 +240,10 @@ file's frontmatter names the release this text ships in; see topic 4.1.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
+- **Controlled language for reports and records.** Topic 9.6 rule 5: every
+  report to the human and every human-facing record text is written at about
+  80% ASD-STE100, in the glossary's terms. Code, commands, quotations, and
+  tables are exempt. No migration: existing records are not rewritten.
 - **Controlled language and topic grouping.** This file is rewritten at
   about 80% ASD-STE100: one rule per sentence, grouped by topic, with every
   rule kept and the reasons moved to `WORKFLOW-humane.md`, which repeats each
@@ -1220,6 +1224,12 @@ session-resumption feature.
    a tool or a dependency as absent without having followed that section.
 4. When the human reports a manual validation result, treat it as
    authoritative project state. Update the markdown accordingly.
+5. Write every report to the human, and every human-facing record text, at
+   about 80% ASD-STE100: one fact per sentence, about twenty words or fewer,
+   active voice, the glossary's terms and no synonyms for them. This covers
+   session reports, status-file narrative, open threads, decision notes, bug
+   prose, pull-request descriptions, and intake items. It does not cover
+   code, commands, quoted material, or tables.
 
 ### 9.7 Responsibilities
 
