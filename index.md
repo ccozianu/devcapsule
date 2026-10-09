@@ -17,7 +17,9 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Claude compatibility pointer](CLAUDE.md)
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
+- [Human / agent workflow: the reasons, for humans](WORKFLOW-humane.md)
 - [This project's local workflow](WORKFLOW-LOCAL.md)
+- [This project's local workflow: the reasons, for humans](WORKFLOW-LOCAL-humane.md)
 - [Product documentation](docs/README.md), versioned per release under the content–website contract; pages marked *coming soon* are planned stubs
   - Getting started: [Install](docs/getting-started/install.md), [Your first session](docs/getting-started/first-session.md), [Stop and come back](docs/getting-started/stop-and-come-back.md)
   - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
