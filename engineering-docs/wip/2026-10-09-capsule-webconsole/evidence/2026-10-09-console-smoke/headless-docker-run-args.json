@@ -1,0 +1,23 @@
+[
+  "docker",
+  "run",
+  "--rm",
+  "--name",
+  "devcapsule-console-smoke-bd32fc14",
+  "--entrypoint",
+  "/opt/devcapsule/bin/devcapsule.pex",
+  "--publish",
+  "127.0.0.1:60137:6081",
+  "--mount",
+  "type=bind,src=/home/costin/.local/share/devcapsule/projects/by-path/3043407177f9-devcapsule/home/.local/share/devcapsule/e2e-workspaces/console-headless-875f6f9c/console-token,dst=/run/devcapsule-console-token,ro",
+  "--mount",
+  "type=bind,src=/home/costin/.local/share/devcapsule/projects/by-path/3043407177f9-devcapsule/home/.local/share/devcapsule/e2e-workspaces/console-headless-875f6f9c/runtime-plan.json,dst=/etc/devcapsule/runtime-plan.json,ro",
+  "--mount",
+  "type=bind,src=/home/costin/.local/share/devcapsule/projects/by-path/3043407177f9-devcapsule/home/.local/share/devcapsule/e2e-workspaces/console-headless-875f6f9c/project,dst=/workspace/e2e-ide-codium-b34ea943,ro",
+  "devcapsule-local-codium:367dbc9032ebaca659e1",
+  "runtime",
+  "/etc/devcapsule/runtime-plan.json",
+  "--",
+  "sleep",
+  "300"
+]

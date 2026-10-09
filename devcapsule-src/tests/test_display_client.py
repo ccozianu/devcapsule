@@ -34,8 +34,9 @@ def test_display_url_autoconnects_through_the_token_path() -> None:
     assert url == "http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=remote&path=websockify%3Ftoken%3Dabc123"
 
 
+@pytest.mark.parametrize("label", ["Contained display", "Web console"])
 def test_watcher_opens_once_the_port_answers_and_reports_opener_failure(
-    capsys: pytest.CaptureFixture[str],
+    capsys: pytest.CaptureFixture[str], label: str,
 ) -> None:
     listener = socket.socket()
     listener.bind(("127.0.0.1", 0))
@@ -51,21 +52,22 @@ def test_watcher_opens_once_the_port_answers_and_reports_opener_failure(
         def failing(url: str) -> None:
             raise HostOpenError("no browser")
 
-        watch_display_ready(port, "http://u", failing, Event()).join(timeout=10)
-        assert "could not be opened (no browser); open it yourself: http://u" in capsys.readouterr().err
+        watch_display_ready(port, "http://u", failing, Event(), label=label).join(timeout=10)
+        assert f"{label} is ready but could not be opened (no browser); open it yourself: http://u" in capsys.readouterr().err
     finally:
         listener.close()
 
 
-def test_watcher_gives_up_on_timeout_or_stop(capsys: pytest.CaptureFixture[str]) -> None:
+@pytest.mark.parametrize("label", ["Contained display", "Web console"])
+def test_watcher_gives_up_on_timeout_or_stop(capsys: pytest.CaptureFixture[str], label: str) -> None:
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     assert not accepts_connections(port)
     opened: list[str] = []
-    watch_display_ready(port, "http://u", opened.append, Event(), timeout=0.3).join(timeout=10)
+    watch_display_ready(port, "http://u", opened.append, Event(), timeout=0.3, label=label).join(timeout=10)
     assert opened == []
-    assert f"did not answer on port {port} within 0.3s" in capsys.readouterr().err
+    assert f"{label} did not answer on port {port} within 0.3s" in capsys.readouterr().err
     stop = Event()
     thread = watch_display_ready(port, "http://u", opened.append, stop, timeout=60)
     stop.set()
@@ -73,28 +75,29 @@ def test_watcher_gives_up_on_timeout_or_stop(capsys: pytest.CaptureFixture[str])
     assert not thread.is_alive() and opened == []
 
 
-def test_default_opener_prefers_the_host_bridge_inside_a_capsule(capsys: pytest.CaptureFixture[str]) -> None:
+@pytest.mark.parametrize("label", ["Contained display", "Web console"])
+def test_default_opener_prefers_the_host_bridge_inside_a_capsule(capsys: pytest.CaptureFixture[str], label: str) -> None:
     with patch("devcapsule.display_client.in_container", return_value=True):
-        default_opener({})("http://u")
-        assert "ready; open it in a browser: http://u" in capsys.readouterr().err
+        default_opener({}, label=label)("http://u")
+        assert f"{label} is ready; open it in a browser: http://u" in capsys.readouterr().err
         with patch("devcapsule.display_client.open_host_url") as bridge:
-            default_opener({HOST_OPEN_SOCKET_ENV: "/run/bridge.sock"})("http://u")
+            default_opener({HOST_OPEN_SOCKET_ENV: "/run/bridge.sock"}, label=label)("http://u")
         bridge.assert_called_once()
         assert bridge.call_args.args == ("http://u",)
-        assert "opened through the host-browser bridge" in capsys.readouterr().err
+        assert f"{label} is ready; opened through the host-browser bridge" in capsys.readouterr().err
     with (
         patch("devcapsule.display_client.in_container", return_value=False),
         patch("devcapsule.display_client.webbrowser.open", return_value=False) as browser,
     ):
         with pytest.raises(HostOpenError, match="no browser could be started"):
-            default_opener({})("http://u")
+            default_opener({}, label=label)("http://u")
         browser.assert_called_once_with("http://u", new=2)
     with (
         patch("devcapsule.display_client.in_container", return_value=False),
         patch("devcapsule.display_client.webbrowser.open", return_value=True),
     ):
-        default_opener({})("http://u")
-        assert "opened in your browser" in capsys.readouterr().err
+        default_opener({}, label=label)("http://u")
+        assert f"{label} is ready; opened in your browser" in capsys.readouterr().err
 
 
 def test_transport_selection_is_shared_and_stage_aware() -> None:
@@ -111,3 +114,20 @@ def test_transport_selection_is_shared_and_stage_aware() -> None:
     )
     # Unanswered means the contained desktop: adopters do nothing to get the safe default.
     assert select_display_transport(contained, host_x11_answer=None)[0] == "contained"
+
+
+def test_console_url_carries_the_token_once_in_the_query() -> None:
+    from devcapsule.display_client import CONSOLE_TOKEN_DESTINATION, CONTAINER_CONSOLE_PORT, console_url, new_run_token
+
+    token = new_run_token()
+    assert console_url(45678, token) == f"http://127.0.0.1:45678/?token={token}"
+    assert console_url(1, "a b/c") == "http://127.0.0.1:1/?token=a%20b%2Fc"
+    assert CONSOLE_TOKEN_DESTINATION != "/run/devcapsule-display-token"
+    assert CONTAINER_CONSOLE_PORT != 6080
+
+
+def test_print_only_opener_names_what_it_announces(capsys) -> None:
+    from devcapsule.display_client import print_only_opener
+
+    print_only_opener("Web console")("http://127.0.0.1:1/?token=x")
+    assert capsys.readouterr().err == "Web console is ready; open it in a browser: http://127.0.0.1:1/?token=x\n"

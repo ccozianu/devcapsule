@@ -1,0 +1,7 @@
+19:Web console:
+22:Contained display: http://127.0.0.1:36689/vnc.html?autoconnect=1&resize=remote&path=websockify%3Ftoken%3DREDACTED
+24:Web console: http://127.0.0.1:43081/?token=REDACTED
+68:Contained display is ready; open it in a browser: http://127.0.0.1:36689/vnc.html?autoconnect=1&resize=remote&path=websockify%3Ftoken%3DREDACTED
+69:devcapsule-webconsole: serving /workspace/e2e-ide-codium-b34ea943 on http://127.0.0.1:43081/ (the run token is required on every request)
+70:Web console is ready; open it in a browser: http://127.0.0.1:43081/?token=REDACTED
+115:Base selection: local override devcapsule-base-e2e:webconsole-161638 (sha256:3123197fc295ae37fe50c8faf1a15ecee0778935c4395c4370eb0c1b57a3b1da); the project recommends docker.io/mycodespaceai/devcapsule-base@sha256:88
