@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; three stacked pull requests await the owner, #184, #186 and #188, each with its Codex review merged; a fourth slice, the `project info` checkout-name fix the owner moved here, is on `ws-capsule-webconsole/project-info-checkout-name`
+State: active; four stacked pull requests await the owner, #184, #186, #188 and #190, each with its Codex review merged; the owner merges to `main`
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -53,6 +53,15 @@ comes from the mounted record, so a context captured by an older launcher
 reports it right without a relaunch. Verified against this capsule's real
 records: `project info` and `config list` now both say `devcapsule-2nd-home`.
 The console's home page shows the right name with no change of its own.
+
+**PR #190 is open against PR3's branch. Its review, PR #191 by the Codex
+and gpt-6-astra pair, was merged without a round.** No behavior change:
+the captured name is computed once, the helper and the runtime property
+state the name's provenance precisely, and coverage gained the captured
+fields before the runtime override, older contexts with and without
+captured information or the recorded name, the registry with an explicit
+environment, and the registered default checkout's name. The gate on the
+merged branch is recorded below.
 
 Judgments recorded for slice 4:
 
@@ -289,6 +298,12 @@ then 5, then 6.
 - Build gate on PR4's branch, 2026-10-09: 1,329 unit cases, 17 packaged
   integrations, type check of package and tests, smokes, documentation
   contract, then the console session; successful.
+- Review PR #191 gate, by the Codex pair in its worktree: 1,329 unit cases, 17
+  packaged integrations, type check, smokes, then the console session;
+  documentation contract skipped there.
+- Build gate on the merged PR4 branch at `4505ffa`, 2026-10-09: 1,329 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session; successful.
 - Review PR #189 gate, by the Codex pair in its worktree: 1,327 unit cases, 17
   packaged integrations, type check, smokes, then the console session;
   documentation contract skipped there.
