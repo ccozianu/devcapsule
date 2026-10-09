@@ -26,6 +26,7 @@ const document = {
   createElement: tag => new Node(tag),
   createTextNode: text => Object.assign(new Node('#text'), { textContent: text }),
   getElementById: id => { assert.equal(id, 'content'); return container; },
+  querySelector: () => null,  // no header in this adapter: the bell stays out of the test
   querySelectorAll: () => [],
   addEventListener: (name, fn) => { assert.equal(name, 'DOMContentLoaded'); ready = fn; },
 };

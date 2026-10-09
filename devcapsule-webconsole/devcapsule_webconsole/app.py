@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from . import monitor
-from .cli import CommandError, RuntimeCli
+from .cli import CommandError, CommandRefused, RuntimeCli
 from .decisions import (
     KEY_PATTERN, MAXIMUM_ANSWER_BYTES, Decision, DecisionError, DecisionStore, answer_from_mapping,
 )
@@ -36,6 +36,7 @@ PAGES = {
     "/processes": "processes.html",
     "/records": "records.html",
     "/decisions": "decisions.html",
+    "/notifications": "notifications.html",
 }
 # What a raw project file is served as, by extension. Markdown is text so a
 # browser shows it; anything unknown is bytes a browser offers to save.
@@ -115,8 +116,7 @@ def create_app(settings: Settings) -> FastAPI:
         console. The body is validated against the decision before anything
         is written; a refusal writes nothing.
         """
-        origins = request.headers.getlist("origin")
-        if origins != [f"{request.url.scheme}://{request.url.netloc}"]:
+        if not same_origin(request):
             return PlainTextResponse("the answer must come from the console's own origin\n", status_code=403)
         decision = decision_or_response(decision_id)
         if not isinstance(decision, Decision):
@@ -139,6 +139,32 @@ def create_app(settings: Settings) -> FastAPI:
         except OSError as error:
             return PlainTextResponse(f"cannot write the answer: {error}\n", status_code=500)
         return JSONResponse({"answer": answer.to_mapping()})
+
+    @app.get("/api/notifications")
+    def notifications(unread: bool = False) -> JSONResponse:
+        """The checkout's notifications as the runtime CLI lists them, pending decisions merged in."""
+        return document(lambda: cli.notifications(unread_only=unread))
+
+    def notification_action(action: str) -> Callable[[str, Request], Response]:
+        """``read`` or ``dismiss`` one notification through the CLI: a write into capsule state, same origin only."""
+
+        def act(notification_id: str, request: Request) -> Response:
+            if not same_origin(request):
+                return PlainTextResponse("the request must come from the console's own origin\n", status_code=403)
+            if KEY_PATTERN.fullmatch(notification_id) is None:
+                return PlainTextResponse(f"no notification {notification_id!r}\n", status_code=404)
+            try:
+                output = cli.act("checkout", "notifications", action, notification_id)
+            except CommandRefused as error:
+                return PlainTextResponse(error.reason + "\n", status_code=422)
+            except CommandError as error:
+                return JSONResponse(error.to_document(), status_code=502)
+            return JSONResponse({"id": notification_id, "action": action, "output": output})
+
+        return act
+
+    app.add_api_route("/api/notifications/{notification_id}/read", notification_action("read"), methods=["POST"])
+    app.add_api_route("/api/notifications/{notification_id}/dismiss", notification_action("dismiss"), methods=["POST"])
 
     @app.get("/api/identity")
     def identity() -> JSONResponse:
@@ -200,6 +226,11 @@ def create_app(settings: Settings) -> FastAPI:
     app.mount("/static", StaticFiles(directory=str(settings.static_root)), name="static")
     app.add_middleware(TokenGate, token=settings.token)
     return app
+
+
+def same_origin(request: Request) -> bool:
+    """Exactly one ``Origin`` header naming this console, port included, no trailing slash."""
+    return request.headers.getlist("origin") == [f"{request.url.scheme}://{request.url.netloc}"]
 
 
 def _page(settings: Settings, name: str) -> Callable[[], FileResponse]:

@@ -14,10 +14,9 @@ from importlib import resources
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from .decisions import DECISIONS_ENV, default_directory
+from .decisions import DECISIONS_ENV, TOKEN_FILE_ENV, default_directory
 
 PROJECT_ENV = "PROJECT_PATH"
-TOKEN_FILE_ENV = "DEVCAPSULE_CONSOLE_TOKEN_FILE"
 CLI_ENV = "DEVCAPSULE_CONSOLE_CLI"
 DEFAULT_CLI = "devcapsule"
 DEFAULT_LISTEN = "127.0.0.1"

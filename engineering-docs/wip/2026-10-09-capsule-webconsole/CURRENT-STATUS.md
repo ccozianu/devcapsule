@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192), PR6 (#194), PR7 (#196) and PR8 (#199) await the owner, stacked, each with its Codex review merged; slice 8's console half is next on PR8's branch
+State: active; PR5 (#192), PR6 (#194), PR7 (#196) and PR8 (#199) await the owner, stacked, each with its Codex review merged; slice 8's console half, PR9, is on `ws-capsule-webconsole/notifications-console` and gated
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,37 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 8, console half (PR9).** The hand-off:
+`python -m devcapsule_webconsole.decisions hand-off <decisions-dir>/<id>.json`
+prints a decision as chat text, every item numbered with its options by
+key, ending with the link `$DEVCAPSULE_CONSOLE_URL/decisions/<id>?token=…`
+from the launcher's origin and the mounted token file; without the origin
+the text says the console is not reachable, without a readable token the
+link goes out bare. Notifications in the console: `/api/notifications` is
+the runtime CLI's listing with the pending decisions merged in, read and
+dismiss go back through the CLI, same-origin only, the CLI's refusal is a
+422 and its failure a 502; a bell on every page shows the unread count and
+the newest five, polled every 30 seconds; the `/notifications` page lists
+everything with mark-read and dismiss, a decision entry linking to its
+page. Browser run against this checkout with the real CLI and a scratch
+store: three unread under the bell, the page listed them, read and dismiss
+went through the CLI and the page refreshed; screenshots
+`notifications-*.png` under `evidence/2026-10-09-console-pages/`, the
+hand-off text under `evidence/2026-10-09-decision-sample/hand-off.txt`.
+
+Judgments recorded for slice 8's console half:
+
+- The console renders the CLI's listing and never reads the notifications
+  directory itself: one source of truth, and the subprocess boundary stays
+  the console's contract, as for configuration and versions.
+- The bell polls, every 30 seconds, one small request. A push channel
+  waits for the notification system the owner deferred.
+- The link carries the token: the launcher already prints it on the host,
+  the cookie is a session cookie, and the hand-off text says the link
+  belongs in the chat and never in a record.
+- The console's writes are three, all into capsule state; the docs say so
+  in place of "one write".
 
 **2026-10-09, slice 8, runtime half (PR8).** The launcher passes
 `DEVCAPSULE_CONSOLE_URL`, the console's host-side origin without the
@@ -480,6 +511,8 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Slice 8 console half, PR9 branch, 2026-10-09: console session with strict
+  mypy on 8 files and 248 tests; build gate: 1,449 unit cases, 17 packaged integrations, type check of package and tests, smokes, documentation contract, then the console session; successful.
 - Build gate on the merged PR8 branch at `e97aaeb`, 2026-10-09: 1,449 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 238 tests;

@@ -117,5 +117,27 @@ never deletes a decision or an answer.
   including its port, with no trailing slash. Missing or `null` origins
   are refused. The run token is also required. The JSON request body may
   contain at most 64 KiB; a refusal leaves any previous answer unchanged.
-- Nothing else writes. The decision pages are the only place the console
-  changes anything, as the work order allows.
+- Nothing else about a decision writes. The decision pages and the
+  notifications' read and dismiss are the console's only writes, all into
+  the capsule's state, as the work order allows.
+
+## Handing a decision to the human
+
+An agent in a chat hands the decision over as text first, so a human who
+never opens the console loses nothing, and ends with the link:
+
+```text
+python -m devcapsule_webconsole.decisions hand-off <decisions-dir>/<id>.json
+```
+
+prints the title, who asks, the context, every item numbered with its
+summary, its records and its options by key, and then one closing line
+with the page's link, `$DEVCAPSULE_CONSOLE_URL/decisions/<id>?token=…`.
+The launcher sets `DEVCAPSULE_CONSOLE_URL` inside the capsule and mounts
+the token at `/run/devcapsule-console-token`; `--token-file` or
+`$DEVCAPSULE_CONSOLE_TOKEN_FILE` names another file. The token in the link
+is the run's token, which the launcher already prints on the host; the link
+belongs in the chat and never in a record. Without the origin the text
+says the console is not reachable; without a readable token the link goes
+out bare and works in a browser that already opened the console. An
+unanswered decision also appears under the console's bell.

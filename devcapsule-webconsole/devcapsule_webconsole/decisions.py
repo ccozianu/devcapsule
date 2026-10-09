@@ -23,9 +23,15 @@ import stat
 import sys
 import tempfile
 from typing import Any, Mapping, Sequence
+from urllib.parse import quote
 
 FORMAT = 1
 DECISIONS_ENV = "DEVCAPSULE_CONSOLE_DECISIONS"
+CONSOLE_URL_ENV = "DEVCAPSULE_CONSOLE_URL"
+"""Set by the launcher inside a capsule: the console's host-side origin, without the token."""
+TOKEN_FILE_ENV = "DEVCAPSULE_CONSOLE_TOKEN_FILE"
+DEFAULT_TOKEN_PATH = Path("/run/devcapsule-console-token")
+"""Where the launcher mounts the run token inside a capsule, readable by the capsule identity."""
 DEFAULT_SUBDIRECTORY = Path("devcapsule") / "decisions"
 KEY_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,99}")
 DEFAULT_OPTIONS = (
@@ -355,8 +361,66 @@ def from_markdown_table(text: str, *, decision_id: str, title: str, asked_by: st
     })
 
 
+def hand_off_link(decision_id: str, environ: Mapping[str, str] = os.environ,
+                  token_file: Path | None = None) -> tuple[str, str] | None:
+    """The link an agent hands the human, and a note when the token could not be read.
+
+    ``None`` when the launcher did not name the console's origin: the agent is
+    not inside a capsule with a console. The token comes from the file the
+    launcher mounts, named by ``token_file``, ``$DEVCAPSULE_CONSOLE_TOKEN_FILE``
+    or the default path; when it cannot be read, the link goes out without it
+    and works in a browser that already holds the console's cookie.
+    """
+    origin = environ.get(CONSOLE_URL_ENV, "").rstrip("/")
+    if not origin:
+        return None
+    page = f"{origin}/decisions/{decision_id}"
+    source = token_file or Path(environ.get(TOKEN_FILE_ENV) or DEFAULT_TOKEN_PATH)
+    try:
+        token = source.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError):
+        return page, f"(the console's token file {source} was not readable; the link works in a browser that already opened the console)"
+    if not token:
+        return page, f"(the console's token file {source} is empty; the link works in a browser that already opened the console)"
+    return f"{page}?token={quote(token, safe='')}", ""
+
+
+def hand_off_text(decision: Decision, link: tuple[str, str] | None) -> str:
+    """The decision as numbered text for a chat, ending with the link to act on it in the browser.
+
+    The text stands on its own: a human who never opens the console can
+    answer with an item number and an option key.
+    """
+    lines = [decision.title]
+    if decision.asked_by or decision.asked_at:
+        lines.append("Asked by " + (decision.asked_by or "an agent") + (f" at {decision.asked_at}" if decision.asked_at else ""))
+    if decision.context.strip():
+        lines += ["", decision.context.strip()]
+    lines.append("")
+    for number, item in enumerate(decision.items, 1):
+        lines.append(f"{number}. {item.title}")
+        if item.summary.strip():
+            lines += [f"   {line}" if line else "" for line in item.summary.strip().splitlines()]
+        if item.records:
+            lines.append("   Records: " + " · ".join(item.records))
+        for option in item.options:
+            lines.append(f"   - {option.key}: {option.label}" + (f". {option.summary}" if option.summary else ""))
+        if item.multiple:
+            lines.append("   (choose any number of options)")
+        lines.append("")
+    if link is None:
+        lines.append("Answer here with each item's number and option key. The web console is not reachable from this "
+                     f"environment, so there is no link; the page would be /decisions/{decision.id}.")
+    else:
+        url, note = link
+        lines.append("Answer here with each item's number and option key, or follow this link to see the full details "
+                     "and act in your browser:")
+        lines.append(url + (f" {note}" if note else ""))
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """``python -m devcapsule_webconsole.decisions``: build or check decision documents."""
+    """``python -m devcapsule_webconsole.decisions``: build, check or hand off decision documents."""
     parser = argparse.ArgumentParser(prog="devcapsule-webconsole decisions", description=main.__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     table = commands.add_parser("from-table", help="Print a decision document built from a markdown table.")
@@ -367,6 +431,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     table.add_argument("--context", default="", help="Markdown shown above the items.")
     check = commands.add_parser("check", help="Validate a decision document, and its answer when present.")
     check.add_argument("decision", type=Path)
+    hand_off = commands.add_parser("hand-off", help="Print a decision as numbered text for a chat, ending with the "
+                                   "link to its console page; the text an agent pastes to the human.")
+    hand_off.add_argument("decision", type=Path)
+    hand_off.add_argument("--token-file", type=Path, help=f"The run token's file; default ${TOKEN_FILE_ENV}, then {DEFAULT_TOKEN_PATH}.")
     arguments = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
     try:
         if arguments.command == "from-table":
@@ -377,6 +445,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         store = DecisionStore(arguments.decision.parent)
         decision = store.read_decision(arguments.decision.stem)
+        if arguments.command == "hand-off":
+            print(hand_off_text(decision, hand_off_link(decision.id, token_file=arguments.token_file)), end="")
+            return 0
         answer = store.read_answer(decision)
         print(f"{decision.id}: {len(decision.items)} item(s); " + (f"answered {answer.answered_at}" if answer else "unanswered"))
         return 0

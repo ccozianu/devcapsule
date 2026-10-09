@@ -15,10 +15,17 @@ imports none of the runtime's internals. Its API is the runtime CLI's
   the pages' links and requests carry it from then on.
 - File reads resolve inside the project mount only. A path that escapes
   it, by `..`, by an absolute path or by a symbolic link, is refused.
-- The console changes nothing but a decision's answer: every route is `GET`
-  except the answer to a decision page, which writes one file into the
-  capsule's decisions directory. See [DECISIONS.md](DECISIONS.md). The
-  processes page reads psutil and the cgroup; it never signals a process.
+- The console writes only into the capsule's state: the answer to a
+  decision page, one file in the capsule's decisions directory (see
+  [DECISIONS.md](DECISIONS.md)), and a notification marked read or
+  dismissed, which goes through `devcapsule project checkout notifications`.
+  Every other route is `GET`, and every write accepts a same-origin request
+  only. The processes page reads psutil and the cgroup; it never signals a
+  process.
+- Notifications are the runtime CLI's listing, `project checkout
+  notifications list --json`, with the pending decisions merged in by the
+  CLI; the console renders it under the bell and on its page. The contract
+  is the module docstring of `devcapsule/notifications.py` in the runtime.
 - Records render in the browser with `markdown-it` and DOT with `viz.js`,
   both vendored under `devcapsule_webconsole/static/vendor/` with their
   provenance in `VENDORED.md`; no build step, no Node in the capsule. Raw

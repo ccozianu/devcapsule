@@ -1,0 +1,22 @@
+Sample intake pass
+Asked by project-management at 2026-10-09T18:50:34+00:00
+
+Two items from the **intake** queue, as a sample of the first use.
+
+1. Upgrade experience as a V1 feature
+   The component catalog asks whether upgrades belong to V1.
+   Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-03-component-catalog-upgrade-experience-as-a-v1-feature.md
+   - accept: Accept. Take it as a task.
+   - decline: Decline. Close it with a reason.
+   - defer: Defer. Leave it in intake.
+
+2. Release-notes tooling
+   Generate notes from records, or keep writing them by hand?
+   Records: engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md
+   - generate: Generate from records
+   - hand: Keep by hand
+   - later: Decide at 0.3.0
+   (choose any number of options)
+
+Answer here with each item's number and option key, or follow this link to see the full details and act in your browser:
+http://127.0.0.1:43123/decisions/2026-10-09-sample-pass?token=sample-run-token

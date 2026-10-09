@@ -527,12 +527,113 @@
     container.replaceChildren(head, context, form);
   };
 
+  // Notifications: what the checkout's environment tells its human, listed
+  // by the runtime CLI with the pending decisions merged in. Read and dismiss
+  // go back through the CLI; a decision is settled only on its own page.
+  async function notify(id, action) {
+    const response = await fetch("/api/notifications/" + encodeURIComponent(id) + "/" + action, {
+      method: "POST", credentials: "same-origin",
+    });
+    if (!response.ok) throw new Error((await response.text()).trim() || "HTTP " + response.status);
+  }
+
+  function notificationEntry(entry, md, refresh) {
+    const item = el("li", { class: "notification" + (entry.error ? " error" : entry["read-at"] ? "" : " unread") });
+    if (entry.error) {
+      item.appendChild(el("div", { class: "head" }, [el("span", { class: "kind", text: entry.kind || "file" }),
+        el("strong", { text: entry.id })]));
+      item.appendChild(el("div", { class: "muted", text: "Malformed: " + entry.error }));
+      return item;
+    }
+    const title = entry.link ? el("a", { href: entry.link, text: entry.title }) : el("strong", { text: entry.title });
+    item.appendChild(el("div", { class: "head" }, [el("span", { class: "kind", text: entry.kind }), title]));
+    item.appendChild(el("div", { class: "muted", text: entry["posted-by"] + " · " + entry["posted-at"] +
+      (entry["read-at"] ? " · read " + entry["read-at"] : "") }));
+    if (entry.summary) {
+      const summary = el("div", { class: "record" });
+      summary.innerHTML = md.render(entry.summary);
+      item.appendChild(summary);
+    }
+    if (entry.kind === "decision") {
+      item.appendChild(el("div", { class: "muted", text: "A decision is settled by answering it on its page; its asking agent discards it." }));
+      return item;
+    }
+    const result = el("span", { class: "muted" });
+    const buttons = [];
+    if (!entry["read-at"]) buttons.push(el("button", { type: "button", text: "Mark read" }));
+    buttons.push(el("button", { type: "button", text: "Dismiss" }));
+    for (const button of buttons) {
+      button.addEventListener("click", async () => {
+        const action = button.textContent === "Dismiss" ? "dismiss" : "read";
+        for (const other of buttons) other.disabled = true;
+        try {
+          await notify(entry.id, action);
+          await refresh();
+        } catch (error) {
+          result.textContent = "Not done: " + error.message;
+          for (const other of buttons) other.disabled = false;
+        }
+      });
+    }
+    item.appendChild(el("div", { class: "toolbar" }, buttons.concat([result])));
+    return item;
+  }
+
+  pages.notifications = async function (container) {
+    const listing = await api("/api/notifications");
+    if (listing.notifications.length === 0) {
+      container.replaceChildren(el("p", { class: "notice", text: "Nothing is waiting. Agents and tools post with devcapsule project checkout notifications post; decisions appear here while unanswered." }));
+      return;
+    }
+    const md = recordRenderer("");
+    const list = el("ul", { class: "notifications" },
+      listing.notifications.map((entry) => notificationEntry(entry, md, () => pages.notifications(container))));
+    container.replaceChildren(el("p", { class: "muted", text: listing.unread + " unread of " + listing.notifications.length + "." }), list);
+  };
+
+  // The bell on every page: the unread count and the newest few, refreshed
+  // every half minute; the link itself opens the notifications page.
+  function bell() {
+    const anchor = document.querySelector("header.console-bar .bell");
+    const menu = document.querySelector("header.console-bar .bell-menu");
+    if (!anchor || !menu) return;
+    const count = anchor.querySelector(".count");
+    async function refresh() {
+      try {
+        const listing = await api("/api/notifications?unread=1");
+        const entries = listing.notifications.filter((entry) => !entry.error);
+        count.textContent = String(listing.unread);
+        count.hidden = listing.unread === 0;
+        anchor.classList.toggle("has-unread", listing.unread > 0);
+        const items = entries.slice(0, 5).map((entry) => el("a", { href: entry.link || "/notifications" }, [
+          el("span", { class: "kind", text: entry.kind }), document.createTextNode(entry.title)]));
+        if (items.length === 0) items.push(el("p", { text: "Nothing unread." }));
+        items.push(el("a", { class: "more", href: "/notifications", text: "All notifications" }));
+        menu.replaceChildren(...items);
+      } catch (error) {
+        count.hidden = true;
+        menu.replaceChildren(el("p", { text: "Notifications unavailable: " + error.message }),
+          el("a", { class: "more", href: "/notifications", text: "All notifications" }));
+      }
+    }
+    anchor.addEventListener("click", (event) => {
+      event.preventDefault();
+      menu.hidden = !menu.hidden;
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest || !event.target.closest(".bell-wrap")) menu.hidden = true;
+    });
+    refresh();
+    setInterval(refresh, 30000);
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page;
     const container = document.getElementById("content");
     for (const link of document.querySelectorAll("header nav a")) {
       if (link.getAttribute("href") === window.location.pathname) link.setAttribute("aria-current", "page");
     }
+    bell();
     if (page && pages[page] && container) {
       pages[page](container).catch((error) => fail(container, error));
     }

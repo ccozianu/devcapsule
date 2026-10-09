@@ -37,10 +37,21 @@ the inspection commands:
   add a note, submit. The answer is written where the agent reads it, in
   the capsule's state, never in the project; the agent records the outcome
   in the project's files and discards the page.
+- **Notifications**: what this checkout's environment tells you. Agents
+  and tools post them with `devcapsule project checkout notifications
+  post`; a decision still waiting for your answer appears among them. The
+  bell at the top of every page shows how many are unread and the newest
+  few; the page lists them all, and you mark them read or dismiss them
+  there. Nothing is pushed to you: open the console, or ask with
+  `devcapsule project checkout notifications list` on the host.
 
 The pages show the commands' own output, read each time you load a page. A
-change you make with a command is on the page after a reload. Nothing on the
-console changes anything.
+change you make with a command is on the page after a reload.
+
+When an agent hands you a decision in a chat, it ends its message with a
+link into the console, with the run token in it: follow it to see the full
+page and answer there, or answer in the chat. The agent prints that message
+with `python -m devcapsule_webconsole.decisions hand-off`.
 
 ## The link and the token
 
@@ -69,7 +80,8 @@ forwards the same way.
 
 ## What you cannot do from it
 
-The console has one write operation, the answer to a decision page, and it
-writes only into the capsule's own state. No configuration change, no
-process control, no file edit. The commands remain the way to change
-anything, and the console shows what they recorded.
+The console writes only into the capsule's own state: the answer to a
+decision page, and a notification marked read or dismissed. No
+configuration change, no process control, no file edit. The commands
+remain the way to change anything, and the console shows what they
+recorded.

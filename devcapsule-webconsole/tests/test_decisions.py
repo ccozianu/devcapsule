@@ -578,3 +578,60 @@ def test_decisions_setting_uses_the_supplied_environment_and_cli_precedence(proj
     env = {"DEVCAPSULE_CONSOLE_DECISIONS": str(tmp_path / "env")}
     assert settings_from_arguments(args, env).decisions == tmp_path / "env"
     assert settings_from_arguments(args + ["--decisions", str(tmp_path / "cli")], env).decisions == tmp_path / "cli"
+
+
+# The hand-off: the decision as chat text, ending with the link to act in the browser.
+
+def test_hand_off_text_stands_alone_and_ends_with_the_tokened_link(tmp_path: Path, monkeypatch):
+    token_file = tmp_path / "token"
+    token_file.write_text("abc/def 123\n", encoding="utf-8")
+    decision = decision_from_mapping({**DECISION, "context": "Two items from the **intake** queue.",
+                                      "asked-by": "project-management", "asked-at": "2026-10-09T12:00:00+00:00"})
+    link = decisions.hand_off_link(decision.id, {"DEVCAPSULE_CONSOLE_URL": "http://127.0.0.1:43123/"}, token_file)
+    assert link == ("http://127.0.0.1:43123/decisions/2026-10-09-intake-pass?token=abc%2Fdef%20123", "")
+    text = decisions.hand_off_text(decision, link)
+    lines = text.splitlines()
+    assert lines[0] == "Intake disposition pass"
+    assert lines[1] == "Asked by project-management at 2026-10-09T12:00:00+00:00"
+    assert "Two items from the **intake** queue." in lines
+    assert "1. " + decision.items[0].title in lines
+    assert any(line.startswith("   - ") and ": " in line for line in lines), "options are listed with their keys"
+    assert lines[-2].startswith("Answer here with each item's number and option key, or follow this link")
+    assert lines[-1] == "http://127.0.0.1:43123/decisions/2026-10-09-intake-pass?token=abc%2Fdef%20123"
+    assert text.endswith("\n") and "\n\n\n" not in text
+
+
+def test_hand_off_without_a_console_or_without_a_readable_token_says_so(tmp_path: Path):
+    decision = decision_from_mapping(DECISION)
+    assert decisions.hand_off_link(decision.id, {}, tmp_path / "token") is None
+    no_console = decisions.hand_off_text(decision, None).splitlines()[-1]
+    assert "not reachable" in no_console and "/decisions/2026-10-09-intake-pass" in no_console
+    missing = decisions.hand_off_link(decision.id, {"DEVCAPSULE_CONSOLE_URL": "http://127.0.0.1:1"}, tmp_path / "absent")
+    assert missing is not None and missing[0] == "http://127.0.0.1:1/decisions/2026-10-09-intake-pass"
+    assert "was not readable" in missing[1]
+    (tmp_path / "empty").write_text("\n", encoding="utf-8")
+    empty = decisions.hand_off_link(decision.id, {"DEVCAPSULE_CONSOLE_URL": "http://127.0.0.1:1"}, tmp_path / "empty")
+    assert empty is not None and "is empty" in empty[1]
+    assert decisions.hand_off_text(decision, missing).splitlines()[-1].startswith(
+        "http://127.0.0.1:1/decisions/2026-10-09-intake-pass (the console's token file")
+
+
+def test_hand_off_command_reads_the_environment_the_launcher_sets(tmp_path: Path, capsys, monkeypatch):
+    directory = tmp_path / "decisions"
+    directory.mkdir()
+    (directory / "2026-10-09-intake-pass.json").write_text(json.dumps(DECISION), encoding="utf-8")
+    token_file = tmp_path / "token"
+    token_file.write_text("tok\n", encoding="utf-8")
+    monkeypatch.setenv("DEVCAPSULE_CONSOLE_URL", "http://127.0.0.1:5")
+    monkeypatch.setenv("DEVCAPSULE_CONSOLE_TOKEN_FILE", str(token_file))
+    assert decisions.main(["hand-off", str(directory / "2026-10-09-intake-pass.json")]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("Intake disposition pass\n")
+    assert out.rstrip("\n").endswith("http://127.0.0.1:5/decisions/2026-10-09-intake-pass?token=tok")
+    other = tmp_path / "other"
+    other.write_text("second\n", encoding="utf-8")
+    assert decisions.main(["hand-off", str(directory / "2026-10-09-intake-pass.json"), "--token-file", str(other)]) == 0
+    assert capsys.readouterr().out.rstrip("\n").endswith("?token=second")
+    (directory / "bad.json").write_text("{", encoding="utf-8")
+    assert decisions.main(["hand-off", str(directory / "bad.json")]) == 2
+    assert "not a JSON document" in capsys.readouterr().err

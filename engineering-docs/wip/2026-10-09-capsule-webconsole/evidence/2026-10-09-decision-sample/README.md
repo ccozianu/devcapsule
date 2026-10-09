@@ -14,6 +14,11 @@ Playwright, and written back as the answer document.
 - Screenshots `decisions-page.png` and `decisions-answered.png` under
   `../2026-10-09-console-pages/`.
 
+- `hand-off.txt`: slice 8's hand-off text for the same decision, printed by
+  `python -m devcapsule_webconsole.decisions hand-off` with a sample origin
+  and token: the numbered items an agent pastes into a chat, ending with
+  the link into the console.
+
 This directory is evidence of the mechanism. The sample decision was not
 the project-management pass itself and nothing here is a record of a
 decision taken.
