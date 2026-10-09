@@ -140,8 +140,8 @@ def project_information(start: Path, *, runtime_fallback: bool) -> dict[str, Any
                       "notes": [*NOTES, "This older launch did not capture storage backing; relaunch with the updated launcher."]}
         running = context.document["running"]
         report["context"] = "running capsule (captured at launch)"
-        # The name is derived from the mounted record, not from the captured
-        # information, which an older launcher captured as "default".
+        # Prefer the launch context's checkout-name, with a filename fallback
+        # for older contexts. Their captured info named every checkout "default".
         report["checkout"]["name"] = context.checkout_name
         report["components"] = component_versions(running["lock"])
         report["base"] = {key: running["lock"].get("base", {}).get(key) for key in ("reference", "build-mnemonic")}

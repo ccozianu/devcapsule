@@ -65,16 +65,17 @@ class LaunchConfiguration:
     def capture(cls, selected: ResolvedProject, identity: str) -> LaunchConfiguration:
         from devcapsule.project_information import configured_information
 
+        checkout_name = checkout_name_for(selected.manifest, selected.checkout_path)
         return cls(selected.checkout_path.parent, {
             "format": 1, "project": deepcopy(selected.manifest["project"]),
             "launcher-root": str(selected.root),
             "runtime-root": selected.resolution["runtime"]["project-mount"],
             "checkout-file": selected.checkout_path.name,
             # The mount hides whether this file came from the named directory.
-            "checkout-name": checkout_name_for(selected.manifest, selected.checkout_path),
+            "checkout-name": checkout_name,
             "info": configured_information(
                 selected.root, selected.manifest, selected.lock, selected.checkout,
-                checkout_name=checkout_name_for(selected.manifest, selected.checkout_path)),
+                checkout_name=checkout_name),
             "running": {"identity": identity, "lock": deepcopy(selected.lock),
                         "origin": "local selection" if selected_version_lock(selected.checkout) else "project recommendation",
                         "base": deepcopy(selected.checkout.get("authorization", {}).get("base-image", {}))},
@@ -95,10 +96,12 @@ class RuntimeConfiguration:
 
     @property
     def checkout_name(self) -> str:
-        """The launched checkout's name: recorded at launch, else the mounted file's stem.
+        """Use the launch context's name, or infer it from the mounted filename.
 
-        A context captured by an older launcher lacks the record; its file
-        name is right except for a named checkout called ``devcapsule``.
+        Older contexts lack ``checkout-name``. Strip ``.checkout.toml`` from
+        their filename, except that ``devcapsule.checkout.toml`` means
+        ``default``. The mount hides whether that file was a named checkout
+        called ``devcapsule``, so the fallback cannot distinguish the two.
         """
         name = self.document.get("checkout-name")
         return name if isinstance(name, str) else checkout_record_name(self.checkout_path)
