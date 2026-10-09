@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; the second iteration is complete and awaits the owner: PR5 (#192), PR6 (#194) and PR7 (#196), stacked, each with its Codex review merged
+State: active; PR5 (#192), PR6 (#194) and PR7 (#196) await the owner, stacked, each with its Codex review merged; slice 8, the hand-off and notifications, starts on PR7's branch by the owner's direction of 2026-10-09
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -381,7 +381,27 @@ digraph stack {
 3. PR7, on PR6's branch: deliverable 5, this branch.
 4. Done: a base rebuild from PR7's revision and the console smoke with the
    records and decision probes; see Validation below.
-5. Deliverable 6, materialized views, in a third iteration.
+5. Slice 8, directed by the owner on 2026-10-09 after reviewing #196: the
+   decision pages need a hand-off and a home. Three stacked PRs on PR7's
+   branch, each with its Codex review:
+   - PR8, runtime: the launcher passes `DEVCAPSULE_CONSOLE_URL`, the
+     host-side console origin without the token, into the capsule; a
+     `notifications` group under `project checkout` with `list`, `post`,
+     `read` and `dismiss` over a store at
+     `$XDG_STATE_HOME/devcapsule/notifications/`, the checkout's state
+     beside the decisions directory; the listing merges unanswered
+     decisions as the `decision` kind, never copying them.
+   - PR9, console: a bell in the header with the unread count, a dropdown
+     with the top items and a `/notifications` page; read and dismiss
+     through the CLI as further writes into capsule state only; a
+     `decisions` group under `project checkout` that runs the console's
+     installed module, so an agent sees one CLI; `hand-off` prints the
+     numbered text for chat and a closing line with the tokened link,
+     which the cookie then carries for every later request.
+   - PR10, workflow: about six lines of instruction in the workflow
+     definition and in this repository's copy, and the first real decision
+     file as dogfood, the project-management intake pass.
+6. Deliverable 6, materialized views, in a third iteration.
 
 The first iteration is on `main`: #184 and #190, merged 2026-10-09. On resumption, after the owner's merges or push-backs, the
 next iteration is deliverables 3 and 4 in the order this workstream
@@ -519,6 +539,15 @@ then 5, then 6.
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on
   `project-management`'s branch. The mail item carries its substance.
+- Notifications are local for now, by the owner's decision of 2026-10-09: a
+  mechanism between the human and the DevCapsule environment of one
+  checkout, stored in that checkout's state home. Project-wide
+  notifications are a realistic future use the owner named, a coordinator
+  telling every collaborator "submit your PRs by Friday", and they create
+  a dilemma for the store and the command's name that slice 8 does not
+  resolve. When they come, they are a second source merged into the same
+  listing, carried by the coordination branch or another shared channel,
+  and the local store stays what it is.
 - Deliberately not preserved: the exploration of adopting Glances, Netdata,
   Cockpit or a Docker dashboard as the framework; the reasons are summarized
   in decision 3 above.
