@@ -184,6 +184,86 @@
     },
   };
 
+  function bytes(value) {
+    if (value === null || value === undefined) return "—";
+    const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    let number = value, unit = 0;
+    while (number >= 1024 && unit < units.length - 1) { number /= 1024; unit += 1; }
+    return (unit === 0 ? number : number.toFixed(1)) + " " + units[unit];
+  }
+
+  function meter(label, value, percent, detail) {
+    const fill = el("span");
+    if (percent !== null && percent !== undefined) {
+      fill.style.width = Math.max(0, Math.min(100, percent)) + "%";
+      if (percent >= 90) fill.classList.add("hot");
+    }
+    return el("div", { class: "meter" }, [
+      el("div", { class: "label", text: label }),
+      el("div", { class: "value", text: value }),
+      el("div", { class: "bar" }, [fill]),
+      el("div", { class: "detail", text: detail }),
+    ]);
+  }
+
+  pages.processes = async function (container) {
+    const REFRESH_MS = 3000;
+    let paused = false;
+    let timer = null;
+    const meters = el("div", { class: "meters" });
+    const status = el("span", { text: "Loading…" });
+    const button = el("button", { type: "button", text: "Pause" });
+    const table = el("div");
+    button.addEventListener("click", () => {
+      paused = !paused;
+      button.textContent = paused ? "Resume" : "Pause";
+      if (!paused) refresh();
+    });
+    container.replaceChildren(meters, el("div", { class: "toolbar" }, [button, status]), table);
+
+    async function refresh() {
+      if (timer) { clearTimeout(timer); timer = null; }
+      try {
+        const [resources, listing] = await Promise.all([api("/api/resources"), api("/api/processes")]);
+        const cpu = resources.cpu || {}, memory = resources.memory || {}, pids = resources.pids || {};
+        meters.replaceChildren(
+          meter("CPU", cpu.percent === null || cpu.percent === undefined ? "—" : cpu.percent + " %", cpu.percent,
+            resources.available
+              ? "of " + cpu["available-cpus"] + (cpu["limit-cpus"] ? " CPUs (cgroup quota)" : " CPUs (no quota)") +
+                "; " + (cpu["usage-seconds"] === null ? "" : cpu["usage-seconds"] + " s used since start")
+              : "the capsule's cgroup is not readable here"),
+          meter("Memory", bytes(memory["current-bytes"]), memory.percent,
+            memory["limit-bytes"] ? "of " + bytes(memory["limit-bytes"]) + " limit" : "no memory limit" +
+            (memory["anon-bytes"] !== null && memory["anon-bytes"] !== undefined
+              ? "; anonymous " + bytes(memory["anon-bytes"]) + ", file " + bytes(memory["file-bytes"]) : "")),
+          meter("Processes", listing.count, pids.max ? (pids.current / pids.max) * 100 : null,
+            pids.max ? pids.current + " of " + pids.max + " pids" : "no pid limit"),
+        );
+        table.replaceChildren(table_(listing.processes));
+        status.textContent = "Sampled " + resources["sampled-at"] + " over " + resources["interval-seconds"] + " s" + (paused ? " · paused" : "");
+      } catch (error) {
+        fail(table, error);
+      }
+      if (!paused) timer = setTimeout(refresh, REFRESH_MS);
+    }
+
+    function table_(rows) {
+      // Only the command wraps; every other column keeps its word whole.
+      const columns = [
+        { key: "pid", label: "PID", class: "num" }, { key: "user", label: "User", class: "keep" },
+        { key: "name", label: "Name", class: "keep" }, { key: "cpu-percent", label: "CPU %", class: "num" },
+        { key: (row) => bytes(row["rss-bytes"]), label: "RSS", class: "num" },
+        { key: "status", label: "Status", class: "keep" }, { key: "command", label: "Command", class: "" },
+      ];
+      const head = el("tr", {}, columns.map((column) => el("th", { class: column.class, text: column.label })));
+      const body = rows.map((row) => el("tr", {}, columns.map((column) =>
+        el("td", { class: column.class, text: scalar(typeof column.key === "function" ? column.key(row) : row[column.key]) }))));
+      return el("table", { class: "data" }, [el("thead", {}, [head]), el("tbody", {}, body)]);
+    }
+
+    await refresh();
+  };
+
   document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page;
     const container = document.getElementById("content");

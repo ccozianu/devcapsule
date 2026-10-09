@@ -23,6 +23,10 @@ the inspection commands:
   session's version set and the one selected for the next launch.
 - **Project**: what `devcapsule project info` reports: components,
   environment and persistent storage.
+- **Processes**: the capsule's processes with their CPU and memory, and its
+  use of CPU and memory against its limits, refreshed every few seconds.
+  Pause the refresh to read a long list. Nothing here stops or signals a
+  process; use a terminal for that.
 
 The pages show the commands' own output, read each time you load a page. A
 change you make with a command is on the page after a reload. Nothing on the

@@ -62,8 +62,9 @@ PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 # label the launcher reads to select the contained transport; recipe 9 adds
 # the tint2 panel so a hidden window is always one click away; recipe 10
 # adds the capsule web console under /opt/devcapsule-webconsole, installed
-# from the same public revision as the runtime (R-CONSOLE-001).
-BASE_RECIPE_VERSION = "10"
+# from the same public revision as the runtime (R-CONSOLE-001); recipe 11
+# gives the console its process and resource monitor (psutil).
+BASE_RECIPE_VERSION = "11"
 WEBCONSOLE_LABEL = "devcapsule.base.webconsole"
 # The capabilities a base satisfies by itself; components fill the rest.
 # Adding to this set keeps the family; removing from it opens a new one.
@@ -226,7 +227,7 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
     if options.install_baseline:
         if not build_info.has_public_revision:
             raise CliError(
-                "Base recipe 10 installs the web console from the runtime's GitHub revision. "
+                "Base recipes 10 and later install the web console from the runtime's GitHub revision. "
                 "The selected runtime has no full GitHub source identity; select a PEX built "
                 "from a published commit. --allow-local-source cannot supply the console source."
             )

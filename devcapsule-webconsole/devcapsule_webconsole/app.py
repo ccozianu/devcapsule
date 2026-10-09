@@ -1,8 +1,9 @@
-"""The FastAPI application: pages, their JSON, and the project-file reader.
+"""The FastAPI application: pages, their JSON, the project-file reader, the monitor.
 
 Every route is ``GET``. The pages are static files that fetch their facts
-from the ``/api`` routes, which run the runtime CLI. The token gate wraps the
-whole application, static files included.
+from the ``/api`` routes, which run the runtime CLI or read the capsule's
+processes and cgroup. The token gate wraps the whole application, static
+files included.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
+from . import monitor
 from .cli import CommandError, RuntimeCli
 from .security import PathRefused, TokenGate, read_project_text
 from .settings import Settings
@@ -23,6 +25,7 @@ PAGES = {
     "/configuration": "configuration.html",
     "/versions": "versions.html",
     "/project": "project.html",
+    "/processes": "processes.html",
 }
 
 
@@ -55,6 +58,14 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/project")
     def project() -> JSONResponse:
         return document(cli.information)
+
+    @app.get("/api/processes")
+    def processes() -> JSONResponse:
+        return JSONResponse(monitor.processes())
+
+    @app.get("/api/resources")
+    def resources() -> JSONResponse:
+        return JSONResponse(monitor.resources())
 
     @app.get("/api/project/file")
     def project_file(path: str = Query(...)) -> PlainTextResponse:

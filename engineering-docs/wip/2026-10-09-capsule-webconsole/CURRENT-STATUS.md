@@ -4,11 +4,11 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; slice 1 is on `main` (#184 merged 2026-10-09); slices 2 to 4 await the owner in #190, retargeted to `main`, with every Codex review merged
+State: active; the first iteration is on `main` (#184 and #190 merged 2026-10-09); the second iteration, deliverables 3, 4 and 5, runs as stacked pull requests, slice 5 (live processes and resources) first
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
-Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1); `ws-capsule-webconsole/runtime-base` (PR3, stacked on PR2); `ws-capsule-webconsole/project-info-checkout-name` (PR4, stacked on PR3)
+Branch association: `ws-capsule-webconsole/live-resources` (PR5, from `main`); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
 
 Integration target: `main`
 
@@ -42,6 +42,33 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 5: live processes and resources (deliverable 3).** The
+owner merged #184 and #190, so the first iteration is on `main`, and
+directed the second iteration, deliverables 3, 4 and 5. This slice adds a
+monitor module to the console: psutil for the processes, each with its CPU
+share over a short interval and its resident memory; the cgroup v2 root for
+the capsule's CPU time against its quota or the host's CPUs, its memory
+charge against its limit, and its process count. Two `GET` routes serve the
+readings and a Processes page refreshes them every three seconds, with a
+pause. psutil joins the console's hash-pinned set, so base recipe 11
+rebuilds the console venv; an older base runs the previous console. Run by
+hand against this capsule: the page renders the real readings.
+
+Judgments recorded for slice 5:
+
+- CPU use is a rate over a quarter second, measured on the server at each
+  request, against the CPUs the capsule may use: its quota when it has one,
+  the host's count otherwise. Memory is the cgroup's current charge against
+  `memory.max`, unlimited shown as such.
+- Outside a cgroup v2 root the resource reading says it is unavailable,
+  with every figure null; the process list still works. A host-run console
+  therefore shows processes and no meters, and says why.
+- The process list omits a process that ends during the sample and shows
+  one it may not fully read without the fields it could not read.
+- The dependency change bumps the base recipe to 11: the self-hosting
+  source mount cannot add a dependency to the image's venv, so a capsule
+  with the recipe 10 base runs the console without the monitor's module.
 
 **2026-10-09, evening: integration state.** The owner merged #184 to
 `main`, then #186 into `ws-capsule-webconsole/first-slice` and #188 into
@@ -249,8 +276,13 @@ digraph stack {
 
 ## Planned Next Step
 
-The first iteration is delivered: slice 1 is on `main`; slices 2 to 4 are
-in #190 against `main`. On resumption, after the owner's merges or push-backs, the
+1. PR5: deliverable 3, this branch.
+2. PR6, on PR5's branch: deliverable 4, records rendered with `markdown-it`
+   and DOT with a vendored browser Graphviz.
+3. PR7, on PR6's branch: deliverable 5, decision pages.
+4. A base recipe 11 build and the console smoke at PR5 and again at PR7.
+
+The first iteration is on `main`: #184 and #190, merged 2026-10-09. On resumption, after the owner's merges or push-backs, the
 next iteration is deliverables 3 and 4 in the order this workstream
 chooses, then 5, then 6.
 
@@ -267,6 +299,11 @@ then 5, then 6.
 
 ## Validation And External State
 
+- Slice 5 console session: strict mypy on 7 files, 100 tests. Build gate on
+  PR5's branch, 2026-10-09: 1,329 unit cases, 17 packaged integrations,
+  type check, smokes, documentation contract, then the console session;
+  successful. Manual run against this capsule: the Processes page renders
+  the real readings; screenshot under `evidence/2026-10-09-console-pages/`.
 - Slice 1 unit modules: 468 passed with `PYTEST_ADDOPTS` scratch under
   `/opt/devcapsule-gate/pytest`; `/tmp` overflowed at 2 GB first.
 - `mypy devcapsule`: no issues in 112 files.
