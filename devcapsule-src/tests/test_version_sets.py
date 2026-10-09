@@ -1130,6 +1130,21 @@ def test_runtime_rejects_another_checkout_without_hiding_running_versions(journe
 
 
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)
+@pytest.mark.parametrize("invalid_name", [5, None, "", "nested/name", "nested\\name"])
+def test_runtime_rejects_invalid_checkout_name(journey, monkeypatch, capsys, tmp_path, invalid_name):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, snapshot, context_path = runtime_view(s, monkeypatch, tmp_path)
+    snapshot["checkout-name"] = invalid_name
+    context_path.write_text(json.dumps(snapshot))
+    capsys.readouterr()
+    assert invoke(runtime_root, "config", "list", "--json") == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Cannot read runtime launch context: invalid checkout name. Relaunch with the updated launcher." in captured.err
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
 @pytest.mark.parametrize("name", ["dogfood", "devcapsule"])
 def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeypatch, capsys, tmp_path, name):
     s = journey

@@ -199,6 +199,10 @@ def for_project(start: Path, *, fallback: bool = False) -> RuntimeConfiguration 
         name = document.get("checkout-file")
         if not isinstance(name, str) or Path(name).name != name or not name.endswith(".checkout.toml"):
             raise ValueError("invalid checkout record name")
+        if "checkout-name" in document:
+            checkout_name = document["checkout-name"]
+            if not isinstance(checkout_name, str) or not checkout_name or "/" in checkout_name or "\\" in checkout_name:
+                raise ValueError("invalid checkout name")
         project, running = document["project"], document["running"]
         if not isinstance(project, dict) or not all(isinstance(project.get(key), str) for key in ("creator", "slug")):
             raise ValueError("missing project identity")
