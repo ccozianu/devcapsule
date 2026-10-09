@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; four stacked pull requests await the owner, #184, #186, #188 and #190, each with its Codex review merged; the owner merges to `main`
+State: active; slice 1 is on `main` (#184 merged 2026-10-09); slices 2 to 4 await the owner in #190, retargeted to `main`, with every Codex review merged
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,14 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, evening: integration state.** The owner merged #184 to
+`main`, then #186 into `ws-capsule-webconsole/first-slice` and #188 into
+`ws-capsule-webconsole/console-app`, after those branches had been merged
+below them. `main` therefore carries slice 1 only; the two merges put
+nothing new on `main`. PR4's branch descends from all three slices; `main`
+was merged into it and #190 was retargeted to `main`, so it carries slices
+2, 3 and 4 together. The owner merges it.
 
 **2026-10-09, slice 4: `project info` names the checkout from its record's
 location.** The owner moved the defect found in slice 2 from `maintenance`
@@ -241,8 +249,8 @@ digraph stack {
 
 ## Planned Next Step
 
-The first iteration is delivered to the owner's review: #184, #186 and
-#188, stacked, with the checkout-name fix as a fourth slice on top. On resumption, after the owner's merges or push-backs, the
+The first iteration is delivered: slice 1 is on `main`; slices 2 to 4 are
+in #190 against `main`. On resumption, after the owner's merges or push-backs, the
 next iteration is deliverables 3 and 4 in the order this workstream
 chooses, then 5, then 6.
 
