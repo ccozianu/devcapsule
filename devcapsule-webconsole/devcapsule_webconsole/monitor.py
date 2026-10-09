@@ -5,7 +5,7 @@ reading; the API that serves it is ``GET`` only, so the console can show a
 process but never signal, stop or restart one.
 
 A capsule is a cgroup. Under cgroup v2 its root exposes the CPU time it has
-used, its CPU quota, its memory use and limit, and its process count; this
+used, its CPU quota, its memory use and limit, and its task count; this
 module reads those files directly. Outside a cgroup v2 root, or on a host
 whose cgroup is not the capsule's, the resource reading says it is not
 available instead of guessing.
@@ -46,8 +46,18 @@ class CgroupReading:
 
 
 def read_cgroup(root: Path = CGROUP_ROOT) -> CgroupReading:
-    """Read the capsule's cgroup v2 root; a root without ``cpu.stat`` is not one."""
-    if not (root / "cpu.stat").is_file():
+    """Read a cgroup v2 root, excluding the host's unrestricted hierarchy root.
+
+    The host hierarchy root has CPU statistics but lacks these non-root
+    controller files. Accept any one, since controllers can be disabled.
+    """
+    try:
+        has_cgroup = (root / "cpu.stat").is_file() and any(
+            (root / name).is_file() for name in ("cpu.max", "memory.current", "pids.current")
+        )
+    except OSError:
+        return CgroupReading(available=False)
+    if not has_cgroup:
         return CgroupReading(available=False)
     stat = _key_values(root / "cpu.stat")
     memory_stat = _key_values(root / "memory.stat")
@@ -89,7 +99,8 @@ def resources(
     limit_cpus = (second.quota_usec / second.period_usec) if second.quota_usec and second.period_usec else None
     available_cpus = limit_cpus if limit_cpus is not None else float(cpu_count() or 1)
     percent: float | None = None
-    if first.usage_usec is not None and second.usage_usec is not None and elapsed > 0:
+    if (first.usage_usec is not None and second.usage_usec is not None
+            and second.usage_usec >= first.usage_usec and elapsed > 0):
         percent = round((second.usage_usec - first.usage_usec) / (elapsed * 1_000_000 * available_cpus) * 100, 1)
     memory_percent = (
         round(second.memory_current / second.memory_max * 100, 1)
@@ -121,29 +132,38 @@ def processes(
     interval: float = SAMPLE_INTERVAL_SECONDS,
     sleep: Callable[[float], None] = time.sleep,
     iterate: Callable[..., Iterable[Any]] = psutil.process_iter,
+    clock: Callable[[], float] = time.monotonic,
 ) -> dict[str, Any]:
     """Every process the console can see, with its CPU share over ``interval`` and its memory.
 
-    psutil's CPU percentage is a rate between two calls, so each process is
-    primed, the interval passes, and the second call is the figure shown. A
-    process that ends in between is left out; one the console may not read
-    is shown without the fields it could not read.
+    CPU is user plus system time divided by elapsed wall time: 100% means
+    one busy CPU. Keep the samples local to this request: process_iter
+    caches Process objects, whose cpu_percent baseline other requests could
+    overwrite. Omit an exited or replaced process. Retain unreadable fields
+    as None, including CPU when either CPU reading is refused.
     """
     candidates = []
     for process in iterate(PROCESS_FIELDS):
         try:
-            process.cpu_percent(None)
-        except psutil.Error:
+            first_cpu = _process_cpu_time(process)
+        except psutil.NoSuchProcess:
             continue
-        candidates.append(process)
+        candidates.append((process, process.info, first_cpu, clock()))
     sleep(interval)
     rows = []
-    for process in candidates:
+    for process, info, first_cpu, started in candidates:
         try:
-            info = process.info
-            cpu = process.cpu_percent(None)
-        except psutil.Error:
+            if not process.is_running():
+                continue
+            second_cpu = _process_cpu_time(process)
+        except psutil.NoSuchProcess:
             continue
+        elapsed = clock() - started
+        cpu = (
+            round((second_cpu - first_cpu) / elapsed * 100, 1)
+            if first_cpu is not None and second_cpu is not None
+            and second_cpu >= first_cpu and elapsed > 0 else None
+        )
         memory = info.get("memory_info")
         command = " ".join(info.get("cmdline") or ()) or info.get("name") or ""
         created = info.get("create_time")
@@ -154,12 +174,21 @@ def processes(
             "name": info.get("name"),
             "command": command[:COMMAND_LINE_LIMIT] + ("…" if len(command) > COMMAND_LINE_LIMIT else ""),
             "status": info.get("status"),
-            "cpu-percent": round(cpu, 1),
+            "cpu-percent": cpu,
             "rss-bytes": None if memory is None else int(memory.rss),
             "started": None if created is None else datetime.fromtimestamp(created, timezone.utc).isoformat(),
         })
-    rows.sort(key=lambda row: (-row["cpu-percent"], -(row["rss-bytes"] or 0), row["pid"] or 0))
+    rows.sort(key=lambda row: (row["cpu-percent"] is None, -(row["cpu-percent"] or 0),
+                               -(row["rss-bytes"] or 0), row["pid"] or 0))
     return {"sampled-at": _now(), "interval-seconds": interval, "count": len(rows), "processes": rows}
+
+
+def _process_cpu_time(process: psutil.Process) -> float | None:
+    try:
+        times = process.cpu_times()
+    except psutil.AccessDenied:
+        return None
+    return float(times.user + times.system)
 
 
 def _key_values(path: Path) -> dict[str, int]:

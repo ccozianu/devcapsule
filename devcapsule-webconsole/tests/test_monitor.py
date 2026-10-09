@@ -101,25 +101,27 @@ class FakeProcess:
         self.fail = fail
         self.calls = 0
 
-    def cpu_percent(self, interval: float | None) -> float:
-        assert interval is None
+    def cpu_times(self) -> SimpleNamespace:
         self.calls += 1
         if self.fail == "first" or (self.fail == "second" and self.calls == 2):
             raise psutil.NoSuchProcess(self.info["pid"])
-        return 0.0 if self.calls == 1 else self.cpu
+        return SimpleNamespace(user=0.0 if self.calls == 1 else self.cpu * 0.25 / 100, system=0.0)
+
+    def is_running(self) -> bool:
+        return True
 
 
 def test_processes_prime_wait_and_sort_by_cpu_then_memory() -> None:
     fakes = [FakeProcess(10, 1.5, 100), FakeProcess(11, 40.0, 50), FakeProcess(12, 1.5, 900),
              FakeProcess(13, 99.0, 1, fail="first"), FakeProcess(14, 99.0, 1, fail="second"),
-             FakeProcess(15, 0.0, 10, cmdline=["x" * 300]), FakeProcess(16, 0.0, 10, cmdline=[])]
+             FakeProcess(16, 0.0, 10, cmdline=[]), FakeProcess(15, 0.0, 10, cmdline=["x" * 300])]
     slept: list[float] = []
 
     def iterate(fields: tuple[str, ...]) -> list[FakeProcess]:
         assert fields == monitor.PROCESS_FIELDS
         return fakes
 
-    listing = processes(sleep=slept.append, iterate=iterate)
+    listing = processes(sleep=slept.append, iterate=iterate, clock=lambda: 0.25 if slept else 0.0)
     assert slept == [0.25]
     assert [row["pid"] for row in listing["processes"]] == [11, 12, 10, 15, 16]
     assert listing["count"] == 5
@@ -140,16 +142,176 @@ def test_processes_run_against_the_real_process_table() -> None:
 
 @pytest.mark.parametrize("route", ["/api/processes", "/api/resources"])
 def test_monitor_routes_serve_the_readings_behind_the_token(client, monkeypatch, route):
-    monkeypatch.setattr(monitor, "processes", lambda: {"count": 1, "processes": [], "sampled-at": "t", "interval-seconds": 0.25})
-    monkeypatch.setattr(monitor, "resources", lambda: {"available": False, "cpu": {}, "memory": {}, "pids": {}, "sampled-at": "t", "interval-seconds": 0})
+    documents = {
+        "/api/processes": {"count": 1, "processes": [{"pid": 123}], "sampled-at": "t", "interval-seconds": 0.25},
+        "/api/resources": {"available": False, "cpu": {}, "memory": {}, "pids": {}, "sampled-at": "t", "interval-seconds": 0},
+    }
+    calls = []
+
+    def read(path):
+        calls.append(path)
+        return documents[path]
+
+    monkeypatch.setattr(monitor, "processes", lambda: read("/api/processes"))
+    monkeypatch.setattr(monitor, "resources", lambda: read("/api/resources"))
     assert client.get(route).status_code == 403
+    assert calls == []
     response = with_token(client).get(route)
     assert response.status_code == 200
-    assert "sampled-at" in response.json()
+    assert response.json() == documents[route]
+    assert calls == [route]
+    for method in ("post", "put", "patch", "delete"):
+        assert getattr(client, method)(route).status_code == 405
+    assert calls == [route]
 
 
 def test_processes_page_is_served_and_names_its_script(client):
+    assert client.get("/processes").status_code == 403
     response = with_token(client).get("/processes")
     assert response.status_code == 200
     assert 'data-page="processes"' in response.text and "<h1>Processes and resources</h1>" in response.text
+    assert '<script src="/static/console.js" defer></script>' in response.text
     assert with_token(client).get("/").text.count('href="/processes"') == 2  # navigation and card
+
+
+def test_host_hierarchy_root_is_not_a_capsule(tmp_path: Path) -> None:
+    # The unified host root exposes cpu.stat without non-root controller files.
+    (tmp_path / "cpu.stat").write_text("usage_usec 123\n")
+    assert read_cgroup(tmp_path) == CgroupReading(available=False)
+
+
+@pytest.mark.parametrize("file", ["memory.current", "pids.current"])
+def test_cgroup_with_cpu_controller_disabled_keeps_other_readings(tmp_path, file):
+    (tmp_path / "cpu.stat").write_text("usage_usec 123\n")
+    (tmp_path / file).write_text("42\n")
+    reading = read_cgroup(tmp_path)
+    assert reading == CgroupReading(available=True, usage_usec=123,
+                                   memory_current=42 if file == "memory.current" else None,
+                                   pids_current=42 if file == "pids.current" else None)
+
+
+@pytest.mark.parametrize("elapsed, usage, expected", [(0, 1_100_000, None), (0.25, 500_000, None), (0.25, 1_125_000, 100.0)])
+def test_resources_reject_invalid_rates_and_handle_fractional_quota(tmp_path, elapsed, usage, expected):
+    write_cgroup(tmp_path, cpu_max="50000 100000")
+    ticks = iter([0.0, elapsed])
+    result = resources(tmp_path, sleep=lambda _: write_cgroup(tmp_path, usage=usage, cpu_max="50000 100000"),
+                       clock=lambda: next(ticks))
+    assert result["cpu"]["percent"] == expected
+    assert result["cpu"]["limit-cpus"] == 0.5
+
+
+def test_unreadable_cgroup_files_and_unlimited_pids(tmp_path, monkeypatch):
+    write_cgroup(tmp_path)
+    (tmp_path / "pids.max").write_text("max\n")
+    read_text = Path.read_text
+
+    def denied(path, *args, **kwargs):
+        if path.name in {"cpu.stat", "cpu.max", "memory.current", "memory.stat"}:
+            raise PermissionError(path)
+        return read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", denied)
+    result = read_cgroup(tmp_path)
+    assert result == CgroupReading(available=True, pids_current=42)
+
+
+@pytest.mark.parametrize("refused_call", [1, 2])
+def test_processes_keep_access_denied_cpu_and_missing_fields(refused_call):
+    class Denied(FakeProcess):
+        def cpu_times(self):
+            result = super().cpu_times()
+            if self.calls == refused_call:
+                raise psutil.AccessDenied(self.info["pid"])
+            return result
+
+    denied = Denied(12, 40.0, 90)
+    denied.info.update(username=None, memory_info=None, create_time=None, cmdline=None, name=None)
+    ticks = iter([0.0, 0.0, 0.25, 0.25])
+    result = processes(sleep=lambda _: None, iterate=lambda _: [denied, FakeProcess(13, 0.0, 1)],
+                       clock=lambda: next(ticks))
+    assert [row["pid"] for row in result["processes"]] == [13, 12]
+    assert result["processes"][1] == {
+        "pid": 12, "ppid": 1, "user": None, "name": None, "command": "", "status": "sleeping",
+        "cpu-percent": None, "rss-bytes": None, "started": None,
+    }
+    assert denied.calls == 2
+
+
+def test_processes_omit_a_reused_pid():
+    class Reused(FakeProcess):
+        def is_running(self):
+            return False
+
+    result = processes(sleep=lambda _: None, iterate=lambda _: [Reused(12, 40.0, 90)])
+    assert result["processes"] == [] and result["count"] == 0
+
+
+def test_overlapping_process_samples_keep_their_own_times_and_info():
+    # process_iter returns the same cached object to both requests.
+    class Shared(FakeProcess):
+        def cpu_times(self):
+            return SimpleNamespace(user=now[0] ** 3, system=now[0], children_user=999.0)
+
+    now = [0.0]
+    shared = Shared(12, 0.0, 90)
+    inner = []
+
+    def overlap(_):
+        now[0] = 1.0
+        shared.info = {**shared.info, "name": "later"}
+
+        def advance_inner(_):
+            now[0] = 2.0
+
+        inner.append(processes(sleep=advance_inner, iterate=lambda _: [shared], clock=lambda: now[0]))
+        now[0] = 3.0
+
+    result = processes(sleep=overlap, iterate=lambda _: [shared], clock=lambda: now[0])
+    assert result["processes"][0]["cpu-percent"] == 1000.0  # (27 + 3) / 3
+    assert result["processes"][0]["name"] == "proc12"
+    assert inner[0]["processes"][0]["cpu-percent"] == 800.0  # ((8 + 2) - (1 + 1)) / 1
+    assert inner[0]["processes"][0]["name"] == "later"
+
+
+@pytest.mark.parametrize("elapsed, cpu", [(0.0, 10.0), (0.25, -10.0)])
+def test_processes_leave_invalid_cpu_rates_unknown(elapsed, cpu):
+    ticks = iter([0.0, elapsed])
+    result = processes(sleep=lambda _: None, iterate=lambda _: [FakeProcess(12, cpu, 90)], clock=lambda: next(ticks))
+    assert result["processes"][0]["cpu-percent"] is None
+
+
+def test_cgroup_stat_permission_failure_is_unavailable(tmp_path, monkeypatch):
+    def denied(_):
+        raise PermissionError("cgroup directory")
+
+    monkeypatch.setattr(Path, "is_file", denied)
+    assert read_cgroup(tmp_path) == CgroupReading(available=False)
+
+
+@pytest.mark.parametrize("missing_sample", [1, 2])
+def test_resources_require_two_cpu_readings(tmp_path, missing_sample):
+    write_cgroup(tmp_path)
+    if missing_sample == 1:
+        (tmp_path / "cpu.stat").write_text("")
+
+    def advance(_):
+        (tmp_path / "cpu.stat").write_text("" if missing_sample == 2 else "usage_usec 2000000\n")
+
+    ticks = iter([0.0, 0.25])
+    result = resources(tmp_path, sleep=advance, clock=lambda: next(ticks))
+    assert result["cpu"]["percent"] is None
+    assert result["cpu"]["usage-seconds"] == (2.0 if missing_sample == 1 else None)
+
+
+def test_resources_keep_zero_memory_and_pid_limits(tmp_path):
+    write_cgroup(tmp_path, usage=0, memory_max="0", current=0, pids=0)
+    (tmp_path / "pids.max").write_text("0\n")
+    ticks = iter([0.0, 0.25])
+
+    def advance(_):
+        (tmp_path / "cpu.stat").write_text("usage_usec 125000\n")
+
+    result = resources(tmp_path, sleep=advance, clock=lambda: next(ticks), cpu_count=lambda: None)
+    assert result["cpu"] == {"usage-seconds": 0.125, "percent": 50.0, "limit-cpus": None, "available-cpus": 1.0}
+    assert result["memory"] == {"current-bytes": 0, "limit-bytes": 0, "anon-bytes": 0, "file-bytes": 0, "percent": None}
+    assert result["pids"] == {"current": 0, "max": 0}
