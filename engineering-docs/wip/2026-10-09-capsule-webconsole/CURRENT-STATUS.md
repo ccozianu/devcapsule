@@ -4,9 +4,9 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; registered, first slice defined, implementation not started
+State: active; selected 2026-10-09 at the owner's direction, synchronized with `main`, the work order and its two amendments taken into intake; the owner's further instructions are awaited before the first slice
 
-Definition read: WORKFLOW.md@8044760fbd4f, WORKFLOW-LOCAL.md@8496e6da21fb
+Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
 
 Branch association: `ws-capsule-webconsole/first-slice`
 
@@ -15,6 +15,8 @@ Integration target: `main`
 Delivery method: pull request, merge commit
 
 Requirements: `R-CONSOLE-001`
+
+Work order: [the capsule web console](../../work-orders/2026-10-09-capsule-webconsole.md), issued 2026-10-09 by `project-management`; its DOT and materialized-views amendments are in intake, and the amended text is on `project-management`'s branch until its next integration
 
 ## Goal And Scope
 
@@ -41,10 +43,17 @@ Owner decisions of 2026-10-09 that shape the work:
 
 ## Current State
 
-Registered 2026-10-09 from `project-management` at the owner's direction. No
-implementation yet. The owner has further decisions to make in
-`project-management` before work starts here; do not begin the slice until
-the owner directs the switch to this workstream.
+Registered 2026-10-09 from `project-management` at the owner's direction.
+Later the same day the owner directed the switch to this workstream. This
+checkout selected it, merged `origin/main` at `d8a1aa4` into the branch, and
+took the three waiting mail items into intake: the work order, the DOT
+amendment and the materialized-views amendment. They are undecided until the
+owner's further instructions, announced for this session, are heard.
+
+Definition changes read with that merge: work orders start workstreams
+(topic 12.11), materialized views (topic 12.12), diagrams first in DOT
+(topic 9.6 rule 6), recorded visual end-to-end tests (topic 9.6 rule 7).
+No implementation yet.
 
 ## Planned Next Step
 
@@ -78,8 +87,8 @@ Nothing built or run yet. No containers, images or ports in use.
 
 ## Open Threads
 
-- Awaiting the owner: the remaining decisions announced for the
-  `project-management` session before this workstream starts.
+- Awaiting the owner: the further instructions announced for the switch,
+  before the first slice is planned and the intake items are decided.
 - Base-release cadence: a console change reaches adopters only with a base
   image rebuild and publication, which the release runbook treats as rare.
   Development iterates through the mounted source; the owner may want a
