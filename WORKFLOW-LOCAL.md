@@ -307,6 +307,31 @@ The earlier ruling that `ws-workflow-improvements/v1` rebases onto `main` is
 retired. That branch merges like the others. The engineering source is
 [merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md).
 
+## Workflow Definition Changes
+
+Owner direction, 2026-10-09, after the controlled-language edition merged.
+
+1. Every change to `WORKFLOW.md` or to this file follows the same scheme as
+   that edition: one rule per sentence, imperative, at about 80% ASD-STE100,
+   placed in the topic the rule belongs to.
+2. Put no reason, example, or history in the rule file. Put them in the humane
+   companion, `WORKFLOW-humane.md` or `WORKFLOW-LOCAL-humane.md`, in the
+   section with the same number or name, as a paragraph that repeats the
+   rule, states its intended effect, and gives its motivation.
+3. Change the rule and its companion paragraph in the same commit. A rule
+   without a companion paragraph, or a paragraph without a rule, is a defect.
+4. Add or amend the *Unreleased* entry under `### Changes` in `WORKFLOW.md`
+   for every rule that changes meaning. Keep the entry's bold-title form, which
+   the brief parses.
+5. Keep the frontmatter and the `## Validation Commands` heading as the
+   tooling expects them.
+6. Regenerate the packaged definition under
+   `devcapsule-src/devcapsule/assets/project_workflow/definition/` from the
+   root files when a release is cut, or earlier on `workflow-improvements`'
+   decision.
+7. Use the section map at the end of `WORKFLOW-humane.md` when a record cites
+   a section name from before this edition. Do not rewrite old records.
+
 ## Exceptions
 
 - **Release-fix propagation uses engineering judgment.** Owner direction,
