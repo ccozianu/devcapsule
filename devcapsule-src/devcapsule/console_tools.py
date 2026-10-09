@@ -48,8 +48,8 @@ def console_decisions_command(arguments: Sequence[str], *, environ: Mapping[str,
     try:
         plan = RuntimePlan.from_file(plan_path)
         source_path = plan.console.source_path if plan.console else ""
-    except RuntimePlanError:
-        pass  # An older capsule without a readable plan: the installed console serves.
+    except (RuntimePlanError, UnicodeError):
+        pass  # Without a readable plan, use the installed console.
     command: tuple[str, ...] = (str(python), "-m", DECISIONS_MODULE, *arguments)
     if source_path:
         command = ("env", f"PYTHONPATH={source_path}", *command)

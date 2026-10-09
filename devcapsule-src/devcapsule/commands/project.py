@@ -493,7 +493,10 @@ class CheckoutDecisionsCommand(Command):
         from devcapsule.console_tools import console_decisions_command
 
         command = console_decisions_command(arguments.arguments)
-        return subprocess.run(command, check=False).returncode
+        try:
+            return subprocess.run(command, check=False).returncode
+        except OSError as error:
+            raise CliError(f"cannot run the console's decision tools: {error}") from error
 
 
 class CheckoutGroup(Group):
