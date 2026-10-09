@@ -4,9 +4,9 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199) and PR9 (#201) await the owner, stacked, each with its Codex review merged; PR10, the hand-off rule and the first real decision, is on `ws-capsule-webconsole/hand-off-rule` and gated
+State: active; slice 8 is complete and awaits the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201) and PR10 (#203), stacked, each with its Codex review merged
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@0c29fc0a33a8, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Branch association: `ws-capsule-webconsole/live-resources` (PR5, #192, from `main`); `ws-capsule-webconsole/records` (PR6, #194, stacked on PR5); `ws-capsule-webconsole/decisions` (PR7, stacked on PR6); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
 
@@ -58,6 +58,20 @@ directory, with its table and hand-off text under
 `evidence/2026-10-09-intake-pass/`; this capsule runs no console, so the
 hand-off here names the page, and the owner's next launch on a base with
 the console lists it under the bell.
+
+**PR #203 is open against PR9's branch. Its review, PR #204 by the Codex
+and gpt-6-astra pair, was merged without a round.** Five findings, all
+accepted: an unreadable plan with invalid UTF-8 falls back to the
+installed console; an interpreter that cannot start is the CLI's refusal,
+not a traceback; the wrapper's passthrough is proven on exact arguments;
+the rule was rewritten so outcomes are recorded under topics 8.2, 8.3 and
+12.7 before any deletion, unanswered items stay pending, and intake
+decisions use 8.2's acknowledge-or-forward instead of the builder's
+defaults; and the Unreleased entry and the humane paragraph that
+WORKFLOW-LOCAL requires accompany the rule. That last rule reached the
+first real decision: the intake pass was regenerated with acknowledge and
+forward per item, in the capsule's state and in the evidence. Gate on the
+merged branch below.
 
 Judgments recorded for slice 8's workflow half:
 
@@ -550,6 +564,11 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Build gate on the merged PR10 branch at `405e884`, 2026-10-09: 1,474 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful. `check` on the regenerated decision document: 38 items,
+  unanswered.
 - Slice 8 workflow half, PR10 branch, 2026-10-09: 1,454 unit cases, 17
   packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;

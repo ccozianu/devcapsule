@@ -4,7 +4,9 @@ Deliverable 5 in its first real use, handed over by this workstream for
 dogfooding. Every item in
 `engineering-docs/wip/2026-08-09-project-management/intake/` without a
 disposition on 2026-10-09, 38 of them, as one decision document with
-accept, decline and defer per item.
+topic 8.2's two outcomes per item, acknowledge and forward; an item left
+unanswered stays pending. Regenerated after review PR #204 made the rule
+require 8.2's options for intake instead of the table builder's defaults.
 
 - `table.md`: the markdown table built from the intake directory, one row
   per item with its title, its first paragraph and the item as its record.

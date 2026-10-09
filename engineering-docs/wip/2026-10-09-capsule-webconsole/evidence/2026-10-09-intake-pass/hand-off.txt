@@ -1,272 +1,234 @@
 Project-management intake pass: 38 undecided items
-Asked by capsule-webconsole at 2026-10-09T21:47:10+00:00
+Asked by capsule-webconsole at 2026-10-09T22:01:03+00:00
 
-Every item in `engineering-docs/wip/2026-08-09-project-management/intake/` without a disposition, as of 2026-10-09. Each item's record is the item itself; **accept** takes it as project-management's work, **decline** closes it with a reason, **defer** leaves it in intake. The first real use of the decision pages, handed over by the capsule-webconsole workstream for dogfooding; project-management records the outcomes in its disposition log.
+Every item in `engineering-docs/wip/2026-08-09-project-management/intake/` without a disposition, as of 2026-10-09. Each item's record is the item itself. The options are topic 8.2's two outcomes: **acknowledge** takes the item as project-management's own work, recorded with its position in the order of work; **forward** sends it to its right owner. Leave an item unanswered to keep it pending. The first real use of the decision pages, handed over by the capsule-webconsole workstream for dogfooding; project-management records the outcomes in its disposition log under topics 8.2 and 8.3.
 
 1. Retire Obsolete Intake README Boilerplate
    Delivered: 2026-08-17
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-08-17-workflow-improvements-obsolete-intake-readmes.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 2. The Upgrade Experience Is A V1 Feature
    Delivered 2026-09-03 by `component-catalog`, at the product owner's direction, given during the v0.2.9 validation session: "we need to flush out upgrade-friendly messages and warning of obsolescence as well as the projec…
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-03-component-catalog-upgrade-experience-as-a-v1-feature.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 3. Research/Design — Automated Validation Of New Component Versions
    Delivered 2026-09-04 by `component-catalog`, at the product owner's direction: "we need a brief research/design to discover whether we can validate new component versions with automated tests for each component. But pres…
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-04-automated-component-version-validation-research.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 4. A Development Blog Under `engineering-docs/blog/`
    Delivered 2026-09-06 by `component-catalog`, at the product owner's direction: "the development of this is a very interesting exercise, probably as valuable as the software itself."
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-06-component-catalog-development-blog.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 5. Clarify The Semantics Of `init --regenerate` Versus The `config` Family
    Delivered 2026-09-06 by `component-catalog`, at the product owner's direction, after a systematic walk through what `project init --regenerate` tells the user and what it does. The owner ruled that the current behaviour …
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-06-component-catalog-init-regenerate-versus-config-semantics.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 6. Internal Naming Drops The Generation Vocabulary
    Delivered 2026-09-06 by `component-catalog`, at the product owner's direction, prompted by the commit subject `feat: PyCharm gains a provisional gen2 edge (matrix embedded-15)`: "we need to drop gen2 as we are inside a p…
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-06-component-catalog-internal-naming-drops-generation-vocabulary.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 7. The Matrix Learns From Adopters' Experiments, Then Gates On Claims
    Delivered 2026-09-06 by `component-catalog`, at the product owner's direction, given while ruling on the refusal UX (D-0007 amendment of the same date).
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-06-component-catalog-matrix-learns-from-experiments.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 8. `config list` Renders By The Project's Configured Schema, And Only Mentions Updates
    Delivered 2026-09-13 by `contained-display`, recording a product-owner ruling given while reviewing how the new `host-x11` node surfaced in `devcapsule project config list` on a checkout configured before the node existe…
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-13-contained-display-config-list-renders-by-configured-schema.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 9. `project config` Offers The Recommended Base The Tool Knows About
    Delivered 2026-09-14 by `contained-display`, recording a product-owner ruling given while preparing the v0.2.12 release: "project config should have a submenu for the recommended base image the pex knows about". It belon…
    Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-14-contained-display-config-offers-the-recommended-base.md
-   - accept: Accept. Take it as a task.
-   - decline: Decline. Close it with a reason.
-   - defer: Defer. Leave it in intake.
+   - acknowledge: Acknowledge
+   - forward: Forward
 
 10. The Contained Display Shipped In v0.2.12
     Delivered 2026-09-14 by `contained-display`.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-14-contained-display-released-in-v0-2-12.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 11. First-Session UX Gaps Seen With v0.2.12
     Sender: `user-docs`, 2026-09-15. Recipient: `project-management`.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-15-user-docs-first-session-ux.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 12. Evaluate OpenCode For The Adopter Journey
     Sender: `user-docs`, 2026-09-15. Recipient: `project-management`.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-15-user-docs-opencode-evaluation.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 13. `maintenance` Drives Maintenance Releases; Bug Triage Has An Owner
     Delivered: 2026-09-18
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-18-workflow-improvements-maintenance-drives-maintenance-releases.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 14. Schedule The `ws-` Branch Rename Across Open Workstreams
     Delivered: 2026-09-18
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-18-workflow-improvements-ws-branch-migration.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 15. The Local Blog Instructions Are Sound, With One Broken Link
     From: workflow-improvements To: project-management Date: 2026-09-19
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-19-workflow-improvements-blog-instructions-review.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 16. V1 component status operational objectives
     Sender: component-upgrades Recipient: project-management Date: 2026-09-21
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-21-component-upgrades-v1-status-reliability.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 17. Pre-V1 Adopter And Contributor Story; Tentative Blog Decision
     Sent: 2026-09-21 From: maintenance To: project-management Authority: the product owner explicitly requested saving the opinion and sending it to project-management, leaving the possible blog decision here.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-21-maintenance-pre-v1-adopter-story-and-blog-decision.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 18. The Workflow Definition Changed On `main`; Publish Once And Take Your Mail
     Sent: 2026-09-21
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-21-workflow-improvements-definition-changed-please-publish.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 19. Stage 7 Is Ready For The Resource-Ownership Convention
     Delivered: 2026-09-21
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-21-workflow-improvements-forward-stage-7-resource-convention.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 20. Cut 0.2.14 Now, Then Invite The Adventurous
     Sent: 2026-09-21
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-21-workflow-improvements-release-and-early-adopter-input.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 21. 0.2.14 Is Cut; Finish The Pre-RC0 Branch Migration Coordination
     Delivered: 2026-09-22 From: `maintenance`, now driving release 0.2.14 at the owner's direction.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-22-maintenance-release-cut-and-rc0-migration.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 22. Rename Deadline Deferred Through 0.2.14
     Delivered: 2026-09-22 From: `maintenance`, on explicit owner direction.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-22-maintenance-rename-deadline-deferred.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 23. Owner-directed V1 gate: legacy launch capability decisions
     From: maintenance To: project-management Date: 2026-09-22
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-22-maintenance-v1-legacy-launch-capabilities.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 24. The mycodespace Design Note, And A Checkout-Naming Default
     Sent: 2026-09-25
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-25-maintenance-mycodespace-and-checkout-naming.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 25. Release Notes As A Release Artifact, Published With The Tag And On The Website
     Sent: 2026-09-26
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-26-maintenance-release-notes-artifact.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 26. Two small facts for the content–website contract, from writing the 0.2.15 docs
     From: user-docs. To: project-management. Date: 2026-09-28.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-28-user-docs-contract-version-check-and-docs-0215.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 27. Owner direction: deciding the user-docs improvement list blocks 0.2.16
     From: user-docs. To: project-management. Date: 2026-09-28. Authority: the owner, 2026-09-28, in the user-docs session, after the 0.2.15 documentation merged in PR #151.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-28-user-docs-improvements-decision-blocks-0216.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 28. Owner direction: Pagefind and Playwright as future components
     From: website (the pair, on the owner's direction). To: project-management. Date: 2026-09-30.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-09-30-website-pagefind-and-playwright-as-components.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 29. 0.2.16 candidate: the consent slice, owned by component-upgrades
     Sent: 2026-10-01
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-01-component-upgrades-consent-slice-for-0216.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 30. Owner ruling: ignore `.idea` in the source tree; document the rule in 0.2.16
     Sent: 2026-10-01
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-01-component-upgrades-ignore-idea-files.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 31. 0.3 direction: launcher compatibility, environment transitions and recovery
     From: component-catalog To: project-management Date: 2026-10-04
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-04-component-catalog-0-3-launcher-bootstrap-lessons.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 32. IntelliJ and Playwright slice validated for owner PR integration
     From: component-catalog To: project-management Date: 2026-10-04
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-04-component-catalog-intellij-playwright-ready.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 33. Owner correction: conservative writers, tolerant readers and mandatory/optional needs
     From: component-catalog To: project-management, maintenance Date: 2026-10-05
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-05-component-catalog-conservative-writers-tolerant-readers.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 34. Owner addition to the conservative-writers correction: forced resolution and forced run
     Sender: maintenance. Recipient: project-management. Date: 2026-10-05.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-05-maintenance-force-resolution-addition.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 35. Owner decision: the next release is 0.3.0, not 0.2.16
     Sender: maintenance. Recipient: project-management. Date: 2026-10-05.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-05-maintenance-next-release-is-0-3-0.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 36. Owner-assigned configuration implementation
     The owner explicitly assigned component-catalog implementation of R-CONFIG-001 on 2026-10-06, after merging origin/main. This supersedes our earlier route-only handoff for this slice. Maintenance's per-command capsule-ac…
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-06-component-catalog-config-implementation.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 37. Configuration contract ready for owner PR integration
     Implemented in 99ff26a on ws-component-catalog/intellij-idea, after merging origin/main at 1eb8e76 via 710fd04. The owner operates the GitHub PR UI.
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-06-component-catalog-config-ready.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 38. Proposed work order: persistent, bounded diagnostics for capsule sessions
     Date: 2026-10-08 From: maintenance, at the product owner's explicit request To: project-management Status: proposal for routing and scheduling; no implementation started
     Records: engineering-docs/wip/2026-08-09-project-management/intake/2026-10-08-maintenance-default-session-diagnostics-work-order.md
-    - accept: Accept. Take it as a task.
-    - decline: Decline. Close it with a reason.
-    - defer: Defer. Leave it in intake.
+    - acknowledge: Acknowledge
+    - forward: Forward
 
 Answer here with each item's number and option key. The web console is not reachable from this environment, so there is no link; the page would be /decisions/2026-10-09-project-management-intake-pass.
