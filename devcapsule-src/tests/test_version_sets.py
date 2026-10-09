@@ -1155,7 +1155,10 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
     s.resolution.rename(resolution)
     s.record, s.resolution = named, resolution
     assert invoke(s.root, "run") == 0
-    runtime_root, _, _ = runtime_view(s, monkeypatch, tmp_path)
+    runtime_root, snapshot, context_path = runtime_view(s, monkeypatch, tmp_path)
+    # Check capture before the runtime override can conceal a wrong info name.
+    assert snapshot["checkout-name"] == name
+    assert snapshot["info"]["checkout"]["name"] == name
     # A sibling does not become the active selection merely by being visible.
     wrong = load_toml(named)
     wrong["checkout"]["path"] = "/another/checkout"
@@ -1174,6 +1177,26 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
     listing = json.loads(capsys.readouterr().out)
     assert listing["checkout"]["name"] == name
     assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
+    assert invoke(runtime_root, "info", "--json") == 0
+    assert json.loads(capsys.readouterr().out)["checkout"]["name"] == name
+    # Older launches have stale info or no info. Both reports use the context
+    # name when present, and otherwise the mounted filename.
+    for has_info in (True, False):
+        for has_name in (True, False):
+            legacy = deepcopy(snapshot)
+            if has_info:
+                legacy["info"]["checkout"]["name"] = "default"
+            else:
+                legacy.pop("info")
+            if not has_name:
+                legacy.pop("checkout-name")
+            context_path.write_text(json.dumps(legacy))
+            expected = "default" if name == "devcapsule" and not has_name else name
+            for command in (("info",), ("config", "list")):
+                assert invoke(runtime_root, *command, "--json") == 0
+                assert json.loads(capsys.readouterr().out)["checkout"]["name"] == expected
+            assert invoke(runtime_root, "info") == 0
+            assert f"Checkout name: {expected}\n" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)

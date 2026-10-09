@@ -1,0 +1,10 @@
+{
+  "label": "with-display",
+  "home_status": 200,
+  "configuration_page_status": 200,
+  "configuration_api_status": 200,
+  "tokenless_status": 403,
+  "traversal_status": 403,
+  "absolute_status": 403,
+  "inside_status": 200
+}

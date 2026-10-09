@@ -58,6 +58,8 @@ CREATOR = "e2e@devcapsule.test"
 DESKTOP_READY = re.compile(r"Contained display is ready; open it in a browser: (http://127\.0\.0\.1:\d+/vnc\.html\?\S+)")
 """The launcher's readiness line. It also announces the URL earlier, before the
 bridge listens; only the ready line means the page answers."""
+CONSOLE_READY = re.compile(r"Web console is ready; open it in a browser: (http://127\.0\.0\.1:\d+/\?token=\S+)")
+"""The launcher's console readiness line; printed once the console answered its port."""
 LAUNCH_TIMEOUT = 600.0
 """Seconds for the launcher to publish the desktop URL; a first run may acquire an IDE."""
 
@@ -124,9 +126,10 @@ def remove_project_records(slug: str) -> list[Path]:
 def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence: Path) -> Iterator[SessionFacts]:
     """Initialize and run a fresh project for ``surface``; stop and clean up on exit.
 
-    The project consents to the recommended base and local-test host networking.
-    The launcher's output goes to a log
-    kept with the evidence; the desktop URL is read from it.
+    The project consents to the recommended base, or to the locally built
+    base ``DEVCAPSULE_E2E_BASE_IMAGE`` names, as an unverified experiment,
+    and to local-test host networking. The launcher's output goes to a log
+    kept with the evidence; the desktop and console URLs are read from it.
     """
     run_id = uuid.uuid4().hex[:8]
     slug = f"e2e-ide-{surface.name}-{run_id}"
@@ -142,14 +145,15 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
         (workspace / "NuGet.Config").write_text('<configuration><packageSources><clear /></packageSources></configuration>\n')
     evidence.mkdir(parents=True, exist_ok=True)
     environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
+    built_base = os.environ.get("DEVCAPSULE_E2E_BASE_IMAGE")
     try:
         init = subprocess.run(
             [str(executable), "project", "init",
              *(flag for need in surface.needs for flag in ("--need", need)),
              "--creator", CREATOR, "--slug", slug,
-             "--authorize", "base-image", "default",
+             "--authorize", "base-image", built_base or "default",
              "--authorize", "network", "host", "Local graphical smoke requires host networking.",
-             "--less-pedantic"],
+             "--less-pedantic", *(["--unverified"] if built_base else [])],
             cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
             check=False, timeout=300.0,
         )
@@ -202,16 +206,26 @@ def launched_ide(executable: Path, surface: IdeSurface, workspace: Path,
 
 def wait_for_desktop_url(launcher: subprocess.Popen[bytes], launcher_log: Path) -> str:
     """Return the desktop URL once the launcher prints it; fail if it exits first."""
-    deadline = time.monotonic() + LAUNCH_TIMEOUT
+    return _wait_for_ready_url(launcher, launcher_log, DESKTOP_READY, "desktop")
+
+
+def wait_for_console_url(launcher: subprocess.Popen[bytes], launcher_log: Path) -> str:
+    """Return the web console URL once the launcher says the console answers."""
+    return _wait_for_ready_url(launcher, launcher_log, CONSOLE_READY, "web console", timeout=120.0)
+
+
+def _wait_for_ready_url(launcher: subprocess.Popen[bytes], launcher_log: Path, pattern: re.Pattern[str],
+                        what: str, timeout: float = LAUNCH_TIMEOUT) -> str:
+    deadline = time.monotonic() + timeout
     while True:
         text = launcher_log.read_text(encoding="utf-8", errors="replace")
-        found = DESKTOP_READY.search(text)
+        found = pattern.search(text)
         if found:
             return found.group(1)
         if launcher.poll() is not None:
-            raise AssertionError(f"launcher exited {launcher.returncode} before publishing a desktop URL:\n{text}")
+            raise AssertionError(f"launcher exited {launcher.returncode} before publishing a {what} URL:\n{text}")
         if time.monotonic() > deadline:
-            raise AssertionError(f"no desktop URL within {LAUNCH_TIMEOUT:.0f}s:\n{text[-4000:]}")
+            raise AssertionError(f"no {what} URL within {timeout:.0f}s:\n{text[-4000:]}")
         time.sleep(1.0)
 
 

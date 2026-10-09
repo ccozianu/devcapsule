@@ -125,11 +125,17 @@ in [`INFORMATION-MODEL.md`](devcapsule-src/devcapsule/assets/project_workflow/de
   Eclipse: `nox -s ide-smoke -- --agent --surface eclipse --component-browser`
   requires a noVNC editor save, checks the saved file independently, and keeps
   the Playwright movie. Use `--display` instead of `--agent` for startup only.
+- **Web console**: `.venv/bin/python -m nox -s webconsole` type-checks and
+  tests `devcapsule-webconsole/`, the capsule web console, in its own
+  environment built from that directory's hash-pinned
+  `requirements-dev.txt`. The console is a separate distribution; it never
+  shares the runtime's environment. See its [README](devcapsule-webconsole/README.md).
 - **Gate**: `.venv/bin/python -m nox -s build`, before a checkpoint and
   before integration: distribution version, Python and shell syntax, type
   check, unit tests, CLI smoke, the executable built and smoked, packaging
-  tests, the documentation contract. The end-to-end suites are not in it. The
-  [developer brief](DEVELOPING.md) says when they run.
+  tests, the documentation contract, then the web console session. The
+  end-to-end suites are not in it. The [developer brief](DEVELOPING.md) says
+  when they run.
 
 ## Reasoning And Code Navigation
 

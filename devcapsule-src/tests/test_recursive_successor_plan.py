@@ -214,6 +214,7 @@ def test_plan_models_every_flag_the_real_launcher_emits(tmp_path: Path, enable_s
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         shadow_file=tmp_path / "shadow",
         sudoers_file=tmp_path / "sudoers",
         runtime_plan_file=tmp_path / "runtime-plan",
