@@ -17,6 +17,11 @@ imports none of the runtime's internals. Its API is the runtime CLI's
   it, by `..`, by an absolute path or by a symbolic link, is refused.
 - The console changes nothing: every route is `GET`. The processes page
   reads psutil and the cgroup; it never signals a process.
+- Records render in the browser with `markdown-it` and DOT with `viz.js`,
+  both vendored under `devcapsule_webconsole/static/vendor/` with their
+  provenance in `VENDORED.md`; no build step, no Node in the capsule. Raw
+  HTML in a record is not rendered, and a raw project file is never served
+  as a page.
 
 ## Running it on a host
 

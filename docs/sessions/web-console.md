@@ -27,6 +27,11 @@ the inspection commands:
   use of CPU and memory against its limits, refreshed every few seconds.
   Pause the refresh to read a long list. Nothing here stops or signals a
   process; use a terminal for that.
+- **Records**: the project's markdown files, rendered. `index.md` is the
+  front page; links between records stay inside the console, and a fenced
+  `dot` block renders as a Graphviz diagram in the browser. Images and
+  other linked files are served as they are. A record is read from the
+  mounted project each time you open it, so an edit shows on reload.
 
 The pages show the commands' own output, read each time you load a page. A
 change you make with a command is on the page after a reload. Nothing on the

@@ -3,21 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Configuration · DevCapsule console</title>
+<title>Records · DevCapsule console</title>
 <link rel="stylesheet" href="/static/console.css">
+<script src="/static/vendor/markdown-it-15.0.2.umd.min.js" defer></script>
+<script src="/static/vendor/viz-3.31.0.global.js" defer></script>
 <script src="/static/console.js" defer></script>
 </head>
-<body data-page="configuration">
+<body data-page="records">
 <header class="console-bar"><div class="inner">
 <a class="brand" href="/">DevCapsule console</a>
 <nav><a href="/">Home</a><a href="/configuration">Configuration</a><a href="/versions">Versions</a><a href="/project">Project</a><a href="/processes">Processes</a><a href="/records">Records</a></nav>
 </div></header>
 <main>
-<h1>Configuration</h1>
-<p class="lead">What <code>devcapsule project config list</code> reports.</p>
+<h1 id="record-title">Records</h1>
+<p class="lead" id="record-path">The project's markdown records, rendered from the mounted project. <code>index.md</code> is the navigation.</p>
 
 <div id="content"><p>Loading…</p></div>
 </main>
-<footer class="console-foot">Read-only. Every page shows what the <code>devcapsule</code> commands report; reload after a change made with a command.</footer>
+<footer class="console-foot">Read-only. Rendered from the files in the project mount; links between records stay inside the console, and fenced <code>dot</code> blocks render as Graphviz diagrams.</footer>
 </body>
 </html>

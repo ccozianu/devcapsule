@@ -280,6 +280,103 @@
     await refresh();
   };
 
+  async function text(path) {
+    const response = await fetch(path, { credentials: "same-origin" });
+    const body = await response.text();
+    if (!response.ok) throw new Error(path + ": " + (body.trim() || "HTTP " + response.status));
+    return body;
+  }
+
+  // A relative link inside a record names a file in the project; resolve it
+  // against the record's directory. Absolute URLs, root paths and fragments
+  // are left alone. The result has no "." or ".." component.
+  function resolveRecordLink(from, href) {
+    if (!href || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("/") || href.startsWith("#")) return null;
+    const match = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(href);
+    const target = match[1], fragment = match[3] || "";
+    const directory = from.includes("/") ? from.slice(0, from.lastIndexOf("/")).split("/") : [];
+    const parts = directory.concat(target.split("/"));
+    const resolved = [];
+    for (const part of parts) {
+      if (part === "" || part === ".") continue;
+      if (part === "..") { if (resolved.length === 0) return null; resolved.pop(); continue; }
+      resolved.push(part);
+    }
+    return { path: resolved.join("/"), fragment };
+  }
+
+  function recordUrl(resolved) {
+    return resolved.path.toLowerCase().endsWith(".md")
+      ? "/records/" + resolved.path.split("/").map(encodeURIComponent).join("/") + resolved.fragment
+      : "/api/project/raw?path=" + encodeURIComponent(resolved.path);
+  }
+
+  function recordRenderer(from) {
+    const md = window.markdownit({ html: false, linkify: false, typographer: false });
+    const fence = md.renderer.rules.fence;
+    md.renderer.rules.fence = (tokens, index, options, env, self) => {
+      const token = tokens[index];
+      if (token.info.trim().split(/\s+/)[0] === "dot") {
+        return '<div class="diagram"><pre class="dot-source">' + md.utils.escapeHtml(token.content) + "</pre></div>\n";
+      }
+      return fence(tokens, index, options, env, self);
+    };
+    const rewrite = (attribute) => (tokens, index, options, env, self) => {
+      const token = tokens[index];
+      const value = token.attrGet(attribute);
+      const resolved = resolveRecordLink(from, value);
+      if (resolved !== null) token.attrSet(attribute, recordUrl(resolved));
+      return self.renderToken(tokens, index, options);
+    };
+    md.renderer.rules.link_open = rewrite("href");
+    const image = md.renderer.rules.image;
+    md.renderer.rules.image = (tokens, index, options, env, self) => {
+      const resolved = resolveRecordLink(from, tokens[index].attrGet("src"));
+      if (resolved !== null) tokens[index].attrSet("src", recordUrl(resolved));
+      return image(tokens, index, options, env, self);
+    };
+    return md;
+  }
+
+  async function drawDiagrams(container) {
+    const sources = Array.from(container.querySelectorAll(".diagram pre.dot-source"));
+    if (sources.length === 0) return;
+    let viz;
+    try { viz = await window.Viz.instance(); } catch (error) {
+      for (const source of sources) source.replaceWith(el("div", { class: "diagram-error", text: "Graphviz did not load: " + error.message }));
+      return;
+    }
+    for (const source of sources) {
+      try {
+        source.replaceWith(viz.renderSVGElement(source.textContent));
+      } catch (error) {
+        source.replaceWith(el("div", { class: "diagram-error", text: "DOT did not render: " + error.message }), source);
+      }
+    }
+  }
+
+  pages.records = async function (container) {
+    const path = decodeURIComponent(window.location.pathname.replace(/^\/records\/?/, "")) || "index.md";
+    // Breadcrumbs: the front page, then each directory, then the file.
+    const crumbs = el("p", { class: "crumbs" });
+    crumbs.appendChild(el("a", { href: "/records", text: "index.md" }));
+    if (path !== "index.md") {
+      path.split("/").forEach((part) => {
+        crumbs.appendChild(document.createTextNode(" › "));
+        crumbs.appendChild(el("span", { text: part }));
+      });
+    }
+    crumbs.appendChild(document.createTextNode(" · "));
+    crumbs.appendChild(el("a", { href: "/api/project/raw?path=" + encodeURIComponent(path), text: "raw" }));
+    const article = el("article", { class: "record" });
+    container.replaceChildren(crumbs, article);
+    document.getElementById("record-path").textContent = path;
+    document.title = path + " · DevCapsule console";
+    const source = await text("/api/project/file?path=" + encodeURIComponent(path));
+    article.innerHTML = recordRenderer(path).render(source);
+    await drawDiagrams(article);
+  };
+
   document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page;
     const container = document.getElementById("content");

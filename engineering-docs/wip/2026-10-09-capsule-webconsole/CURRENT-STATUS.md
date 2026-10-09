@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192, live processes and resources) awaits the owner with its Codex review merged; PR6, records and DOT, is in progress on `ws-capsule-webconsole/records`
+State: active; PR5 (#192) awaits the owner with its Codex review merged; PR6, records and DOT (deliverable 4), is implemented on `ws-capsule-webconsole/records` and gated
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,32 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 6: records and DOT (deliverable 4).** Any markdown file
+in the project renders in the browser: `index.md` is the front page, a
+record's relative links are rewritten to stay inside the console, a fenced
+`dot` block renders as a Graphviz diagram, and images and other linked
+files are served raw through a new bytes route confined like the text one.
+The renderers are vendored browser builds, `markdown-it` 15.0.2 (the
+website's) and `viz.js` 3.31.0, with their provenance and digests in
+`VENDORED.md` and a test that checks the digests. Run by hand against this
+checkout: the index renders with its 283 links rewritten, and this status
+file renders with its DOT stack diagram drawn.
+
+Judgments recorded for slice 6:
+
+- Raw HTML inside a record is not rendered (`html: false`): a record is the
+  project's own text, but the console's origin carries the run token in a
+  cookie, and no project file may run as a page in that origin. For the same
+  reason the raw route serves HTML and scripts as plain text.
+- A link to a `.md` file goes to the records page; any other relative link
+  goes to the raw route; absolute URLs, root paths and fragments are left as
+  written. A link that climbs above the project is left as written too, and
+  the server refuses it.
+- The page is one static file for every record path; the script reads the
+  path from the URL. No server-side rendering, no template engine.
+- DOT only, as the owner decided; a block in any other diagram notation is
+  shown as code.
 
 **2026-10-09, slice 5: live processes and resources (deliverable 3).** The
 owner merged #184 and #190, so the first iteration is on `main`, and
@@ -315,6 +341,12 @@ then 5, then 6.
   type check, smokes, documentation contract, then the console session;
   successful. Manual run against this capsule: the Processes page renders
   the real readings; screenshot under `evidence/2026-10-09-console-pages/`.
+- Slice 6 console session: strict mypy on 7 files, 138 tests. Build gate on
+  PR6's branch, 2026-10-09: 1,333 unit cases, 17 packaged integrations, type
+  check, smokes, documentation contract, then the console session;
+  successful. Manual run against this checkout: records index
+  and this status file rendered in a browser, DOT drawn; screenshots under
+  `evidence/2026-10-09-console-pages/`.
 - Build gate on the merged PR5 branch at `a427a09`, 2026-10-09: 1,333 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 117 tests;

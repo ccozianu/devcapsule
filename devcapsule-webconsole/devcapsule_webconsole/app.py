@@ -1,23 +1,25 @@
-"""The FastAPI application: pages, their JSON, the project-file reader, the monitor.
+"""The FastAPI application: pages, their JSON, the project-file readers, the monitor.
 
 Every route is ``GET``. The pages are static files that fetch their facts
-from the ``/api`` routes, which run the runtime CLI or read the capsule's
-processes and cgroup. The token gate wraps the whole application, static
-files included.
+from the ``/api`` routes, which run the runtime CLI, read the capsule's
+processes and cgroup, or read a file inside the project mount. The records
+page renders any markdown file of the project in the browser. The token
+gate wraps the whole application, static files included.
 """
 
 from __future__ import annotations
 
+import mimetypes
 from typing import Any, Callable
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Response
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from . import monitor
 from .cli import CommandError, RuntimeCli
-from .security import PathRefused, TokenGate, read_project_text
+from .security import PathRefused, TokenGate, read_project_bytes, read_project_text
 from .settings import Settings
 
 PAGES = {
@@ -26,6 +28,16 @@ PAGES = {
     "/versions": "versions.html",
     "/project": "project.html",
     "/processes": "processes.html",
+    "/records": "records.html",
+}
+# What a raw project file is served as, by extension. Markdown is text so a
+# browser shows it; anything unknown is bytes a browser offers to save.
+RAW_CONTENT_TYPES = {
+    ".md": "text/markdown; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
+    ".toml": "text/plain; charset=utf-8",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
 }
 
 
@@ -42,6 +54,8 @@ def create_app(settings: Settings) -> FastAPI:
 
     for route, page in PAGES.items():
         app.add_api_route(route, _page(settings, page), methods=["GET"], include_in_schema=False)
+    # One page for every record: the script reads the path from the URL.
+    app.add_api_route("/records/{record:path}", _page(settings, "records.html"), methods=["GET"], include_in_schema=False)
 
     @app.get("/api/identity")
     def identity() -> JSONResponse:
@@ -81,6 +95,19 @@ def create_app(settings: Settings) -> FastAPI:
             return PlainTextResponse(f"cannot read {path!r} in the project\n", status_code=403)
         return PlainTextResponse(text)
 
+    @app.get("/api/project/raw")
+    def project_raw(path: str = Query(...)) -> Response:
+        """A project file as bytes, for images and non-markdown links in records."""
+        try:
+            content = read_project_bytes(settings.project, path)
+        except PathRefused as error:
+            return PlainTextResponse(str(error) + "\n", status_code=403)
+        except FileNotFoundError:
+            return PlainTextResponse(f"no file at {path!r} in the project\n", status_code=404)
+        except OSError:
+            return PlainTextResponse(f"cannot read {path!r} in the project\n", status_code=403)
+        return Response(content, media_type=raw_content_type(path))
+
     app.mount("/static", StaticFiles(directory=str(settings.static_root)), name="static")
     app.add_middleware(TokenGate, token=settings.token)
     return app
@@ -108,3 +135,20 @@ def compose_identity(information: dict[str, Any], versions: dict[str, Any]) -> d
         "version-set": {key: version_set.get(key) for key in ("identity", "origin")} if version_set else None,
         "console-version": __version__,
     }
+
+
+def raw_content_type(path: str) -> str:
+    """The media type a raw project file is served as, never one that runs as a page.
+
+    HTML and scripts are served as plain text: a record may link to such a
+    file, but the console never lets a project file execute in its origin.
+    """
+    suffix = "." + path.rsplit(".", 1)[-1].lower() if "." in path.rsplit("/", 1)[-1] else ""
+    if suffix in RAW_CONTENT_TYPES:
+        return RAW_CONTENT_TYPES[suffix]
+    guessed, _ = mimetypes.guess_type(path)
+    if guessed and (guessed.startswith("image/") or guessed.startswith("video/") or guessed.startswith("audio/")):
+        return guessed
+    if guessed and guessed.startswith("text/"):
+        return "text/plain; charset=utf-8"
+    return "application/octet-stream"
