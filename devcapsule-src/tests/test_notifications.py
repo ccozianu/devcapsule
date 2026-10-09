@@ -197,6 +197,35 @@ def test_inside_a_capsule_the_environment_wins_over_the_selected_path(tmp_path: 
     assert inside.directory == tmp_path / "home" / ".local" / "state" / "devcapsule" / "notifications"
 
 
+def test_environment_store_posts_and_lists_with_a_linked_home(tmp_path: Path) -> None:
+    home = tmp_path / "real-home"
+    home.mkdir()
+    linked_home = tmp_path / "home-link"
+    linked_home.symlink_to(home, target_is_directory=True)
+    store = store_in_environment({"HOME": str(linked_home)})
+
+    posted = store.post(kind="note", title="Linked home", posted_by="agent")
+
+    state = home / ".local" / "state" / "devcapsule"
+    assert json.loads((state / "notifications" / f"{posted.id}.json").read_text()) == posted.to_mapping()
+    assert store.decisions == state / "decisions"
+    assert store.list() == [posted]
+
+
+def test_environment_store_posts_and_lists_with_an_override_through_a_linked_parent(tmp_path: Path) -> None:
+    parent = tmp_path / "real-state"
+    parent.mkdir()
+    linked_parent = tmp_path / "state-link"
+    linked_parent.symlink_to(parent, target_is_directory=True)
+    store = store_in_environment({"DEVCAPSULE_NOTIFICATIONS": str(linked_parent / "notifications")})
+
+    posted = store.post(kind="note", title="Linked override", posted_by="agent")
+
+    assert json.loads((parent / "notifications" / f"{posted.id}.json").read_text()) == posted.to_mapping()
+    assert store.decisions == parent / "decisions"
+    assert store.list() == [posted]
+
+
 @pytest.mark.parametrize("link", ["//other.example/path", "/\\other.example/path", "/records/\u00a0x", "/records/\x7fx"])
 def test_links_must_stay_on_the_console_origin(link: str) -> None:
     with pytest.raises(NotificationError, match="link must be a console path"):

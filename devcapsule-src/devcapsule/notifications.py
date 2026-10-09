@@ -400,12 +400,13 @@ def store_in_environment(environ: Mapping[str, str] = os.environ) -> Notificatio
     """The store of the environment this process runs in: inside a capsule, the checkout's own state."""
     named = environ.get(NOTIFICATIONS_ENV)
     if named:
-        directory = Path(named)
+        directory = Path(named).resolve()
         decisions = environ.get(DECISIONS_ENV)
-        return NotificationStore(directory, Path(decisions) if decisions else directory.parent / "decisions")
-    state = XdgHomes.from_environment(environ).state
+        return NotificationStore(directory, Path(decisions).resolve() if decisions else directory.parent / "decisions")
+    # Resolve the environment's base, keeping the application directories no-follow.
+    state = XdgHomes.from_environment(environ).state.parent.resolve() / "devcapsule"
     decisions = environ.get(DECISIONS_ENV)
-    return NotificationStore(state / "notifications", Path(decisions) if decisions else state / "decisions")
+    return NotificationStore(state / "notifications", Path(decisions).resolve() if decisions else state / "decisions")
 
 
 def store_for_checkout(start: Path, environ: Mapping[str, str] = os.environ) -> NotificationStore:
