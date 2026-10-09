@@ -56,10 +56,35 @@ def test_refusals_name_the_missing_value(project: Path, token_file: Path, tmp_pa
         settings_from_arguments([item.format(**substitutions) for item in argv], environ)
 
 
-def test_read_token_strips_the_newline_only(tmp_path: Path):
+def test_read_token_strips_surrounding_whitespace(tmp_path: Path):
     path = tmp_path / "token"
     path.write_text("  deadbeef\n", encoding="utf-8")
     assert read_token(path) == "deadbeef"
+
+
+@pytest.mark.parametrize("contents", [b"\xff", b"abc;def", b'abc"def', b"abc\\def", b"abc,def",
+                                    b"abc\x00def", "snowman-\u2603".encode()])
+def test_token_files_must_be_utf8_and_safe_for_an_unquoted_cookie(tmp_path, contents):
+    path = tmp_path / "token"
+    path.write_bytes(contents)
+    with pytest.raises(SettingsError, match="malformed"):
+        read_token(path)
+
+
+def test_arguments_override_environment(project, token_file, tmp_path):
+    settings = settings_from_arguments(
+        ["--project", str(project), "--token-file", str(token_file), "--cli", "explicit-cli"],
+        {PROJECT_ENV: str(tmp_path / "absent"), TOKEN_FILE_ENV: str(tmp_path / "missing"), CLI_ENV: "env-cli"},
+    )
+    assert settings.project == project.resolve()
+    assert settings.token == "abc123"
+    assert settings.cli == ("explicit-cli",)
+
+
+@pytest.mark.parametrize("port", ["0", "-1"])
+def test_nonpositive_ports_are_refused(project, token_file, port):
+    with pytest.raises(SettingsError, match="port must be between"):
+        settings_from_arguments(["--project", str(project), "--token-file", str(token_file), "--port", port], {})
 
 
 def test_main_reports_a_settings_error_and_exits_2(capsys, monkeypatch):

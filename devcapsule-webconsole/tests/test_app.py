@@ -97,3 +97,46 @@ def test_the_reader_names_an_absent_executable_and_a_timeout(project: Path, tmp_
     with pytest.raises(CommandError) as timed_out:
         slow.versions()
     assert timed_out.value.reason == "the runtime CLI did not answer within 0.2s"
+
+
+@pytest.mark.parametrize("output", [b"\xff", b"[]", b"null", b'"text"', b'{"value": NaN}',
+                                  b'{"value": Infinity}', b'{"value": 1e999}'])
+def test_invalid_cli_documents_are_bad_gateways(settings, tmp_path, output):
+    import sys
+    from dataclasses import replace
+    from fastapi.testclient import TestClient
+    from devcapsule_webconsole.app import create_app
+
+    script = tmp_path / "bad-output.py"
+    script.write_text(f"import sys; sys.stdout.buffer.write({output!r})", encoding="utf-8")
+    with TestClient(create_app(replace(settings, cli=(sys.executable, str(script))))) as client:
+        response = with_token(client).get("/api/project")
+    assert response.status_code == 502
+    assert response.json()["error"].startswith("the runtime CLI printed no JSON document")
+
+
+def test_invalid_stderr_does_not_hide_cli_exit_status(settings, tmp_path):
+    import sys
+    from dataclasses import replace
+    from fastapi.testclient import TestClient
+    from devcapsule_webconsole.app import create_app
+
+    script = tmp_path / "bad-stderr.py"
+    script.write_text("import sys; sys.stderr.buffer.write(b'bad \\xff'); sys.exit(7)", encoding="utf-8")
+    with TestClient(create_app(replace(settings, cli=(sys.executable, str(script))))) as client:
+        response = with_token(client).get("/api/project")
+    assert response.status_code == 502
+    assert response.json()["error"] == "the runtime CLI exited with status 7"
+    assert response.json()["stderr"] == "bad \ufffd"
+
+
+def test_an_unavailable_running_set_never_uses_the_next_launch():
+    identity = compose_identity({}, {"context": "running capsule", "running": None,
+                                     "next-launch": VERSIONS["selected"], "selected": VERSIONS["selected"]})
+    assert identity["version-set"] is None
+
+
+def test_the_reader_preserves_unicode_and_finite_numbers(client, monkeypatch):
+    document = {"text": "caf\u00e9", "numbers": [1.25, -2.5e10, 0]}
+    monkeypatch.setenv("FAKE_CLI_DOCUMENTS", json.dumps({"config list": document}, ensure_ascii=False))
+    assert with_token(client).get("/api/configuration").json() == document

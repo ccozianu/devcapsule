@@ -283,7 +283,8 @@ def run_webconsole_checks(session: nox.Session) -> None:
     """
     session.install("--require-hashes", "-r", str(WEBCONSOLE_ROOT / "requirements-dev.txt"))
     session.install("-e", str(WEBCONSOLE_ROOT), "--no-deps")
-    session.run("python", "-m", "mypy", str(WEBCONSOLE_ROOT / "devcapsule_webconsole"))
+    session.run("python", "-m", "mypy", "--config-file", str(WEBCONSOLE_ROOT / "pyproject.toml"),
+                str(WEBCONSOLE_ROOT / "devcapsule_webconsole"))
     session.run("python", "-m", "pytest", str(WEBCONSOLE_ROOT / "tests"))
 
 

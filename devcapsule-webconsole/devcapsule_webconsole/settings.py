@@ -46,9 +46,14 @@ def read_token(path: Path) -> str:
     """The launcher-supplied per-run token: one line, no whitespace."""
     try:
         token = path.read_text(encoding="utf-8").strip()
+    except UnicodeDecodeError as error:
+        raise SettingsError(f"the console token at {path} is malformed: expected UTF-8") from error
     except OSError as error:
         raise SettingsError(f"cannot read the console token at {path}: {error}") from error
-    if not token or any(character.isspace() for character in token):
+    # The same value must survive a query, a header and an unquoted cookie.
+    # RFC 6265 cookie-octet excludes controls, whitespace, quotes, comma,
+    # semicolon, backslash and non-ASCII characters.
+    if not token or any(not 0x21 <= ord(character) <= 0x7E or character in '\",;\\' for character in token):
         raise SettingsError(f"the console token at {path} is empty or malformed")
     return token
 
