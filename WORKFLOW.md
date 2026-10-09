@@ -246,6 +246,11 @@ with its version. Rules changed since 0.2.14:
   an agent to run the workstream to completion; topic 7.5 lets a workstream
   begin from one and link it. No migration: existing work orders stay as they
   are.
+- **Record visual end-to-end tests; no generated explainer videos.** Topic
+  9.6 rule 7: a harness that records the session is preferred for end-to-end
+  tests of visual software, and the recording is acceptance evidence;
+  generated explainer videos are not an output of this workflow. No
+  migration.
 - **Diagrams first, in DOT.** Topic 9.6 rule 6: an explanation with
   structure is given as a diagram first, in the DOT language in a fenced
   `dot` block rendered by Graphviz, with prose second; no other diagram
@@ -1251,6 +1256,11 @@ session-resumption feature.
    `dot` source beside it. This covers reports, status files, decision notes,
    design notes, pull-request descriptions, and the humane companions. The
    rule file stays text.
+7. When an end-to-end test exercises visual software, such as an IDE or a
+   browser, prefer a harness that records the session as a movie and
+   screenshots. Keep the recording as acceptance evidence beside the
+   test's report. Do not generate explainer videos as a way to explain work
+   to the human; the recording of what ran is the video the project keeps.
 
 ### 9.7 Responsibilities
 
