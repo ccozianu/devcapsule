@@ -153,10 +153,10 @@ def named_checkout_record_paths(
 def checkout_name_for(manifest: Mapping[str, Any], input_path: Path, env: Mapping[str, str] | None = None) -> str:
     """The checkout's name from where its record lives.
 
-    ``default`` for the unnamed record in the project's own directory; for
-    a record under ``checkouts/`` the file's stem, so a ``devcapsule.checkout.toml``
-    there is a named checkout called ``devcapsule``. Every command that names
-    a checkout derives the name here; no record carries a name key.
+    The unnamed record in the project's configuration directory is ``default``.
+    For a record under its ``checkouts/`` directory, strip ``.checkout.toml``
+    from the filename. A ``devcapsule.checkout.toml`` there is a named
+    checkout called ``devcapsule``. The record stores no name key.
     """
     named = input_path.parent == checkout_directory(manifest, env) / "checkouts"
     return checkout_record_name(input_path, named=named)

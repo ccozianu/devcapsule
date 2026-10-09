@@ -82,6 +82,8 @@ def test_info_home_binding_and_default_checkout_isolation(project, tmp_path, cap
         "configuration": {"bindings": {"host-directory": {"home": "/external/shared-home"}}}}))
     before = tree(tmp_path)
     report = information(root, capsys)
+    assert report["checkout"]["registered"] is True
+    assert report["checkout"]["name"] == "default"
     assert home(report)["backing"] == "/external/shared-home"
     assert "shared" in home(report)["scope"]
     assert tree(tmp_path) == before

@@ -415,6 +415,13 @@ def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, ca
         assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
         assert f"Checkout name: {name}\n" in capsys.readouterr().out
 
+    # An explicit registry environment must also govern name derivation.
+    with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(tmp_path / "unrelated-config")}):
+        records = registered_checkouts(env)
+        assert [(record.checkout_name, record.checkout_path) for record in records] == sorted([
+            ("default", first), (name, second),
+        ])
+
 
 def test_checkout_record_name_rejects_a_non_record_path() -> None:
     from devcapsule.configuration.storage import checkout_record_name
