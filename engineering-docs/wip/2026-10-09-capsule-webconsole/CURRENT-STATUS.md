@@ -4,11 +4,11 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192) awaits the owner with its Codex review merged; PR6, records and DOT (deliverable 4), is implemented on `ws-capsule-webconsole/records` and gated
+State: active; PR5 (#192) and PR6 (#194) await the owner with their Codex reviews merged; PR7, decision pages (deliverable 5), is in progress on `ws-capsule-webconsole/decisions`
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
-Branch association: `ws-capsule-webconsole/live-resources` (PR5, #192, from `main`); `ws-capsule-webconsole/records` (PR6, stacked on PR5); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
+Branch association: `ws-capsule-webconsole/live-resources` (PR5, #192, from `main`); `ws-capsule-webconsole/records` (PR6, #194, stacked on PR5); `ws-capsule-webconsole/decisions` (PR7, stacked on PR6); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
 
 Integration target: `main`
 
@@ -53,6 +53,19 @@ website's) and `viz.js` 3.31.0, with their provenance and digests in
 `VENDORED.md` and a test that checks the digests. Run by hand against this
 checkout: the index renders with its 283 links rewritten, and this status
 file renders with its DOT stack diagram drawn.
+
+**PR #194 is open against PR5's branch. Its review, PR #195 by the Codex
+and gpt-6-astra pair, was merged without a round.** Six findings, all
+accepted: the wheel omitted the vendored renderers, so a capsule's
+installed console would have had none, now packaged and tested; raw
+responses carry a sandbox policy and `nosniff`, so an opened SVG cannot
+use the console's origin; Graphviz output is shown as an image, so a DOT
+`URL` attribute cannot become an active link; record links are decoded
+once, query-only links and raw fragments are kept, invalid targets become
+inert; headings have fragment targets; and more coverage of the raw route
+and the bytes reader. Re-checked in a browser on the merged branch: the
+diagram renders as an image, headings carry ids, raw responses carry the
+headers.
 
 Judgments recorded for slice 6:
 
@@ -347,6 +360,10 @@ then 5, then 6.
   successful. Manual run against this checkout: records index
   and this status file rendered in a browser, DOT drawn; screenshots under
   `evidence/2026-10-09-console-pages/`.
+- Build gate on the merged PR6 branch at `615bb86`, 2026-10-09: 1,333 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 156 tests;
+  successful.
 - Build gate on the merged PR5 branch at `a427a09`, 2026-10-09: 1,333 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 117 tests;
