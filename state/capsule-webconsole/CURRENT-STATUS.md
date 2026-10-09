@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR1 (#184) awaits the owner; PR2, the console subproject, is implemented on `ws-capsule-webconsole/console-app` and gated, its review PR is next
+State: active; PR1 (#184) and PR2 (#186, stacked on PR1) await the owner, each with its Codex review merged; PR3, the runtime and base integration, is next
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -54,6 +54,16 @@ only. Every route is `GET`. A new nox session, `webconsole`, type-checks and
 tests it in its own environment, and the build gate queues that session.
 Run by hand against this capsule's real CLI, all four pages render; the
 screenshots are under [evidence/2026-10-09-console-pages](evidence/2026-10-09-console-pages/).
+
+**PR #186 is open against PR1's branch. Its review, PR #187 by the Codex
+and gpt-6-astra pair, was merged without a round.** Seven findings, all
+accepted: a time-of-check race on the project-file route, closed with
+descriptor-anchored `O_NOFOLLOW` reads; a malformed cookie header crashing
+the gate; a non-object or non-finite JSON document passing through the
+reader; token characters an unquoted cookie cannot carry; the nox session
+picking the runtime's mypy configuration instead of the console's strict
+one; tighter types; and 37 added tests, 89 in all. The gate on the merged
+branch is recorded below.
 
 Judgments recorded for slice 2:
 
@@ -150,7 +160,7 @@ digraph stack {
 
 ## Planned Next Step
 
-1. Open PR2 against PR1's branch and request PR2.1 from the Codex pair.
+1. Branch PR3 from PR2's branch, after #187's merge.
 2. Done in PR2: the console subproject, runnable on a host against the installed
    CLI, with its unit tests.
 3. PR3: deliverable 1's runtime and base work, with the smokes. Propose the
@@ -177,6 +187,13 @@ then 5, then 6.
 - Build gate on PR2's branch, 2026-10-09: 1,276 unit cases, 10 packaged
   integrations, type check, smokes, documentation contract, then the console
   session; successful.
+- Review PR #187 gate, by the Codex pair in its worktree: runtime unit cases,
+  packaged integrations, type check, smokes, then the console session with
+  strict mypy and 89 tests; documentation contract skipped there.
+- Build gate on the merged PR2 branch at `7013555`, 2026-10-09: 1,276 unit
+  cases, 10 packaged integrations, type check, smokes, documentation
+  contract, then the console session with strict mypy and 89 tests;
+  successful.
 - Manual run against this capsule's real CLI on loopback port 8765 with a
   fresh token: tokenless request refused, cookie set from the query token,
   traversal refused, four pages rendered and screenshotted with the website's
