@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192), PR6 (#194), PR7 (#196) and PR8 (#199) await the owner, stacked, each with its Codex review merged; slice 8's console half, PR9, is on `ws-capsule-webconsole/notifications-console` and gated
+State: active; PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199) and PR9 (#201) await the owner, stacked, each with its Codex review merged; PR10, the workflow instruction and the first real decision, is next on PR9's branch
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -60,6 +60,20 @@ store: three unread under the bell, the page listed them, read and dismiss
 went through the CLI and the page refreshed; screenshots
 `notifications-*.png` under `evidence/2026-10-09-console-pages/`, the
 hand-off text under `evidence/2026-10-09-decision-sample/hand-off.txt`.
+
+**PR #201 is open against PR8's branch. Its review, PR #202 by the Codex
+and gpt-6-astra pair, was merged without a round.** Six findings, all
+accepted: the console's selected decisions directory now reaches the
+CLI's listing through its environment hook, so the bell and the decision
+pages cannot disagree; the hand-off keeps multiline fields and
+double-digit items aligned and refuses a non-JSON path instead of
+silently taking a sibling; the badge hides at zero; the bell exposes its
+state, closes on Escape and clears the unread emphasis when polling
+fails; the texts say what the console writes; 42 more tests including a
+Node run of the notifications page. One more fix of ours from the
+browser check on the merged branch: a page action now refreshes the bell
+at once instead of waiting for the 30-second timer; screenshot
+`notifications-merged.png`. Gate on the merged branch below.
 
 Judgments recorded for slice 8's console half:
 
@@ -511,6 +525,10 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Build gate on the merged PR9 branch at `db7d85d`, 2026-10-09: 1,449 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful.
 - Slice 8 console half, PR9 branch, 2026-10-09: console session with strict
   mypy on 8 files and 248 tests; build gate: 1,449 unit cases, 17 packaged integrations, type check of package and tests, smokes, documentation contract, then the console session; successful.
 - Build gate on the merged PR8 branch at `e97aaeb`, 2026-10-09: 1,449 unit
