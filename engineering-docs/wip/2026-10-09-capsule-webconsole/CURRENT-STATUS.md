@@ -4,11 +4,11 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; the first iteration is on `main` (#184 and #190 merged 2026-10-09); the second iteration, deliverables 3, 4 and 5, runs as stacked pull requests, slice 5 (live processes and resources) first
+State: active; PR5 (#192, live processes and resources) awaits the owner with its Codex review merged; PR6, records and DOT, is in progress on `ws-capsule-webconsole/records`
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
-Branch association: `ws-capsule-webconsole/live-resources` (PR5, from `main`); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
+Branch association: `ws-capsule-webconsole/live-resources` (PR5, #192, from `main`); `ws-capsule-webconsole/records` (PR6, stacked on PR5); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
 
 Integration target: `main`
 
@@ -54,6 +54,17 @@ readings and a Processes page refreshes them every three seconds, with a
 pause. psutil joins the console's hash-pinned set, so base recipe 11
 rebuilds the console venv; an older base runs the previous console. Run by
 hand against this capsule: the page renders the real readings.
+
+**PR #192 is open against `main`. Its review, PR #193 by the Codex and
+gpt-6-astra pair, was merged without a round.** Eight findings, all
+accepted: psutil's cached process objects shared CPU baselines between
+concurrent requests, now per-request CPU-time deltas with an identity
+check; a reused pid could stand for another process; the host's cgroup
+root could pass as the capsule's; reset counters gave negative rates;
+denied processes vanished instead of showing null CPU; the page's pause
+raced its refresh; the pid meter counts tasks, now labelled so; and a
+recipe 10 base now runs its installed console instead of mounted slice-5
+source it cannot import, with a probe that says why.
 
 Judgments recorded for slice 5:
 
@@ -304,6 +315,10 @@ then 5, then 6.
   type check, smokes, documentation contract, then the console session;
   successful. Manual run against this capsule: the Processes page renders
   the real readings; screenshot under `evidence/2026-10-09-console-pages/`.
+- Build gate on the merged PR5 branch at `a427a09`, 2026-10-09: 1,333 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 117 tests;
+  successful.
 - Base recipe 11 built locally from the public PEX of `9ac19b8`: the built-base
   test passed with psutil importable offline; the console smoke, now probing
   the monitor routes, passed with the display and headless. See the `r11-*`
