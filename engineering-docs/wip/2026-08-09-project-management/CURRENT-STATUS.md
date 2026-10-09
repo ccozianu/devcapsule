@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
 
-Definition read: WORKFLOW.md@e75c84def45f, WORKFLOW-LOCAL.md@9300dc156fc6
+Definition read: WORKFLOW.md@e75c84def45f, WORKFLOW-LOCAL.md@8496e6da21fb
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -470,6 +470,12 @@ submodules were changed.
   (Karpathy list item 1, second half), and the updated wording of the stale
   *GitHub Integration: Owner Through The UI* section. `workflow-improvements`
   regenerates the packaged definition at the release or earlier.
+- Sent `2026-10-09-project-management-github-cli-component.md` to
+  `component-catalog` at the owner's direction: make `gh` a component. It is
+  MIT licensed and redistributable; upstream ships a checksummed tarball with
+  no installer; the terms prompt the owner met was Anaconda's, not gh's. The
+  item names the authentication design as the real work and assigns no
+  release target.
 
 - Paused 2026-09-28 evening at the owner's direction: the owner posted a
   first LinkedIn announcement and judges the documentation the most glaring
