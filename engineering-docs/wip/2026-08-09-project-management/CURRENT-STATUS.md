@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
 
-Definition read: WORKFLOW.md@e75c84def45f, WORKFLOW-LOCAL.md@8496e6da21fb
+Definition read: WORKFLOW.md@8044760fbd4f, WORKFLOW-LOCAL.md@8496e6da21fb
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -24,6 +24,21 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+- 2026-10-09: began the `capsule-webconsole` workstream at the owner's
+  direction, registered on `ws-capsule-webconsole/first-slice` through a
+  temporary worktree so this checkout stayed on project-management; published
+  at coordination `3ee8fc99`. Owner decisions recorded there and in proposed
+  R-CONSOLE-001: the console is in the base image for everyone, not a
+  component; a static web structure plus a FastAPI application as a separate
+  process outside the runtime PEX, reading the mounted project and the
+  runtime CLI's `--json`; no open-source console adopted as the framework,
+  Glances or similar possible later as an optional component. The owner
+  held the switch: further decisions are to be made here first. Karpathy
+  list item 4, decisions as structured artifacts, is accepted in principle
+  and its rule text waits on the owner's answers to three points: local
+  HTML file as baseline with hosted pages allowed; pages that collect input
+  as well as present; threshold by judgment with three named examples.
 
 - 2026-10-09 pilot, owner-directed, on sub-branch
   `ws-project-management/ste-pilot`: `WORKFLOW.md` and `WORKFLOW-LOCAL.md`
@@ -321,6 +336,12 @@ and the IntelliJ target, so it can lift its frozen-scope row and plan. The
 formal 0.2.16 work order still follows registration.
 
 ## Planned Next Step
+
+The owner's remaining decisions in this session, in the order raised: the
+three points of Karpathy item 4, then its rule text to `main` under the
+definition-change scheme; items 3, 5 and 6 of that list; then the older
+decision list starting with the 0.3.0 registration and the user-docs gate.
+After that the owner directs the switch to `capsule-webconsole`.
 
 Disposition pass over the ten items taken on 2026-10-09, starting with the
 0.3.0 rename: the proposal, the registry row and every "0.2.16" reference in
