@@ -8,7 +8,7 @@ from typing import Any
 
 from devcapsule.components.catalog import selected_component_definitions
 from devcapsule.configuration.bindings import configuration_binding_declarations, managed_binding_path
-from devcapsule.configuration.storage import find_checkout_record, load_checkout, lock_for, manifest_for
+from devcapsule.configuration.storage import checkout_name_for, find_checkout_record, load_checkout, lock_for, manifest_for
 from devcapsule.configuration.file_formats import ProjectConfigurationError
 
 
@@ -87,8 +87,12 @@ def configured_environment(lock: dict[str, Any], mount: str) -> list[dict[str, s
 
 
 def configured_information(root: Path, manifest: dict[str, Any], lock: dict[str, Any],
-                           checkout: dict[str, Any]) -> dict[str, Any]:
-    """Project the launcher's selected inputs without resolving or writing them."""
+                           checkout: dict[str, Any], *, checkout_name: str) -> dict[str, Any]:
+    """Project the launcher's selected inputs without resolving or writing them.
+
+    ``checkout_name`` comes from where the checkout's record lives
+    (``checkout_name_for``); no record carries a name key.
+    """
     mount = manifest["project"]["mount"]
     configured = dict(checkout.get("state", {}).get("adopted", {}))
     configured.update(checkout.get("configuration", {}).get("bindings", {}).get("host-directory", {}))
@@ -112,8 +116,7 @@ def configured_information(root: Path, manifest: dict[str, Any], lock: dict[str,
         "schema-version": 1, "context": "host selection (next launch)",
         "project": {key: manifest["project"].get(key) for key in ("name", "creator", "slug")},
         "checkout": {"launcher-path": str(root), "runtime-path": mount,
-                     "name": checkout.get("checkout", {}).get("name", "default"),
-                     "registered": bool(checkout)},
+                     "name": checkout_name, "registered": bool(checkout)},
         "components": component_versions(lock),
         "base": {key: lock.get("base", {}).get(key) for key in ("reference", "build-mnemonic")},
         "environment": configured_environment(lock, mount), "persistence": persistence,
@@ -137,6 +140,9 @@ def project_information(start: Path, *, runtime_fallback: bool) -> dict[str, Any
                       "notes": [*NOTES, "This older launch did not capture storage backing; relaunch with the updated launcher."]}
         running = context.document["running"]
         report["context"] = "running capsule (captured at launch)"
+        # The name is derived from the mounted record, not from the captured
+        # information, which an older launcher captured as "default".
+        report["checkout"]["name"] = context.checkout_name
         report["components"] = component_versions(running["lock"])
         report["base"] = {key: running["lock"].get("base", {}).get(key) for key in ("reference", "build-mnemonic")}
         report["running-selection"] = running["identity"]
@@ -156,7 +162,9 @@ def project_information(start: Path, *, runtime_fallback: bool) -> dict[str, Any
     _, lock = lock_for(root, manifest)
     record = find_checkout_record(manifest, root)
     checkout = load_checkout(record, manifest, root) if record is not None else {}
-    report = configured_information(root, manifest, lock, checkout)
+    report = configured_information(
+        root, manifest, lock, checkout,
+        checkout_name=checkout_name_for(manifest, record) if record is not None else "default")
     report["notes"].append("Runtime-only display, container name and actual base PATH are unavailable before launch.")
     return report
 
@@ -166,6 +174,7 @@ def render_information(report: dict[str, Any]) -> str:
     lines = [f"Project: {project.get('name') or project['slug']} ({project['creator']}/{project['slug']})",
              f"Context: {report['context']}",
              f"Checkout: {report['checkout']['launcher-path']}",
+             f"Checkout name: {report['checkout']['name']}",
              f"Source in capsule: {report['checkout']['runtime-path']}", "", "Components:"]
     lines.extend(f"  {name}: {version}" for name, version in report["components"].items())
     lines.append(f"Base: {report['base'].get('reference', 'unavailable')}")

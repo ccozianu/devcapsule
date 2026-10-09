@@ -150,6 +150,18 @@ def named_checkout_record_paths(
     return input_path, resolved_record_path(input_path)
 
 
+def checkout_name_for(manifest: Mapping[str, Any], input_path: Path, env: Mapping[str, str] | None = None) -> str:
+    """The checkout's name from where its record lives.
+
+    ``default`` for the unnamed record in the project's own directory; for
+    a record under ``checkouts/`` the file's stem, so a ``devcapsule.checkout.toml``
+    there is a named checkout called ``devcapsule``. Every command that names
+    a checkout derives the name here; no record carries a name key.
+    """
+    named = input_path.parent == checkout_directory(manifest, env) / "checkouts"
+    return checkout_record_name(input_path, named=named)
+
+
 def checkout_record_name(input_path: Path, *, named: bool = False) -> str:
     """Return the display name of a default or named checkout record.
 
@@ -196,7 +208,7 @@ def registered_checkouts(env: Mapping[str, str] | None = None) -> tuple[Register
         if not creator or not slug or not raw_path:
             continue
         source = Path(str(raw_path)).expanduser()
-        name = checkout_record_name(candidate, named=candidate.parent == checkout_directory(value, env) / "checkouts")
+        name = checkout_name_for(value, candidate, env)
         if not source.exists():
             status = "missing"
         elif not (source / ".devcapsule" / "devcapsule.toml").is_file():

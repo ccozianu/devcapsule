@@ -90,3 +90,26 @@ def test_info_home_binding_and_default_checkout_isolation(project, tmp_path, cap
 def test_info_outside_a_project_requires_discovery(project, tmp_path, capsys):
     assert cli.main(["project", "--path", str(tmp_path), "info"]) == 2
     assert "Traceback" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("name", ["dogfood", "devcapsule"])
+def test_info_names_a_named_checkout_from_its_record_location(project, capsys, name):
+    """The checkout's name is where its record lives, not a key in the record:
+    a record under ``checkouts/`` is named after its file, ``devcapsule`` included."""
+    root, manifest, _ = project
+    from devcapsule.configuration.storage import checkout_directory
+    assert information(root, capsys)["checkout"] == {
+        "launcher-path": str(root), "runtime-path": "/workspace/info", "name": "default", "registered": False,
+    }
+    record = checkout_directory(manifest) / "checkouts" / f"{name}.checkout.toml"
+    record.parent.mkdir(parents=True)
+    record.write_text(render_toml({"devcapsule-checkout-schema-version": 1,
+        "project": {"creator": manifest["project"]["creator"], "slug": manifest["project"]["slug"]},
+        "checkout": {"path": str(root)}}))
+    report = information(root, capsys)
+    assert report["checkout"] == {
+        "launcher-path": str(root), "runtime-path": "/workspace/info", "name": name, "registered": True,
+    }
+    assert cli.main(["project", "--path", str(root), "info"]) == 0
+    text = capsys.readouterr().out
+    assert f"Checkout: {root}\nCheckout name: {name}\n" in text

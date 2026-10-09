@@ -1174,6 +1174,17 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
     listing = json.loads(capsys.readouterr().out)
     assert listing["checkout"]["name"] == name
     assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
+    # project info agrees, from the captured record and from the mount alone:
+    # a context captured by an older launcher said "default" for every checkout.
+    assert invoke(runtime_root, "info", "--json") == 0
+    assert json.loads(capsys.readouterr().out)["checkout"]["name"] == name
+    context_path = tmp_path / "launch-context.json"
+    stale = json.loads(context_path.read_text())
+    stale["info"]["checkout"]["name"] = "default"
+    stale.pop("checkout-name")
+    context_path.write_text(json.dumps(stale))
+    assert invoke(runtime_root, "info", "--json") == 0
+    assert json.loads(capsys.readouterr().out)["checkout"]["name"] == ("default" if name == "devcapsule" else name)
 
 
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)

@@ -112,8 +112,7 @@ from devcapsule.configuration.file_formats import (
 )
 from devcapsule.configuration.storage import (
     atomic_write,
-    checkout_directory,
-    checkout_record_name,
+    checkout_name_for,
     checkout_record_paths,
     config_root,
     discover_project,
@@ -394,8 +393,7 @@ class ConfigurationListing:
 
     @property
     def checkout_name(self) -> str:
-        return checkout_record_name(
-            self.input_path, named=self.input_path.parent == checkout_directory(self.manifest) / "checkouts")
+        return checkout_name_for(self.manifest, self.input_path)
 
     def render_identity(self) -> str:
         identity = self.manifest["project"]

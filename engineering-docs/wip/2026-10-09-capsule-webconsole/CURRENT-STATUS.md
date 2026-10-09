@@ -4,11 +4,11 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; the first iteration is three stacked pull requests awaiting the owner, #184, #186 and #188, each with its Codex review merged; the owner merges to `main`
+State: active; three stacked pull requests await the owner, #184, #186 and #188, each with its Codex review merged; a fourth slice, the `project info` checkout-name fix the owner moved here, is on `ws-capsule-webconsole/project-info-checkout-name`
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
-Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1); `ws-capsule-webconsole/runtime-base` (PR3, stacked on PR2)
+Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1); `ws-capsule-webconsole/runtime-base` (PR3, stacked on PR2); `ws-capsule-webconsole/project-info-checkout-name` (PR4, stacked on PR3)
 
 Integration target: `main`
 
@@ -42,6 +42,27 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 4: `project info` names the checkout from its record's
+location.** The owner moved the defect found in slice 2 from `maintenance`
+to this workstream. One helper, `checkout_name_for`, derives the name from
+where the record lives, and `config list`, `project info`, the launch
+context and the checkout registry all use it. The text report of
+`project info` gains a `Checkout name:` line. Inside a capsule the name
+comes from the mounted record, so a context captured by an older launcher
+reports it right without a relaunch. Verified against this capsule's real
+records: `project info` and `config list` now both say `devcapsule-2nd-home`.
+The console's home page shows the right name with no change of its own.
+
+Judgments recorded for slice 4:
+
+- `configured_information` takes the name as a required argument instead of
+  reading a key no writer puts in the record. The callers know the record's
+  location; the information module does not.
+- An unregistered checkout is named `default`, the name its first `config
+  list` would give the record it materializes.
+- The runtime report overrides the captured name rather than trusting it,
+  because every context captured before this fix says `default`.
 
 **2026-10-09, slice 3: the console runs and is reached.** The runtime plan
 gained a `console` section, like the display's: a listen address, a port
@@ -212,7 +233,7 @@ digraph stack {
 ## Planned Next Step
 
 The first iteration is delivered to the owner's review: #184, #186 and
-#188, stacked. On resumption, after the owner's merges or push-backs, the
+#188, stacked, with the checkout-name fix as a fourth slice on top. On resumption, after the owner's merges or push-backs, the
 next iteration is deliverables 3 and 4 in the order this workstream
 chooses, then 5, then 6.
 
@@ -265,6 +286,9 @@ then 5, then 6.
   [evidence/2026-10-09-console-smoke](evidence/2026-10-09-console-smoke/).
 - IDE smoke, codium, on the built base: passed, with the new "console
   answers" fact at 200 and the tokenless probe refused.
+- Build gate on PR4's branch, 2026-10-09: 1,329 unit cases, 17 packaged
+  integrations, type check of package and tests, smokes, documentation
+  contract, then the console session; successful.
 - Review PR #189 gate, by the Codex pair in its worktree: 1,327 unit cases, 17
   packaged integrations, type check, smokes, then the console session;
   documentation contract skipped there.
@@ -284,12 +308,9 @@ then 5, then 6.
 
 ## Open Threads
 
-- `project info` reports the checkout name as `default` for a named
-  checkout, on the host and in the capsule: it reads a `checkout.name` key
-  that no writer puts in the record. `config list --json` names the record
-  file and is right. The console's home page shows what `project info`
-  reports, so it is wrong there until the command is fixed. Mailed to
-  `maintenance` on 2026-10-09 as a defect; the console will follow the fix.
+- Resolved in slice 4: `project info` named every checkout `default`. The
+  defect was mailed to `maintenance` first; the owner moved the fix here the
+  same day, and a second mail supersedes the first.
 - Base-release cadence, proposal for the owner with PR3: a change under
   `devcapsule-webconsole/` that an adopter should see is a base-release
   trigger, the same as a change to the display stack, because the console
