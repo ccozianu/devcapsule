@@ -667,6 +667,29 @@ not the rule's subject; the first applications in front of the project are
 the configuration composition boundary, the three places an intake item can
 be, the console's process topology, and a release's branch and tag history.
 
+### 9.6 rule 7 Recorded visual tests, and the no on explainer videos
+
+**Rule.** Prefer a recording harness for end-to-end tests of visual software,
+keep the recording as acceptance evidence, and do not generate explainer
+videos for the human.
+
+**Intended effect.** When a test says an IDE came alive and a file was saved,
+a human can watch it happen rather than trust a log line, and nobody spends
+tokens producing a narrated video about work when the recording of the work
+itself exists.
+
+**Motivation.** Owner decisions of 2026-10-09, closing the last item of the
+Karpathy list. His fourth step, bespoke generated explainer videos, was judged
+not worth adopting: one owner, a text-native project, no evidence of need, and
+a recorded no so that nobody reopens it without new evidence. The recording
+preference is the exception that the discussion surfaced: the IDE smokes of
+2026-10-04 kept Playwright movies and screenshots of IntelliJ, Rider and
+Eclipse coming alive and saving a file, and those recordings were what the
+owner could accept at a glance when a textual report could not have carried
+the same conviction. The rule is a bias, not a mandate, because some visual
+software cannot be driven by a recording harness; where it can, the recording
+is the cheapest acceptance evidence there is.
+
 ### 9.8 and 9.9 Checkpoints and session close
 
 **Rule.** Refresh durable state at closure points, after manual validation, on
