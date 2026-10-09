@@ -6,7 +6,8 @@ DevCapsule creates reproducible, resumable development environments for
 humans and AI coding agents: a real IDE, agent-ready tooling, versioned
 project memory, and explicit boundaries around access to the host. The
 product is one Python distribution project in `devcapsule-src/`, shipped as
-a single Linux executable. This page is the brief; each subject has its own
+a single Linux executable, plus the capsule web console in
+`devcapsule-webconsole/`, shipped inside the base image. This page is the brief; each subject has its own
 document under [`engineering-docs/development/`](engineering-docs/development/README.md).
 
 ## Contents
@@ -41,6 +42,11 @@ The repository's directories and the `devcapsule` package's responsibilities,
 including the enforced configuration boundary:
 [Source layout](engineering-docs/development/source-layout.md).
 
+`devcapsule-webconsole/` is a second, smaller distribution: the capsule web
+console, a FastAPI application and a static tree that the runtime starts as
+its own process. It reads the runtime CLI's `--json` output and imports none
+of the `devcapsule` package. See its [README](devcapsule-webconsole/README.md).
+
 ## Testing
 
 | Suite | Command | Document |
@@ -48,6 +54,7 @@ including the enforced configuration boundary:
 | Unit tests, with coverage; what the hosted runner runs | `nox -s tests` | [Unit tests](engineering-docs/development/unit-tests.md) |
 | Integration: the built executable, the CLI smoke, types, the docs contract | `nox -s integration`, inside `build` | [Integration tests](engineering-docs/development/integration-tests.md) |
 | End-to-end, with Docker: images, capsules, the IDE smoke | `nox -s e2e`, `nox -s ide-smoke`, … | [End-to-end tests](engineering-docs/development/e2e-tests.md) |
+| The capsule web console, `devcapsule-webconsole/`: types and tests in its own environment | `nox -s webconsole`, queued by `build` | [Web console README](devcapsule-webconsole/README.md) |
 
 The hosted runner runs no Docker; the end-to-end suites run locally and
 against downloaded candidates during release acceptance.

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devcapsule-webconsole"
+version = "0.1.0"
+description = "The capsule web console: what the devcapsule commands report, as pages, behind the run token."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+    "fastapi==0.143.0",
+    "uvicorn==0.54.0",
+]
+
+[project.scripts]
+devcapsule-webconsole = "devcapsule_webconsole.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["devcapsule_webconsole*"]
+
+[tool.setuptools.package-data]
+devcapsule_webconsole = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
