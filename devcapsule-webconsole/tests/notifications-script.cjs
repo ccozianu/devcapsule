@@ -111,6 +111,8 @@ vm.runInNewContext(fs.readFileSync(path.join(staticRoot, 'console.js'), 'utf8'),
   listing.notifications[0]['read-at'] = 'now';
   await reading;
   assert.equal(writes[0], '/api/notifications/one/read');
+  // A page action refreshes the listing and then the bell, without waiting for the timer.
+  assert.deepEqual(reads.slice(2), ['/api/notifications', '/api/notifications?unread=1']);
   assert.deepEqual(buttons(entries()[0]).map(n => n.textContent), ['Dismiss']);
   refuse = 'Refused';
   await buttons(entries()[0])[0].listeners.click();

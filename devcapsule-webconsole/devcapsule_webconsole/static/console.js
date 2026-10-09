@@ -530,6 +530,9 @@
   // Notifications: what the checkout's environment tells its human, listed
   // by the runtime CLI with the pending decisions merged in. Read and dismiss
   // go back through the CLI; a decision is settled only on its own page.
+  // Set by the bell once it exists, so a page action refreshes the badge at once.
+  let refreshBell = async () => {};
+
   async function notify(id, action) {
     const response = await fetch("/api/notifications/" + encodeURIComponent(id) + "/" + action, {
       method: "POST", credentials: "same-origin",
@@ -569,6 +572,7 @@
         try {
           await notify(entry.id, action);
           await refresh();
+          await refreshBell();
         } catch (error) {
           result.textContent = "Not done: " + error.message;
           for (const other of buttons) other.disabled = false;
@@ -637,6 +641,7 @@
         anchor.focus();
       }
     });
+    refreshBell = refresh;
     refresh();
     setInterval(refresh, 30000);
   }
