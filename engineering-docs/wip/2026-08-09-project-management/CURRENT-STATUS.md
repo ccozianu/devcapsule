@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-01 at owner direction; the pair moves to component-upgrades for the consent design ruling; owner decisions of 2026-10-01 recorded (IntelliJ in 0.2.16 under component-catalog, in-capsule project commands a 0.2.16 fix, eclipse-surface archived); 0.2.16 driver and remaining decisions still awaited; 25 undecided intake items
+State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
+Definition read: WORKFLOW.md@e75c84def45f, WORKFLOW-LOCAL.md@9300dc156fc6
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -24,6 +24,52 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+- 2026-10-09 pilot, owner-directed, on sub-branch
+  `ws-project-management/ste-pilot`: `WORKFLOW.md` and `WORKFLOW-LOCAL.md`
+  rewritten at about 80% ASD-STE100, one rule per sentence, grouped by topic,
+  every rule kept; reasons and worked examples moved to `WORKFLOW-humane.md`
+  and `WORKFLOW-LOCAL-humane.md`, marked *for humans*, with a map from the
+  previous section names. `AGENTS.md` references repointed; `index.md`
+  updated. The `### Changes` section, frontmatter and *Validation Commands*
+  heading the tooling parses are unchanged in shape; workflow tests pass and
+  the brief prints the new local section. Measured by a separate agent:
+  required session-start reading 40,847 to 29,980 tokens (−27%), sentences
+  over twenty words 31.6% to 10.6%, a fourteen-question fidelity quiz
+  answered fully from the new text. The owner read it and merged PR #175
+  into this branch at `429f32f` on 2026-10-09. It reaches `main` with this
+  workstream's next integration; every other workstream then sees a changed
+  definition and must synchronize. The decision to make the style a rule is
+  still the owner's; see *Open Threads*.
+  Known stale rule carried as written: *GitHub Integration: Owner Through The
+  UI* predates the owner's 2026-10-08 `gh` direction and needs an owner update.
+
+Resumed 2026-10-09 (Claude Fable 5.1) at the owner's direction after the
+component-catalog slice integrated. Fast-forwarded to origin, then merged
+`main` in (clean; the branch was a strict ancestor), because the definition
+and local workflow changed since the last read: the two files *for humans*,
+the information model with *backlog entry* and *work order*, required
+validation commands, the validation vocabulary, and integration as a merge
+commit. Ten mailed items were taken into `intake/`; three record owner
+decisions already taken (the next release is **0.3.0**, not 0.2.16;
+IntelliJ and the configuration contract are integrated), one is a
+maintenance work-order proposal for persistent capsule diagnostics. No
+bugs are owned here. Sent `2026-10-09-project-management-protocol-state-transitions.md`
+to `workflow-improvements` at the owner's request: review the commands above
+the failsafe git layer as transitions between consistent states, after an
+interrupted `mail take` converged by design and a ten-second GitHub outage
+was survived only by the agent's own retry. The owner also asked why this
+switch, a routine operation, took so long for a human; findings are in the
+session summary. Owner direction of 2026-10-09, recorded as a decision:
+workstream selection becomes one deterministic command, `devcapsule
+workflow select <name>`, driven the same way by a human or an agent; it
+stops at three consistent states (merge conflict, dirty tree with workstream
+state, routing mismatch) with a structured report; DevCapsule invoking an
+agent on conflict is a deferred, configurable hook, not part of the command.
+Sent `2026-10-09-project-management-workstream-select-command.md` to
+`workflow-improvements` with that design, the brief additions (definition
+text since the stamp, owned bugs, clean-merge check) and a status-file
+length budget. The slice is registered when they scope it.
 
 Afternoon of 2026-09-28: the owner found the website unpublished since
 2026-09-21 and its guides pinned to v0.2.12, defined the problem with the
@@ -276,6 +322,16 @@ formal 0.2.16 work order still follows registration.
 
 ## Planned Next Step
 
+Disposition pass over the ten items taken on 2026-10-09, starting with the
+0.3.0 rename: the proposal, the registry row and every "0.2.16" reference in
+this file follow the owner's 2026-10-05 decision; then the two integration
+notices from component-catalog, the diagnostics work-order routing from
+maintenance, and the two component-upgrades items. Each ends acknowledged or
+forwarded, recorded in `intake-dispositions.md` in the commit that removes it.
+Then the older 28.
+
+Earlier plan, kept for context:
+
 Done 2026-09-28 evening: the three slices below. `docs-0.2.15` is on origin
 at `a15ff8b`; `WORKFLOW-LOCAL.md` declares the ref; the runbook carries
 *Documentation Is Part Of The Release* and *Agent Freshness Review*; the
@@ -406,6 +462,14 @@ its next real nested-directory acceptance run. No containers, host settings or
 submodules were changed.
 
 ## Open Threads
+
+- Pilot merged into this branch, not yet on `main`. Awaiting the owner: whether
+  the controlled style becomes a rule for the definition, the local file, and
+  agent reports (Karpathy list items 1 and 2), to travel to
+  `workflow-improvements` with the measurement; and whether the packaged
+  definition source is regenerated from the root file before or at the next
+  release. The stale *GitHub Integration: Owner Through The UI* section still
+  needs the owner's updated wording.
 
 - Paused 2026-09-28 evening at the owner's direction: the owner posted a
   first LinkedIn announcement and judges the documentation the most glaring
