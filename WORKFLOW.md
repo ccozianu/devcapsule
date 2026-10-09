@@ -1258,9 +1258,12 @@ session-resumption feature.
    rule file stays text.
 7. When an end-to-end test exercises visual software, such as an IDE or a
    browser, prefer a harness that records the session as a movie and
-   screenshots. Keep the recording as acceptance evidence beside the
-   test's report. Do not generate explainer videos as a way to explain work
-   to the human; the recording of what ran is the video the project keeps.
+   screenshots. Playwright is the reference: open the browser context with
+   `record_video_dir` and `record_video_size`, save the context's video as
+   a `.webm` beside the test's report, and take `page.screenshot` at the
+   moments the report cites. Keep the recording as acceptance evidence.
+   Do not generate explainer videos as a way to explain work to the human;
+   the recording of what ran is the video the project keeps.
 
 ### 9.7 Responsibilities
 

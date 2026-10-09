@@ -690,6 +690,19 @@ the same conviction. The rule is a bias, not a mandate, because some visual
 software cannot be driven by a recording harness; where it can, the recording
 is the cheapest acceptance evidence there is.
 
+**The example, as this project does it.** The IDE smoke in
+`devcapsule-src/tests/e2e/ide_session.py` opens a Playwright browser context
+with `record_video_dir=<evidence directory>` and `record_video_size=<viewport>`,
+drives noVNC to the IDE, takes `canvas.screenshot(path=".../desktop.png")` at
+the moment it asserts the desktop is alive, and after the session saves the
+context's video with `video.save_as(".../desktop.webm")`. The evidence
+directory, one per run under `devcapsule-src/dist/e2e-evidence/ide-smoke/`,
+then holds the report, the screenshot and the movie together, and the report
+names the movie file so a reader can find it. The same pattern appears in
+`visual_smoke.py`. Any other harness qualifies if it can produce the same
+three things: a movie of the whole session, screenshots at cited moments, and
+a report that names both.
+
 ### 9.8 and 9.9 Checkpoints and session close
 
 **Rule.** Refresh durable state at closure points, after manual validation, on
