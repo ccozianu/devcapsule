@@ -5,14 +5,18 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 import re
+import tomllib
+
+from fastapi.testclient import TestClient
+
+import devcapsule_webconsole
 
 import pytest
 
 from conftest import with_token
 from devcapsule_webconsole.app import raw_content_type
-from devcapsule_webconsole.settings import Settings
 
-STATIC = Path(Settings.__module__ and __import__("devcapsule_webconsole").__file__).parent / "static"
+STATIC = Path(devcapsule_webconsole.__file__).parent / "static"
 
 
 @pytest.mark.parametrize("path, expected", [
@@ -24,12 +28,15 @@ STATIC = Path(Settings.__module__ and __import__("devcapsule_webconsole").__file
     ("diagram.svg", "image/svg+xml"),
     ("shot.PNG", "image/png"),
     ("clip.webm", "video/webm"),
+    ("sound.mp3", "audio/mpeg"),
+    ("document.xhtml", "application/octet-stream"),
+    ("diagram.svgz", "image/svg+xml"),
     ("page.html", "text/plain; charset=utf-8"),
     ("script.js", "text/plain; charset=utf-8"),
     ("archive.tar.gz", "application/octet-stream"),
     ("dir.v2/file", "application/octet-stream"),
 ])
-def test_raw_content_types_never_let_a_project_file_run_as_a_page(path, expected):
+def test_raw_content_types(path: str, expected: str) -> None:
     assert raw_content_type(path) == expected
 
 
@@ -85,16 +92,78 @@ def test_vendored_renderers_match_their_recorded_digests():
         digest = cells[-1].strip("`")
         assert re.fullmatch(r"[0-9a-f]{64}", digest), row
         assert hashlib.sha256((STATIC / "vendor" / name).read_bytes()).hexdigest() == digest, name
-    served = with_token_free_listing()
+    served = {path.name for path in (STATIC / "vendor").iterdir()}
     assert {"markdown-it-15.0.2.umd.min.js", "viz-3.31.0.global.js", "VENDORED.md", "markdown-it-LICENSE"} <= served
 
 
-def with_token_free_listing() -> set[str]:
-    return {path.name for path in (STATIC / "vendor").iterdir()}
-
-
-def test_vendored_files_are_served_behind_the_token(client):
-    assert client.get("/static/vendor/viz-3.31.0.global.js").status_code == 403
-    response = with_token(client).get("/static/vendor/markdown-it-15.0.2.umd.min.js")
+@pytest.mark.parametrize("name", ["markdown-it-15.0.2.umd.min.js", "viz-3.31.0.global.js"])
+def test_vendored_files_are_served_behind_the_token(client: TestClient, name: str) -> None:
+    route = "/static/vendor/" + name
+    assert client.get(route).status_code == 403
+    response = with_token(client).get(route)
     assert response.status_code == 200
-    assert response.text.startswith("/*! markdown-it") or "markdownit" in response.text[:4000]
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.content == (STATIC / "vendor" / name).read_bytes()
+
+
+@pytest.mark.parametrize("name, content_type", [
+    ("attack.svg", "image/svg+xml"),
+    ("attack.svgz", "image/svg+xml"),
+    ("attack.html", "text/plain; charset=utf-8"),
+    ("attack.xhtml", "application/octet-stream"),
+    ("attack.js", "text/plain; charset=utf-8"),
+    ("attack.png", "image/png"),
+    ("attack", "application/octet-stream"),
+])
+def test_raw_project_content_is_isolated_even_when_opened_as_a_document(
+    client: TestClient, project: Path, name: str, content_type: str,
+) -> None:
+    # Include SVG active content and a misleading extension. The policy must
+    # protect every raw response, independently of MIME guessing or file bytes.
+    payload = b'<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(2)</script></svg>'
+    (project / name).write_bytes(payload)
+    response = with_token(client).get("/api/project/raw", params={"path": name})
+    assert response.status_code == 200
+    assert response.content == payload
+    assert response.headers["content-type"] == content_type
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["content-security-policy"] == "sandbox; default-src 'none'; style-src 'unsafe-inline'"
+
+
+def test_raw_route_reports_a_read_permission_error(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from devcapsule_webconsole import app
+
+    def denied(root: Path, requested: str) -> bytes:
+        raise PermissionError("private host detail")
+
+    monkeypatch.setattr(app, "read_project_bytes", denied)
+    response = with_token(client).get("/api/project/raw", params={"path": "docs/guide.md"})
+    assert response.status_code == 403
+    assert response.text == "cannot read 'docs/guide.md' in the project\n"
+
+
+@pytest.mark.parametrize("path", ["", ".", "docs/\x00guide.md", "loop.md"])
+def test_raw_route_handles_invalid_paths(client: TestClient, project: Path, path: str) -> None:
+    (project / "loop.md").symlink_to("loop.md")
+    response = with_token(client).get("/api/project/raw", params={"path": path})
+    assert response.status_code == (404 if path == "." else 403)
+
+
+def test_bytes_reader_preserves_binary_and_newlines_through_an_internal_link(project: Path) -> None:
+    from devcapsule_webconsole.security import read_project_bytes
+
+    content = bytes(range(256)) + b"\r\nline\rnext\n"
+    (project / "docs" / "data").write_bytes(content)
+    (project / "linked").symlink_to("docs/data")
+    assert read_project_bytes(project, "linked") == content
+
+
+def test_distribution_patterns_include_every_vendored_asset() -> None:
+    # Editable installs serve source files even when the wheel omits them.
+    # Check the package-data selection, including the provenance and license.
+    package = STATIC.parent
+    config = tomllib.loads((package.parent / "pyproject.toml").read_text(encoding="utf-8"))
+    patterns = config["tool"]["setuptools"]["package-data"]["devcapsule_webconsole"]
+    selected = {path for pattern in patterns for path in package.glob(pattern) if path.is_file()}
+    required = {path for path in (STATIC / "vendor").iterdir() if path.is_file()}
+    assert required <= selected, required - selected
