@@ -635,3 +635,56 @@ def test_hand_off_command_reads_the_environment_the_launcher_sets(tmp_path: Path
     (directory / "bad.json").write_text("{", encoding="utf-8")
     assert decisions.main(["hand-off", str(directory / "bad.json")]) == 2
     assert "not a JSON document" in capsys.readouterr().err
+
+
+def test_hand_off_keeps_multiline_fields_inside_their_numbered_item():
+    item = {**DECISION["items"][0], "title": "First line\ncontinued title",
+            "summary": "First paragraph.\n\nSecond paragraph.",
+            "records": ["docs/guide.md", "docs/long\nname.md"], "multiple": True,
+            "options": [{"key": "yes", "label": "Yes\ncontinued label", "summary": "One.\n\n- Two."},
+                        {"key": "no", "label": "No"}]}
+    decision = decision_from_mapping({**DECISION, "items": [{**item, "key": f"item-{i}"} for i in range(12)]})
+    text = decisions.hand_off_text(decision, None)
+    assert "1. First line\n   continued title" in text
+    assert "10. First line\n    continued title" in text
+    assert "    First paragraph.\n\n    Second paragraph." in text
+    assert "    Records: docs/guide.md · docs/long\n    name.md" in text
+    assert "    - yes: Yes\n      continued label. One.\n\n      - Two." in text
+    assert "    - no: No" in text
+    assert "    (choose any number of options)" in text
+
+
+def test_hand_off_rejects_a_non_json_path_instead_of_reading_its_sibling(store, capsys):
+    path = store.directory / (DECISION["id"] + ".txt")
+    path.write_text("This is not the decision.", encoding="utf-8")
+    assert decisions.main(["hand-off", str(path)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "must end in .json" in captured.err
+
+
+def test_hand_off_default_token_and_unreadable_encoding(tmp_path, monkeypatch):
+    source = tmp_path / "mounted-token"
+    monkeypatch.setattr(decisions, "DEFAULT_TOKEN_PATH", source)
+    source.write_text("a+b&c?#/%\n", encoding="utf-8")
+    environ = {"DEVCAPSULE_CONSOLE_URL": "http://localhost:9876"}
+    assert decisions.hand_off_link("review", environ) == (
+        "http://localhost:9876/decisions/review?token=a%2Bb%26c%3F%23%2F%25", "")
+    source.write_bytes(b"\xff")
+    url, note = decisions.hand_off_link("review", environ)
+    assert url == "http://localhost:9876/decisions/review"
+    assert "was not readable" in note
+
+
+@pytest.mark.parametrize("metadata, expected", [
+    ({"asked-by": "", "asked-at": ""}, None),
+    ({"asked-by": "", "asked-at": "2026-10-09T12:00:00+00:00"}, "Asked by an agent at 2026-10-09T12:00:00+00:00"),
+    ({"asked-by": "helper", "asked-at": ""}, "Asked by helper"),
+])
+def test_hand_off_optional_metadata_and_choice_instructions(metadata, expected):
+    decision = decision_from_mapping({**DECISION, **metadata, "context": ""})
+    text = decisions.hand_off_text(decision, None)
+    assert [line for line in text.splitlines() if line.startswith("Asked by")] == ([expected] if expected else [])
+    assert "1. A development blog" in text and "2. Naming" in text
+    assert text.count("(choose any number of options)") == 1
+    assert "   - decline: Decline. Close it." in text
