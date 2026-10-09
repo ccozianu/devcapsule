@@ -963,6 +963,39 @@ prose removes the ambiguity where it matters. Delivery by mail keeps the work
 order inside the one handover mechanism the workflow has, so the
 mailbox-intake-log invariant covers it too.
 
+### 12.12 Materialized views
+
+**Rule.** A human-facing document derived from records is a materialized
+view with its dependencies recorded inside it, section-level when an agent
+authors it and file-level when software renders it; staleness is detected
+from content ids and shown; regeneration is on demand, mechanical or by an
+agent task built from the dependency difference; humans review views and do
+not maintain them; this file is the first authored view.
+
+**Intended effect.** No human-facing document drifts from the records it
+explains without the drift being visible, and nobody spends a human's time
+maintaining prose that software or an agent can regenerate.
+
+**Motivation.** Owner decision of 2026-10-09, closing the Karpathy list.
+Karpathy's summary: as agents do the legwork, "a lot more of our work will
+rise up the abstractions into oversight and understanding", and because
+software is cheap, "you can ask for large, custom, discardable software
+artifacts" that would never have made sense before. Discardable is the word
+that matters: a view is built from records when a human needs it and has no
+life of its own. The owner's refinement is the dependency record. A view that
+knows what it was built from can be found stale mechanically, which is the
+same mechanism the `Definition read` stamp already uses for the definition.
+Section-level dependencies were chosen for authored views because a
+file-level stamp would mark this whole file stale at every rule change and
+make regeneration a rewrite rather than a paragraph; file-level is enough for
+rendered views, which regenerate for free. The record lives inside the view,
+not in a side registry, so that view and dependencies travel together and
+survive any change of tooling; the console indexes them. This file is the
+first case: it is not a human-maintained exception to the principle but a
+view whose generator is an agent, reviewed by the owner for wording and style,
+and the local file's same-commit rule is the hand-operated version of the
+dependency until the console tracks it.
+
 ## Section Map: Previous Edition To This One
 
 | Previous section | Now |
