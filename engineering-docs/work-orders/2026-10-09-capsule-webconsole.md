@@ -34,8 +34,8 @@ remain and keep working. The console adds the picture.
    monitor may be linked later as an optional component. The configuration,
    records and workflow pages are ours.
 5. Markdown is rendered client-side with `markdown-it`, the website's
-   renderer, vendored into the static tree. No build step and no Node in the
-   capsule.
+   renderer, vendored into the static tree, and diagrams with a vendored
+   Graphviz build for the browser. No build step and no Node in the capsule.
 
 Requirement: `R-CONSOLE-001`, proposed. Accept it in your first integration
 or say why its statement is wrong.
@@ -84,10 +84,13 @@ without reload.
 
 Done means: any markdown file in the project renders, `index.md` is the
 navigation, the root `CURRENT-STATUS.md` and the open workstreams' status
-files render with their links working, and Mermaid blocks render.
+files render with their links working, and fenced `dot` blocks render as
+Graphviz diagrams.
 
 - Relative links between markdown files resolve inside the console.
-- Mermaid rendered client-side, vendored like `markdown-it`.
+- DOT rendered client-side with a vendored Graphviz build for the browser,
+  such as `viz.js` or `d3-graphviz`, like `markdown-it`. No other diagram
+  notation; owner decision of 2026-10-09, `WORKFLOW.md` topic 9.6 rule 6.
 - Read only, from the mounted branch; no fetch of the coordination branch in
   this deliverable.
 
