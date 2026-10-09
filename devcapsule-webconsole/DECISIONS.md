@@ -22,7 +22,9 @@ its answer once it has recorded the outcome.
 
 An agent asks by writing `<id>.json`. The console answers by writing
 `<id>.answer.json` beside it. `<id>` is lowercase letters, digits and
-hyphens, at most 100 characters, and is the file's stem.
+hyphens, starts with a letter or digit, has at most 100 characters, and is
+the file's stem. Documents must be regular UTF-8 JSON files, not symbolic
+links or special files. The reader accepts at most 1 MiB per file.
 
 ## The decision document, `<id>.json`
 
@@ -51,7 +53,7 @@ hyphens, at most 100 characters, and is the file's stem.
 }
 ```
 
-- `format` is 1. A reader refuses another value.
+- `format` is the integer 1. A reader refuses another value or type.
 - `items` has at least one item. One decision with one item is the simple
   case; an intake pass has many. Each item has a unique `key` with the same
   grammar as `<id>`, a `title`, at least two `options` with unique keys, and
@@ -67,6 +69,8 @@ A different agent can produce this document from a markdown table with
 columns `key` and `title` are required, `summary`, `records` (paths
 separated by spaces) and `options` (`key:Label` pairs separated by commas)
 are optional, and an item without `options` gets accept, decline and defer.
+The optional `multiple` column accepts `yes` or `true` for several choices.
+Column names must be unique. The separator row must match the header.
 
 ## The answer document, `<id>.answer.json`
 
@@ -85,6 +89,8 @@ are optional, and an item without `options` gets accept, decline and defer.
 - The console writes it atomically when the human submits the page, and
   overwrites it when the human submits again; the latest answer stands
   until the agent reads it.
+- `answered-at` is the console's submission timestamp. A stored answer
+  without a valid timestamp is refused; reading never invents a timestamp.
 - `answers` holds one entry per item the human answered, by item key, with
   the chosen option keys and an optional note. An item the human left
   unanswered is absent. `note` is the human's overall note.
@@ -107,5 +113,9 @@ never deletes a decision or an answer.
 - `POST /api/decisions/<id>/answer` is the console's one write: it writes
   the answer document. It accepts a same-origin request only and refuses a
   body that names an unknown item or option.
+- The POST requires one `Origin` header equal to the console's origin,
+  including its port, with no trailing slash. Missing or `null` origins
+  are refused. The run token is also required. The JSON request body may
+  contain at most 64 KiB; a refusal leaves any previous answer unchanged.
 - Nothing else writes. The decision pages are the only place the console
   changes anything, as the work order allows.

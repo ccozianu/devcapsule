@@ -84,6 +84,8 @@ def create_app(settings: Settings) -> FastAPI:
             try:
                 decision = store.read_decision(decision_id)
                 answer = store.read_answer(decision)
+            except FileNotFoundError:
+                continue  # The asking agent discarded it after the directory scan.
             except DecisionError as error:
                 entries.append({"id": decision_id, "title": None, "asked-by": None, "asked-at": None,
                                 "items": None, "answered-at": None, "error": str(error)})
@@ -109,24 +111,27 @@ def create_app(settings: Settings) -> FastAPI:
         """The console's one write: the human's answer, beside the decision.
 
         A same-origin request only: the token cookie is ``SameSite=Strict``,
-        and the ``Origin`` header, when a browser sends one, must name this
+        and the required ``Origin`` header must name this
         console. The body is validated against the decision before anything
         is written; a refusal writes nothing.
         """
-        origin = request.headers.get("origin")
-        if origin is not None and origin.rstrip("/") != f"{request.url.scheme}://{request.url.netloc}":
+        origins = request.headers.getlist("origin")
+        if origins != [f"{request.url.scheme}://{request.url.netloc}"]:
             return PlainTextResponse("the answer must come from the console's own origin\n", status_code=403)
         decision = decision_or_response(decision_id)
         if not isinstance(decision, Decision):
             return decision
-        body = await request.body()
-        if len(body) > MAXIMUM_ANSWER_BYTES:
-            return PlainTextResponse("the answer is too large\n", status_code=413)
+        body = bytearray()
+        async for chunk in request.stream():
+            if len(body) + len(chunk) > MAXIMUM_ANSWER_BYTES:
+                return PlainTextResponse("the answer is too large\n", status_code=413)
+            body.extend(chunk)
         try:
             document = json.loads(body.decode("utf-8"))
-            answer = answer_from_mapping(decision, document)
-        except (UnicodeDecodeError, ValueError) as error:
+        except (ValueError, RecursionError) as error:
             return PlainTextResponse(f"the answer must be a JSON document: {error}\n", status_code=422)
+        try:
+            answer = answer_from_mapping(decision, document)
         except DecisionError as error:
             return PlainTextResponse(f"the answer does not fit the decision: {error}\n", status_code=422)
         try:
