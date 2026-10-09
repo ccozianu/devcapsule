@@ -557,6 +557,30 @@ proposal; the recipient owns application, validation, and integration. Landing
 a finished slice early is permitted because a correction other workstreams are
 waiting on should not sit behind work that has months to run.
 
+### 8.8 Handing a decision to the human
+
+Present a choice with several options as a temporary decision document and
+numbered chat text. Inside a capsule with console tools, build it with
+`devcapsule project checkout decisions from-table`, save its output in the
+console's decisions directory, and present it with `hand-off`. End with the
+link when the command supplies one. Without the tools, give the numbered
+text directly. Both chat and page answers count; a chat answer wins for the
+same item. This keeps the choice accessible without requiring a browser.
+
+Read page answers from capsule state and record outcomes under the existing
+rules before deleting the document and answer. Keep unanswered items pending.
+Intake choices must follow topics 8.2 and 8.3, including project-management's
+terminal outcomes; the builder's generic accept, decline and defer defaults
+cannot replace those rules. Design decisions still need the records that
+topic 12.7 requires. Capsule-state deletion is not a Git operation. Neither
+the document nor its answer belongs in Git, and tokened links belong only
+in chat. This separates the temporary question from its durable outcome.
+
+Send other environment notices through `notifications post` when available,
+or in chat otherwise. Notification files are capsule state. Durable facts
+still go into the normal records. The notification channel tells the human
+what happened without replacing the project's memory.
+
 ## 9. Sessions
 
 ### 9.1 to 9.4 Start, resume, pause, open threads

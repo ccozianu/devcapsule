@@ -553,6 +553,13 @@ capsule the command says where the module is. The contract is
 `DECISIONS.md` in the console's source; the rule for agents is topic 8.8 of
 `WORKFLOW.md`.
 
+`decisions --help` shows the wrapper's help without a console.
+`decisions SUBCOMMAND --help` shows that tool's help inside a capsule.
+With no arguments, the console module reports a missing subcommand and
+returns status 2. The wrapper preserves the tool's output and exit status.
+`from-table` prints JSON to standard output; redirect it to
+`DECISIONS-DIR/ID.json` to save the document.
+
 ### Shared component installations
 
 Node, Temurin, and Maven install in separate BuildKit stages when building a
