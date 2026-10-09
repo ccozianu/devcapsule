@@ -147,7 +147,7 @@ table.data td.keep, table.data th.keep { white-space: nowrap; overflow-wrap: nor
 .record blockquote { border-left: 3px solid var(--line); margin: 1rem 0; padding: 0.2rem 1rem; color: var(--lead); }
 .record img { max-width: 100%; }
 .record .diagram { margin: 1rem 0; overflow-x: auto; }
-.record .diagram svg { max-width: 100%; height: auto; }
+.record .diagram img { max-width: 100%; height: auto; }
 .record .diagram-error { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; white-space: pre-wrap; }
 .crumbs { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; overflow-wrap: anywhere; }
 .crumbs a { color: var(--brand); text-decoration: none; }

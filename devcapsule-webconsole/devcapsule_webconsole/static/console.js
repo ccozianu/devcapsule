@@ -1,6 +1,7 @@
 // The console's one script. Each page names itself with data-page on <body>;
 // the matching renderer fetches the page's document from /api and builds the
-// DOM with textContent only, never markup from data.
+// DOM with textContent. Records use markdown-it with raw HTML disabled;
+// Graphviz output is displayed as an image, never inserted into the DOM.
 (function () {
   "use strict";
 
@@ -289,26 +290,36 @@
 
   // A relative link inside a record names a file in the project; resolve it
   // against the record's directory. Absolute URLs, root paths and fragments
-  // are left alone. The result has no "." or ".." component.
+  // are left alone. Decode URL paths once before resolving dot components.
+  // An invalid local target becomes an inert fragment, never a browser-relative URL.
   function resolveRecordLink(from, href) {
     if (!href || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("/") || href.startsWith("#")) return null;
     const match = /^([^?#]*)(\?[^#]*)?(#.*)?$/.exec(href);
-    const target = match[1], fragment = match[3] || "";
+    const fragment = match[3] || "";
+    let target;
+    try { target = decodeURIComponent(match[1]); } catch (_) { return { path: null, fragment: "" }; }
+    if (target.includes("\0") || target.startsWith("/")) return { path: null, fragment: "" };
+    if (target === "") return { path: from, fragment };
     const directory = from.includes("/") ? from.slice(0, from.lastIndexOf("/")).split("/") : [];
     const parts = directory.concat(target.split("/"));
     const resolved = [];
     for (const part of parts) {
       if (part === "" || part === ".") continue;
-      if (part === "..") { if (resolved.length === 0) return null; resolved.pop(); continue; }
+      if (part === "..") { if (resolved.length === 0) return { path: null, fragment: "" }; resolved.pop(); continue; }
       resolved.push(part);
     }
     return { path: resolved.join("/"), fragment };
   }
 
+  function rawRecordUrl(resolved) {
+    return "/api/project/raw?path=" + encodeURIComponent(resolved.path) + resolved.fragment;
+  }
+
   function recordUrl(resolved) {
+    if (resolved.path === null) return "#";
     return resolved.path.toLowerCase().endsWith(".md")
       ? "/records/" + resolved.path.split("/").map(encodeURIComponent).join("/") + resolved.fragment
-      : "/api/project/raw?path=" + encodeURIComponent(resolved.path);
+      : rawRecordUrl(resolved);
   }
 
   function recordRenderer(from) {
@@ -332,10 +343,37 @@
     const image = md.renderer.rules.image;
     md.renderer.rules.image = (tokens, index, options, env, self) => {
       const resolved = resolveRecordLink(from, tokens[index].attrGet("src"));
-      if (resolved !== null) tokens[index].attrSet("src", recordUrl(resolved));
+      if (resolved !== null) tokens[index].attrSet("src", resolved.path === null ? "" : rawRecordUrl(resolved));
       return image(tokens, index, options, env, self);
     };
+    // Heading IDs make the records' table-of-contents links usable. Read
+    // inline text, including code and image labels, without formatting marks.
+    md.core.ruler.push("record_heading_ids", (state) => {
+      const used = new Set();
+      for (let index = 0; index < state.tokens.length; index++) {
+        const token = state.tokens[index];
+        if (token.type !== "heading_open") continue;
+        const inline = state.tokens[index + 1];
+        const label = (inline.children || []).map((child) =>
+          ["text", "code_inline", "image"].includes(child.type) ? child.content :
+            ["softbreak", "hardbreak"].includes(child.type) ? " " : "").join("");
+        const base = label.toLowerCase().replace(/[^\p{L}\p{M}\p{N}_\-\s]/gu, "").replace(/\s/g, "-");
+        let id = base;
+        for (let suffix = 1; used.has(id); suffix++) id = base + "-" + suffix;
+        used.add(id);
+        token.attrSet("id", "record-heading-" + id);
+      }
+    });
     return md;
+  }
+
+  function scrollToRecordFragment(article) {
+    let fragment;
+    try { fragment = decodeURIComponent(window.location.hash.slice(1)); } catch (_) { return; }
+    if (!fragment) return;
+    // Prefix IDs to avoid collisions with the console's own DOM identifiers.
+    const target = document.getElementById("record-heading-" + fragment);
+    if (target && article.contains(target)) target.scrollIntoView();
   }
 
   async function drawDiagrams(container) {
@@ -348,7 +386,16 @@
     }
     for (const source of sources) {
       try {
-        source.replaceWith(viz.renderSVGElement(source.textContent));
+        // DOT URL/href attributes can contain javascript: URLs. SVG image
+        // mode disables scripts, links and external resources by construction.
+        const svg = viz.renderString(source.textContent, { format: "svg", engine: "dot" });
+        const drawing = el("img", {
+          src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+          alt: "Graphviz diagram",
+        });
+        // Establish the image size before the page scrolls to a heading.
+        await drawing.decode();
+        source.replaceWith(drawing);
       } catch (error) {
         source.replaceWith(el("div", { class: "diagram-error", text: "DOT did not render: " + error.message }), source);
       }
@@ -375,6 +422,13 @@
     const source = await text("/api/project/file?path=" + encodeURIComponent(path));
     article.innerHTML = recordRenderer(path).render(source);
     await drawDiagrams(article);
+    scrollToRecordFragment(article);
+    window.addEventListener("hashchange", () => scrollToRecordFragment(article));
+    // Clicking the current fragment again does not emit hashchange.
+    article.addEventListener("click", (event) => {
+      const link = event.target.closest && event.target.closest("a[href]");
+      if (link && link.hash && link.href === window.location.href) scrollToRecordFragment(article);
+    });
   };
 
   document.addEventListener("DOMContentLoaded", () => {

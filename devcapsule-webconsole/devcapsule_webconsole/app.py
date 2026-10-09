@@ -32,6 +32,7 @@ PAGES = {
 }
 # What a raw project file is served as, by extension. Markdown is text so a
 # browser shows it; anything unknown is bytes a browser offers to save.
+# SVG can contain active content. The raw route isolates every response below.
 RAW_CONTENT_TYPES = {
     ".md": "text/markdown; charset=utf-8",
     ".txt": "text/plain; charset=utf-8",
@@ -106,7 +107,13 @@ def create_app(settings: Settings) -> FastAPI:
             return PlainTextResponse(f"no file at {path!r} in the project\n", status_code=404)
         except OSError:
             return PlainTextResponse(f"cannot read {path!r} in the project\n", status_code=403)
-        return Response(content, media_type=raw_content_type(path))
+        # An SVG is an image when embedded, but an active document when opened.
+        # Isolate raw documents from the console origin and forbid their code,
+        # subresources and forms. nosniff also prevents use as a script or style.
+        return Response(content, media_type=raw_content_type(path), headers={
+            "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+            "X-Content-Type-Options": "nosniff",
+        })
 
     app.mount("/static", StaticFiles(directory=str(settings.static_root)), name="static")
     app.add_middleware(TokenGate, token=settings.token)
@@ -138,10 +145,10 @@ def compose_identity(information: dict[str, Any], versions: dict[str, Any]) -> d
 
 
 def raw_content_type(path: str) -> str:
-    """The media type a raw project file is served as, never one that runs as a page.
+    """The media type for a raw project file, isolated by the raw route's CSP.
 
-    HTML and scripts are served as plain text: a record may link to such a
-    file, but the console never lets a project file execute in its origin.
+    HTML is served as plain text. SVG keeps its image type for illustrations;
+    the response sandbox prevents an opened SVG from using the console origin.
     """
     suffix = "." + path.rsplit(".", 1)[-1].lower() if "." in path.rsplit("/", 1)[-1] else ""
     if suffix in RAW_CONTENT_TYPES:

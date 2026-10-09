@@ -13,3 +13,13 @@ build, unchanged. A test checks the digests below against the files.
 To upgrade one: fetch the package with `npm pack <name>@<version>`, verify
 the registry's integrity string, copy the browser build under the new
 versioned name, update this table, and delete the old file.
+
+The wheel includes `static/vendor/*`. Check the built wheel as well as the
+source tree when changing these assets.
+
+Use `markdown-it` with raw HTML disabled. Render Graphviz SVG as an image,
+not as inline SVG: DOT can supply active links through its `URL` attributes.
+SVG image mode disables scripts, links and external resources, as specified
+by [SVG processing modes](https://www.w3.org/TR/SVG/conform.html#processing-modes).
+Keep the raw route's sandbox and `nosniff` headers when serving project SVG.
+The digest check establishes file identity; it does not sanitize rendered content.

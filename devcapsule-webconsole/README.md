@@ -20,8 +20,10 @@ imports none of the runtime's internals. Its API is the runtime CLI's
 - Records render in the browser with `markdown-it` and DOT with `viz.js`,
   both vendored under `devcapsule_webconsole/static/vendor/` with their
   provenance in `VENDORED.md`; no build step, no Node in the capsule. Raw
-  HTML in a record is not rendered, and a raw project file is never served
-  as a page.
+  HTML in a record is not rendered. Raw files carry a sandbox policy and
+  `nosniff`; an opened SVG cannot use the console origin. DOT output is an
+  image, so its links are inactive. Record headings have fragment targets;
+  relative URL paths are decoded before resolution inside the project.
 
 ## Running it on a host
 

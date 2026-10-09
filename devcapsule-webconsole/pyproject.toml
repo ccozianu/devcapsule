@@ -22,7 +22,7 @@ devcapsule-webconsole = "devcapsule_webconsole.__main__:main"
 include = ["devcapsule_webconsole*"]
 
 [tool.setuptools.package-data]
-devcapsule_webconsole = ["static/*"]
+devcapsule_webconsole = ["static/*", "static/vendor/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
