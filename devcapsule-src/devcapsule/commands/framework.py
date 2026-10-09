@@ -50,6 +50,13 @@ class _LeafParser(argparse.ArgumentParser):
         raise UsageError(f"{message}\n{self.format_usage().rstrip()}")
 
 
+STABLE_JSON_HELP = (
+    "Emit stable machine-readable JSON instead of text: schema-version 1, "
+    "the contract the capsule web console reads."
+)
+"""Help text shared by the ``--json`` flags whose document shape is a contract."""
+
+
 class Command:
     """One leaf command: declarative argparse options plus a ``run`` body.
 

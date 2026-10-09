@@ -319,6 +319,118 @@ def test_project_config_list_materializes_default_checkout_and_reports_readiness
         assert resolved_path.read_bytes() == original_resolution
 
 
+def _listing_document(project: Path, capsys) -> tuple[dict, str]:
+    assert cli.main(["project", "--path", str(project), "config", "list", "--json"]) == 0
+    captured = capsys.readouterr()
+    return json.loads(captured.out), captured.err
+
+
+def test_project_config_list_json_carries_the_table_and_keeps_notices_off_stdout(
+    tmp_path: Path, capsys
+) -> None:
+    """``--json`` is the contract the web console reads: schema version 1,
+    the identity, and every row of the text table under the same columns."""
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."runtime.memory-limit"]
+            type = "memory-size"
+            runtime-effect = "docker.memory-limit"
+            """,
+        )
+        write_formation_lock(project)
+        select_codex_component(project)
+
+        document, stderr = _listing_document(project, capsys)
+        # The first listing materializes the checkout records; the notices
+        # must not corrupt the JSON on standard output.
+        assert "Initialized checkout input:" in stderr
+        assert "Initialized resolution placeholder:" in stderr
+        assert document["schema-version"] == 1
+        assert document["context"] == "host selection (next launch)"
+        assert document["project"] == {"creator": "mailto:dev@example.test", "slug": "project"}
+        record = registered_checkouts()[0].record_path
+        assert document["checkout"] == {
+            "name": "default",
+            "launcher-path": str(project.resolve()),
+            "input": str(record),
+            "resolution": str(record.with_name("devcapsule.resolved.toml")),
+        }
+        rows = {(row["kind"], row["name"]): row for row in document["rows"]}
+        assert set(rows[("value", "runtime.memory-limit")]) == {"kind", "name", "status", "source", "value"}
+        assert rows[("value", "runtime.memory-limit")]["status"] == "unset-optional"
+        assert rows[("secret", "codex/openai-api-key")]["status"] == "optional-unbound"
+        assert rows[("authorization", "base-image")]["status"] == "missing-required"
+        assert document["rows"][-1]["kind"] == "resolution"
+        assert document["rows"][-1]["status"] == "unresolved"
+
+        # A second listing is silent, and the JSON names the same rows the
+        # text table prints, in the same order.
+        again, stderr = _listing_document(project, capsys)
+        assert stderr == ""
+        assert again == document
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        text = capsys.readouterr().out
+        header, *printed = text.splitlines()[text.splitlines().index("") + 1:]
+        columns = ("KIND", "NAME", "STATUS", "SOURCE", "VALUE / RECOMMENDATION")
+        starts = [header.index(column) for column in columns]
+        ends = [*starts[1:], None]
+        assert [
+            [line[start:end].rstrip() for start, end in zip(starts, ends)] for line in printed
+        ] == [
+            [row[key] for key in ("kind", "name", "status", "source", "value")] for row in document["rows"]
+        ]
+
+        assert cli.main(["project", "--path", str(project), "config", "set", "runtime.memory-limit", "2GiB"]) == 0
+        capsys.readouterr()
+        changed, _ = _listing_document(project, capsys)
+        assert {(row["kind"], row["name"]): row for row in changed["rows"]}[("value", "runtime.memory-limit")]["status"] == "configured"
+
+
+@pytest.mark.parametrize("name", ["second-checkout", "devcapsule"])
+def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, capsys, name: str) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(first)
+        shutil.copytree(first / ".devcapsule", second / ".devcapsule")
+        assert cli.main(["project", "--path", str(first), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(second), "checkout", "register", name]) == 0
+        capsys.readouterr()
+        document, _ = _listing_document(second, capsys)
+        assert document["checkout"]["name"] == name
+        assert document["checkout"]["launcher-path"] == str(second.resolve())
+        assert document["checkout"]["input"].endswith(f"{name}.checkout.toml")
+        assert next(record for record in registered_checkouts() if record.checkout_path == second).checkout_name == name
+        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        assert f"Checkout name: {name}\n" in capsys.readouterr().out
+
+
+def test_checkout_record_name_rejects_a_non_record_path() -> None:
+    from devcapsule.configuration.storage import checkout_record_name
+
+    with pytest.raises(ValueError, match="not a DevCapsule checkout record path"):
+        checkout_record_name(Path("devcapsule.resolved.toml"))
+
+
+@pytest.mark.parametrize("command", [("config", "list"), ("versions", "show")])
+def test_json_help_names_the_schema_contract(command, capsys) -> None:
+    assert cli.main(["project", *command, "--help"]) == 0
+    help_text = capsys.readouterr().out
+    assert "--json" in help_text
+    assert "schema-version1" in "".join(help_text.split())
+
+
 def test_project_config_list_materializes_named_checkout_placeholder(
     tmp_path: Path, capsys
 ) -> None:

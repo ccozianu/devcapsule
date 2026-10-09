@@ -16,7 +16,7 @@ import shlex
 from typing import Any, Mapping, Sequence
 
 from devcapsule.configuration.file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, render_toml, selected_version_lock
-from devcapsule.configuration.storage import ResolvedProject, discover_project, load_toml, manifest_for, recommendation_lock_for
+from devcapsule.configuration.storage import ResolvedProject, checkout_directory, checkout_record_name, discover_project, load_toml, manifest_for, recommendation_lock_for
 
 
 CONTEXT_PATH = Path("/etc/devcapsule/launch-context.json")
@@ -70,6 +70,10 @@ class LaunchConfiguration:
             "launcher-root": str(selected.root),
             "runtime-root": selected.resolution["runtime"]["project-mount"],
             "checkout-file": selected.checkout_path.name,
+            # The mount hides whether this file came from the named directory.
+            "checkout-name": checkout_record_name(
+                selected.checkout_path,
+                named=selected.checkout_path.parent == checkout_directory(selected.manifest) / "checkouts"),
             "info": configured_information(selected.root, selected.manifest, selected.lock, selected.checkout),
             "running": {"identity": identity, "lock": deepcopy(selected.lock),
                         "origin": "local selection" if selected_version_lock(selected.checkout) else "project recommendation",
@@ -112,9 +116,33 @@ class RuntimeConfiguration:
         from .configuration.capability_selection import selected_lock
         return manifest, selected_lock(manifest, lock, checkout), checkout
 
-    def configuration_report(self) -> str:
+    def _recorded_checkout(self) -> dict[str, Any]:
+        """The mounted checkout record for the next launch, without the
+        version-set selection, which ``versions show`` reports."""
         _, _, checkout = self.current()
-        shown = {key: value for key, value in checkout.items() if key != "version-set"}
+        return {key: value for key, value in checkout.items() if key != "version-set"}
+
+    def configuration_document(self) -> dict[str, Any]:
+        """The ``config list --json`` document inside a capsule: schema
+        version 1, the same facts as ``configuration_report`` prints.
+
+        The record's host paths and permissions are the launcher's recorded
+        choices, not observations of this session; ``rows`` are absent because
+        the launcher's table is computed against the host, not here.
+        """
+        return {
+            "schema-version": 1,
+            "context": "running capsule (next launch, read-only)",
+            "project": {key: self.document["project"][key] for key in ("creator", "slug")},
+            "checkout": {"name": self.document.get("checkout-name", checkout_record_name(self.checkout_path)),
+                         "launcher-path": self.document["launcher-root"],
+                         "runtime-path": self.document["runtime-root"],
+                         "record": self._recorded_checkout()},
+            "launcher-command": self.launcher_command(["config", "list"]),
+        }
+
+    def configuration_report(self) -> str:
+        shown = self._recorded_checkout()
         return ("Runtime context: read-only launcher configuration for the next launch.\n"
                 "Host paths and permissions below are recorded choices, not observations of this running session.\n"
                 "Use 'devcapsule project versions show' for running and next-launch software.\n\n"
@@ -171,6 +199,10 @@ def for_project(start: Path, *, fallback: bool = False) -> RuntimeConfiguration 
         name = document.get("checkout-file")
         if not isinstance(name, str) or Path(name).name != name or not name.endswith(".checkout.toml"):
             raise ValueError("invalid checkout record name")
+        if "checkout-name" in document:
+            checkout_name = document["checkout-name"]
+            if not isinstance(checkout_name, str) or not checkout_name or "/" in checkout_name or "\\" in checkout_name:
+                raise ValueError("invalid checkout name")
         project, running = document["project"], document["running"]
         if not isinstance(project, dict) or not all(isinstance(project.get(key), str) for key in ("creator", "slug")):
             raise ValueError("missing project identity")

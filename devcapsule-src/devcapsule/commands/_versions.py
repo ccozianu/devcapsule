@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from typing import Mapping
 
-from devcapsule.commands.framework import Command, Group
+from devcapsule.commands.framework import Command, Group, STABLE_JSON_HELP
 from devcapsule import version_sets
 from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError
@@ -34,6 +34,8 @@ class VersionsCommand(Command):
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
+        if cls.name == "show":
+            parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
         if cls.name in {"select", "rollback", "follow-project"}:
             parser.add_argument("--authorize", action="append", nargs=2, default=[], metavar=("NAME", "VALUE"),
                                 help="Answer a vendor acquisition question for the target set; never changes host permissions.")
@@ -55,7 +57,7 @@ class VersionsCommand(Command):
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         start = _start(context)
         if cls.name == "show":
-            print(version_sets.inspect(start))
+            print(version_sets.inspection_json(start) if arguments.as_json else version_sets.inspect(start))
         elif cls.name == "check":
             print(version_sets.check(start))
         elif cls.name == "preview":
