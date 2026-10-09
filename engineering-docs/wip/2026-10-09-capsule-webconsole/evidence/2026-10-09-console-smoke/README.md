@@ -28,3 +28,10 @@ built base recipe 10 with the public PEX of revision
 - Base image: `devcapsule-base-e2e:webconsole-r11-181351`, id `sha256:f0ba2441c6e33a75d3971196ff75cb2d31fa9a219aed88b793878a401dcd6006`, built from the public PEX of `9ac19b8` over host networking; recipe-version 11.
 - `tests/e2e/test_built_base.py`: passed; the console venv imports psutil offline.
 - `tests/e2e/test_console_answers.py` with the monitor probes: passed with the display and headless. The `r11-*-facts.json` files add `processes_status` 200 with the console's own process listed and `resources_status` 200 with the cgroup available; `r11-with-display-resources.json` is the capsule's reading.
+
+## Recipe 11 rebuilt from PR7's revision, slices 6 and 7 (records, decisions), 2026-10-09
+
+- Base image: `devcapsule-base-e2e:webconsole-decisions-190749`, id `sha256:ebea1eeaf870dc28454f5b31f270c7844fc3171dd5d40f529ff785a1500cb3d5`, built from the PEX of `ec7c1b7` over host networking; recipe-version 11, the console installed from that revision.
+- `tests/e2e/test_built_base.py`: passed.
+- `tests/e2e/test_console_answers.py` with the records and decision probes: passed with the display and headless. The `decisions-*-facts.json` files add `records_page_status` 200, `raw_status` 200 with the fixture's bytes, `vendor_status` 200 for the packaged Graphviz renderer, and `decisions_status` 200 with an empty listing.
+- `decisions-decision-answer.json`: the round trip inside the capsule with the display. The test wrote a decision document into the capsule's default decisions directory through `docker exec`, the listing showed it, a `POST` with the console's origin answered it, and this file is what the capsule's agent would read back. A tokenless listing was refused with 403.

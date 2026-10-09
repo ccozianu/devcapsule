@@ -63,11 +63,19 @@ def check_console(url: str, evidence: Path, label: str) -> dict[str, object]:
     inside_status, inside = fetch(f"{base}/api/project/file?path=smoke.txt", headers=headers)
     processes_status, processes = fetch(f"{base}/api/processes", headers=headers)
     resources_status, resources = fetch(f"{base}/api/resources", headers=headers)
+    # Deliverable 4: the records page for any path, and a raw file with its isolation headers.
+    records_status, records_page = fetch(f"{base}/records/smoke.txt", headers=headers)
+    raw_status, raw = fetch(f"{base}/api/project/raw?path=smoke.txt", headers=headers)
+    vendor_status, _ = fetch(f"{base}/static/vendor/viz-3.31.0.global.js", headers=headers)
+    # Deliverable 5: the decisions list answers, empty or not.
+    decisions_status, decisions_listing = fetch(f"{base}/api/decisions", headers=headers)
     facts = {
         "label": label, "home_status": home_status, "configuration_page_status": page_status,
         "configuration_api_status": configuration_status, "tokenless_status": refused_status,
         "traversal_status": traversal_status, "absolute_status": absolute_status, "inside_status": inside_status,
         "processes_status": processes_status, "resources_status": resources_status,
+        "records_page_status": records_status, "raw_status": raw_status, "vendor_status": vendor_status,
+        "decisions_status": decisions_status,
     }
     (evidence / f"{label}-facts.json").write_text(json.dumps(facts, indent=2) + "\n", encoding="utf-8")
     (evidence / f"{label}-configuration.json").write_text(configuration, encoding="utf-8")
@@ -87,7 +95,50 @@ def check_console(url: str, evidence: Path, label: str) -> dict[str, object]:
     facts["resources_available"] = reading["available"]
     assert reading["available"] is True and reading["memory"]["current-bytes"] > 0
     (evidence / f"{label}-resources.json").write_text(resources, encoding="utf-8")
+    assert records_status == 200 and 'data-page="records"' in records_page
+    assert raw_status == 200 and raw == "DevCapsule graphical smoke fixture.\n"
+    assert vendor_status == 200
+    assert decisions_status == 200 and json.loads(decisions_listing) == {"decisions": []}
     return facts
+
+
+def check_decision_round_trip(url: str, container: str, evidence: Path) -> None:
+    """Deliverable 5 inside a real capsule: an agent's decision file, the human's answer.
+
+    The decision is written where the console's default directory is, through
+    the capsule itself; the answer is posted as the page would post it; the
+    file the agent would read is read back through the capsule.
+    """
+    token = urlsplit(url).query.removeprefix("token=")
+    base = url.split("/?", 1)[0]
+    decision = {"format": 1, "id": "smoke-decision", "title": "Smoke decision", "asked-by": "smoke",
+                "asked-at": "2026-10-09T00:00:00+00:00", "context": "One question.",
+                "items": [{"key": "go", "title": "Go?", "records": ["smoke.txt"],
+                           "options": [{"key": "yes", "label": "Yes"}, {"key": "no", "label": "No"}]}]}
+    directory = "/home/devcapsule/.local/state/devcapsule/decisions"
+    written_in = subprocess.run(
+        ["docker", "exec", "-i", container, "sh", "-c", f"mkdir -p {directory} && cat > {directory}/smoke-decision.json"],
+        input=json.dumps(decision), text=True, capture_output=True, timeout=60.0, check=False,
+    )
+    assert written_in.returncode == 0, written_in.stderr
+    listing_status, listing = fetch(f"{base}/api/decisions", headers={"X-DevCapsule-Token": token})
+    assert listing_status == 200 and [entry["id"] for entry in json.loads(listing)["decisions"]] == ["smoke-decision"], listing
+    parts = urlsplit(base)
+    connection = http.client.HTTPConnection(parts.hostname or "127.0.0.1", parts.port or 80, timeout=10)
+    try:
+        connection.request("POST", "/api/decisions/smoke-decision/answer",
+                           body=json.dumps({"answers": {"go": {"chosen": ["yes"], "note": "from the smoke"}}, "note": "ok"}),
+                           headers={"X-DevCapsule-Token": token, "Content-Type": "application/json", "Origin": base})
+        response = connection.getresponse()
+        answered = response.read().decode("utf-8")
+        assert response.status == 200, answered
+    finally:
+        connection.close()
+    written = command("docker", "exec", container, "cat", f"{directory}/smoke-decision.answer.json").stdout
+    (evidence / "decision-answer.json").write_text(written, encoding="utf-8")
+    assert json.loads(written)["answers"] == {"go": {"chosen": ["yes"], "note": "from the smoke"}}
+    refused_status, _ = fetch(f"{base}/api/decisions")
+    assert refused_status == 403
 
 
 @pytest.mark.e2e
@@ -103,6 +154,7 @@ def test_console_answers_with_and_without_a_display(built_pex: Path, tmp_path: P
         console = wait_for_console_url(session.launcher, session.launcher_log)
         (evidence / "with-display" / "console-url.txt").write_text(console + "\n", encoding="utf-8")
         check_console(console, evidence / "with-display", "with-display")
+        check_decision_round_trip(console, session.container, evidence / "with-display")
         runtime = json.loads(command("docker", "exec", session.container, "cat", "/etc/devcapsule/runtime-plan.json").stdout)
         assert runtime["console"]["token_path"] == "/run/devcapsule-console-token"
         image = command("docker", "inspect", "--format", "{{.Config.Image}}", session.container).stdout.strip()
