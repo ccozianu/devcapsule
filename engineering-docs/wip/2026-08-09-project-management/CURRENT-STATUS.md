@@ -466,10 +466,13 @@ submodules were changed.
 - The controlled-language edition is on `main` (PR #176, owner-merged) and
   the owner's 2026-10-09 direction that every later definition change follows
   the same scheme is in `WORKFLOW-LOCAL.md`, *Workflow Definition Changes*
-  (PR #177). Still the owner's: whether agent reports adopt the style
-  (Karpathy list item 1, second half), and the updated wording of the stale
-  *GitHub Integration: Owner Through The UI* section. `workflow-improvements`
-  regenerates the packaged definition at the release or earlier.
+  (PR #177). Agent reports and human-facing record text follow the same
+  style by topic 9.6 rule 5 (PR #178, on `main` at `1bddaf9`). Still the
+  owner's: the updated wording of the stale *GitHub Integration: Owner
+  Through The UI* section. Remaining Karpathy items: decisions as structured
+  artifacts (4), generated human views (3), diagrams (5), video no (6).
+  `workflow-improvements` regenerates the packaged definition at the release
+  or earlier.
 - Sent `2026-10-09-project-management-github-cli-component.md` to
   `component-catalog` at the owner's direction: make `gh` a component. It is
   MIT licensed and redistributable; upstream ships a checksummed tarball with
