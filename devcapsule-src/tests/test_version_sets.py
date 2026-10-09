@@ -751,6 +751,93 @@ def test_runtime_info_from_anywhere_preserves_launch_facts_and_explicit_paths(jo
     assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
 
 
+def show_document(project, capsys):
+    capsys.readouterr()
+    assert invoke(project, "versions", "show", "--json") == 0
+    return json.loads(capsys.readouterr().out)
+
+
+def test_show_json_reports_the_host_selection_and_agrees_with_the_text(journey, capsys):
+    """``versions show --json`` is the contract the web console reads; the
+    text report is rendered from the same document."""
+    s = journey
+    document = show_document(s.root, capsys)
+    workspace = version_sets.Workspace.load(s.root)
+    assert document["schema-version"] == 1
+    assert document["context"] == "host selection (next launch)"
+    assert document["selected"]["identity"] == workspace.identity
+    assert document["selected"]["origin"] == "project recommendation"
+    assert document["selected"]["components"][s.component] == "1.0.0"
+    assert document["selected"]["local-base-override"] is None
+    assert document["project-recommendation"] is None
+    assert document["local-use"] == {"zero-exit-launch-recorded": False}
+    assert set(document["validation"]) == {"evidence", "not-yet-validated"}
+    assert invoke(s.root, "run") == 0
+    preview_select(s, capsys)
+    document = show_document(s.root, capsys)
+    assert document["selected"]["origin"] == "local selection"
+    assert document["selected"]["components"][s.component] == "2.0.0"
+    assert document["project-recommendation"] == {"status": "unchanged", "detail": None}
+    assert document["local-use"] == {"zero-exit-launch-recorded": False}
+    upstream = load_toml(s.lock)
+    upstream["components"]["pycharm"]["version"] = "upstream-new"
+    s.lock.write_text(render_toml(upstream))
+    document = show_document(s.root, capsys)
+    assert document["project-recommendation"]["status"] == "changed"
+    assert invoke(s.root, "versions", "show") == 0
+    text = capsys.readouterr().out
+    assert f"Version set {document['selected']['identity']}" in text
+    assert "changed since selection" in text
+    for name, version in document["selected"]["components"].items():
+        assert f"{name}: {version}" in text
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    running_id = version_sets.Workspace.load(s.root).identity
+    runtime_root, snapshot, _ = runtime_view(s, monkeypatch, tmp_path)
+    document = show_document(runtime_root, capsys)
+    assert document["context"] == "running capsule"
+    assert document["running"]["identity"] == running_id
+    assert document["running"]["origin"] == "project recommendation"
+    assert document["running"]["components"][s.component] == "1.0.0"
+    assert document["next-launch"]["identity"] == running_id
+    assert document["selection-changed"] is False
+    assert document["launcher-command"].endswith("versions show") and str(s.root) in document["launcher-command"]
+    preview_select(s, capsys)
+    next_id = version_sets.Workspace.load(s.root).identity
+    document = show_document(runtime_root, capsys)
+    assert document["running"]["identity"] == running_id
+    assert document["next-launch"]["identity"] == next_id
+    assert document["next-launch"]["origin"] == "local selection"
+    assert document["next-launch"]["components"][s.component] == "2.0.0"
+    assert document["selection-changed"] is True
+    # The configuration listing is the mounted record, without the selection.
+    assert invoke(runtime_root, "config", "list", "--json") == 0
+    listing = json.loads(capsys.readouterr().out)
+    assert listing["schema-version"] == 1
+    assert listing["context"] == "running capsule (next launch, read-only)"
+    assert listing["project"] == {"creator": "mailto:unit@example.test", "slug": "upgrade"}
+    assert listing["checkout"]["name"] == "default"
+    assert listing["checkout"]["launcher-path"] == str(s.root)
+    assert listing["checkout"]["runtime-path"] == str(runtime_root)
+    assert "version-set" not in listing["checkout"]["record"]
+    assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
+    assert "rows" not in listing
+    assert listing["launcher-command"].endswith("config list") and str(s.root) in listing["launcher-command"]
+    # A launcher activation in progress leaves the running facts intact.
+    journal = s.record.with_suffix(".activation.toml")
+    journal.write_text('"unfinished" = true\n')
+    document = show_document(runtime_root, capsys)
+    assert document["running"]["identity"] == running_id
+    assert document["next-launch"] is None and document["selection-changed"] is None
+    assert "never repairs" in document["next-launch-unavailable"]
+    assert invoke(runtime_root, "versions", "show") == 0
+    assert "Next-launch selection unavailable" in capsys.readouterr().out
+
+
 def test_runtime_show_tracks_running_and_next_sets_without_local_registration(journey, monkeypatch, capsys, tmp_path):
     s = journey
     assert invoke(s.root, "run") == 0

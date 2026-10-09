@@ -319,6 +319,92 @@ def test_project_config_list_materializes_default_checkout_and_reports_readiness
         assert resolved_path.read_bytes() == original_resolution
 
 
+def _listing_document(project: Path, capsys) -> tuple[dict, str]:
+    assert cli.main(["project", "--path", str(project), "config", "list", "--json"]) == 0
+    captured = capsys.readouterr()
+    return json.loads(captured.out), captured.err
+
+
+def test_project_config_list_json_carries_the_table_and_keeps_notices_off_stdout(
+    tmp_path: Path, capsys
+) -> None:
+    """``--json`` is the contract the web console reads: schema version 1,
+    the identity, and every row of the text table under the same columns."""
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."runtime.memory-limit"]
+            type = "memory-size"
+            runtime-effect = "docker.memory-limit"
+            """,
+        )
+        write_formation_lock(project)
+        select_codex_component(project)
+
+        document, stderr = _listing_document(project, capsys)
+        # The first listing materializes the checkout records; the notices
+        # must not corrupt the JSON on standard output.
+        assert "Initialized checkout input:" in stderr
+        assert "Initialized resolution placeholder:" in stderr
+        assert document["schema-version"] == 1
+        assert document["context"] == "host selection (next launch)"
+        assert document["project"] == {"creator": "mailto:dev@example.test", "slug": "project"}
+        record = registered_checkouts()[0].record_path
+        assert document["checkout"] == {
+            "name": "default",
+            "launcher-path": str(project.resolve()),
+            "input": str(record),
+            "resolution": str(record.with_name("devcapsule.resolved.toml")),
+        }
+        rows = {(row["kind"], row["name"]): row for row in document["rows"]}
+        assert set(rows[("value", "runtime.memory-limit")]) == {"kind", "name", "status", "source", "value"}
+        assert rows[("value", "runtime.memory-limit")]["status"] == "unset-optional"
+        assert rows[("secret", "codex/openai-api-key")]["status"] == "optional-unbound"
+        assert rows[("authorization", "base-image")]["status"] == "missing-required"
+        assert document["rows"][-1]["kind"] == "resolution"
+        assert document["rows"][-1]["status"] == "unresolved"
+
+        # A second listing is silent, and the JSON names the same rows the
+        # text table prints, in the same order.
+        again, stderr = _listing_document(project, capsys)
+        assert stderr == ""
+        assert again == document
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        text = capsys.readouterr().out
+        printed = [line.split()[1] for line in text.splitlines()[text.splitlines().index("") + 2:]]
+        assert printed == [row["name"] for row in document["rows"]]
+
+        assert cli.main(["project", "--path", str(project), "config", "set", "runtime.memory-limit", "2GiB"]) == 0
+        capsys.readouterr()
+        changed, _ = _listing_document(project, capsys)
+        assert {(row["kind"], row["name"]): row for row in changed["rows"]}[("value", "runtime.memory-limit")]["status"] == "configured"
+
+
+def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, capsys) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(first)
+        shutil.copytree(first / ".devcapsule", second / ".devcapsule")
+        assert cli.main(["project", "--path", str(first), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(second), "checkout", "register", "second-checkout"]) == 0
+        capsys.readouterr()
+        document, _ = _listing_document(second, capsys)
+        assert document["checkout"]["name"] == "second-checkout"
+        assert document["checkout"]["launcher-path"] == str(second.resolve())
+        assert document["checkout"]["input"].endswith("second-checkout.checkout.toml")
+
+
 def test_project_config_list_materializes_named_checkout_placeholder(
     tmp_path: Path, capsys
 ) -> None:

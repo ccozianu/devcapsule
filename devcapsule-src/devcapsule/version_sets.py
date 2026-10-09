@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import difflib
 import hashlib
+import json
 from pathlib import Path
 import shutil
 import time
@@ -132,58 +133,135 @@ def _validation(lock: Mapping[str, Any], checkout: Mapping[str, Any]) -> tuple[t
     return MATRICES[Platform.current()].validation_evidence(lock)
 
 
-def inspect(start: Path) -> str:
+INSPECTION_SCHEMA_VERSION = 1
+"""Schema version of the ``versions show --json`` document.
+
+The document is a stable contract: the capsule web console reads it. Adding
+a key keeps the version; renaming, removing or retyping one bumps it.
+"""
+
+
+def _describe_set(identity: str, origin: str, lock: Mapping[str, Any], base: Any) -> dict[str, Any]:
+    """One version set as the facts ``versions show`` prints about it."""
+    return {
+        "identity": identity, "origin": origin, "platform": lock.get("platform"), "base": base,
+        "components": {name: metadata.get("version", "base supplied")
+                       for name, metadata in lock["components"].items() if isinstance(metadata, dict)},
+    }
+
+
+def _render_set(described: Mapping[str, Any]) -> list[str]:
+    lines = [f"Platform: {described['platform']}", f"Base: {described['base']}"]
+    lines.extend(f"{name}: {version}" for name, version in described["components"].items())
+    return lines
+
+
+def inspection(start: Path) -> dict[str, Any]:
+    """The facts behind ``versions show``, as one JSON-ready document.
+
+    Outside a capsule the document describes the launcher's selection for the
+    next launch. Inside a capsule it describes the running session from the
+    launch context and, when readable, the selection for the next launch. Both
+    carry ``schema-version`` and ``context`` so a reader can tell them apart.
+    """
     runtime_context = runtime_configuration.for_project(start)
     if runtime_context is not None:
-        return _inspect_runtime(runtime_context)
+        return _runtime_inspection(runtime_context)
     workspace = Workspace.load(start)
     local = selected_version_lock(workspace.checkout) is not None
-    lines = [f"Version set {workspace.identity}", "Origin: " + ("local selection" if local else "project recommendation"),
-             f"Platform: {workspace.lock.get('platform')}", f"Base: {workspace.lock.get('base', workspace.lock.get('image'))}"]
     base_answer = workspace.checkout.get("authorization", {}).get("base-image", {})
-    if isinstance(base_answer, dict) and base_answer.get("image-id"):
-        lines.append(f"Effective local base override: {base_answer['image-id']} (project base above is a recommendation).")
-    for name, value in workspace.lock["components"].items():
-        if isinstance(value, dict):
-            lines.append(f"{name}: {value.get('version', 'base supplied')}")
+    override = base_answer.get("image-id") if isinstance(base_answer, dict) else None
+    selected = _describe_set(workspace.identity, "local selection" if local else "project recommendation",
+                             workspace.lock, workspace.lock.get("base", workspace.lock.get("image")))
+    selected["local-base-override"] = override or None
+    recommendation: dict[str, Any] | None = None
     if local:
         try:
             digest = canonical_digest(workspace.recommendation())
             diverged = digest != workspace.checkout["version-set"]["recommendation-digest"]
-            lines.append("Project recommendation: " + ("changed since selection; local set remains intact. Inspect 'versions follow-project' or export a proposal." if diverged else "unchanged since selection"))
+            recommendation = {"status": "changed" if diverged else "unchanged", "detail": None}
         except CliError as exc:
-            lines.append(f"Project recommendation unavailable: {exc}; local selection remains intact.")
+            recommendation = {"status": "unavailable", "detail": str(exc)}
     evidence, missing = _validation(workspace.lock, workspace.checkout)
-    lines.extend("DevCapsule validation: " + item for item in evidence)
-    lines.extend("Not yet validated: " + item for item in missing)
     known = _known(workspace)
-    lines.append("Local use: " + ("zero-exit launch recorded (not comprehensive validation)" if any(identity == workspace.identity for identity, _, _ in known) else "no successful launch recorded"))
+    return {
+        "schema-version": INSPECTION_SCHEMA_VERSION, "context": "host selection (next launch)",
+        "selected": selected, "project-recommendation": recommendation,
+        "validation": {"evidence": list(evidence), "not-yet-validated": list(missing)},
+        "local-use": {"zero-exit-launch-recorded": any(identity == workspace.identity for identity, _, _ in known)},
+    }
+
+
+def _runtime_inspection(context: runtime_configuration.RuntimeConfiguration) -> dict[str, Any]:
+    running = context.document["running"]
+    def base_of(lock: Mapping[str, Any], base: Mapping[str, Any]) -> Any:
+        return base.get("image-id") or base.get("reference") or lock.get("base", lock.get("image"))
+    document: dict[str, Any] = {
+        "schema-version": INSPECTION_SCHEMA_VERSION, "context": "running capsule",
+        "running": _describe_set(running["identity"], running["origin"], running["lock"],
+                                 base_of(running["lock"], running["base"])),
+        "next-launch": None, "selection-changed": None,
+        "launcher-command": context.launcher_command(["versions", "show"]),
+    }
+    try:
+        _, lock, checkout = context.current()
+    except CliError as exc:
+        document["next-launch-unavailable"] = str(exc)
+        return document
+    identity = effective_set_id(lock, checkout)
+    document["next-launch"] = _describe_set(
+        identity, "local selection" if selected_version_lock(checkout) else "project recommendation",
+        lock, base_of(lock, checkout.get("authorization", {}).get("base-image", {})))
+    document["selection-changed"] = identity != running["identity"]
+    return document
+
+
+def inspection_json(start: Path) -> str:
+    return json.dumps(inspection(start), indent=2, sort_keys=True)
+
+
+def inspect(start: Path) -> str:
+    """Render ``versions show`` from the same facts ``inspection`` reports."""
+    document = inspection(start)
+    if document["context"] == "running capsule":
+        return _render_runtime_inspection(document)
+    selected = document["selected"]
+    lines = [f"Version set {selected['identity']}", f"Origin: {selected['origin']}"]
+    lines.extend(_render_set(selected)[:2])
+    if selected["local-base-override"]:
+        lines.append(f"Effective local base override: {selected['local-base-override']} (project base above is a recommendation).")
+    lines.extend(_render_set(selected)[2:])
+    recommendation = document["project-recommendation"]
+    if recommendation is not None:
+        if recommendation["status"] == "unavailable":
+            lines.append(f"Project recommendation unavailable: {recommendation['detail']}; local selection remains intact.")
+        else:
+            lines.append("Project recommendation: " + (
+                "changed since selection; local set remains intact. Inspect 'versions follow-project' or export a proposal."
+                if recommendation["status"] == "changed" else "unchanged since selection"))
+    lines.extend("DevCapsule validation: " + item for item in document["validation"]["evidence"])
+    lines.extend("Not yet validated: " + item for item in document["validation"]["not-yet-validated"])
+    lines.append("Local use: " + ("zero-exit launch recorded (not comprehensive validation)"
+                                  if document["local-use"]["zero-exit-launch-recorded"] else "no successful launch recorded"))
     lines.append("Check distributions explicitly: devcapsule project versions check")
     return "\n".join(lines)
 
 
-def _inspect_runtime(context: runtime_configuration.RuntimeConfiguration) -> str:
-    running = context.document["running"]
-    def describe(lock: Mapping[str, Any], base: Mapping[str, Any]) -> list[str]:
-        lines = [f"Platform: {lock.get('platform')}", f"Base: {base.get('image-id') or base.get('reference') or lock.get('base', lock.get('image'))}"]
-        lines.extend(f"{name}: {metadata.get('version', 'base supplied')}"
-                     for name, metadata in lock["components"].items() if isinstance(metadata, dict))
-        return lines
+def _render_runtime_inspection(document: Mapping[str, Any]) -> str:
+    running = document["running"]
     lines = ["Runtime context: configuration is mounted read-only.",
              f"Running session — version set {running['identity']}", f"Origin at launch: {running['origin']}",
-             *describe(running["lock"], running["base"])]
-    try:
-        _, lock, checkout = context.current()
-        identity = effective_set_id(lock, checkout)
-        lines.extend(["", f"Selected for next launch — version set {identity}",
-                      "Origin: " + ("local selection" if selected_version_lock(checkout) else "project recommendation"),
-                      *describe(lock, checkout.get("authorization", {}).get("base-image", {})),
-                      "Same software selection as this session." if identity == running["identity"]
-                      else "Selection has changed; this running session remains on its launch-time version set."])
-    except CliError as exc:
-        lines.extend(["", f"Next-launch selection unavailable: {exc}"])
+             *_render_set(running)]
+    following = document["next-launch"]
+    if following is None:
+        lines.extend(["", f"Next-launch selection unavailable: {document['next-launch-unavailable']}"])
+    else:
+        lines.extend(["", f"Selected for next launch — version set {following['identity']}",
+                      f"Origin: {following['origin']}", *_render_set(following),
+                      "Selection has changed; this running session remains on its launch-time version set."
+                      if document["selection-changed"] else "Same software selection as this session."])
     lines.append("\nSuccessful-use history and launch readiness are owned by the launcher; this session is not yet certified successful.")
-    lines.append("Inspect or change the selection outside this capsule: " + context.launcher_command(["versions", "show"]))
+    lines.append("Inspect or change the selection outside this capsule: " + document["launcher-command"])
     return "\n".join(lines)
 
 

@@ -1,7 +1,7 @@
 ---
 description: See what a checkout will run and what it is running, with project info and the configuration listing, without changing anything.
 weight: 1
-updated: 2026-09-28
+updated: 2026-10-09
 ---
 # Inspect a checkout
 
@@ -41,6 +41,7 @@ a project nested inside another keeps its own identity.
 
 ```bash
 ~/.local/bin/devcapsule project config list
+~/.local/bin/devcapsule project config list --json
 ~/.local/bin/devcapsule project config show
 ```
 
@@ -54,6 +55,12 @@ find the capsule's project from any directory, `/opt` included; a command
 that would change the configuration answers with that launcher command
 instead. A project nested inside the capsule keeps its own identity.
 
+`list --json` is the same table as a document: `schema-version`, the
+project and checkout identity, and one object per row with the table's
+columns as keys. Inside a capsule the document carries the mounted record
+instead of rows, and names the launcher command. The shape is a contract,
+read by the capsule web console; a reader can rely on `schema-version` 1.
+
 Running versions, as opposed to the next launch's selection, are also on
-`~/.local/bin/devcapsule project versions show`; see
-[Component upgrades](../updates/component-upgrades.md).
+`~/.local/bin/devcapsule project versions show`, with `--json` under the same
+contract; see [Component upgrades](../updates/component-upgrades.md).

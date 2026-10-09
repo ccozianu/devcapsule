@@ -3,7 +3,7 @@ description: Try a newer component version for one checkout, inspect the result,
 aliases:
   - /docs/guides/component-upgrades/
 weight: 4
-updated: 2026-09-28
+updated: 2026-10-09
 ---
 # Try a component upgrade and recover
 
@@ -54,6 +54,10 @@ registering another checkout in the container's home:
 devcapsule project versions show
 devcapsule project config list
 ```
+
+Both take `--json` for a script or the capsule web console: a stable document
+with `schema-version` 1 and a `context` that says whether it describes the
+host's next launch or the running capsule.
 
 `versions show` distinguishes the **running session's version set**, captured
 when it launched, from the **current selection for the next launch**. Changing

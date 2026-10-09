@@ -25,6 +25,7 @@ from typing import Any, Callable, ClassVar, Mapping
 
 from devcapsule.launch.command_output import preparation_diagnostics
 from devcapsule.commands.framework import (
+    STABLE_JSON_HELP,
     Command,
     Group,
     add_carrier_options,
@@ -111,6 +112,7 @@ from devcapsule.configuration.file_formats import (
 )
 from devcapsule.configuration.storage import (
     atomic_write,
+    checkout_record_name,
     checkout_record_paths,
     config_root,
     discover_project,
@@ -370,6 +372,9 @@ class ConfigurationListRow:
     source: str
 
 
+CONFIGURATION_LISTING_SCHEMA_VERSION = 1
+
+
 @dataclass(frozen=True)
 class ConfigurationListing:
     """What `config list` printed, for `config show` to explain further."""
@@ -383,6 +388,40 @@ class ConfigurationListing:
     input_path: Path
     resolution_path: Path
     resolution_row: ConfigurationListRow
+    rows: list[ConfigurationListRow]
+    """Every row of the table, the resolution row last."""
+
+    @property
+    def checkout_name(self) -> str:
+        return checkout_record_name(self.input_path)
+
+    def render_identity(self) -> str:
+        identity = self.manifest["project"]
+        return "\n".join([
+            f"Project: {identity['creator']}/{identity['slug']}",
+            f"Checkout: {self.root}",
+            f"Checkout name: {self.checkout_name}",
+            f"Checkout input: {self.input_path}",
+            f"Generated plan: {self.resolution_path}",
+        ])
+
+    def to_document(self) -> dict[str, Any]:
+        """The listing as the stable ``config list --json`` document.
+
+        Schema version 1: ``context`` names the host selection; ``rows`` are
+        the table's rows with the table's columns as keys. Adding a key keeps
+        the version; renaming, removing or retyping one bumps it.
+        """
+        identity = self.manifest["project"]
+        return {
+            "schema-version": CONFIGURATION_LISTING_SCHEMA_VERSION,
+            "context": "host selection (next launch)",
+            "project": {"creator": identity["creator"], "slug": identity["slug"]},
+            "checkout": {"name": self.checkout_name, "launcher-path": str(self.root),
+                         "input": str(self.input_path), "resolution": str(self.resolution_path)},
+            "rows": [{"kind": row.kind, "name": row.name, "status": row.status,
+                      "source": row.source, "value": row.value} for row in self.rows],
+        }
 
     def render_base(self) -> str:
         """Name the base by its contract, say who built it and where the recipe
@@ -424,45 +463,32 @@ class ConfigurationListing:
         return "\n".join(lines)
 
 
-def _print_configuration_listing(context: object | None) -> ConfigurationListing | None:
-    """Print the checkout identity and the configuration table.
+def _load_configuration_listing(
+    context: object | None, *, notice: Callable[[str], None] = print
+) -> ConfigurationListing | runtime_configuration.RuntimeConfiguration:
+    """Load the documents behind ``config list`` and build its table.
 
-    Returns the loaded documents and the resolution row for a caller that
-    adds the review, or ``None`` inside a capsule, where the runtime report
-    is the whole listing. The table is data: every declared value, binding,
-    secret input and authorization with its recorded status, and the
-    generated resolution's state. Advice belongs to ``config show``.
+    Inside a capsule the mounted runtime configuration is the whole listing
+    and is returned as such. Outside, a missing checkout input or resolution
+    placeholder is materialized first and reported through ``notice``, so a
+    JSON caller can keep its standard output to the document alone.
     """
     runtime_context = runtime_configuration.for_project(_project_context(context).start_path())
     if runtime_context is not None:
-        print(runtime_context.configuration_report())
-        return None
+        return runtime_context
     root, manifest = manifest_for(_project_context(context).start_path())
     lock_path, lock = lock_for(root, manifest)
     input_path, resolution_path = checkout_record_paths(manifest, root)
     if not input_path.is_file():
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
-        print(f"Initialized checkout input: {input_path}")
+        notice(f"Initialized checkout input: {input_path}")
     if not resolution_path.is_file():
         atomic_write(
             resolution_path,
             'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
         )
-        print(f"Initialized resolution placeholder: {resolution_path}")
+        notice(f"Initialized resolution placeholder: {resolution_path}")
     checkout = load_checkout(input_path, manifest, root)
-
-    identity = manifest["project"]
-    print(f"Project: {identity['creator']}/{identity['slug']}")
-    print(f"Checkout: {root}")
-    checkout_name = (
-        "default"
-        if input_path.name == "devcapsule.checkout.toml"
-        else input_path.name.removesuffix(".checkout.toml")
-    )
-    print(f"Checkout name: {checkout_name}")
-    print(f"Checkout input: {input_path}")
-    print(f"Generated plan: {resolution_path}")
-
     resolution_row = _configuration_resolution_row(manifest, lock, checkout, resolution_path)
     rows = [
         *_configuration_value_rows(manifest, checkout),
@@ -471,11 +497,28 @@ def _print_configuration_listing(context: object | None) -> ConfigurationListing
         *_configuration_authorization_rows(manifest, lock, checkout),
         resolution_row,
     ]
-    _print_configuration_rows(rows)
     return ConfigurationListing(
         root, manifest, root / ".devcapsule" / "devcapsule.toml", lock, lock_path,
-        checkout, input_path, resolution_path, resolution_row,
+        checkout, input_path, resolution_path, resolution_row, rows,
     )
+
+
+def _print_configuration_listing(context: object | None) -> ConfigurationListing | None:
+    """Print the checkout identity and the configuration table.
+
+    Returns the loaded documents and the rows for a caller that adds the
+    review, or ``None`` inside a capsule, where the runtime report is the
+    whole listing. The table is data: every declared value, binding, secret
+    input and authorization with its recorded status, and the generated
+    resolution's state. Advice belongs to ``config show``.
+    """
+    loaded = _load_configuration_listing(context)
+    if isinstance(loaded, runtime_configuration.RuntimeConfiguration):
+        print(loaded.configuration_report())
+        return None
+    print(loaded.render_identity())
+    _print_configuration_rows(loaded.rows)
+    return loaded
 
 
 class ConfigListCommand(Command):
@@ -484,8 +527,18 @@ class ConfigListCommand(Command):
     help = "List configured values, bindings, authorizations, and the resolution state; data only."
 
     @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        _print_configuration_listing(context)
+        if not arguments.as_json:
+            _print_configuration_listing(context)
+            return 0
+        loaded = _load_configuration_listing(context, notice=lambda line: print(line, file=sys.stderr))
+        document = (loaded.configuration_document() if isinstance(loaded, runtime_configuration.RuntimeConfiguration)
+                    else loaded.to_document())
+        print(json.dumps(document, indent=2, sort_keys=True))
         return 0
 
 

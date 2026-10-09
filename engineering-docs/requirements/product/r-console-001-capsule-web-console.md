@@ -3,7 +3,7 @@ id: R-CONSOLE-001
 title: Every Capsule Serves A Web Console
 type: requirement
 kind: concrete-requirement
-status: proposed
+status: accepted
 priority: wanted
 source_of_truth: repo
 verification: [tests, manual]
@@ -53,6 +53,14 @@ Glances, may be linked from the console; it is not the console.
   a display; the home page and the configuration page render.
 - Manual: the owner opens the console from `project run` and from an SSH
   port forward.
+
+## Acceptance
+
+Accepted by the `capsule-webconsole` workstream on 2026-10-09 in its first
+integration, the JSON contract slice, as the work order asked. The statement
+was read against the mainline evidence the work order names and found
+consistent with it; the two amendments of the same day, DOT diagrams and
+materialized views, extend the later scope without changing the statement.
 
 ## Related
 

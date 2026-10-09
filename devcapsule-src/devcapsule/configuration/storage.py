@@ -150,6 +150,16 @@ def named_checkout_record_paths(
     return input_path, resolved_record_path(input_path)
 
 
+def checkout_record_name(input_path: Path) -> str:
+    """The checkout's name as the launcher shows it: ``default`` for the
+    unnamed record, otherwise the record file's stem before ``.checkout``."""
+    if input_path.name == "devcapsule.checkout.toml":
+        return "default"
+    if input_path.name.endswith(".checkout.toml"):
+        return input_path.name.removesuffix(".checkout.toml")
+    raise ValueError(f"not a DevCapsule checkout record path: {input_path}")
+
+
 def resolved_record_path(input_path: Path) -> Path:
     if input_path.name == "devcapsule.checkout.toml":
         return input_path.with_name("devcapsule.resolved.toml")
@@ -183,9 +193,7 @@ def registered_checkouts(env: Mapping[str, str] | None = None) -> tuple[Register
         if not creator or not slug or not raw_path:
             continue
         source = Path(str(raw_path)).expanduser()
-        name = "default" if candidate.name == "devcapsule.checkout.toml" else candidate.name.removesuffix(
-            ".checkout.toml"
-        )
+        name = checkout_record_name(candidate)
         if not source.exists():
             status = "missing"
         elif not (source / ".devcapsule" / "devcapsule.toml").is_file():

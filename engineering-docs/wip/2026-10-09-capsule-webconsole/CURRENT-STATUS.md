@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; selected 2026-10-09 at the owner's direction, synchronized with `main`, the work order and its two amendments taken into intake; the owner's further instructions are awaited before the first slice
+State: active; slice 1 of the first iteration, the JSON contract, implemented on this branch and gated; the owner directs the work from the work order under the 2026-10-09 orchestration exception
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
 
@@ -43,61 +43,97 @@ Owner decisions of 2026-10-09 that shape the work:
 
 ## Current State
 
-Registered 2026-10-09 from `project-management` at the owner's direction.
-Later the same day the owner directed the switch to this workstream. This
-checkout selected it, merged `origin/main` at `d8a1aa4` into the branch, and
-took the three waiting mail items into intake: the work order, the DOT
-amendment and the materialized-views amendment. They are undecided until the
-owner's further instructions, announced for this session, are heard.
+**2026-10-09, slice 1: the JSON contract.** `config list --json` and
+`versions show --json` exist, with schema version 1, on the host and inside a
+capsule. The text reports render from the same documents, so the two cannot
+disagree. The work order's three mail items are accepted as the goal and
+dispositioned. R-CONSOLE-001 is accepted, as the work order asked for the
+first integration. The user documentation names the flags. The build gate
+ran on this branch before the checkpoint; see *Validation And External State*.
 
-Definition changes read with that merge: work orders start workstreams
-(topic 12.11), materialized views (topic 12.12), diagrams first in DOT
-(topic 9.6 rule 6), recorded visual end-to-end tests (topic 9.6 rule 7).
-No implementation yet.
+Judgments recorded for this slice:
+
+- Inside a capsule, `config list --json` carries the mounted checkout record
+  and the launcher command, not the table's rows. The text report does the
+  same. The rows are computed against the host: a binding row checks a host
+  directory and a secret row checks the launching shell's environment, and
+  neither is observable from the capsule. A row computed here would state
+  something false about the host. The console's configuration page renders
+  the record in a capsule and the rows on a host.
+- The JSON shape rule, written beside the schema constants: adding a key
+  keeps the version; renaming, removing or retyping one bumps it.
+- One help text for every stable `--json` flag, shared from the command
+  framework, names the console as the reader.
+- `versions show` gained `--json`; `check`, `history` and the rest did not.
+  The work order leaves further flags to the page that needs them.
+
+### How the work runs
+
+The owner's instructions of 2026-10-09, given at the switch, are an exception
+to the human-input rule for this iteration. The agent implements the work
+order's first iteration, deliverables 1 and 2, without stopping for
+decisions. Stopping points become written proposals in the pull request.
+Two limits stay: no write operation beyond deliverable 5's answer file, and
+no reach beyond the loopback port and the run token. The owner merges to
+`main`; the agent never does.
+
+The slices are stacked pull requests, each reviewed by a second agent pair
+before the next one starts:
+
+```dot
+digraph stack {
+  rankdir=LR; node [shape=box];
+  main -> "PR1 json contract" -> "PR2 console subproject" -> "PR3 runtime and base" [dir=back];
+  "PR1 json contract" -> "PR1.1 review" [dir=back, style=dashed];
+  "PR2 console subproject" -> "PR2.1 review" [dir=back, style=dashed];
+  "PR3 runtime and base" -> "PR3.1 review" [dir=back, style=dashed];
+}
+```
+
+- PR1, this branch: `--json` on `config list` and `versions show`.
+- PR2, on PR1's branch: the `devcapsule-webconsole/` subproject with the
+  token gate, path confinement, and the home, configuration, versions and
+  project pages.
+- PR3, on PR2's branch: the runtime child, port and token wiring, base
+  recipe 10, the development mount, the fresh-capsule smoke and the IDE
+  smoke column.
+- Each PRn.1 is written by the Codex and gpt-6-astra pair from a
+  `-review` branch off PRn's branch, aimed at clarity, correctness and test
+  coverage of PRn's lines. This workstream reviews it in PR comments and
+  merges it into PRn's branch, or pushes back, at most three rounds, then
+  waits for the owner. PRn+1 starts only after PRn.1 is settled.
 
 ## Planned Next Step
 
-First slice, in order:
+1. Open PR1 against `main` and request PR1.1 from the Codex pair.
+2. Settle PR1.1. Then branch PR2 from this branch.
+3. PR2: the console subproject, runnable on a host against the installed
+   CLI, with its unit tests.
+4. PR3: deliverable 1's runtime and base work, with the smokes. Propose the
+   base-release trigger in that pull request.
 
-1. Runtime: a plan field for the console; a supervised child that starts it
-   beside websockify or alone in a headless capsule; host-side loopback port
-   and token wiring mirroring the contained display; URL printed and opened
-   when a browser exists; `--json` on `config list` and `versions show`.
-2. New subproject `devcapsule-webconsole/`: FastAPI application; static tree
-   with `markdown-it` vendored; pages for configuration, info and versions;
-   one dynamic panel for processes and resources from `/proc` and the
-   cgroup; the run token required on every request; paths confined to the
-   project mount.
-3. Base recipe 10: the console's dependencies in a hash-pinned venv and the
-   console wheel installed from the verified public revision, as the runtime
-   PEX is; a local base build proves it.
-4. Development mount of the checkout's console source over the image's copy,
-   under the recorded self-hosting exception, so edits show on the next run.
-5. Tests: unit for routing, token refusal and traversal refusal; a smoke that
-   starts the console in a fresh capsule and fetches the home page; the IDE
-   smoke rows gain a "console answers" check.
-
-Later slices: records rendered from the mounted project, workflow state from
-root `CURRENT-STATUS.md` and the status files, Mermaid, and the decision pages
-of the human-input rule.
+Later iterations: deliverables 3 and 4 in the order this workstream chooses,
+then 5, then 6.
 
 ## Validation And External State
 
-Nothing built or run yet. No containers, images or ports in use.
+- Slice 1 unit modules: 468 passed with `PYTEST_ADDOPTS` scratch under
+  `/opt/devcapsule-gate/pytest`; `/tmp` overflowed at 2 GB first.
+- `mypy devcapsule`: no issues in 112 files.
+- Build gate `nox -s build` on this branch, 2026-10-09: 1,262 unit cases, 10
+  packaged integrations, type check, source and PEX smokes, documentation
+  contract; successful.
+- No containers, images or ports in use.
 
 ## Open Threads
 
-- Awaiting the owner: the further instructions announced for the switch,
-  before the first slice is planned and the intake items are decided.
 - Base-release cadence: a console change reaches adopters only with a base
   image rebuild and publication, which the release runbook treats as rare.
-  Development iterates through the mounted source; the owner may want a
-  console release trigger named in the release policy.
+  A trigger for the release policy is proposed with PR3.
 - Dependencies in the base: Ubuntu's `python3-fastapi` and friends are old;
-  a hash-pinned venv at image build is the recommendation, like Playwright's.
-- API contract: the console calls the runtime CLI with `--json`. Which
-  commands gain `--json` beyond `config list` and `versions show`, and whether
-  the JSON shape is declared stable, is decided when the first page needs it.
+  a hash-pinned venv at image build is the plan, like Playwright's.
+- The work order on `main` lacks deliverable 6; the amended text is on
+  `project-management`'s branch. The mail item carries its substance.
 - Deliberately not preserved: the exploration of adopting Glances, Netdata,
   Cockpit or a Docker dashboard as the framework; the reasons are summarized
   in decision 3 above.
