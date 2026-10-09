@@ -615,6 +615,31 @@ most common false report; the project wrote the section so the question has an
 answer. The human chooses the hill to climb; the agent chooses the next safe
 foothold; both expect each slice to end in evidence or an explicit blocker.
 
+### 9.6 rule 5 Controlled language for reports and records
+
+**Rule.** Reports to the human and human-facing record text are written at
+about 80% ASD-STE100: one fact per sentence, short sentences, active voice,
+the glossary's terms. Code, commands, quotations, and tables are exempt.
+
+**Intended effect.** A human reads an agent's report or a status file in the
+time it deserves, with no sentence to re-read, and two agents writing about
+the same thing use the same words for it.
+
+**Motivation.** Owner decision of 2026-10-09, after the controlled-language
+edition of this definition measured a quarter fewer tokens and a third as many
+long sentences with no loss of rules. Karpathy's observation of 2026-10-02 was
+the prompt: as agents do more of the work, the human's job moves to
+understanding their output, and a controlled language is the cheapest way to
+make that output readable. ASD-STE100 was built for maintenance documentation
+read under time pressure by people whose first language was often not English,
+which is the position of a human reading an agent's report at the end of a
+long session. Eighty percent, not a hundred, because the full specification
+forbids words the project needs and permits only an approved dictionary; the
+glossary is this project's dictionary. The exemptions exist because code and
+commands are exact, quotations are someone else's words, and tables already
+hold one fact per cell. Existing records are not rewritten, for the same
+reason old section names are not: records are history.
+
 ### 9.8 and 9.9 Checkpoints and session close
 
 **Rule.** Refresh durable state at closure points, after manual validation, on
