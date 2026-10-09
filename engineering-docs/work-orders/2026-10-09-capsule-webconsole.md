@@ -12,8 +12,10 @@ over SSH, opens one URL and sees their development environment as a web page:
 what the `devcapsule` commands report about the capsule and its project, live
 process and resource data from inside the capsule, the project's records
 rendered from markdown, the workflow state, and, when a decision is pending,
-a page that presents the decision and collects the answer. The text commands
-remain and keep working. The console adds the picture.
+a page that presents the decision and collects the answer. Every page the
+console serves is a materialized view that knows what it was built from and
+shows when it is stale. The text commands remain and keep working. The
+console adds the picture.
 
 ## Decisions already taken, binding
 
@@ -120,10 +122,43 @@ Design the page contract with the first use in front of you: the
 project-management intake pass. Keep the contract small enough that a
 different agent can produce a page from a markdown table.
 
+## Deliverable 6: materialized views with dependency tracking
+
+Done means: every human-facing document the console serves is a view that
+records its dependencies inside itself; the console indexes those records,
+computes staleness from the current content ids, shows a stale view as stale,
+re-renders a rendered view on demand, and for an authored view produces an
+agent task from the dependency difference; after a rule in `WORKFLOW.md` is
+edited, the console shows the matching paragraph of `WORKFLOW-humane.md`
+stale and the task names the section, its recorded text and its current text.
+
+Owner decisions of 2026-10-09, binding; see `WORKFLOW.md` topic 12.12:
+
+- Dependencies are recorded inside the view, not in a side registry. The
+  console indexes them. Choose the in-document form: frontmatter for
+  file-level records, a per-section marker for section-level ones. Content
+  ids are git blob ids, the same mechanism as the `Definition read` stamp.
+- Section-level for authored views, the humane companions first; file-level
+  for rendered views, the markdown pages of deliverable 4.
+- Regeneration of a rendered view is mechanical and needs no agent.
+  Regeneration of an authored view is an agent task written where an agent
+  reads it, the same writable capsule state deliverable 5 uses for decision
+  answers; the console never rewrites an authored view itself.
+- A human reviews views and asks for wording and style changes. The console
+  offers no editor for views.
+
+Include a command-line twin of the staleness check, so that an agent at
+session start can ask which views are stale without the browser, and so
+that the gate can refuse a stale companion once the tooling exists.
+Deliverable 6 depends on deliverable 4 for rendering and on deliverable 5
+for the agent-task channel; order it after both.
+
 ## Acceptance evidence
 
 - Unit tests for routing, token refusal, path traversal refusal, and the
   JSON readers.
+- Unit tests for the dependency record parser, staleness computation and the
+  agent-task text; a test that edits a rule and sees its paragraph stale.
 - A smoke that starts the console in a fresh capsule, with and without a
   display, fetches the home page and the configuration page, and checks that
   a tokenless request is refused.
@@ -134,8 +169,10 @@ different agent can produce a page from a markdown table.
 ## Decisions left to you
 
 The port allocation detail; the static tree's layout and styling; the exact
-JSON shapes; the page contract for deliverable 5; the order of deliverables
-3 and 4; which commands beyond the two named gain `--json`.
+JSON shapes; the page contract for deliverable 5; the in-document form of
+the dependency records and the command-line twin's name for deliverable 6;
+the order of deliverables 3 and 4; which commands beyond the two named gain
+`--json`.
 
 ## Decisions left to the owner, stopping points
 
