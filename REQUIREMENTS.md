@@ -86,6 +86,7 @@ Current release/stabilization reality:
 ### Developer Experience And Persistence
 
 - `R-CONFIG-001` — [Conservative Configuration Writers And Tolerant Readers](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — accepted for 0.3 planning; mandatory/optional needs, command-owned writes and graceful degradation.
+- `R-CONSOLE-001` — [Every Capsule Serves A Web Console](engineering-docs/requirements/product/r-console-001-capsule-web-console.md) — proposed 2026-10-09; token-gated loopback console in the base image showing configuration, versions, info and live resources.
 
 - `R-UPGRADE-001` — [Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
 - `R-UPGRADE-002` — [Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md) — accepted V1 objective; independent monitoring and verified alerts remain outstanding.

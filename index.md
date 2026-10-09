@@ -67,6 +67,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Root Requirement Records
 
 - [Conservative configuration writers and tolerant readers](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — R-CONFIG-001, accepted 0.3 direction.
+- [R-CONSOLE-001 Every capsule serves a web console](engineering-docs/requirements/product/r-console-001-capsule-web-console.md)
 - [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
 - [R-UPGRADE-002 Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md)
 
@@ -143,6 +144,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Workflow improvements current status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md)
 - [Component upgrades current status](engineering-docs/wip/2026-09-21-component-upgrades/CURRENT-STATUS.md)
 - [Maintenance current status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md)
+- [Capsule web console current status](engineering-docs/wip/2026-10-09-capsule-webconsole/CURRENT-STATUS.md)
 - [Sample demo projects current status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md)
 - [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)
 
