@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
 
-Definition read: WORKFLOW.md@e75c84def45f, WORKFLOW-LOCAL.md@8496e6da21fb
+Definition read: WORKFLOW.md@5783f7a81c99, WORKFLOW-LOCAL.md@8496e6da21fb
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -24,6 +24,45 @@ multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
 the adoption exception remains recorded in the mainline registry.
 
 ## Current State
+
+- 2026-10-09: began the `capsule-webconsole` workstream at the owner's
+  direction, registered on `ws-capsule-webconsole/first-slice` through a
+  temporary worktree so this checkout stayed on project-management; published
+  at coordination `3ee8fc99`. Owner decisions recorded there and in proposed
+  R-CONSOLE-001: the console is in the base image for everyone, not a
+  component; a static web structure plus a FastAPI application as a separate
+  process outside the runtime PEX, reading the mounted project and the
+  runtime CLI's `--json`; no open-source console adopted as the framework,
+  Glances or similar possible later as an optional component. The owner
+  held the switch: further decisions are to be made here first. Karpathy
+  list item 4, decisions as structured artifacts, is accepted in principle
+  and its rule text waits on the owner's answers to three points: local
+  HTML file as baseline with hosted pages allowed; pages that collect input
+  as well as present; threshold by judgment with three named examples.
+- Later the same day: the owner folded Karpathy item 4 into the web console
+  and asked for a work order. Defined the work order kind in `WORKFLOW.md`
+  topic 12.11, with topic 7.5 letting a workstream begin from one (PR #179,
+  on `main`). Wrote and committed
+  `engineering-docs/work-orders/2026-10-09-capsule-webconsole.md`: outcome,
+  five deliverables with done conditions, acceptance evidence, decisions
+  taken, decisions left to the workstream and to the owner, mainline
+  evidence read. Deliverable 5 is the decision pages, with the three item-4
+  points decided: the console is the baseline host; pages present and
+  collect, answers land in capsule state and the agent records the decision;
+  threshold by judgment with the intake pass, L1 to L13 and release scope as
+  first uses. Delivered to `capsule-webconsole` by mail at coordination
+  `24313ae8`. Karpathy list: 1, 2, 4, 7 done; 3 is the console's later
+  slices; 5 rides the resilience item; 6 is a recorded no, pending.
+- Karpathy item 5 decided and on `main`: diagrams first for explanations
+  with structure, in DOT only, rendered by Graphviz and related software
+  (`WORKFLOW.md` topic 9.6 rule 6). The owner's reading of the post is
+  general, not workflow-specific, and the rule is written that way. The
+  console work order is amended from Mermaid to DOT and the amendment mailed
+  to `capsule-webconsole`.
+- Karpathy item 6 decided and on `main`: no generated explainer videos; a
+  recording harness is preferred for end-to-end tests of visual software and
+  the recording is acceptance evidence (`WORKFLOW.md` topic 9.6 rule 7).
+  Remaining on the list: item 3, human views generated from records.
 
 - 2026-10-09 pilot, owner-directed, on sub-branch
   `ws-project-management/ste-pilot`: `WORKFLOW.md` and `WORKFLOW-LOCAL.md`
@@ -322,6 +361,11 @@ formal 0.2.16 work order still follows registration.
 
 ## Planned Next Step
 
+The owner's remaining decisions in this session: Karpathy item 3; then the
+older decision list starting with the 0.3.0 registration and the user-docs
+gate. After that the owner directs the switch to `capsule-webconsole`, whose
+work order and its DOT amendment are in its mailbox.
+
 Disposition pass over the ten items taken on 2026-10-09, starting with the
 0.3.0 rename: the proposal, the registry row and every "0.2.16" reference in
 this file follow the owner's 2026-10-05 decision; then the two integration
@@ -466,10 +510,13 @@ submodules were changed.
 - The controlled-language edition is on `main` (PR #176, owner-merged) and
   the owner's 2026-10-09 direction that every later definition change follows
   the same scheme is in `WORKFLOW-LOCAL.md`, *Workflow Definition Changes*
-  (PR #177). Still the owner's: whether agent reports adopt the style
-  (Karpathy list item 1, second half), and the updated wording of the stale
-  *GitHub Integration: Owner Through The UI* section. `workflow-improvements`
-  regenerates the packaged definition at the release or earlier.
+  (PR #177). Agent reports and human-facing record text follow the same
+  style by topic 9.6 rule 5 (PR #178, on `main` at `1bddaf9`). Still the
+  owner's: the updated wording of the stale *GitHub Integration: Owner
+  Through The UI* section. Remaining Karpathy items: decisions as structured
+  artifacts (4), generated human views (3), diagrams (5), video no (6).
+  `workflow-improvements` regenerates the packaged definition at the release
+  or earlier.
 - Sent `2026-10-09-project-management-github-cli-component.md` to
   `component-catalog` at the owner's direction: make `gh` a component. It is
   MIT licensed and redistributable; upstream ships a checksummed tarball with

@@ -219,7 +219,11 @@ the parsed headings kept, and the packaged copy regenerated at the release.
 reasons stay complete for humans, and the two never drift apart.
 
 **Motivation.** Owner direction of 2026-10-09, taken the day the
-controlled-language edition merged to `main`. The edition cut the agent's
+controlled-language edition merged to `main`. The same-commit rule is the
+hand-operated form of the dependency that topic 12.12 of `WORKFLOW.md`
+describes; when the web console's view registry tracks a paragraph's
+dependency on its rule and marks it stale, the rule relaxes to keeping that
+dependency fresh. The edition cut the agent's
 required session-start reading by about a quarter and the share of sentences
 over twenty words from a third to a tenth, while a fidelity quiz answered from
 the new text alone came back complete. Those gains last only if every later

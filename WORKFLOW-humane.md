@@ -640,6 +640,69 @@ commands are exact, quotations are someone else's words, and tables already
 hold one fact per cell. Existing records are not rewritten, for the same
 reason old section names are not: records are history.
 
+### 9.6 rule 6 Diagrams first, in DOT
+
+**Rule.** An explanation with structure is given as a diagram first and prose
+second, in the DOT language, in a fenced `dot` block, rendered by Graphviz and
+related software; no other notation; an image only where no renderer is
+available, with the source beside it.
+
+**Intended effect.** A human parses the shape of a thing from a picture in
+seconds instead of reconstructing it from paragraphs, and every diagram in the
+repository is in one notation that both humans and agents write fluently.
+
+**Motivation.** Owner decision of 2026-10-09, from Karpathy's post of
+2026-10-02: "Instead of writing, ask your LLM to create a diagram. These can
+be a lot easier to process, parse, and understand." The point is general, not
+about workflows: whenever an agent would explain structure in prose, the
+diagram is the better output. DOT was chosen over Mermaid and PlantUML because
+it is the notation of graphs as mathematics knows them, nodes and edges, with
+decades of examples that make every model fluent in it, with layout engines
+that handle large graphs and clusters, and with renderers that run anywhere
+from the command line to a vendored JavaScript file in the capsule's web
+console. One notation rather than two keeps the choice out of every diagram.
+GitHub does not render DOT inline; the console does, and an image with the
+source beside it covers the rest. State machines are one case of structure,
+not the rule's subject; the first applications in front of the project are
+the configuration composition boundary, the three places an intake item can
+be, the console's process topology, and a release's branch and tag history.
+
+### 9.6 rule 7 Recorded visual tests, and the no on explainer videos
+
+**Rule.** Prefer a recording harness for end-to-end tests of visual software,
+keep the recording as acceptance evidence, and do not generate explainer
+videos for the human.
+
+**Intended effect.** When a test says an IDE came alive and a file was saved,
+a human can watch it happen rather than trust a log line, and nobody spends
+tokens producing a narrated video about work when the recording of the work
+itself exists.
+
+**Motivation.** Owner decisions of 2026-10-09, closing the last item of the
+Karpathy list. His fourth step, bespoke generated explainer videos, was judged
+not worth adopting: one owner, a text-native project, no evidence of need, and
+a recorded no so that nobody reopens it without new evidence. The recording
+preference is the exception that the discussion surfaced: the IDE smokes of
+2026-10-04 kept Playwright movies and screenshots of IntelliJ, Rider and
+Eclipse coming alive and saving a file, and those recordings were what the
+owner could accept at a glance when a textual report could not have carried
+the same conviction. The rule is a bias, not a mandate, because some visual
+software cannot be driven by a recording harness; where it can, the recording
+is the cheapest acceptance evidence there is.
+
+**The example, as this project does it.** The IDE smoke in
+`devcapsule-src/tests/e2e/ide_session.py` opens a Playwright browser context
+with `record_video_dir=<evidence directory>` and `record_video_size=<viewport>`,
+drives noVNC to the IDE, takes `canvas.screenshot(path=".../desktop.png")` at
+the moment it asserts the desktop is alive, and after the session saves the
+context's video with `video.save_as(".../desktop.webm")`. The evidence
+directory, one per run under `devcapsule-src/dist/e2e-evidence/ide-smoke/`,
+then holds the report, the screenshot and the movie together, and the report
+names the movie file so a reader can find it. The same pattern appears in
+`visual_smoke.py`. Any other harness qualifies if it can produce the same
+three things: a movie of the whole session, screenshots at cited moments, and
+a report that names both.
+
 ### 9.8 and 9.9 Checkpoints and session close
 
 **Rule.** Refresh durable state at closure points, after manual validation, on
@@ -874,6 +937,64 @@ status files, not their internal documents.
 **Motivation.** An index exists because predictable discoverability is the
 difference between recorded and lost. Workstream internals are indexed in the
 workstream's own status file so that open work does not churn the root index.
+
+### 12.11 Work orders
+
+**Rule.** A work order is one markdown file that defines what a workstream is
+to achieve, complete enough for a human or an agent to run it to completion;
+human language governs, formal blocks may be embedded; a workstream may begin
+from one; it is delivered by mail and acknowledged as the goal.
+
+**Intended effect.** A workstream can be handed to whoever is available, human
+or agent, with the author absent, and the result can be judged against what
+was asked.
+
+**Motivation.** Owner direction of 2026-10-09. The glossary had the kind and
+several work orders existed, but nothing said a workstream could be born from
+one or what one had to contain; each author improvised, and the executing
+agent had to guess which parts were binding. The content list in rule 2 is the
+set of questions an executor was observed to come back with: what is done,
+what counts as evidence, what was already decided, what it may decide, and
+when it must stop and ask. Human language governs because the owner writes in
+it and because the executor's first job is to understand intent; embedded
+formal specification is allowed because an agent can derive a precise check
+from a loose description just in time, and a `lean` block or a test beside the
+prose removes the ambiguity where it matters. Delivery by mail keeps the work
+order inside the one handover mechanism the workflow has, so the
+mailbox-intake-log invariant covers it too.
+
+### 12.12 Materialized views
+
+**Rule.** A human-facing document derived from records is a materialized
+view with its dependencies recorded inside it, section-level when an agent
+authors it and file-level when software renders it; staleness is detected
+from content ids and shown; regeneration is on demand, mechanical or by an
+agent task built from the dependency difference; humans review views and do
+not maintain them; this file is the first authored view.
+
+**Intended effect.** No human-facing document drifts from the records it
+explains without the drift being visible, and nobody spends a human's time
+maintaining prose that software or an agent can regenerate.
+
+**Motivation.** Owner decision of 2026-10-09, closing the Karpathy list.
+Karpathy's summary: as agents do the legwork, "a lot more of our work will
+rise up the abstractions into oversight and understanding", and because
+software is cheap, "you can ask for large, custom, discardable software
+artifacts" that would never have made sense before. Discardable is the word
+that matters: a view is built from records when a human needs it and has no
+life of its own. The owner's refinement is the dependency record. A view that
+knows what it was built from can be found stale mechanically, which is the
+same mechanism the `Definition read` stamp already uses for the definition.
+Section-level dependencies were chosen for authored views because a
+file-level stamp would mark this whole file stale at every rule change and
+make regeneration a rewrite rather than a paragraph; file-level is enough for
+rendered views, which regenerate for free. The record lives inside the view,
+not in a side registry, so that view and dependencies travel together and
+survive any change of tooling; the console indexes them. This file is the
+first case: it is not a human-maintained exception to the principle but a
+view whose generator is an agent, reviewed by the owner for wording and style,
+and the local file's same-commit rule is the hand-operated version of the
+dependency until the console tracks it.
 
 ## Section Map: Previous Edition To This One
 
