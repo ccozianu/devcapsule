@@ -1,7 +1,7 @@
-"""The FastAPI application: pages, their JSON, the project-file readers, the monitor, the decisions.
+"""The FastAPI application: pages, their JSON, records, monitoring, decisions and notifications.
 
-Every route is ``GET`` but one: the answer to a decision page is the
-console's one write, which the work order allows. The pages are static
+Writes stay in capsule state: decision answers and notifications read or
+dismissed through the runtime CLI. Every other route is ``GET``. The pages are static
 files that fetch their facts from the ``/api`` routes, which run the
 runtime CLI, read the capsule's processes and cgroup, read a file inside
 the project mount, or read the decisions directory. The records page
@@ -143,7 +143,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/notifications")
     def notifications(unread: bool = False) -> JSONResponse:
         """The checkout's notifications as the runtime CLI lists them, pending decisions merged in."""
-        return document(lambda: cli.notifications(unread_only=unread))
+        return document(lambda: cli.notifications(unread_only=unread, decisions=settings.decisions))
 
     def notification_action(action: str) -> Callable[[str, Request], Response]:
         """``read`` or ``dismiss`` one notification through the CLI: a write into capsule state, same origin only."""

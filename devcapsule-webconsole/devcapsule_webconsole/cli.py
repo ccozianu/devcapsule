@@ -10,9 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import math
+import os
 from pathlib import Path
 import subprocess
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
+
+from .decisions import DECISIONS_ENV
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 
@@ -47,12 +50,12 @@ class RuntimeCli:
         """``devcapsule project --path PROJECT ARGUMENTS... --json``."""
         return (*self.executable, "project", "--path", str(self.project), *arguments, "--json")
 
-    def read(self, *arguments: str) -> dict[str, Any]:
+    def read(self, *arguments: str, environ: Mapping[str, str] | None = None) -> dict[str, Any]:
         """Run one ``project`` subcommand with ``--json`` and parse its output."""
         command = self.command(*arguments)
         try:
             completed = subprocess.run(
-                command, capture_output=True, timeout=self.timeout, check=False
+                command, capture_output=True, timeout=self.timeout, check=False, env=environ
             )
         except OSError as error:
             raise CommandError(command, f"cannot run the runtime CLI: {error}") from error
@@ -96,8 +99,11 @@ class RuntimeCli:
     def configuration(self) -> dict[str, Any]:
         return self.read("config", "list")
 
-    def notifications(self, *, unread_only: bool = False) -> dict[str, Any]:
-        return self.read("checkout", "notifications", "list", *(("--unread",) if unread_only else ()))
+    def notifications(self, *, decisions: Path, unread_only: bool = False) -> dict[str, Any]:
+        # The listing must merge the directory served by the decision pages,
+        # including an explicit --decisions override. Do not change os.environ.
+        environ = {**os.environ, DECISIONS_ENV: str(decisions)}
+        return self.read("checkout", "notifications", "list", *(("--unread",) if unread_only else ()), environ=environ)
 
     def versions(self) -> dict[str, Any]:
         return self.read("versions", "show")
