@@ -359,8 +359,8 @@ digraph stack {
 1. PR5, #192: deliverable 3.
 2. PR6, #194, on PR5's branch: deliverable 4.
 3. PR7, on PR6's branch: deliverable 5, this branch.
-4. A base rebuild from PR7's revision and the console smoke, with the
-   records and decision probes, as the second iteration's end-to-end proof.
+4. Done: a base rebuild from PR7's revision and the console smoke with the
+   records and decision probes; see Validation below.
 5. Deliverable 6, materialized views, in a third iteration.
 
 The first iteration is on `main`: #184 and #190, merged 2026-10-09. On resumption, after the owner's merges or push-backs, the
@@ -397,6 +397,13 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Base recipe 11 rebuilt from PR7's revision `ec7c1b7`, 2026-10-09: the
+  built-base test passed; the console smoke, now probing the records page,
+  the raw route, the packaged renderer and the decisions listing, passed
+  with the display and headless; and inside the capsule with the display a
+  decision written to the default directory was listed, answered through
+  the `POST` route and read back as the answer file. See the `decisions-*`
+  files under `evidence/2026-10-09-console-smoke/`.
 - Build gate on the merged PR6 branch at `615bb86`, 2026-10-09: 1,333 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 156 tests;
