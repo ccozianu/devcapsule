@@ -6,7 +6,7 @@ Start date: 2026-10-09
 
 State: active; registered, first slice defined, implementation not started
 
-Definition read: pending first publish
+Definition read: WORKFLOW.md@8044760fbd4f, WORKFLOW-LOCAL.md@8496e6da21fb
 
 Branch association: `ws-capsule-webconsole/first-slice`
 
