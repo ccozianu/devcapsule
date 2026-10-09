@@ -128,7 +128,9 @@ def realize_environment(
 
     selected_cache = (root or cache_root()).expanduser().resolve()
     if build is None:
-        builder = BuildxImageBuilder(temporary_root=selected_cache / "build-contexts")
+        # One context root for every build: BuildKit's incremental transfer of
+        # the IDE trees is keyed on this path, see BuildxImageBuilder.
+        builder = BuildxImageBuilder(context_root=selected_cache / "build-contexts" / "context")
         build = lambda spec: builder.build(spec, network="none")
     materialize_environment = materialize or ensure_materialized_surface
     # Explanation/reporting hooks ride only the real materializer; injected
