@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192), PR6 (#194) and PR7 (#196) await the owner, stacked, each with its Codex review merged; slice 8's runtime half, PR8, is on `ws-capsule-webconsole/hand-off` and gated
+State: active; PR5 (#192), PR6 (#194), PR7 (#196) and PR8 (#199) await the owner, stacked, each with its Codex review merged; slice 8's console half is next on PR8's branch
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -56,6 +56,21 @@ A `notifications` group under `project checkout` lists, posts, reads and
 dismisses; inside a capsule it acts on the capsule's own state whatever
 `--path` says, on the host it finds the checkout's persistent home as
 `project info` reports it.
+
+**PR #199 is open against PR7's branch. Its review, PR #200 by the Codex
+and gpt-6-astra pair, was merged after one round.** Eight findings, all
+accepted: the store pins every path component below a resolved base
+without following links, so a link an agent plants in the persistent home
+cannot send a host command into another checkout; temporary files are
+exclusive and 0600; the encoded size is checked before any write; links
+stay on the console's origin, refusing `//` and backslashes; decisions are
+read under their own 1 MiB limit with their metadata and answer envelopes
+validated, invalid ones listed as errors; the modification time comes from
+the descriptor that was read; every filesystem failure is the command's
+refusal; and 60 more tests. The round: the first version of finding 1
+refused a HOME that is a symbolic link, or an override through one, as
+"Not a directory"; the environment-named base is now resolved before
+pinning, with two tests. Gate on the merged branch below.
 
 Judgments recorded for slice 8's runtime half:
 
@@ -465,6 +480,10 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Build gate on the merged PR8 branch at `e97aaeb`, 2026-10-09: 1,449 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 238 tests;
+  successful.
 - Slice 8 runtime half, PR8 branch, 2026-10-09: 1,362 unit cases, 17 packaged integrations, type check of package and tests, smokes, documentation contract, then the console session with 238 tests; successful.
 - Console smoke on the base built from `ec7c1b7` with PR8's PEX: passed with the display and headless; inside the capsule `DEVCAPSULE_CONSOLE_URL` is the console's host-side origin without the token. See the `pr8-*` files under `evidence/2026-10-09-console-smoke/`.
 - Build gate on the merged PR7 branch at `06d4943`, 2026-10-09: 1,333 unit
