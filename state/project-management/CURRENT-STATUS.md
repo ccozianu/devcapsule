@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
 
-Definition read: WORKFLOW.md@935a382739fe, WORKFLOW-LOCAL.md@8496e6da21fb
+Definition read: WORKFLOW.md@5783f7a81c99, WORKFLOW-LOCAL.md@8496e6da21fb
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -53,6 +53,13 @@ the adoption exception remains recorded in the mainline registry.
   first uses. Delivered to `capsule-webconsole` by mail at coordination
   `24313ae8`. Karpathy list: 1, 2, 4, 7 done; 3 is the console's later
   slices; 5 rides the resilience item; 6 is a recorded no, pending.
+- Karpathy item 5 decided and on `main`: diagrams first for explanations
+  with structure, in DOT only, rendered by Graphviz and related software
+  (`WORKFLOW.md` topic 9.6 rule 6). The owner's reading of the post is
+  general, not workflow-specific, and the rule is written that way. The
+  console work order is amended from Mermaid to DOT and the amendment mailed
+  to `capsule-webconsole`. Remaining on the list: item 3, human views
+  generated from records, and item 6, the recorded no on videos.
 
 - 2026-10-09 pilot, owner-directed, on sub-branch
   `ws-project-management/ste-pilot`: `WORKFLOW.md` and `WORKFLOW-LOCAL.md`
@@ -351,10 +358,10 @@ formal 0.2.16 work order still follows registration.
 
 ## Planned Next Step
 
-The owner's remaining decisions in this session: the recorded no on
-Karpathy item 6; then the older decision list starting with the 0.3.0
-registration and the user-docs gate. After that the owner directs the switch
-to `capsule-webconsole`, whose work order is in its mailbox.
+The owner's remaining decisions in this session: Karpathy items 3 and 6;
+then the older decision list starting with the 0.3.0 registration and the
+user-docs gate. After that the owner directs the switch to
+`capsule-webconsole`, whose work order and its DOT amendment are in its mailbox.
 
 Disposition pass over the ten items taken on 2026-10-09, starting with the
 0.3.0 rename: the proposal, the registry row and every "0.2.16" reference in
