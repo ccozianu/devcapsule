@@ -318,8 +318,11 @@ Owner direction, 2026-10-09, after the controlled-language edition merged.
    companion, `WORKFLOW-humane.md` or `WORKFLOW-LOCAL-humane.md`, in the
    section with the same number or name, as a paragraph that repeats the
    rule, states its intended effect, and gives its motivation.
-3. Change the rule and its companion paragraph in the same commit. A rule
+3. Keep the companion paragraph's dependency on its rule fresh: change the
+   rule and its paragraph in the same commit until the web console's view
+   registry tracks the dependency and marks the paragraph stale. A rule
    without a companion paragraph, or a paragraph without a rule, is a defect.
+   See `WORKFLOW.md` topic 12.12.
 4. Add or amend the *Unreleased* entry under `### Changes` in `WORKFLOW.md`
    for every rule that changes meaning. Keep the entry's bold-title form, which
    the brief parses.

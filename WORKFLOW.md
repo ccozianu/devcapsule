@@ -240,6 +240,15 @@ file's frontmatter names the release this text ships in; see topic 4.1.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
+- **Human-facing documents are materialized views.** Topic 12.12: a
+  document derived from records is a view that records its dependencies
+  inside itself, section-level when authored by an agent, file-level when
+  rendered; software detects staleness from content ids and regenerates
+  mechanically or by producing an agent task from the dependency difference;
+  humans review views and do not maintain them; the humane companions are
+  the first authored views. Migration: the companions gain their dependency
+  records when the console's view registry exists; until then the local
+  file's same-commit rule keeps them fresh by hand.
 - **Work orders start workstreams.** Topic 12.11 defines the work order: one
   markdown file under `engineering-docs/work-orders/`, human language first
   with optional embedded formal specification, complete enough for a human or
@@ -1779,3 +1788,27 @@ outside the container.
 7. A work order is not a requirement, not a status file, and not a release
    plan. Requirements it depends on are cited by ID. Decisions it depends on
    are cited by record.
+
+### 12.12 Materialized views
+
+1. A human-facing document whose content derives from records is a
+   materialized view. The records are the source. The view is never the
+   source of anything.
+2. Every view records its dependencies inside itself: the records it was
+   built from, with their content ids at build time. An authored view, one
+   an agent writes, records them per section against the source section it
+   explains. A rendered view, one software produces, records them per file.
+3. Software detects a stale view by comparing the recorded content ids with
+   the current records. A stale view is shown as stale, never silently
+   served as current.
+4. Regenerate a view on demand. Where the derivation is mechanical, software
+   regenerates it. Where the derivation needs judgment, software produces an
+   agent task from the dependency difference, naming the section, its
+   recorded text and its current text, and an agent regenerates the view
+   from that task.
+5. A human reviews a view and asks for changes of wording or style. A human
+   does not maintain a view. Do not write a new hand-maintained human copy of
+   anything derivable from records.
+6. The humane companions of this file and of the local file are authored
+   views: each paragraph depends on the rule it explains. The web console is
+   the home of views and of their staleness.
