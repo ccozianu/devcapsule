@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192), PR6 (#194) and PR7 (#196) await the owner, stacked, each with its Codex review merged; slice 8, the hand-off and notifications, starts on PR7's branch by the owner's direction of 2026-10-09
+State: active; PR5 (#192), PR6 (#194) and PR7 (#196) await the owner, stacked, each with its Codex review merged; slice 8's runtime half, PR8, is on `ws-capsule-webconsole/hand-off` and gated
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,34 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 8, runtime half (PR8).** The launcher passes
+`DEVCAPSULE_CONSOLE_URL`, the console's host-side origin without the
+token, into the capsule, so an agent can end a decision hand-off with a
+link; `project info` names the value. A notifications store,
+`devcapsule/notifications.py`: one JSON file per notification under
+`$XDG_STATE_HOME/devcapsule/notifications/`, the checkout's state beside
+the decisions directory, never a record; validation names its field,
+reads are bounded and never follow a link, writes are atomic. The listing
+merges unanswered decisions as the kind `decision` and never copies them.
+A `notifications` group under `project checkout` lists, posts, reads and
+dismisses; inside a capsule it acts on the capsule's own state whatever
+`--path` says, on the host it finds the checkout's persistent home as
+`project info` reports it.
+
+Judgments recorded for slice 8's runtime half:
+
+- Under `project checkout`, not `project`: the store is keyed by the
+  checkout through the persistent home the launcher mounts, and the
+  workflow's vocabulary makes a checkout one clone with one workstream.
+- `CapsuleAccess.INDEPENDENT` for every leaf: the writes go to capsule
+  state only, so the vocabulary of refusing inside a capsule does not
+  apply, and an agent inside must be able to post.
+- Decisions are merged at listing time, never copied; `read` and
+  `dismiss` refuse a decision and say how it is settled.
+- The token never enters the environment: the origin is enough for a
+  link once the hand-off command adds the token from its file, and the
+  browser's cookie carries it afterwards.
 
 **2026-10-09, slice 7: decision pages (deliverable 5).** The contract is
 `devcapsule-webconsole/DECISIONS.md`: an agent writes `<id>.json` into the
@@ -437,6 +465,8 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- Slice 8 runtime half, PR8 branch, 2026-10-09: 1,362 unit cases, 17 packaged integrations, type check of package and tests, smokes, documentation contract, then the console session with 238 tests; successful.
+- Console smoke on the base built from `ec7c1b7` with PR8's PEX: passed with the display and headless; inside the capsule `DEVCAPSULE_CONSOLE_URL` is the console's host-side origin without the token. See the `pr8-*` files under `evidence/2026-10-09-console-smoke/`.
 - Build gate on the merged PR7 branch at `06d4943`, 2026-10-09: 1,333 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 238 tests;
