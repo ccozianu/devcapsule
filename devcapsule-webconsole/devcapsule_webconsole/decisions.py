@@ -6,8 +6,8 @@ decisions directory, the console renders it, the human answers, the console
 writes ``<id>.answer.json``, and the agent reads it back. Nothing here is a
 record; the agent records the outcome in the normal files and deletes both.
 
-The answer write is the console's one write operation, which the work order
-allows for this deliverable and nothing else.
+The answer write is this module's only write operation. The hand-off prints
+the question and its console link for an agent to paste into a chat.
 """
 
 from __future__ import annotations
@@ -398,15 +398,19 @@ def hand_off_text(decision: Decision, link: tuple[str, str] | None) -> str:
         lines += ["", decision.context.strip()]
     lines.append("")
     for number, item in enumerate(decision.items, 1):
-        lines.append(f"{number}. {item.title}")
+        prefix = f"{number}. "
+        indent = " " * len(prefix)
+        lines.append(prefix + ("\n" + indent).join(item.title.splitlines()))
         if item.summary.strip():
-            lines += [f"   {line}" if line else "" for line in item.summary.strip().splitlines()]
+            lines += [indent + line if line else "" for line in item.summary.strip().splitlines()]
         if item.records:
-            lines.append("   Records: " + " · ".join(item.records))
+            lines.append(indent + ("\n" + indent).join(("Records: " + " · ".join(item.records)).splitlines()))
         for option in item.options:
-            lines.append(f"   - {option.key}: {option.label}" + (f". {option.summary}" if option.summary else ""))
+            option_lines = (f"{option.key}: {option.label}" + (f". {option.summary}" if option.summary else "")).splitlines()
+            lines.append(indent + "- " + option_lines[0])
+            lines += [indent + "  " + line if line else "" for line in option_lines[1:]]
         if item.multiple:
-            lines.append("   (choose any number of options)")
+            lines.append(indent + "(choose any number of options)")
         lines.append("")
     if link is None:
         lines.append("Answer here with each item's number and option key. The web console is not reachable from this "
@@ -443,6 +447,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                                            asked_by=arguments.asked_by, context=arguments.context)
             print(json.dumps(decision.to_mapping(), indent=2))
             return 0
+        if arguments.command == "hand-off" and arguments.decision.suffix != ".json":
+            raise DecisionError("the decision file must end in .json")
         store = DecisionStore(arguments.decision.parent)
         decision = store.read_decision(arguments.decision.stem)
         if arguments.command == "hand-off":

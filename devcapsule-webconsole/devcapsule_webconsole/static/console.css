@@ -57,6 +57,7 @@ header.console-bar .bell .count {
   display: inline-block; min-width: 1.4em; margin-left: 0.4em; padding: 0 0.4em; border-radius: 1em;
   background: var(--brand); color: #fff; font-size: 0.8rem; line-height: 1.5; text-align: center;
 }
+header.console-bar .bell .count[hidden] { display: none; }
 header.console-bar .bell-menu {
   position: absolute; right: 0; top: 1.9rem; min-width: 20rem; max-width: 28rem; z-index: 10;
   background: var(--surface); border: 1px solid var(--line); border-radius: 6px;

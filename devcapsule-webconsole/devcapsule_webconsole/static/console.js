@@ -592,12 +592,17 @@
   };
 
   // The bell on every page: the unread count and the newest few, refreshed
-  // every half minute; the link itself opens the notifications page.
+  // every half minute. The link opens a dropdown when the script is running.
   function bell() {
     const anchor = document.querySelector("header.console-bar .bell");
     const menu = document.querySelector("header.console-bar .bell-menu");
     if (!anchor || !menu) return;
     const count = anchor.querySelector(".count");
+    function showMenu(show) {
+      menu.hidden = !show;
+      anchor.setAttribute("aria-expanded", String(show));
+    }
+    showMenu(false);
     async function refresh() {
       try {
         const listing = await api("/api/notifications?unread=1");
@@ -605,6 +610,7 @@
         count.textContent = String(listing.unread);
         count.hidden = listing.unread === 0;
         anchor.classList.toggle("has-unread", listing.unread > 0);
+        anchor.setAttribute("aria-label", "Notifications: " + listing.unread + " unread");
         const items = entries.slice(0, 5).map((entry) => el("a", { href: entry.link || "/notifications" }, [
           el("span", { class: "kind", text: entry.kind }), document.createTextNode(entry.title)]));
         if (items.length === 0) items.push(el("p", { text: "Nothing unread." }));
@@ -612,16 +618,24 @@
         menu.replaceChildren(...items);
       } catch (error) {
         count.hidden = true;
+        anchor.classList.toggle("has-unread", false);
+        anchor.setAttribute("aria-label", "Notifications unavailable");
         menu.replaceChildren(el("p", { text: "Notifications unavailable: " + error.message }),
           el("a", { class: "more", href: "/notifications", text: "All notifications" }));
       }
     }
     anchor.addEventListener("click", (event) => {
       event.preventDefault();
-      menu.hidden = !menu.hidden;
+      showMenu(menu.hidden);
     });
     document.addEventListener("click", (event) => {
-      if (!event.target.closest || !event.target.closest(".bell-wrap")) menu.hidden = true;
+      if (!event.target.closest || !event.target.closest(".bell-wrap")) showMenu(false);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !menu.hidden) {
+        showMenu(false);
+        anchor.focus();
+      }
     });
     refresh();
     setInterval(refresh, 30000);
