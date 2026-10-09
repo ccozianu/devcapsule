@@ -4,11 +4,11 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR1, the JSON contract, is open against `main` as #184 with its review PR #185 merged after one round; PR2, the console subproject, is next
+State: active; PR1 (#184) awaits the owner; PR2, the console subproject, is implemented on `ws-capsule-webconsole/console-app` and gated, its review PR is next
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
+Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
-Branch association: `ws-capsule-webconsole/first-slice`
+Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1)
 
 Integration target: `main`
 
@@ -42,6 +42,40 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-09, slice 2: the console subproject.** `devcapsule-webconsole/`
+is a second distribution: a FastAPI application, a static tree and tests,
+with hash-pinned runtime and development requirement sets. It serves the
+home, configuration, versions and project pages from the runtime CLI's
+`--json` documents, read by running the CLI. Every request carries the run
+token or is refused, static files included; the token arrives in the printed
+URL and is kept in a cookie. File reads resolve inside the project mount
+only. Every route is `GET`. A new nox session, `webconsole`, type-checks and
+tests it in its own environment, and the build gate queues that session.
+Run by hand against this capsule's real CLI, all four pages render; the
+screenshots are under [evidence/2026-10-09-console-pages](evidence/2026-10-09-console-pages/).
+
+Judgments recorded for slice 2:
+
+- The console does not import the runtime. Its API is a subprocess call
+  per document, uncached, so a change made with a command is on the page at
+  the next reload, as deliverable 2 asks.
+- The token is carried three ways: the query parameter from the printed URL,
+  the cookie the console sets in answer to it, and a header for scripts. A
+  valid query token sets the cookie `HttpOnly; SameSite=Strict`. Comparison
+  is constant-time.
+- Path confinement refuses any `..` component, an absolute path, a NUL, and
+  a symbolic link that resolves outside the mount. The project-file route is
+  the foundation of deliverable 4; in this slice it serves UTF-8 text only.
+- The console takes the CLI executable as an explicit argument. The shipped
+  PEX has a fixed path, but the command name is `devcapsule0` in a
+  self-hosting capsule, so guessing from PATH would be wrong there.
+- The subproject has its own environment and nox session, never the
+  runtime's: FastAPI's dependency set would otherwise be pinned twice.
+- Pages are static HTML with one script that builds the DOM from the
+  documents with `textContent` only. No template engine, no build step.
+- The identity block on the home page composes `project info` and
+  `versions show`; see the open thread on the checkout name.
 
 **2026-10-09, slice 1: the JSON contract.** `config list --json` and
 `versions show --json` exist, with schema version 1, on the host and inside a
@@ -116,8 +150,8 @@ digraph stack {
 
 ## Planned Next Step
 
-1. Branch PR2 from this branch, after #185's merge.
-2. PR2: the console subproject, runnable on a host against the installed
+1. Open PR2 against PR1's branch and request PR2.1 from the Codex pair.
+2. Done in PR2: the console subproject, runnable on a host against the installed
    CLI, with its unit tests.
 3. PR3: deliverable 1's runtime and base work, with the smokes. Propose the
    base-release trigger in that pull request.
@@ -136,12 +170,28 @@ then 5, then 6.
 - Review PR #185 gate, by the Codex pair in its worktree: 1,276 unit cases, 10
   packaged integrations, type check, smokes; documentation contract skipped
   there, the website submodule being absent from a worktree.
-- Build gate on the merged branch at `0ec121e`, 2026-10-09: 1276 passed unit cases, 10
+- Build gate on the merged branch at `0ec121e`, 2026-10-09: 1,276 unit cases, 10
   packaged integrations, type check, smokes, documentation contract; successful.
-- No containers, images or ports in use.
+- Console session `nox -s webconsole` on PR2's branch: mypy clean on 6
+  source files, 52 tests passed.
+- Build gate on PR2's branch, 2026-10-09: 1,276 unit cases, 10 packaged
+  integrations, type check, smokes, documentation contract, then the console
+  session; successful.
+- Manual run against this capsule's real CLI on loopback port 8765 with a
+  fresh token: tokenless request refused, cookie set from the query token,
+  traversal refused, four pages rendered and screenshotted with the website's
+  Playwright into `evidence/2026-10-09-console-pages/`. The server was
+  stopped afterwards.
+- No containers or images in use.
 
 ## Open Threads
 
+- `project info` reports the checkout name as `default` for a named
+  checkout, on the host and in the capsule: it reads a `checkout.name` key
+  that no writer puts in the record. `config list --json` names the record
+  file and is right. The console's home page shows what `project info`
+  reports, so it is wrong there until the command is fixed. Mailed to
+  `maintenance` on 2026-10-09 as a defect; the console will follow the fix.
 - Base-release cadence: a console change reaches adopters only with a base
   image rebuild and publication, which the release runbook treats as rare.
   A trigger for the release policy is proposed with PR3.
