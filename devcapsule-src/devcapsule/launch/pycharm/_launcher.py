@@ -682,7 +682,14 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             selected_runtime_plan = selected_runtime_plan.with_display(DisplayPlan.host_x11())
         # The web console runs whenever the runtime runs, with or without a
         # display, reached like the display: one loopback port, one token.
-        console_host_port = allocate_loopback_port()
+        # Allocation releases its socket. The OS can return the display's
+        # port again before either listener starts.
+        for _ in range(10):
+            console_host_port = allocate_loopback_port()
+            if console_host_port != display_host_port:
+                break
+        else:
+            raise PycharmRunError("Could not allocate distinct display and web console ports; retry the launch.")
         console_token = new_run_token()
         console_listen = "127.0.0.1" if options.network_mode == "host" else "0.0.0.0"
         console_port = console_host_port if options.network_mode == "host" else CONTAINER_CONSOLE_PORT

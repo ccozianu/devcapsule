@@ -5,8 +5,9 @@ updated: 2026-10-09
 ---
 # The web console
 
-Every capsule serves a small read-only website about itself. When you run a
-project, the launcher prints two links: the desktop, when the capsule has
+Base recipe 10 adds a small read-only website about the capsule. Older bases
+print a notice and run without the console. When you run a project, the
+launcher prints two links: the desktop, when the capsule has
 one, and the web console.
 
 ```text
@@ -30,9 +31,10 @@ console changes anything.
 ## The link and the token
 
 The link carries a token made for this run. The console refuses every request
-without it, and the token is never written anywhere but the link and a
-read-only file inside the capsule. Once your browser has opened the link, the
-console keeps the token in a cookie for that site, so the pages' own links
+without it. The launcher writes a private temporary token file on the host
+and mounts it read-only inside the capsule. It removes the file when the
+launcher returns. The printed link also carries the token. Once your browser
+has opened the link, the console keeps the token in a cookie for that site, so the pages' own links
 work without it. Closing the capsule invalidates the token; the next run
 prints a new link.
 

@@ -68,7 +68,7 @@ def console_child(plan: RuntimePlan, run_as_identity: CommandWrapper) -> Supervi
             file=sys.stderr,
             flush=True,
         )
-    probe_address = "127.0.0.1" if console.listen_address in ("0.0.0.0", "::") else console.listen_address
+    probe_address = {"0.0.0.0": "127.0.0.1", "::": "::1"}.get(console.listen_address, console.listen_address)
     return SupervisedChild(
         name=CONSOLE_CHILD,
         command=run_as_identity(command),

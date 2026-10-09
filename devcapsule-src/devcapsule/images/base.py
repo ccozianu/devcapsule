@@ -224,6 +224,12 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
     root_image = resolved_root_image(options)
     components: list[BuildComponent] = [BaseImageComponent(root_image)]
     if options.install_baseline:
+        if not build_info.has_public_revision:
+            raise CliError(
+                "Base recipe 10 installs the web console from the runtime's GitHub revision. "
+                "The selected runtime has no full GitHub source identity; select a PEX built "
+                "from a published commit. --allow-local-source cannot supply the console source."
+            )
         components.extend(
             [
                 AptPackagesComponent(BASE_APT_PACKAGES),

@@ -51,6 +51,7 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
         command = eclipse.plan(plan).command
     else:
         raise RuntimePlanError(f"unsupported component adapter: {plan.component.adapter}")
+
     def as_capsule_user(child_command: tuple[str, ...]) -> tuple[str, ...]:
         return foreground_command(child_command, plan.identity)
 

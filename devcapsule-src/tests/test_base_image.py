@@ -92,8 +92,8 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     (install,) = webconsole.plan.exec_steps
     script = install.args[-1]
     assert 'git -C "$checkout" fetch -q --depth 1 "$source_repository" "$source_revision"' in script
-    assert 'source_repository="https://github.com/example/devcapsule"' in script
-    assert f'source_revision="{"a" * 40}"' in script
+    assert 'source_repository=https://github.com/example/devcapsule' in script
+    assert f'source_revision={"a" * 40}' in script
     assert 'test "$(git -C "$checkout" rev-parse HEAD)" = "$source_revision"' in script
     assert "--require-hashes -r \"$subproject/requirements.txt\"" in script
     assert "--require-hashes -r \"$subproject/requirements-build.txt\"" in script
@@ -217,21 +217,31 @@ def test_base_image_requires_public_pex_revision_by_default(tmp_path: Path) -> N
         build_base_image_spec(options)
 
 
-def test_base_image_allows_explicit_local_source_escape_hatch(tmp_path: Path) -> None:
+def test_base_without_baseline_allows_explicit_local_source_escape_hatch(tmp_path: Path) -> None:
     pex = pex_fixture(
         tmp_path / "devcapsule.pex",
         revision="unknown",
         public=False,
         build_mnemonic="local-v026",
     )
-    plan = build_base_image_spec(BaseImageBuildOptions(pex, allow_local_source=True)).build_plan()
+    plan = build_base_image_spec(BaseImageBuildOptions(pex, allow_local_source=True, install_baseline=False)).build_plan()
 
     assert ("devcapsule.source.revision", "unknown") in plan.labels
     assert ("org.opencontainers.image.version", "local-v026") in plan.labels
+    assert not any(stage.name == "webconsole" for stage in plan.stages)
+    assert not any(key == "devcapsule.base.webconsole" for key, _ in plan.labels)
+
+
+def test_console_base_rejects_missing_source_before_starting_the_builder(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    builder = Mock()
+    with pytest.raises(CliError, match="--allow-local-source cannot supply the console source"):
+        build_base_image(BaseImageBuildOptions(pex, allow_local_source=True), builder=builder)
+    builder.build.assert_not_called()
 
 
 def test_base_image_local_source_escape_hatch_skips_public_verification(tmp_path: Path) -> None:
-    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
     builder = Mock()
     source_verifier = Mock()
 

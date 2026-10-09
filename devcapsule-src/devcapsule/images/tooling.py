@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shlex
+
 from devcapsule.images.build import ExecComponent
 
 NODE_VERSION = "v22.23.1"
@@ -144,8 +146,8 @@ def webconsole_tooling_component(source_repository: str, source_revision: str) -
     python = WEBCONSOLE_VENV_PYTHON
     pip = f"{python} -m pip install --no-cache-dir --disable-pip-version-check"
     commands = [
-        f'source_repository="{source_repository}"',
-        f'source_revision="{source_revision}"',
+        f"source_repository={shlex.quote(source_repository)}",
+        f"source_revision={shlex.quote(source_revision)}",
         'checkout="$(mktemp -d)"',
         'git -C "$checkout" init -q',
         'git -C "$checkout" fetch -q --depth 1 "$source_repository" "$source_revision"',
