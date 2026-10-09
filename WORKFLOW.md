@@ -240,6 +240,12 @@ file's frontmatter names the release this text ships in; see topic 4.1.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
+- **Work orders start workstreams.** Topic 12.11 defines the work order: one
+  markdown file under `engineering-docs/work-orders/`, human language first
+  with optional embedded formal specification, complete enough for a human or
+  an agent to run the workstream to completion; topic 7.5 lets a workstream
+  begin from one and link it. No migration: existing work orders stay as they
+  are.
 - **Controlled language for reports and records.** Topic 9.6 rule 5: every
   report to the human and every human-facing record text is written at about
   80% ASD-STE100, in the glossary's terms. Code, commands, quotations, and
@@ -820,10 +826,12 @@ work around it.
 
 Begin from a clean, current `main` checkout:
 
-1. Choose the goal, an unused name, and the ISO start date.
+1. Choose the goal, an unused name, and the ISO start date. When a work
+   order exists for the goal, the work order is the goal; see topic 12.11.
 2. Create `engineering-docs/wip/<start-date>-<name>/CURRENT-STATUS.md`.
 3. Record the start date, goal, state, branch prefix, target branch, delivery
-   method or repository default, current task, and next resumable task.
+   method or repository default, current task, and next resumable task. Link
+   the work order when there is one.
 4. Create `intake/README.md` and an empty `intake-dispositions.md` beside the
    status file.
 5. Add the workstream to root `CURRENT-STATUS.md`.
@@ -1716,3 +1724,32 @@ outside the container.
    The status file's own index lists those.
 4. Add promoted documents to `index.md` when they reach their permanent
    location.
+
+### 12.11 Work orders
+
+1. A work order is one markdown file under `engineering-docs/work-orders/`,
+   named `YYYY-MM-DD-<slug>.md`. It defines what a workstream is to achieve,
+   in enough detail that an intelligent agent, a human or a human and agent
+   pair, can take it and run the workstream to completion without the author.
+2. A work order states: the outcome; the deliverables, each with what done
+   means; the acceptance evidence; the decisions already taken that bind the
+   work; the decisions left to the executing workstream and to the owner;
+   the stopping points where the owner must be consulted; the mainline
+   evidence read before it was written.
+3. A work order is written in human language. It may embed formal
+   specification in fenced code blocks, for example a `lean` block, a schema,
+   or a test. The human language governs. The executing agent derives any
+   formal specification it needs from the human language and the embedded
+   blocks, when it needs it.
+4. A workstream may begin from a work order. The work order is then the
+   workstream's goal, and the status file links it.
+5. A work order is delivered by mail like any item, by `project-management`
+   or by the owner. The recipient acknowledges it as its goal or its tasks,
+   or raises disagreement with the human.
+6. The author commits the work order under `engineering-docs/work-orders/`
+   and lists it in `index.md`. Changes to a work order after delivery are new
+   items that say what they supersede. The recipient's status file records
+   what it accepted.
+7. A work order is not a requirement, not a status file, and not a release
+   plan. Requirements it depends on are cited by ID. Decisions it depends on
+   are cited by record.

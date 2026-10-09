@@ -875,6 +875,31 @@ status files, not their internal documents.
 difference between recorded and lost. Workstream internals are indexed in the
 workstream's own status file so that open work does not churn the root index.
 
+### 12.11 Work orders
+
+**Rule.** A work order is one markdown file that defines what a workstream is
+to achieve, complete enough for a human or an agent to run it to completion;
+human language governs, formal blocks may be embedded; a workstream may begin
+from one; it is delivered by mail and acknowledged as the goal.
+
+**Intended effect.** A workstream can be handed to whoever is available, human
+or agent, with the author absent, and the result can be judged against what
+was asked.
+
+**Motivation.** Owner direction of 2026-10-09. The glossary had the kind and
+several work orders existed, but nothing said a workstream could be born from
+one or what one had to contain; each author improvised, and the executing
+agent had to guess which parts were binding. The content list in rule 2 is the
+set of questions an executor was observed to come back with: what is done,
+what counts as evidence, what was already decided, what it may decide, and
+when it must stop and ask. Human language governs because the owner writes in
+it and because the executor's first job is to understand intent; embedded
+formal specification is allowed because an agent can derive a precise check
+from a loose description just in time, and a `lean` block or a test beside the
+prose removes the ambiguity where it matters. Delivery by mail keeps the work
+order inside the one handover mechanism the workflow has, so the
+mailbox-intake-log invariant covers it too.
+
 ## Section Map: Previous Edition To This One
 
 | Previous section | Now |
