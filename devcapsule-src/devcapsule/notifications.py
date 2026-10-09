@@ -33,6 +33,7 @@ it or by its asking agent deleting it.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import json
@@ -41,11 +42,11 @@ from pathlib import Path
 import re
 import secrets
 import stat
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 from devcapsule.configuration.bindings import configuration_binding_declarations, managed_binding_path
 from devcapsule.configuration.storage import (
-    atomic_write, discover_project, find_checkout_record, load_checkout, lock_for, manifest_for,
+    discover_project, find_checkout_record, load_checkout, lock_for, manifest_for,
 )
 from devcapsule.platforms import XdgHomes
 from devcapsule.recursive_dogfood import CONTAINER_NAME_ENV
@@ -61,6 +62,8 @@ DECISION_KIND = "decision"
 ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,99}")
 KIND_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 MAXIMUM_DOCUMENT_BYTES = 64 * 1024
+MAXIMUM_DECISION_BYTES = 1024 * 1024
+"""The sibling decision contract permits larger documents than notifications."""
 MAXIMUM_LINK_LENGTH = 1000
 
 
@@ -142,7 +145,8 @@ def _link(value: object, where: str) -> str:
     text = _text(value, where)
     if not text:
         return ""
-    if not text.startswith("/") or len(text) > MAXIMUM_LINK_LENGTH or any(ord(c) < 0x20 or c in " \x7f" for c in text):
+    if (not text.startswith("/") or text.startswith("//") or "\\" in text
+            or len(text) > MAXIMUM_LINK_LENGTH or any(c.isspace() or ord(c) < 0x20 or c == "\x7f" for c in text)):
         raise NotificationError(f"{where} must be a console path starting with '/' without whitespace or control characters")
     return text
 
@@ -168,31 +172,54 @@ def notification_from_mapping(document: object) -> Notification:
     )
 
 
-def _read_document(path: Path) -> object:
-    """Read a bounded regular file without following a link; ``FileNotFoundError`` passes through."""
+@contextmanager
+def _directory(path: Path, *, create: bool = False) -> Iterator[int]:
+    """Pin each directory component without following links, including capsule-written parents.
+
+    The host must not follow a link planted in the capsule's persistent home.
+    Descriptor-relative operations also survive a directory being replaced during a command.
+    """
+    descriptor = os.open(path.anchor or ".", os.O_RDONLY | os.O_DIRECTORY)
     try:
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        for part in (path.parts[1:] if path.anchor else path.parts):
+            if create:
+                try:
+                    os.mkdir(part, mode=0o700, dir_fd=descriptor)
+                except FileExistsError:
+                    pass
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        yield descriptor
+    finally:
+        os.close(descriptor)
+
+
+def _read_document(path: Path, *, maximum: int = MAXIMUM_DOCUMENT_BYTES) -> tuple[object, float]:
+    """Read a bounded regular file and its mtime from one descriptor; missing files pass through."""
+    try:
+        with _directory(path.parent) as parent:
+            descriptor = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
         with os.fdopen(descriptor, "rb") as stream:
-            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
                 raise NotificationError(f"{path.name} must be a regular file")
-            raw = stream.read(MAXIMUM_DOCUMENT_BYTES + 1)
+            raw = stream.read(maximum + 1)
     except FileNotFoundError:
         raise
     except OSError as error:
         raise NotificationError(f"cannot read {path.name}: {error}") from error
-    if len(raw) > MAXIMUM_DOCUMENT_BYTES:
-        raise NotificationError(f"{path.name} is larger than {MAXIMUM_DOCUMENT_BYTES} bytes")
+    if len(raw) > maximum:
+        raise NotificationError(f"{path.name} is larger than {maximum} bytes")
     try:
-        return json.loads(raw.decode("utf-8"))
+        return json.loads(raw.decode("utf-8")), metadata.st_mtime
     except (ValueError, RecursionError) as error:
         raise NotificationError(f"{path.name} is not a JSON document: {error}") from error
 
 
 def _sort_key(posted_at: str) -> float:
-    try:
-        moment = datetime.fromisoformat(posted_at)
-    except ValueError:
-        return 0.0
+    """Compare validated timestamps as instants, with naive timestamps interpreted as UTC."""
+    moment = datetime.fromisoformat(posted_at)
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=timezone.utc)
     return moment.timestamp()
@@ -209,19 +236,24 @@ class NotificationStore:
         return self.directory / f"{notification_id}.json"
 
     def _document_stems(self, directory: Path) -> list[str]:
-        if not directory.is_dir():
+        try:
+            with _directory(directory) as parent:
+                stems = []
+                for name in os.listdir(parent):
+                    path = Path(name)
+                    if path.suffix != ".json" or ID_PATTERN.fullmatch(path.stem) is None:
+                        continue
+                    try:
+                        metadata = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                    except FileNotFoundError:
+                        continue  # The agent may discard a file during the scan.
+                    if not stat.S_ISDIR(metadata.st_mode):
+                        stems.append(path.stem)
+                return sorted(stems)
+        except FileNotFoundError:
             return []
-        stems = []
-        for path in directory.glob("*.json"):
-            if path.name.endswith(".answer.json") or ID_PATTERN.fullmatch(path.stem) is None:
-                continue
-            try:
-                if stat.S_ISDIR(path.lstat().st_mode):
-                    continue
-            except FileNotFoundError:
-                continue  # Removed between the scan and the look; a writer may do that at any time.
-            stems.append(path.stem)
-        return stems
+        except OSError as error:
+            raise NotificationError(f"cannot list {directory}: {error}") from error
 
     def read(self, notification_id: str) -> Notification:
         """One notification by id; ``NotificationError`` names a decision or a malformed file."""
@@ -229,9 +261,9 @@ class NotificationStore:
             raise NotificationError("the id must be lowercase letters, digits and hyphens, starting with a letter or digit")
         path = self.path(notification_id)
         try:
-            notification = notification_from_mapping(_read_document(path))
+            notification = notification_from_mapping(_read_document(path)[0])
         except FileNotFoundError:
-            if (self.decisions / f"{notification_id}.json").exists():
+            if notification_id in self._document_stems(self.decisions):
                 raise NotificationError(
                     f"{notification_id!r} is a decision: answer it in the web console, or its asking agent deletes it"
                 ) from None
@@ -245,7 +277,7 @@ class NotificationStore:
         entries: list[tuple[float, Notification | ListingError]] = []
         for stem in self._document_stems(self.directory):
             try:
-                notification = notification_from_mapping(_read_document(self.path(stem)))
+                notification = notification_from_mapping(_read_document(self.path(stem))[0])
                 if notification.id != stem:
                     raise NotificationError(f"{stem}.json carries id {notification.id!r}; the file name is the id")
             except FileNotFoundError:
@@ -255,10 +287,10 @@ class NotificationStore:
                 continue
             entries.append((_sort_key(notification.posted_at), notification))
         for stem in self._document_stems(self.decisions):
-            if (self.decisions / f"{stem}.answer.json").exists():
-                continue
             try:
                 decision = self._decision_entry(stem)
+                if self._has_answer(stem):
+                    continue
             except FileNotFoundError:
                 continue
             except NotificationError as error:
@@ -271,25 +303,47 @@ class NotificationStore:
     def _decision_entry(self, stem: str) -> Notification:
         """A pending decision as the listing shows it: the document's title and asker, or the file's facts."""
         path = self.decisions / f"{stem}.json"
-        document = _read_document(path)
+        document, modified = _read_document(path, maximum=MAXIMUM_DECISION_BYTES)
         if not isinstance(document, dict):
             raise NotificationError(f"{path.name} must be a JSON object")
-        title = document.get("title")
-        asked_by = document.get("asked-by")
-        asked_at = document.get("asked-at")
-        if not isinstance(asked_at, str) or not asked_at:
-            asked_at = datetime.fromtimestamp(path.lstat().st_mtime, timezone.utc).replace(microsecond=0).isoformat()
+        if type(document.get("format")) is not int or document["format"] != FORMAT:
+            raise NotificationError(f"{path.name}: format must be {FORMAT}")
+        if document.get("id") != stem:
+            raise NotificationError(f"{path.name}: id must be {stem!r}")
+        title = _text(document.get("title"), "title")
+        asked_by = _text(document.get("asked-by"), "asked-by")
+        asked_at = _timestamp(document.get("asked-at"), "asked-at")
+        if not asked_at:
+            asked_at = datetime.fromtimestamp(modified, timezone.utc).replace(microsecond=0).isoformat()
         return Notification(
             stem, DECISION_KIND,
-            title if isinstance(title, str) and title.strip() else stem,
-            asked_by if isinstance(asked_by, str) and asked_by else "an agent",
+            title if title.strip() else stem,
+            asked_by or "an agent",
             asked_at, link=f"/decisions/{stem}",
         )
+
+    def _has_answer(self, stem: str) -> bool:
+        """Check the stored answer envelope; the console owns item and option validation."""
+        path = self.decisions / f"{stem}.answer.json"
+        try:
+            document, _ = _read_document(path, maximum=MAXIMUM_DECISION_BYTES)
+        except FileNotFoundError:
+            return False
+        if not isinstance(document, dict):
+            raise NotificationError(f"{path.name} must be a JSON object")
+        if type(document.get("format", FORMAT)) is not int or document.get("format", FORMAT) != FORMAT:
+            raise NotificationError(f"{path.name}: format must be {FORMAT}")
+        if document.get("id", stem) != stem:
+            raise NotificationError(f"{path.name}: id must be {stem!r}")
+        _timestamp(document.get("answered-at"), f"{path.name}: answered-at", required=True)
+        if not isinstance(document.get("answers", {}), dict):
+            raise NotificationError(f"{path.name}: answers must be an object keyed by item")
+        return True
 
     def post(self, *, kind: str, title: str, posted_by: str, summary: str = "", link: str = "",
              now: str | None = None) -> Notification:
         """Write a new notification with a fresh id; the document is validated before anything is written."""
-        posted_at = now or _now()
+        posted_at = _timestamp(now if now is not None else _now(), "posted-at", required=True)
         stamp = datetime.fromisoformat(posted_at).astimezone(timezone.utc).strftime("%Y%m%dt%H%M%S")
         notification = notification_from_mapping({
             "format": FORMAT, "id": f"{stamp}-{secrets.token_hex(3)}", "kind": kind, "title": title,
@@ -303,29 +357,56 @@ class NotificationStore:
         notification = self.read(notification_id)
         if notification.read_at:
             return notification
-        updated = replace(notification, read_at=now or _now())
+        updated = replace(notification, read_at=_timestamp(now if now is not None else _now(), "read-at", required=True))
         self._write(updated)
         return updated
 
     def dismiss(self, notification_id: str) -> None:
         """Remove the notification; the one deletion the human may ask for."""
         self.read(notification_id)
-        self.path(notification_id).unlink(missing_ok=True)
+        try:
+            with _directory(self.directory) as parent:
+                os.unlink(self.path(notification_id).name, dir_fd=parent)
+        except FileNotFoundError:
+            pass
+        except OSError as error:
+            raise NotificationError(f"cannot dismiss {notification_id!r}: {error}") from error
 
     def _write(self, notification: Notification) -> None:
-        atomic_write(self.path(notification.id), json.dumps(notification.to_mapping(), indent=2, sort_keys=True) + "\n")
+        # Compact UTF-8 avoids expanding an agent-written document when marking it read.
+        content = (json.dumps(notification.to_mapping(), ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+        if len(content) > MAXIMUM_DOCUMENT_BYTES:
+            raise NotificationError(f"notification is larger than {MAXIMUM_DOCUMENT_BYTES} bytes")
+        name = self.path(notification.id).name
+        try:
+            with _directory(self.directory, create=True) as parent:
+                temporary = f".{name}.{secrets.token_hex(16)}.tmp"
+                descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                                     0o600, dir_fd=parent)
+                try:
+                    with os.fdopen(descriptor, "wb") as stream:
+                        stream.write(content)
+                    os.replace(temporary, name, src_dir_fd=parent, dst_dir_fd=parent)
+                finally:
+                    try:
+                        os.unlink(temporary, dir_fd=parent)
+                    except FileNotFoundError:
+                        pass
+        except OSError as error:
+            raise NotificationError(f"cannot write {name}: {error}") from error
 
 
 def store_in_environment(environ: Mapping[str, str] = os.environ) -> NotificationStore:
     """The store of the environment this process runs in: inside a capsule, the checkout's own state."""
     named = environ.get(NOTIFICATIONS_ENV)
     if named:
-        directory = Path(named)
+        directory = Path(named).resolve()
         decisions = environ.get(DECISIONS_ENV)
-        return NotificationStore(directory, Path(decisions) if decisions else directory.parent / "decisions")
-    state = XdgHomes.from_environment(environ).state
+        return NotificationStore(directory, Path(decisions).resolve() if decisions else directory.parent / "decisions")
+    # Resolve the environment's base, keeping the application directories no-follow.
+    state = XdgHomes.from_environment(environ).state.parent.resolve() / "devcapsule"
     decisions = environ.get(DECISIONS_ENV)
-    return NotificationStore(state / "notifications", Path(decisions) if decisions else state / "decisions")
+    return NotificationStore(state / "notifications", Path(decisions).resolve() if decisions else state / "decisions")
 
 
 def store_for_checkout(start: Path, environ: Mapping[str, str] = os.environ) -> NotificationStore:
@@ -355,7 +436,7 @@ def store_for_checkout(start: Path, environ: Mapping[str, str] = os.environ) -> 
         declaration = configuration_binding_declarations(lock)["home"]
         home = (Path(str(explicit)).expanduser() if explicit is not None
                 else managed_binding_path(root, declaration))
-    state = home / ".local" / "state" / "devcapsule"
+    state = home.resolve() / ".local" / "state" / "devcapsule"
     return NotificationStore(state / "notifications", state / "decisions")
 
 
