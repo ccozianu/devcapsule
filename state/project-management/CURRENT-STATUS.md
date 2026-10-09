@@ -41,7 +41,16 @@ the failsafe git layer as transitions between consistent states, after an
 interrupted `mail take` converged by design and a ten-second GitHub outage
 was survived only by the agent's own retry. The owner also asked why this
 switch, a routine operation, took so long for a human; findings are in the
-session summary and a second item is drafted, not sent.
+session summary. Owner direction of 2026-10-09, recorded as a decision:
+workstream selection becomes one deterministic command, `devcapsule
+workflow select <name>`, driven the same way by a human or an agent; it
+stops at three consistent states (merge conflict, dirty tree with workstream
+state, routing mismatch) with a structured report; DevCapsule invoking an
+agent on conflict is a deferred, configurable hook, not part of the command.
+Sent `2026-10-09-project-management-workstream-select-command.md` to
+`workflow-improvements` with that design, the brief additions (definition
+text since the stamp, owned bugs, clean-merge check) and a status-file
+length budget. The slice is registered when they scope it.
 
 Afternoon of 2026-09-28: the owner found the website unpublished since
 2026-09-21 and its guides pinned to v0.2.12, defined the problem with the
