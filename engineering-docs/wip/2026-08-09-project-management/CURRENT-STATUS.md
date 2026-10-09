@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@9bc049624f48
+Definition read: WORKFLOW.md@e75c84def45f, WORKFLOW-LOCAL.md@9300dc156fc6
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -33,9 +33,14 @@ the adoption exception remains recorded in the mainline registry.
   previous section names. `AGENTS.md` references repointed; `index.md`
   updated. The `### Changes` section, frontmatter and *Validation Commands*
   heading the tooling parses are unchanged in shape; workflow tests pass and
-  the brief prints the new local section. Proposed as a pull request into
-  this workstream's branch for the owner's reading. Not a rule change: a
-  decision to adopt would go to `workflow-improvements` with the measurement.
+  the brief prints the new local section. Measured by a separate agent:
+  required session-start reading 40,847 to 29,980 tokens (−27%), sentences
+  over twenty words 31.6% to 10.6%, a fourteen-question fidelity quiz
+  answered fully from the new text. The owner read it and merged PR #175
+  into this branch at `429f32f` on 2026-10-09. It reaches `main` with this
+  workstream's next integration; every other workstream then sees a changed
+  definition and must synchronize. The decision to make the style a rule is
+  still the owner's; see *Open Threads*.
   Known stale rule carried as written: *GitHub Integration: Owner Through The
   UI* predates the owner's 2026-10-08 `gh` direction and needs an owner update.
 
@@ -458,12 +463,13 @@ submodules were changed.
 
 ## Open Threads
 
-- Pilot awaiting the owner: read the controlled-language `WORKFLOW.md` and its
-  humane companion; decide whether the style becomes a rule for the
-  definition, the local file, and agent reports (Karpathy list items 1 and 2),
-  and whether the pilot itself merges or is redone by `workflow-improvements`
-  against the packaged source. The token measurement is attached to the pull
-  request when the separate measuring agent reports.
+- Pilot merged into this branch, not yet on `main`. Awaiting the owner: whether
+  the controlled style becomes a rule for the definition, the local file, and
+  agent reports (Karpathy list items 1 and 2), to travel to
+  `workflow-improvements` with the measurement; and whether the packaged
+  definition source is regenerated from the root file before or at the next
+  release. The stale *GitHub Integration: Owner Through The UI* section still
+  needs the owner's updated wording.
 
 - Paused 2026-09-28 evening at the owner's direction: the owner posted a
   first LinkedIn announcement and judges the documentation the most glaring
