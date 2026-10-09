@@ -3,15 +3,18 @@
 Every request carries the token or is refused; the token arrives in the URL
 the launcher prints and is kept in a cookie from then on. Every file the
 console reads lies inside the project mount; a path that escapes it is
-refused before the filesystem is touched.
+refused before its contents are read.
 """
 
 from __future__ import annotations
 
-from http.cookies import SimpleCookie
+from contextlib import ExitStack
+import errno
+from http.cookies import CookieError, SimpleCookie
+import os
 from pathlib import Path
 import secrets
-from typing import Awaitable, Callable, MutableMapping
+import stat
 from urllib.parse import parse_qs
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -48,7 +51,11 @@ class TokenGate:
             await self.app(scope, receive, _setting_cookie(send, self.token))
             return
         cookies = SimpleCookie()
-        cookies.load(headers.get("cookie", ""))
+        try:
+            cookies.load(headers.get("cookie", ""))
+        except CookieError:
+            # A malformed cookie supplies no credential; a valid header still can.
+            cookies.clear()
         from_cookie = cookies[TOKEN_COOKIE].value if TOKEN_COOKIE in cookies else None
         if self._matches(from_cookie) or self._matches(headers.get(TOKEN_HEADER)):
             await self.app(scope, receive, send)
@@ -90,7 +97,43 @@ def confine(root: Path, requested: str) -> Path:
     if not requested or candidate.is_absolute() or ".." in candidate.parts or "\x00" in requested:
         raise PathRefused(f"path {requested!r} is not a relative path inside the project")
     base = root.resolve()
-    resolved = (base / candidate).resolve()
+    try:
+        resolved = (base / candidate).resolve()
+    except (OSError, RuntimeError) as error:
+        raise PathRefused(f"cannot resolve path {requested!r} inside the project") from error
     if not resolved.is_relative_to(base):
         raise PathRefused(f"path {requested!r} leaves the project")
     return resolved
+
+
+def read_project_text(root: Path, requested: str) -> str:
+    """Resolve inside the mount, then open without following replacement links.
+
+    A pathname check alone is insufficient: an editor or agent can replace
+    the file or a parent directory between resolution and open. Directory
+    descriptors anchor each lookup; O_NOFOLLOW refuses a substituted symlink.
+    Internal symlinks still work because confine resolves them first.
+    """
+    base = root.resolve()
+    resolved = confine(base, requested)
+    parts = resolved.relative_to(base).parts
+    if not parts:
+        raise FileNotFoundError(requested)
+    with ExitStack() as opened:
+        directory = os.open(base, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        opened.callback(os.close, directory)
+        try:
+            for part in parts[:-1]:
+                directory = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
+                opened.callback(os.close, directory)
+            # Do not block if a regular file was replaced by a FIFO.
+            descriptor = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+        except OSError as error:
+            if error.errno in (errno.ELOOP, errno.ENOTDIR):
+                raise PathRefused(f"path {requested!r} changed during the read") from error
+            raise
+        opened.callback(os.close, descriptor)
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise FileNotFoundError(requested)
+        with os.fdopen(descriptor, encoding="utf-8", closefd=False) as stream:
+            return stream.read()

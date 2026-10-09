@@ -7,15 +7,15 @@ whole application, static files included.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .cli import CommandError, RuntimeCli
-from .security import PathRefused, TokenGate, confine
+from .security import PathRefused, TokenGate, read_project_text
 from .settings import Settings
 
 PAGES = {
@@ -31,7 +31,7 @@ def create_app(settings: Settings) -> FastAPI:
     app.state.settings = settings
     cli = RuntimeCli(settings.cli, settings.project)
 
-    def document(read: Any) -> JSONResponse:
+    def document(read: Callable[[], dict[str, Any]]) -> JSONResponse:
         try:
             return JSONResponse(read())
         except CommandError as error:
@@ -59,15 +59,15 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/api/project/file")
     def project_file(path: str = Query(...)) -> PlainTextResponse:
         try:
-            resolved = confine(settings.project, path)
+            text = read_project_text(settings.project, path)
         except PathRefused as error:
             return PlainTextResponse(str(error) + "\n", status_code=403)
-        if not resolved.is_file():
+        except FileNotFoundError:
             return PlainTextResponse(f"no file at {path!r} in the project\n", status_code=404)
-        try:
-            text = resolved.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             return PlainTextResponse(f"{path!r} is not a UTF-8 text file\n", status_code=415)
+        except OSError:
+            return PlainTextResponse(f"cannot read {path!r} in the project\n", status_code=403)
         return PlainTextResponse(text)
 
     app.mount("/static", StaticFiles(directory=str(settings.static_root)), name="static")
@@ -75,14 +75,14 @@ def create_app(settings: Settings) -> FastAPI:
     return app
 
 
-def _page(settings: Settings, name: str) -> Any:
-    def page(request: Request) -> FileResponse:
+def _page(settings: Settings, name: str) -> Callable[[], FileResponse]:
+    def page() -> FileResponse:
         return FileResponse(settings.static_root / name, media_type="text/html")
 
     return page
 
 
-def compose_identity(information: Any, versions: Any) -> dict[str, Any]:
+def compose_identity(information: dict[str, Any], versions: dict[str, Any]) -> dict[str, Any]:
     """The home page's identity block from ``project info`` and ``versions show``.
 
     The version set is the running one inside a capsule and the selected one

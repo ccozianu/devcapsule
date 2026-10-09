@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 import subprocess
 from typing import Any, Sequence
@@ -39,31 +40,44 @@ class RuntimeCli:
         """``devcapsule project --path PROJECT ARGUMENTS... --json``."""
         return (*self.executable, "project", "--path", str(self.project), *arguments, "--json")
 
-    def read(self, *arguments: str) -> Any:
+    def read(self, *arguments: str) -> dict[str, Any]:
         """Run one ``project`` subcommand with ``--json`` and parse its output."""
         command = self.command(*arguments)
         try:
             completed = subprocess.run(
-                command, capture_output=True, text=True, timeout=self.timeout, check=False
+                command, capture_output=True, timeout=self.timeout, check=False
             )
         except OSError as error:
             raise CommandError(command, f"cannot run the runtime CLI: {error}") from error
         except subprocess.TimeoutExpired as error:
             raise CommandError(command, f"the runtime CLI did not answer within {self.timeout:g}s") from error
+        stderr = completed.stderr.decode("utf-8", errors="replace")
         if completed.returncode != 0:
             raise CommandError(
-                command, f"the runtime CLI exited with status {completed.returncode}", completed.stderr
+                command, f"the runtime CLI exited with status {completed.returncode}", stderr
             )
         try:
-            return json.loads(completed.stdout)
-        except json.JSONDecodeError as error:
-            raise CommandError(command, f"the runtime CLI printed no JSON document: {error}", completed.stderr) from error
+            document = json.loads(completed.stdout.decode("utf-8"), parse_float=_finite_number,
+                                  parse_constant=_finite_number)
+            if not isinstance(document, dict):
+                raise ValueError("expected a JSON object")
+        except ValueError as error:
+            raise CommandError(command, f"the runtime CLI printed no JSON document: {error}", stderr) from error
+        return document
 
-    def configuration(self) -> Any:
+    def configuration(self) -> dict[str, Any]:
         return self.read("config", "list")
 
-    def versions(self) -> Any:
+    def versions(self) -> dict[str, Any]:
         return self.read("versions", "show")
 
-    def information(self) -> Any:
+    def information(self) -> dict[str, Any]:
         return self.read("info")
+
+
+def _finite_number(value: str) -> float:
+    """Reject Python's non-JSON constants and numeric overflow before serving."""
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"non-finite JSON number: {value}")
+    return number
