@@ -208,6 +208,30 @@ person who clicks merge are not authorship. The model name is read from the
 active session because configured defaults and prior sessions have produced
 wrong attributions.
 
+## Workflow Definition Changes
+
+**Rule.** Every change to the definition or the local file is written in the
+controlled style, in the topic it belongs to, with its reason in the humane
+companion in the same commit, a *Changes* entry for every change of meaning,
+the parsed headings kept, and the packaged copy regenerated at the release.
+
+**Intended effect.** The rule files stay short and uniform for agents, the
+reasons stay complete for humans, and the two never drift apart.
+
+**Motivation.** Owner direction of 2026-10-09, taken the day the
+controlled-language edition merged to `main`. The edition cut the agent's
+required session-start reading by about a quarter and the share of sentences
+over twenty words from a third to a tenth, while a fidelity quiz answered from
+the new text alone came back complete. Those gains last only if every later
+change keeps the split; a single reason written into the rule file is the
+first step back to the mixed prose the edition replaced. The same-commit rule
+exists because a companion paragraph added later is a paragraph never added.
+Regeneration at the release matches the definition's own rule that the version
+is the release: adopters receive the edition that shipped. The owner took this
+decision in project-management, low ceremony, although the subject is
+`workflow-improvements`' business, because the rule had to exist before the
+next definition change rather than after it.
+
 ## Integration Method And Exceptions
 
 **Rule.** Merge commits since 2026-10-03; four recorded exceptions:
