@@ -1,7 +1,7 @@
 ---
-status: reported
+status: confirmed
 severity: minor
-target: none
+target: 0.9
 owner: maintenance
 opened: 2026-08-03
 requirements: [R-ENV-001, R-FRAMEWORK-001]
@@ -85,3 +85,46 @@ causes a functional problem rather than only a recommendation.
 
 Owner ruling during 0.2.14 acceptance: deferred beyond 0.2.14 and marked
 minor; no functional failure was reported on any 0.2.14 candidate.
+
+## Triage, 2026-10-04: confirmed, in scope for the 0.9 series
+
+Owner ruling: a minimal change plus an end-to-end test, scheduled for 0.9,
+the series expected to host V1's betas and candidates. What the triage
+established, read from the source at `17532fd` and from the PyCharm
+installed in this repository's own capsule (build 262.8665.369):
+
+- **There is no recorded reason for the script.** The path was carried
+  into the component template by the 2026-08-07 layout refactor from the
+  Docker4PyCharm era; "intentionally encoded" records the fact, not a
+  design. It lives in three places: the `launcher` key of the PyCharm
+  runtime template (`components/pycharm.py`), the chmod and symlink in the
+  image build (`launch/pycharm/_image_build.py`), and the archive probe in
+  `materialization.py`.
+- **The runtime's only coupling to the launcher** is one environment
+  variable: the JetBrains adapter writes a properties file and sets
+  `PYCHARM_PROPERTIES` to its path; the script maps that to
+  `-Didea.properties.file`. The native binary honours the same
+  product-prefixed `_PROPERTIES`, `_VM_OPTIONS` and `_JDK` variables; the
+  `_PROPERTIES` lookup is present in the installed binary.
+- **What the script does that DevCapsule does not use**: the JRE search
+  through `PYCHARM_JDK`, the bundled runtime, `JAVA_HOME` and the path. The
+  bundled runtime is what ships; nothing else is set.
+- Both launchers are present in the installed archive, `bin/pycharm`
+  (about one megabyte, ELF) and `bin/pycharm.sh` (28 kilobytes). This
+  build's `product-info.json` carries no `launcherPath` key, so the
+  derivation proposed in step 1 above cannot assume it; probe for the
+  binary and fall back to the script.
+
+**Minimal change.** Switch the three places to `bin/pycharm`, with the probe
+accepting either file; the template digest changes the formation identity,
+which is intended. Then the end-to-end proof: the opt-in IDE smoke test
+(`nox -s ide-smoke`) launches each surface in a fresh project and proves
+from the outside that the IDE comes alive, and it must keep passing under
+the native process, plus the foreground, signal, exit-status and
+container-removal checks of the review above. The warning disappearing is
+the visible sign; the smoke row passing is the acceptance.
+
+The same per-product choice arises for IntelliJ IDEA in the
+`component-catalog` work targeted at 0.2.16; whoever generalizes the
+template there should keep the `launcher` key per product rather than
+assume one JetBrains filename.

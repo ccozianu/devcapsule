@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: minor
-target: none
+target: 0.3.0
 owner: maintenance
 opened: 2026-08-03
 requirements: [R-PRODUCT-001, R-PRODUCT-004, R-DEV-001, R-FRAMEWORK-001]
@@ -15,6 +15,21 @@ Status note (pre-vocabulary, kept as evidence): reproduced; accepted V1 backlog 
 
 Requirements: root R-PRODUCT-001, root R-PRODUCT-004, R-DEV-001,
 R-FRAMEWORK-001
+
+## Triage, 2026-10-05: a bug after all, target 0.3, behind the bigger fish
+
+Owner ruling during the 0.2.16 triage. The proposed reclassification as a
+feature (no requirement names ecosystem bootstrap, nothing released broke)
+is rejected: the product carries an implicit promise that a developer is
+onboarded in minutes, and a fresh clone that opens its IDE but cannot run
+its own tests breaks that promise. The owner's evidence is the 2026-10-03
+incident, where a capable agent pair in the dogfood capsule failed to bring
+`nox` into scope and run the unit tests; a student in a first programming
+course would be more lost still. The record stays a bug. Target **0.3.0**,
+the next release, named so by the owner's decision of the same day (it was
+to be 0.2.16). It is deliberately sequenced after the larger items of that
+release: the recursive-successor test, the installed-IDE reuse and reaping
+design, the in-capsule project-command fix.
 
 ## Symptom
 

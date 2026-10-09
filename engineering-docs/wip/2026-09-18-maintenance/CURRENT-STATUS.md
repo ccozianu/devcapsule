@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-09-27; 0.2.15 published and verified; 0.2.16.dev0 reopening validated, awaiting owner UI merge
+State: active 2026-10-05, triage complete; the 0.3.0 maintenance plate (the release formerly planned as 0.2.16, renamed by the owner on 2026-10-05): the fresh-workspace recursive test (option D), the in-capsule project-command fix, named build contexts then the installed-IDE reuse and reaping design, the universal network authorization node, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; 0.2.15 published and reopened
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@5b4a80ae583e
+Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
 
 Integration target: `main`
 
@@ -23,6 +23,90 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-05, latest: option D is built and proven; the recursive attached
+launch runs from a fresh workspace.** `tests/e2e/fresh_workspace.py` is the
+fresh-workspace rule as code; the attached-launch test uses it and passed
+in this capsule (run `8a543a0613a9c1f22d839102d592c995`, eleven inspection
+checks, container removed, workspace removed). The 2026-10-04 record and
+the 2026-08-15 record are status fixed, closing on a 0.3.0 candidate.
+Next on the plate: named build contexts. Seven older run directories
+under the persistent home's E2E workspace predate the cleanup rule; they
+are the owner's to remove.
+
+**2026-10-05, later: the in-capsule project-command fix is on the branch,
+status fixed, gate green; see the two records.**
+The `project` group applies a per-subcommand `CapsuleAccess` after
+resolving the subcommand without side effects: the capsule's project is
+selected from any directory, read-only commands answer, mutating ones
+name the launcher, unknown names are unknown. Proven by unit tests and
+by the source CLI from `/opt` in this capsule. Next on the plate: the
+fresh-workspace recursive test (option D).
+
+**2026-10-05: the 0.3.0 triage is complete; the plate is set.** The decisions are listed under *Resumed 2026-10-03* and
+the records they changed. Two bounded things happened on the branch beyond
+records: the packaging version test now runs its check from a temp
+directory (component-catalog's patch, three cases green with the editable
+egg-info present), and the three component-catalog items are
+dispositioned. The branch is ahead of `main` by records and that one test
+change; the owner pushes and opens the PR.
+
+### The 0.3.0 maintenance plate
+
+In the owner's order so far (the bigger items first, ecosystem bootstrap
+last; the middle is the agent's suggested order until the owner sets it):
+
+1. The recursive-successor test on a fresh workspace, option D of its
+   record, and the fresh-workspace rule for every end-to-end test: done
+   2026-10-05, proven in this capsule, closing on a candidate.
+2. The in-capsule project-command fix (project group guard, inspection
+   record): fixed 2026-10-05 on this branch, awaiting the gate and the
+   owner's confirmation on a candidate. The requirement below extends the
+   same command group and is not started.
+3. Named build contexts, then the installed-IDE reuse and reaping design
+   review with the owner.
+4. The universal `network` authorization node.
+5. The first-session UX bugs, release notes and gate tooling.
+6. Ecosystem-aware project bootstrap.
+
+### Requirement: configuration validated and changed by commands only
+
+From the owner's correction of 2026-10-04 (component-catalog's item of
+2026-10-05, R-CONFIG-001 on its branch) and the owner's addition of
+2026-10-05. Schema names and command spellings are chosen in the design
+step with the owner; the behaviour is fixed:
+
+- **Read-only validation before launch.** A command that checks the
+  working-tree manifest and lock, plus a proposed change, for launch,
+  without writing anything. `config list` shows recorded launcher state
+  and is not that check.
+- **Commands for every configuration change.** This project's
+  configuration is written only by DevCapsule commands; `need` adds a
+  capability, and removal and mandatory/optional classification need
+  commands too, so no hand edits remain.
+- **`project config resolve --force`.** Shows the configuration that would
+  be produced if errors were skipped: a component the local launcher does
+  not know is skipped; a missing IDE surface falls back to the IDE of last
+  resort, bash (vim and the SDK are inside). It highlights what is skipped
+  and shows the totality that would be in place. It writes no local lock.
+- **`project run --force-config`.** Launches with that error-skipping
+  configuration and warns the user about every skip. Distinct from
+  today's `run --force`, which only accepts a stale resolution once.
+- Behind both: mandatory needs are split from optional enhancements;
+  optional ones warn and degrade, only a mandatory one refuses. This holds
+  for adopter projects whose contributors run a launcher that does not
+  know a newer declaration.
+
+### Earlier state
+
+Close-out PR #149 is merged at main `6980b60`. SSH fetch verified its tree
+matches the delivered 0f6578d exactly and all three version copies read
+0.2.16.dev0. This checkout fast-forwarded to main before this records-only
+pause. No build rerun is needed: the integrated tree is the validated tree.
+The owner now wants to dogfood the actual released 0.2.15 before judging
+its everyday quality. Release verification and prior acceptance stand;
+ongoing dogfooding feedback is pending, with no further work requested.
+
 
 **0.2.15 is published and verified.** The owner merged the promotion; SSH
 fetch found PR #148 and PR #146 at main 82a1b5d, with exactly the tested
@@ -88,20 +172,123 @@ Owner subsequently agreed to RC0 after the agent slice, with xtras and
 project info in the next candidate. See the current evidence and next step
 above; the original fix-only gate is historical.
 
+## Resumed 2026-10-03: 0.2.16 Bug Triage
+
+Resumed at owner direction for candidate C9 of project-management's 0.2.16
+proposal: triage the untargeted maintenance bugs with the owner so severity
+and target mean something before the cut. Synchronized with `main` at
+`3038c48` by merge (`b2fc861`); one registry-row conflict resolved by
+keeping `main`'s project-management row and this workstream's own row.
+Three `.idea/` files that `main` tracks were set aside in the session
+scratchpad, not committed; the owner ruled on 2026-10-01 that `.idea/` is
+ignored in this repository and 0.2.16 documents the rule.
+
+Decided so far:
+
+- 2026-09-26 init discards answers: closed 2026-10-04 on the owner's
+  heuristic confirmation against released 0.2.15, with the RC0 and RC1
+  downloaded-candidate proofs; 0.2.15's one blocking record is done.
+- 2026-08-03 JetBrains Runtime alpha compositing: retired 2026-10-04, an
+  observation with no defect in two months, on a display connection the
+  contained desktop has since replaced.
+- 2026-08-03 PyCharm native launcher: confirmed, target 0.9, with the
+  triage findings in the record (no recorded reason for the script; one
+  environment variable couples the runtime to it; the binary honours the
+  same); a minimal change plus the IDE smoke test as the end-to-end proof.
+- 2026-08-15 detached successors: fixed 2026-10-04, target 0.2.16. The
+  detached lifecycle had no reason to exist; `launch-successor` is now the
+  ordinary attached launch with a cidfile, and the lifecycle enum is gone.
+  Unit suite (1093 passed), typecheck and the gate's test session are green.
+  The new recursive end-to-end test is blocked in this capsule by a stale
+  capsule-local resolution that the in-capsule guard will not let anyone
+  refresh; that is the next item's territory.
+- 2026-10-04 recursive successor cannot refresh its capsule-local
+  resolution: decided 2026-10-05, option D, by the owner's design. The test
+  stops sharing the capsule's record: clean clone of the current branch
+  into a fresh host-backed workspace, dirty source refused, resolution under
+  isolated XDG roots, launch from the clone, best-effort cleanup. Options A,
+  B and C set aside. Same ruling, as a general rule now in the e2e test
+  doc: every end-to-end test runs on a fresh workspace, never the live
+  checkout. Implementation is on the 0.3.0 plate, not started.
+- 2026-09-24 installed IDE not reused by Docker: decided 2026-10-05, in
+  the next release, 0.3.0, both halves (reuse across formations and
+  reaping), design review with the owner before code, named build contexts
+  first.
+- Component-catalog's intake item on the host-network run-once launch:
+  acknowledged 2026-10-05 as a bug by the owner's ruling, filed as
+  `2026-10-05-run-once-network-authorization-needs-a-recommendation.md`,
+  minor, target 0.3.0: `network` becomes a universal authorization node
+  like docker-daemon, development-sudo and host-browser. The local
+  workflow text stands.
+- 2026-07-16 multi-line exec rendering: minor, target 0.9, the series the
+  owner expects to host V1's betas and candidates; no attention unless it
+  recurs in a release campaign.
+- 2026-08-03 ecosystem-aware project bootstrap: stays a bug, minor, target
+  0.3, by the owner's ruling of 2026-10-05. The feature reclassification
+  was rejected: onboarding a developer in minutes is an implicit promise,
+  and the 2026-10-03 incident (an agent pair unable to bring `nox` into
+  scope) shows how it fails. Sequenced after the larger 0.2.16 items.
+
+The triage is complete as of 2026-10-05. The project group guard
+(2026-09-26) and in-capsule configuration inspection (2026-09-24) are owner
+maintenance, target 0.3.0, by the owner's decisions of 2026-10-01, restated
+on 2026-10-05 without objection; they are the in-capsule project-command
+fix on the plate.
+
+Owner's version decision of 2026-10-05, recorded here until project-management
+registers it and the version scheme in `WORKFLOW-LOCAL.md` is amended: the
+next release, planned as 0.2.16, is **0.3.0**, a marketing decision marking
+the jump forward from 0.2.15. `main` stays at 0.2.16.dev0 until the release
+branch's first commit sets the version, as the local scheme says. The
+maintenance-owned records that targeted 0.2.16 now target 0.3.0; the two
+other-owned ones (workflow-improvements' discoverability record,
+component-catalog's IntelliJ lock record) are their owners' to retarget and
+are named in the mail to project-management. Beyond 0.3.x the project
+jumps to 0.9, which hosts V1's betas and release candidates; bug targets
+may name 0.9 on that basis.
+
+### Resumed 2026-10-04
+
+Synchronized with `main` at `17532fd` by merge; the five definition changes
+since the last read (two files for humans, information model, validation
+commands required and printed by the brief, validation vocabulary and its
+checkpoint trigger, integration is a merge commit) are read and apply from
+now: this branch merges `main` in, never rebases, and its deliverables
+land as merge commits. The other checkout has claimed `component-catalog`
+for IntelliJ; this one takes the maintenance plate.
+
+### Paused 2026-10-04, second session, mid-triage
+
+Main merged in at `5e9cd94` (`581ffe2`); PR #164 had already integrated
+this branch's tip, so the merge brought only component-catalog's IntelliJ
+and Playwright work. Component-catalog's mail on the host-network run-once
+launch was taken into intake and committed. No source was changed.
+
+### Paused 2026-10-03, mid-triage (historical)
+
+- Last task: the 0.2.16 bug triage with the owner; one record decided
+  (multi-line exec rendering, minor, 0.9). Nothing uncommitted.
+- Next resumable task: continue the triage from the ecosystem-bootstrap
+  record (2026-08-03). The owner's test for the remaining records: a
+  record that violates no requirement and breaks no promised behavior is
+  a feature, not a bug; it leaves the bug queue for the V1 scope ledger by
+  mail to project-management. Ecosystem bootstrap fails that test and is
+  the first to move; the information model being written in
+  workflow-improvements is what makes the test a rule.
+- Owner intent for the release name, recorded for project-management's
+  registration: if 0.2.16 delivers its full planned scope, new IDE
+  surfaces included, it is released as **0.3.0**, marking how far the
+  product is beyond the first 0.2. The release branch's first commit sets
+  the version under the local scheme; the owner names it then.
+
 ## Planned Next Step
 
-Owner opens and merges `ws-maintenance/post-0.2.15` into main through the
-GitHub UI: validated 0.2.16.dev0 reopening and release close-out records.
-After the owner merges, fetch and verify the version triplet and records on
-main. Publication itself is complete; no additional final tag or acceptance
-is needed. Project-management already has the verified release and pending
-reopening via coordination mail.
-The adopter notes in the release overview can be pasted into the GitHub
-release body by the owner under the UI-only integration rule.
-
-No 0.2.16 implementation scope is inferred. Project-management owns its
-sequencing in the separate active checkout. Remain on maintenance unless the
-owner explicitly selects another workstream.
+Wait for the owner's real-use feedback on released 0.2.15. Triage any reported
+problem against the published executable and route it by ownership; do not
+start new implementation or infer 0.2.16 scope. Release publication and main's
+0.2.16.dev0 reopening are complete. No further PR or release action is required
+for this slice. This records-only pause is published through coordination and
+will reach main with the next substantive maintenance integration.
 
 Previous next step, superseded: the base-contract slice is on this branch for the owner's PR. Next after the
 merge: the named-build-context fix for the 4.8 GB rebuild transfer if the
@@ -768,9 +955,38 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decisions
+  (1) to (3) are taken: ecosystem bootstrap stays a bug, target 0.3.0,
+  last on the plate; the recursive successor record goes by option D, the
+  fresh-workspace test, with the general rule in the e2e doc; the
+  installed-IDE reuse and reaping design is in the next release, which
+  the owner named 0.3.0 (mail to project-management sent); (5) the
+  host-network run-once item is a bug by the owner's ruling, `network`
+  becomes a universal node, filed and dispositioned. (4), the in-capsule
+  project-command fix, stands as decided on 2026-10-01; restated on
+  2026-10-05 without objection. The triage is complete. The three
+  component-catalog items are dispositioned (packaging patch applied and
+  green; the conservative-writers correction is the requirement under
+  *Current State*, with the owner's `resolve --force` and `run
+  --force-config` addition, mailed to project-management). Next: the
+  owner confirms the plate's order; no implementation has started.
+- Intake item, host-network run-once launch rejected (superseded 2026-10-05
+  by the bug record; kept as the trail): component-catalog's
+  diagnosis is incomplete. `_RUN_ONCE_AUTHORIZATIONS` includes `network` on
+  `main` and here; the node exists only on projects whose manifest
+  recommends `host.network.mode` (`authorization_declarations` builds it
+  from `CURATED_HOST_RECOMMENDATIONS`, and `WORKSTATION_CAPABILITY_DEFAULTS`
+  deliberately omits it because raw `--network` was the run-once form,
+  which run help now refuses). This repository recommends it, so the
+  WORKFLOW-LOCAL command works here; the smoke's fresh project does not.
+  Product choice for the owner: make network a universal authorization node,
+  or amend WORKFLOW-LOCAL to say the command presupposes the recommendation
+  (recommended). Owner ruled 2026-10-05: universal node; it is a bug.
+- The claim on the triage slice was released at this pause.
+
 - Final 0.2.15 publication and download verification are complete.
-- Awaiting owner UI merge, then verify the post-release PR reopening main at
-  0.2.16.dev0. Full build passed; no implementation work remains in this slice.
+- PR #149 is merged and verified; main is reopened at 0.2.16.dev0.
+  Await owner dogfooding feedback on released 0.2.15; no new scope is inferred.
   User-facing release notes are prepared in the release overview; GitHub's
   final release body currently contains its generated changelog link.
 - Project-management receives final identity/acceptance and reopening state;

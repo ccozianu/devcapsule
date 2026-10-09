@@ -99,6 +99,19 @@ informed experiments without presenting an untested combination as proven.
 Software recovery is useful only if the next normal launch consumes it and
 cannot resurrect permissions the developer revoked.
 
+### Owner refinement, 2026-10-01: the upgrade prompt is a scheduling choice
+
+The owner ruled that the launch-time prompt of the refinement above stops
+asking the developer to authorize the newer version. The question is when
+to move: upgrade now, remind me later, or keep what is installed. If
+DevCapsule has not validated the newer version together with the rest of
+the selected set, the prompt says so once, plainly, before the choice;
+the developer may still choose now. Vendor trust is not asked here at
+all; it is given once per workstation under D-0011. The "changed
+acquisition consent" clause of the 2026-09-21 refinement is superseded
+accordingly. Targeted at 0.2.16 with the consent slice in
+`component-upgrades`.
+
 ## Consequences
 
 The implementation needs a channel contract, explicit preparation/activation,

@@ -14,7 +14,7 @@ from typing import Any, Mapping
 
 from .authorization import AuthorizationChoice, AuthorizationReview, review_authorizations
 from .bindings import resolve_configuration_bindings, resolve_secret_bindings
-from .documents import AuthorizationScalar, ConfigurationScalar, ProjectConfigurationError, table
+from .file_formats import AuthorizationScalar, ConfigurationScalar, ProjectConfigurationError, table
 from .nodes import build_node_registry
 from .values import RuntimeEffects, resolve_configuration_values
 

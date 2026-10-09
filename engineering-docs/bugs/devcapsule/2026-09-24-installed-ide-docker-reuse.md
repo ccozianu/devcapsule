@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: minor
-target: none
+target: 0.3.0
 owner: maintenance
 opened: 2026-09-24
 requirements: [R-IMAGE-BUILD-001]
@@ -105,6 +105,20 @@ Coordinate with the already-deferred
 without treating this report as approval to start that redesign or enlarge
 the current release. Review design, implementation ownership and release
 placement with the owner before coding.
+
+## Decision, 2026-10-05: in the next release, which is 0.3.0
+
+Owner ruling during the triage of the next release's bugs: the design
+review happens now, and the optimized way of building Docker images is
+part of the next release. That release is named **0.3.0**, not 0.2.16, a
+marketing decision reflecting the jump forward from 0.2.15. Both halves of
+this record are in scope: reuse of installed IDE content across
+formations, launcher changes and projects (acceptance scenarios 1 to 4
+above), and reaping of superseded canonical formations and their cache
+entries. The named-build-context fix for the context transfer stays the
+first step. The design questions above are reviewed with the owner before
+code, as directed on 2026-09-24; the agent prepares the design proposal
+when the plate reaches this item.
 
 ## Disposition, 2026-09-25
 

@@ -14,7 +14,7 @@ import pytest
 from devcapsule.configuration.nodes import (
     build_node_registry,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
 )
 from devcapsule.configuration.storage import (

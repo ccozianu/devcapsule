@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: blocking
 target: 0.2.15
 owner: maintenance
 opened: 2026-09-26
+closed: 2026-10-04
 requirements: [R-PRODUCT-001, R-DOCKER-001, R-SCOPE-001]
 ---
 
@@ -187,3 +188,13 @@ and survived replacement. Evidence is in the
 [RC1 release record](../../releases/v0.2.15/README.md#rc1--published-2026-09-27).
 The existing owner-confirmation close criterion remains; this records the
 agent-executed downloaded-candidate proof.
+
+## Closed, 2026-10-04
+
+Owner confirmation, the remaining close criterion: on the released 0.2.15,
+this repository's own capsules and a separately initialized project behaved
+as expected through `init` and launch. The owner states the confirmation as
+heuristic: not every path was exercised, since that would take a while, but
+the main journeys and one fresh project worked. Together with the RC0 and
+RC1 downloaded-candidate proofs above, that closes the record. Reopen only
+if a later `init` is seen to discard an answer after a validation failure.

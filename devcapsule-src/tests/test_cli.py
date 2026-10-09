@@ -14,7 +14,7 @@ from devcapsule.launch.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.environment_realization import RealizedEnvironment
 from devcapsule.images.metadata import LocalImageRecord
 from devcapsule.materialization import ImageDetails, parse_locked_environment
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     canonical_digest,
 )
 

@@ -113,3 +113,17 @@ be assigned.
 - Open only the detailed requirement files relevant to the current task.
 - Keep this file concise: overview, grouping, status framing, and links.
 - Keep canonical detail in `engineering-docs/requirements/devcapsule/`.
+
+## .NET and Rider component acceptance (2026-10-04)
+
+Requirements: R-PRODUCT-001, R-PRODUCT-002, R-DOCS-002.
+
+Owner-accepted component-catalog scope: provide the latest stable Linux x64
+.NET SDK as an additive `dotnet` component, then Rider as `dotnet-ide` with
+that SDK dependency. Pins and vendor checksums make offline resolution
+reproducible. SDK installation must preserve the complete toolchain and
+reject unsafe archive entries. Rider keeps independent persistent IDE state.
+Acceptance requires a C# build/run as the capsule user and a noVNC GUI
+startup smoke with retained evidence; an activation screen must not be
+reported as a working editor. License purchase and account sign-in are not
+part of automated acceptance.

@@ -13,13 +13,14 @@ bridge); see ``display.py``. A headless job declares no display at all.
 from __future__ import annotations
 
 import os
+from contextlib import nullcontext
 from pathlib import Path
 import sys
 from typing import Sequence
 
 from . import contract as rtcontract
 
-from .components import jetbrains, vscode
+from .components import eclipse, jetbrains, vscode
 from .contract import RuntimePlan, RuntimePlanError
 from .display import prepare_contained_display
 from .filesystem import plan_filesystem, prepare_filesystem
@@ -43,6 +44,8 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
         command = launch.command
     elif plan.component.adapter == "vscode":
         command = vscode.plan(plan).command
+    elif plan.component.adapter == "eclipse":
+        command = eclipse.plan(plan).command
     else:
         raise RuntimePlanError(f"unsupported component adapter: {plan.component.adapter}")
     infrastructure: tuple[SupervisedChild, ...] = ()
@@ -69,7 +72,9 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
             foreground=True,
             working_directory=plan.project_path,
         )
-    return Supervisor((*infrastructure, child)).run()
+    guard = jetbrains.session_lock(plan) if plan.component.adapter == "jetbrains" and job is None else nullcontext()
+    with guard:
+        return Supervisor((*infrastructure, child)).run()
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -6,9 +6,9 @@ from devcapsule import configuration
 
 
 PACKAGE = "devcapsule.configuration"
-ADAPTERS = {"storage", "execution", "operations", "history"}
-CORE = {"documents", "manifest", "values", "bindings", "authorization", "nodes",
-        "review", "fingerprints", "resolution", "freshness", "model"}
+ADAPTERS = {"storage", "execution", "operations", "history", "capability_commands", "capability_selection"}
+CORE = {"file_formats", "manifest", "values", "bindings", "authorization", "nodes",
+        "review", "fingerprints", "resolution", "freshness", "model", "capabilities"}
 
 
 def dependencies():

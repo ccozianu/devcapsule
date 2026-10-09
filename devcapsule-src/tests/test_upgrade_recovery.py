@@ -30,7 +30,7 @@ from devcapsule.configuration.authorization import (
     resolved_checkout_authorizations,
     review_authorizations,
 )
-from devcapsule.configuration.documents import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     canonical_digest,
     render_checkout,

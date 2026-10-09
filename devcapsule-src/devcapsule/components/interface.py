@@ -69,8 +69,17 @@ class LockedArtifactDeclaration:
     ``artifact_format`` says how the verified download becomes image content:
 
     - ``file``: the download is the executable; it is copied to ``destination``.
+    - ``deb-package``: a checksummed native distribution package, installed by
+      dpkg in the final image with network disabled, including maintainer scripts.
+      All missing base dependencies must be separately pinned in the same lock.
     - ``tar-gz-member``: exactly one regular file, ``archive_member``, is
       extracted from the tarball and copied to ``destination``.
+    - ``python-wheel``: verified wheels sharing a destination install offline
+      into its ``venv/``, with the original wheels retained in ``wheels/``.
+    - ``tar-gz-directory``: bounded regular files and directories from a tar.gz,
+      preserving executable permissions without stripping a top-level directory.
+    - ``zip-directory``: bounded, regular-file-only extraction copied to the
+      destination directory, preserving executable permissions.
     - ``npm-package``: the download is an npm tarball, installed with npm's
       own layout into the ``destination`` directory under the dependency
       name ``npm_package``.  Every ``npm-package`` artifact sharing a
@@ -120,6 +129,10 @@ class ComponentDefinition(ABC):
     def channel_omission_reason(self) -> str | None:
         """Contributors must document why updates cannot be checked."""
         return None
+
+    def required_components(self) -> tuple[str, ...]:
+        """Other catalog components required for this component to function."""
+        return ()
 
     def acquisition(self) -> AcquisitionContract | None:
         """The vendor acquisition this component requires, if any.

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import date
 import json
+import re
 from typing import Any
 from urllib.request import Request, urlopen
 
@@ -60,19 +61,74 @@ class VendorDiscovery:
 
 
 class JetBrainsDiscovery(VendorDiscovery):
+    product_keys: tuple[str, ...] = ("PCP", "PY")
     source = "https://data.services.jetbrains.com/products/releases?code=PY&latest=true&type=release"
 
     def _check(self, current: str, platform: str) -> ChannelReport:
         document = read_json(self.source)
         # PY currently maps to PCP; admit the two observed product keys explicitly.
-        releases = document.get("PCP", document.get("PY"))
+        releases = next((document[key] for key in self.product_keys if key in document), None)
         if not isinstance(releases, list) or len(releases) != 1 or releases[0]["type"] != "release":
-            raise ValueError("expected one PyCharm release")
+            raise ValueError("expected one JetBrains release")
         release = releases[0]
         artifact = release["downloads"]["linux" if platform == "linux-amd64" else "linuxARM64"]
         if not artifact.get("link") or not artifact.get("checksumLink"):
             raise ValueError("platform download/checksum missing")
         return _available(self.source, current, release["version"])
+
+
+class IntelliJDiscovery(JetBrainsDiscovery):
+    product_keys = ("IIU",)
+    source = "https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&type=release"
+
+
+class RiderDiscovery(JetBrainsDiscovery):
+    product_keys = ("RD",)
+    source = "https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release"
+
+
+class EclipseDiscovery(VendorDiscovery):
+    source = "https://www.eclipse.org/downloads/packages/"
+
+    def _check(self, current: str, platform: str) -> ChannelReport:
+        if re.fullmatch(r"[0-9]{4}-(?:03|06|09|12)-R", current) is None:
+            raise ValueError("expected an Eclipse quarterly release such as 2026-09-R")
+        arch = "x86_64" if platform == "linux-amd64" else "aarch64"
+        document = read_metadata(self.source).decode("utf-8")
+        versions = set(re.findall(
+            rf"eclipse-java-([0-9]{{4}}-(?:03|06|09|12)-R)-linux-gtk-{arch}\.tar\.gz", document))
+        if len(versions) != 1:
+            raise ValueError("expected one stable Eclipse Java package for the platform")
+        latest = versions.pop()
+        return ChannelReport(self.source, ChannelVersion(
+            current, "available" if current == latest else "unknown",
+            "Package availability does not assess installed-version support."),
+            (ChannelVersion(latest, "available", "Requires a reviewed Eclipse Java package pin"),)
+            if latest > current else ())
+
+
+class DotnetDiscovery(VendorDiscovery):
+    source = "https://builds.dotnet.microsoft.com/dotnet/release-metadata/releases-index.json"
+
+    def _check(self, current: str, platform: str) -> ChannelReport:
+        releases = read_json(self.source)["releases-index"]
+        stable = [exact_version(row["latest-sdk"]) for row in releases
+                  if row["support-phase"] in {"active", "maintenance"}
+                  and "-" not in row["latest-sdk"]]
+        latest = max(stable, key=lambda version: tuple(map(int, version.split("."))))
+        return _available(self.source, current, latest, "Latest supported stable SDK; reviewed pin required")
+
+
+class PlaywrightDiscovery(VendorDiscovery):
+    source = "https://pypi.org/pypi/playwright/json"
+
+    def _check(self, current: str, platform: str) -> ChannelReport:
+        release = read_json(self.source)
+        if not any(item.get("packagetype") == "bdist_wheel" and not item.get("yanked")
+                   for item in release["urls"]):
+            raise ValueError("published wheel missing")
+        return _available(self.source, current, release["info"]["version"],
+                          "Requires a reviewed wheel and matching browser pin update")
 
 
 class CodiumDiscovery(VendorDiscovery):

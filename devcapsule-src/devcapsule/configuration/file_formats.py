@@ -1,10 +1,12 @@
-"""Admission and lossless writes for versioned configuration documents.
+"""Check configuration file structure and convert configuration data to TOML.
 
-Admission is deliberately weaker than readiness: an understood document can
-contain unanswered or invalid nodes which the developer needs to repair.
-Unknown representations cannot be repaired by pretending they are version 1.
-All released configuration formats are currently version 1; a future decoder
-belongs here, with predecessor fixtures demonstrating semantic preservation.
+The four file kinds are project manifests, platform locks, local checkout
+settings and saved launch plans. These helpers check format versions and table
+structure, produce TOML text, and calculate hashes for detecting changes.
+They work on data in memory; storage.py handles reading and writing files.
+
+A valid file format does not mean the configuration is ready to run. Checking
+individual settings, installed tools and permissions belongs to other modules.
 """
 
 from __future__ import annotations
@@ -24,7 +26,12 @@ class ProjectConfigurationError(CliError):
     """An actionable project configuration failure."""
 
 
-class Artifact(Enum):
+class ConfigurationFileKind(Enum):
+    """A configuration file's purpose and the field declaring its format version.
+
+    Each member's value is the TOML key that must contain the version number.
+    For example, a platform lock uses ``devcapsule-lock-format-version = 1``.
+    """
     manifest = "devcapsule-schema-version"
     lock = "devcapsule-lock-format-version"
     checkout = "devcapsule-checkout-schema-version"
@@ -32,7 +39,12 @@ class Artifact(Enum):
 
 
 def table(document: Mapping[str, Any], *path: str) -> Mapping[str, Any]:
-    """Read an optional table without conflating absence and a malformed value."""
+    """Return a nested table, or an empty dict if any key along the path is absent.
+
+    For example, ``table(config, "configuration", "values")`` reads
+    ``[configuration.values]``. Raise ProjectConfigurationError if an existing
+    value along the path is not a table. The result is not copied.
+    """
     value: Any = document
     for key in path:
         value = value.get(key, {})
@@ -41,42 +53,53 @@ def table(document: Mapping[str, Any], *path: str) -> Mapping[str, Any]:
     return value
 
 
-def admit_document(document: Mapping[str, Any], artifact: Artifact, source: object) -> None:
-    version = document.get(artifact.value)
+def validate_file_format(document: Mapping[str, Any], file_kind: ConfigurationFileKind, source: object) -> None:
+    """Check the version and table structure of parsed configuration data.
+
+    ``file_kind`` selects the expected format; ``source`` identifies the input
+    in error messages, usually by path. Raise ProjectConfigurationError for an
+    unsupported version or malformed structure. Only version 1 is supported.
+
+    Checkout records also reject unknown fields and check any embedded version
+    lock. Saved plans require string source hashes and a supported hash scope.
+    Individual setting values and missing answers are checked elsewhere, so
+    incomplete settings remain editable.
+    This function leaves the input unchanged.
+    """
+    version = document.get(file_kind.value)
     if type(version) is not int or version != 1:
         raise ProjectConfigurationError(
-            f"{source} has an unsupported {artifact.name} schema version: {version!r}; "
-            f"requires {artifact.value} = 1. The file has not been converted."
+            f"{source} has an unsupported {file_kind.name} schema version: {version!r}; "
+            f"requires {file_kind.value} = 1. The file has not been converted."
         )
     paths = {
-        Artifact.manifest: ("project", "capabilities", "configuration.values", "host"),
-        Artifact.lock: ("components", "base", "materialization", "image"),
-        Artifact.checkout: (
+        ConfigurationFileKind.manifest: ("project", "capabilities", "configuration.values", "host"),
+        ConfigurationFileKind.lock: ("components", "base", "materialization", "image"),
+        ConfigurationFileKind.checkout: (
             "project", "checkout", "configuration.values", "configuration.bindings.host-directory",
             "configuration.bindings.host-environment", "state.adopted", "host", "authorization",
         ),
-        Artifact.resolution: (
+        ConfigurationFileKind.resolution: (
             "sources", "runtime", "configuration.values", "state.adopted", "state.bindings",
             "secret.bindings.host-environment", "host", "authorization",
         ),
     }
-    for path in paths[artifact]:
+    for path in paths[file_kind]:
         try:
             table(document, *path.split("."))
         except ProjectConfigurationError as exc:
             raise ProjectConfigurationError(f"{source}: {exc}") from exc
-    if artifact is Artifact.resolution:
+    if file_kind is ConfigurationFileKind.resolution:
         sources = table(document, "sources")
         if any(not isinstance(value, str) for value in sources.values()):
             raise ProjectConfigurationError(f"{source}: resolution sources must contain string fingerprints.")
         if sources.get("manifest-scope") not in (None, "configuration-v1"):
             raise ProjectConfigurationError(f"{source}: unsupported manifest fingerprint scope; left intact.")
-    if artifact is Artifact.checkout:
+    if file_kind is ConfigurationFileKind.checkout:
         selected_version_lock(document)
-        # This file is an input, not a plugin extension point. Refusing unknown
-        # fields protects both their meaning and their bytes during an edit.
+        # Refuse fields we cannot interpret so an edit cannot silently drop them.
         shapes = {
-            (): {artifact.value, "project", "checkout", "configuration", "state", "host", "authorization", "version-set"},
+            (): {file_kind.value, "project", "checkout", "configuration", "state", "host", "authorization", "version-set", "capabilities"},
             ("project",): {"creator", "slug"},
             ("checkout",): {"path"},
             ("configuration",): {"values", "omitted-values", "bindings"},
@@ -90,12 +113,13 @@ def admit_document(document: Mapping[str, Any], artifact: Artifact, source: obje
                 raise ProjectConfigurationError(f"{source}: unsupported checkout fields: {names}; left intact.")
 
 
-def render_document(document: Mapping[str, Any]) -> str:
-    """Serialize the entire admitted input, never a projection of its answers.
+def render_toml(document: Mapping[str, Any]) -> str:
+    """Return TOML text containing every supplied field, with keys sorted.
 
-    Unlike the former specialized checkout writer, even an invalid answer is
-    retained when a different node is repaired. Unsupported scalar encodings
-    fail before the atomic write. Comments/formatting are not semantic input.
+    Preserve values even when they are invalid answers to configuration
+    questions, so correcting one setting does not erase another. Formatting
+    is regenerated; comments are not preserved. Raise ProjectConfigurationError
+    for unsupported value types. This neither validates settings nor writes files.
     """
     def scalar(value: Any) -> str:
         if isinstance(value, str):
@@ -135,9 +159,12 @@ AuthorizationScalar = str | bool
 
 
 def canonical_digest(value: Mapping[str, Any]) -> str:
-    # The V1 schema currently admits only JSON-native TOML values.  Sorting keys
-    # and compact UTF-8 encoding is RFC 8785-equivalent for these strings,
-    # integers, booleans, arrays, and objects.
+    """Return a SHA-256 hex digest for detecting changes in configuration values.
+
+    Hash compact UTF-8 JSON with sorted keys, so dictionary insertion order
+    does not affect the result. Raise ProjectConfigurationError if JSON
+    encoding fails. This does not check the configuration's file format.
+    """
     try:
         encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     except (TypeError, ValueError) as exc:
@@ -146,10 +173,12 @@ def canonical_digest(value: Mapping[str, Any]) -> str:
 
 
 def quote_toml(value: str) -> str:
+    """Return a quoted TOML string, escaping quotes and control characters."""
     return json.dumps(value, ensure_ascii=False)
 
 
 def render_toml_scalar(value: ConfigurationScalar) -> str:
+    """Return TOML text for a string, integer or boolean configuration value."""
     if isinstance(value, bool):
         return str(value).lower()
     if isinstance(value, int):
@@ -168,6 +197,18 @@ def render_checkout(
     host_environment_bindings: Mapping[str, str] | None = None,
     omitted_values: Sequence[str] | None = None,
 ) -> str:
+    """Build a new checkout record as TOML, without writing it to disk.
+
+    Copy creator/slug from ``manifest`` and record ``project_root`` as the
+    checkout path. ``state`` maps state slots to directories; ``host`` holds
+    legacy host settings; ``authorization`` holds recorded permission answers.
+    ``values`` holds setting overrides. The two binding maps associate resource
+    names with host directories or environment variables. ``omitted_values``
+    names settings whose project defaults the developer has explicitly disabled.
+
+    This builds a record from the supplied fields. To edit an existing record,
+    update its parsed mapping and use ``render_toml`` to retain unrelated fields.
+    """
     identity = manifest["project"]
     lines = [
         "devcapsule-checkout-schema-version = 1",
@@ -188,9 +229,7 @@ def render_checkout(
             rendered = str(value).lower() if isinstance(value, bool) else quote_toml(str(value))
             lines.append(f"{key} = {rendered}")
     if omitted_values:
-        # An explicit 'none' answer (owner ruling 2026-09-03): the name is a
-        # recorded decision to keep the node absent from the runtime config —
-        # distinct from silence, which follows the project's default.
+        # These settings were explicitly disabled; do not use project defaults.
         rendered_names = ", ".join(quote_toml(name) for name in sorted(set(omitted_values)))
         lines.extend(["", "[configuration]", f"omitted-values = [{rendered_names}]"])
     if values:
@@ -247,7 +286,14 @@ def render_checkout(
 
 
 def selected_version_lock(checkout: Mapping[str, Any]) -> dict[str, Any] | None:
-    """The complete developer-owned selection; never overlay a moving lock."""
+    """Read the software versions explicitly pinned in this checkout.
+
+    Return None when the checkout follows project versions. Otherwise parse
+    its embedded TOML lock into a new dict and validate the lock's format.
+    Raise ProjectConfigurationError for an invalid selection record or lock.
+    The returned selection replaces the shared lock; callers must not fill
+    missing entries from newer project recommendations.
+    """
     if "version-set" not in checkout:
         return None
     selection = table(checkout, "version-set")
@@ -260,5 +306,5 @@ def selected_version_lock(checkout: Mapping[str, Any]) -> dict[str, Any] | None:
         lock = tomllib.loads(selection["lock"])
     except tomllib.TOMLDecodeError as exc:
         raise ProjectConfigurationError(f"Malformed local version-set lock: {exc}") from exc
-    admit_document(lock, Artifact.lock, "local version set")
+    validate_file_format(lock, ConfigurationFileKind.lock, "local version set")
     return lock

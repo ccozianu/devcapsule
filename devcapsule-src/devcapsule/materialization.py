@@ -28,6 +28,8 @@ from devcapsule.components.catalog import (
     selected_component_definitions,
 )
 from devcapsule.components import LockedArtifactDeclaration
+from devcapsule.components.directory_artifacts import extract_tar_directory
+from devcapsule.components.browser_artifacts import extract_zip, wheel_install_step, wheel_name
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.images.build import (
     CommandComponent,
@@ -126,6 +128,25 @@ class SurfaceMaterialization:
 
 
 SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
+    "eclipse": SurfaceMaterialization(
+        component_id="eclipse", family="eclipse",
+        recipe_id="eclipse-local-materialization", recipe_version="3",
+        installation_path="/opt/eclipse",
+        archive_probes=("eclipse", "eclipse.ini", "configuration/config.ini"),
+        requires_variant=True, post_install=(),
+    ),
+    "rider": SurfaceMaterialization(
+        component_id="rider", family="jetbrains",
+        recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
+        installation_path="/opt/jetbrains/rider", archive_probes=("bin/rider.sh",),
+        requires_variant=False, post_install=(),
+    ),
+    "intellij": SurfaceMaterialization(
+        component_id="intellij", family="jetbrains",
+        recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
+        installation_path="/opt/jetbrains/intellij", archive_probes=("bin/idea.sh",),
+        requires_variant=True, post_install=(),
+    ),
     "pycharm": SurfaceMaterialization(
         component_id="pycharm",
         family="jetbrains",
@@ -162,6 +183,13 @@ ENTRYPOINT_CONTRACT = (
 
 def cache_root(env: Mapping[str, str] | None = None) -> Path:
     return XdgHomes.from_environment(env).cache
+
+
+class ArtifactUnavailable(CliError):
+    """A pinned URL could not be reached; integrity failures are a different error."""
+    def __init__(self, url: str, reason: object) -> None:
+        self.url = url
+        super().__init__(f"Cannot download locked artifact {url!r}: {reason}")
 
 
 def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
@@ -203,7 +231,7 @@ def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
                 raise CliError(f"Artifact digest mismatch: expected {expected}, received {actual}.")
             temporary_path.replace(destination)
         except URLError as exc:
-            raise CliError(f"Cannot download locked artifact {spec.url!r}: {exc}") from exc
+            raise ArtifactUnavailable(spec.url, exc) from exc
         finally:
             if temporary_path is not None:
                 temporary_path.unlink(missing_ok=True)
@@ -333,6 +361,43 @@ def canonical_image_name(descriptor: Mapping[str, Any], component_id: str = "pyc
     return f"devcapsule-local-{component_id}:{formation_identity(descriptor)[:20]}"
 
 
+def validate_locked_artifact(locked_artifact: LockedArtifactDeclaration) -> None:
+    """Validate one component artifact without acquisition or filesystem effects."""
+    _validated_sha256(
+        locked_artifact.sha256,
+        f"Locked {locked_artifact.component_id} artifact SHA-256",
+    )
+    if locked_artifact.artifact_format not in ARTIFACT_FORMATS:
+        raise CliError(
+            f"Locked {locked_artifact.component_id} artifact format must be one of "
+            + ", ".join(repr(name) for name in ARTIFACT_FORMATS)
+            + "."
+        )
+    if (
+        locked_artifact.artifact_format == "tar-gz-member"
+        and not locked_artifact.archive_member
+    ):
+        raise CliError(
+            f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
+            "an archive member."
+        )
+    if locked_artifact.artifact_format == "python-wheel":
+        wheel_name(locked_artifact.url)
+    if locked_artifact.artifact_format == "npm-package":
+        if not locked_artifact.npm_package:
+            raise CliError(
+                f"Locked {locked_artifact.component_id} npm-package artifact must "
+                "name its npm package."
+            )
+        # Fail at lock-reading time, not mid-build, when the URL
+        # cannot name the tarball inside the image.
+        _npm_tarball_name(locked_artifact)
+    if not Path(locked_artifact.destination).is_absolute():
+        raise CliError(
+            f"Locked {locked_artifact.component_id} destination must be absolute."
+        )
+
+
 def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     platform = _required_string(lock, "platform", "platform lock")
     base = _required_mapping(lock, "base", "platform lock")
@@ -362,40 +427,10 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     )
     _validated_sha256(artifact.sha256, "Locked component SHA-256")
     ancillary_artifacts: list[LockedArtifactDeclaration] = []
-    for definition in ancillary_definitions:
+    for definition in (_interactive, *ancillary_definitions):
         metadata = _required_mapping(components, definition.id, "components")
         for locked_artifact in definition.locked_artifacts(metadata, platform):
-            _validated_sha256(
-                locked_artifact.sha256,
-                f"Locked {locked_artifact.component_id} artifact SHA-256",
-            )
-            if locked_artifact.artifact_format not in ARTIFACT_FORMATS:
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} artifact format must be one of "
-                    + ", ".join(repr(name) for name in ARTIFACT_FORMATS)
-                    + "."
-                )
-            if (
-                locked_artifact.artifact_format == "tar-gz-member"
-                and not locked_artifact.archive_member
-            ):
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
-                    "an archive member."
-                )
-            if locked_artifact.artifact_format == "npm-package":
-                if not locked_artifact.npm_package:
-                    raise CliError(
-                        f"Locked {locked_artifact.component_id} npm-package artifact must "
-                        "name its npm package."
-                    )
-                # Fail at lock-reading time, not mid-build, when the URL
-                # cannot name the tarball inside the image.
-                _npm_tarball_name(locked_artifact)
-            if not Path(locked_artifact.destination).is_absolute():
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} destination must be absolute."
-                )
+            validate_locked_artifact(locked_artifact)
             ancillary_artifacts.append(locked_artifact)
     recipe_id = _required_string(materialization, "recipe", "materialization")
     recipe_version = _required_string(materialization, "recipe-version", "materialization")
@@ -457,6 +492,7 @@ def surface_materialization_spec(
     artifact: ArtifactSpec,
     ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...] = (),
     npm_projects: tuple[NpmProject, ...] = (),
+    native_package_directory: Path | None = None,
     platform: str,
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
@@ -503,6 +539,7 @@ def surface_materialization_spec(
                 (profile.installation_path,),
             ),
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
+            *_native_package_components(ancillary_files, native_package_directory),
             *_ancillary_contributions(ancillary_files, npm_projects),
             # The image supplies the alias; the runtime creates its writable
             # target in the persistent home as the capsule user. Never replace
@@ -691,6 +728,7 @@ def ensure_materialized_surface(
                 for index, (acquired, declaration) in enumerate(ancillary_acquisitions)
             )
             npm_projects = _npm_projects(ancillary_files, temporary)
+            native_packages = _prepare_native_packages(ancillary_files, temporary / "native-packages")
             build(
                 surface_materialization_spec(
                     base_reference=base_reference,
@@ -701,6 +739,7 @@ def ensure_materialized_surface(
                     artifact=artifact,
                     ancillary_files=ancillary_files,
                     npm_projects=npm_projects,
+                    native_package_directory=native_packages,
                     platform=platform,
                     recipe_id=recipe_id,
                     recipe_version=recipe_version,
@@ -813,13 +852,17 @@ def _prepare_locked_artifact(
     declaration: LockedArtifactDeclaration,
     destination: Path,
 ) -> Path:
-    if declaration.artifact_format == "file":
+    if declaration.artifact_format == "tar-gz-directory":
+        return extract_tar_directory(acquired, destination)
+    if declaration.artifact_format == "zip-directory":
+        return extract_zip(acquired, destination)
+    if declaration.artifact_format in {"file", "python-wheel"}:
         shutil.copyfile(acquired, destination)
         destination.chmod(0o700)
         return destination
     if declaration.artifact_format == "tar-gz-member" and declaration.archive_member is not None:
         return _extract_archive_member(acquired, declaration.archive_member, destination)
-    if declaration.artifact_format == "npm-package":
+    if declaration.artifact_format in {"npm-package", "deb-package"}:
         # The verified tarball travels whole; npm unpacks it inside the build.
         shutil.copyfile(acquired, destination)
         destination.chmod(0o600)
@@ -840,7 +883,7 @@ def _prepare_locked_artifact(
 # already checksummed. The tarballs stay beside the manifest so the recorded
 # package-lock.json keeps describing an install npm could repeat.
 
-ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package")
+ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package", "python-wheel", "zip-directory", "tar-gz-directory", "deb-package")
 # Root-run inside the build; node and npm come from the base image. The cache
 # is pointed at a scratch path and removed in the same step and log files
 # are disabled, so no layer carries npm's working state; scripts are refused
@@ -873,22 +916,71 @@ def _ancillary_contributions(
     files: tuple[tuple[Path, LockedArtifactDeclaration], ...],
     projects: tuple[NpmProject, ...],
 ) -> tuple[ContributionComponent, ...]:
+    files = tuple((path, item) for path, item in files if item.artifact_format != "deb-package")
     contributions = []
     for component_id in sorted({item.component_id for _path, item in files}):
         selected = [(path, item) for path, item in files if item.component_id == component_id]
         npm = [project for project in projects if project.component_id == component_id]
+        wheel_destinations = sorted({item.destination for _path, item in selected if item.artifact_format == "python-wheel"})
+        destinations = sorted({item.destination for _path, item in selected})
+        # A parent export already includes nested browser directories. Copying
+        # them again would retain duplicate payloads in the final image layers.
+        exports = tuple(destination for destination in destinations
+                        if not any(destination != parent and Path(destination).is_relative_to(parent)
+                                   for parent in destinations))
         contributions.append(ContributionComponent(
             component_id,
             (
-                *(FileComponent(path, _artifact_image_path(item), permissions=item.permissions)
+                *((DirectoryComponent(path, item.destination) if item.artifact_format in {"zip-directory", "tar-gz-directory"}
+                   else FileComponent(path, _artifact_image_path(item), permissions=item.permissions))
                   for path, item in selected),
+                *(ExecComponent(wheel_install_step(destination, tuple(wheel_name(item.url)
+                    for _path, item in selected if item.artifact_format == "python-wheel" and item.destination == destination)))
+                  for destination in wheel_destinations),
                 *(FileComponent(project.package_json, f"{project.destination}/package.json", permissions=0o644)
                   for project in npm),
                 *(ExecComponent(npm_install_step(project.destination)) for project in npm),
             ),
-            tuple(sorted({item.destination for _path, item in selected})),
+            exports,
         ))
     return tuple(contributions)
+
+
+def _native_package_components(
+    files: tuple[tuple[Path, LockedArtifactDeclaration], ...],
+    directory: Path | None,
+) -> tuple[DirectoryComponent | ExecComponent, ...]:
+    """Install checksummed distribution packages in the final image, offline.
+
+    dpkg executes the selected distribution's maintainer scripts, just as apt
+    would. Dependencies must all be pinned or already supplied by the base;
+    missing dependencies fail the build rather than downloading anything.
+    """
+    packages = [(path, item) for path, item in files if item.artifact_format == "deb-package"]
+    if not packages:
+        return ()
+    if directory is None:
+        raise CliError("Native packages must be staged before image construction.")
+    paths = [f"/tmp/devcapsule-native-debs/{item.sha256}.deb" for _path, item in packages]
+    quoted = " ".join(shell_quote(path) for path in paths)
+    return (
+        DirectoryComponent(directory, "/tmp/devcapsule-native-debs"),
+        ExecComponent(("sh", "-ec", f"DEBIAN_FRONTEND=noninteractive dpkg --install {quoted}; rm -f {quoted}")),
+    )
+
+
+def _prepare_native_packages(
+    files: tuple[tuple[Path, LockedArtifactDeclaration], ...], directory: Path,
+) -> Path | None:
+    packages = [(path, item) for path, item in files if item.artifact_format == "deb-package"]
+    if not packages:
+        return None
+    directory.mkdir()
+    for path, item in packages:
+        target = directory / f"{_validated_sha256(item.sha256, 'Native package SHA-256')}.deb"
+        shutil.copyfile(path, target)
+        target.chmod(0o644)
+    return directory
 
 
 def npm_install_step(destination: str) -> tuple[str, ...]:
@@ -929,6 +1021,8 @@ def _artifact_image_path(declaration: LockedArtifactDeclaration) -> str:
     destination is the project directory and the tarball keeps its name.
     """
 
+    if declaration.artifact_format == "python-wheel":
+        return f"{declaration.destination}/wheels/{wheel_name(declaration.url)}"
     if declaration.artifact_format == "npm-package":
         return f"{declaration.destination}/{_npm_tarball_name(declaration)}"
     return declaration.destination

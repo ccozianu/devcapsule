@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from devcapsule.images.contract import Provenance
 from devcapsule.components.catalog import COMPONENTS
 
-from .documents import AuthorizationScalar, ProjectConfigurationError, canonical_digest
+from .file_formats import AuthorizationScalar, ProjectConfigurationError, canonical_digest
 
 
 OCI_REPOSITORY_COMPONENT_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
@@ -516,7 +516,11 @@ def review_authorizations(
         reviews.append(AuthorizationReview(
             name, status, recorded, recommended, declaration.description, value, problem, choices
         ))
-    for name in sorted(set(records) - set(declarations)):
+    inactive_acquisitions = {
+        contract.authorization for definition in COMPONENTS.values()
+        if (contract := definition.acquisition()) is not None
+    } if "required" in manifest.get("capabilities", {}) else set()
+    for name in sorted(set(records) - set(declarations) - inactive_acquisitions):
         reviews.append(AuthorizationReview(
             name, "unsupported", "recorded", "not declared", "This node no longer belongs to the project configuration.",
             problem="Remove the obsolete entry from the checkout authorization table after review.",

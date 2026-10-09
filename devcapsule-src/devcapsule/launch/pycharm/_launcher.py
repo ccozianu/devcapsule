@@ -78,11 +78,6 @@ class IdeConfigMode(str, Enum):
     custom = "custom"
 
 
-class ContainerLifecycle(str, Enum):
-    foreground = "foreground"
-    detached = "detached"
-
-
 @dataclass(frozen=True)
 class HostUser:
     uid: int
@@ -845,16 +840,15 @@ def build_docker_args(
     config: PycharmRunConfig,
     files: TempRuntimeFiles,
     env: Mapping[str, str],
-    *,
-    lifecycle: ContainerLifecycle = ContainerLifecycle.foreground,
 ) -> list[str]:
+    # One lifecycle for every launch: the launcher stays attached and Docker
+    # removes the container when it exits. A launch that must outlive its
+    # launcher is not a case this product has; the recursive dogfood holds
+    # its successor's launcher open exactly as a developer holds `project run`.
     host_user = current_host_user()
     args = [
-        *(
-            ["--rm", "-i"]
-            if lifecycle is ContainerLifecycle.foreground
-            else ["--detach"]
-        ),
+        "--rm",
+        "-i",
         "--name",
         config.name,
         "--workdir",
