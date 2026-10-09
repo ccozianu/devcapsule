@@ -6,7 +6,7 @@ Start date: 2026-10-09
 
 State: active; slice 8 is complete and awaits the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201) and PR10 (#203), stacked, each with its Codex review merged
 
-Definition read: WORKFLOW.md@0c29fc0a33a8, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Branch association: `ws-capsule-webconsole/live-resources` (PR5, #192, from `main`); `ws-capsule-webconsole/records` (PR6, #194, stacked on PR5); `ws-capsule-webconsole/decisions` (PR7, stacked on PR6); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
 
