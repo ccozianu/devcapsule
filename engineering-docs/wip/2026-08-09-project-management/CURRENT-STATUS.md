@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: resumed 2026-10-09 at owner direction; synchronized with `main`, ten mailed items taken (38 undecided); the next release is 0.3.0 by owner decision of 2026-10-05, still recorded here as 0.2.16 pending the disposition pass
+State: paused 2026-10-09 at owner direction; the pair moves to `capsule-webconsole` in a separate checkout; the older decision list, nine items plus the disposition pass, awaits the owner on resumption
 
-Definition read: WORKFLOW.md@ef90a223fce4, WORKFLOW-LOCAL.md@8496e6da21fb
+Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
 
 Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
 
@@ -369,10 +369,23 @@ formal 0.2.16 work order still follows registration.
 
 ## Planned Next Step
 
-The Karpathy list is closed. Next: the older decision list, starting with
-the 0.3.0 registration and the user-docs gate. After that the owner directs
-the switch to `capsule-webconsole`, whose work order and two amendments are
-in its mailbox.
+On resumption, decide the older list with the owner, in this order. Critical
+path first: (1) register 0.3.0: scope, driver, cut trigger, and rename every
+0.2.16 reference in the proposal, the registry row and this file to 0.3.0 per
+the 2026-10-05 decision; (2) the user-docs improvement list, eleven items on
+`ws-user-docs/first-session`, which the owner made a release gate. Then: (3)
+route the maintenance diagnostics work order and decide whether
+`contained-display` and `sample-projects`, both without published state, are
+open; (4) the 0.3 compatibility direction from component-catalog's
+launcher-bootstrap lessons, three proposed requirements; (5) the consent
+slice from component-upgrades, in or out of 0.3.0; (6) release-notes
+tooling, C20. Decision sessions, not release content: (7) legacy launch
+capabilities L1 to L13 and the non-DevCapsule directory question; (8)
+mycodespace and the checkout-naming default; (9) the managed agent updates
+design slice, C13. Then the disposition pass over the 38 intake items, half of
+which are notices or already-decided facts that settle without the owner.
+Each decision: record it here, register or mail what it settles, and
+disposition the items it closes in the same commit.
 
 Disposition pass over the ten items taken on 2026-10-09, starting with the
 0.3.0 rename: the proposal, the registry row and every "0.2.16" reference in
@@ -515,6 +528,25 @@ submodules were changed.
 
 ## Open Threads
 
+- Paused 2026-10-09 at the owner's direction: the owner continues with Fable
+  as implementer and Codex as reviewer on `capsule-webconsole`, the highest
+  priority for its wow factor, in a separate checkout. This checkout stays on
+  `ws-project-management/coordination`, clean apart from the owner's
+  pre-existing `.idea/project.iml` edit. Nothing external is running.
+- **Awaiting the human on resumption:** the older decision list in *Planned
+  Next Step*, items 1 to 9, then the disposition pass. Items 1 and 2 are the
+  critical path; 7 and 8 shape V1 and have waited since September.
+- **Weighed and unresolved:** whether the stale *GitHub Integration: Owner
+  Through The UI* section of `WORKFLOW-LOCAL.md` is reworded by the owner
+  before or after `gh` becomes a component; whether `project-management`
+  keeps making low-ceremony definition changes or hands the practice back to
+  `workflow-improvements` now that the scheme exists; whether the humane
+  companions gain their dependency records by hand before the console's view
+  registry exists.
+- **Deliberately not preserved:** the exploration of Glances, Netdata,
+  Cockpit and Docker dashboards as a console framework, summarized in the
+  console's status file; the Karpathy list's working notes, closed on `main`
+  as topics 9.6 rules 5 to 7, 12.11 and 12.12.
 - The controlled-language edition is on `main` (PR #176, owner-merged) and
   the owner's 2026-10-09 direction that every later definition change follows
   the same scheme is in `WORKFLOW-LOCAL.md`, *Workflow Definition Changes*
