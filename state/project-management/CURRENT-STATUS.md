@@ -470,6 +470,12 @@ submodules were changed.
   (Karpathy list item 1, second half), and the updated wording of the stale
   *GitHub Integration: Owner Through The UI* section. `workflow-improvements`
   regenerates the packaged definition at the release or earlier.
+- Sent `2026-10-09-project-management-github-cli-component.md` to
+  `component-catalog` at the owner's direction: make `gh` a component. It is
+  MIT licensed and redistributable; upstream ships a checksummed tarball with
+  no installer; the terms prompt the owner met was Anaconda's, not gh's. The
+  item names the authentication design as the real work and assigns no
+  release target.
 
 - Paused 2026-09-28 evening at the owner's direction: the owner posted a
   first LinkedIn announcement and judges the documentation the most glaring
