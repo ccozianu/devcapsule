@@ -377,7 +377,10 @@ class NotificationsListCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        document = notifications.listing_document(_notification_store(context), unread_only=arguments.unread)
+        try:
+            document = notifications.listing_document(_notification_store(context), unread_only=arguments.unread)
+        except notifications.NotificationError as error:
+            raise ProjectConfigurationError(str(error)) from error
         print(json.dumps(document, indent=2, sort_keys=True) if arguments.as_json
               else _render_notification_listing(document), end="")
         return 0

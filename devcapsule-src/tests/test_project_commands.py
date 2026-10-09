@@ -2447,3 +2447,84 @@ def test_checkout_notifications_outside_a_project_name_the_problem(tmp_path: Pat
     monkeypatch.chdir(tmp_path)
     assert cli.main(["project", "checkout", "notifications", "list"]) == 2
     assert "Cannot locate this checkout's notifications" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("binding", ["managed", "adopted", "explicit"])
+def test_notification_host_store_matches_info_and_isolates_checkouts(tmp_path: Path, monkeypatch, binding: str) -> None:
+    from devcapsule import notifications
+    from devcapsule.configuration.file_formats import render_toml
+    from devcapsule.configuration.storage import checkout_record_paths, manifest_for
+    from devcapsule.project_information import project_information
+
+    for key in ("HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
+        monkeypatch.setenv(key, str(tmp_path / key))
+    for key in ("DEVCAPSULE_CONTAINER_NAME", "DEVCAPSULE_NOTIFICATIONS", "DEVCAPSULE_HOME_DIR"):
+        monkeypatch.delenv(key, raising=False)
+    project = tmp_path / "project"
+    project.mkdir()
+    initialize_project(project)
+    other = tmp_path / "other"
+    shutil.copytree(project, other)
+    _, manifest = manifest_for(project)
+    if binding != "managed":
+        record, _ = checkout_record_paths(manifest, project)
+        record.parent.mkdir(parents=True)
+        document = {"devcapsule-checkout-schema-version": 1, "project": {key: manifest["project"][key] for key in ("creator", "slug")},
+                    "checkout": {"path": str(project)}, "state": {"adopted": {"home": str(tmp_path / "adopted")}}}
+        if binding == "explicit":
+            document["configuration"] = {"bindings": {"host-directory": {"home": str(tmp_path / "explicit")}}}
+        record.write_text(render_toml(document), encoding="utf-8")
+    nested = project / "src"
+    nested.mkdir()
+    report = project_information(nested, runtime_fallback=False)
+    home = Path(next(row["backing"] for row in report["persistence"] if row["name"] == "home"))
+    store = notifications.store_for(nested)
+    assert store.directory == home / ".local/state/devcapsule/notifications"
+    if binding != "managed":
+        assert home == tmp_path / binding
+    second = notifications.store_for(other)
+    assert store.directory != second.directory
+    entry = store.post(kind="note", title="First checkout only", posted_by="agent")
+    assert store.read(entry.id) == entry
+    assert second.list() == [] and not second.directory.exists()
+    override = tmp_path / "override"
+    override.mkdir()
+    alias = tmp_path / "home-link"
+    alias.symlink_to(override, target_is_directory=True)
+    monkeypatch.setenv("DEVCAPSULE_HOME_DIR", str(alias))
+    assert notifications.store_for(nested).directory == override / ".local/state/devcapsule/notifications"
+
+
+def test_notification_cli_empty_errors_read_and_no_link_text(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("DEVCAPSULE_NOTIFICATIONS", str(tmp_path / "notifications"))
+    monkeypatch.delenv("DEVCAPSULE_CONSOLE_DECISIONS", raising=False)
+    monkeypatch.delenv("USER", raising=False)
+    command = ["project", "checkout", "notifications"]
+    assert cli.main([*command, "list"]) == 0
+    assert capsys.readouterr().out == f"No notifications under {tmp_path / 'notifications'}.\n"
+    assert cli.main([*command, "post", "--kind", "note", "--title", "Hello", "--json"]) == 0
+    entry = json.loads(capsys.readouterr().out)
+    assert entry["posted-by"] == "unknown"
+    assert cli.main([*command, "read", entry["id"]]) == 0
+    capsys.readouterr()
+    (tmp_path / "notifications/broken.json").write_text("{", encoding="utf-8")
+    assert cli.main([*command, "list"]) == 0
+    output = capsys.readouterr().out
+    assert output.startswith("0 unread of 2; * marks unread.\n")
+    assert f"  {entry['posted-at']}  note        {entry['id']}  Hello\n" in output
+    assert "  ! broken: broken.json is not a JSON document" in output
+    assert cli.main([*command, "list", "--unread", "--json"]) == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["unread"] == 0 and [item["id"] for item in document["notifications"]] == ["broken"]
+
+
+@pytest.mark.parametrize("operation", ["list", "post", "read", "dismiss"])
+def test_notification_cli_reports_filesystem_refusals(tmp_path: Path, monkeypatch, capsys, operation: str) -> None:
+    directory = tmp_path / "notifications"
+    monkeypatch.setenv("DEVCAPSULE_NOTIFICATIONS", str(directory))
+    directory.write_text("not a directory", encoding="utf-8")
+    arguments = {"list": [], "post": ["--kind", "note", "--title", "No"], "read": ["missing"], "dismiss": ["missing"]}
+    assert cli.main(["project", "checkout", "notifications", operation, *arguments[operation]]) == 2
+    error = capsys.readouterr().err
+    assert "not a directory" in error.lower() and "Traceback" not in error
+    assert directory.read_text() == "not a directory"
