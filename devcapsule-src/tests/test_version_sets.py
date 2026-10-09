@@ -773,6 +773,7 @@ def test_show_json_reports_the_host_selection_and_agrees_with_the_text(journey, 
     assert document["local-use"] == {"zero-exit-launch-recorded": False}
     assert set(document["validation"]) == {"evidence", "not-yet-validated"}
     assert invoke(s.root, "run") == 0
+    assert show_document(s.root, capsys)["local-use"] == {"zero-exit-launch-recorded": True}
     preview_select(s, capsys)
     document = show_document(s.root, capsys)
     assert document["selected"]["origin"] == "local selection"
@@ -793,11 +794,59 @@ def test_show_json_reports_the_host_selection_and_agrees_with_the_text(journey, 
 
 
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)
-def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch, capsys, tmp_path):
+def test_show_json_keeps_local_selection_when_recommendation_is_unavailable(journey, capsys):
+    s = journey
+    preview_select(s, capsys)
+    identity = version_sets.Workspace.load(s.root).identity
+    s.lock.unlink()
+    document = show_document(s.root, capsys)
+    assert document["selected"]["identity"] == identity
+    assert document["selected"]["origin"] == "local selection"
+    recommendation = document["project-recommendation"]
+    assert recommendation["status"] == "unavailable"
+    assert str(s.lock) in recommendation["detail"]
+    assert invoke(s.root, "versions", "show") == 0
+    assert f"Project recommendation unavailable: {recommendation['detail']}; local selection remains intact." in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_show_json_and_text_preserve_local_base_and_validation(journey, monkeypatch, capsys):
+    from dataclasses import replace
+
+    s = journey
+    local = replace(s.base, reference="local/base:chosen", identity="sha256:" + "b" * 64)
+    monkeypatch.setattr("devcapsule.commands.project.required_local_image", lambda _: local)
+    monkeypatch.setattr("devcapsule.configuration.operations.required_local_image", lambda _: local)
+    assert invoke(s.root, "config", "authorize", "base-image", local.reference) == 0
+    document = show_document(s.root, capsys)
+    selected = document["selected"]
+    assert selected["base"] == load_toml(s.lock)["base"]
+    assert selected["local-base-override"] == local.identity
+    missing = [f"{name} {version} on local base {local.identity}" for name, version in selected["components"].items()]
+    assert document["validation"] == {"evidence": [], "not-yet-validated": missing}
+    assert invoke(s.root, "versions", "show") == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[:5] == [
+        f"Version set {selected['identity']}", "Origin: project recommendation",
+        f"Platform: {selected['platform']}", f"Base: {selected['base']}",
+        f"Effective local base override: {local.identity} (project base above is a recommendation).",
+    ]
+    assert lines[5:5 + len(selected["components"])] == [
+        f"{name}: {version}" for name, version in selected["components"].items()]
+    assert [line for line in lines if line.startswith("Not yet validated: ")] == [
+        f"Not yet validated: {item}" for item in missing]
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+@pytest.mark.parametrize("legacy_context", [False, True])
+def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch, capsys, tmp_path, legacy_context):
     s = journey
     assert invoke(s.root, "run") == 0
     running_id = version_sets.Workspace.load(s.root).identity
-    runtime_root, snapshot, _ = runtime_view(s, monkeypatch, tmp_path)
+    runtime_root, snapshot, context_path = runtime_view(s, monkeypatch, tmp_path)
+    if legacy_context:
+        snapshot.pop("checkout-name")
+        context_path.write_text(json.dumps(snapshot))
     document = show_document(runtime_root, capsys)
     assert document["context"] == "running capsule"
     assert document["running"]["identity"] == running_id
@@ -827,6 +876,10 @@ def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch,
     assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
     assert "rows" not in listing
     assert listing["launcher-command"].endswith("config list") and str(s.root) in listing["launcher-command"]
+    assert invoke(runtime_root, "config", "list") == 0
+    text = capsys.readouterr().out
+    record_text = text.split("\n\n", 1)[1].split("\nTo change configuration", 1)[0]
+    assert tomllib.loads(record_text) == listing["checkout"]["record"]
     # A launcher activation in progress leaves the running facts intact.
     journal = s.record.with_suffix(".activation.toml")
     journal.write_text('"unfinished" = true\n')
@@ -836,6 +889,34 @@ def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch,
     assert "never repairs" in document["next-launch-unavailable"]
     assert invoke(runtime_root, "versions", "show") == 0
     assert "Next-launch selection unavailable" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+def test_runtime_show_preserves_running_set_when_next_identity_is_invalid(journey, monkeypatch, capsys, tmp_path):
+    s = journey
+    assert invoke(s.root, "run") == 0
+    runtime_root, snapshot, _ = runtime_view(s, monkeypatch, tmp_path)
+    # Valid TOML can still contain a scalar the version-set digest cannot encode.
+    record = load_toml(s.record)
+    record["version-set"] = {
+        "format": 1,
+        "lock": s.lock.read_text() + '\n[components.codex.metadata]\nbuilt = 2026-10-09T12:00:00Z\n',
+        "recommendation-digest": canonical_digest(load_toml(s.lock)),
+    }
+    s.record.write_text(render_toml(record))
+    before = s.record.read_bytes(), s.resolution.read_bytes()
+    capsys.readouterr()
+    assert invoke(runtime_root, "versions", "show") == 0
+    text = capsys.readouterr().out
+    assert f"Running session — version set {snapshot['running']['identity']}" in text
+    assert "Next-launch selection unavailable: Configuration contains an unsupported scalar representation." in text
+    assert "Selected for next launch" not in text
+    document = show_document(runtime_root, capsys)
+    assert document["running"]["identity"] == snapshot["running"]["identity"]
+    assert document["next-launch"] is None
+    assert document["selection-changed"] is None
+    assert document["next-launch-unavailable"] == "Configuration contains an unsupported scalar representation."
+    assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
 
 
 def test_runtime_show_tracks_running_and_next_sets_without_local_registration(journey, monkeypatch, capsys, tmp_path):
@@ -1049,12 +1130,28 @@ def test_runtime_rejects_another_checkout_without_hiding_running_versions(journe
 
 
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)
-def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeypatch, capsys, tmp_path):
+@pytest.mark.parametrize("invalid_name", [5, None, "", "nested/name", "nested\\name"])
+def test_runtime_rejects_invalid_checkout_name(journey, monkeypatch, capsys, tmp_path, invalid_name):
     s = journey
-    named = s.record.parent / "checkouts" / "dogfood.checkout.toml"
+    assert invoke(s.root, "run") == 0
+    runtime_root, snapshot, context_path = runtime_view(s, monkeypatch, tmp_path)
+    snapshot["checkout-name"] = invalid_name
+    context_path.write_text(json.dumps(snapshot))
+    capsys.readouterr()
+    assert invoke(runtime_root, "config", "list", "--json") == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Cannot read runtime launch context: invalid checkout name. Relaunch with the updated launcher." in captured.err
+
+
+@pytest.mark.parametrize("journey", ["codex"], indirect=True)
+@pytest.mark.parametrize("name", ["dogfood", "devcapsule"])
+def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeypatch, capsys, tmp_path, name):
+    s = journey
+    named = s.record.parent / "checkouts" / f"{name}.checkout.toml"
     named.parent.mkdir()
     s.record.rename(named)
-    resolution = named.with_name("dogfood.resolved.toml")
+    resolution = named.with_name(f"{name}.resolved.toml")
     s.resolution.rename(resolution)
     s.record, s.resolution = named, resolution
     assert invoke(s.root, "run") == 0
@@ -1068,6 +1165,15 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
     assert invoke(runtime_root, "list") == 0
     out = capsys.readouterr().out
     assert str(s.root) in out and "/another/checkout" not in out
+    # The real mount loses the host directory's "checkouts" suffix.
+    from devcapsule import runtime_configuration
+    mounted = tmp_path / "mounted-checkout"
+    shutil.copytree(named.parent, mounted)
+    monkeypatch.setattr(runtime_configuration, "CONFIGURATION_PATH", mounted)
+    assert invoke(runtime_root, "config", "list", "--json") == 0
+    listing = json.loads(capsys.readouterr().out)
+    assert listing["checkout"]["name"] == name
+    assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
 
 
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)

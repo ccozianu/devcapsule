@@ -16,7 +16,7 @@ import shlex
 from typing import Any, Mapping, Sequence
 
 from devcapsule.configuration.file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, render_toml, selected_version_lock
-from devcapsule.configuration.storage import ResolvedProject, checkout_record_name, discover_project, load_toml, manifest_for, recommendation_lock_for
+from devcapsule.configuration.storage import ResolvedProject, checkout_directory, checkout_record_name, discover_project, load_toml, manifest_for, recommendation_lock_for
 
 
 CONTEXT_PATH = Path("/etc/devcapsule/launch-context.json")
@@ -70,6 +70,10 @@ class LaunchConfiguration:
             "launcher-root": str(selected.root),
             "runtime-root": selected.resolution["runtime"]["project-mount"],
             "checkout-file": selected.checkout_path.name,
+            # The mount hides whether this file came from the named directory.
+            "checkout-name": checkout_record_name(
+                selected.checkout_path,
+                named=selected.checkout_path.parent == checkout_directory(selected.manifest) / "checkouts"),
             "info": configured_information(selected.root, selected.manifest, selected.lock, selected.checkout),
             "running": {"identity": identity, "lock": deepcopy(selected.lock),
                         "origin": "local selection" if selected_version_lock(selected.checkout) else "project recommendation",
@@ -130,7 +134,7 @@ class RuntimeConfiguration:
             "schema-version": 1,
             "context": "running capsule (next launch, read-only)",
             "project": {key: self.document["project"][key] for key in ("creator", "slug")},
-            "checkout": {"name": checkout_record_name(self.checkout_path),
+            "checkout": {"name": self.document.get("checkout-name", checkout_record_name(self.checkout_path)),
                          "launcher-path": self.document["launcher-root"],
                          "runtime-path": self.document["runtime-root"],
                          "record": self._recorded_checkout()},
@@ -195,6 +199,10 @@ def for_project(start: Path, *, fallback: bool = False) -> RuntimeConfiguration 
         name = document.get("checkout-file")
         if not isinstance(name, str) or Path(name).name != name or not name.endswith(".checkout.toml"):
             raise ValueError("invalid checkout record name")
+        if "checkout-name" in document:
+            checkout_name = document["checkout-name"]
+            if not isinstance(checkout_name, str) or not checkout_name or "/" in checkout_name or "\\" in checkout_name:
+                raise ValueError("invalid checkout name")
         project, running = document["project"], document["running"]
         if not isinstance(project, dict) or not all(isinstance(project.get(key), str) for key in ("creator", "slug")):
             raise ValueError("missing project identity")

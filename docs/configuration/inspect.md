@@ -60,6 +60,8 @@ project and checkout identity, and one object per row with the table's
 columns as keys. Inside a capsule the document carries the mounted record
 instead of rows, and names the launcher command. The shape is a contract,
 read by the capsule web console; a reader can rely on `schema-version` 1.
+On a host, either format creates missing checkout records. With `--json`,
+initialization notices go to standard error.
 
 Running versions, as opposed to the next launch's selection, are also on
 `~/.local/bin/devcapsule project versions show`, with `--json` under the same
