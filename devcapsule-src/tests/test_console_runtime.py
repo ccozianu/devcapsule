@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -37,6 +38,8 @@ def test_contract_round_trips_the_console_section(tmp_path: Path) -> None:
     assert with_source.to_mapping()["console"] == {**CONSOLE, "source_path": "/workspace/project/devcapsule-webconsole"}
     assert RuntimePlan.from_mapping(plan.to_mapping()) == plan
     assert RuntimePlan.from_mapping(runtime_document(tmp_path)).console is None
+    assert "console" not in RuntimePlan.from_mapping(runtime_document(tmp_path)).to_mapping()
+    assert RuntimePlan.from_mapping({**document, "console": None}).console is None
     assert plan.with_console(ConsolePlan("127.0.0.1", 40000, "/run/t")).console == ConsolePlan("127.0.0.1", 40000, "/run/t")
 
 
@@ -46,6 +49,10 @@ def test_contract_round_trips_the_console_section(tmp_path: Path) -> None:
     ({**CONSOLE, "listen_address": "not a host/"}, "console.listen_address must be a host address"),
     ({**CONSOLE, "port": 0}, "console.port must be a TCP port number"),
     ({**CONSOLE, "port": True}, "console.port must be a TCP port number"),
+    ({**CONSOLE, "port": 65536}, "console.port must be a TCP port number"),
+    ({**CONSOLE, "port": "6081"}, "console.port must be a TCP port number"),
+    ({**CONSOLE, "listen_address": ""}, "console.listen_address must be a non-empty string"),
+    ({**CONSOLE, "token_path": "/run/../secret"}, "console.token_path must be an absolute normalized container path"),
     ({**CONSOLE, "token_path": "relative"}, "console.token_path must be an absolute normalized container path"),
     ({**CONSOLE, "source_path": "../escape"}, "console.source_path must be an absolute normalized container path"),
     ({**CONSOLE, "source_path": 5}, "console.source_path must be a non-empty string"),
@@ -53,6 +60,19 @@ def test_contract_round_trips_the_console_section(tmp_path: Path) -> None:
 def test_contract_rejects_a_malformed_console(tmp_path: Path, console: object, message: str) -> None:
     with pytest.raises(RuntimePlanError, match=re.escape(message)):
         RuntimePlan.from_mapping({**runtime_document(tmp_path), "console": console})
+
+
+@pytest.mark.parametrize("field", ["listen_address", "port", "token_path"])
+def test_console_contract_requires_each_listener_field(tmp_path: Path, field: str) -> None:
+    console = {key: value for key, value in CONSOLE.items() if key != field}
+    with pytest.raises(RuntimePlanError, match=rf"console\.{field}"):
+        RuntimePlan.from_mapping({**runtime_document(tmp_path), "console": console})
+
+
+@pytest.mark.parametrize("port", [1, 65535])
+def test_console_contract_accepts_boundary_ports(tmp_path: Path, port: int) -> None:
+    plan = plan_with_console(tmp_path, port=port)
+    assert plan.console is not None and plan.console.port == port
 
 
 def plan_with_console(tmp_path: Path, **console: object) -> RuntimePlan:
@@ -70,8 +90,29 @@ def test_console_child_runs_the_installed_console_against_the_runtime_cli(tmp_pa
         "--project", "/workspace/project", "--cli", RUNTIME_CLI,
         "--token-file", "/run/devcapsule-console-token", "--listen", "0.0.0.0", "--port", "6081",
     )
-    assert child.ready is not None and child.ready() is False  # nothing listens on 6081 here
+    assert child.ready is not None
     assert child.ready_timeout_seconds == 60.0
+
+
+@pytest.mark.parametrize("listen, probe", [
+    ("0.0.0.0", "127.0.0.1"), ("::", "::1"),
+    ("127.0.0.1", "127.0.0.1"), ("::1", "::1"),
+])
+def test_console_readiness_probes_the_listener_address_family(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, listen: str, probe: str,
+) -> None:
+    python = tmp_path / "python"
+    python.touch()
+    monkeypatch.setattr("devcapsule.container_runtime.console.CONSOLE_PYTHON", str(python))
+    child = console_child(plan_with_console(tmp_path, listen_address=listen, port=45678), lambda command: command)
+    assert child is not None and child.ready is not None
+    connection = MagicMock()
+    with patch("devcapsule.container_runtime.console.socket.create_connection", return_value=connection) as connect:
+        assert child.ready() is True
+        connect.assert_called_once_with((probe, 45678), timeout=0.2)
+        connection.__exit__.assert_called_once()
+    with patch("devcapsule.container_runtime.console.socket.create_connection", side_effect=OSError):
+        assert child.ready() is False
 
 
 def test_console_child_prefers_the_mounted_source_and_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -107,10 +148,13 @@ def test_entrypoint_starts_the_console_beside_the_display_and_alone_headless(
     assert run(headless, job=("pytest", "-q")) == 42
     passthrough = RuntimePlan.from_mapping({**runtime_document(tmp_path), "console": dict(CONSOLE)})
     assert run(passthrough) == 42
+    assert run(with_display, job=("true",)) == 42  # job mode suppresses even a declared display
 
-    first, second, third = captured_supervisor.instances
+    first, second, third, fourth = captured_supervisor.instances
     names = [child.name for child in first.children]
     assert names[0] == XVNC_CHILD and names[-3:] == [NOVNC_CHILD, CONSOLE_CHILD, "jetbrains"]
     assert [child.name for child in second.children] == [CONSOLE_CHILD, "job"]
     assert [child.name for child in third.children] == [CONSOLE_CHILD, "jetbrains"]
-    assert all(not child.foreground for children in (first, second, third) for child in children.children[:-1])
+    assert [child.name for child in fourth.children] == [CONSOLE_CHILD, "job"]
+    assert all(not child.foreground for children in (first, second, third, fourth) for child in children.children[:-1])
+    assert all(children.children[-1].foreground for children in (first, second, third, fourth))
