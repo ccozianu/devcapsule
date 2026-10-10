@@ -28,22 +28,29 @@ DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "
 
 
 @pytest.fixture(autouse=True)
-def private_artifact_cache(request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Give every test an empty artifact cache of its own.
+def private_user_directories(request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Give non-Docker tests private user-directory paths under their tmp_path.
 
-    ``cache_root`` follows ``XDG_CACHE_HOME``, which a capsule exports as the
-    developer's real cache. A test that resolves or runs a checkout retains
-    that cache's artifacts into its own state, gigabytes per test where the
-    cache holds an IDE, and nothing on a laptop without the cache: the same
-    test wrote 2.4 GB here and 68 KB with an empty cache (2026-10-10). The
-    Docker-backed suites keep the real cache, because their base builds
-    would otherwise download every artifact again; a test that wants a
-    particular cache sets ``XDG_CACHE_HOME`` itself, after this fixture.
+    Override HOME and each XDG directory: changing HOME alone leaves exported
+    XDG paths active. This keeps artifact retention and restoration, config,
+    state, and launcher runtime files away from the developer's directories.
+    Docker-marked tests keep their inherited directories so builds reuse the
+    real artifact cache. A test or function-scoped fixture can set its own
+    paths after this autouse fixture runs. Leave directory creation to the
+    tested code so refusal tests can still assert that nothing was written.
     """
 
     if any(request.node.get_closest_marker(marker) for marker in DOCKER_MARKERS):
         return
-    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "private-cache"))
+    for variable, leaf in (
+        ("HOME", "home"),
+        ("XDG_CACHE_HOME", "cache"),
+        ("XDG_CONFIG_HOME", "config"),
+        ("XDG_DATA_HOME", "data"),
+        ("XDG_STATE_HOME", "state"),
+        ("XDG_RUNTIME_DIR", "runtime"),
+    ):
+        monkeypatch.setenv(variable, str(tmp_path / "user" / leaf))
 
 
 @pytest.fixture
