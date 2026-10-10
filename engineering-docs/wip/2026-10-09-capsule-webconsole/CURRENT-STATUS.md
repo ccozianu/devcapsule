@@ -84,7 +84,11 @@ fixture now pins `PEX_ROOT` and `SCIE_BASE` to the inherited cache before
 the homes move, with the regression test asserting both. Measured after:
 the integration session 134 MB and 43 s, and a plain `nox -s build`
 leaves 175 MB under `/tmp/pytest-of-<user>` (36 unit, 134 integration,
-7 console) in 2 minutes.
+7 console) in 2 minutes. The Codex pair reviewed the pins commit as a
+round on #205 and accepted it: the helper matches pex 2.97.1's and
+scie-jump 1.11.2's own cache defaults on both Linux layouts, no other tool
+cache fills the private home beyond 1.3 MB of pip metadata, and each
+regression assertion fails when its pin is removed.
 
 Judgments recorded for PR11:
 
