@@ -111,3 +111,81 @@ Taking the decision and recording it where the gate is defined:
    candidate.
 5. Update `WORKFLOW-LOCAL.md` and `DEVELOPING.md` to match, and remove the
    sentence that the gate's scratch overflows `/tmp` once it no longer does.
+
+
+## Appendix: the summary as retrieved from the share, verbatim
+
+Retrieved on 2026-10-10 by rendering <https://share.gemini.google/z6OXUKUkkvgL> in a headless browser and copying the page's text. The page's title is "Integration Tests in CI/CD Gates", created with 3.8 Flash on October 10, 2026. Only the site's navigation and cookie banner are left out; the table came through as tab-separated lines.
+
+```text
+Can you research whether or not integration tests (as opposed to unit tests) should be part of the d…
+
+Can you research whether or not integration tests (as opposed to unit tests) should be part of the default build and gates triggered by PR or merge to main in software projects ? Give me some arguments and references pro and cons
+
+Scientific consensus (based on peer-reviewed DevOps research and industry-standard continuous delivery engineering literature; specific trade-offs vary depending on deployment architecture, test execution times, and infrastructure reliability).
+
+Whether integration tests should gate a pull request (PR) or merge to the main branch depends on how the test suite is scoped, its execution latency, and its environmental determinism.
+
+Modern continuous delivery practices distinguish between narrow integration tests (which test integration points against real local boundaries like an in-memory DB or a localized container) and broad/end-to-end integration tests (which interact across live distributed networks or external services).
+
+Key Arguments and Trade-offs
+Dimension	Pro-Gating (Include in PR / Merge Gate)	Anti-Gating (Decouple or Run Post-Merge)
+Defect Detection	Catches boundary mismatches, contract breaks, and serialization bugs before polluting main.	Unit tests and type checkers catch most logical defects; synthetic contract testing (e.g., Pact) catches boundaries faster.
+Cycle Time & Feedback	Guarantees that code passing CI is safe to deploy immediately (true Continuous Deployment).	Long-running suites (>10 minutes) block PR iterations, reduce developer focus, and increase context switching.
+Reliability / Flakiness	Enforces accountability: authors must fix integration failures while context is fresh.	Flaky network calls or slow databases produce false positives, leading to pipeline retries and test fatigue.
+Resource Cost	Prevents broken rollbacks and hotfixes downstream.	Ephemeral environments and parallelized containers for every PR push drive up compute and runner costs.
+Arguments and References: Pro-Gating
+
+Guaranteed "Always Deployable" Mainline
+
+Argument: Continuous Delivery requires that every commit landing on the trunk represents a viable release candidate. Relying solely on unit tests permits integration mismatches (e.g., schema drift, query syntax bugs, HTTP status discrepancies) to land on main, shifting the burden of debugging to later stages or to other developers.
+
+Reference: Jez Humble & David Farley, Continuous Delivery (2010). Chapter 5 details the commit stage, emphasizing that the gate must build artifacts and run fast integration checks that provide high confidence before merging.
+
+Immediate Developer Accountability
+
+Argument: When an integration failure blocks a PR, the author has full working context and can fix the issue in minutes. If integration runs asynchronously post-merge or nightly, discovering the root cause among multiple merged PRs takes significantly more time.
+
+Reference: Google Engineering, Software Engineering at Google (Titus Winters et al., 2020), specifically the "Testing Overview" and "Continuous Integration" chapters, which document how pre-submit testing gates maintain trunk health at scale.
+
+Reduction in Change Failure Rate (CFR)
+
+Argument: Preventing integrated defects from reaching main directly lowers production incident rates and rollback frequencies.
+
+Reference: Nicole Forsgren, Jez Humble, & Gene Kim, Accelerate: The Science of Lean Software and DevOps (2018). DORA research identifies automated testing and comprehensive CI as key technical capabilities driving both high throughput and low change failure rates.
+
+Arguments and References: Anti-Gating (or Tiered Execution)
+
+The Fast Feedback Loop Threshold
+
+Argument: CI gates must provide fast feedback (ideally under 5 to 10 minutes). Broad integration suites spinning up external services or seeded databases often exceed this budget. Slow PR gates lead to infrequent commits, batching of large PRs, and merge queues that stall throughput.   
+Martin Fowler
+
+Reference: Martin Fowler, Continuous Integration (martinfowler.com, 2006/2024 updates). Fowler establishes that commit-stage feedback must be fast. If a test suite takes longer, it should be isolated into a secondary deployment pipeline stage rather than holding up the initial commit feedback.   
+Martin Fowler
+
+Flakiness and False Failures
+
+Argument: As integration tests grow, non-deterministic behaviors (timeouts, race conditions, external resource contention) increase mathematically. When flaky tests gate PRs, developers lose trust in the pipeline, often re-running builds without modifying code to get a "green" pass.
+
+Reference: Martin Fowler, Eradicating Non-Determinism in Tests (2011). Fowler points out that non-deterministic tests in a gating pipeline ruin the value of the suite and cause teams to ignore CI signals.
+
+Reference: Ham Vocke, The Practical Test Pyramid (Martin Fowler's bliki, 2018). Advocates keeping broad integration tests minimal and off the critical PR blocking path if they introduce external fragility.
+
+Impact on Lead Time for Changes (LTTC)
+
+Argument: Running exhaustive integration suites against every commit pushed to a PR branch lengthens the overall PR lifecycle. Teams spend disproportionate engineering hours waiting for builds to complete before approval.
+
+Reference: DORA (DevOps Research and Assessment) State of DevOps Reports. The research shows that while automated testing is necessary, pipeline bottlenecks directly impair Lead Time for Changes.   
+Gitmore
+
+Recommended Industry Consensus Architecture
+
+Most high-performing teams avoid an absolute "all or nothing" approach by splitting the suite into tiered boundaries:
+
+Fast, Narrow Integration Tests (Gated on PR): Tests using localized boundaries (e.g., Testcontainers for a single PostgreSQL instance, wiremocked HTTP boundaries, contract verification) that run under 5–10 minutes are retained as default PR blocking gates.
+
+Selective / Impacted Integration (Gated on PR): Using Test Impact Analysis (TIA) or path-based CI triggers to run integration tests only against the specific microservice or module altered by the PR diff.
+
+Broad / End-to-End Integration Tests (Post-Merge / Scheduled): Tests involving multi-service orchestrations, real cloud infrastructure, or large data migrations run immediately post-merge on main before production promotion, or in parallel secondary pipeline stages. If this stage fails, the commit is automatically rolled back or flagged for an immediate fix.
+```
