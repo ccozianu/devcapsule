@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; slice 8 is complete and awaits the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201) and PR10 (#203), stacked, each with its Codex review merged
+State: active; slice 8 and a test-hygiene fix await the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201), PR10 (#203) and PR11 (#205), stacked, each with its Codex review merged or in progress
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,37 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-10, PR11: every test gets an empty artifact cache of its own.**
+The owner's plain `pytest` run filled a 2 GB `/tmp`. Diagnosed with one
+command each: `cache_root()` follows `XDG_CACHE_HOME`, which a capsule
+exports as the developer's real cache, 7.2 GB here; the `checkout`
+fixture of `tests/test_upgrade_recovery.py` and four fixtures in
+`tests/test_project_commands.py` and `tests/configuration/test_history.py`
+redirect the other XDG homes but not the cache; and `_retain` in
+`version_sets.py` copies every locked artifact, the 1.2 GB PyCharm
+tarball among them, from that cache into each resolving test's state.
+One test's two cases wrote 2.4 GB in 7 s, and 68 KB with an empty cache;
+the unit suite wrote 3.7 GB per run, and pytest keeps three runs. The
+test, its fixture and the retention step date from 2026-09-20 and 21,
+on `main` since; the gate's many runs from a capsule made it visible.
+The fix, by the owner's direction and stacked on PR10: one autouse
+fixture in the root `tests/conftest.py`, beside `host_launch_by_default`
+which exists for the same reason, points `XDG_CACHE_HOME` at an empty
+directory under `tmp_path` for every test without a Docker marker. The
+unit suite now writes 37 MB and runs in 28 s instead of 74 s.
+
+Judgments recorded for PR11:
+
+- Hermetic in both directions: the real cache was read by tests, and
+  `_restore_artifacts` could have written fixture bytes into it on a
+  machine with a partial cache. A test that wants a particular cache sets
+  the variable itself, after the fixture, as `test_version_sets.py` does.
+- The Docker-marked suites keep the real cache: their base builds would
+  download every artifact again.
+- Not fixed here: the artifact path under the state home nears the NTFS
+  260-character limit under a Windows profile. A state-layout question for
+  the owner of version sets; see Open Threads.
 
 **2026-10-09, slice 8, workflow half (PR10).** The rule: topic 8.8 of
 this repository's `WORKFLOW.md`, "Handing a decision to the human", five
@@ -564,6 +595,11 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- PR11 on its first base, `main`, 2026-10-10: 1,329 unit cases, 17 packaged
+  integrations, type check, smokes, documentation contract, then the
+  console session with 89 tests; successful, with 2.2 MB of pytest
+  scratch. Rebased onto PR10's branch; the gate there is recorded below
+  when done.
 - Build gate on the merged PR10 branch at `405e884`, 2026-10-09: 1,474 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;
@@ -687,6 +723,12 @@ then 5, then 6.
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on
   `project-management`'s branch. The mail item carries its substance.
+- Windows path length, raised by the owner on 2026-10-10: the retained
+  artifact path `<state>/devcapsule/version-sets/<64 hex>/artifacts/sha256/<64
+  hex>` runs to about 150 characters before the profile prefix, and NTFS
+  still enforces 260 without the long-path opt-in. Not this workstream's
+  layout; to be mailed to the workstream that owns version sets once the
+  owner names it.
 - The hand-off rule, topic 8.8, is in this repository's `WORKFLOW.md` only.
   The shipped definition under `devcapsule-src/devcapsule/assets/` has
   another layout and belongs to workflow-improvements; it takes the same
