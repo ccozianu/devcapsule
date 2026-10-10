@@ -74,6 +74,18 @@ directories; the Docker marker list is pinned to `pyproject.toml`. The
 measurements used a synthetic artifact, never the real cache. Gate on the
 merged branch below.
 
+**Follow-up, 2026-10-10.** The owner's plain `nox -s build` still left 900 MB
+under `/tmp`: the widened fixture had moved `~/.cache/pex` and
+`~/.cache/nce` under each test's scratch, so the three clean-revision
+builds of the integration session downloaded the scie launcher and its
+Python again and unpacked them per case, 872 MB and 145 s for the session.
+Both are build tools' content-addressed caches, not DevCapsule state; the
+fixture now pins `PEX_ROOT` and `SCIE_BASE` to the inherited cache before
+the homes move, with the regression test asserting both. Measured after:
+the integration session 134 MB and 43 s, and a plain `nox -s build`
+leaves 175 MB under `/tmp/pytest-of-<user>` (36 unit, 134 integration,
+7 console) in 2 minutes.
+
 Judgments recorded for PR11:
 
 - Hermetic in both directions: the real cache was read by tests, and
@@ -611,6 +623,11 @@ then 5, then 6.
   integrations, type check, smokes, documentation contract, then the
   console session with 89 tests; successful, with 2.2 MB of pytest
   scratch. Rebased onto PR10's branch.
+- PR11 with the build-tool cache pins at `5cdf216`, 2026-10-10, a plain
+  `nox -s build` writing to `/tmp` as the owner runs it: 1,477 unit cases,
+  17 packaged integrations, type check, smokes, documentation contract,
+  then the console session with 290 tests; successful in 2 minutes, with
+  175 MB left under `/tmp/pytest-of-<user>`.
 - Build gate on the merged PR11 branch at `12e9e33`, 2026-10-10: 1,477 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;
