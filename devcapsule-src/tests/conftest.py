@@ -27,6 +27,11 @@ def host_launch_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke")
 
 
+def inherited_cache_home() -> Path:
+    """The cache home the process was started with: ``XDG_CACHE_HOME``, else ``~/.cache``."""
+    return Path(os.environ.get("XDG_CACHE_HOME") or Path(os.environ.get("HOME", "~")).expanduser() / ".cache")
+
+
 @pytest.fixture(autouse=True)
 def private_user_directories(request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Give non-Docker tests private user-directory paths under their tmp_path.
@@ -42,6 +47,14 @@ def private_user_directories(request: pytest.FixtureRequest, tmp_path: Path, mon
 
     if any(request.node.get_closest_marker(marker) for marker in DOCKER_MARKERS):
         return
+    # The build tools' caches are content-addressed and shared by the
+    # developer's own builds: pex's under PEX_ROOT, and the scie launcher's
+    # unpacked Python under SCIE_BASE. Moving them under the scratch made every
+    # clean revision build download the launcher and its Python again and
+    # unpack it per case, 250 MB a time. Pin both before the homes move.
+    cache = inherited_cache_home()
+    monkeypatch.setenv("PEX_ROOT", os.environ.get("PEX_ROOT") or str(cache / "pex"))
+    monkeypatch.setenv("SCIE_BASE", os.environ.get("SCIE_BASE") or str(cache / "nce"))
     for variable, leaf in (
         ("HOME", "home"),
         ("XDG_CACHE_HOME", "cache"),

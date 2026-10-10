@@ -37,6 +37,8 @@ def test_user_directory_isolation(
         else:
             monkeypatch.delenv(key, raising=False)
     monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
+    for key in ("PEX_ROOT", "SCIE_BASE"):
+        monkeypatch.delenv(key, raising=False)
     pytester.makeini("[pytest]\nmarkers =\n" + "\n".join(
         f"    {marker}: fixture probe only; no Docker" for marker in (*DOCKER_MARKERS, "integration")
     ))
@@ -87,6 +89,12 @@ def test_user_directory_isolation(
                 assert directory.is_relative_to(tmp_path)
             assert list(tmp_path.iterdir()) == []
 
+        def test_build_tool_caches_stay_inherited():
+            # pex and the scie launcher keep the developer's content-addressed
+            # caches: a clean revision build must not download Python per test.
+            assert os.environ["PEX_ROOT"] == str(owner_cache.parent / "pex")
+            assert os.environ["SCIE_BASE"] == str(owner_cache.parent / "nce")
+
         @pytest.fixture
         def chosen_cache(tmp_path, monkeypatch):
             monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "chosen"))
@@ -111,4 +119,4 @@ def test_user_directory_isolation(
                 assert cache_root() == owner_cache
     ''')
     result = pytester.runpytest_subprocess("-q", "-o", "addopts=", "--strict-markers", timeout=30)
-    result.assert_outcomes(passed=10)
+    result.assert_outcomes(passed=11)
