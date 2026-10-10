@@ -598,8 +598,11 @@ then 5, then 6.
 - PR11 on its first base, `main`, 2026-10-10: 1,329 unit cases, 17 packaged
   integrations, type check, smokes, documentation contract, then the
   console session with 89 tests; successful, with 2.2 MB of pytest
-  scratch. Rebased onto PR10's branch; the gate there is recorded below
-  when done.
+  scratch. Rebased onto PR10's branch.
+- PR11 on the stacked branch at `135ecbb`, 2026-10-10: 1,474 unit cases, 17
+  packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
 - Build gate on the merged PR10 branch at `405e884`, 2026-10-09: 1,474 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;
