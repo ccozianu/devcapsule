@@ -24,6 +24,28 @@ def host_launch_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke")
+
+
+@pytest.fixture(autouse=True)
+def private_artifact_cache(request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Give every test an empty artifact cache of its own.
+
+    ``cache_root`` follows ``XDG_CACHE_HOME``, which a capsule exports as the
+    developer's real cache. A test that resolves or runs a checkout retains
+    that cache's artifacts into its own state, gigabytes per test where the
+    cache holds an IDE, and nothing on a laptop without the cache: the same
+    test wrote 2.4 GB here and 68 KB with an empty cache (2026-10-10). The
+    Docker-backed suites keep the real cache, because their base builds
+    would otherwise download every artifact again; a test that wants a
+    particular cache sets ``XDG_CACHE_HOME`` itself, after this fixture.
+    """
+
+    if any(request.node.get_closest_marker(marker) for marker in DOCKER_MARKERS):
+        return
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "private-cache"))
+
+
 @pytest.fixture
 def built_pex() -> Path:
     selected = os.environ.get("DEVCAPSULE_PEX_UNDER_TEST")
