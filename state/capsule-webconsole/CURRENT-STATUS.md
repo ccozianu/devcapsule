@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; slice 8 and a test-hygiene fix await the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201), PR10 (#203) and PR11 (#205), stacked, each with its Codex review merged or in progress
+State: active; slice 8 and the test-isolation fix await the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201), PR10 (#203) and PR11 (#205), stacked, each with its Codex review merged
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -61,6 +61,18 @@ fixture in the root `tests/conftest.py`, beside `host_launch_by_default`
 which exists for the same reason, points `XDG_CACHE_HOME` at an empty
 directory under `tmp_path` for every test without a Docker marker. The
 unit suite now writes 37 MB and runs in 28 s instead of 74 s.
+
+**PR #205 is open against PR10's branch. Its review, PR #206 by the Codex
+and gpt-6-astra pair, was merged without a round.** The fixture, now
+`private_user_directories`, gives every non-Docker test private `HOME` and
+every XDG directory under its `tmp_path`, not only the cache; a regression
+test runs the real conftest under pytester for both inherited layouts, a
+laptop without exported XDG paths and a capsule with them, proving that
+retention reads and restoration writes stay private, that a test's own
+fixture still wins, and that the Docker-marked suites keep their inherited
+directories; the Docker marker list is pinned to `pyproject.toml`. The
+measurements used a synthetic artifact, never the real cache. Gate on the
+merged branch below.
 
 Judgments recorded for PR11:
 
@@ -599,6 +611,10 @@ then 5, then 6.
   integrations, type check, smokes, documentation contract, then the
   console session with 89 tests; successful, with 2.2 MB of pytest
   scratch. Rebased onto PR10's branch.
+- Build gate on the merged PR11 branch at `12e9e33`, 2026-10-10: 1,477 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
 - PR11 on the stacked branch at `135ecbb`, 2026-10-10: 1,474 unit cases, 17
   packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;
