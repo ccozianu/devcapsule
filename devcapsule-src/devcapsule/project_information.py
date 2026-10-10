@@ -25,6 +25,7 @@ ENVIRONMENT_PURPOSES = {
     "CLAUDE_CONFIG_DIR": "Persistent Claude configuration and authentication",
     "DISABLE_UPDATES": "Use the lock-selected Claude installation",
     "DEVCAPSULE_CONTAINER_NAME": "Running container name",
+    "DEVCAPSULE_CONSOLE_URL": "Host-side web console origin; the run token travels in the browser's cookie",
     "DISPLAY": "Selected display server",
     "XAUTHORITY": "Display credential file path (contents omitted)",
     "BROWSER": "Host browser dispatch command, when authorized",

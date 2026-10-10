@@ -101,7 +101,7 @@ def fake_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[tuple[str
 
 @pytest.fixture
 def settings(project: Path, fake_cli: tuple[tuple[str, ...], Path]) -> Settings:
-    return Settings(project=project, cli=fake_cli[0], token=TOKEN)
+    return Settings(project=project, cli=fake_cli[0], token=TOKEN, decisions=project.parent / "decisions")
 
 
 @pytest.fixture

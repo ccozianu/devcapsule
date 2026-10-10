@@ -1,0 +1,145 @@
+# Decision pages: the contract between an agent and the console
+
+Deliverable 5 of the capsule web console work order. An agent inside the
+capsule hands the human a decision with several options as a page in the
+console. The human reads the records cited beside each option, chooses, and
+the choice is written where the agent reads it back. The agent then records
+the decision in the normal files and discards the page. The page is never a
+record itself.
+
+## Where the files live
+
+Decisions live in one directory of the capsule's writable state:
+
+```text
+$XDG_STATE_HOME/devcapsule/decisions/      (inside a capsule: /home/devcapsule/.local/state/devcapsule/decisions)
+```
+
+The console reads that directory; `--decisions DIR` or
+`$DEVCAPSULE_CONSOLE_DECISIONS` names another one. The directory is not a
+record: nothing under it is committed, and the agent deletes a decision and
+its answer once it has recorded the outcome.
+
+An agent asks by writing `<id>.json`. The console answers by writing
+`<id>.answer.json` beside it. `<id>` is lowercase letters, digits and
+hyphens, starts with a letter or digit, has at most 100 characters, and is
+the file's stem. Documents must be regular UTF-8 JSON files, not symbolic
+links or special files. The reader accepts at most 1 MiB per file.
+
+## The decision document, `<id>.json`
+
+```json
+{
+  "format": 1,
+  "id": "2026-10-09-intake-pass",
+  "title": "Intake disposition pass",
+  "asked-by": "project-management",
+  "asked-at": "2026-10-09T18:00:00+00:00",
+  "context": "Thirty-nine items wait in intake. Decide each one.\n\nMarkdown, rendered.",
+  "items": [
+    {
+      "key": "2026-09-06-component-catalog-development-blog",
+      "title": "Component catalog: a development blog",
+      "summary": "Markdown, rendered beside the options.",
+      "records": ["engineering-docs/wip/2026-08-09-project-management/intake/2026-09-06-component-catalog-development-blog.md"],
+      "options": [
+        {"key": "accept", "label": "Accept", "summary": "Take it as a task."},
+        {"key": "decline", "label": "Decline", "summary": "Close it with a reason."},
+        {"key": "defer", "label": "Defer", "summary": "Leave it in intake."}
+      ],
+      "multiple": false
+    }
+  ]
+}
+```
+
+- `format` is the integer 1. A reader refuses another value or type.
+- `items` has at least one item. One decision with one item is the simple
+  case; an intake pass has many. Each item has a unique `key` with the same
+  grammar as `<id>`, a `title`, at least two `options` with unique keys, and
+  optionally a `summary` in markdown, `records` (paths inside the project
+  mount, shown as links to the records page) and `multiple` (several
+  options may be chosen; default false).
+- `context` is markdown, shown above the items. `asked-by` names the
+  workstream or agent; `asked-at` is an ISO 8601 timestamp.
+
+A different agent can produce this document from a markdown table with
+`python -m devcapsule_webconsole.decisions from-table TABLE.md --id ID
+--title TITLE --asked-by NAME > ID.json`. The table has a header row; the
+columns `key` and `title` are required, `summary`, `records` (paths
+separated by spaces) and `options` (`key:Label` pairs separated by commas)
+are optional, and an item without `options` gets accept, decline and defer.
+The optional `multiple` column accepts `yes` or `true` for several choices.
+Column names must be unique. The separator row must match the header.
+
+## The answer document, `<id>.answer.json`
+
+```json
+{
+  "format": 1,
+  "id": "2026-10-09-intake-pass",
+  "answered-at": "2026-10-09T18:12:40+00:00",
+  "answers": {
+    "2026-09-06-component-catalog-development-blog": {"chosen": ["accept"], "note": "Good for the website."}
+  },
+  "note": "Everything else next week."
+}
+```
+
+- The console writes it atomically when the human submits the page, and
+  overwrites it when the human submits again; the latest answer stands
+  until the agent reads it.
+- `answered-at` is the console's submission timestamp. A stored answer
+  without a valid timestamp is refused; reading never invents a timestamp.
+- `answers` holds one entry per item the human answered, by item key, with
+  the chosen option keys and an optional note. An item the human left
+  unanswered is absent. `note` is the human's overall note.
+- The console validates each chosen key against the item's options and
+  refuses a single-choice item with several choices.
+
+## What the agent does with the answer
+
+Read `<id>.answer.json`, record each outcome in the normal files, the
+status file, the decision log or the intake dispositions, then delete both
+files. The console shows the decision as answered until then. The console
+never deletes a decision or an answer.
+
+## What the console does and does not do
+
+- `GET /decisions` lists the decisions in the directory, answered or not.
+- `GET /decisions/<id>` renders one: the context, every item with its
+  summary, its records as links and its options, and the answer when there
+  is one.
+- `POST /api/decisions/<id>/answer` is the console's one write: it writes
+  the answer document. It accepts a same-origin request only and refuses a
+  body that names an unknown item or option.
+- The POST requires one `Origin` header equal to the console's origin,
+  including its port, with no trailing slash. Missing or `null` origins
+  are refused. The run token is also required. The JSON request body may
+  contain at most 64 KiB; a refusal leaves any previous answer unchanged.
+- Nothing else about a decision writes. The decision pages and the
+  notifications' read and dismiss are the console's only writes, all into
+  the capsule's state, as the work order allows.
+
+## Handing a decision to the human
+
+An agent in a chat hands the decision over as text first, so a human who
+never opens the console loses nothing, and ends with the link:
+
+```text
+python -m devcapsule_webconsole.decisions hand-off <decisions-dir>/<id>.json
+```
+
+prints the title, who asks, the context, every item numbered with its
+summary, its records and its options by key, and then one closing line
+with the page's link, `$DEVCAPSULE_CONSOLE_URL/decisions/<id>?token=…`.
+Inside a capsule, `devcapsule project checkout decisions hand-off <file>`
+runs the same module; `from-table` and `check` use the same wrapper.
+The launcher sets `DEVCAPSULE_CONSOLE_URL` inside the capsule and mounts
+the token at `/run/devcapsule-console-token`; `--token-file` or
+`$DEVCAPSULE_CONSOLE_TOKEN_FILE` names another file. The token in the link
+is the run's token, which the launcher already prints on the host; the link
+belongs in the chat and never in a record. Without the origin the text
+says the console is not reachable; without a readable token the link goes
+out bare and works in a browser that already opened the console. An
+unanswered decision also appears under the console's bell.

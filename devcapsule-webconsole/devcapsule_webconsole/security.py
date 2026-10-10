@@ -107,6 +107,11 @@ def confine(root: Path, requested: str) -> Path:
 
 
 def read_project_text(root: Path, requested: str) -> str:
+    """``read_project_bytes`` decoded as UTF-8; a ``UnicodeDecodeError`` says it is not text."""
+    return read_project_bytes(root, requested).decode("utf-8")
+
+
+def read_project_bytes(root: Path, requested: str) -> bytes:
     """Resolve inside the mount, then open without following replacement links.
 
     A pathname check alone is insufficient: an editor or agent can replace
@@ -135,5 +140,5 @@ def read_project_text(root: Path, requested: str) -> str:
         opened.callback(os.close, descriptor)
         if not stat.S_ISREG(os.fstat(descriptor).st_mode):
             raise FileNotFoundError(requested)
-        with os.fdopen(descriptor, encoding="utf-8", closefd=False) as stream:
+        with os.fdopen(descriptor, "rb", closefd=False) as stream:
             return stream.read()

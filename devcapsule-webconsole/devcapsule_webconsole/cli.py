@@ -10,15 +10,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import math
+import os
 from pathlib import Path
 import subprocess
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
+
+from .decisions import DECISIONS_ENV
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 
 
 class CommandError(Exception):
-    """The CLI did not produce a document; the attributes say why."""
+    """The CLI did not do what was asked; the attributes say why."""
 
     def __init__(self, command: Sequence[str], reason: str, stderr: str = "") -> None:
         super().__init__(reason)
@@ -28,6 +31,13 @@ class CommandError(Exception):
 
     def to_document(self) -> dict[str, Any]:
         return {"error": self.reason, "command": list(self.command), "stderr": self.stderr}
+
+
+class CommandRefused(CommandError):
+    """The CLI refused the request, exit status 2: the request was wrong, not the CLI."""
+
+
+REFUSAL_STATUS = 2
 
 
 @dataclass(frozen=True)
@@ -40,12 +50,12 @@ class RuntimeCli:
         """``devcapsule project --path PROJECT ARGUMENTS... --json``."""
         return (*self.executable, "project", "--path", str(self.project), *arguments, "--json")
 
-    def read(self, *arguments: str) -> dict[str, Any]:
+    def read(self, *arguments: str, environ: Mapping[str, str] | None = None) -> dict[str, Any]:
         """Run one ``project`` subcommand with ``--json`` and parse its output."""
         command = self.command(*arguments)
         try:
             completed = subprocess.run(
-                command, capture_output=True, timeout=self.timeout, check=False
+                command, capture_output=True, timeout=self.timeout, check=False, env=environ
             )
         except OSError as error:
             raise CommandError(command, f"cannot run the runtime CLI: {error}") from error
@@ -65,8 +75,35 @@ class RuntimeCli:
             raise CommandError(command, f"the runtime CLI printed no JSON document: {error}", stderr) from error
         return document
 
+    def act(self, *arguments: str) -> str:
+        """Run one ``project`` subcommand that changes capsule state and return what it printed.
+
+        No ``--json``: the commands that act print one line. A refusal, exit
+        status 2, is ``CommandRefused`` with the CLI's message; any other
+        failure is ``CommandError``.
+        """
+        command = (*self.executable, "project", "--path", str(self.project), *arguments)
+        try:
+            completed = subprocess.run(command, capture_output=True, timeout=self.timeout, check=False)
+        except OSError as error:
+            raise CommandError(command, f"cannot run the runtime CLI: {error}") from error
+        except subprocess.TimeoutExpired as error:
+            raise CommandError(command, f"the runtime CLI did not answer within {self.timeout:g}s") from error
+        stderr = completed.stderr.decode("utf-8", errors="replace")
+        if completed.returncode == REFUSAL_STATUS:
+            raise CommandRefused(command, stderr.strip() or "the runtime CLI refused the request", stderr)
+        if completed.returncode != 0:
+            raise CommandError(command, f"the runtime CLI exited with status {completed.returncode}", stderr)
+        return completed.stdout.decode("utf-8", errors="replace").strip()
+
     def configuration(self) -> dict[str, Any]:
         return self.read("config", "list")
+
+    def notifications(self, *, decisions: Path, unread_only: bool = False) -> dict[str, Any]:
+        # The listing must merge the directory served by the decision pages,
+        # including an explicit --decisions override. Do not change os.environ.
+        environ = {**os.environ, DECISIONS_ENV: str(decisions)}
+        return self.read("checkout", "notifications", "list", *(("--unread",) if unread_only else ()), environ=environ)
 
     def versions(self) -> dict[str, Any]:
         return self.read("versions", "show")

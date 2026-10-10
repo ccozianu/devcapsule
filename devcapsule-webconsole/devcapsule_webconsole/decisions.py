@@ -1,0 +1,470 @@
+"""Decision pages: an agent's question as a document, the human's answer as another.
+
+Deliverable 5 of the capsule web console work order; the contract is in
+``DECISIONS.md`` beside the package. An agent writes ``<id>.json`` into the
+decisions directory, the console renders it, the human answers, the console
+writes ``<id>.answer.json``, and the agent reads it back. Nothing here is a
+record; the agent records the outcome in the normal files and deletes both.
+
+The answer write is this module's only write operation. The hand-off prints
+the question and its console link for an agent to paste into a chat.
+"""
+
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import re
+import stat
+import sys
+import tempfile
+from typing import Any, Mapping, Sequence
+from urllib.parse import quote
+
+FORMAT = 1
+DECISIONS_ENV = "DEVCAPSULE_CONSOLE_DECISIONS"
+CONSOLE_URL_ENV = "DEVCAPSULE_CONSOLE_URL"
+"""Set by the launcher inside a capsule: the console's host-side origin, without the token."""
+TOKEN_FILE_ENV = "DEVCAPSULE_CONSOLE_TOKEN_FILE"
+DEFAULT_TOKEN_PATH = Path("/run/devcapsule-console-token")
+"""Where the launcher mounts the run token inside a capsule, readable by the capsule identity."""
+DEFAULT_SUBDIRECTORY = Path("devcapsule") / "decisions"
+KEY_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,99}")
+DEFAULT_OPTIONS = (
+    {"key": "accept", "label": "Accept", "summary": "Take it as a task."},
+    {"key": "decline", "label": "Decline", "summary": "Close it with a reason."},
+    {"key": "defer", "label": "Defer", "summary": "Leave it in intake."},
+)
+MAXIMUM_DOCUMENT_BYTES = 1024 * 1024
+MAXIMUM_ANSWER_BYTES = 64 * 1024
+
+
+class DecisionError(ValueError):
+    """A decision or answer document does not follow the contract; the message says where."""
+
+
+def default_directory(environ: Mapping[str, str] = os.environ) -> Path:
+    """``$DEVCAPSULE_CONSOLE_DECISIONS``, else ``$XDG_STATE_HOME/devcapsule/decisions``."""
+    named = environ.get(DECISIONS_ENV)
+    if named:
+        return Path(named)
+    state = environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    return Path(state) / DEFAULT_SUBDIRECTORY
+
+
+@dataclass(frozen=True)
+class Option:
+    key: str
+    label: str
+    summary: str = ""
+
+
+@dataclass(frozen=True)
+class Item:
+    key: str
+    title: str
+    options: tuple[Option, ...]
+    summary: str = ""
+    records: tuple[str, ...] = ()
+    multiple: bool = False
+
+
+@dataclass(frozen=True)
+class Decision:
+    id: str
+    title: str
+    items: tuple[Item, ...]
+    asked_by: str = ""
+    asked_at: str = ""
+    context: str = ""
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "format": FORMAT, "id": self.id, "title": self.title, "asked-by": self.asked_by,
+            "asked-at": self.asked_at, "context": self.context,
+            "items": [{
+                "key": item.key, "title": item.title, "summary": item.summary, "records": list(item.records),
+                "options": [{"key": option.key, "label": option.label, "summary": option.summary} for option in item.options],
+                "multiple": item.multiple,
+            } for item in self.items],
+        }
+
+    def item(self, key: str) -> Item | None:
+        return next((item for item in self.items if item.key == key), None)
+
+
+@dataclass(frozen=True)
+class Answer:
+    id: str
+    answered_at: str
+    answers: dict[str, dict[str, Any]] = field(default_factory=dict)
+    note: str = ""
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {"format": FORMAT, "id": self.id, "answered-at": self.answered_at, "answers": self.answers, "note": self.note}
+
+
+def _key(value: object, where: str) -> str:
+    if not isinstance(value, str) or KEY_PATTERN.fullmatch(value) is None:
+        raise DecisionError(f"{where} must be lowercase letters, digits and hyphens, at most 100 characters")
+    return value
+
+
+def _text(value: object, where: str, *, required: bool = False) -> str:
+    if value is None and not required:
+        return ""
+    if not isinstance(value, str) or (required and not value.strip()):
+        raise DecisionError(f"{where} must be a {'non-empty ' if required else ''}string")
+    if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
+        raise DecisionError(f"{where} must contain valid Unicode text")
+    return value
+
+
+def _timestamp(value: object, where: str, *, required: bool = False) -> str:
+    text = _text(value, where, required=required)
+    if text:
+        try:
+            datetime.fromisoformat(text)
+            if len(text) <= 10:
+                raise ValueError("a date alone is not a timestamp")
+        except ValueError as error:
+            raise DecisionError(f"{where} must be an ISO 8601 timestamp") from error
+    return text
+
+
+def decision_from_mapping(document: object) -> Decision:
+    """Validate a decision document; every refusal names the field."""
+    if not isinstance(document, dict):
+        raise DecisionError("a decision must be a JSON object")
+    if type(document.get("format")) is not int or document["format"] != FORMAT:
+        raise DecisionError(f"format must be {FORMAT}")
+    items_value = document.get("items")
+    if not isinstance(items_value, list) or not items_value:
+        raise DecisionError("items must be a non-empty array")
+    items: list[Item] = []
+    for index, item_value in enumerate(items_value):
+        where = f"items[{index}]"
+        if not isinstance(item_value, dict):
+            raise DecisionError(f"{where} must be an object")
+        options_value = item_value.get("options")
+        if not isinstance(options_value, list) or len(options_value) < 2:
+            raise DecisionError(f"{where}.options must hold at least two options")
+        options: list[Option] = []
+        for option_index, option_value in enumerate(options_value):
+            option_where = f"{where}.options[{option_index}]"
+            if not isinstance(option_value, dict):
+                raise DecisionError(f"{option_where} must be an object")
+            options.append(Option(
+                _key(option_value.get("key"), f"{option_where}.key"),
+                _text(option_value.get("label"), f"{option_where}.label", required=True),
+                _text(option_value.get("summary"), f"{option_where}.summary"),
+            ))
+        if len({option.key for option in options}) != len(options):
+            raise DecisionError(f"{where}.options must have unique keys")
+        records_value = item_value.get("records", [])
+        if not isinstance(records_value, list) or not all(isinstance(record, str) and record for record in records_value):
+            raise DecisionError(f"{where}.records must be an array of paths")
+        for record in records_value:
+            _text(record, f"{where}.records")
+        multiple = item_value.get("multiple", False)
+        if not isinstance(multiple, bool):
+            raise DecisionError(f"{where}.multiple must be true or false")
+        items.append(Item(
+            _key(item_value.get("key"), f"{where}.key"),
+            _text(item_value.get("title"), f"{where}.title", required=True),
+            tuple(options),
+            _text(item_value.get("summary"), f"{where}.summary"),
+            tuple(records_value),
+            multiple,
+        ))
+    if len({item.key for item in items}) != len(items):
+        raise DecisionError("items must have unique keys")
+    return Decision(
+        _key(document.get("id"), "id"),
+        _text(document.get("title"), "title", required=True),
+        tuple(items),
+        _text(document.get("asked-by"), "asked-by"),
+        _timestamp(document.get("asked-at"), "asked-at"),
+        _text(document.get("context"), "context"),
+    )
+
+
+def answer_from_mapping(decision: Decision, document: object, *, answered_at: str | None = None) -> Answer:
+    """Validate an answer against its decision: known items, known options, one choice unless multiple."""
+    if not isinstance(document, dict):
+        raise DecisionError("an answer must be a JSON object")
+    if type(document.get("format", FORMAT)) is not int or document.get("format", FORMAT) != FORMAT:
+        raise DecisionError(f"format must be {FORMAT}")
+    if document.get("id", decision.id) != decision.id:
+        raise DecisionError(f"id must be {decision.id!r}")
+    answers_value = document.get("answers", {})
+    if not isinstance(answers_value, dict):
+        raise DecisionError("answers must be an object keyed by item")
+    answers: dict[str, dict[str, Any]] = {}
+    for item_key, answer_value in answers_value.items():
+        item = decision.item(str(item_key))
+        if item is None:
+            raise DecisionError(f"answers names an unknown item {item_key!r}")
+        if not isinstance(answer_value, dict):
+            raise DecisionError(f"answers[{item_key!r}] must be an object")
+        chosen = answer_value.get("chosen", [])
+        if not isinstance(chosen, list) or not all(isinstance(choice, str) for choice in chosen):
+            raise DecisionError(f"answers[{item_key!r}].chosen must be an array of option keys")
+        known = {option.key for option in item.options}
+        unknown = [choice for choice in chosen if choice not in known]
+        if unknown:
+            raise DecisionError(f"answers[{item_key!r}] names unknown options {unknown!r}")
+        if len(set(chosen)) != len(chosen):
+            raise DecisionError(f"answers[{item_key!r}] repeats an option")
+        if not item.multiple and len(chosen) > 1:
+            raise DecisionError(f"answers[{item_key!r}] chooses several options for a single-choice item")
+        answers[item.key] = {"chosen": list(chosen), "note": _text(answer_value.get("note"), f"answers[{item_key!r}].note")}
+    return Answer(decision.id, answered_at or _now(), answers, _text(document.get("note"), "note"))
+
+
+@dataclass(frozen=True)
+class DecisionStore:
+    """The decisions directory: read decisions and answers, write answers atomically."""
+
+    directory: Path
+
+    def decision_path(self, decision_id: str) -> Path:
+        return self.directory / f"{_key(decision_id, 'id')}.json"
+
+    def answer_path(self, decision_id: str) -> Path:
+        return self.directory / f"{_key(decision_id, 'id')}.answer.json"
+
+    def list_ids(self) -> list[str]:
+        """Every decision in the directory, by id, oldest file first."""
+        if not self.directory.is_dir():
+            return []
+        found = []
+        for path in self.directory.glob("*.json"):
+            if path.name.endswith(".answer.json") or KEY_PATTERN.fullmatch(path.stem) is None:
+                continue
+            try:
+                metadata = path.lstat()
+            except FileNotFoundError:
+                continue  # The agent may discard a decision at any time.
+            if stat.S_ISDIR(metadata.st_mode):
+                continue
+            found.append((metadata.st_mtime, path.stem))
+        return [decision_id for _, decision_id in sorted(found)]
+
+    def read_decision(self, decision_id: str) -> Decision:
+        path = self.decision_path(decision_id)
+        document = _read_document(path)
+        decision = decision_from_mapping(document)
+        if decision.id != decision_id:
+            raise DecisionError(f"{path.name} carries id {decision.id!r}; the file name is the id")
+        return decision
+
+    def read_answer(self, decision: Decision) -> Answer | None:
+        path = self.answer_path(decision.id)
+        try:
+            document = _read_document(path)
+        except FileNotFoundError:
+            return None
+        if not isinstance(document, dict):
+            raise DecisionError(f"{path.name} must be a JSON object")
+        answered_at = _timestamp(document.get("answered-at"), "answered-at", required=True)
+        return answer_from_mapping(decision, document, answered_at=answered_at)
+
+    def write_answer(self, answer: Answer) -> Path:
+        """Write the answer beside its decision: a temporary file, then one rename."""
+        path = self.answer_path(answer.id)
+        self.directory.mkdir(parents=True, exist_ok=True)
+        # Exclusive creation prevents a planted symlink or another writer from
+        # sharing the temporary file. Rename replaces an answer symlink itself.
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
+                                             prefix=f".{path.name}.", suffix=".tmp", delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(json.dumps(answer.to_mapping(), indent=2, sort_keys=True) + "\n")
+            temporary.replace(path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+        return path
+
+
+def _read_document(path: Path) -> object:
+    """Read a bounded regular file without following an agent's symbolic link."""
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise DecisionError(f"{path.name} must be a regular file")
+            raw = stream.read(MAXIMUM_DOCUMENT_BYTES + 1)
+    except FileNotFoundError:
+        raise
+    except OSError as error:
+        raise DecisionError(f"cannot read {path.name}: {error}") from error
+    if len(raw) > MAXIMUM_DOCUMENT_BYTES:
+        raise DecisionError(f"{path.name} is larger than {MAXIMUM_DOCUMENT_BYTES} bytes")
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (ValueError, RecursionError) as error:
+        raise DecisionError(f"{path.name} is not a JSON document: {error}") from error
+
+
+def from_markdown_table(text: str, *, decision_id: str, title: str, asked_by: str = "", context: str = "") -> Decision:
+    """A decision from a markdown table: ``key`` and ``title`` columns required.
+
+    Optional columns: ``summary``; ``records``, paths separated by spaces;
+    ``options``, ``key:Label`` pairs separated by commas, else accept,
+    decline and defer; ``multiple``, ``yes`` for several choices.
+    """
+    rows = [line.strip() for line in text.splitlines() if line.strip().startswith("|")]
+    if len(rows) < 3:
+        raise DecisionError("the table needs a header row, a separator row and at least one item row")
+
+    def cells_of(row: str) -> list[str]:
+        return [cell.strip() for cell in row.removeprefix("|").removesuffix("|").split("|")]
+
+    header = [cell.lower() for cell in cells_of(rows[0])]
+    if len(set(header)) != len(header):
+        raise DecisionError("the table must have unique column names")
+    for required in ("key", "title"):
+        if required not in header:
+            raise DecisionError(f"the table needs a {required!r} column")
+    separator = cells_of(rows[1])
+    if len(separator) != len(header) or not all(re.fullmatch(r":?-+:?", cell) for cell in separator):
+        raise DecisionError("the table needs a markdown separator row matching its header")
+    items = []
+    for row in rows[2:]:
+        cells = cells_of(row)
+        if len(cells) != len(header):
+            raise DecisionError(f"row {row!r} has {len(cells)} cells; the header has {len(header)}")
+        values = dict(zip(header, cells))
+        options_text = values.get("options", "")
+        if options_text:
+            options = []
+            for pair in options_text.split(","):
+                key, _, label = pair.strip().partition(":")
+                options.append({"key": key.strip(), "label": label.strip() or key.strip()})
+        else:
+            options = [dict(option) for option in DEFAULT_OPTIONS]
+        items.append({
+            "key": values["key"], "title": values["title"], "summary": values.get("summary", ""),
+            "records": [record for record in values.get("records", "").split() if record],
+            "options": options, "multiple": values.get("multiple", "").strip().lower() in {"yes", "true"},
+        })
+    return decision_from_mapping({
+        "format": FORMAT, "id": decision_id, "title": title, "asked-by": asked_by,
+        "asked-at": _now(), "context": context, "items": items,
+    })
+
+
+def hand_off_link(decision_id: str, environ: Mapping[str, str] = os.environ,
+                  token_file: Path | None = None) -> tuple[str, str] | None:
+    """The link an agent hands the human, and a note when the token could not be read.
+
+    ``None`` when the launcher did not name the console's origin: the agent is
+    not inside a capsule with a console. The token comes from the file the
+    launcher mounts, named by ``token_file``, ``$DEVCAPSULE_CONSOLE_TOKEN_FILE``
+    or the default path; when it cannot be read, the link goes out without it
+    and works in a browser that already holds the console's cookie.
+    """
+    origin = environ.get(CONSOLE_URL_ENV, "").rstrip("/")
+    if not origin:
+        return None
+    page = f"{origin}/decisions/{decision_id}"
+    source = token_file or Path(environ.get(TOKEN_FILE_ENV) or DEFAULT_TOKEN_PATH)
+    try:
+        token = source.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeError):
+        return page, f"(the console's token file {source} was not readable; the link works in a browser that already opened the console)"
+    if not token:
+        return page, f"(the console's token file {source} is empty; the link works in a browser that already opened the console)"
+    return f"{page}?token={quote(token, safe='')}", ""
+
+
+def hand_off_text(decision: Decision, link: tuple[str, str] | None) -> str:
+    """The decision as numbered text for a chat, ending with the link to act on it in the browser.
+
+    The text stands on its own: a human who never opens the console can
+    answer with an item number and an option key.
+    """
+    lines = [decision.title]
+    if decision.asked_by or decision.asked_at:
+        lines.append("Asked by " + (decision.asked_by or "an agent") + (f" at {decision.asked_at}" if decision.asked_at else ""))
+    if decision.context.strip():
+        lines += ["", decision.context.strip()]
+    lines.append("")
+    for number, item in enumerate(decision.items, 1):
+        prefix = f"{number}. "
+        indent = " " * len(prefix)
+        lines.append(prefix + ("\n" + indent).join(item.title.splitlines()))
+        if item.summary.strip():
+            lines += [indent + line if line else "" for line in item.summary.strip().splitlines()]
+        if item.records:
+            lines.append(indent + ("\n" + indent).join(("Records: " + " · ".join(item.records)).splitlines()))
+        for option in item.options:
+            option_lines = (f"{option.key}: {option.label}" + (f". {option.summary}" if option.summary else "")).splitlines()
+            lines.append(indent + "- " + option_lines[0])
+            lines += [indent + "  " + line if line else "" for line in option_lines[1:]]
+        if item.multiple:
+            lines.append(indent + "(choose any number of options)")
+        lines.append("")
+    if link is None:
+        lines.append("Answer here with each item's number and option key. The web console is not reachable from this "
+                     f"environment, so there is no link; the page would be /decisions/{decision.id}.")
+    else:
+        url, note = link
+        lines.append("Answer here with each item's number and option key, or follow this link to see the full details "
+                     "and act in your browser:")
+        lines.append(url + (f" {note}" if note else ""))
+    return "\n".join(lines) + "\n"
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """``python -m devcapsule_webconsole.decisions``: build, check or hand off decision documents."""
+    parser = argparse.ArgumentParser(prog="devcapsule-webconsole decisions", description=main.__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    table = commands.add_parser("from-table", help="Print a decision document built from a markdown table.")
+    table.add_argument("table", type=Path, help="A markdown file holding the table; '-' for standard input.")
+    table.add_argument("--id", required=True, help="The decision id and file stem.")
+    table.add_argument("--title", required=True)
+    table.add_argument("--asked-by", default="")
+    table.add_argument("--context", default="", help="Markdown shown above the items.")
+    check = commands.add_parser("check", help="Validate a decision document, and its answer when present.")
+    check.add_argument("decision", type=Path)
+    hand_off = commands.add_parser("hand-off", help="Print a decision as numbered text for a chat, ending with the "
+                                   "link to its console page; the text an agent pastes to the human.")
+    hand_off.add_argument("decision", type=Path)
+    hand_off.add_argument("--token-file", type=Path, help=f"The run token's file; default ${TOKEN_FILE_ENV}, then {DEFAULT_TOKEN_PATH}.")
+    arguments = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
+    try:
+        if arguments.command == "from-table":
+            text = sys.stdin.read() if str(arguments.table) == "-" else arguments.table.read_text(encoding="utf-8")
+            decision = from_markdown_table(text, decision_id=arguments.id, title=arguments.title,
+                                           asked_by=arguments.asked_by, context=arguments.context)
+            print(json.dumps(decision.to_mapping(), indent=2))
+            return 0
+        if arguments.command == "hand-off" and arguments.decision.suffix != ".json":
+            raise DecisionError("the decision file must end in .json")
+        store = DecisionStore(arguments.decision.parent)
+        decision = store.read_decision(arguments.decision.stem)
+        if arguments.command == "hand-off":
+            print(hand_off_text(decision, hand_off_link(decision.id, token_file=arguments.token_file)), end="")
+            return 0
+        answer = store.read_answer(decision)
+        print(f"{decision.id}: {len(decision.items)} item(s); " + (f"answered {answer.answered_at}" if answer else "unanswered"))
+        return 0
+    except (DecisionError, OSError, UnicodeError) as error:
+        print(f"devcapsule-webconsole decisions: {error}", file=sys.stderr)
+        return 2
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
