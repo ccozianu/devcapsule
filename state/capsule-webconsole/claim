@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-capsule-webconsole/test-cache-isolation-review
+slice: PR11.1: review cache isolation, measure synthetic cache retention, add regression coverage
+since: 2026-10-10T05:18:42+00:00
+expires: 2026-10-10T17:18:42+00:00
