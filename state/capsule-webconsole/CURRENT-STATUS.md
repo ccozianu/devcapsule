@@ -763,6 +763,12 @@ then 5, then 6.
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on
   `project-management`'s branch. The mail item carries its substance.
+- Mailed to `project-management` on 2026-10-10, at the owner's request:
+  `2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md`,
+  a decision to take and record on the project's testing tiers, what gates
+  a pull request and a merge, the gate's time and scratch budget, and the
+  hermeticity rule, against the practice the owner summarized; the
+  evidence is this workstream's PR11.
 - Windows path length, raised by the owner on 2026-10-10: the retained
   artifact path `<state>/devcapsule/version-sets/<64 hex>/artifacts/sha256/<64
   hex>` runs to about 150 characters before the profile prefix, and NTFS
