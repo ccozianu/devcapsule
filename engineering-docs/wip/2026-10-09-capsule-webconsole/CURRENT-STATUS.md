@@ -4,7 +4,7 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; slice 8 is complete and awaits the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201) and PR10 (#203), stacked, each with its Codex review merged
+State: active; slice 8 and the test-isolation fix await the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201), PR10 (#203) and PR11 (#205), stacked, each with its Codex review merged
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -42,6 +42,65 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-10, PR11: every test gets an empty artifact cache of its own.**
+The owner's plain `pytest` run filled a 2 GB `/tmp`. Diagnosed with one
+command each: `cache_root()` follows `XDG_CACHE_HOME`, which a capsule
+exports as the developer's real cache, 7.2 GB here; the `checkout`
+fixture of `tests/test_upgrade_recovery.py` and four fixtures in
+`tests/test_project_commands.py` and `tests/configuration/test_history.py`
+redirect the other XDG homes but not the cache; and `_retain` in
+`version_sets.py` copies every locked artifact, the 1.2 GB PyCharm
+tarball among them, from that cache into each resolving test's state.
+One test's two cases wrote 2.4 GB in 7 s, and 68 KB with an empty cache;
+the unit suite wrote 3.7 GB per run, and pytest keeps three runs. The
+test, its fixture and the retention step date from 2026-09-20 and 21,
+on `main` since; the gate's many runs from a capsule made it visible.
+The fix, by the owner's direction and stacked on PR10: one autouse
+fixture in the root `tests/conftest.py`, beside `host_launch_by_default`
+which exists for the same reason, points `XDG_CACHE_HOME` at an empty
+directory under `tmp_path` for every test without a Docker marker. The
+unit suite now writes 37 MB and runs in 28 s instead of 74 s.
+
+**PR #205 is open against PR10's branch. Its review, PR #206 by the Codex
+and gpt-6-astra pair, was merged without a round.** The fixture, now
+`private_user_directories`, gives every non-Docker test private `HOME` and
+every XDG directory under its `tmp_path`, not only the cache; a regression
+test runs the real conftest under pytester for both inherited layouts, a
+laptop without exported XDG paths and a capsule with them, proving that
+retention reads and restoration writes stay private, that a test's own
+fixture still wins, and that the Docker-marked suites keep their inherited
+directories; the Docker marker list is pinned to `pyproject.toml`. The
+measurements used a synthetic artifact, never the real cache. Gate on the
+merged branch below.
+
+**Follow-up, 2026-10-10.** The owner's plain `nox -s build` still left 900 MB
+under `/tmp`: the widened fixture had moved `~/.cache/pex` and
+`~/.cache/nce` under each test's scratch, so the three clean-revision
+builds of the integration session downloaded the scie launcher and its
+Python again and unpacked them per case, 872 MB and 145 s for the session.
+Both are build tools' content-addressed caches, not DevCapsule state; the
+fixture now pins `PEX_ROOT` and `SCIE_BASE` to the inherited cache before
+the homes move, with the regression test asserting both. Measured after:
+the integration session 134 MB and 43 s, and a plain `nox -s build`
+leaves 175 MB under `/tmp/pytest-of-<user>` (36 unit, 134 integration,
+7 console) in 2 minutes. The Codex pair reviewed the pins commit as a
+round on #205 and accepted it: the helper matches pex 2.97.1's and
+scie-jump 1.11.2's own cache defaults on both Linux layouts, no other tool
+cache fills the private home beyond 1.3 MB of pip metadata, and each
+regression assertion fails when its pin is removed.
+
+Judgments recorded for PR11:
+
+- Hermetic in both directions: the real cache was read by tests, and
+  `_restore_artifacts` could have written fixture bytes into it on a
+  machine with a partial cache. A test that wants a particular cache sets
+  the variable itself, after the fixture, as `test_version_sets.py` does.
+- The Docker-marked suites keep the real cache: their base builds would
+  download every artifact again.
+- Not fixed here: the artifact path under the state home nears the NTFS
+  260-character limit under a Windows profile. A state-layout question for
+  the owner of version sets; see Open Threads.
 
 **2026-10-09, slice 8, workflow half (PR10).** The rule: topic 8.8 of
 this repository's `WORKFLOW.md`, "Handing a decision to the human", five
@@ -564,6 +623,23 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- PR11 on its first base, `main`, 2026-10-10: 1,329 unit cases, 17 packaged
+  integrations, type check, smokes, documentation contract, then the
+  console session with 89 tests; successful, with 2.2 MB of pytest
+  scratch. Rebased onto PR10's branch.
+- PR11 with the build-tool cache pins at `5cdf216`, 2026-10-10, a plain
+  `nox -s build` writing to `/tmp` as the owner runs it: 1,477 unit cases,
+  17 packaged integrations, type check, smokes, documentation contract,
+  then the console session with 290 tests; successful in 2 minutes, with
+  175 MB left under `/tmp/pytest-of-<user>`.
+- Build gate on the merged PR11 branch at `12e9e33`, 2026-10-10: 1,477 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
+- PR11 on the stacked branch at `135ecbb`, 2026-10-10: 1,474 unit cases, 17
+  packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
 - Build gate on the merged PR10 branch at `405e884`, 2026-10-09: 1,474 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;
@@ -687,6 +763,18 @@ then 5, then 6.
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on
   `project-management`'s branch. The mail item carries its substance.
+- Mailed to `project-management` on 2026-10-10, at the owner's request:
+  `2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md`,
+  a decision to take and record on the project's testing tiers, what gates
+  a pull request and a merge, the gate's time and scratch budget, and the
+  hermeticity rule, against the practice the owner summarized; the
+  evidence is this workstream's PR11.
+- Windows path length, raised by the owner on 2026-10-10: the retained
+  artifact path `<state>/devcapsule/version-sets/<64 hex>/artifacts/sha256/<64
+  hex>` runs to about 150 characters before the profile prefix, and NTFS
+  still enforces 260 without the long-path opt-in. Not this workstream's
+  layout; to be mailed to the workstream that owns version sets once the
+  owner names it.
 - The hand-off rule, topic 8.8, is in this repository's `WORKFLOW.md` only.
   The shipped definition under `devcapsule-src/devcapsule/assets/` has
   another layout and belongs to workflow-improvements; it takes the same
