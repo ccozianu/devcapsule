@@ -240,6 +240,11 @@ file's frontmatter names the release this text ships in; see topic 4.1.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
+- **Hand decisions to the human through capsule state and chat.** Topic 8.8:
+  present numbered options and the available console link; prefer chat
+  answers for the same item; record outcomes under the existing intake and
+  design-decision rules before deleting temporary files. Keep unanswered
+  items pending and use chat when console tools are absent.
 - **Human-facing documents are materialized views.** Topic 12.12: a
   document derived from records is a view that records its dependencies
   inside itself, section-level when authored by an agent, file-level when
@@ -1138,6 +1143,36 @@ one commit.
    patch, checks that it applies, and owns application, validation, the source
    commit, and integration. A patch is a proposal. A later patch supersedes an
    earlier one by a new item that says so.
+
+### 8.8 Handing a decision to the human
+
+1. Hand a choice with several options, or several items each with options,
+   to the human as a decision document and numbered chat text.
+   Inside a capsule with console tools, build the document with
+   `devcapsule project checkout decisions from-table`.
+   Save its output in the capsule's decisions directory using the format in
+   [DECISIONS.md](devcapsule-webconsole/DECISIONS.md).
+   Without console tools, present the numbered chat text directly.
+2. Present each item's options by key with
+   `devcapsule project checkout decisions hand-off <file>` when available.
+   End with the console link when the command supplies one.
+   Accept answers in chat or on the page.
+   Prefer a chat answer over a page answer for the same item.
+3. Keep the document and answer in capsule state, outside Git.
+   Keep links that carry the run token in chat only.
+4. Read page answers from the decisions directory.
+   Record each outcome under the applicable rules: topics 8.2 and 8.3 for
+   intake, and topic 12.7 for design decisions.
+   Use intake options consistent with topic 8.2 instead of the table
+   builder's defaults.
+   Keep unanswered items pending.
+   Delete the document and its answer only after all outcomes are recorded
+   in the normal repository files.
+5. Send other environment notices through
+   `devcapsule project checkout notifications post` when available.
+   Otherwise give the notice in chat.
+   Do not use notification files as repository records.
+   Preserve durable facts under the applicable record rules.
 
 ## 9. Sessions
 

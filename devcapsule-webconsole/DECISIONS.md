@@ -133,6 +133,8 @@ python -m devcapsule_webconsole.decisions hand-off <decisions-dir>/<id>.json
 prints the title, who asks, the context, every item numbered with its
 summary, its records and its options by key, and then one closing line
 with the page's link, `$DEVCAPSULE_CONSOLE_URL/decisions/<id>?token=…`.
+Inside a capsule, `devcapsule project checkout decisions hand-off <file>`
+runs the same module; `from-table` and `check` use the same wrapper.
 The launcher sets `DEVCAPSULE_CONSOLE_URL` inside the capsule and mounts
 the token at `/run/devcapsule-console-token`; `--token-file` or
 `$DEVCAPSULE_CONSOLE_TOKEN_FILE` names another file. The token in the link

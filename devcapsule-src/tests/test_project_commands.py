@@ -2355,6 +2355,7 @@ def test_every_project_leaf_declares_its_capsule_access() -> None:
     # neither refused inside a capsule nor sent to the launcher.
     for leaf in ("list", "post", "read", "dismiss"):
         assert declared[("checkout", "notifications", leaf)] is CapsuleAccess.INDEPENDENT
+    assert declared[("checkout", "decisions")] is CapsuleAccess.INDEPENDENT
 
 
 def test_checkout_notifications_round_trip_from_the_host(tmp_path: Path, capsys, monkeypatch) -> None:

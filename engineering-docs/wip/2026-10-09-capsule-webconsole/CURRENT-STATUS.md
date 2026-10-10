@@ -4,9 +4,9 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199) and PR9 (#201) await the owner, stacked, each with its Codex review merged; PR10, the workflow instruction and the first real decision, is next on PR9's branch
+State: active; slice 8 and the test-isolation fix await the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201), PR10 (#203) and PR11 (#205), stacked, each with its Codex review merged
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Branch association: `ws-capsule-webconsole/live-resources` (PR5, #192, from `main`); `ws-capsule-webconsole/records` (PR6, #194, stacked on PR5); `ws-capsule-webconsole/decisions` (PR7, stacked on PR6); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
 
@@ -42,6 +42,105 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-10, PR11: every test gets an empty artifact cache of its own.**
+The owner's plain `pytest` run filled a 2 GB `/tmp`. Diagnosed with one
+command each: `cache_root()` follows `XDG_CACHE_HOME`, which a capsule
+exports as the developer's real cache, 7.2 GB here; the `checkout`
+fixture of `tests/test_upgrade_recovery.py` and four fixtures in
+`tests/test_project_commands.py` and `tests/configuration/test_history.py`
+redirect the other XDG homes but not the cache; and `_retain` in
+`version_sets.py` copies every locked artifact, the 1.2 GB PyCharm
+tarball among them, from that cache into each resolving test's state.
+One test's two cases wrote 2.4 GB in 7 s, and 68 KB with an empty cache;
+the unit suite wrote 3.7 GB per run, and pytest keeps three runs. The
+test, its fixture and the retention step date from 2026-09-20 and 21,
+on `main` since; the gate's many runs from a capsule made it visible.
+The fix, by the owner's direction and stacked on PR10: one autouse
+fixture in the root `tests/conftest.py`, beside `host_launch_by_default`
+which exists for the same reason, points `XDG_CACHE_HOME` at an empty
+directory under `tmp_path` for every test without a Docker marker. The
+unit suite now writes 37 MB and runs in 28 s instead of 74 s.
+
+**PR #205 is open against PR10's branch. Its review, PR #206 by the Codex
+and gpt-6-astra pair, was merged without a round.** The fixture, now
+`private_user_directories`, gives every non-Docker test private `HOME` and
+every XDG directory under its `tmp_path`, not only the cache; a regression
+test runs the real conftest under pytester for both inherited layouts, a
+laptop without exported XDG paths and a capsule with them, proving that
+retention reads and restoration writes stay private, that a test's own
+fixture still wins, and that the Docker-marked suites keep their inherited
+directories; the Docker marker list is pinned to `pyproject.toml`. The
+measurements used a synthetic artifact, never the real cache. Gate on the
+merged branch below.
+
+**Follow-up, 2026-10-10.** The owner's plain `nox -s build` still left 900 MB
+under `/tmp`: the widened fixture had moved `~/.cache/pex` and
+`~/.cache/nce` under each test's scratch, so the three clean-revision
+builds of the integration session downloaded the scie launcher and its
+Python again and unpacked them per case, 872 MB and 145 s for the session.
+Both are build tools' content-addressed caches, not DevCapsule state; the
+fixture now pins `PEX_ROOT` and `SCIE_BASE` to the inherited cache before
+the homes move, with the regression test asserting both. Measured after:
+the integration session 134 MB and 43 s, and a plain `nox -s build`
+leaves 175 MB under `/tmp/pytest-of-<user>` (36 unit, 134 integration,
+7 console) in 2 minutes. The Codex pair reviewed the pins commit as a
+round on #205 and accepted it: the helper matches pex 2.97.1's and
+scie-jump 1.11.2's own cache defaults on both Linux layouts, no other tool
+cache fills the private home beyond 1.3 MB of pip metadata, and each
+regression assertion fails when its pin is removed.
+
+Judgments recorded for PR11:
+
+- Hermetic in both directions: the real cache was read by tests, and
+  `_restore_artifacts` could have written fixture bytes into it on a
+  machine with a partial cache. A test that wants a particular cache sets
+  the variable itself, after the fixture, as `test_version_sets.py` does.
+- The Docker-marked suites keep the real cache: their base builds would
+  download every artifact again.
+- Not fixed here: the artifact path under the state home nears the NTFS
+  260-character limit under a Windows profile. A state-layout question for
+  the owner of version sets; see Open Threads.
+
+**2026-10-09, slice 8, workflow half (PR10).** The rule: topic 8.8 of
+this repository's `WORKFLOW.md`, "Handing a decision to the human", five
+sentences, with a pointer in `AGENTS.md`; the shipped definition under
+`devcapsule-src/devcapsule/assets/project_workflow/definition/` has
+another layout and belongs to workflow-improvements, which gets the same
+text at its next sync (noted in Open Threads). One CLI for agents:
+`devcapsule project checkout decisions from-table | check | hand-off`
+runs the console's installed module inside a capsule, the mounted source
+first when the runtime plan names one, and outside a capsule says where
+the module is. The first real decision: the 38 undecided items of
+project-management's intake, as one document in this capsule's decisions
+directory, with its table and hand-off text under
+`evidence/2026-10-09-intake-pass/`; this capsule runs no console, so the
+hand-off here names the page, and the owner's next launch on a base with
+the console lists it under the bell.
+
+**PR #203 is open against PR9's branch. Its review, PR #204 by the Codex
+and gpt-6-astra pair, was merged without a round.** Five findings, all
+accepted: an unreadable plan with invalid UTF-8 falls back to the
+installed console; an interpreter that cannot start is the CLI's refusal,
+not a traceback; the wrapper's passthrough is proven on exact arguments;
+the rule was rewritten so outcomes are recorded under topics 8.2, 8.3 and
+12.7 before any deletion, unanswered items stay pending, and intake
+decisions use 8.2's acknowledge-or-forward instead of the builder's
+defaults; and the Unreleased entry and the humane paragraph that
+WORKFLOW-LOCAL requires accompany the rule. That last rule reached the
+first real decision: the intake pass was regenerated with acknowledge and
+forward per item, in the capsule's state and in the evidence. Gate on the
+merged branch below.
+
+Judgments recorded for slice 8's workflow half:
+
+- The rule lives in this repository's copy by the owner's word; the
+  shipped definition is another workstream's file.
+- The wrapper runs the console's module rather than importing it: the
+  console is not in the runtime PEX by binding decision 2, and the
+  subprocess boundary stays the contract.
+- The decision document is capsule state and is not committed; the table
+  and the hand-off text are evidence of the mechanism, as for the sample.
 
 **2026-10-09, slice 8, console half (PR9).** The hand-off:
 `python -m devcapsule_webconsole.decisions hand-off <decisions-dir>/<id>.json`
@@ -486,9 +585,8 @@ digraph stack {
      installed module, so an agent sees one CLI; `hand-off` prints the
      numbered text for chat and a closing line with the tokened link,
      which the cookie then carries for every later request.
-   - PR10, workflow: about six lines of instruction in the workflow
-     definition and in this repository's copy, and the first real decision
-     file as dogfood, the project-management intake pass.
+   - PR10, workflow: done on `ws-capsule-webconsole/hand-off-rule`; see
+     Current State.
 6. Deliverable 6, materialized views, in a third iteration.
 
 The first iteration is on `main`: #184 and #190, merged 2026-10-09. On resumption, after the owner's merges or push-backs, the
@@ -525,6 +623,32 @@ then 5, then 6.
   successful. Manual run: a sample decision built from a table,
   served, answered in a browser, written back; evidence under
   `evidence/2026-10-09-decision-sample/`.
+- PR11 on its first base, `main`, 2026-10-10: 1,329 unit cases, 17 packaged
+  integrations, type check, smokes, documentation contract, then the
+  console session with 89 tests; successful, with 2.2 MB of pytest
+  scratch. Rebased onto PR10's branch.
+- PR11 with the build-tool cache pins at `5cdf216`, 2026-10-10, a plain
+  `nox -s build` writing to `/tmp` as the owner runs it: 1,477 unit cases,
+  17 packaged integrations, type check, smokes, documentation contract,
+  then the console session with 290 tests; successful in 2 minutes, with
+  175 MB left under `/tmp/pytest-of-<user>`.
+- Build gate on the merged PR11 branch at `12e9e33`, 2026-10-10: 1,477 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
+- PR11 on the stacked branch at `135ecbb`, 2026-10-10: 1,474 unit cases, 17
+  packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
+- Build gate on the merged PR10 branch at `405e884`, 2026-10-09: 1,474 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful. `check` on the regenerated decision document: 38 items,
+  unanswered.
+- Slice 8 workflow half, PR10 branch, 2026-10-09: 1,454 unit cases, 17
+  packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful. `check` on the real decision document: 38 items, unanswered.
 - Build gate on the merged PR9 branch at `db7d85d`, 2026-10-09: 1,449 unit
   cases, 17 packaged integrations, type check of package and tests, smokes,
   documentation contract, then the console session with 290 tests;
@@ -639,6 +763,22 @@ then 5, then 6.
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on
   `project-management`'s branch. The mail item carries its substance.
+- Mailed to `project-management` on 2026-10-10, at the owner's request:
+  `2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md`,
+  a decision to take and record on the project's testing tiers, what gates
+  a pull request and a merge, the gate's time and scratch budget, and the
+  hermeticity rule, against the practice the owner summarized; the
+  evidence is this workstream's PR11.
+- Windows path length, raised by the owner on 2026-10-10: the retained
+  artifact path `<state>/devcapsule/version-sets/<64 hex>/artifacts/sha256/<64
+  hex>` runs to about 150 characters before the profile prefix, and NTFS
+  still enforces 260 without the long-path opt-in. Not this workstream's
+  layout; to be mailed to the workstream that owns version sets once the
+  owner names it.
+- The hand-off rule, topic 8.8, is in this repository's `WORKFLOW.md` only.
+  The shipped definition under `devcapsule-src/devcapsule/assets/` has
+  another layout and belongs to workflow-improvements; it takes the same
+  text at that workstream's next sync so adopters get it with 0.3.0.
 - Notifications are local for now, by the owner's decision of 2026-10-09: a
   mechanism between the human and the DevCapsule environment of one
   checkout, stored in that checkout's state home. Project-wide
