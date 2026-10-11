@@ -41,7 +41,6 @@ with the exact path for your checkout.
 | `session.json` | the launcher | The session id, start time, launcher version and source revision, image, container name, project path and mount, the IDE |
 | `devcapsule-launcher.log` | the launcher, on your computer | The session's start and end, the `docker run` command, warnings |
 | `devcapsule-supervisor.log` | the capsule's process supervisor | Every child's start, readiness, exit and signal, with the exit code or signal name; warnings |
-| `devcapsule-logrotate.log` | the rotation process | What `logrotate` complained about, if anything |
 | `devcapsule-xvnc.log` | Xvnc, the capsule's X server | Errors and connection events: a viewer accepted or closed |
 | `devcapsule-window-manager.log`, `devcapsule-panel.log` | openbox, tint2 | Their standard output and error, as they print it |
 | `devcapsule-novnc.log` | websockify, the browser bridge | Connections opened and closed, handshake failures |
@@ -84,20 +83,18 @@ at WARNING.
 
 ## How much disk this takes
 
-`logrotate` runs inside the capsule, over the session directory, as one of
-the supervisor's own processes, waiting 30 seconds before each run. Shutdown
-stops the loop without a final rotation attempt. Its complaints, if any,
-are in `devcapsule-logrotate.log`. The
-rules it applies are in `logrotate.conf` beside the logs:
+Every writer rotates its own file, in the process that writes it, the moment
+a line would carry the file past its segment. The live file never exceeds
+the segment; the one exception is a single line longer than the segment,
+which goes into a fresh file on its own.
 
-- Each file rotates when it exceeds its segment, 8 MiB by default. Four
-  older segments are kept per file. The newest of them stays uncompressed
-  for one more rotation; the rest are gzipped, `devcapsule-novnc.log.2.gz`.
-- The launcher's log and the supervisor's are in the same directory and
-  rotate the same way while the session runs.
-- Writers create replacement files on their next write after rotation.
-- Segment sizes are thresholds, not hard limits: output between checks,
-  time spent rotating, and failed rotation attempts can exceed them.
+- Each file rotates at its segment, 8 MiB by default. The live file becomes
+  `devcapsule-novnc.log.1.gz`, the older segments shift to `.2.gz` and on,
+  and the fifth is removed: four compressed segments per file, at most.
+- The launcher's log on your computer and the supervisor's in the capsule
+  rotate the same way, each by its own process.
+- There is no rotation daemon, no polling and no window in which output
+  lands in a rotated file.
 
 One knob sets the checkout's retention target: `DEVCAPSULE_LOG_BUDGET` on the
 launcher's shell, `256M` by default. It accepts a number with `K`, `M` or
@@ -109,7 +106,8 @@ DEVCAPSULE_LOG_BUDGET=1G devcapsule project run
 ```
 
 - The segment size follows the budget: one thirty-second of it, between
-  1 MiB and 10 MiB.
+  1 MiB and 10 MiB. A session's files are therefore bounded by its number of
+  components times the segment plus four compressed segments each.
 - At each launch, the oldest ended sessions are removed until the checkout's
   logs directory fits the budget or no eligible session can be removed,
   and the launcher's log names what was removed. The session being launched
@@ -119,11 +117,6 @@ DEVCAPSULE_LOG_BUDGET=1G devcapsule project run
   exceed the target between launches, while sessions are protected, or when
   cleanup fails.
 - `session.json` records when the session ended and with which exit code.
-
-On a base before recipe 12, which has no `logrotate`, the capsule says so at
-start, each copied child's payload stops at 50 MiB with one extra line in
-the file saying so, and the console keeps showing the rest. The launcher's
-and the supervisor's files are not rotated on such a base.
 
 ## When asking for help
 

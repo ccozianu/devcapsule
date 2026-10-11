@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -204,11 +205,12 @@ class SupervisorCapture:
 
     def __init__(
         self, children: tuple[SupervisedChild, ...], *, log_owner: tuple[int, int] | None = None,
-        tee_budget_bytes: int | None = 50 * 1024 * 1024,
+        segment_bytes: int = 10 * 1024 * 1024, rotations: int = 4,
     ) -> None:
         self.children = children
         self.log_owner = log_owner
-        self.tee_budget_bytes = tee_budget_bytes
+        self.segment_bytes = segment_bytes
+        self.rotations = rotations
         SupervisorCapture.instances.append(self)
 
     def run(self) -> int:
@@ -414,60 +416,27 @@ def test_contract_carries_the_rotation_both_or_neither(tmp_path: Path) -> None:
             RuntimePlan.from_mapping({**runtime_document(tmp_path), "logs": logs_value})
 
 
-def test_entrypoint_rotates_with_a_supervised_logrotate_child_when_the_base_has_it_and_cuts_otherwise(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, captured_supervisor: type[SupervisorCapture],
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    from devcapsule import logs
-    from devcapsule.container_runtime import entrypoint
-
-    document = runtime_document(tmp_path)
-    document["logs"] = {"directory": str(tmp_path / "logs"), "segment_bytes": 2048, "rotations": 3}
-    try:
-        monkeypatch.setattr(entrypoint.shutil, "which", lambda name: f"/usr/sbin/{name}")
-        assert run(RuntimePlan.from_mapping(document)) == 42
-        supervisor = captured_supervisor.instances[-1]
-        # The rotation child comes first, so it receives SIGTERM after every writer.
-        assert [child.name for child in supervisor.children] == ["logrotate", "jetbrains"]
-        rotation = supervisor.children[0]
-        assert not rotation.foreground and rotation.ready is None
-        assert rotation.command == logs.logrotate_loop_command(tmp_path / "logs")
-        assert rotation.log_path == str(tmp_path / "logs" / "devcapsule-logrotate.log")
-        assert supervisor.tee_budget_bytes is None
-        text = (tmp_path / "logs" / "logrotate.conf").read_text(encoding="utf-8")
-        assert "    size 2048\n" in text and "    rotate 3\n" in text
-        assert "logrotate" not in capsys.readouterr().err
-
-        monkeypatch.setattr(entrypoint.shutil, "which", lambda name: None)
-        assert run(RuntimePlan.from_mapping(document)) == 42
-        supervisor = captured_supervisor.instances[-1]
-        assert [child.name for child in supervisor.children] == ["jetbrains"]
-        assert supervisor.tee_budget_bytes == logs.TEE_BUDGET_BYTES
-        assert "this base has no logrotate (base recipe 12 adds it); each copied child's file is cut at 50 MiB" in capsys.readouterr().err
-
-        document["logs"] = {"directory": str(tmp_path / "plain")}
-        assert run(RuntimePlan.from_mapping(document)) == 42
-        supervisor = captured_supervisor.instances[-1]
-        assert [child.name for child in supervisor.children] == ["jetbrains"]
-        assert supervisor.tee_budget_bytes == logs.TEE_BUDGET_BYTES
-        assert not (tmp_path / "plain" / "logrotate.conf").exists()
-    finally:
-        logs.reset()
-
-
-def test_rotation_wraps_the_whole_shell_loop_in_the_capsule_identity_when_root(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+def test_entrypoint_passes_the_plans_rotation_to_every_writer_and_defaults_without_it(
+    tmp_path: Path, captured_supervisor: type[SupervisorCapture]
 ) -> None:
     from devcapsule import logs
     from devcapsule.container_runtime.entrypoint import log_rotation
 
-    (tmp_path / "logs").mkdir()
     document = runtime_document(tmp_path)
     document["logs"] = {"directory": str(tmp_path / "logs"), "segment_bytes": 2048, "rotations": 3}
-    plan = RuntimePlan.from_mapping(document)
-    monkeypatch.setattr(os, "geteuid", lambda: 0)
-    monkeypatch.setattr(logs, "own", lambda *_args: None)
-    monkeypatch.setattr("devcapsule.container_runtime.entrypoint.shutil.which", lambda _name: "/usr/sbin/logrotate")
-    children, budget = log_rotation(plan, lambda command: foreground_command(command, plan.identity))
-    assert children[0].command == ("gosu", "1000:1001", *logs.logrotate_loop_command(tmp_path / "logs"))
-    assert budget is None
+    try:
+        assert run(RuntimePlan.from_mapping(document)) == 42
+        supervisor = captured_supervisor.instances[-1]
+        assert [child.name for child in supervisor.children] == ["jetbrains"]
+        assert (supervisor.segment_bytes, supervisor.rotations) == (2048, 3)
+        handler = next(h for h in logging.getLogger().handlers if isinstance(h, logs._SessionFileHandler))
+        assert handler._file is not None and handler._file.path == tmp_path / "logs" / "devcapsule-supervisor.log"
+        assert (handler._file._segment, handler._file._rotations) == (2048, 3)
+
+        document["logs"] = {"directory": str(tmp_path / "plain")}
+        assert run(RuntimePlan.from_mapping(document)) == 42
+        supervisor = captured_supervisor.instances[-1]
+        assert (supervisor.segment_bytes, supervisor.rotations) == (logs.MAXIMUM_SEGMENT_BYTES, logs.ROTATIONS)
+        assert log_rotation(RuntimePlan.from_mapping(runtime_document(tmp_path))) == (logs.MAXIMUM_SEGMENT_BYTES, logs.ROTATIONS)
+    finally:
+        logs.reset()

@@ -18,9 +18,8 @@ from contextlib import nullcontext
 from dataclasses import replace
 import os
 from pathlib import Path
-import shutil
 import sys
-from typing import Callable, Sequence
+from typing import Sequence
 
 from . import contract as rtcontract
 from .. import logs
@@ -38,16 +37,13 @@ USAGE = "usage: devcapsule runtime RUNTIME_PLAN.json [-- COMMAND [ARGUMENT...]]"
 
 
 SUPERVISOR_LOG_COMPONENT = "supervisor"
-LOGROTATE_RECIPE_NOTICE = (
-    f"devcapsule logs: this base has no logrotate (base recipe 12 adds it); "
-    f"each copied child's file is cut at {logs.format_size(logs.TEE_BUDGET_BYTES)} instead"
-)
 
 
 def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int:
     owner = (plan.identity.uid, plan.identity.gid)
     log_directory = None if plan.logs is None else plan.logs.directory
-    logs.configure(SUPERVISOR_LOG_COMPONENT, log_directory, owner=owner)
+    segment_bytes, rotations = log_rotation(plan)
+    logs.configure(SUPERVISOR_LOG_COMPONENT, log_directory, owner=owner, segment_bytes=segment_bytes, rotations=rotations)
     filesystem = plan_filesystem(plan)
     prepare_filesystem(filesystem, plan.identity)
     os.environ.update(filesystem.environment)
@@ -92,42 +88,23 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
             working_directory=plan.project_path,
         )
     guard = jetbrains.session_lock(plan) if plan.component.adapter == "jetbrains" and job is None else nullcontext()
-    rotation, tee_budget = log_rotation(plan, as_capsule_user)
     with guard:
         return Supervisor(
-            logged_children((*rotation, *infrastructure, child), log_directory), log_owner=owner, tee_budget_bytes=tee_budget,
+            logged_children((*infrastructure, child), log_directory),
+            log_owner=owner, segment_bytes=segment_bytes, rotations=rotations,
         ).run()
 
 
-def log_rotation(
-    plan: rtcontract.RuntimePlan, run_as_identity: Callable[[tuple[str, ...]], tuple[str, ...]]
-) -> tuple[tuple[SupervisedChild, ...], int | None]:
-    """logrotate over the session directory when the plan asks and the base has it.
+def log_rotation(plan: rtcontract.RuntimePlan) -> tuple[int, int]:
+    """The segment and rotation count every writer of this session uses.
 
-    Returns the rotation child to start ahead of every other, or none, and
-    the tee cut to use instead: ``None`` when rotation bounds the files, the
-    fixed cut when it does not. A base before recipe 12 has no logrotate;
-    that is announced once and the session runs with the cut, never without
-    logs.
+    The plan's logs section carries them when the launcher derived them from
+    the budget; a plan from before they existed gets the defaults.
     """
 
-    if plan.logs is None or not plan.logs.rotates:
-        return (), logs.TEE_BUDGET_BYTES
-    directory = Path(plan.logs.directory)
-    owner = (plan.identity.uid, plan.identity.gid)
-    try:
-        logs.write_logrotate_configuration(
-            directory, segment_bytes=plan.logs.segment_bytes, rotations=plan.logs.rotations, owner=owner,
-        )
-    except OSError as error:
-        print(f"devcapsule logs: cannot write {directory / logs.LOGROTATE_CONFIGURATION} ({error}); files are cut, not rotated",
-              file=sys.stderr, flush=True)
-        return (), logs.TEE_BUDGET_BYTES
-    if shutil.which(logs.LOGROTATE_EXECUTABLE) is None:
-        print(LOGROTATE_RECIPE_NOTICE, file=sys.stderr, flush=True)
-        return (), logs.TEE_BUDGET_BYTES
-    child = SupervisedChild(name=logs.LOGROTATE_CHILD, command=run_as_identity(logs.logrotate_loop_command(directory)))
-    return (child,), None
+    if plan.logs is not None and plan.logs.rotates:
+        return plan.logs.segment_bytes, plan.logs.rotations
+    return logs.MAXIMUM_SEGMENT_BYTES, logs.ROTATIONS
 
 
 def logged_children(

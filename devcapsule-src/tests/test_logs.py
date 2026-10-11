@@ -154,39 +154,6 @@ def test_formatted_sizes_are_exact(size: int) -> None:
         assert logs.parse_size(text) == size
 
 
-def test_logrotate_configuration_bounds_every_component_file_and_delays_compression(tmp_path: Path) -> None:
-    path = logs.write_logrotate_configuration(tmp_path, segment_bytes=1024 ** 2, rotations=4)
-    assert path == tmp_path / "logrotate.conf" and path.stat().st_mode & 0o777 == 0o644
-    text = path.read_text(encoding="utf-8")
-    assert text.startswith(f"{tmp_path}/devcapsule-*.log {{\n")
-    for directive in ("size 1048576", "rotate 4", "compress", "delaycompress", "missingok", "notifempty", "nocreate"):
-        assert f"    {directive}\n" in text
-    assert "    create\n" not in text
-    assert logs.logrotate_command(tmp_path) == ("logrotate", "-s", str(tmp_path / ".logrotate.state"), str(tmp_path / "logrotate.conf"))
-    with pytest.raises(ValueError):
-        logs.logrotate_configuration(tmp_path, segment_bytes=0, rotations=4)
-
-
-def test_tee_follows_the_file_logrotate_moves_away(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(logs.os, "geteuid", lambda: 0)
-    owned: list[tuple[Path, int, int]] = []
-    monkeypatch.setattr(logs.os, "chown", lambda path, uid, gid: owned.append((path, uid, gid)))
-    path = tmp_path / "devcapsule-child.log"
-    passthrough = io.BytesIO()
-    tee = logs.Tee(io.BytesIO(), path, passthrough, budget_bytes=None, clock=lambda: 0.0, owner=(1234, 5678))
-    # Forward synchronously: reaching the console is not proof the tee has
-    # finished its file write, so polling passthrough before rename races.
-    tee._forward(b"before\n")
-    path.rename(tmp_path / "devcapsule-child.log.1")
-    assert not path.exists()  # nocreate: the writer supplies the replacement
-    tee._forward(b"after\n")
-    tee.start().join(5.0)  # empty source closes the final descriptor
-    assert (tmp_path / "devcapsule-child.log.1").read_bytes() == b"1970-01-01T00:00:00Z before\n"
-    assert path.read_bytes() == b"1970-01-01T00:00:00Z after\n"
-    assert passthrough.getvalue() == b"before\nafter\n"
-    assert owned == [(path, 1234, 5678), (path, 1234, 5678)]
-
-
 def run_tee(tmp_path: Path, payload: bytes, **options: object) -> tuple[bytes, Path]:
     passthrough = io.BytesIO()
     path = tmp_path / "devcapsule-child.log"
@@ -202,15 +169,6 @@ def test_tee_copies_every_line_to_the_console_unchanged_and_stamps_the_file(tmp_
     assert path.read_bytes() == (
         b"1970-01-01T00:00:00Z first line\n1970-01-01T00:00:00Z second\n1970-01-01T00:00:00Z no newline at the end"
     )
-
-
-def test_tee_stops_writing_the_file_at_its_budget_and_says_so(tmp_path: Path) -> None:
-    line = b"x" * 50 + b"\n"
-    passthrough, path = run_tee(tmp_path, line * 10, budget_bytes=3 * (21 + len(line)))
-    assert passthrough == line * 10
-    text = path.read_text(encoding="utf-8")
-    assert text.count("Z xxxxx") == 3
-    assert text.endswith(logs.TEE_BUDGET_NOTICE)
 
 
 def test_tee_degrades_to_a_plain_copy_when_the_file_cannot_be_opened(tmp_path: Path) -> None:
@@ -244,10 +202,10 @@ def test_reconfigure_closes_old_file_and_keeps_unrelated_handlers(tmp_path: Path
     root.addHandler(unrelated)
     try:
         first = logs.configure("launcher", tmp_path / "first", environ={logs.LEVEL_ENV: "DEBUG"})
-        old = next(h for h in root.handlers if isinstance(h, logging.handlers.WatchedFileHandler))
+        old = next(h for h in root.handlers if isinstance(h, logs._SessionFileHandler))
         logging.getLogger("devcapsule.launcher").debug("first session")
         second = logs.configure("launcher", tmp_path / "second", environ={logs.LEVEL_ENV: "ERROR"})
-        assert old.stream is None and unrelated in root.handlers
+        assert old._file is None and unrelated in root.handlers
         logger = logging.getLogger("devcapsule.launcher")
         logger.debug("discarded debug")
         logger.warning("discarded warning")
@@ -264,50 +222,19 @@ def test_reconfigure_closes_old_file_and_keeps_unrelated_handlers(tmp_path: Path
         root.removeHandler(unrelated)
 
 
-def test_the_handler_follows_logrotate_and_owns_the_reopened_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(logs.os, "geteuid", lambda: 0)
-    owned: list[tuple[Path, int, int]] = []
-    monkeypatch.setattr(logs.os, "chown", lambda path, uid, gid: owned.append((path, uid, gid)))
-    path = logs.configure("supervisor", tmp_path, environ={}, owner=(1234, 5678))
-    assert path is not None
-    logs.events_logger("supervisor").info("first segment")
-    path.rename(path.with_suffix(".log.1"))  # nocreate: the handler supplies the replacement
-    logs.events_logger("supervisor").info("second segment")
-    assert "first segment" in path.with_suffix(".log.1").read_text()
-    assert path.read_text().count("second segment") == 1 and "first segment" not in path.read_text()
-    assert owned == [(path, 1234, 5678), (path, 1234, 5678)]
-
-
-def test_a_failed_reopen_reports_once_and_keeps_the_console(tmp_path: Path, monkeypatch, capsys) -> None:
-    reports: list[str] = []
-    logs.configure("supervisor", tmp_path, environ={}, console=reports.append)
-    handler = next(h for h in logging.getLogger().handlers if isinstance(h, logging.handlers.WatchedFileHandler))
-
-    def fail():
-        raise OSError("bind mount unavailable")
-
-    monkeypatch.setattr(handler, "reopenIfNeeded", fail)
-    logger = logging.getLogger("devcapsule.supervisor")
-    logger.warning("first warning")
-    logger.warning("second warning")
-    assert handler.stream is None
-    assert len(reports) == 1 and "bind mount unavailable" in reports[0]
-    assert capsys.readouterr().err == "devcapsule supervisor: first warning\ndevcapsule supervisor: second warning\n"
-
-
-def test_tee_write_failure_at_budget_cut_keeps_forwarding(tmp_path: Path, monkeypatch) -> None:
+def test_tee_write_failure_reports_once_and_keeps_forwarding(tmp_path: Path, monkeypatch) -> None:
     class FullDisk(io.BytesIO):
         def write(self, data: Buffer, /) -> int:
             raise OSError("disk full")
 
-    real = open(tmp_path / "log", "ab")  # the tee stats the path and its descriptor to follow logrotate
+    real = open(tmp_path / "log", "ab")  # the segmented file reads its size from the descriptor
     file = FullDisk()
     file.fileno = real.fileno  # type: ignore[method-assign]
     monkeypatch.setattr("builtins.open", lambda *args, **kwargs: file)
     passthrough = io.BytesIO()
     reports: list[str] = []
-    tee = logs.Tee(io.BytesIO(), tmp_path / "log", passthrough, budget_bytes=0, console=reports.append)
-    # Run synchronously so a broken budget path fails this test directly.
+    tee = logs.Tee(io.BytesIO(), tmp_path / "log", passthrough, console=reports.append)
+    # Run synchronously so a broken write path fails this test directly.
     tee._forward(b"first\n")
     tee._forward(b"second\n")
     assert passthrough.getvalue() == b"first\nsecond\n"
@@ -404,44 +331,103 @@ def test_inaccessible_manifest_does_not_make_a_young_session_prunable(tmp_path: 
     assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=now) == []
 
 
-def test_the_rotation_child_sleeps_then_runs_logrotate_and_never_stops_on_a_failure(tmp_path: Path) -> None:
-    import shlex
+def segments(path: Path) -> dict[str, bytes]:
+    """The rotated segments beside ``path``, decompressed, by suffix."""
+    import gzip
+
+    return {entry.name[len(path.name):]: gzip.decompress(entry.read_bytes()) for entry in sorted(path.parent.glob(path.name + ".*.gz"))}
+
+
+def test_a_segmented_file_rotates_at_the_exact_size_and_keeps_the_count(tmp_path: Path) -> None:
+    path = tmp_path / "devcapsule-x.log"
+    file = logs.SegmentedFile(path, segment_bytes=100, rotations=2)
+    for label in (b"a", b"b", b"c", b"d"):
+        file.write(label * 60)
+        assert file.size <= 100 and path.stat().st_size == file.size
+    file.close()
+    assert path.read_bytes() == b"d" * 60
+    assert segments(path) == {".1.gz": b"c" * 60, ".2.gz": b"b" * 60}  # the oldest, a, is gone
+    reopened = logs.SegmentedFile(path, segment_bytes=100, rotations=2)
+    assert reopened.size == 60  # the live file's size is read back, so the bound holds across reopening
+    reopened.write(b"e" * 50)  # 110 > 100: rotates first
+    reopened.close()
+    assert path.read_bytes() == b"e" * 50 and segments(path) == {".1.gz": b"d" * 60, ".2.gz": b"c" * 60}
+    with pytest.raises(ValueError):
+        logs.SegmentedFile(path, segment_bytes=0, rotations=1)
+
+
+def test_a_single_write_larger_than_the_segment_goes_into_a_fresh_file_alone(tmp_path: Path) -> None:
+    path = tmp_path / "devcapsule-x.log"
+    file = logs.SegmentedFile(path, segment_bytes=100, rotations=1)
+    file.write(b"short\n")
+    file.write(b"L" * 150)
+    assert file.size == 150 and segments(path) == {".1.gz": b"short\n"}
+    file.write(b"next\n")  # rotates again: the oversize write is sealed on its own
+    file.close()
+    assert path.read_bytes() == b"next\n" and segments(path) == {".1.gz": b"L" * 150}
+
+
+def test_a_segmented_file_gives_every_file_it_creates_to_the_owner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(logs.os, "geteuid", lambda: 0)
+    owned: list[Path] = []
+    monkeypatch.setattr(logs.os, "chown", lambda path, uid, gid: owned.append(Path(path)) if (uid, gid) == (1234, 5678) else None)
+    path = tmp_path / "devcapsule-x.log"
+    file = logs.SegmentedFile(path, segment_bytes=10, rotations=1, owner=(1234, 5678))
+    file.write(b"x" * 8)
+    file.write(b"y" * 8)
+    file.close()
+    assert owned == [path, path.with_name("devcapsule-x.log.1.gz.tmp"), path]
+
+
+def test_the_handler_rotates_its_own_file_at_the_segment(tmp_path: Path) -> None:
+    path = logs.configure("supervisor", tmp_path, environ={}, segment_bytes=160, rotations=2)
+    assert path is not None
+    for index in range(6):
+        logs.events_logger("supervisor").info("record %d padded to a fixed width ........", index)
+    assert path.stat().st_size <= 160 and b"record 5" in path.read_bytes()
+    rotated = segments(path)
+    assert set(rotated) == {".1.gz", ".2.gz"}
+    assert all(0 < len(data) <= 160 and b"record " in data for data in rotated.values())
+    assert b"record 4" in rotated[".1.gz"] or b"record 5" not in rotated[".1.gz"]
+
+
+def test_a_handler_write_failure_reports_once_and_keeps_the_console(tmp_path: Path, monkeypatch, capsys) -> None:
+    reports: list[str] = []
+    logs.configure("supervisor", tmp_path, environ={}, console=reports.append)
+    handler = next(h for h in logging.getLogger().handlers if isinstance(h, logs._SessionFileHandler))
+    assert handler._file is not None
+
+    def fail(data: bytes) -> None:
+        raise OSError("bind mount unavailable")
+
+    monkeypatch.setattr(handler._file, "write", fail)
+    logger = logging.getLogger("devcapsule.supervisor")
+    logger.warning("first warning")
+    logger.warning("second warning")
+    assert handler._file is None
+    assert len(reports) == 1 and "bind mount unavailable" in reports[0]
+    assert capsys.readouterr().err == "devcapsule supervisor: first warning\ndevcapsule supervisor: second warning\n"
+
+
+def test_tee_rotates_a_real_child_output_at_the_segment(tmp_path: Path) -> None:
     import subprocess
 
-    command = logs.logrotate_loop_command(tmp_path / "with space", interval_seconds=30)
-    assert command[:2] == ("sh", "-c")
-    assert command[2] == (
-        f"while :; do sleep 30; logrotate -s '{tmp_path}/with space/.logrotate.state'"
-        f" '{tmp_path}/with space/logrotate.conf' || true; done"
-    )
-    # A failing logrotate complains on stderr and the loop goes on: two sleeps, two complaints.
-    # Exercise quoting through the real shell, including the executable name.
-    directory = tmp_path / "space ' quote; $(touch injected)"
-    fake = tmp_path / "logrotate ' $(touch injected)"
-    arguments = tmp_path / "arguments"
-    fake.write_text(
-        f"#!/bin/sh\nprintf '%s\\n' \"$@\" >> {shlex.quote(str(arguments))}\n"
-        f"echo run >> {shlex.quote(str(tmp_path / 'runs'))}\necho error: bad >&2\nexit 1\n",
-        encoding="utf-8",
-    )
-    fake.chmod(0o755)
     process = subprocess.Popen(
-        logs.logrotate_loop_command(directory, interval_seconds=1, executable=str(fake)),
-        cwd=tmp_path, stderr=subprocess.PIPE, text=True,
+        [sys.executable, "-c", "import sys\nfor i in range(4000): print(f'line {i:05d} ' + 'x' * 60)"],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
-    try:
-        deadline = time.monotonic() + 10.0
-        marks = tmp_path / "runs"
-        while (not marks.exists() or marks.read_text().count("run") < 2) and time.monotonic() < deadline:
-            time.sleep(0.05)
-        assert marks.read_text().count("run") >= 2
-    finally:
-        process.terminate()
-        _out, err = process.communicate(timeout=5)
-    assert err.count("error: bad") >= 2
-    assert arguments.read_text().splitlines()[:3] == [
-        "-s", str(directory / ".logrotate.state"), str(directory / "logrotate.conf"),
-    ]
-    assert not (tmp_path / "injected").exists()
-    with pytest.raises(ValueError):
-        logs.logrotate_loop_command(tmp_path, interval_seconds=0)
+    assert process.stdout is not None
+    passthrough = io.BytesIO()
+    path = tmp_path / "devcapsule-job.log"
+    tee = logs.Tee(process.stdout, path, passthrough, segment_bytes=100_000, rotations=3, clock=lambda: 0.0).start()
+    assert process.wait(timeout=20) == 0
+    tee.join(10.0)
+    assert passthrough.getvalue().count(b"\n") == 4000
+    assert path.stat().st_size <= 100_000
+    rotated = segments(path)
+    assert set(rotated) == {".1.gz", ".2.gz", ".3.gz"} and all(len(data) <= 100_000 for data in rotated.values())
+    kept = b"".join(rotated[key] for key in (".3.gz", ".2.gz", ".1.gz")) + path.read_bytes()
+    lines = kept.decode("ascii").splitlines()
+    assert all(line.startswith("1970-01-01T00:00:00Z line ") for line in lines)
+    numbers = [int(line.split()[2]) for line in lines]
+    assert numbers == list(range(numbers[0], 4000))  # a contiguous tail; the oldest segments were dropped

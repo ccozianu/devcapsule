@@ -348,7 +348,10 @@ def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None
     """
 
     directory = config.session_log_directory
-    logs.configure(LAUNCHER_LOG_COMPONENT, directory, environ=env)
+    logs.configure(
+        LAUNCHER_LOG_COMPONENT, directory, environ=env,
+        segment_bytes=logs.segment_bytes_for(config.log_budget_bytes), rotations=logs.ROTATIONS,
+    )
     if directory is None:
         return
     component = config.runtime_plan.component.id if config.runtime_plan is not None else "pycharm"

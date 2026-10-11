@@ -96,8 +96,8 @@ class Supervisor:
 
     ``log_owner`` is the ``(uid, gid)`` the log files are given when the
     supervisor runs as root, so a host-backed log directory stays the
-    developer's. ``tee_budget_bytes`` is where a child's file is cut when
-    nothing rotates it; ``None`` when logrotate does.
+    developer's. ``segment_bytes`` and ``rotations`` are each child's file
+    rotation; see ``devcapsule.logs.SegmentedFile``.
     """
 
     def __init__(
@@ -106,7 +106,8 @@ class Supervisor:
         *,
         grace_seconds: float = DEFAULT_GRACE_SECONDS,
         log_owner: logs.Owner = None,
-        tee_budget_bytes: int | None = logs.TEE_BUDGET_BYTES,
+        segment_bytes: int = logs.MAXIMUM_SEGMENT_BYTES,
+        rotations: int = logs.ROTATIONS,
     ) -> None:
         if not children:
             raise SupervisorError("supervisor requires at least one child")
@@ -124,7 +125,8 @@ class Supervisor:
         self._children = children
         self._grace_seconds = grace_seconds
         self._log_owner = log_owner
-        self._tee_budget_bytes = tee_budget_bytes
+        self._segment_bytes = segment_bytes
+        self._rotations = rotations
 
     def run(self) -> int:
         previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, _HANDLED_SIGNALS)
@@ -158,7 +160,7 @@ class Supervisor:
                 assert process.stdout is not None
                 tee = logs.Tee(
                     process.stdout, Path(child.log_path), sys.stderr.buffer,
-                    owner=self._log_owner, budget_bytes=self._tee_budget_bytes,
+                    owner=self._log_owner, segment_bytes=self._segment_bytes, rotations=self._rotations,
                 ).start()
                 tees.append(tee)
             live[process.pid] = _RunningChild(child, process)

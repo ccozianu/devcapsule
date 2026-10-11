@@ -18,9 +18,12 @@ Two levels are in play:
   begins and ends) are recorded at INFO whatever the baseline, through
   :func:`events_logger`, because they are what reconstructs an incident.
 
-Rotation belongs to ``logrotate``, run inside the capsule over the session
-directory as a supervised child (:func:`logrotate_loop_command`); the writers
-here reopen their file when it has been rotated away. ``DEVCAPSULE_LOG_BUDGET`` sets a retention target, not a
+Every writer rotates its own file, in process, the moment a write would
+carry it past its segment (:class:`SegmentedFile`): the live file is
+renamed, compressed to ``.1.gz``, the older segments shift up and the one
+beyond the count is removed. No external rotator, no polling, no window in
+which output lands in a rotated segment, and no base image requirement.
+``DEVCAPSULE_LOG_BUDGET`` sets a retention target for the checkout, not a
 hard disk quota: the launcher derives each file's segment size from it and
 removes the oldest ended sessions beyond it at the next launch.
 
@@ -31,7 +34,7 @@ to the console with one line saying what was lost.
 from __future__ import annotations
 
 import calendar
-from io import TextIOWrapper
+import gzip
 import json
 import logging
 import logging.handlers
@@ -39,7 +42,6 @@ import os
 from pathlib import Path
 import re
 import secrets
-import shlex
 import shutil
 import sys
 import threading
@@ -66,19 +68,7 @@ MAXIMUM_SEGMENT_BYTES = 10 * 1024 * 1024
 MINIMUM_SEGMENT_BYTES = 1024 * 1024
 SEGMENT_SHARE = 32
 ROTATIONS = 4
-"""Older segments kept per file; the newest stays uncompressed, the rest are gzipped."""
-ROTATION_INTERVAL_SECONDS = 30.0
-"""Delay between logrotate runs; execution time and failures add to the size overshoot."""
-LOGROTATE_CHILD = "logrotate"
-"""The supervised child that runs the rotation; its file is ``devcapsule-logrotate.log``."""
-LOGROTATE_EXECUTABLE = "logrotate"
-LOGROTATE_CONFIGURATION = "logrotate.conf"
-LOGROTATE_STATE = ".logrotate.state"
-
-# Without logrotate on the base (recipes before 12), a teed child's file is
-# cut here and the console keeps the rest.
-TEE_BUDGET_BYTES = 50 * 1024 * 1024
-TEE_BUDGET_NOTICE = "[devcapsule logs: size budget reached; the rest of this output went to the console only]\n"
+"""Older segments kept per file, all gzipped: ``.1.gz`` the newest to ``.4.gz``."""
 
 SESSION_MANIFEST = "session.json"
 ABANDONED_SESSION_SECONDS = 7 * 24 * 3600
@@ -150,47 +140,42 @@ def segment_bytes_for(budget: int) -> int:
     return max(MINIMUM_SEGMENT_BYTES, min(MAXIMUM_SEGMENT_BYTES, budget // SEGMENT_SHARE))
 
 
-class _SessionFileHandler(logging.handlers.WatchedFileHandler):
-    """The component's file under logrotate: reopened after a rotation, owned by the capsule user.
+class _SessionFileHandler(logging.Handler):
+    """The component's file for :mod:`logging`: a :class:`SegmentedFile`, owned by the capsule user.
 
-    ``WatchedFileHandler`` notices that logrotate moved the file and opens the
-    new one on the next record; ``_open`` gives it the owner. A write that
-    fails, on a full or disconnected bind mount, is reported once and the
-    handler goes quiet, so the console is not flooded with a traceback per
-    record. The console handler remains.
+    A write that fails, on a full or disconnected bind mount, is reported
+    once and the handler goes quiet, so the console is not flooded with a
+    traceback per record. The console handler remains.
     """
 
-    def __init__(self, path: Path, owner: Owner, report: Callable[[str], None]) -> None:
-        self._owner = owner
+    def __init__(
+        self, path: Path, *, segment_bytes: int, rotations: int, owner: Owner, report: Callable[[str], None]
+    ) -> None:
+        super().__init__()
+        self._path = path
         self._report = report
-        self._failed = False
-        super().__init__(path, encoding="utf-8")
-
-    def _open(self) -> TextIOWrapper:
-        stream = super()._open()
-        try:
-            own(Path(self.baseFilename), self._owner)
-        except OSError:
-            stream.close()
-            raise
-        return stream
+        self._file: SegmentedFile | None = SegmentedFile(path, segment_bytes=segment_bytes, rotations=rotations, owner=owner)
 
     def emit(self, record: logging.LogRecord) -> None:
-        if self._failed:
+        if self._file is None:
             return
         try:
-            super().emit(record)  # reopens after a rotation, then writes
-        except OSError:
-            self.handleError(record)  # the reopen itself failed; the write path reports on its own
+            self._file.write((self.format(record) + "\n").encode("utf-8", "replace"))
+        except OSError as error:
+            self._quiet()
+            self._report(f"devcapsule logs: cannot write {self._path} ({error}); logging to the console only")
 
-    def handleError(self, record: logging.LogRecord) -> None:
-        self._failed = True
-        error = sys.exc_info()[1]
-        try:
-            self.close()
-        except OSError:
-            pass  # flushing the same unavailable mount can fail too
-        self._report(f"devcapsule logs: cannot write {self.baseFilename} ({error}); logging to the console only")
+    def close(self) -> None:
+        self._quiet()
+        super().close()
+
+    def _quiet(self) -> None:
+        if self._file is not None:
+            try:
+                self._file.close()
+            except OSError:
+                pass  # closing the same unavailable mount can fail too
+            self._file = None
 
 
 def log_path(directory: str | Path, component: str) -> Path:
@@ -220,15 +205,18 @@ def configure(
     environ: Mapping[str, str] | None = None,
     owner: Owner = None,
     console: Callable[[str], None] | None = None,
+    segment_bytes: int = MAXIMUM_SEGMENT_BYTES,
+    rotations: int = ROTATIONS,
 ) -> Path | None:
     """Route this process's logging to the console and, when given, a file.
 
     The console handler prints WARNING and above as ``devcapsule <component>:
     message``, the form the launcher and the supervisor have always used. The
     file handler writes every record the baseline admits with a UTC
-    timestamp and reopens the file when logrotate has moved it. Returns the
-    file's path, or ``None`` when there is no directory or the file cannot
-    be opened, which is reported once on the console rather than raised.
+    timestamp into a :class:`SegmentedFile` rotated at ``segment_bytes``.
+    Returns the file's path, or ``None`` when there is no directory or the
+    file cannot be opened, which is reported once on the console rather
+    than raised.
     """
 
     report = console or _report
@@ -256,7 +244,7 @@ def configure(
     path = log_path(directory, component)
     try:
         Path(directory).mkdir(parents=True, exist_ok=True)
-        file = _SessionFileHandler(path, owner, report)
+        file = _SessionFileHandler(path, segment_bytes=segment_bytes, rotations=rotations, owner=owner, report=report)
     except OSError as error:
         report(f"devcapsule {component}: cannot write {path} ({error}); logging to the console only")
         return None
@@ -378,75 +366,84 @@ def prune_sessions(root: Path, *, budget_bytes: int, current: str, now: float | 
     return removed
 
 
-def logrotate_configuration(directory: Path, *, segment_bytes: int, rotations: int) -> str:
-    """The logrotate stanza for every ``devcapsule-*.log`` in ``directory``.
+class SegmentedFile:
+    """An append-only log file that its writer rotates at an exact size.
 
-    ``nocreate`` leaves replacement files to their writers, which already
-    create them with the capsule user's ownership on reopen. With ``create``,
-    logrotate could move a writer's newly created file to an untracked backup
-    in the gap between rename and creation. ``missingok`` tolerates the gap.
-
-    ``delaycompress`` keeps the newest rotated segment uncompressed for one
-    more rotation. Each file has one writer: after an in-flight write to the
-    old descriptor, it reopens before it can fill another segment. This is
-    not a handshake with arbitrary external writers holding old descriptors.
+    A write that would carry the live file past ``segment_bytes`` rotates
+    first: the live file becomes ``<name>.1.gz``, the older segments shift
+    to ``.2.gz`` and on, the one beyond ``rotations`` is removed, and a new
+    live file starts with that write. The live file therefore never exceeds
+    the segment, with one exception: a single write larger than the segment
+    goes into a fresh file on its own. Every file created here is given to
+    ``owner`` when the writer is root. Failures raise ``OSError`` to the
+    caller, which decides how to degrade.
     """
 
-    if segment_bytes < 1 or rotations < 1:
-        raise ValueError("rotation needs a positive segment size and at least one rotation")
-    return (
-        f"{directory}/{LOG_FILE_PREFIX}*{LOG_FILE_SUFFIX} {{\n"
-        f"    size {segment_bytes}\n"
-        f"    rotate {rotations}\n"
-        "    compress\n"
-        "    delaycompress\n"
-        "    missingok\n"
-        "    notifempty\n"
-        "    nodateext\n"
-        "    nocreate\n"
-        "}\n"
-    )
+    def __init__(self, path: Path, *, segment_bytes: int, rotations: int, owner: Owner = None) -> None:
+        if segment_bytes < 1 or rotations < 1:
+            raise ValueError("rotation needs a positive segment size and at least one rotation")
+        self._path = path
+        self._segment = segment_bytes
+        self._rotations = rotations
+        self._owner = owner
+        self._file: IO[bytes] | None = None
+        self._size = 0
+        self._open()
 
+    @property
+    def path(self) -> Path:
+        return self._path
 
-def write_logrotate_configuration(
-    directory: Path, *, segment_bytes: int, rotations: int, owner: Owner = None
-) -> Path:
-    """Write the session's ``logrotate.conf``, owned by the capsule user, writable by it alone."""
+    @property
+    def size(self) -> int:
+        """Bytes in the live file."""
+        return self._size
 
-    path = directory / LOGROTATE_CONFIGURATION
-    path.write_text(logrotate_configuration(directory, segment_bytes=segment_bytes, rotations=rotations), encoding="utf-8")
-    path.chmod(0o644)  # logrotate ignores a configuration others may write
-    own(path, owner)
-    return path
+    def segment_path(self, index: int) -> Path:
+        """``<name>.<index>.gz``; 1 is the newest rotated segment."""
+        return self._path.with_name(f"{self._path.name}.{index}.gz")
 
+    def write(self, data: bytes) -> None:
+        if self._file is None:
+            raise ValueError("the segmented file is closed")
+        if self._size and self._size + len(data) > self._segment:
+            self.rotate()
+        assert self._file is not None
+        self._file.write(data)
+        self._size += len(data)
 
-def logrotate_command(directory: Path, *, executable: str = LOGROTATE_EXECUTABLE) -> tuple[str, ...]:
-    """One run over the session directory, with its state file beside the logs."""
+    def rotate(self) -> None:
+        """Compress the live file into ``.1.gz``, shift the older segments, start a new live file."""
 
-    return (executable, "-s", str(directory / LOGROTATE_STATE), str(directory / LOGROTATE_CONFIGURATION))
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+        for index in range(self._rotations - 1, 0, -1):
+            older = self.segment_path(index)
+            if older.exists():
+                os.replace(older, self.segment_path(index + 1))
+        staging = self.segment_path(1).with_name(self.segment_path(1).name + ".tmp")
+        with open(self._path, "rb") as source, gzip.open(staging, "wb", compresslevel=6) as target:
+            shutil.copyfileobj(source, target)
+        own(staging, self._owner)
+        os.replace(staging, self.segment_path(1))
+        os.unlink(self._path)
+        self._open()
 
+    def close(self) -> None:
+        if self._file is not None:
+            self._file.close()
+            self._file = None
 
-def logrotate_loop_command(
-    directory: Path,
-    *,
-    interval_seconds: float = ROTATION_INTERVAL_SECONDS,
-    executable: str = LOGROTATE_EXECUTABLE,
-) -> tuple[str, ...]:
-    """The rotation as a supervised child: sleep the interval, run logrotate, repeat.
-
-    The supervisor starts it first and sends it SIGTERM last, without
-    waiting for the other children to finish. There is no final rotation.
-    Its exit is attributed and its output teed into ``devcapsule-logrotate.log``.
-    Each run's stdout and stderr are kept, but its exit status is discarded
-    so the loop retries; a silent failure adds no diagnostic. A thread of the
-    supervisor's own would sit outside its signal mask and its reaping; a
-    child sits inside both.
-    """
-
-    if interval_seconds < 1:
-        raise ValueError("the rotation interval must be at least one second")
-    run = shlex.join(logrotate_command(directory, executable=executable))
-    return ("sh", "-c", f"while :; do sleep {int(interval_seconds)}; {run} || true; done")
+    def _open(self) -> None:
+        file = open(self._path, "ab", buffering=0)
+        try:
+            own(self._path, self._owner)
+            self._size = os.fstat(file.fileno()).st_size
+        except OSError:
+            file.close()
+            raise
+        self._file = file
 
 
 class Tee:
@@ -455,12 +452,9 @@ class Tee:
     Reads ``source`` (the child's combined stdout and stderr) in bounded chunks
     on a daemon thread, so partial lines reach the console promptly. Output
     goes unchanged to ``passthrough`` and, with a UTC timestamp in front of
-    each line, to the file. When logrotate has moved the file, the next write
-    reopens it, so nothing lands in a rotated segment for longer than one
-    write. ``budget_bytes`` is the cut for a base without logrotate: after
-    that much file, one extra notice is written and only the console keeps
-    receiving the output; ``None`` leaves the bound to rotation. A file that
-    cannot be opened is reported once and the tee degrades to a plain copy.
+    each line, into a :class:`SegmentedFile` rotated at ``segment_bytes``. A
+    file that cannot be opened or written is reported once and the tee
+    degrades to a plain copy to the console.
     """
 
     def __init__(
@@ -470,48 +464,23 @@ class Tee:
         passthrough: IO[bytes],
         *,
         owner: Owner = None,
-        budget_bytes: int | None = TEE_BUDGET_BYTES,
+        segment_bytes: int = MAXIMUM_SEGMENT_BYTES,
+        rotations: int = ROTATIONS,
         console: Callable[[str], None] | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self._source = source
         self._path = path
-        self._owner = owner
         self._passthrough = passthrough
-        self._budget = budget_bytes
         self._clock = clock
-        self._written = 0
         self._line_start = True
         self._report = console or _report
-        self._file: IO[bytes] | None = None
-        self._identity: tuple[int, int] | None = None
+        self._file: SegmentedFile | None = None
         try:
-            self._open()
+            self._file = SegmentedFile(path, segment_bytes=segment_bytes, rotations=rotations, owner=owner)
         except OSError as error:
-            if self._file is not None:
-                self._file.close()
             self._report(f"devcapsule logs: cannot write {path} ({error}); {path.name} goes to the console only")
-            self._file = None
         self._thread = threading.Thread(target=self._copy, name=f"tee:{path.name}", daemon=True)
-
-    def _open(self) -> None:
-        self._file = open(self._path, "ab", buffering=0)
-        own(self._path, self._owner)
-        status = os.fstat(self._file.fileno())
-        self._identity = (status.st_dev, status.st_ino)
-
-    def _reopen_if_rotated(self) -> None:
-        """Follow logrotate: when the path no longer names the open file, open the new one."""
-
-        try:
-            status = os.stat(self._path)
-            if (status.st_dev, status.st_ino) == self._identity:
-                return
-        except FileNotFoundError:
-            pass
-        assert self._file is not None
-        self._file.close()
-        self._open()
 
     def start(self) -> Tee:
         self._thread.start()
@@ -552,26 +521,14 @@ class Tee:
                 time.strftime(_TIMESTAMP_FORMAT, time.gmtime(self._clock())).encode("ascii") + b" "
                 if self._line_start else b""
             )
-            stamped = prefix + piece
-            if self._budget is not None and self._written + len(stamped) > self._budget:
-                # The notice is outside the payload budget and must start on
-                # its own line even when a long unterminated line was cut.
-                notice = (b"" if self._line_start else b"\n") + TEE_BUDGET_NOTICE.encode("utf-8")
-                self._write(notice)
-                if self._file is not None:
-                    self._file.close()
-                    self._file = None
-                return
-            self._write(stamped)
+            self._write(prefix + piece)
             if self._file is None:
                 return
-            self._written += len(stamped)
             self._line_start = piece.endswith(b"\n")
 
     def _write(self, data: bytes) -> None:
         assert self._file is not None
         try:
-            self._reopen_if_rotated()
             self._file.write(data)
         except OSError as error:
             self._file.close()
