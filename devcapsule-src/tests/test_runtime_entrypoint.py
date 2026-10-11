@@ -202,8 +202,9 @@ class SupervisorCapture:
 
     instances: list["SupervisorCapture"] = []
 
-    def __init__(self, children: tuple[SupervisedChild, ...]) -> None:
+    def __init__(self, children: tuple[SupervisedChild, ...], *, log_owner: tuple[int, int] | None = None) -> None:
         self.children = children
+        self.log_owner = log_owner
         SupervisorCapture.instances.append(self)
 
     def run(self) -> int:
@@ -331,3 +332,55 @@ def test_entrypoint_main_accepts_forwarded_arguments(tmp_path: Path, capsys: pyt
 
     assert main([str(tmp_path / "missing.json"), "--"]) == 2
     assert "usage: devcapsule runtime RUNTIME_PLAN.json" in capsys.readouterr().err
+
+
+def test_contract_round_trips_the_logs_section(tmp_path: Path) -> None:
+    from devcapsule.container_runtime.contract import LogsPlan
+
+    document = runtime_document(tmp_path)
+    document["logs"] = {"directory": "/var/log/devcapsule"}
+    plan = RuntimePlan.from_mapping(document)
+    assert plan.logs == LogsPlan("/var/log/devcapsule")
+    assert plan.to_mapping()["logs"] == {"directory": "/var/log/devcapsule"}
+    assert RuntimePlan.from_mapping(plan.to_mapping()) == plan
+    assert RuntimePlan.from_mapping(runtime_document(tmp_path)).logs is None
+    assert "logs" not in RuntimePlan.from_mapping(runtime_document(tmp_path)).to_mapping()
+    assert RuntimePlan.from_mapping({**document, "logs": None}).logs is None
+    assert plan.with_logs(LogsPlan("/elsewhere")).logs == LogsPlan("/elsewhere")
+
+
+@pytest.mark.parametrize("logs_value, message", [
+    ("text", "logs must be an object"),
+    ({"directory": "/var/log/devcapsule", "extra": 1}, "logs must not carry extra"),
+    ({"directory": "relative"}, "logs.directory must be an absolute normalized container path"),
+    ({"directory": "/var/../log"}, "logs.directory must be an absolute normalized container path"),
+    ({}, "logs.directory must be"),
+])
+def test_contract_rejects_malformed_logs(tmp_path: Path, logs_value: object, message: str) -> None:
+    with pytest.raises(RuntimePlanError, match=message):
+        RuntimePlan.from_mapping({**runtime_document(tmp_path), "logs": logs_value})
+
+
+def test_entrypoint_gives_every_child_its_own_log_file_when_the_plan_says_where(
+    tmp_path: Path, captured_supervisor: type[SupervisorCapture]
+) -> None:
+    from devcapsule import logs
+
+    document = runtime_document(tmp_path)
+    document["logs"] = {"directory": str(tmp_path / "logs")}
+    try:
+        assert run(RuntimePlan.from_mapping(document)) == 42
+        (supervisor,) = captured_supervisor.instances
+        assert [child.log_path for child in supervisor.children] == [str(tmp_path / "logs" / "devcapsule-jetbrains.log")]
+        assert supervisor.log_owner == (1000, 1001)
+        assert (tmp_path / "logs" / "devcapsule-supervisor.log").is_file()
+        assert run(RuntimePlan.from_mapping(document), job=("pytest",)) == 42
+        assert [child.log_path for child in captured_supervisor.instances[-1].children] == [str(tmp_path / "logs" / "devcapsule-job.log")]
+
+        captured_supervisor.instances.clear()
+        assert run(RuntimePlan.from_mapping(runtime_document(tmp_path))) == 42
+        (plain,) = captured_supervisor.instances
+        assert [child.log_path for child in plain.children] == [None]
+        assert plain.log_owner == (1000, 1001)
+    finally:
+        logs.reset()
