@@ -24,6 +24,16 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-11, after the owner's report: the stack's conflict resolved.**
+PR1's branch was rebased on GitHub onto the newer `main`; its commits kept
+their content and changed their hashes, so PR2, which carried the old
+merge, showed a conflict in every file. One merge of the rewritten PR1
+tip into PR2's branch resolved it: every conflict took PR2's version, the
+tree changed only by the coverage badge, and both PRs read mergeable
+again. Note for the next time: a rebase of a stacked branch's base rewrites
+history the branches above it carry; the local rule, merge rather than
+rebase for published branches, exists for this.
+
 **2026-10-11, last: round three merged; the rounds on PR2 are used; the
 owner's turn.** [PR #212](https://github.com/ccozianu/devcapsule/pull/212),
 the Codex pair's review of the in-process rotation, was merged: compression
