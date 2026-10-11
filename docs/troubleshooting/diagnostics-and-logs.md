@@ -83,16 +83,39 @@ at WARNING.
 
 ## How much disk this takes
 
-- The launcher's and the supervisor's files rotate at 10 MiB, keeping five
-  older segments each.
-- A copied child's payload stops at 50 MiB, including timestamps. One extra
-  line in the file says so,
-  and the console keeps showing the rest.
-- A checkout keeps its newest 20 session directories. Older ones are removed
-  at the next launch, and the launcher's log names what was removed.
+`logrotate` runs inside the capsule, over the session directory, every 30
+seconds. The rules it applies are in `logrotate.conf` beside the logs:
 
-These bounds are the first edition; compression and an aggregate budget per
-checkout are planned and tracked in the project's work orders.
+- Each file rotates when it exceeds its segment, 8 MiB by default. Four
+  older segments are kept per file. The newest of them stays uncompressed
+  for one more rotation; the rest are gzipped, `devcapsule-novnc.log.2.gz`.
+- The launcher's log and the supervisor's are in the same directory and
+  rotate the same way while the session runs.
+- A file can exceed its segment by thirty seconds of output, the time
+  between two runs.
+
+One knob bounds the whole checkout: `DEVCAPSULE_LOG_BUDGET` on the
+launcher's shell, `256M` by default. It accepts a number with `K`, `M` or
+`G`, and refuses less than `16M`.
+
+```bash
+DEVCAPSULE_LOG_BUDGET=1G devcapsule project run
+```
+
+- The segment size follows the budget: one thirty-second of it, between
+  1 MiB and 10 MiB.
+- At each launch, the oldest ended sessions are removed until the checkout's
+  logs directory fits the budget, and the launcher's log names what was
+  removed. The session being launched, and any session still running, are
+  never removed; a session whose launcher never recorded its end counts as
+  abandoned after seven days. The directory can therefore exceed the budget
+  by the sessions that are still running.
+- `session.json` records when the session ended and with which exit code.
+
+On a base before recipe 12, which has no `logrotate`, the capsule says so at
+start, each copied child's payload stops at 50 MiB with one extra line in
+the file saying so, and the console keeps showing the rest. The launcher's
+and the supervisor's files are not rotated on such a base.
 
 ## When asking for help
 
