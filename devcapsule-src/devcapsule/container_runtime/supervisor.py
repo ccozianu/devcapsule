@@ -37,9 +37,9 @@ _READY_POLL_SECONDS = 0.05
 
 _HANDLED_SIGNALS = frozenset({signal.SIGCHLD, signal.SIGTERM, signal.SIGINT})
 
-# How long the tees get to drain a dead child's last lines before the
-# supervisor returns its verdict; grandchildren holding the pipe open (an
-# IDE's helpers) must not delay the honest exit beyond this.
+# Total time the tees get to drain after all children have been reaped.
+# Never wait while forwarding signals or reaping: grandchildren can keep
+# several output pipes open after their parents have exited.
 _TEE_DRAIN_SECONDS = 0.5
 
 _log = logging.getLogger("devcapsule.supervisor")
@@ -74,7 +74,6 @@ class SupervisedChild:
 class _RunningChild:
     child: SupervisedChild
     process: subprocess.Popen[bytes]
-    tee: logs.Tee | None = None
 
 
 class Supervisor:
@@ -137,6 +136,7 @@ class Supervisor:
         # collected Popen reaps its own zombie behind the supervisor's back,
         # and the exit would never be attributed to its child.
         live: dict[int, _RunningChild] = {}
+        tees: list[logs.Tee] = []
         _events.info("session start: children %s", _names(self._children))
         for child in self._children:
             try:
@@ -151,11 +151,11 @@ class Supervisor:
                 _abandon_start(live)
                 _events.error("child %r failed to start: %s", child.name, error)
                 raise SupervisorError(f"cannot start child {child.name!r}: {error}") from error
-            tee = None
             if child.log_path:
                 assert process.stdout is not None
                 tee = logs.Tee(process.stdout, Path(child.log_path), sys.stderr.buffer, owner=self._log_owner).start()
-            live[process.pid] = _RunningChild(child, process, tee)
+                tees.append(tee)
+            live[process.pid] = _RunningChild(child, process)
             _events.info("child %r started: pid %d, log %s", child.name, process.pid, child.log_path or "console only")
             if child.ready is not None:
                 failure = _await_ready(child, process.pid)
@@ -207,8 +207,6 @@ class Supervisor:
                 running.process.returncode = os.waitstatus_to_exitcode(status)
                 exited = running.child
                 _events.info("child %r exited: %s", exited.name, _describe_status(status))
-                if running.tee is not None:
-                    running.tee.join(_TEE_DRAIN_SECONDS)
                 if exited.foreground:
                     foreground_status = status
                 elif not ending:
@@ -222,6 +220,10 @@ class Supervisor:
                     deadline = time.monotonic() + self._grace_seconds
                     for other_pid in reversed(live):
                         _signal_child(other_pid, signal.SIGTERM)
+
+        drain_deadline = time.monotonic() + _TEE_DRAIN_SECONDS
+        for tee in tees:
+            tee.join(max(0.0, drain_deadline - time.monotonic()))
 
         if failed_child is not None:
             _events.info("session end: exit code %d, child %r failed", INFRASTRUCTURE_FAILURE_EXIT_CODE, failed_child.name)
