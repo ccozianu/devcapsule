@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-maintenance/post-0.2.15
+slice: Gate the merged branch, then push and publish; PR #172 integration and the diagnostics plate position await the owner
+since: 2026-10-11T04:06:17+00:00
+expires: 2026-10-11T16:06:17+00:00
