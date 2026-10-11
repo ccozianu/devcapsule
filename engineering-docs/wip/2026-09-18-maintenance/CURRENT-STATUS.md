@@ -469,9 +469,7 @@ launch was taken into intake and committed. No source was changed.
 
 1. PR2.3: the Codex pair's third round on the in-process rotation; review
    it, merge it or push back; the last round of the three.
-2. A real session on this capsule's base to show the files and the
-   manifest with the new rotation; then the owner reviews and merges
-   PR #207, then PR #209.
+2. The owner reviews and merges PR #207, then PR #209.
 3. Acceptance: build a recipe-12 base and run a fresh-workspace launch,
    proving the files, the rotation and the budget on a real capsule.
 4. Slice 3: the live snapshot and export command; then browser evidence.
@@ -682,6 +680,13 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Second session (2026-10-11, PEX of `b86b899`, the recommended recipe-9
+base, budget 16 MiB): the directory held every component's file present
+on that base, the launcher's and the supervisor's, user-owned, and
+`session.json` with the 1 MiB segment and the end record; exit 133 as
+before. Evidence under `evidence/2026-10-11-session-logs/second-session/`.
+The fixture project `e2e-logs-2b5c80eb` was removed after the run.
 
 In-process rotation gate (2026-10-11, PR #209 after the owner's
 clarification): full `nox -s build` passed, exit 0: mypy clean over 214

@@ -64,3 +64,15 @@ rotates at 1 MiB. Session `20261011-085622-321e`, container
 
 The tokens of the run were in files, never in these records. The fixture
 project's records were removed after the run.
+
+## Second session, the in-process rotation, 2026-10-11
+
+Under `second-session/`: a fresh codium project launched through the real
+launcher built from the public PEX of `b86b899`, on the recommended base
+(recipe 9, no web console and no logrotate on it), with
+`DEVCAPSULE_LOG_BUDGET=16M`. The session directory held one user-owned
+file per component present on that base, the launcher's and the
+supervisor's, and `session.json` with the segment of 1 MiB and the end
+record. No padding this time: rotation in the writer is proven by the unit
+suite with a real child writing 4000 lines through the tee. The supervisor's
+record shows the same lifecycle as before, without a rotation child.

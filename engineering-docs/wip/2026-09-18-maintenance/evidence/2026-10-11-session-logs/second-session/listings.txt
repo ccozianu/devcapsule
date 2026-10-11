@@ -1,0 +1,25 @@
+--- files at start
+total 40
+drwxr-xr-x 2 costin costin 4096 Oct 11 09:19 .
+drwxr-xr-x 3 costin costin 4096 Oct 11 09:19 ..
+-rw-r--r-- 1 costin costin 4071 Oct 11 09:19 devcapsule-codium.log
+-rw-r--r-- 1 costin costin 4383 Oct 11 09:19 devcapsule-launcher.log
+-rw-r--r-- 1 costin costin  311 Oct 11 09:19 devcapsule-novnc.log
+-rw-r--r-- 1 costin costin  956 Oct 11 09:19 devcapsule-panel.log
+-rw-r--r-- 1 costin costin  976 Oct 11 09:19 devcapsule-supervisor.log
+-rw-r--r-- 1 costin costin    0 Oct 11 09:19 devcapsule-window-manager.log
+-rw-r--r-- 1 costin costin 2212 Oct 11 09:19 devcapsule-xvnc.log
+-rw-r--r-- 1 costin costin  719 Oct 11 09:19 session.json
+
+--- files at end
+total 48
+drwxr-xr-x 2 costin costin 4096 Oct 11 09:19 .
+drwxr-xr-x 3 costin costin 4096 Oct 11 09:19 ..
+-rw-r--r-- 1 costin costin 4412 Oct 11 09:20 devcapsule-codium.log
+-rw-r--r-- 1 costin costin 4483 Oct 11 09:20 devcapsule-launcher.log
+-rw-r--r-- 1 costin costin  340 Oct 11 09:20 devcapsule-novnc.log
+-rw-r--r-- 1 costin costin  956 Oct 11 09:19 devcapsule-panel.log
+-rw-r--r-- 1 costin costin 1778 Oct 11 09:20 devcapsule-supervisor.log
+-rw-r--r-- 1 costin costin  195 Oct 11 09:20 devcapsule-window-manager.log
+-rw-r--r-- 1 costin costin 2212 Oct 11 09:19 devcapsule-xvnc.log
+-rw-r--r-- 1 costin costin  777 Oct 11 09:20 session.json
