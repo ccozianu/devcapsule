@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, its review PR #210 merged and a second Codex round on the supervised-child rotation running; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, its review PRs #210 and #211 merged, acceptance on a recipe-12 base running; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -35,8 +35,12 @@ SIGTERM could end PID 1 without the orderly stop, and the supervisor's reap
 loop could take logrotate's exit first. Commit `adfbff7` runs logrotate as
 a supervised child, a `sh` loop that sleeps the interval and runs
 logrotate, started first and stopped last, teed into
-`devcapsule-logrotate.log`. The gate passed again; a second Codex round
-reviews that delta. Rounds used on PR2: one of three.
+`devcapsule-logrotate.log`. The gate passed again. The second round,
+[PR #211](https://github.com/ccozianu/devcapsule/pull/211), found no
+runtime defect and was merged: it pins SIGTERM and SIGKILL of the loop
+under the real supervisor, hostile paths through `shlex.join`, and the
+`gosu` wrap, and corrects the wording on shutdown. Rounds used on PR2: two
+of three. Acceptance on a real capsule follows; see *Validation*.
 
 **2026-10-11, evening: PR1.1 accepted; slice 2 is
 [PR #209](https://github.com/ccozianu/devcapsule/pull/209), stacked on PR1.**
@@ -429,9 +433,9 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. PR2.2: the Codex pair's second round on [PR #209](https://github.com/ccozianu/devcapsule/pull/209),
-   branch `ws-maintenance/log-rotation-review-2`; review it, merge it or
-   push back; one more round remains before the owner is asked.
+1. Acceptance of PR #209 on a real capsule: the recipe-12 base built from
+   the public PEX of this branch, a session with a 16 MiB budget, a padded
+   log, two logrotate ticks; evidence into the PR and this file.
 2. The owner reviews and merges PR #207, then PR #209.
 3. Acceptance: build a recipe-12 base and run a fresh-workspace launch,
    proving the files, the rotation and the budget on a real capsule.
