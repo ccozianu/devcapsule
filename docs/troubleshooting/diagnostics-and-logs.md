@@ -96,7 +96,8 @@ seconds. The rules it applies are in `logrotate.conf` beside the logs:
 
 One knob bounds the whole checkout: `DEVCAPSULE_LOG_BUDGET` on the
 launcher's shell, `256M` by default. It accepts a number with `K`, `M` or
-`G`, and refuses less than `16M`.
+`G`, with a minimum of `16M`. An invalid or smaller value prints a warning
+and uses `256M`, so a logging option cannot prevent a launch.
 
 ```bash
 DEVCAPSULE_LOG_BUDGET=1G devcapsule project run

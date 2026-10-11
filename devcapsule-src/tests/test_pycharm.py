@@ -1810,17 +1810,25 @@ def test_interrupted_launch_records_the_end_and_reraises(tmp_path):
         logs.reset()
 
 
-def test_the_log_budget_knob_sets_the_segment_and_refuses_nonsense(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_the_log_budget_knob_sets_the_segment_and_reports_nonsense(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     config, _env = session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="1G")
     assert config.log_budget_bytes == 1024 ** 3
     assert config.runtime_plan is not None and config.runtime_plan.logs is not None
     assert (config.runtime_plan.logs.segment_bytes, config.runtime_plan.logs.rotations) == (10 * 1024 * 1024, 4)
     print_storage_summary(config)
     assert "(budget 1 GiB)" in capsys.readouterr().err
-    with pytest.raises(PycharmRunError, match="DEVCAPSULE_LOG_BUDGET: 'lots' is not a size"):
-        session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="lots")
-    with pytest.raises(PycharmRunError, match="DEVCAPSULE_LOG_BUDGET must be at least 16 MiB"):
-        session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="1M")
+    for value, message in (
+        ("lots", "DEVCAPSULE_LOG_BUDGET: 'lots' is not a size"),
+        ("1M", "DEVCAPSULE_LOG_BUDGET must be at least 16 MiB"),
+        ("9" * 5000, "DEVCAPSULE_LOG_BUDGET: size contains too many digits"),
+    ):
+        fallback, _ = session_config(tmp_path, DEVCAPSULE_LOG_BUDGET=value)
+        assert fallback.log_budget_bytes == 256 * 1024 ** 2
+        assert fallback.runtime_plan is not None and fallback.runtime_plan.logs is not None
+        assert fallback.runtime_plan.logs.segment_bytes == 8 * 1024 ** 2
+        warning = capsys.readouterr().err
+        assert message in warning
+        assert warning.count("using the default log budget of 256 MiB") == 1
 
 
 def test_the_launcher_records_the_sessions_end_in_its_manifest(tmp_path: Path) -> None:

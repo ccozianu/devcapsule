@@ -107,10 +107,15 @@ _SIZE_UNITS = {"": 1, "K": 1024, "M": 1024 ** 2, "G": 1024 ** 3}
 def parse_size(text: str) -> int:
     """Bytes from ``256M``, ``1G``, ``512K`` or a plain number; binary units."""
 
-    match = re.fullmatch(r"\s*(\d+)\s*([KMGkmg]?)(?:i?[Bb])?\s*", text)
+    match = re.fullmatch(r"\s*(\d+)\s*(?:([KMGkmg])(?:i?[Bb])?|[Bb]?)\s*", text)
     if match is None:
         raise LogBudgetError(f"{text!r} is not a size; use a number with K, M or G, such as 256M")
-    return int(match.group(1)) * _SIZE_UNITS[match.group(2).upper()]
+    try:
+        return int(match.group(1)) * _SIZE_UNITS[(match.group(2) or "").upper()]
+    except ValueError as error:
+        # Python bounds decimal conversion; keep oversized input on the same
+        # recoverable path as other invalid budget values.
+        raise LogBudgetError("size contains too many digits") from error
 
 
 def format_size(size: int) -> str:

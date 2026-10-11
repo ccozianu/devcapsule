@@ -138,6 +138,22 @@ def test_the_budget_knob_parses_sizes_and_has_a_floor() -> None:
     assert logs.segment_bytes_for(10 * 1024 ** 3) == 10 * 1024 ** 2
 
 
+@pytest.mark.parametrize("text", ["", " ", "-1M", "1.5G", "1T", "1iB", "9" * 5000])
+def test_invalid_sizes_raise_the_recoverable_budget_error(text: str) -> None:
+    with pytest.raises(logs.LogBudgetError):
+        logs.parse_size(text)
+
+
+@pytest.mark.parametrize("size", [0, 1, 1023, 1024, 1025, 16 * 1024 ** 2, 1024 ** 3, 3 * 1024 ** 3])
+def test_formatted_sizes_are_exact(size: int) -> None:
+    # Byte counts and binary units must not round when shown in diagnostics.
+    text = logs.format_size(size)
+    if text.endswith(" bytes"):
+        assert text == f"{size} bytes"
+    else:
+        assert logs.parse_size(text) == size
+
+
 def test_logrotate_configuration_bounds_every_component_file_and_delays_compression(tmp_path: Path) -> None:
     path = logs.write_logrotate_configuration(tmp_path, segment_bytes=1024 ** 2, rotations=4)
     assert path == tmp_path / "logrotate.conf" and path.stat().st_mode & 0o777 == 0o644
