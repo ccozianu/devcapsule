@@ -1,5 +1,0 @@
-who: Costin Cozianu
-branch: ws-maintenance/session-logs
-slice: Slice 1 of persistent session diagnostics: the Python logging framework, per-component log files, tee for level-less children
-since: 2026-10-11T07:48:43+00:00
-expires: 2026-10-11T19:48:43+00:00
