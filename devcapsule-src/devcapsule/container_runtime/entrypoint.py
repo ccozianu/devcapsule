@@ -40,7 +40,7 @@ USAGE = "usage: devcapsule runtime RUNTIME_PLAN.json [-- COMMAND [ARGUMENT...]]"
 SUPERVISOR_LOG_COMPONENT = "supervisor"
 LOGROTATE_RECIPE_NOTICE = (
     f"devcapsule logs: this base has no logrotate (base recipe 12 adds it); "
-    f"each component's file is cut at {logs.format_size(logs.TEE_BUDGET_BYTES)} instead"
+    f"each copied child's file is cut at {logs.format_size(logs.TEE_BUDGET_BYTES)} instead"
 )
 
 

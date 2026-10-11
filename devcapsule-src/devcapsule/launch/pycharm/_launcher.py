@@ -791,7 +791,11 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
     try:
         log_budget_bytes = logs.budget_from_environment(env)
     except logs.LogBudgetError as error:
-        raise PycharmRunError(str(error)) from error
+        log_budget_bytes = logs.DEFAULT_BUDGET_BYTES
+        print(
+            f"devcapsule launcher: {error}; using the default log budget of {logs.format_size(log_budget_bytes)}",
+            file=sys.stderr,
+        )
     if selected_runtime_plan is not None and session_log_directory is not None:
         selected_runtime_plan = selected_runtime_plan.with_logs(LogsPlan(
             SESSION_LOG_DESTINATION, segment_bytes=logs.segment_bytes_for(log_budget_bytes), rotations=logs.ROTATIONS,

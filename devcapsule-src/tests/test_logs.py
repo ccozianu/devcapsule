@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Buffer
+from datetime import datetime, timezone
 import io
 import logging
 import os
@@ -137,13 +138,30 @@ def test_the_budget_knob_parses_sizes_and_has_a_floor() -> None:
     assert logs.segment_bytes_for(10 * 1024 ** 3) == 10 * 1024 ** 2
 
 
+@pytest.mark.parametrize("text", ["", " ", "-1M", "1.5G", "1T", "1iB", "9" * 5000])
+def test_invalid_sizes_raise_the_recoverable_budget_error(text: str) -> None:
+    with pytest.raises(logs.LogBudgetError):
+        logs.parse_size(text)
+
+
+@pytest.mark.parametrize("size", [0, 1, 1023, 1024, 1025, 16 * 1024 ** 2, 1024 ** 3, 3 * 1024 ** 3])
+def test_formatted_sizes_are_exact(size: int) -> None:
+    # Byte counts and binary units must not round when shown in diagnostics.
+    text = logs.format_size(size)
+    if text.endswith(" bytes"):
+        assert text == f"{size} bytes"
+    else:
+        assert logs.parse_size(text) == size
+
+
 def test_logrotate_configuration_bounds_every_component_file_and_delays_compression(tmp_path: Path) -> None:
     path = logs.write_logrotate_configuration(tmp_path, segment_bytes=1024 ** 2, rotations=4)
     assert path == tmp_path / "logrotate.conf" and path.stat().st_mode & 0o777 == 0o644
     text = path.read_text(encoding="utf-8")
     assert text.startswith(f"{tmp_path}/devcapsule-*.log {{\n")
-    for directive in ("size 1048576", "rotate 4", "compress", "delaycompress", "missingok", "notifempty", "create"):
+    for directive in ("size 1048576", "rotate 4", "compress", "delaycompress", "missingok", "notifempty", "nocreate"):
         assert f"    {directive}\n" in text
+    assert "    create\n" not in text
     assert logs.logrotate_command(tmp_path) == ("logrotate", "-s", str(tmp_path / ".logrotate.state"), str(tmp_path / "logrotate.conf"))
     with pytest.raises(ValueError):
         logs.logrotate_configuration(tmp_path, segment_bytes=0, rotations=4)
@@ -169,7 +187,7 @@ def test_rotation_reports_a_failing_logrotate_once_and_keeps_trying(tmp_path: Pa
     assert text.count("logrotate exited 1: bad config; rotation keeps retrying every 1s") == 1
     absent = logs.Rotation(("/nonexistent/logrotate",), interval_seconds=1.0)
     assert absent.run_once() is False
-    # PID 1 may reap logrotate first and the code then reads 0; stderr still tells.
+    # A complaint on stderr is reported even with a zero exit code.
     complaining = logs.Rotation(("sh", "-c", "echo 'error: bad stanza' >&2; exit 0"), interval_seconds=1.0)
     assert complaining.run_once() is False
     assert "logrotate exited 0: error: bad stanza" in path.read_text(encoding="utf-8")
@@ -177,22 +195,24 @@ def test_rotation_reports_a_failing_logrotate_once_and_keeps_trying(tmp_path: Pa
         logs.Rotation((), interval_seconds=1.0)
 
 
-def test_tee_follows_the_file_logrotate_moves_away(tmp_path: Path) -> None:
+def test_tee_follows_the_file_logrotate_moves_away(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(logs.os, "geteuid", lambda: 0)
+    owned: list[tuple[Path, int, int]] = []
+    monkeypatch.setattr(logs.os, "chown", lambda path, uid, gid: owned.append((path, uid, gid)))
     path = tmp_path / "devcapsule-child.log"
-    source_read, source_write = os.pipe()
-    writer = os.fdopen(source_write, "wb", buffering=0)
     passthrough = io.BytesIO()
-    tee = logs.Tee(os.fdopen(source_read, "rb", buffering=0), path, passthrough, budget_bytes=None, clock=lambda: 0.0).start()
-    writer.write(b"before\n")
-    deadline = time.monotonic() + 5.0
-    while b"before" not in passthrough.getvalue() and time.monotonic() < deadline:
-        time.sleep(0.01)
-    path.rename(tmp_path / "devcapsule-child.log.1")  # what logrotate does, then `create`
-    writer.write(b"after\n")
-    writer.close()
-    tee.join(5.0)
+    tee = logs.Tee(io.BytesIO(), path, passthrough, budget_bytes=None, clock=lambda: 0.0, owner=(1234, 5678))
+    # Forward synchronously: reaching the console is not proof the tee has
+    # finished its file write, so polling passthrough before rename races.
+    tee._forward(b"before\n")
+    path.rename(tmp_path / "devcapsule-child.log.1")
+    assert not path.exists()  # nocreate: the writer supplies the replacement
+    tee._forward(b"after\n")
+    tee.start().join(5.0)  # empty source closes the final descriptor
     assert (tmp_path / "devcapsule-child.log.1").read_bytes() == b"1970-01-01T00:00:00Z before\n"
     assert path.read_bytes() == b"1970-01-01T00:00:00Z after\n"
+    assert passthrough.getvalue() == b"before\nafter\n"
+    assert owned == [(path, 1234, 5678), (path, 1234, 5678)]
 
 
 def run_tee(tmp_path: Path, payload: bytes, **options: object) -> tuple[bytes, Path]:
@@ -279,7 +299,7 @@ def test_the_handler_follows_logrotate_and_owns_the_reopened_file(tmp_path: Path
     path = logs.configure("supervisor", tmp_path, environ={}, owner=(1234, 5678))
     assert path is not None
     logs.events_logger("supervisor").info("first segment")
-    path.rename(path.with_suffix(".log.1"))  # what logrotate does before `create`
+    path.rename(path.with_suffix(".log.1"))  # nocreate: the handler supplies the replacement
     logs.events_logger("supervisor").info("second segment")
     assert "first segment" in path.with_suffix(".log.1").read_text()
     assert path.read_text().count("second segment") == 1 and "first segment" not in path.read_text()
@@ -356,7 +376,7 @@ def test_prune_never_takes_a_session_that_is_still_running_unless_it_is_abandone
     import json
     import time
 
-    now = time.mktime(time.strptime("20260110-120000", "%Y%m%d-%H%M%S")) - time.timezone
+    now = datetime(2026, 1, 10, 12, tzinfo=timezone.utc).timestamp()
     running = tmp_path / "20260110-100000-aaaa"  # two hours old, no end recorded
     abandoned = tmp_path / "20260101-100000-bbbb"  # nine days old, no end recorded
     ended = tmp_path / "20260110-110000-cccc"
@@ -370,3 +390,43 @@ def test_prune_never_takes_a_session_that_is_still_running_unless_it_is_abandone
     assert logs.session_ended(tmp_path / "not-a-session", now=now)
     assert logs.prune_sessions(tmp_path, budget_bytes=0, current="20260110-120000-dddd", now=now) == [abandoned.name, ended.name]
     assert sorted(entry.name for entry in tmp_path.iterdir()) == [running.name]
+
+
+@pytest.mark.parametrize("tz", ["UTC0", "EST5EDT,M3.2.0,M11.1.0", "JST-9"])
+def test_abandonment_uses_utc_even_during_daylight_saving(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tz: str,
+) -> None:
+    directory = tmp_path / "20260701-120000-aaaa"
+    boundary = datetime(2026, 7, 8, 12, tzinfo=timezone.utc).timestamp()
+    try:
+        with monkeypatch.context() as context:
+            context.setenv("TZ", tz)
+            time.tzset()
+            assert not logs.session_ended(directory, now=boundary - 1)
+            assert not logs.session_ended(directory, now=boundary)
+            assert logs.session_ended(directory, now=boundary + 1)
+    finally:
+        time.tzset()
+
+
+@pytest.mark.parametrize("manifest", [None, b"{", b"\xff", b"[]", b'{"ended-at": null}'])
+def test_unreadable_manifest_requires_abandonment_before_pruning(tmp_path: Path, manifest: bytes | None) -> None:
+    directory = tmp_path / "20260701-120000-aaaa"
+    directory.mkdir()
+    (directory / "devcapsule-job.log").write_bytes(b"output")
+    if manifest is not None:
+        (directory / logs.SESSION_MANIFEST).write_bytes(manifest)
+    boundary = datetime(2026, 7, 8, 12, tzinfo=timezone.utc).timestamp()
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=boundary) == []
+    assert directory.exists()
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=boundary + 1) == [directory.name]
+
+
+def test_inaccessible_manifest_does_not_make_a_young_session_prunable(tmp_path: Path) -> None:
+    directory = tmp_path / "20260701-120000-aaaa"
+    directory.mkdir()
+    # Reading a directory as the manifest raises OSError even when run as root.
+    (directory / logs.SESSION_MANIFEST).mkdir()
+    (directory / "devcapsule-job.log").write_bytes(b"output")
+    now = datetime(2026, 7, 1, 13, tzinfo=timezone.utc).timestamp()
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=now) == []
