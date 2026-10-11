@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-11; ecosystem bootstrap moved to 0.9; project-operation instructions assigned to workflow-improvements for 0.3.0; approved intake dispositions retained
+State: paused 2026-10-11 at owner direction; consent and forced configuration first, remaining 0.3.0 work during the RC cycle; diagnostics/image scope limits remain open
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -39,6 +39,31 @@ ruling. Current planning uses that name. Historical references and the source
 version 0.2.16.dev0 remain unchanged. Scope, driver and cut still need decisions.
 The [current proposal](2026-09-27-0216-release-planning.md) separates accepted
 commitments from proposals; its historical filename is retained.
+
+### Pause: Road To The First 0.3.0 Candidate
+
+Owner direction, 2026-10-11: pause planning here. The purpose of the session is
+to identify the distance to an RC and shorten it. The owner directed consent/
+vendor trust (#1) and forced-configuration preview/launch (#6) first, with the
+remaining release work handled in the RC cycle. No implementation workstream
+was selected in this checkout and no release cut was authorized.
+
+The [release plan](2026-09-27-0216-release-planning.md#owners-sequence-before-pausing-2026-10-11)
+records the concrete scope. The network item is the existing authorization
+command working without a recommendation. The terminal item is harmless
+launch noise and a Ctrl+C traceback. The normal Docker-build optimization
+is delivered; only empty-cache reuse and obsolete-image/cache cleanup remain.
+Diagnostics logging/rotation is merged; assess what is still needed from
+snapshot/export and browser evidence.
+
+The agent agreed with the sequence and flagged the remaining image and
+diagnostics scope as potentially substantial. The owner has not decided a
+reduction or deferral; retain that question without inventing another gate.
+The eleven user-docs decisions, release driver and final cut criteria remain.
+Use plain descriptions when presenting the work, as the owner requested.
+Delivered `2026-10-11-project-management-pre-rc-sequence.md` to
+component-upgrades and maintenance at coordination `a495e67a9428` so both
+implementation owners have the sequence and its open scope qualifications.
 
 ### Latest Decision: Project Operations Now, Bootstrap At 0.9
 
@@ -153,14 +178,12 @@ of further console work.
 
 ## Planned Next Step
 
-Follow the two delivered scope decisions in recipient publications. Bootstrap
-is excluded from 0.3.0; the project-operation instruction rule is included.
-Maintenance continues the remaining diagnostics slices and acceptance.
-Project-management resumes final release scope and ship criteria with the owner.
-The broader critical path remains
-0.3.0 scope, driver and cut, and the eleven user-docs proposals. The release
-name, consent inclusion, release-notes adoption and the two decision gates are
-already settled. Do not present them as open product decisions.
+On resumption, read Open Threads and recheck main and the owners' published
+state. Start from the owner's sequence: consent/vendor trust and forced
+configuration first, then the remaining work in the RC cycle. Check delivery
+of the bootstrap retargeting and project-operation instruction assignments.
+Finish release driver/cut decisions and the eleven user-docs proposal decisions
+without reopening the settled release name, consent inclusion or postponements.
 
 Items 7 (mycodespace/checkout naming), 8 (OpenCode evaluation) and 12 (routine
 documentation cleanup) are recorded in the [pre-V1 backlog](coordination-backlog.md#pre-v1-work-tentatively-09-excluded-from-030).
@@ -182,6 +205,14 @@ older context, including the lifecycle question for contained-display and
 sample-projects. Neither lack of a live publication nor this cleanup closes them.
 
 ## Validation And External State
+
+Pause checkpoint: records only; the prior full gate for 71f1fde remains the
+validation baseline because executable inputs have not changed. Handoff links and
+whitespace passed for this update; both recipient copies match the sent item.
+The pause mail take returned no items. Main synchronization remains
+deferred for the same records-only reason below. Existing .idea edits are
+preserved outside the PM commits. No transcript is created.
+
 
 For this records-only scope checkpoint, main is at 61396e8. Its newer changes
 do not touch the selected PM records or change WORKFLOW.md/WORKFLOW-LOCAL.md.
@@ -236,8 +267,14 @@ completed decision batch instead of accumulating several batches uncommitted.
 
 ## Open Threads
 
-- Awaiting the human: next bounded decision begins with 0.3.0 release scope and ship criteria unless the owner chooses another
-  slice; maintenance now owns diagnostics implementation. The eight remaining messages are not yet approved for disposition.
+- Awaiting the human: bounded RC scope for remaining diagnostics and image
+  reuse/cleanup, release driver and cut criteria, and eleven user-docs proposal
+  decisions. The eight original intake messages and the new testing-policy
+  reconciliation remain undecided. Consent and forced configuration go first;
+  no additional deferral was agreed.
+- Suspension point: planning paused deliberately. Recheck implementation
+  progress before presenting the remaining list; several broad labels hid
+  delivered work or small fixes. Do not restart the intake disposition exercise.
 - Weighed and unresolved: the older local GitHub UI-only rule versus scoped gh
   grants, workflow-rule stewardship, and timing of humane-view dependencies.
   These are preserved context, not questions to repeat during unrelated work.
