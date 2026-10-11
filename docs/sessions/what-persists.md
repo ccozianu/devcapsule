@@ -19,6 +19,7 @@ of each; this is what it contains.
 | The IDE's configuration and plugins | durable | Settings, extensions, keymaps |
 | Eclipse's `/ide-workspace` | durable | Workspace preferences, project references and local history; keep source in the project folder |
 | The IDE's log and system directories | state, cache | Reconstructable; caches may be cleared |
+| `/var/log/devcapsule` | state | This session's logs, one file per component; the newest 20 sessions are kept, see [Diagnostics and logs](../troubleshooting/diagnostics-and-logs.md) |
 | `~/.cache` | cache | Reconstructable |
 | `/tmp` and the container's own filesystem | temporary | Gone when the container is removed |
 
