@@ -24,6 +24,7 @@ to the console with one line saying what was lost.
 
 from __future__ import annotations
 
+from io import TextIOWrapper
 import logging
 import logging.handlers
 import os
@@ -60,6 +61,8 @@ EVENTS_SUFFIX = ".events"
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 _LINE_FORMAT = "%(asctime)s %(levelname)s %(name)s[%(process)d]: %(message)s"
 _INSTALLED_ATTRIBUTE = "_devcapsule_installed"
+# Bound both memory use and the wait for output without a trailing newline.
+_TEE_READ_BYTES = 64 * 1024
 
 Owner = tuple[int, int] | None
 """``(uid, gid)`` to give a file when the writer is root, else ``None``."""
@@ -67,6 +70,40 @@ Owner = tuple[int, int] | None
 
 class LogLevelError(ValueError):
     """The verbosity override names no known level."""
+
+
+class _OwnedRotatingFileHandler(logging.handlers.RotatingFileHandler):
+    """Keep newly opened segments developer-owned, including after rollover."""
+
+    def __init__(self, path: Path, owner: Owner, report: Callable[[str], None]) -> None:
+        self._owner = owner
+        self._report = report
+        self._failed = False
+        super().__init__(path, maxBytes=SEGMENT_BYTES, backupCount=SEGMENTS_KEPT, encoding="utf-8")
+
+    def _open(self) -> TextIOWrapper:
+        stream = super()._open()
+        try:
+            own(Path(self.baseFilename), self._owner)
+        except OSError:
+            stream.close()
+            raise
+        return stream
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if not self._failed:
+            super().emit(record)
+
+    def handleError(self, record: logging.LogRecord) -> None:
+        # A full or disconnected bind mount must not flood stderr with a
+        # traceback for every subsequent record. The console handler remains.
+        self._failed = True
+        error = sys.exc_info()[1]
+        try:
+            self.close()
+        except OSError:
+            pass  # flushing the same unavailable mount can fail too
+        self._report(f"devcapsule logs: cannot write {self.baseFilename} ({error}); logging to the console only")
 
 
 def log_path(directory: str | Path, component: str) -> Path:
@@ -132,10 +169,7 @@ def configure(
     path = log_path(directory, component)
     try:
         Path(directory).mkdir(parents=True, exist_ok=True)
-        file = logging.handlers.RotatingFileHandler(
-            path, maxBytes=SEGMENT_BYTES, backupCount=SEGMENTS_KEPT, encoding="utf-8",
-        )
-        own(path, owner)
+        file = _OwnedRotatingFileHandler(path, owner, report)
     except OSError as error:
         report(f"devcapsule {component}: cannot write {path} ({error}); logging to the console only")
         return None
@@ -213,10 +247,11 @@ def prune_sessions(root: Path, *, keep: int = SESSIONS_KEPT) -> list[str]:
 class Tee:
     """Copy a child's output to its log file and onward to the console.
 
-    Reads ``source`` (the child's combined stdout and stderr) line by line on
-    a daemon thread. Each line goes unchanged to ``passthrough`` and, with a
+    Reads ``source`` (the child's combined stdout and stderr) in bounded chunks
+    on a daemon thread, so partial lines reach the console promptly. Output
+    goes unchanged to ``passthrough`` and, with a
     UTC timestamp in front, to the file, until :data:`TEE_BUDGET_BYTES` of
-    file have been written; then one notice is written and only the console
+    file have been written; then one extra notice is written and only the console
     keeps receiving the output. A file that cannot be opened is reported
     once and the tee degrades to a plain copy.
     """
@@ -237,12 +272,17 @@ class Tee:
         self._budget = budget_bytes
         self._clock = clock
         self._written = 0
-        self._file: BinaryIO | None
+        self._line_start = True
+        self._report = console or _report
+        self._path = path
+        self._file: BinaryIO | None = None
         try:
             self._file = open(path, "ab", buffering=0)
             own(path, owner)
         except OSError as error:
-            (console or _report)(f"devcapsule logs: cannot write {path} ({error}); {path.name} goes to the console only")
+            if self._file is not None:
+                self._file.close()
+            self._report(f"devcapsule logs: cannot write {path} ({error}); {path.name} goes to the console only")
             self._file = None
         self._thread = threading.Thread(target=self._copy, name=f"tee:{path.name}", daemon=True)
 
@@ -255,38 +295,60 @@ class Tee:
 
     def _copy(self) -> None:
         try:
-            for line in iter(self._source.readline, b""):
-                self._forward(line)
+            # BufferedReader.read() may wait for a full chunk; read1() returns
+            # the bytes available from one pipe read, including prompts.
+            read = getattr(self._source, "read1", self._source.read)
+            while chunk := read(_TEE_READ_BYTES):
+                self._forward(chunk)
         except (OSError, ValueError):
             pass  # the child or the console went away; nothing left to copy
         finally:
             if self._file is not None:
                 self._file.close()
 
-    def _forward(self, line: bytes) -> None:
+    def _forward(self, chunk: bytes) -> None:
         try:
-            self._passthrough.write(line)
+            self._passthrough.write(chunk)
             self._passthrough.flush()
         except (OSError, ValueError):
             pass  # the console is gone; the file is still worth keeping
         if self._file is None:
             return
-        stamped = time.strftime(_TIMESTAMP_FORMAT, time.gmtime(self._clock())).encode("ascii") + b" " + line
-        if self._written + len(stamped) > self._budget:
-            self._write(TEE_BUDGET_NOTICE.encode("utf-8"))
-            self._file.close()
-            self._file = None
-            return
-        self._write(stamped)
-        self._written += len(stamped)
+        # Split only on LF: binary output may contain other control bytes.
+        pieces = chunk.split(b"\n")
+        for index, piece in enumerate(pieces):
+            if index < len(pieces) - 1:
+                piece += b"\n"
+            if not piece:
+                continue
+            prefix = (
+                time.strftime(_TIMESTAMP_FORMAT, time.gmtime(self._clock())).encode("ascii") + b" "
+                if self._line_start else b""
+            )
+            stamped = prefix + piece
+            if self._written + len(stamped) > self._budget:
+                # The notice is outside the payload budget and must start on
+                # its own line even when a long unterminated line was cut.
+                notice = (b"" if self._line_start else b"\n") + TEE_BUDGET_NOTICE.encode("utf-8")
+                self._write(notice)
+                if self._file is not None:
+                    self._file.close()
+                    self._file = None
+                return
+            self._write(stamped)
+            if self._file is None:
+                return
+            self._written += len(stamped)
+            self._line_start = piece.endswith(b"\n")
 
     def _write(self, data: bytes) -> None:
         assert self._file is not None
         try:
             self._file.write(data)
-        except OSError:
+        except OSError as error:
             self._file.close()
             self._file = None
+            self._report(f"devcapsule logs: cannot write {self._path} ({error}); the rest goes to the console only")
 
 
 def _report(message: str) -> None:
