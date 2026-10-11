@@ -10,6 +10,8 @@ from devcapsule.components.catalog import selected_component_definitions
 from devcapsule.configuration.bindings import configuration_binding_declarations, managed_binding_path
 from devcapsule.configuration.storage import checkout_name_for, find_checkout_record, load_checkout, lock_for, manifest_for
 from devcapsule.configuration.file_formats import ProjectConfigurationError
+from devcapsule.launch.session_logs import SESSION_LOG_DESTINATION, session_logs_root
+from devcapsule.logs import BUDGET_ENV, DEFAULT_BUDGET_BYTES, format_size
 
 
 ENVIRONMENT_PURPOSES = {
@@ -26,6 +28,7 @@ ENVIRONMENT_PURPOSES = {
     "DISABLE_UPDATES": "Use the lock-selected Claude installation",
     "DEVCAPSULE_CONTAINER_NAME": "Running container name",
     "DEVCAPSULE_CONSOLE_URL": "Host-side web console origin; the run token travels in the browser's cookie",
+    "DEVCAPSULE_LOG_DIR": "This session's logs, one devcapsule-<component>.log per component",
     "DISPLAY": "Selected display server",
     "XAUTHORITY": "Display credential file path (contents omitted)",
     "BROWSER": "Host browser dispatch command, when authorized",
@@ -113,6 +116,9 @@ def configured_information(root: Path, manifest: dict[str, Any], lock: dict[str,
     persistence.append({"name": "xtras", "path": "/opt/xtras", "backing": str(Path(home["backing"]) / "xtras"),
                         "scope": home["scope"], "kind": "durable",
                         "lifecycle": "Alias of /home/devcapsule/xtras; follows home storage"})
+    persistence.append({"name": "logs", "path": SESSION_LOG_DESTINATION, "backing": str(session_logs_root(root)),
+                        "scope": "this checkout", "kind": "state",
+                        "lifecycle": f"One directory per session, rotated inside; the oldest sessions go when the checkout exceeds its log budget ({format_size(DEFAULT_BUDGET_BYTES)} unless {BUDGET_ENV} says otherwise)"})
     return {
         "schema-version": 1, "context": "host selection (next launch)",
         "project": {key: manifest["project"].get(key) for key in ("name", "creator", "slug")},

@@ -1,0 +1,26 @@
+{
+  "component": "codium",
+  "container": "devcapsule-e2e-logs-2b5c80eb",
+  "ended-at": "2026-10-11T09:20:24Z",
+  "exit-code": 133,
+  "format": 1,
+  "image": "devcapsule-local-codium:49ca42363585edbe49ae",
+  "launcher": {
+    "mnemonic": "v0.2.16.dev0-local-linux-x86_64",
+    "source": "b86b899da22bd2b9f3ca962c68de7940068e28ce",
+    "version": "0.2.16.dev0"
+  },
+  "logs": {
+    "budget-bytes": 16777216,
+    "directory": "/var/log/devcapsule",
+    "pattern": "devcapsule-<component>.log",
+    "rotations": 4,
+    "segment-bytes": 1048576
+  },
+  "project": {
+    "mount": "/workspace/e2e-logs-2b5c80eb",
+    "path": "/home/devcapsule/.local/share/devcapsule/e2e-workspaces/e2e-logs-2b5c80eb"
+  },
+  "session": "20261011-091938-1aff",
+  "started-at": "2026-10-11T09:19:38Z"
+}

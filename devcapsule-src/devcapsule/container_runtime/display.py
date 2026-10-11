@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from importlib import resources
+import logging
 import os
 from pathlib import Path
 import re
@@ -36,8 +37,9 @@ import shutil
 import socket
 import struct
 import sys
-from typing import Callable
+from typing import Callable, Mapping
 
+from .. import logs
 from .contract import RuntimePlan, RuntimePlanError
 from .supervisor import SupervisedChild
 
@@ -55,6 +57,12 @@ NOVNC_WEB_ROOT = "/usr/share/novnc"
 DEFAULT_GEOMETRY = "1920x1080"
 DEFAULT_DEPTH = "24"
 DEFAULT_DPI = "96"
+# TigerVNC's log levels: 0 errors, 10 status, 30 info, 100 debug; its default
+# is 30. Status is the WARNING-plus-lifecycle baseline the session logs
+# keep: errors, and the server's connection and state changes. Info is the
+# per-client chatter an investigation turns on through DEVCAPSULE_LOG_LEVEL.
+XVNC_LOG_SETTING = "*:stderr:10"
+XVNC_VERBOSE_LOG_SETTING = "*:stderr:100"
 
 OPENBOX_CONFIGURATION_RESOURCE = "openbox-rc.xml"
 PANEL_CONFIGURATION_RESOURCE = "tint2rc"
@@ -156,6 +164,7 @@ def prepare_contained_display(
                     "-dpi", DEFAULT_DPI,
                     "-desktop", f"DevCapsule {plan.component.id}",
                     "-AlwaysShared",
+                    "-Log", xvnc_log_setting(),
                 )
             ),
             ready=lambda: _is_socket(x_socket) and _is_socket(str(rfb_socket)),
@@ -213,6 +222,16 @@ def panel_children(run_as_identity: CommandWrapper, configuration: Path) -> tupl
             command=run_as_identity(("tint2", "-c", str(configuration))),
         ),
     )
+
+
+def xvnc_log_setting(environ: Mapping[str, str] | None = None) -> str:
+    """Xvnc's ``-Log`` value: status by default, everything under a DEBUG override."""
+
+    try:
+        level = logs.level_from_environment(environ)
+    except logs.LogLevelError:
+        return XVNC_LOG_SETTING  # the supervisor already reported the bad value
+    return XVNC_VERBOSE_LOG_SETTING if level <= logging.DEBUG else XVNC_LOG_SETTING
 
 
 def openbox_configuration_text() -> str:
