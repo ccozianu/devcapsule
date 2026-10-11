@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 from typing import Callable
 
+from devcapsule import logs
 from devcapsule.container_runtime.supervisor import SupervisedChild, Supervisor, SupervisorError
 
 
@@ -30,10 +31,12 @@ def main() -> int:
             foreground=child.get("foreground", False),
             ready=path_exists_probe(child["ready_path"]) if "ready_path" in child else None,
             ready_timeout_seconds=child.get("ready_timeout_seconds", 20.0),
+            log_path=child.get("log_path"),
         )
         for child in spec["children"]
     )
     try:
+        logs.configure("supervisor", spec.get("log_directory"))
         return Supervisor(children, grace_seconds=spec.get("grace_seconds", 5.0)).run()
     except SupervisorError as error:
         # The entrypoint reports a start failure the same way: message, exit 2.

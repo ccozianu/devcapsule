@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -30,8 +31,10 @@ DRIVER = Path(__file__).parent / "resources" / "supervisor_driver.py"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def start_supervisor(children: list[dict[str, object]], grace_seconds: float = 5.0) -> subprocess.Popen[str]:
-    spec = json.dumps({"children": children, "grace_seconds": grace_seconds})
+def start_supervisor(
+    children: list[dict[str, object]], grace_seconds: float = 5.0, log_directory: str | None = None,
+) -> subprocess.Popen[str]:
+    spec = json.dumps({"children": children, "grace_seconds": grace_seconds, "log_directory": log_directory})
     environment = dict(os.environ)
     environment["PYTHONPATH"] = os.pathsep.join(
         filter(None, [str(REPO_ROOT), environment.get("PYTHONPATH")])
@@ -197,3 +200,37 @@ def test_supervisor_rejects_non_positive_readiness_timeout() -> None:
         Supervisor(
             (SupervisedChild("job", ("true",), foreground=True, ready=lambda: True, ready_timeout_seconds=0),)
         )
+
+
+def test_logged_child_output_reaches_its_file_and_the_console_and_the_supervisor_keeps_a_record(tmp_path: Path) -> None:
+    log = tmp_path / "devcapsule-job.log"
+    process = start_supervisor(
+        [{"name": "job", "command": ["sh", "-c", "echo hello-out; echo hello-err >&2; exit 3"],
+          "foreground": True, "log_path": str(log)}],
+        log_directory=str(tmp_path),
+    )
+    assert process.wait(timeout=10) == 3
+    stderr = process.stderr.read() if process.stderr else ""
+    assert "hello-out" in stderr and "hello-err" in stderr
+    text = log.read_text(encoding="utf-8")
+    assert re.search(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ hello-out$", text, re.MULTILINE)
+    assert "hello-err" in text
+    record = (tmp_path / "devcapsule-supervisor.log").read_text(encoding="utf-8")
+    for event in ("session start: children job", "child 'job' started: pid", "child 'job' ready" if False else "exited: exit code 3", "session end: exit code 3"):
+        assert event in record, event
+    assert "INFO devcapsule.supervisor.events" in record
+
+
+def test_announcements_reach_the_supervisor_log_as_warnings(tmp_path: Path) -> None:
+    marker = tmp_path / "ready"
+    process = start_supervisor(
+        [{"name": "ide", "command": ["sh", "-c", f"touch {marker}; exec sleep 30"], "foreground": True}],
+        log_directory=str(tmp_path),
+    )
+    wait_for_marker(marker)
+    process.send_signal(signal.SIGTERM)
+    assert process.wait(timeout=10) == 128 + signal.SIGTERM
+    record = (tmp_path / "devcapsule-supervisor.log").read_text(encoding="utf-8")
+    assert "WARNING devcapsule.supervisor" in record and "session end requested (SIGTERM)" in record
+    assert "signal SIGTERM forwarded to ide" in record
+    assert "child 'ide' exited: killed by SIGTERM" in record
