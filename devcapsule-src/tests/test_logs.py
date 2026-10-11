@@ -405,6 +405,7 @@ def test_inaccessible_manifest_does_not_make_a_young_session_prunable(tmp_path: 
 
 
 def test_the_rotation_child_sleeps_then_runs_logrotate_and_never_stops_on_a_failure(tmp_path: Path) -> None:
+    import shlex
     import subprocess
 
     command = logs.logrotate_loop_command(tmp_path / "with space", interval_seconds=30)
@@ -414,11 +415,19 @@ def test_the_rotation_child_sleeps_then_runs_logrotate_and_never_stops_on_a_fail
         f" '{tmp_path}/with space/logrotate.conf' || true; done"
     )
     # A failing logrotate complains on stderr and the loop goes on: two sleeps, two complaints.
-    fake = tmp_path / "logrotate"
-    fake.write_text(f"#!/bin/sh\necho run >> {tmp_path / 'runs'}\necho error: bad >&2\nexit 1\n", encoding="utf-8")
+    # Exercise quoting through the real shell, including the executable name.
+    directory = tmp_path / "space ' quote; $(touch injected)"
+    fake = tmp_path / "logrotate ' $(touch injected)"
+    arguments = tmp_path / "arguments"
+    fake.write_text(
+        f"#!/bin/sh\nprintf '%s\\n' \"$@\" >> {shlex.quote(str(arguments))}\n"
+        f"echo run >> {shlex.quote(str(tmp_path / 'runs'))}\necho error: bad >&2\nexit 1\n",
+        encoding="utf-8",
+    )
     fake.chmod(0o755)
     process = subprocess.Popen(
-        logs.logrotate_loop_command(tmp_path, interval_seconds=1, executable=str(fake)), stderr=subprocess.PIPE, text=True,
+        logs.logrotate_loop_command(directory, interval_seconds=1, executable=str(fake)),
+        cwd=tmp_path, stderr=subprocess.PIPE, text=True,
     )
     try:
         deadline = time.monotonic() + 10.0
@@ -430,5 +439,9 @@ def test_the_rotation_child_sleeps_then_runs_logrotate_and_never_stops_on_a_fail
         process.terminate()
         _out, err = process.communicate(timeout=5)
     assert err.count("error: bad") >= 2
+    assert arguments.read_text().splitlines()[:3] == [
+        "-s", str(directory / ".logrotate.state"), str(directory / "logrotate.conf"),
+    ]
+    assert not (tmp_path / "injected").exists()
     with pytest.raises(ValueError):
         logs.logrotate_loop_command(tmp_path, interval_seconds=0)
