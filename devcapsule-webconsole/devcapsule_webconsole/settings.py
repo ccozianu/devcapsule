@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import logging
 from importlib import resources
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -21,6 +22,10 @@ CLI_ENV = "DEVCAPSULE_CONSOLE_CLI"
 DEFAULT_CLI = "devcapsule"
 DEFAULT_LISTEN = "127.0.0.1"
 DEFAULT_PORT = 8080
+LOG_LEVEL_ENV = "DEVCAPSULE_LOG_LEVEL"
+"""The runtime's verbosity override, shared by every component of a session."""
+LOG_LEVEL_NAMES = ("DEBUG", "INFO", "WARNING", "ERROR")
+DEFAULT_LOG_LEVEL = logging.WARNING
 
 
 class SettingsError(ValueError):
@@ -43,6 +48,18 @@ class Settings:
     @property
     def static_root(self) -> Path:
         return Path(str(resources.files(__package__) / "static"))
+
+
+def log_level_from_environment(environ: Mapping[str, str]) -> int:
+    """WARNING, the session baseline, unless ``$DEVCAPSULE_LOG_LEVEL`` names another level."""
+
+    value = environ.get(LOG_LEVEL_ENV, "")
+    if not value:
+        return DEFAULT_LOG_LEVEL
+    name = value.strip().upper()
+    if name not in LOG_LEVEL_NAMES:
+        raise SettingsError(f"${LOG_LEVEL_ENV} must be one of {', '.join(LOG_LEVEL_NAMES)}, not {value!r}")
+    return int(logging.getLevelName(name))
 
 
 def read_token(path: Path) -> str:
