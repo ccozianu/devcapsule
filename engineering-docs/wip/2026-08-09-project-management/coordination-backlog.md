@@ -2,10 +2,142 @@
 
 Owned by: `project-management`
 
-Cross-workstream coordination features whose release target is not yet decided.
-Items here are deliberately not assigned to V1 until someone weighs their cost
-against the release. An item leaves this backlog when a release target is
-chosen and an owning workstream accepts it.
+Cross-workstream coordination work and accepted follow-ups. Each entry states
+its own release commitment. Older undecided entries gain no V1 commitment
+merely by appearing here. An assigned item is carried by its owning workstream;
+this list retains only the coordination obligation.
+
+## Accepted Work Retained After Intake Closure
+
+Confirmed by the owner, 2026-10-09. These entries preserve work from the 23
+closed intake messages. They are not new questions to repeat at each session.
+Read the matching entry when its revisit condition applies. An unresolved
+release placement is not permission to mark a committed gate as later.
+
+The workflow already permits priority `later` (not for this release), and
+acknowledgement with an item's place in the work recorded. It does not define
+automatic reminders or a mandatory trigger field. The revisit conditions below
+are this workstream's scheduling notes, not a new generic workflow rule.
+No accepted commitment is postponed by this explanation.
+
+### Configuration Presentation
+
+Owner for implementation: `component-upgrades`, within the upgrade experience.
+Priority: `wanted`. Release placement: unresolved; no new 0.3.0 gate.
+Revisit when the broader upgrade-design slice is scoped; compare the integrated
+base/configuration contract before assigning implementation.
+
+Owner rulings of 2026-09-13/14: render configuration according to the schema it
+was configured against; only mention a newer schema, rather than present new
+nodes as recorded state. Offer the pinned base, the newest known recommendation
+when different, and the current checkout choice, clearly marked as an override
+when appropriate. Name the supported action for each choice. Launch must explain
+when an override selects a different base. Preserve these outcomes when newer
+commands supersede old spellings. Implementation is not claimed complete.
+
+### Component Status Reliability
+
+Owner: `component-upgrades`. Priority: `wanted`, toward V1, not a release gate.
+Revisit when that workstream scopes its R-UPGRADE-002 follow-up after its current
+consent slice, or if a concrete service incident requires earlier attention.
+
+[R-UPGRADE-002](../../requirements/product/r-upgrade-002-status-operational-reliability.md)
+is the canonical accepted contract: 48-hour observations, independent monitoring,
+verified notification routes and failure drills. Provider, routes, thresholds,
+operational owner and supported-adapter window are design decisions there.
+Do not repeat whether to adopt the already accepted requirement.
+
+### Repository IDE Files
+
+Owner: `project-management`. Priority: `wanted`. Target: 0.3.0, no gate.
+Revisit at the next repository-hygiene slice before release preparation.
+
+Owner ruling of 2026-10-01: ignore this repository's .idea files. Untrack them
+without deleting local files, add a root ignore entry, and document the rule
+in the developer brief or local workflow. Other projects may track their own.
+Keep current IDE edits out of the intake-disposition commit. No tooling feature
+is requested, and this reconciliation does not execute the untracking.
+
+### Release And V1 Obligations
+
+The [0.3.0 proposal](2026-09-27-0216-release-planning.md) owns the current release
+commitments and cut decisions. The [V1 ledger](v1-scope-ledger.md) owns the legacy
+capability gate. Their planning events are the revisit triggers. First-session
+UX, release automation and forced configuration remain with maintenance;
+consent remains with component-upgrades. These are assigned work, not new
+adoption votes. The eleven user-docs proposals still require an owner decision
+before 0.3.0; L1-L13 and chosen delivery still gate V1.
+
+## Pagefind: Catalog Proposal Closed, Website Owns Integration
+
+Owner decision, 2026-10-10. Do not create a Pagefind DevCapsule component for
+the website's build dependency. The website must declare a pinned npm dependency
+and lockfile and build without global Pagefind or /opt/xtras when it implements
+W10 search. The personal xtras install was temporary experimental convenience.
+Playwright's already delivered component is a separate decision.
+
+Handoff `2026-10-10-project-management-pagefind-project-dependency.md` delivered
+to website at coordination `5b05eeecda11`, with portable-build, static-output
+browser-search and atomic-publication acceptance criteria. No new delivery date
+is assigned. This is a routing record, not an open catalog decision or another
+project-management implementation task. Consult website's acknowledgement at
+its next publication rather than reopen the dropped catalog proposal.
+
+## Pre-V1 Work: Tentatively 0.9, Excluded From 0.3.0
+
+Owner decision, 2026-10-10: postpone items 7, 8 and 12 from the consolidated
+agenda until before V1, tentatively 0.9, definitely not 0.3.0. Priority: `later`
+relative to the current release. Coordination owner: `project-management`.
+Implementation owners are assigned at pickup. The intake messages are
+acknowledged with this place in the work; none is marked implemented.
+
+Revisit when planning 0.9 or another final pre-V1 cycle, whichever comes first.
+Check again before V1 acceptance so a changed version sequence cannot lose
+these items. Keep them off the 0.3.0 agenda unless the owner explicitly changes
+this direction. This is a postponement within the pre-V1 plan, not the ledger's
+`deferred` verdict, which means outside V1. Tentative 0.9 is not a release date.
+
+### Item 7: mycodespace And Checkout Naming
+
+Revisit the proposed [mycodespace direction](../../design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
+with the owner: lifetime project namespace, one-action materialization, owned
+archive, runnable retained environments and the workspace/submodule relationship.
+Direction and any first implementation slice remain undecided; postponement
+does not approve the entire proposal.
+
+Keep the checkout-naming proposal with it: use the directory's last component
+when unique among live checkouts; retain vanished records as missing without
+letting them occupy the default slot; expose directory-to-record mappings.
+D-0004 remains the current contract until the owner decides a change. Showing
+a checkout name in project info does not decide how that name is assigned.
+
+### Item 8: OpenCode Evaluation
+
+Schedule and assign a bounded OpenCode/local-model evaluation. Identify the
+model, runtime, hardware and context needs; prove a small useful coding task
+and resumption; assess project instructions, persistence and explicit host
+boundaries. Gemma remains a candidate, not a selected model. Record evidence
+and gaps for user-docs before considering component integration. No installation
+or integration is authorized by this postponement.
+
+### Item 12: Routine Documentation Cleanup
+
+- Intake READMEs: project-management's pointer is already thin; inspect remaining
+  stale copies, particularly sample-projects, and route corrections to their
+  owners. Treat recursive-e2e's archived copy as history rather than a live
+  protocol. Do not revive its workstream for this cleanup.
+- Contract wording: reconcile the producer specification's literal-version rule
+  with the authoritative website contract and existing checks, including the
+  loopback-address boundary and tokenized links. The docs-0.2.15 copy already
+  landed; do not repeat that delivery. This is wording reconciliation, not a
+  new version-check implementation or a 0.3.0 documentation gate.
+
+The four original messages are recoverable in Git at
+`967e9f9a3622d3b84c42eec6df004267a1abf143` under this workstream's intake:
+`2026-09-25-maintenance-mycodespace-and-checkout-naming.md`,
+`2026-09-15-user-docs-opencode-evaluation.md`,
+`2026-08-17-workflow-improvements-obsolete-intake-readmes.md`, and
+`2026-09-28-user-docs-contract-version-check-and-docs-0215.md`.
 
 ## Notification When A Host Bridge Is Not Granted
 
@@ -72,20 +204,16 @@ owner, or a recorded rejection.
 
 ### External-Resource Ownership And Reaping
 
-Release target: **undecided**
+Closed: 2026-10-09, at the owner's direction. No further action is required
+on the standalone Stage 7 resource-convention request. Its requester was
+archived and the old plan no longer describes current development. Remove
+this request from the active decision agenda; do not recreate it as later work.
 
-The Stage 7 implementation half of the convention `workflow-improvements`
-retained; closes the
-[detached-successor cleanup bug](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md).
-The 2026-08-16 readiness assessment ranked this the top at-risk V1 item, but
-that ranking predates v0.2.7: the ordinary attached run's exit cleanup is
-verified (v026 acceptance, including broker-resource removal), so the
-accumulation problem is specific to detached and E2E launches. The remaining
-decision is whether that narrower exposure still earns V1 scope, and if so
-which workstream implements it. The convention-readiness notice delivered to
-`workflow-improvements`' intake on 2026-08-27 is overtaken if this item is
-deferred or rejected; that workstream should disposition it against this
-entry's outcome.
+Maintenance's concrete cleanup defects and its current reuse/reaping work
+remain independently owned and tracked. This closure neither resolves those
+bugs nor authorizes deleting retained host resources. The persistent-diagnostics
+proposal of 2026-10-08 arose from a separate noVNC incident and is not part of
+this retired Stage 7 request.
 
 ### Retained-Successor Evidence Disposal
 

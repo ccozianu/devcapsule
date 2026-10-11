@@ -1,27 +1,39 @@
-# Proposed work order: persistent, bounded diagnostics for capsule sessions
+# Work Order: Persistent, Bounded Diagnostics For Capsule Sessions
 
-Date: 2026-10-08
-From: maintenance, at the product owner's explicit request
-To: project-management
-Status: proposal for routing and scheduling; no implementation started
+Origin: maintenance's 2026-10-08 investigation and owner request.
+Planning decision: 2026-10-09, by the product owner.
+Assignment decision: 2026-10-11, by the product owner.
+Status: **assigned to maintenance for implementation, targeted ready for 0.3.0**.
+Coordination owner: `project-management`. Implementation owner: `maintenance`.
+Priority: `wanted`; urgent maintenance work, not parked for later.
+Delivery: full work order mailed to maintenance on 2026-10-11 at coordination
+`a535ccf3a44e` as `2026-10-11-project-management-maintenance-persistent-diagnostics.md`.
 
-## Requested decision
+## Current Decision And Next Action
 
-Accept and route a work order for default, persistent diagnostics across the
-critical capsule components. This was investigated from the maintenance
-checkout, but the supervisor/display scope is associated with the open
-`contained-display` workstream in main's workstream list. Its live published
-state was absent from `workflow status` during this handoff; project-management
-should verify that workstream's current ownership and readiness rather than
-assuming it is staffed. The IDE adapters and launcher also participate.
-Project-management owns assignment, sequencing and any release target; this
-message assigns none and does not switch the sending checkout's workstream.
+The owner called this a "hot potato" and directed that it move to active
+consideration for implementation, targeted ready for the upcoming release,
+0.3.0. It is independent of the retired Stage 7 resource-convention request.
+The intake receipt is acknowledged; the work remains open here as candidate C21
+in the [release proposal](../wip/2026-08-09-project-management/2026-09-27-0216-release-planning.md).
 
-Acceptance means recording the owner's requested behavior as requirements,
-assigning the work and finish criteria, and resolving the policy choices below.
-This item contains the complete proposed work order so it can be routed without
-waiting for a maintenance PR. Promote it to the normal work-order location and
-index it when accepted, according to the repository workflow.
+The owner assigned implementation to **maintenance** on 2026-10-11. Rationale:
+maintenance cannot reliably diagnose, much less fix, failures without logs.
+Diagnostics is therefore foundational maintenance work, including the required
+supervisor, display, launcher and IDE logging integration. Ownership no longer
+waits on contained-display's availability or lifecycle decision.
+
+Maintenance now scopes the bounded 0.3.0 slice and acceptance criteria, then
+implements and validates it under this assignment. Coordinate its existing C10
+terminal/shutdown work so logging, user-facing output and normal interruption
+handling form one consistent behavior. No workstream switch in the assigning
+checkout is implied. No implementation completion is claimed by this assignment.
+
+Default persistent component logs, bounded rotation/compression and the WARNING
+baseline are prior owner direction. The technical proposal below is preserved
+for scoping; this priority decision does not approve every proposed limit,
+export mechanism or monitoring design. No new release-blocking gate is inferred.
+The original disconnect's cause remains unproven and separate from this work.
 
 ## Problem and evidence
 
@@ -166,7 +178,8 @@ a special flag.
 
 ## Decisions retained for the receiving workstream and owner
 
-Confirm scope/ownership and scheduling; choose the exact storage limits and
+Ownership is decided: maintenance. Target: ready for 0.3.0. Set the bounded
+release scope and implementation sequence; choose the exact storage limits and
 their configuration interface; decide the browser-capture slice; choose the
 rotation implementation and native-IDE integration; define any periodic health
 sampling. Default persistent component logs, bounded rotation/compression and

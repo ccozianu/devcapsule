@@ -118,8 +118,15 @@ rather than adding a milestone, so it does not change the release shape.
 
 ### Contained Display And Desktop Integration
 
-Verdict: `in-v1` for the direction. Implementation specifics are `proposed`
-pending a spike.
+Verdict: `in-v1`; contained-display implementation ratified in v0.2.12.
+
+Ratification recorded 2026-10-09 after the owner confirmed the delivery-notice
+disposition. The [v0.2.12 acceptance record](../../releases/v0.2.12.json) and
+2026-09-14 delivery establish the accepted recipe-9 contained desktop. The
+owner used it from 2026-09-13 and accepted the shape on 2026-09-14. Host X11
+is opt-in; the ordinary desktop no longer requires the host X socket or
+credential. Follow-up reconnect, opener and sample-lock work stays separate.
+The earlier target and design discussion below are historical context.
 
 Direction decided: 2026-08-16, by the product owner. The capsule presents its
 own contained windowing environment rather than borrowing the host X session.
@@ -798,7 +805,7 @@ extraction is not pursued, and alternative-workflow installability is a
 `v1-optional` check — so the recommended onramp shape has no remaining
 blocker, though it stays recommended rather than ratified. The division of
 labor with the adopter-facing
-[issue-tracker positioning](../../../docs/product/issue-tracker-positioning.md)
+[issue-tracker positioning](../../product/issue-tracker-positioning.md)
 stands: that document is the *why*, this one is the *how*.
 
 **Acceptance evidence.** A reader following the marked human path can state
@@ -1166,3 +1173,39 @@ surface split, `F7`'s `pycharm build` removal, D-0001's `v1-optional`
 parking, and the *V1 Acceptance* section), and the wow-first release shape,
 to be rebuilt from these rows now that the superseded twelve-week shape and
 its deferrals are gone.
+
+## Legacy Launch Capability Disposition
+
+Verdict: `in-v1`; mandatory decision and delivery gate.
+Owner: `project-management` for product decisions and coordination;
+implementation owners assigned when selected work starts.
+
+Owner direction: 2026-09-22, acknowledged and confirmed 2026-10-09.
+Canonical work order: [legacy launch capability disposition](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md).
+
+Before V1 acceptance, record an owner-reviewed disposition for every L1-L13
+capability and the non-DevCapsule-directory question. Implement and validate
+the capabilities selected for V1. Already covered, explicit migration, an
+explicitly designed image mode, or deliberate removal all require evidence
+and a recorded decision. No image-run command or blanket parity is approved.
+An outside-V1 deferral requires the owner's explicit approval and a tracked
+home; merely assigning priority later cannot clear this gate.
+Revisit at the legacy-capability decision session and V1 scope/acceptance review.
+
+## Bug Triage Ownership
+
+The former unowned-triage finding is resolved as an ownership question.
+Maintenance and the product owner triage the bugs maintenance owns; other
+workstreams retain their own bugs. Controlled status, severity, target and owner
+fields are the record. This acknowledges the 2026-09-18 handoff and does not
+claim every bug is fixed or every V1 disposition has been made.
+
+## Pre-V1 Planning Follow-Up: Tentatively 0.9
+
+Owner direction, 2026-10-10: mycodespace/checkout naming, the OpenCode evaluation
+and routine intake-README/contract-wording cleanup are postponed until before
+V1, tentatively 0.9, explicitly outside 0.3.0. These are scoped decisions,
+evaluation and cleanup, not blanket approval of their proposed implementations.
+The [coordination backlog](coordination-backlog.md#pre-v1-work-tentatively-09-excluded-from-030)
+retains their details. Review at 0.9/final pre-V1 planning and before V1 acceptance.
+Do not classify this as `deferred` outside V1 or reopen it in 0.3.0 planning.
