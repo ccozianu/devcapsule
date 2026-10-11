@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 from typing import Iterator
 
 import pytest
@@ -99,14 +100,90 @@ def test_session_ids_sort_by_start_time() -> None:
     assert earlier < later
 
 
-def test_prune_keeps_the_newest_sessions(tmp_path: Path) -> None:
-    for name in ("20260101-000000-aaaa", "20260102-000000-bbbb", "20260103-000000-cccc", "not-a-dir"):
-        (tmp_path / name).mkdir() if name != "not-a-dir" else (tmp_path / name).write_text("", encoding="utf-8")
-    assert logs.prune_sessions(tmp_path, keep=2) == ["20260101-000000-aaaa"]
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["20260102-000000-bbbb", "20260103-000000-cccc", "not-a-dir"]
-    assert logs.prune_sessions(tmp_path / "absent") == []
+def test_prune_removes_the_oldest_sessions_until_the_budget_fits_and_spares_the_current(tmp_path: Path) -> None:
+    for name, size in (("20260101-000000-aaaa", 30), ("20260102-000000-bbbb", 30), ("20260103-000000-cccc", 30), ("20260104-000000-dddd", 5)):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "devcapsule-x.log").write_bytes(b"x" * size)
+    (tmp_path / "not-a-dir").write_text("", encoding="utf-8")
+    assert logs.directory_size(tmp_path / "20260101-000000-aaaa") == 30
+    assert logs.prune_sessions(tmp_path, budget_bytes=70, current="20260104-000000-dddd") == ["20260101-000000-aaaa"]
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="20260101-000000-aaaa") == ["20260102-000000-bbbb", "20260103-000000-cccc", "20260104-000000-dddd"]
+    assert sorted(entry.name for entry in tmp_path.iterdir()) == ["not-a-dir"]
+    assert logs.prune_sessions(tmp_path / "absent", budget_bytes=1, current="x") == []
     with pytest.raises(ValueError):
-        logs.prune_sessions(tmp_path, keep=0)
+        logs.prune_sessions(tmp_path, budget_bytes=-1, current="x")
+
+
+def test_the_budget_knob_parses_sizes_and_has_a_floor() -> None:
+    assert logs.parse_size("256M") == 256 * 1024 ** 2
+    assert logs.parse_size(" 1g ") == 1024 ** 3
+    assert logs.parse_size("512KiB") == 512 * 1024
+    assert logs.parse_size("4096") == 4096
+    assert logs.format_size(256 * 1024 ** 2) == "256 MiB" and logs.format_size(1024 ** 3) == "1 GiB" and logs.format_size(1500) == "1500 bytes"
+    assert logs.budget_from_environment({}) == 256 * 1024 ** 2
+    assert logs.budget_from_environment({logs.BUDGET_ENV: "64M"}) == 64 * 1024 ** 2
+    with pytest.raises(logs.LogBudgetError, match="DEVCAPSULE_LOG_BUDGET: 'much' is not a size; use a number with K, M or G"):
+        logs.budget_from_environment({logs.BUDGET_ENV: "much"})
+    with pytest.raises(logs.LogBudgetError, match="at least 16 MiB"):
+        logs.budget_from_environment({logs.BUDGET_ENV: "8M"})
+    # One thirty-second of the budget per segment, between 1 and 10 MiB.
+    assert logs.segment_bytes_for(256 * 1024 ** 2) == 8 * 1024 ** 2
+    assert logs.segment_bytes_for(16 * 1024 ** 2) == 1024 ** 2
+    assert logs.segment_bytes_for(10 * 1024 ** 3) == 10 * 1024 ** 2
+
+
+def test_logrotate_configuration_bounds_every_component_file_and_delays_compression(tmp_path: Path) -> None:
+    path = logs.write_logrotate_configuration(tmp_path, segment_bytes=1024 ** 2, rotations=4)
+    assert path == tmp_path / "logrotate.conf" and path.stat().st_mode & 0o777 == 0o644
+    text = path.read_text(encoding="utf-8")
+    assert text.startswith(f"{tmp_path}/devcapsule-*.log {{\n")
+    for directive in ("size 1048576", "rotate 4", "compress", "delaycompress", "missingok", "notifempty", "create"):
+        assert f"    {directive}\n" in text
+    assert logs.logrotate_command(tmp_path) == ("logrotate", "-s", str(tmp_path / ".logrotate.state"), str(tmp_path / "logrotate.conf"))
+    with pytest.raises(ValueError):
+        logs.logrotate_configuration(tmp_path, segment_bytes=0, rotations=4)
+
+
+def test_rotation_runs_logrotate_every_interval_and_once_more_at_the_end(tmp_path: Path) -> None:
+    marks = tmp_path / "runs"
+    command = ("sh", "-c", f"echo run >> {marks}")
+    with logs.Rotation(command, interval_seconds=0.05) as rotation:
+        deadline = time.monotonic() + 5.0
+        while rotation.runs < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+    assert rotation.runs >= 3  # two timed runs and the final one
+    assert marks.read_text(encoding="utf-8").count("run") == rotation.runs
+
+
+def test_rotation_reports_a_failing_logrotate_once_and_keeps_trying(tmp_path: Path) -> None:
+    path = logs.configure("supervisor", tmp_path, environ={})
+    rotation = logs.Rotation(("sh", "-c", "echo bad config >&2; exit 1"), interval_seconds=1.0)
+    assert rotation.run_once() is False and rotation.run_once() is False
+    assert path is not None
+    text = path.read_text(encoding="utf-8")
+    assert text.count("logrotate exited 1: bad config; rotation keeps retrying every 1s") == 1
+    absent = logs.Rotation(("/nonexistent/logrotate",), interval_seconds=1.0)
+    assert absent.run_once() is False
+    with pytest.raises(ValueError):
+        logs.Rotation((), interval_seconds=1.0)
+
+
+def test_tee_follows_the_file_logrotate_moves_away(tmp_path: Path) -> None:
+    path = tmp_path / "devcapsule-child.log"
+    source_read, source_write = os.pipe()
+    writer = os.fdopen(source_write, "wb", buffering=0)
+    passthrough = io.BytesIO()
+    tee = logs.Tee(os.fdopen(source_read, "rb", buffering=0), path, passthrough, budget_bytes=None, clock=lambda: 0.0).start()
+    writer.write(b"before\n")
+    deadline = time.monotonic() + 5.0
+    while b"before" not in passthrough.getvalue() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    path.rename(tmp_path / "devcapsule-child.log.1")  # what logrotate does, then `create`
+    writer.write(b"after\n")
+    writer.close()
+    tee.join(5.0)
+    assert (tmp_path / "devcapsule-child.log.1").read_bytes() == b"1970-01-01T00:00:00Z before\n"
+    assert path.read_bytes() == b"1970-01-01T00:00:00Z after\n"
 
 
 def run_tee(tmp_path: Path, payload: bytes, **options: object) -> tuple[bytes, Path]:

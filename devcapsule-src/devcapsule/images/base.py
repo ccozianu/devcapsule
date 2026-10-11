@@ -63,8 +63,9 @@ PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 # the tint2 panel so a hidden window is always one click away; recipe 10
 # adds the capsule web console under /opt/devcapsule-webconsole, installed
 # from the same public revision as the runtime (R-CONSOLE-001); recipe 11
-# gives the console its process and resource monitor (psutil).
-BASE_RECIPE_VERSION = "11"
+# gives the console its process and resource monitor (psutil); recipe 12
+# adds logrotate, which bounds the session logs (LOGS_APT_PACKAGES).
+BASE_RECIPE_VERSION = "12"
 WEBCONSOLE_LABEL = "devcapsule.base.webconsole"
 # The capabilities a base satisfies by itself; components fill the rest.
 # Adding to this set keeps the family; removing from it opens a new one.
@@ -89,6 +90,10 @@ DISPLAY_APT_PACKAGES = (
     # user cannot reach it with the mouse (owner finding 2026-09-14).
     "tint2",
 )
+# The session logs' rotation: the supervisor runs logrotate over the
+# session directory (see devcapsule.logs); a base without it cuts each file
+# at a fixed size instead. Recipe 12.
+LOGS_APT_PACKAGES = ("logrotate",)
 # DISPLAY_LABEL and CONTAINED_DISPLAY_LABEL_VALUE are defined in
 # image_metadata and re-exported here for the base build's callers.
 
@@ -234,6 +239,7 @@ def build_base_image_spec(options: BaseImageBuildOptions) -> ImageBuildSpec:
         components.extend(
             [
                 AptPackagesComponent(BASE_APT_PACKAGES),
+                AptPackagesComponent(LOGS_APT_PACKAGES),
                 ContributionComponent("node", (node_tooling_component(),), ("/opt/node",)),
                 ContributionComponent("temurin", (temurin_tooling_component(),), ("/opt/java",)),
                 ContributionComponent("maven", (

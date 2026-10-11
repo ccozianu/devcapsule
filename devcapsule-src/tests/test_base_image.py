@@ -84,7 +84,7 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "11") in plan.labels
+    assert ("devcapsule.base.recipe-version", "12") in plan.labels
     # Recipe 10 installs the web console from the runtime's own verified
     # revision, as an independently cached contribution (R-CONSOLE-001);
     # recipe 11 rebuilds it with the monitor's dependency.

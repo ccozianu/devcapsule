@@ -43,6 +43,7 @@ def session_manifest(
     image: str,
     container_name: str,
     component: str,
+    budget_bytes: int = logs.DEFAULT_BUDGET_BYTES,
     started_at: float | None = None,
 ) -> dict[str, Any]:
     """What ties a session's logs to their inputs: identities and versions."""
@@ -61,7 +62,13 @@ def session_manifest(
         "container": container_name,
         "project": {"path": str(project), "mount": project_mount},
         "component": component,
-        "logs": {"directory": SESSION_LOG_DESTINATION, "pattern": f"{logs.LOG_FILE_PREFIX}<component>{logs.LOG_FILE_SUFFIX}"},
+        "logs": {
+            "directory": SESSION_LOG_DESTINATION,
+            "pattern": f"{logs.LOG_FILE_PREFIX}<component>{logs.LOG_FILE_SUFFIX}",
+            "budget-bytes": budget_bytes,
+            "segment-bytes": logs.segment_bytes_for(budget_bytes),
+            "rotations": logs.ROTATIONS,
+        },
     }
 
 

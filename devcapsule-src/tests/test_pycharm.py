@@ -98,7 +98,7 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         written = RuntimePlan.from_file(files.runtime_plan_file)
         assert written.display == DisplayPlan.host_x11()
         assert written.console == ConsolePlan("0.0.0.0", 6081, "/run/devcapsule-console-token")
-        assert written.logs == LogsPlan(SESSION_LOG_DESTINATION)
+        assert written.logs == LogsPlan(SESSION_LOG_DESTINATION, segment_bytes=8 * 1024 * 1024, rotations=4)
         assert written == external_runtime_plan().with_display(DisplayPlan.host_x11()).with_console(written.console).with_logs(written.logs)
         args = build_docker_args(config, files, env)
         assert "JAVA_TOOL_OPTIONS=-Dide.browser.jcef.sandbox.enable=false" in args
@@ -1617,12 +1617,14 @@ def test_console_environment_contains_only_the_origin(tmp_path: Path, enabled: b
     assert console_url(41001, config.console_token) == "http://127.0.0.1:41001/?token=private%2Ftoken%3Fvalue"
 
 
-def session_config(tmp_path: Path) -> tuple[PycharmRunConfig, dict[str, str]]:
+def session_config(tmp_path: Path, budget: str | None = None) -> tuple[PycharmRunConfig, dict[str, str]]:
     project = tmp_path / "project"
     project.mkdir(exist_ok=True)
     env = base_env(tmp_path)
     env["XDG_STATE_HOME"] = str(tmp_path / "state")
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    if budget is not None:
+        env["DEVCAPSULE_LOG_BUDGET"] = budget
     config = build_run_config(
         PycharmRunOptions(
             project=project,
@@ -1651,7 +1653,10 @@ def test_every_launch_gets_a_session_log_directory_bound_into_the_capsule(
     assert directory.parent == session_logs_root(config.project, env)
     assert directory.parent == tmp_path / "state" / "devcapsule" / "projects" / "by-path" / project_namespace(config.project) / "logs"
     assert directory.name == config.session_id and re.fullmatch(r"\d{8}-\d{6}-[0-9a-f]{4}", config.session_id)
-    assert config.runtime_plan is not None and config.runtime_plan.logs == LogsPlan(SESSION_LOG_DESTINATION)
+    # 256 MiB by default, one thirty-second of it per segment, four rotations.
+    assert config.log_budget_bytes == 256 * 1024 * 1024
+    assert config.runtime_plan is not None
+    assert config.runtime_plan.logs == LogsPlan(SESSION_LOG_DESTINATION, segment_bytes=8 * 1024 * 1024, rotations=4)
     with (
         patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
         patch("devcapsule.launch.pycharm._launcher.write_user_files"),
@@ -1661,11 +1666,12 @@ def test_every_launch_gets_a_session_log_directory_bound_into_the_capsule(
         args = build_docker_args(config, files, env)
         assert f"type=bind,src={directory},dst={SESSION_LOG_DESTINATION}" in args
         assert f"DEVCAPSULE_LOG_DIR={SESSION_LOG_DESTINATION}" in args
-        assert f"Session logs: {directory} (bound at {SESSION_LOG_DESTINATION})" in describe_run_command(args, config, files)
+        assert (f"Session logs: {directory} (bound at {SESSION_LOG_DESTINATION}; checkout budget 256 MiB, DEVCAPSULE_LOG_BUDGET)"
+                in describe_run_command(args, config, files))
     finally:
         cleanup_temp_runtime_files(files)
     print_storage_summary(config)
-    assert f"Session logs:           {directory}" in capsys.readouterr().err
+    assert f"Session logs:           {directory} (budget 256 MiB)" in capsys.readouterr().err
 
 
 def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_old_sessions(tmp_path: Path) -> None:
@@ -1674,22 +1680,43 @@ def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_
     from devcapsule import logs
     from devcapsule.launch.pycharm._launcher import begin_session_logs
 
-    config, env = session_config(tmp_path)
+    config, env = session_config(tmp_path, budget="16M")
     directory = config.session_log_directory
     assert directory is not None
-    for index in range(25):
-        (directory.parent / f"20200101-0000{index:02d}-aaaa").mkdir()
+    for index in range(3):
+        old = directory.parent / f"20200101-0000{index:02d}-aaaa"
+        old.mkdir()
+        (old / "devcapsule-pycharm.log").write_bytes(b"x" * (6 * 1024 * 1024))
     try:
         begin_session_logs(config, env)
         manifest = json.loads((directory / "session.json").read_text(encoding="utf-8"))
         assert manifest["session"] == config.session_id
         assert manifest["container"] == config.name and manifest["image"] == config.image
         assert manifest["component"] == "pycharm"
-        assert manifest["logs"] == {"directory": SESSION_LOG_DESTINATION, "pattern": "devcapsule-<component>.log"}
+        assert manifest["logs"] == {
+            "directory": SESSION_LOG_DESTINATION, "pattern": "devcapsule-<component>.log",
+            "budget-bytes": 16 * 1024 * 1024, "segment-bytes": 1024 * 1024, "rotations": 4,
+        }
         assert manifest["launcher"]["version"]
         record = (directory / "devcapsule-launcher.log").read_text(encoding="utf-8")
         assert f"session {config.session_id} start: image {config.image}, container {config.name}" in record
-        assert "removed 6 older session log directories: 20200101-000000-aaaa" in record
-        assert sum(1 for entry in directory.parent.iterdir() if entry.is_dir()) == 20 and directory.is_dir()
+        # 18 MiB of old sessions against a 16 MiB budget: the oldest goes, the next fits.
+        assert "removed 1 older session log directories to fit the 16 MiB budget: 20200101-000000-aaaa" in record
+        assert sorted(entry.name for entry in directory.parent.iterdir()) == [
+            "20200101-000001-aaaa", "20200101-000002-aaaa", directory.name,
+        ]
     finally:
         logs.reset()
+
+
+def test_the_log_budget_knob_sets_the_segment_and_refuses_nonsense(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    config, _env = session_config(tmp_path, budget="1G")
+    assert config.log_budget_bytes == 1024 ** 3
+    assert config.runtime_plan is not None and config.runtime_plan.logs is not None
+    assert (config.runtime_plan.logs.segment_bytes, config.runtime_plan.logs.rotations) == (10 * 1024 * 1024, 4)
+    print_storage_summary(config)
+    assert "(budget 1 GiB)" in capsys.readouterr().err
+    with pytest.raises(PycharmRunError, match="DEVCAPSULE_LOG_BUDGET: 'lots' is not a size"):
+        session_config(tmp_path, budget="lots")
+    with pytest.raises(PycharmRunError, match="DEVCAPSULE_LOG_BUDGET must be at least 16 MiB"):
+        session_config(tmp_path, budget="1M")

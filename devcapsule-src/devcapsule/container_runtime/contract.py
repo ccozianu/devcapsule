@@ -274,21 +274,44 @@ class LogsPlan:
     ``devcapsule-<child>.log``; see ``devcapsule.logs``. A plan without a
     logs section writes no files, which is what every plan meant before the
     section existed: the console sees everything, nothing is kept.
+
+    ``segment_bytes`` and ``rotations``, both or neither, ask the entrypoint
+    to rotate every file with logrotate at that size, keeping that many
+    older segments. Without them the files are cut at the runtime's fixed
+    bound, which is what a plan from before rotation existed asks for.
     """
 
     directory: str
+    segment_bytes: int = 0
+    rotations: int = 0
+
+    @property
+    def rotates(self) -> bool:
+        return self.segment_bytes > 0 and self.rotations > 0
 
     @classmethod
     def from_mapping(cls, value: object, field: str) -> LogsPlan:
         if not isinstance(value, dict):
             raise RuntimePlanError(f"{field} must be an object")
-        extra = sorted(set(value) - {"directory"})
+        extra = sorted(set(value) - {"directory", "segment_bytes", "rotations"})
         if extra:
             raise RuntimePlanError(f"{field} must not carry {', '.join(extra)}")
-        return cls(_absolute_path(value.get("directory"), f"{field}.directory"))
+        directory = _absolute_path(value.get("directory"), f"{field}.directory")
+        segment_bytes = value.get("segment_bytes", 0)
+        rotations = value.get("rotations", 0)
+        for name, number in (("segment_bytes", segment_bytes), ("rotations", rotations)):
+            if not isinstance(number, int) or isinstance(number, bool) or number < 0:
+                raise RuntimePlanError(f"{field}.{name} must be a non-negative integer")
+        if (segment_bytes > 0) != (rotations > 0):
+            raise RuntimePlanError(f"{field}.segment_bytes and {field}.rotations go together")
+        return cls(directory, segment_bytes, rotations)
 
     def to_mapping(self) -> dict[str, object]:
-        return {"directory": self.directory}
+        result: dict[str, object] = {"directory": self.directory}
+        if self.rotates:
+            result["segment_bytes"] = self.segment_bytes
+            result["rotations"] = self.rotations
+        return result
 
 
 @dataclass(frozen=True)

@@ -97,7 +97,8 @@ class Supervisor:
 
     ``log_owner`` is the ``(uid, gid)`` the log files are given when the
     supervisor runs as root, so a host-backed log directory stays the
-    developer's.
+    developer's. ``tee_budget_bytes`` is where a child's file is cut when
+    nothing rotates it; ``None`` when logrotate does.
     """
 
     def __init__(
@@ -106,6 +107,7 @@ class Supervisor:
         *,
         grace_seconds: float = DEFAULT_GRACE_SECONDS,
         log_owner: logs.Owner = None,
+        tee_budget_bytes: int | None = logs.TEE_BUDGET_BYTES,
     ) -> None:
         if not children:
             raise SupervisorError("supervisor requires at least one child")
@@ -123,6 +125,7 @@ class Supervisor:
         self._children = children
         self._grace_seconds = grace_seconds
         self._log_owner = log_owner
+        self._tee_budget_bytes = tee_budget_bytes
 
     def run(self) -> int:
         previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, _HANDLED_SIGNALS)
@@ -154,7 +157,10 @@ class Supervisor:
             tee = None
             if child.log_path:
                 assert process.stdout is not None
-                tee = logs.Tee(process.stdout, Path(child.log_path), sys.stderr.buffer, owner=self._log_owner).start()
+                tee = logs.Tee(
+                    process.stdout, Path(child.log_path), sys.stderr.buffer,
+                    owner=self._log_owner, budget_bytes=self._tee_budget_bytes,
+                ).start()
             live[process.pid] = _RunningChild(child, process, tee)
             _events.info("child %r started: pid %d, log %s", child.name, process.pid, child.log_path or "console only")
             if child.ready is not None:

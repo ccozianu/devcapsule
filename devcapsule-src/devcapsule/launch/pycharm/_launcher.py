@@ -238,6 +238,7 @@ class PycharmRunConfig:
     # one file per supervised child (see devcapsule.logs).
     session_id: str = ""
     session_log_directory: Path | None = None
+    log_budget_bytes: int = logs.DEFAULT_BUDGET_BYTES
     interactive_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_environment: tuple[tuple[str, str], ...] = ()
@@ -351,15 +352,19 @@ def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None
         write_session_manifest(directory, session_manifest(
             session_id=config.session_id, project=config.project, project_mount=config.project_mount,
             image=config.image, container_name=config.name, component=component,
+            budget_bytes=config.log_budget_bytes,
         ))
     except OSError as error:
         print(f"devcapsule launcher: cannot write the session manifest in {directory} ({error})", file=sys.stderr)
     _session_events.info(
         "session %s start: image %s, container %s, project %s", config.session_id, config.image, config.name, config.project,
     )
-    removed = logs.prune_sessions(directory.parent)
+    removed = logs.prune_sessions(directory.parent, budget_bytes=config.log_budget_bytes, current=directory.name)
     if removed:
-        _session_events.info("removed %d older session log directories: %s", len(removed), ", ".join(removed))
+        _session_events.info(
+            "removed %d older session log directories to fit the %s budget: %s",
+            len(removed), logs.format_size(config.log_budget_bytes), ", ".join(removed),
+        )
 
 
 def describe_run_command(command: list[str], config: PycharmRunConfig,
@@ -384,7 +389,10 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
         if path is not None:
             comments.append(f"Temporary {label}: {path}")
     if config.session_log_directory is not None:
-        comments.append(f"Session logs: {config.session_log_directory} (bound at {SESSION_LOG_DESTINATION})")
+        comments.append(
+            f"Session logs: {config.session_log_directory} (bound at {SESSION_LOG_DESTINATION}; "
+            f"checkout budget {logs.format_size(config.log_budget_bytes)}, {logs.BUDGET_ENV})"
+        )
     if config.host_browser_socket is not None:
         comments.append("Host-browser socket requires a live broker; a broker owned by this invocation stops on return.")
     if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
@@ -753,8 +761,14 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ))
     session_id = logs.new_session_id()
     session_log_directory = resolve_existing_or_create(session_logs_root(project, env) / session_id)
+    try:
+        log_budget_bytes = logs.budget_from_environment(env)
+    except logs.LogBudgetError as error:
+        raise PycharmRunError(str(error)) from error
     if selected_runtime_plan is not None:
-        selected_runtime_plan = selected_runtime_plan.with_logs(LogsPlan(SESSION_LOG_DESTINATION))
+        selected_runtime_plan = selected_runtime_plan.with_logs(LogsPlan(
+            SESSION_LOG_DESTINATION, segment_bytes=logs.segment_bytes_for(log_budget_bytes), rotations=logs.ROTATIONS,
+        ))
     fixed_environment = selected_runtime_plan.component_environment() if selected_runtime_plan else {}
     if host_browser_socket is not None and (
         "BROWSER" in fixed_environment or HOST_OPEN_SOCKET_ENV in fixed_environment
@@ -835,6 +849,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         console_host_port=console_host_port,
         session_id=session_id,
         session_log_directory=session_log_directory,
+        log_budget_bytes=log_budget_bytes,
         console_token=console_token,
         open_console_url=options.open_console_url,
         interactive_state_mounts=tuple(interactive_state_mounts),
@@ -1748,7 +1763,7 @@ Renderer security:
             f"""{component_id} storage:
   Persistent home:       {config.persistent_home}
 {slot_lines}
-  Session logs:           {config.session_log_directory}
+  Session logs:           {config.session_log_directory} (budget {logs.format_size(config.log_budget_bytes)})
   Container project path: {config.project_mount}{browser_disclosure}{sandbox_disclosure}{host_browser_disclosure}""",
             file=sys.stderr,
         )
@@ -1761,7 +1776,7 @@ Renderer security:
   PyCharm system:         {config.ide_system}
   PyCharm logs:           {config.ide_log}
   Tool cache:             {config.tool_cache}
-  Session logs:           {config.session_log_directory}
+  Session logs:           {config.session_log_directory} (budget {logs.format_size(config.log_budget_bytes)})
   Container project path: {config.project_mount}{browser_disclosure}{host_browser_disclosure}""",
         file=sys.stderr,
     )

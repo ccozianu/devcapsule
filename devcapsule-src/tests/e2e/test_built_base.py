@@ -17,7 +17,7 @@ def test_release_built_base_has_tools_and_no_embedded_runtime() -> None:
     labels = inspection["Config"]["Labels"]
     assert labels["devcapsule.image.kind"] == "base"
     assert labels["devcapsule.base.recipe"] == "ubuntu-24.04"
-    assert labels["devcapsule.base.recipe-version"] == "11"
+    assert labels["devcapsule.base.recipe-version"] == "12"
     assert labels["devcapsule.base.webconsole"] == "/opt/devcapsule-webconsole"
     assert labels["devcapsule.base.display"] == "contained"
     assert labels["devcapsule.base.runtime"] == "launcher-supplied"
@@ -51,6 +51,8 @@ test -r /usr/share/novnc/vnc.html
 # Recipe 10: the web console in its own hash-pinned venv, importable offline.
 /opt/devcapsule-webconsole/venv/bin/python -c "import devcapsule_webconsole, fastapi, uvicorn, psutil; print('webconsole', devcapsule_webconsole.__version__)"
 /opt/devcapsule-webconsole/venv/bin/python -m devcapsule_webconsole --help >/dev/null
+# Recipe 12: logrotate bounds the session logs.
+logrotate --version >/dev/null
 """
     result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", "/bin/sh",
                              image, "-c", script], capture_output=True, text=True, check=True)

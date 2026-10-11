@@ -202,9 +202,13 @@ class SupervisorCapture:
 
     instances: list["SupervisorCapture"] = []
 
-    def __init__(self, children: tuple[SupervisedChild, ...], *, log_owner: tuple[int, int] | None = None) -> None:
+    def __init__(
+        self, children: tuple[SupervisedChild, ...], *, log_owner: tuple[int, int] | None = None,
+        tee_budget_bytes: int | None = 50 * 1024 * 1024,
+    ) -> None:
         self.children = children
         self.log_owner = log_owner
+        self.tee_budget_bytes = tee_budget_bytes
         SupervisorCapture.instances.append(self)
 
     def run(self) -> int:
@@ -382,5 +386,71 @@ def test_entrypoint_gives_every_child_its_own_log_file_when_the_plan_says_where(
         (plain,) = captured_supervisor.instances
         assert [child.log_path for child in plain.children] == [None]
         assert plain.log_owner == (1000, 1001)
+    finally:
+        logs.reset()
+
+
+def test_contract_carries_the_rotation_both_or_neither(tmp_path: Path) -> None:
+    from devcapsule.container_runtime.contract import LogsPlan
+
+    document = runtime_document(tmp_path)
+    document["logs"] = {"directory": "/var/log/devcapsule", "segment_bytes": 8388608, "rotations": 4}
+    plan = RuntimePlan.from_mapping(document)
+    assert plan.logs == LogsPlan("/var/log/devcapsule", 8388608, 4) and plan.logs.rotates
+    assert plan.to_mapping()["logs"] == document["logs"]
+    assert RuntimePlan.from_mapping(plan.to_mapping()) == plan
+    assert not LogsPlan("/var/log/devcapsule").rotates
+    for logs_value, message in (
+        ({"directory": "/var/log/devcapsule", "segment_bytes": 1}, "go together"),
+        ({"directory": "/var/log/devcapsule", "rotations": 1}, "go together"),
+        ({"directory": "/var/log/devcapsule", "segment_bytes": -1, "rotations": 1}, "segment_bytes must be a non-negative integer"),
+        ({"directory": "/var/log/devcapsule", "segment_bytes": 1, "rotations": True}, "rotations must be a non-negative integer"),
+        ({"directory": "/var/log/devcapsule", "segment_bytes": "8M", "rotations": 1}, "segment_bytes must be a non-negative integer"),
+    ):
+        with pytest.raises(RuntimePlanError, match=message):
+            RuntimePlan.from_mapping({**runtime_document(tmp_path), "logs": logs_value})
+
+
+def test_entrypoint_rotates_with_logrotate_when_the_base_has_it_and_cuts_otherwise(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, captured_supervisor: type[SupervisorCapture],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from devcapsule import logs
+    from devcapsule.container_runtime import entrypoint
+
+    started: list[tuple[str, ...]] = []
+
+    class FakeRotation:
+        def __init__(self, command: tuple[str, ...], **_options: object) -> None:
+            started.append(command)
+
+        def __enter__(self) -> "FakeRotation":
+            return self
+
+        def __exit__(self, *_exception: object) -> None:
+            pass
+
+    monkeypatch.setattr(entrypoint.logs, "Rotation", FakeRotation)
+    document = runtime_document(tmp_path)
+    document["logs"] = {"directory": str(tmp_path / "logs"), "segment_bytes": 2048, "rotations": 3}
+    try:
+        monkeypatch.setattr(entrypoint.shutil, "which", lambda name: f"/usr/sbin/{name}")
+        assert run(RuntimePlan.from_mapping(document)) == 42
+        assert started == [("logrotate", "-s", str(tmp_path / "logs" / ".logrotate.state"), str(tmp_path / "logs" / "logrotate.conf"))]
+        assert captured_supervisor.instances[-1].tee_budget_bytes is None
+        text = (tmp_path / "logs" / "logrotate.conf").read_text(encoding="utf-8")
+        assert "    size 2048\n" in text and "    rotate 3\n" in text
+        assert "logrotate" not in capsys.readouterr().err
+
+        monkeypatch.setattr(entrypoint.shutil, "which", lambda name: None)
+        assert run(RuntimePlan.from_mapping(document)) == 42
+        assert captured_supervisor.instances[-1].tee_budget_bytes == logs.TEE_BUDGET_BYTES
+        assert "this base has no logrotate (base recipe 12 adds it); each component's file is cut at 50 MiB" in capsys.readouterr().err
+        assert len(started) == 1
+
+        document["logs"] = {"directory": str(tmp_path / "plain")}
+        assert run(RuntimePlan.from_mapping(document)) == 42
+        assert captured_supervisor.instances[-1].tee_budget_bytes == logs.TEE_BUDGET_BYTES
+        assert not (tmp_path / "plain" / "logrotate.conf").exists() and len(started) == 1
     finally:
         logs.reset()

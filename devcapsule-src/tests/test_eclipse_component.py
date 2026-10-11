@@ -57,7 +57,7 @@ def test_entrypoint_supervises_eclipse_as_the_unprivileged_foreground_child(monk
     monkeypatch.setattr(entrypoint.os, "environ", dict(entrypoint.os.environ))
     monkeypatch.setattr(entrypoint.os, "geteuid", lambda: 0)
     class Supervisor:
-        def __init__(self, selected, *, log_owner=None):
+        def __init__(self, selected, **_logging):
             children.extend(selected)
         def run(self):
             return 7

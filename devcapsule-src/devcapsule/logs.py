@@ -18,6 +18,12 @@ Two levels are in play:
   begins and ends) are recorded at INFO whatever the baseline, through
   :func:`events_logger`, because they are what reconstructs an incident.
 
+Rotation belongs to ``logrotate``, run inside the capsule over the session
+directory (:class:`Rotation`); the writers here reopen their file when it has
+been rotated away. The bound on disk is one knob, ``DEVCAPSULE_LOG_BUDGET``,
+the most a checkout's logs directory may hold; the launcher derives each
+file's segment size from it and removes the oldest sessions beyond it.
+
 Writing a log must never take the session down: every failure here degrades
 to the console with one line saying what was lost.
 """
@@ -28,12 +34,14 @@ import logging
 import logging.handlers
 import os
 from pathlib import Path
+import re
 import secrets
 import shutil
+import subprocess
 import sys
 import threading
 import time
-from typing import IO, BinaryIO, Callable, Mapping
+from typing import IO, Callable, Mapping
 
 LOG_FILE_PREFIX = "devcapsule-"
 LOG_FILE_SUFFIX = ".log"
@@ -44,15 +52,28 @@ DIRECTORY_ENV = "DEVCAPSULE_LOG_DIR"
 DEFAULT_LEVEL = logging.WARNING
 LEVEL_NAMES = ("DEBUG", "INFO", "WARNING", "ERROR")
 
-# Size bounds. A Python component rotates its own file; a teed child's file
-# is cut at the budget and the console keeps the rest. The numbers are the
-# work order's proposal for review, not an owner decision.
-SEGMENT_BYTES = 10 * 1024 * 1024
-SEGMENTS_KEPT = 5
-TEE_BUDGET_BYTES = SEGMENT_BYTES * SEGMENTS_KEPT
+BUDGET_ENV = "DEVCAPSULE_LOG_BUDGET"
+"""The most a checkout's logs directory may hold: a size such as ``256M`` or ``1G``."""
+DEFAULT_BUDGET_BYTES = 256 * 1024 * 1024
+MINIMUM_BUDGET_BYTES = 16 * 1024 * 1024
+# Each component's file rotates at a segment derived from the budget: one
+# thirty-second of it, within these bounds, so a small budget still rotates
+# often enough and a large one does not make single files unwieldy.
+MAXIMUM_SEGMENT_BYTES = 10 * 1024 * 1024
+MINIMUM_SEGMENT_BYTES = 1024 * 1024
+SEGMENT_SHARE = 32
+ROTATIONS = 4
+"""Older segments kept per file; the newest stays uncompressed, the rest are gzipped."""
+ROTATION_INTERVAL_SECONDS = 30.0
+"""How often logrotate checks the sizes; the overshoot of a file is this long of output."""
+LOGROTATE_EXECUTABLE = "logrotate"
+LOGROTATE_CONFIGURATION = "logrotate.conf"
+LOGROTATE_STATE = ".logrotate.state"
+
+# Without logrotate on the base (recipes before 12), a teed child's file is
+# cut here and the console keeps the rest.
+TEE_BUDGET_BYTES = 50 * 1024 * 1024
 TEE_BUDGET_NOTICE = "[devcapsule logs: size budget reached; the rest of this output went to the console only]\n"
-SESSIONS_KEPT = 20
-"""How many session directories a checkout keeps; older ones are removed at launch."""
 
 SESSION_MANIFEST = "session.json"
 EVENTS_SUFFIX = ".events"
@@ -67,6 +88,52 @@ Owner = tuple[int, int] | None
 
 class LogLevelError(ValueError):
     """The verbosity override names no known level."""
+
+
+class LogBudgetError(ValueError):
+    """The budget override is not a size, or is too small to rotate anything."""
+
+
+_SIZE_UNITS = {"": 1, "K": 1024, "M": 1024 ** 2, "G": 1024 ** 3}
+
+
+def parse_size(text: str) -> int:
+    """Bytes from ``256M``, ``1G``, ``512K`` or a plain number; binary units."""
+
+    match = re.fullmatch(r"\s*(\d+)\s*([KMGkmg]?)(?:i?[Bb])?\s*", text)
+    if match is None:
+        raise LogBudgetError(f"{text!r} is not a size; use a number with K, M or G, such as 256M")
+    return int(match.group(1)) * _SIZE_UNITS[match.group(2).upper()]
+
+
+def format_size(size: int) -> str:
+    """``256 MiB``, ``1 GiB``, ``512 KiB``: the unit that divides it, else bytes."""
+
+    for unit, factor in (("GiB", 1024 ** 3), ("MiB", 1024 ** 2), ("KiB", 1024)):
+        if size >= factor and size % factor == 0:
+            return f"{size // factor} {unit}"
+    return f"{size} bytes"
+
+
+def budget_from_environment(environ: Mapping[str, str] | None = None) -> int:
+    """The checkout's log budget: :data:`DEFAULT_BUDGET_BYTES` unless the override names one."""
+
+    value = (os.environ if environ is None else environ).get(BUDGET_ENV, "")
+    if not value:
+        return DEFAULT_BUDGET_BYTES
+    try:
+        budget = parse_size(value)
+    except LogBudgetError as error:
+        raise LogBudgetError(f"{BUDGET_ENV}: {error}") from error
+    if budget < MINIMUM_BUDGET_BYTES:
+        raise LogBudgetError(f"{BUDGET_ENV} must be at least {format_size(MINIMUM_BUDGET_BYTES)}, not {value!r}")
+    return budget
+
+
+def segment_bytes_for(budget: int) -> int:
+    """The size at which each file rotates under ``budget``; see :data:`SEGMENT_SHARE`."""
+
+    return max(MINIMUM_SEGMENT_BYTES, min(MAXIMUM_SEGMENT_BYTES, budget // SEGMENT_SHARE))
 
 
 def log_path(directory: str | Path, component: str) -> Path:
@@ -102,9 +169,9 @@ def configure(
     The console handler prints WARNING and above as ``devcapsule <component>:
     message``, the form the launcher and the supervisor have always used. The
     file handler writes every record the baseline admits with a UTC
-    timestamp, rotating at :data:`SEGMENT_BYTES`. Returns the file's path, or
-    ``None`` when there is no directory or the file cannot be opened, which
-    is reported once on the console rather than raised.
+    timestamp and reopens the file when logrotate has moved it. Returns the
+    file's path, or ``None`` when there is no directory or the file cannot
+    be opened, which is reported once on the console rather than raised.
     """
 
     report = console or _report
@@ -132,9 +199,7 @@ def configure(
     path = log_path(directory, component)
     try:
         Path(directory).mkdir(parents=True, exist_ok=True)
-        file = logging.handlers.RotatingFileHandler(
-            path, maxBytes=SEGMENT_BYTES, backupCount=SEGMENTS_KEPT, encoding="utf-8",
-        )
+        file = logging.handlers.WatchedFileHandler(path, encoding="utf-8")
         own(path, owner)
     except OSError as error:
         report(f"devcapsule {component}: cannot write {path} ({error}); logging to the console only")
@@ -186,28 +251,145 @@ def new_session_id(now: float | None = None) -> str:
     return f"{stamp}-{secrets.token_hex(2)}"
 
 
-def prune_sessions(root: Path, *, keep: int = SESSIONS_KEPT) -> list[str]:
-    """Remove the oldest session directories under ``root`` beyond ``keep``.
+def directory_size(path: Path) -> int:
+    """Bytes of the regular files under ``path``; what cannot be read counts as nothing."""
+
+    total = 0
+    for directory, _subdirectories, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.lstat(os.path.join(directory, name)).st_size
+            except OSError:
+                continue
+    return total
+
+
+def prune_sessions(root: Path, *, budget_bytes: int, current: str) -> list[str]:
+    """Remove the oldest session directories under ``root`` until it fits the budget.
 
     Session identifiers sort by start time, so the oldest are the first by
-    name. Returns the names removed. A directory that cannot be removed is
-    left alone and omitted; this is housekeeping, not a guarantee.
+    name. The ``current`` session is never removed, so the directory may
+    exceed the budget by that one session. Returns the names removed. A
+    directory that cannot be removed is left alone and omitted; this is
+    housekeeping, not a guarantee.
     """
 
-    if keep < 1:
-        raise ValueError("keep must be at least one session")
+    if budget_bytes < 0:
+        raise ValueError("the budget cannot be negative")
     try:
         sessions = sorted(entry.name for entry in root.iterdir() if entry.is_dir())
     except OSError:
         return []
+    sizes = {name: directory_size(root / name) for name in sessions}
+    total = sum(sizes.values())
     removed: list[str] = []
-    for name in sessions[: max(0, len(sessions) - keep)]:
+    for name in sessions:
+        if total <= budget_bytes:
+            break
+        if name == current:
+            continue
         try:
             shutil.rmtree(root / name)
         except OSError:
             continue
+        total -= sizes[name]
         removed.append(name)
     return removed
+
+
+def logrotate_configuration(directory: Path, *, segment_bytes: int, rotations: int) -> str:
+    """The logrotate stanza for every ``devcapsule-*.log`` in ``directory``.
+
+    ``delaycompress`` keeps the newest rotated segment uncompressed for one
+    more round, so a writer that has not yet noticed the rotation loses
+    nothing: its last lines land in that segment, which is compressed only
+    after every writer has reopened. ``create`` keeps the file's owner and
+    mode; the writers reopen the new file on their next line.
+    """
+
+    if segment_bytes < 1 or rotations < 1:
+        raise ValueError("rotation needs a positive segment size and at least one rotation")
+    return (
+        f"{directory}/{LOG_FILE_PREFIX}*{LOG_FILE_SUFFIX} {{\n"
+        f"    size {segment_bytes}\n"
+        f"    rotate {rotations}\n"
+        "    compress\n"
+        "    delaycompress\n"
+        "    missingok\n"
+        "    notifempty\n"
+        "    nodateext\n"
+        "    create\n"
+        "}\n"
+    )
+
+
+def write_logrotate_configuration(
+    directory: Path, *, segment_bytes: int, rotations: int, owner: Owner = None
+) -> Path:
+    """Write the session's ``logrotate.conf``, owned by the capsule user, writable by it alone."""
+
+    path = directory / LOGROTATE_CONFIGURATION
+    path.write_text(logrotate_configuration(directory, segment_bytes=segment_bytes, rotations=rotations), encoding="utf-8")
+    path.chmod(0o644)  # logrotate ignores a configuration others may write
+    own(path, owner)
+    return path
+
+
+def logrotate_command(directory: Path, *, executable: str = LOGROTATE_EXECUTABLE) -> tuple[str, ...]:
+    """One run over the session directory, with its state file beside the logs."""
+
+    return (executable, "-s", str(directory / LOGROTATE_STATE), str(directory / LOGROTATE_CONFIGURATION))
+
+
+class Rotation:
+    """Run logrotate over the session directory every interval, on a daemon thread.
+
+    ``command`` is the complete logrotate invocation, wrapped to run as the
+    capsule user when the caller is root, so the state file and the rotated
+    segments stay the user's. A failing run is reported once as a warning
+    and the thread keeps trying; logrotate's own output goes to the
+    supervisor's log at WARNING when it fails.
+    """
+
+    def __init__(self, command: tuple[str, ...], *, interval_seconds: float = ROTATION_INTERVAL_SECONDS) -> None:
+        if not command or interval_seconds <= 0:
+            raise ValueError("rotation needs a command and a positive interval")
+        self._command = command
+        self._interval = interval_seconds
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._loop, name="logrotate", daemon=True)
+        self._reported = False
+        self.runs = 0
+
+    def __enter__(self) -> Rotation:
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_exception: object) -> None:
+        self._stop.set()
+        self._thread.join(self._interval + 5.0)
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self._interval):
+            self.run_once()
+        self.run_once()  # the session's last lines get their rotation too
+
+    def run_once(self) -> bool:
+        self.runs += 1
+        try:
+            completed = subprocess.run(self._command, capture_output=True, text=True, timeout=60.0, check=False)
+        except (OSError, subprocess.SubprocessError) as error:
+            self._report(f"logrotate did not run: {error}")
+            return False
+        if completed.returncode != 0:
+            self._report(f"logrotate exited {completed.returncode}: {completed.stderr.strip()}")
+            return False
+        return True
+
+    def _report(self, message: str) -> None:
+        if not self._reported:
+            logging.getLogger("devcapsule.logs").warning("%s; rotation keeps retrying every %gs", message, self._interval)
+            self._reported = True
 
 
 class Tee:
@@ -215,10 +397,13 @@ class Tee:
 
     Reads ``source`` (the child's combined stdout and stderr) line by line on
     a daemon thread. Each line goes unchanged to ``passthrough`` and, with a
-    UTC timestamp in front, to the file, until :data:`TEE_BUDGET_BYTES` of
-    file have been written; then one notice is written and only the console
-    keeps receiving the output. A file that cannot be opened is reported
-    once and the tee degrades to a plain copy.
+    UTC timestamp in front, to the file. When logrotate has moved the file,
+    the next line reopens it, so nothing is written to a rotated segment for
+    longer than one line. ``budget_bytes`` is the cut for a base without
+    logrotate: after that much file, one notice is written and only the
+    console keeps receiving the output; ``None`` leaves the bound to
+    rotation. A file that cannot be opened is reported once and the tee
+    degrades to a plain copy.
     """
 
     def __init__(
@@ -228,23 +413,44 @@ class Tee:
         passthrough: IO[bytes],
         *,
         owner: Owner = None,
-        budget_bytes: int = TEE_BUDGET_BYTES,
+        budget_bytes: int | None = TEE_BUDGET_BYTES,
         console: Callable[[str], None] | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self._source = source
+        self._path = path
+        self._owner = owner
         self._passthrough = passthrough
         self._budget = budget_bytes
         self._clock = clock
         self._written = 0
-        self._file: BinaryIO | None
+        self._file: IO[bytes] | None = None
+        self._identity: tuple[int, int] | None = None
         try:
-            self._file = open(path, "ab", buffering=0)
-            own(path, owner)
+            self._open()
         except OSError as error:
             (console or _report)(f"devcapsule logs: cannot write {path} ({error}); {path.name} goes to the console only")
             self._file = None
         self._thread = threading.Thread(target=self._copy, name=f"tee:{path.name}", daemon=True)
+
+    def _open(self) -> None:
+        self._file = open(self._path, "ab", buffering=0)
+        own(self._path, self._owner)
+        status = os.fstat(self._file.fileno())
+        self._identity = (status.st_dev, status.st_ino)
+
+    def _reopen_if_rotated(self) -> None:
+        """Follow logrotate: when the path no longer names the open file, open the new one."""
+
+        try:
+            status = os.stat(self._path)
+            if (status.st_dev, status.st_ino) == self._identity:
+                return
+        except FileNotFoundError:
+            pass
+        assert self._file is not None
+        self._file.close()
+        self._open()
 
     def start(self) -> Tee:
         self._thread.start()
@@ -272,7 +478,7 @@ class Tee:
         if self._file is None:
             return
         stamped = time.strftime(_TIMESTAMP_FORMAT, time.gmtime(self._clock())).encode("ascii") + b" " + line
-        if self._written + len(stamped) > self._budget:
+        if self._budget is not None and self._written + len(stamped) > self._budget:
             self._write(TEE_BUDGET_NOTICE.encode("utf-8"))
             self._file.close()
             self._file = None
@@ -283,6 +489,7 @@ class Tee:
     def _write(self, data: bytes) -> None:
         assert self._file is not None
         try:
+            self._reopen_if_rotated()
             self._file.write(data)
         except OSError:
             self._file.close()
