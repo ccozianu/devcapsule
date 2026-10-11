@@ -4,15 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-10-08, correctness review of PR #172 complete; stacked fix awaits owner review; the 0.3.0 maintenance plate (the release formerly planned as 0.2.16, renamed by the owner on 2026-10-05): the fresh-workspace recursive test (option D), the in-capsule project-command fix, named build contexts then the installed-IDE reuse and reaping design, the universal network authorization node, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; 0.2.15 published and reopened
+State: active 2026-10-11; `main` merged in, PR #174 merged into this branch, PR #172 ready for the owner's integration after the gate; the 0.3.0 maintenance plate: persistent session diagnostics (owner assignment of 2026-10-11, plate position awaiting the owner), the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Integration target: `main`
 
 Delivery method: stacked pull request against `ws-maintenance/post-0.2.15`; owner authorized authenticated `gh` to create/update/consult PRs on 2026-10-08; merging remains with the owner
 
-Branch association: `ws-maintenance/post-0.2.15` (PR #172); `ws-maintenance/pr172-correctness` (review fixes); release-0.2.15 is closed and retained
+Branch association: `ws-maintenance/post-0.2.15` (PR #172, `main` merged in on 2026-10-11); `ws-maintenance/pr172-correctness` is merged through PR #174 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -23,6 +23,34 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-11: resumed; `main` merged in; the diagnostics work order is
+accepted.**
+
+- The owner merged PR #174 into this branch on 2026-10-08. PR #172 stays
+  open against `main`.
+- `origin/main` was merged in at `86f78eb`: 118 commits, no conflicts.
+  The definition changed since the last read: the controlled-language
+  edition, decisions handed to the human through capsule state and chat,
+  work orders, materialized views, diagrams first in DOT, recorded visual
+  end-to-end tests. The local file adds the web console session to the
+  gate and the rules for definition changes. All are read and apply from
+  now.
+- Three mail items were taken and decided; see the decision log. The two
+  capsule-webconsole items on the `project info` checkout name are
+  superseded: the owner directed that fix into capsule-webconsole, and
+  `checkout_name_for` is on `main`. The project-management item assigns
+  persistent session diagnostics to maintenance, target ready for 0.3.0,
+  urgent. It is accepted onto the plate below. Its work order text is the
+  intake item at coordination `a535ccf`; project-management owes the
+  committed file at
+  `engineering-docs/work-orders/2026-10-08-persistent-session-diagnostics.md`.
+- The C10 first-session bug records (a ready/stopped/error summary, Ctrl+C
+  ends with a result) are not filed on `main` yet. The diagnostics slice
+  coordinates with that work, as the assignment asks.
+- This capsule's base has no web console tools, so decisions reach the
+  owner as numbered chat text under topic 8.8.
+- The gate on the merged tree passed; see *Validation And External State*.
 
 **2026-10-08: PR #172 reviewed at `4be56a7`; fixes are in
 [PR #174](https://github.com/ccozianu/devcapsule/pull/174), from
@@ -99,9 +127,17 @@ last; the middle is the agent's suggested order until the owner sets it):
    same command group and is not started.
 3. Named build contexts: done 2026-10-06, measured. Then the installed-IDE
    reuse and reaping design review with the owner.
-4. The universal `network` authorization node.
-5. The first-session UX bugs, release notes and gate tooling.
-6. Ecosystem-aware project bootstrap.
+4. Persistent session diagnostics: the owner's assignment of 2026-10-11,
+   urgent and foundational, target ready for 0.3.0. First step: scope the
+   bounded slice and its acceptance with the owner, then implement and
+   validate. Default persistent component logs, bounded rotation with
+   compression and the WARNING baseline are owner direction; the numeric
+   limits, the snapshot and export design and the browser-evidence slice
+   are engineering choices for review. Its position relative to item 5
+   awaits the owner.
+5. The universal `network` authorization node.
+6. The first-session UX bugs (C10), release notes and gate tooling.
+7. Ecosystem-aware project bootstrap.
 
 ### Requirement: configuration validated and changed by commands only
 
@@ -317,12 +353,18 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Await owner review of [PR #174](https://github.com/ccozianu/devcapsule/pull/174) against
-`ws-maintenance/post-0.2.15`; PR #172 is unchanged. After approval, the owner
-merges the fix into #172, then synchronizes and integrates that parent PR to main.
-The next product slice remains the universal network authorization node,
-followed by the installed-IDE reuse/reaping design review. Configuration
-snapshot links are an acknowledged follow-up after integration.
+1. Record the gate on the merged tree, push the branch, publish.
+2. The owner integrates [PR #172](https://github.com/ccozianu/devcapsule/pull/172) to `main`.
+3. The owner sets the plate position of persistent session diagnostics;
+   see *Open Threads*.
+4. Start that slice, or the universal network node, on a fresh sub-branch
+   from the integrated `main`. The installed-IDE reuse and reaping design
+   review follows. Configuration snapshot links stay an acknowledged
+   follow-up after integration.
+
+Superseded on 2026-10-11: await owner review of PR #174; after approval the
+owner merges the fix into #172, then the branch synchronizes and #172
+integrates. PR #174 is merged and the branch is synchronized.
 
 Historical planned steps (superseded by the current review):
 
@@ -518,6 +560,15 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate on the merged tree (2026-10-11, commit `e7e441f` plus records): full
+`nox -s build` passed with exit 0, scratch on the overlay. Type check clean
+over 211 source files; 1498 unit tests passed, 35 deselected, one xfail,
+one xpass; packaging integration 17 passed; PEX built and smoked; the
+documentation contract rendered 184 pages; the web console session passed
+with mypy clean over 8 files and 290 tests. Log
+`/opt/devcapsule-gate/2026-10-11-merged-main-build.log`. No Docker or IDE
+acceptance was run; nothing in the merge needs one.
 
 2026-09-27 resumption: SSH refs, waiting mail and the current main disposition
 were rechecked; no candidate tag exists. Record-only acknowledgement changes
@@ -998,18 +1049,22 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- 2026-10-08 review: PR #174 awaits owner review; no merge is authorized.
-- SSH port 22 timed out at delivery. SSH through `ssh.github.com:443`, using
-  the existing `github.com` host-key identity and strict checking, succeeded.
-  No persistent SSH or remote configuration was changed.
-- Main synchronization is deferred for the owner-directed stack; read the
-  newer local configuration rules before making any future configuration edit.
-- No Docker benchmark or IDE acceptance was repeated; prior measurements keep
-  their original scope. Extracted-content hashing and cache pruning are not added.
-- The original checkout's website state remains untouched. The review worktree
-  and logs are retained; scratch test artifacts are regenerable.
+- Awaiting the human: the plate position of persistent session
+  diagnostics. Option 1: next, before the network node, as the owner's
+  urgency suggests. Option 2: after the network node, which is small and
+  already decided. Only the order of the next two slices turns on it.
+- Awaiting the human: integration of PR #172 once the gate passes on the
+  merged tree.
+- Weighed and unresolved: the C10 first-session bug records are not on
+  `main`. The diagnostics slice takes the Ctrl+C result into its scope
+  unless project-management files them first.
+- Deliberately not preserved: the review worktree of
+  `pr172-correctness`; the web console caches under
+  `devcapsule-webconsole/`, which `.gitignore` covers.
+- The original checkout's website pointer stays untouched. SSH through
+  `ssh.github.com:443` worked when port 22 timed out on 2026-10-08.
 
-Earlier threads follow; read against the current review state above.
+Earlier threads follow; read against the state above.
 
 - Resumed 2026-10-05; main merged in at `242e13e` (fast-forward). Decisions
   (1) to (3) are taken: ecosystem bootstrap stays a bug, target 0.3.0,
@@ -1212,4 +1267,5 @@ Earlier open-thread history (read against the current scope above):
 - [Configuration contract](configuration-contract.md): lifecycle requirements relevant to future changes.
 - [Correctness/test map](configuration-correctness.md): implementation evidence and coverage limits.
 - [Intake decisions](intake-dispositions.md): outcomes of received mail.
-- `intake/`: empty; the three 2026-09-27 scope items are acknowledged in the decision log.
+- Persistent session diagnostics work order: expected at `engineering-docs/work-orders/2026-10-08-persistent-session-diagnostics.md` once project-management commits it; until then the text is the intake item at coordination `a535ccf`.
+- `intake/`: empty; the three items of 2026-10-09 and 2026-10-11 are decided in the decision log.
