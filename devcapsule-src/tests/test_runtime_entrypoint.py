@@ -445,7 +445,7 @@ def test_entrypoint_rotates_with_logrotate_when_the_base_has_it_and_cuts_otherwi
         monkeypatch.setattr(entrypoint.shutil, "which", lambda name: None)
         assert run(RuntimePlan.from_mapping(document)) == 42
         assert captured_supervisor.instances[-1].tee_budget_bytes == logs.TEE_BUDGET_BYTES
-        assert "this base has no logrotate (base recipe 12 adds it); each component's file is cut at 50 MiB" in capsys.readouterr().err
+        assert "this base has no logrotate (base recipe 12 adds it); each copied child's file is cut at 50 MiB" in capsys.readouterr().err
         assert len(started) == 1
 
         document["logs"] = {"directory": str(tmp_path / "plain")}

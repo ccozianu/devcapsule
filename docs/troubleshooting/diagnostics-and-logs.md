@@ -83,18 +83,20 @@ at WARNING.
 
 ## How much disk this takes
 
-`logrotate` runs inside the capsule, over the session directory, every 30
-seconds. The rules it applies are in `logrotate.conf` beside the logs:
+`logrotate` runs inside the capsule, over the session directory, with a
+30-second wait between runs and another attempt at session shutdown. The
+rules it applies are in `logrotate.conf` beside the logs:
 
 - Each file rotates when it exceeds its segment, 8 MiB by default. Four
   older segments are kept per file. The newest of them stays uncompressed
   for one more rotation; the rest are gzipped, `devcapsule-novnc.log.2.gz`.
 - The launcher's log and the supervisor's are in the same directory and
   rotate the same way while the session runs.
-- A file can exceed its segment by thirty seconds of output, the time
-  between two runs.
+- Writers create replacement files on their next write after rotation.
+- Segment sizes are thresholds, not hard limits: output between checks,
+  time spent rotating, and failed rotation attempts can exceed them.
 
-One knob bounds the whole checkout: `DEVCAPSULE_LOG_BUDGET` on the
+One knob sets the checkout's retention target: `DEVCAPSULE_LOG_BUDGET` on the
 launcher's shell, `256M` by default. It accepts a number with `K`, `M` or
 `G`, with a minimum of `16M`. An invalid or smaller value prints a warning
 and uses `256M`, so a logging option cannot prevent a launch.
@@ -106,11 +108,13 @@ DEVCAPSULE_LOG_BUDGET=1G devcapsule project run
 - The segment size follows the budget: one thirty-second of it, between
   1 MiB and 10 MiB.
 - At each launch, the oldest ended sessions are removed until the checkout's
-  logs directory fits the budget, and the launcher's log names what was
-  removed. The session being launched, and any session still running, are
-  never removed; a session whose launcher never recorded its end counts as
-  abandoned after seven days. The directory can therefore exceed the budget
-  by the sessions that are still running.
+  logs directory fits the budget or no eligible session can be removed,
+  and the launcher's log names what was removed. The session being launched
+  is never removed. Other sessions without a recorded end are protected for
+  seven days from their start, then count as abandoned even if still running.
+  Missing or unreadable manifests use the same age rule. The directory may
+  exceed the target between launches, while sessions are protected, or when
+  cleanup fails.
 - `session.json` records when the session ended and with which exit code.
 
 On a base before recipe 12, which has no `logrotate`, the capsule says so at

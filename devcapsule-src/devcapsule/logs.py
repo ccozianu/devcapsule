@@ -20,9 +20,9 @@ Two levels are in play:
 
 Rotation belongs to ``logrotate``, run inside the capsule over the session
 directory (:class:`Rotation`); the writers here reopen their file when it has
-been rotated away. The bound on disk is one knob, ``DEVCAPSULE_LOG_BUDGET``,
-the most a checkout's logs directory may hold; the launcher derives each
-file's segment size from it and removes the oldest sessions beyond it.
+been rotated away. ``DEVCAPSULE_LOG_BUDGET`` sets a retention target, not a
+hard disk quota: the launcher derives each file's segment size from it and
+removes the oldest ended sessions beyond it at the next launch.
 
 Writing a log must never take the session down: every failure here degrades
 to the console with one line saying what was lost.
@@ -56,7 +56,7 @@ DEFAULT_LEVEL = logging.WARNING
 LEVEL_NAMES = ("DEBUG", "INFO", "WARNING", "ERROR")
 
 BUDGET_ENV = "DEVCAPSULE_LOG_BUDGET"
-"""The most a checkout's logs directory may hold: a size such as ``256M`` or ``1G``."""
+"""The checkout's retention target: a size such as ``256M`` or ``1G``."""
 DEFAULT_BUDGET_BYTES = 256 * 1024 * 1024
 MINIMUM_BUDGET_BYTES = 16 * 1024 * 1024
 # Each component's file rotates at a segment derived from the budget: one
@@ -68,7 +68,7 @@ SEGMENT_SHARE = 32
 ROTATIONS = 4
 """Older segments kept per file; the newest stays uncompressed, the rest are gzipped."""
 ROTATION_INTERVAL_SECONDS = 30.0
-"""How often logrotate checks the sizes; the overshoot of a file is this long of output."""
+"""Delay between logrotate runs; execution time and failures add to the size overshoot."""
 LOGROTATE_EXECUTABLE = "logrotate"
 LOGROTATE_CONFIGURATION = "logrotate.conf"
 LOGROTATE_STATE = ".logrotate.state"
@@ -379,11 +379,15 @@ def prune_sessions(root: Path, *, budget_bytes: int, current: str, now: float | 
 def logrotate_configuration(directory: Path, *, segment_bytes: int, rotations: int) -> str:
     """The logrotate stanza for every ``devcapsule-*.log`` in ``directory``.
 
+    ``nocreate`` leaves replacement files to their writers, which already
+    create them with the capsule user's ownership on reopen. With ``create``,
+    logrotate could move a writer's newly created file to an untracked backup
+    in the gap between rename and creation. ``missingok`` tolerates the gap.
+
     ``delaycompress`` keeps the newest rotated segment uncompressed for one
-    more round, so a writer that has not yet noticed the rotation loses
-    nothing: its last lines land in that segment, which is compressed only
-    after every writer has reopened. ``create`` keeps the file's owner and
-    mode; the writers reopen the new file on their next line.
+    more rotation. Each file has one writer: after an in-flight write to the
+    old descriptor, it reopens before it can fill another segment. This is
+    not a handshake with arbitrary external writers holding old descriptors.
     """
 
     if segment_bytes < 1 or rotations < 1:
@@ -397,7 +401,7 @@ def logrotate_configuration(directory: Path, *, segment_bytes: int, rotations: i
         "    missingok\n"
         "    notifempty\n"
         "    nodateext\n"
-        "    create\n"
+        "    nocreate\n"
         "}\n"
     )
 
@@ -464,6 +468,7 @@ class Rotation:
         # is woken for, logrotate included, so this thread's wait can find
         # the exit already collected and read it as 0. logrotate is silent
         # when it succeeds; anything on stderr is a failure whatever the code.
+        # This cannot detect a silent failure whose status the supervisor took.
         complaint = completed.stderr.strip()
         if completed.returncode != 0 or complaint:
             self._report(f"logrotate exited {completed.returncode}: {complaint}")
