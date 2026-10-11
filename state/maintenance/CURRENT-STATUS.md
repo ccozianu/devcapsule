@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; `main` merged in, PR #174 merged into this branch, PR #172 ready for the owner's integration after the gate; the 0.3.0 maintenance plate: persistent session diagnostics (owner assignment of 2026-10-11, plate position awaiting the owner), the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main`, its Codex review pending; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -12,7 +12,7 @@ Integration target: `main`
 
 Delivery method: stacked pull request against `ws-maintenance/post-0.2.15`; owner authorized authenticated `gh` to create/update/consult PRs on 2026-10-08; merging remains with the owner
 
-Branch association: `ws-maintenance/post-0.2.15` (PR #172, `main` merged in on 2026-10-11); `ws-maintenance/pr172-correctness` is merged through PR #174 and closed; release-0.2.15 is closed and retained
+Branch association: `ws-maintenance/session-logs` (PR #207, from `main`); `ws-maintenance/session-logs-review` (the Codex pair's PR1.1); `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -23,6 +23,41 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-11, later: persistent session diagnostics, slice 1, is
+[PR #207](https://github.com/ccozianu/devcapsule/pull/207).** The owner
+merged PR #172 and said "go for it" on item 1 of the plate, with the brief:
+every critical component writes a log recognizable by its file name, at the
+WARNING equivalent of slf4j, with the launcher, the supervisor, the desktop
+manager, the IDE and the web console as the components; where a component
+has no level, redirect its stderr and stdout through a tee so the console
+keeps them. Slice 1 is the Python logging framework and that wiring:
+
+- `devcapsule.logs`: `devcapsule-<component>.log`, WARNING baseline,
+  `DEVCAPSULE_LOG_LEVEL` override, lifecycle events at INFO always, a
+  UTC-stamped rotating file (10 MiB, five segments), the tee with a 50 MiB
+  cut, the newest 20 sessions kept per checkout.
+- The runtime plan carries a `logs` section; the supervisor tees every
+  child and records starts, readiness, exits and signals; Xvnc logs at
+  status (`-Log *:stderr:10`); the console honours the override; the
+  launcher creates `<state namespace>/logs/<session id>`, binds it at
+  `/var/log/devcapsule`, writes `session.json` and its own log, and prints
+  the directory; `project info` lists the row; the diagnostics page is
+  written.
+- Delivery follows the owner's review scheme from the web console work:
+  stacked PRs, each reviewed by the Codex and gpt-6-astra pair as PRn.1
+  from a `-review` branch, at most three rounds, the owner merges.
+
+Judgments recorded for this slice, for the owner's review in the PR:
+
+- Xvnc's baseline is its status level, not errors only, because connection
+  accepted and closed are the events the original incident needs.
+- The web console writes no file of its own; its stderr is teed like every
+  other child, so one mechanism covers every component.
+- The IDE's native log stays in its slot; the session directory holds the
+  IDE's standard streams.
+- The size numbers are the work order's proposal; compression and the
+  aggregate budget are the next slice, with the snapshot command after.
 
 **2026-10-11: resumed; `main` merged in; the diagnostics work order is
 accepted.**
@@ -128,13 +163,14 @@ last; the middle is the agent's suggested order until the owner sets it):
 3. Named build contexts: done 2026-10-06, measured. Then the installed-IDE
    reuse and reaping design review with the owner.
 4. Persistent session diagnostics: the owner's assignment of 2026-10-11,
-   urgent and foundational, target ready for 0.3.0. First step: scope the
-   bounded slice and its acceptance with the owner, then implement and
-   validate. Default persistent component logs, bounded rotation with
-   compression and the WARNING baseline are owner direction; the numeric
-   limits, the snapshot and export design and the browser-evidence slice
-   are engineering choices for review. Its position relative to item 5
-   awaits the owner.
+   urgent and foundational, target ready for 0.3.0; started first by the
+   owner's word. Slice 1, the logging framework: PR #207, review pending.
+   Next slices: rotation with compression and the aggregate budget; the
+   live snapshot and export command; browser evidence; the fresh-workspace
+   end-to-end proof on a recipe-10 base. Default persistent component
+   logs, bounded rotation with compression and the WARNING baseline are
+   owner direction; the numeric limits, the snapshot and export design and
+   the browser-evidence slice are engineering choices for review.
 5. The universal `network` authorization node.
 6. The first-session UX bugs (C10), release notes and gate tooling.
 7. Ecosystem-aware project bootstrap.
@@ -353,14 +389,19 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. Record the gate on the merged tree, push the branch, publish.
-2. The owner integrates [PR #172](https://github.com/ccozianu/devcapsule/pull/172) to `main`.
-3. The owner sets the plate position of persistent session diagnostics;
-   see *Open Threads*.
-4. Start that slice, or the universal network node, on a fresh sub-branch
-   from the integrated `main`. The installed-IDE reuse and reaping design
-   review follows. Configuration snapshot links stay an acknowledged
-   follow-up after integration.
+1. PR1.1: the Codex pair's review of [PR #207](https://github.com/ccozianu/devcapsule/pull/207)
+   on `ws-maintenance/session-logs-review`; review it, merge it into PR1's
+   branch or push back, at most three rounds.
+2. The owner reviews and merges PR #207.
+3. Slice 2 on a branch stacked on PR1: rotation with compression and the
+   aggregate budget per checkout, then the fresh-workspace end-to-end
+   proof on a recipe-10 base.
+4. Then the universal network node and the installed-IDE reuse and reaping
+   design review. Configuration snapshot links stay an acknowledged
+   follow-up.
+
+Done 2026-10-11: PR #172 merged by the owner; the plate position was decided
+by the owner's "start working on #1".
 
 Superseded on 2026-10-11: await owner review of PR #174; after approval the
 owner merges the fix into #172, then the branch synchronizes and #172
@@ -560,6 +601,16 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Slice 1 gate (2026-10-11, PR #207 at `0af89a2`): full `nox -s build`
+passed, exit 0, scratch on the overlay: mypy clean over 214 files; 1523
+unit tests passed, 35 deselected, 2 xfailed; packaging integration 17
+passed; PEX built and smoked; documentation contract 184 pages; web
+console session mypy clean, 292 tests. Log
+`/opt/devcapsule-gate/2026-10-11-session-logs-build.log`. The supervisor
+tee is proven with real child processes in the unit suite; no capsule was
+launched. The Codex pair's review worktree is
+`/home/devcapsule/worktrees/maintenance-review` with its own venv.
 
 Gate on the merged tree (2026-10-11, commit `e7e441f` plus records): full
 `nox -s build` passed with exit 0, scratch on the overlay. Type check clean
@@ -1049,12 +1100,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting the human: the plate position of persistent session
-  diagnostics. Option 1: next, before the network node, as the owner's
-  urgency suggests. Option 2: after the network node, which is small and
-  already decided. Only the order of the next two slices turns on it.
-- Awaiting the human: integration of PR #172 once the gate passes on the
-  merged tree.
+- Awaiting the human: review and merge of PR #207 after its Codex round.
+- Weighed and unresolved: the tee's 50 MiB cut and the 20-session keep are
+  the first bounds; the work order's compression and aggregate budget
+  replace them in slice 2. Xvnc at status level rather than errors only.
 - Weighed and unresolved: the C10 first-session bug records are not on
   `main`. The diagnostics slice takes the Ctrl+C result into its scope
   unless project-management files them first.
@@ -1237,6 +1286,7 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
 - [Unpacked cache publication/recovery bug](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md): fixed on review branch; close after main integration.
 
