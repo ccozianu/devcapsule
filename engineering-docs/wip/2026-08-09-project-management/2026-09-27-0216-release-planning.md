@@ -9,6 +9,32 @@ on 2026-10-09. This is not authorization to cut or publish a release.
 The [prior proposal](2026-10-09-record-prior-release-proposal.md) is retained
 verbatim for history; its superseded recommendations do not govern this plan.
 
+## Owner's Sequence Before Pausing, 2026-10-11
+
+Shorten the road to the first 0.3.0 release candidate. Complete the two
+substantial implementations first: consent/vendor trust (feature-list #1,
+component-upgrades) and forced-configuration preview/launch (#6, maintenance).
+Handle the remaining release work during the RC cycle. The planning session
+is paused; no release cut or driver is authorized by this sequencing decision.
+The eleven user-docs decisions and candidate acceptance still apply.
+
+Use concrete names for the remaining work:
+
+- Network authorization: make the existing run-once and saved choices work
+  without a project recommendation; bridge stays the default.
+- Terminal output and Ctrl+C: avoid alarming output for healthy launches and
+  stop normally without a traceback. Check coverage from the new logging work.
+- Image reuse/cleanup: the normal build optimization is delivered. Remaining
+  work is reuse with an empty launcher cache and cleanup of obsolete images
+  and cached files.
+- Diagnostics: logging and rotation have merged; assess the remaining
+  snapshot/export, browser evidence and acceptance scope.
+- Project-operation instructions: the 0.3.0 workflow assignment remains.
+
+The agent flagged that the remaining image and diagnostic work may still be
+substantial. Bound their RC scope with the owner; no postponement was decided.
+This qualification is an open thread, not an extra pre-RC gate.
+
 ## Accepted Direction
 
 The next release is unconditionally **0.3.0**, by owner decision of 2026-10-05.
