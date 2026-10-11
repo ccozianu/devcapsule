@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-11; `main` merged in, PR #174 merged into this branch, PR #172 ready for the owner's integration after the gate; the 0.3.0 maintenance plate: persistent session diagnostics (owner assignment of 2026-10-11, plate position awaiting the owner), the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@dd1c683d82cd
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Integration target: `main`
 
