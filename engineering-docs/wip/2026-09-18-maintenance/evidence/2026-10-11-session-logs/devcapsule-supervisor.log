@@ -1,0 +1,21 @@
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: session start: children logrotate, xvnc, window-manager, panel, novnc, console, codium
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'logrotate' started: pid 34, log /var/log/devcapsule/devcapsule-logrotate.log
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'xvnc' started: pid 37, log /var/log/devcapsule/devcapsule-xvnc.log
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'xvnc' ready
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'window-manager' started: pid 41, log /var/log/devcapsule/devcapsule-window-manager.log
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'panel' started: pid 43, log /var/log/devcapsule/devcapsule-panel.log
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'novnc' started: pid 45, log /var/log/devcapsule/devcapsule-novnc.log
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'novnc' ready
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'console' started: pid 49, log /var/log/devcapsule/devcapsule-console.log
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'console' ready
+2026-10-11T08:56:24Z INFO devcapsule.supervisor.events[1]: child 'codium' started: pid 53, log /var/log/devcapsule/devcapsule-codium.log
+2026-10-11T08:57:53Z WARNING devcapsule.supervisor[1]: session end requested (SIGTERM); stopping children
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: signal SIGTERM forwarded to logrotate, xvnc, window-manager, panel, novnc, console, codium
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: child 'logrotate' exited: killed by SIGTERM
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: child 'window-manager' exited: exit code 1
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: child 'panel' exited: exit code 1
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: child 'xvnc' exited: exit code 0
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: child 'novnc' exited: exit code 0
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: child 'codium' exited: killed by SIGTRAP
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: child 'console' exited: killed by SIGTERM
+2026-10-11T08:57:53Z INFO devcapsule.supervisor.events[1]: session end: exit code 133

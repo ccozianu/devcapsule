@@ -1,0 +1,49 @@
+--- files at start
+total 48
+drwxr-xr-x 2 costin costin 4096 Oct 11 08:56 .
+drwxr-xr-x 3 costin costin 4096 Oct 11 08:56 ..
+-rw-r--r-- 1 costin costin 4071 Oct 11 08:56 devcapsule-codium.log
+-rw-r--r-- 1 costin costin  153 Oct 11 08:56 devcapsule-console.log
+-rw-r--r-- 1 costin costin 4383 Oct 11 08:56 devcapsule-launcher.log
+-rw-r--r-- 1 costin costin    0 Oct 11 08:56 devcapsule-logrotate.log
+-rw-r--r-- 1 costin costin  311 Oct 11 08:56 devcapsule-novnc.log
+-rw-r--r-- 1 costin costin  956 Oct 11 08:56 devcapsule-panel.log
+-rw-r--r-- 1 costin costin 1359 Oct 11 08:56 devcapsule-supervisor.log
+-rw-r--r-- 1 costin costin    0 Oct 11 08:56 devcapsule-window-manager.log
+-rw-r--r-- 1 costin costin 2212 Oct 11 08:56 devcapsule-xvnc.log
+-rw-r--r-- 1 costin costin  158 Oct 11 08:56 logrotate.conf
+-rw-r--r-- 1 costin costin  719 Oct 11 08:56 session.json
+
+--- files after padding and two ticks
+total 1516
+drwxr-xr-x 2 costin costin    4096 Oct 11 08:57 .
+drwxr-xr-x 3 costin costin    4096 Oct 11 08:56 ..
+-rw-r----- 1 costin costin     594 Oct 11 08:57 .logrotate.state
+-rw-r--r-- 1 costin costin    4071 Oct 11 08:56 devcapsule-codium.log
+-rw-r--r-- 1 costin costin     153 Oct 11 08:56 devcapsule-console.log
+-rw-r--r-- 1 costin costin    4383 Oct 11 08:56 devcapsule-launcher.log
+-rw-r--r-- 1 costin costin       0 Oct 11 08:56 devcapsule-logrotate.log
+-rw-r--r-- 1 costin costin     311 Oct 11 08:56 devcapsule-novnc.log
+-rw-r--r-- 1 costin costin 1500956 Oct 11 08:56 devcapsule-panel.log.1
+-rw-r--r-- 1 costin costin    1359 Oct 11 08:56 devcapsule-supervisor.log
+-rw-r--r-- 1 costin costin       0 Oct 11 08:56 devcapsule-window-manager.log
+-rw-r--r-- 1 costin costin    2212 Oct 11 08:56 devcapsule-xvnc.log
+-rw-r--r-- 1 costin costin     158 Oct 11 08:56 logrotate.conf
+-rw-r--r-- 1 costin costin     719 Oct 11 08:56 session.json
+
+--- files at end
+total 1524
+drwxr-xr-x 2 costin costin    4096 Oct 11 08:57 .
+drwxr-xr-x 3 costin costin    4096 Oct 11 08:56 ..
+-rw-r----- 1 costin costin     594 Oct 11 08:57 .logrotate.state
+-rw-r--r-- 1 costin costin    4412 Oct 11 08:57 devcapsule-codium.log
+-rw-r--r-- 1 costin costin     153 Oct 11 08:56 devcapsule-console.log
+-rw-r--r-- 1 costin costin    4483 Oct 11 08:57 devcapsule-launcher.log
+-rw-r--r-- 1 costin costin       0 Oct 11 08:56 devcapsule-logrotate.log
+-rw-r--r-- 1 costin costin     340 Oct 11 08:57 devcapsule-novnc.log
+-rw-r--r-- 1 costin costin 1500956 Oct 11 08:56 devcapsule-panel.log.1
+-rw-r--r-- 1 costin costin    2385 Oct 11 08:57 devcapsule-supervisor.log
+-rw-r--r-- 1 costin costin     185 Oct 11 08:57 devcapsule-window-manager.log
+-rw-r--r-- 1 costin costin    2212 Oct 11 08:56 devcapsule-xvnc.log
+-rw-r--r-- 1 costin costin     158 Oct 11 08:56 logrotate.conf
+-rw-r--r-- 1 costin costin     777 Oct 11 08:57 session.json

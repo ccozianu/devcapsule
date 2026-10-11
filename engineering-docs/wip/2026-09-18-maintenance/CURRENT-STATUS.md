@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, its review PRs #210 and #211 merged, acceptance on a recipe-12 base running; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, its review PRs #210 and #211 merged and the acceptance on a recipe-12 base passed; both PRs await the owner; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -23,6 +23,23 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-11, late: acceptance passed on a real capsule; PR #207 and PR
+#209 await the owner.** From a clean clone of PR2's branch at `174480f`, a
+public PEX built the recipe-12 base through `nox -s e2e -- --build-base`:
+nine end-to-end tests passed, the built base carries recipe-version 12 and
+answers `logrotate --version`. A fresh codium project then ran through the
+real launcher on that base with a 16 MiB budget. The session directory
+held every component's file, user-owned, plus `logrotate.conf` and
+`session.json`; the supervisor's record shows logrotate as the first child
+and the session's end; a log padded to 1.5 MiB was rotated to `.1` by the
+next tick with no complaint in `devcapsule-logrotate.log`; the launcher
+recorded the `docker run` and the end, and `session.json` carries
+`ended-at` and the exit code. Evidence under
+[evidence/2026-10-11-session-logs](evidence/2026-10-11-session-logs/).
+Not shown by this run: compression, which needs a second rotation of the
+same file, and a writer's reopen, since the padded panel printed nothing
+afterwards; both are pinned by unit tests.
 
 **2026-10-11, night: PR2.1 accepted; logrotate became a supervised child.**
 The Codex pair's review of PR2, [PR #210](https://github.com/ccozianu/devcapsule/pull/210),
@@ -433,10 +450,7 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. Acceptance of PR #209 on a real capsule: the recipe-12 base built from
-   the public PEX of this branch, a session with a 16 MiB budget, a padded
-   log, two logrotate ticks; evidence into the PR and this file.
-2. The owner reviews and merges PR #207, then PR #209.
+1. The owner reviews and merges PR #207, then PR #209.
 3. Acceptance: build a recipe-12 base and run a fresh-workspace launch,
    proving the files, the rotation and the budget on a real capsule.
 4. Slice 3: the live snapshot and export command; then browser evidence.
@@ -647,6 +661,16 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Acceptance (2026-10-11): base `devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151`,
+id `sha256:5034721d…`, built over host networking from the public PEX of
+`174480f` (sha256 `6047ecf0…`) in the fresh workspace
+`~/.local/share/devcapsule/e2e-workspaces/logs-accept`; e2e session 9
+passed: built base, component cache (5), successor lifecycle, runtime
+image, self-contained PEX. Proof session `20261011-085622-321e` on the
+materialized codium image, exit 133 (codium's SIGTRAP on stop, as before).
+The clone, its venv, the base and the codium image remain on this machine;
+the fixture project `e2e-logs-1974aad7` was removed after the run.
 
 Slice 2 gate after the review (2026-10-11, PR #209 at `adfbff7`): full
 `nox -s build` passed, exit 0: mypy clean over 214 files; 1571 unit tests
@@ -1359,6 +1383,7 @@ Earlier open-thread history (read against the current scope above):
 ## Workstream Document Index
 
 - [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
+- [Session logs acceptance](evidence/2026-10-11-session-logs/README.md): the recipe-12 base, the real session, the rotation; open when a reviewer asks what was proven on a capsule.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
 - [Unpacked cache publication/recovery bug](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md): fixed on review branch; close after main integration.
 
