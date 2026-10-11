@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+import fcntl
 import json
 import os
 import re
@@ -11,7 +13,7 @@ import tempfile
 from dataclasses import dataclass, field, replace
 from importlib import resources
 from pathlib import Path
-from typing import Protocol
+from typing import Iterator, Protocol
 
 from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
@@ -219,53 +221,86 @@ class ImageBuildSpec:
         return plan
 
 
-class BuildxImageBuilder:
-    """Build a planned image through the local Docker CLI via python-on-whales."""
+@dataclass(frozen=True)
+class RenderedBuildContext:
+    """What a build needs beside the plan: the Dockerfile and the named contexts.
 
-    def __init__(self, temporary_root: Path | None = None) -> None:
-        self.temporary_root = temporary_root
+    The context root holds the Dockerfile and the plan's small files only.
+    Every directory input is a named context, ``--build-context NAME=PATH``,
+    which BuildKit reads in place at ``COPY --from=NAME``; the tree is never
+    copied into the context root.
+    """
+
+    dockerfile: Path
+    named_contexts: dict[str, Path]
+
+    def build_context_arguments(self) -> list[str]:
+        """The ``docker build`` arguments that attach the named contexts."""
+        return [f"--build-context={name}={path}" for name, path in sorted(self.named_contexts.items())]
+
+
+class BuildxImageBuilder:
+    """Build a planned image through the local Docker CLI via python-on-whales.
+
+    BuildKit keys the incremental transfer of local sources, named contexts
+    included, on the path of the main context root: with the same root a
+    rebuild re-sends only what changed in a tree, with a fresh root it
+    re-sends everything (measured 2026-10-06 on a 157 MB tree: 157 MB, then
+    4 KB with the root reused, 157 MB again with a new root). A builder given
+    a ``context_root`` therefore reuses that one directory for every build,
+    serialized by a lock beside it, so a launcher change rebuilds a formation
+    without re-sending the IDE tree. Without a root each build gets a
+    temporary directory, which is right for one-off builds.
+    """
+
+    def __init__(self, context_root: Path | None = None) -> None:
+        self.context_root = context_root
 
     def build(self, spec: ImageBuildSpec, *, network: str = "default") -> None:
         plan = spec.build_plan()
-        if self.temporary_root is not None:
-            self.temporary_root.mkdir(parents=True, exist_ok=True)
         try:
-            with tempfile.TemporaryDirectory(
-                prefix="devcapsule-buildx-context-", dir=self.temporary_root
-            ) as temp_dir:
-                context_root = Path(temp_dir)
-                dockerfile_path = render_build_context(plan, context_root)
-                if network == "host":
-                    docker.build(
-                        context_root,
-                        file=dockerfile_path,
-                        tags=[plan.image],
-                        load=True,
-                        network=network,
-                        allow=["network.host"],
-                    )
-                else:
-                    docker.build(
-                        context_root,
-                        file=dockerfile_path,
-                        tags=[plan.image],
-                        load=True,
-                        network=network,
-                    )
+            with self._context_directory() as context_root:
+                rendered = render_build_context(plan, context_root)
+                docker.build(
+                    context_root,
+                    file=rendered.dockerfile,
+                    tags=[plan.image],
+                    load=True,
+                    network=network,
+                    build_contexts={name: str(path) for name, path in rendered.named_contexts.items()},
+                    allow=["network.host"] if network == "host" else [],
+                )
         except DockerException as exc:
             raise CliError(str(exc)) from exc
         except OSError as exc:
-            location = self.temporary_root or Path(tempfile.gettempdir())
+            location = self.context_root or Path(tempfile.gettempdir())
             raise CliError(f"Cannot prepare Docker build context beneath {location}: {exc}") from exc
 
+    @contextmanager
+    def _context_directory(self) -> Iterator[Path]:
+        if self.context_root is None:
+            with tempfile.TemporaryDirectory(prefix="devcapsule-buildx-context-") as temp_dir:
+                yield Path(temp_dir)
+            return
+        root = self.context_root
+        root.mkdir(parents=True, exist_ok=True)
+        with (root.parent / f"{root.name}.lock").open("a+b") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                for child in root.iterdir():
+                    shutil.rmtree(child) if child.is_dir() and not child.is_symlink() else child.unlink()
+                yield root
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
-def render_build_context(plan: ImageBuildPlan, context_root: Path) -> Path:
+
+def render_build_context(plan: ImageBuildPlan, context_root: Path) -> RenderedBuildContext:
     context_root.mkdir(parents=True, exist_ok=True)
+    named_contexts: dict[str, Path] = {}
     dockerfile_lines: list[str] = []
     if plan.stages:
-        dockerfile_lines.append("# syntax=docker/dockerfile:1")
         baseline = ImageBuildPlan(plan.base_image, "", apt_packages=plan.apt_packages)
-        dockerfile_lines.extend(_render_stage(baseline, context_root, "devcapsule-baseline"))
+        dockerfile_lines.extend(_render_stage(baseline, context_root, named_contexts, "devcapsule-baseline"))
         names = {"devcapsule-baseline"}
         for stage in plan.stages:
             if not re.fullmatch(r"[a-z][a-z0-9-]*", stage.name) or stage.name in names:
@@ -273,20 +308,25 @@ def render_build_context(plan: ImageBuildPlan, context_root: Path) -> Path:
             if stage.plan.stages:
                 raise ValueError("Nested contribution stages are not supported")
             names.add(stage.name)
-            dockerfile_lines.extend(_render_stage(stage.plan, context_root, stage.name))
+            dockerfile_lines.extend(_render_stage(stage.plan, context_root, named_contexts, stage.name))
         copies = tuple(
             ImageCopy(stage.name, path, path)
             for stage in plan.stages for path in stage.exports
         )
         plan = replace(plan, base_image="devcapsule-baseline", apt_packages=(),
                        image_copies=copies + plan.image_copies)
-    dockerfile_lines.extend(_render_stage(plan, context_root))
+    dockerfile_lines.extend(_render_stage(plan, context_root, named_contexts))
+    if plan.stages or named_contexts:
+        # Stages and named contexts need the BuildKit Dockerfile frontend.
+        dockerfile_lines.insert(0, "# syntax=docker/dockerfile:1")
     dockerfile_path = context_root / "Dockerfile"
     dockerfile_path.write_text("\n".join(dockerfile_lines) + "\n", encoding="utf-8")
-    return dockerfile_path
+    return RenderedBuildContext(dockerfile_path, named_contexts)
 
 
-def _render_stage(plan: ImageBuildPlan, context_root: Path, name: str = "") -> list[str]:
+def _render_stage(
+    plan: ImageBuildPlan, context_root: Path, named_contexts: dict[str, Path], name: str = ""
+) -> list[str]:
     dockerfile_lines = [f"FROM {plan.base_image}" + (f" AS {name}" if name else "")]
     prefix = f"{name}-" if name else ""
     copy_index = 0
@@ -303,10 +343,10 @@ def _render_stage(plan: ImageBuildPlan, context_root: Path, name: str = "") -> l
         )
 
     for directory_copy in plan.directories:
-        relative_source = f"{prefix}copy-dir-{copy_index}"
+        context_name = f"{prefix}copy-dir-{copy_index}"
         destination = normalize_container_path(directory_copy.destination)
-        shutil.copytree(directory_copy.source, context_root / relative_source, dirs_exist_ok=True, symlinks=True)
-        dockerfile_lines.append(f"COPY {relative_source}/ {destination}/")
+        named_contexts[context_name] = directory_copy.source
+        dockerfile_lines.append(f"COPY --from={context_name} / {destination}/")
         copy_index += 1
 
     for file_copy in plan.files:

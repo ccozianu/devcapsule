@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import socket
+import subprocess
 import sys
 from typing import Callable
 
@@ -59,12 +60,19 @@ def console_child(plan: RuntimePlan, run_as_identity: CommandWrapper) -> Supervi
         "--listen", console.listen_address,
         "--port", str(console.port),
     )
-    if console.source_path:
+    if console.source_path and _monitor_dependency_available():
         # The checkout's own console source, ahead of the image's installed
         # copy: the same interpreter and dependencies, the mounted package.
         command = ("env", f"PYTHONPATH={console.source_path}", *command)
         print(
             f"devcapsule console: running the mounted checkout's source at {console.source_path}",
+            file=sys.stderr,
+            flush=True,
+        )
+    elif console.source_path:
+        print(
+            "devcapsule console: the base cannot import psutil (base recipe 11 adds it); "
+            "running the installed console instead of the mounted source",
             file=sys.stderr,
             flush=True,
         )
@@ -75,6 +83,22 @@ def console_child(plan: RuntimePlan, run_as_identity: CommandWrapper) -> Supervi
         ready=lambda: _accepts_connections(probe_address, console.port),
         ready_timeout_seconds=CONSOLE_READY_TIMEOUT_SECONDS,
     )
+
+
+def _monitor_dependency_available() -> bool:
+    """Check the base interpreter, without the checkout or ambient PYTHONPATH.
+
+    Recipe 10 has the console but lacks psutil. Its installed console still
+    works; mounting slice-5 source over it would fail at import time.
+    """
+    try:
+        subprocess.run(
+            [CONSOLE_PYTHON, "-I", "-c", "import psutil"],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5.0,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return True
 
 
 def _accepts_connections(address: str, port: int) -> bool:

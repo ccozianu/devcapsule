@@ -1370,6 +1370,8 @@ def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_pat
         assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
         published = [args[index + 1] for index, item in enumerate(args) if item == "--publish"]
         assert published == [f"127.0.0.1:{config.display_host_port}:6080", f"127.0.0.1:{config.console_host_port}:6081"]
+        # The origin crosses into the capsule so an agent can hand the human a link; the token does not.
+        assert f"DEVCAPSULE_CONSOLE_URL=http://127.0.0.1:{config.console_host_port}" in args
         assert config.console_token not in joined
         assert RuntimePlan.from_file(files.runtime_plan_file).console == config.runtime_plan.console  # type: ignore[arg-type]
         description = describe_run_command(args, config, files)
@@ -1396,6 +1398,7 @@ def test_web_console_under_host_networking_listens_on_host_loopback_directly(tmp
     try:
         args = build_docker_args(config, files, env)
         assert "--publish" not in args
+        assert f"DEVCAPSULE_CONSOLE_URL=http://127.0.0.1:{config.console_host_port}" in args
         assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
     finally:
         cleanup_temp_runtime_files(files)
@@ -1595,3 +1598,18 @@ def test_run_pycharm_announces_the_console_url_and_opens_it_only_without_a_deskt
     else:
         assert default.call_args.kwargs == {"label": "Web console"}
         default_console_opener.assert_called_once_with(url)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_console_environment_contains_only_the_origin(tmp_path: Path, enabled: bool) -> None:
+    from dataclasses import replace
+    from devcapsule.display_client import console_origin, console_url
+    from devcapsule.launch.pycharm._launcher import _console_environment_args
+
+    config = replace(contained_config(tmp_path), console_host_port=41001 if enabled else None,
+                     console_token="private/token?value")
+    assert _console_environment_args(config) == (
+        ["--env", "DEVCAPSULE_CONSOLE_URL=http://127.0.0.1:41001"] if enabled else []
+    )
+    assert console_origin(41001) == "http://127.0.0.1:41001"
+    assert console_url(41001, config.console_token) == "http://127.0.0.1:41001/?token=private%2Ftoken%3Fvalue"

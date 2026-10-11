@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-10-11; persistent diagnostics assigned to maintenance for 0.3.0; 30 intake dispositions recorded; items 7, 8 and 12 remain pre-V1, tentatively 0.9
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
+Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Branch association: `ws-project-management/coordination`
 
@@ -116,10 +116,11 @@ reliability commitments to component-upgrades as
 `2026-10-09-project-management-accepted-upgrade-followups.md` at coordination
 `387656fed15e`. No implementation priority or new release gate was assigned.
 
-The seven-item Karpathy list remains closed. The console work order is with
-capsule-webconsole in a separate checkout. Its published status reports the
-second iteration awaiting owner review and the view registry in a later
-iteration. This reconciliation does not change its work or claim new acceptance.
+The seven-item Karpathy list remains closed. The console work order remains
+with capsule-webconsole in its separate checkout. Main includes subsequent
+console integrations through PR #201; the earlier published second-iteration
+handoff is historical. This reconciliation does not claim owner acceptance
+of further console work.
 
 ## Planned Next Step
 
@@ -152,10 +153,12 @@ sample-projects. Neither lack of a live publication nor this cleanup closes them
 
 ## Validation And External State
 
-Merged origin/main at 2258ab1 in 263f5d0 before committing the reconciliation. The 2026-10-11 checkpoint fetch finds main at 435d3d4,
-including a new workflow topic 8.8 on human decision handoffs, now read.
-Finish the prepared checkpoint, then merge this newer main and validate before
-resuming product decisions; the changed definition makes synchronization required.
+The approved records were committed and pushed as 9139717 after the initial
+main merge 263f5d0. The checkpoint then merged origin/main at 435d3d4;
+its only conflict was the root workstream list. Resolution preserves the
+current project-management row and main's rows for every other workstream.
+The new workflow topic 8.8 on human decision handoffs and the accompanying
+AGENTS.md instruction have been read. No product decision changed in the merge.
 The updated local gate includes the separate web-console session. No mailbox
 items waited at the reconciliation entry and no open bug is owned by
 project-management. On 2026-10-11 one new item was taken into intake:
@@ -166,10 +169,14 @@ release target is inferred from receipt.
 The known manifest/definition version mismatch is unchanged; this records pass
 does not refresh the workflow or edit project configuration.
 
-The required build gate passed: 1,329 runtime tests, 35 deselected, one existing
-xfail and one XPASS; packaged integration checks, type checks, syntax, source/
-PEX smokes and the documentation contract passed. The separate web-console
-session passed its type check and 89 tests. No container or service was started.
+The required build gate passed again after merging main at 435d3d4:
+1,498 runtime tests, 35 deselected, one xfail and one XPASS; all 17 packaged
+integration tests, type checks, syntax, source/PEX smokes and the 184-page
+documentation contract passed. The separate web-console session passed its
+type check and 290 tests. Both nox sessions succeeded in about three minutes.
+No container or service was started. The dirty-tree validation artifact is
+`dist/devcapsule-local.pex`; this checkpoint does not produce a release artifact.
+The final mailbox check found no waiting mail.
 Record checks establish exactly 30 deletions and unique appended dispositions
 (29 acknowledgements and one drop), eight byte-identical remaining messages, the
 diagnostics proposal retained with the owner's subsequent assignment, both historical records preserved verbatim,

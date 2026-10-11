@@ -295,8 +295,9 @@ def test_pex_runtime_help_inside_disposable_image(tmp_path: Path, built_pex: Pat
             build_count += 1
             context = tmp_path / f"materialization-context-{build_count}"
             context.mkdir()
-            render_build_context(materialization_spec.build_plan(), context)
-            command(docker, "build", "--pull=false", "--tag", materialization_spec.image, str(context))
+            rendered = render_build_context(materialization_spec.build_plan(), context)
+            command(docker, "build", "--pull=false", *rendered.build_context_arguments(),
+                    "--tag", materialization_spec.image, str(context))
 
         materialized_image, created = ensure_materialized_surface(
             base_reference=image,

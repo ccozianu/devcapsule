@@ -55,7 +55,7 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     plan = build_base_image_spec(options).build_plan()
     context = tmp_path / "context"
     context.mkdir()
-    dockerfile = render_build_context(plan, context).read_text(encoding="utf-8")
+    dockerfile = render_build_context(plan, context).dockerfile.read_text(encoding="utf-8")
 
     assert plan.base_image == "ubuntu:24.04"
     assert "python3" in plan.apt_packages
@@ -84,9 +84,10 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "10") in plan.labels
+    assert ("devcapsule.base.recipe-version", "11") in plan.labels
     # Recipe 10 installs the web console from the runtime's own verified
-    # revision, as an independently cached contribution (R-CONSOLE-001).
+    # revision, as an independently cached contribution (R-CONSOLE-001);
+    # recipe 11 rebuilds it with the monitor's dependency.
     webconsole = next(stage for stage in plan.stages if stage.name == "webconsole")
     assert webconsole.exports == ("/opt/devcapsule-webconsole",)
     (install,) = webconsole.plan.exec_steps

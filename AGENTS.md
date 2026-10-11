@@ -31,6 +31,16 @@ effort. More activity is not evidence of better work.
   valuable evidence. Treat passing newly written tests for new end-user functionality
   with caution: they may encode the same unvalidated assumptions as the implementation,
   rather than independently establish that it meets the user's needs.
+- Hand choices with several options to the human under topic 8.8 of
+  `WORKFLOW.md`. Inside a capsule with console tools, build a decision
+  document with `devcapsule project checkout decisions from-table`.
+  Present numbered chat text with `hand-off`, ending with any supplied
+  console link. Without console tools, present the text directly. Record
+  outcomes before deleting capsule state. Keep unanswered items pending.
+  Send other environment notices with `devcapsule project checkout
+  notifications post` when available, otherwise in chat. Preserve durable
+  facts in normal records. Keep decision documents and answers out of Git.
+  Keep tokened links in chat only.
 
 ## Repository Workflow
 

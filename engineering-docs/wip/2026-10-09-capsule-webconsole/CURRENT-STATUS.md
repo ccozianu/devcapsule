@@ -4,11 +4,11 @@ Mnemonic: `capsule-webconsole`
 
 Start date: 2026-10-09
 
-State: active; slice 1 is on `main` (#184 merged 2026-10-09); slices 2 to 4 await the owner in #190, retargeted to `main`, with every Codex review merged
+State: active; slice 8 and the test-isolation fix await the owner with the second iteration: PR5 (#192), PR6 (#194), PR7 (#196), PR8 (#199), PR9 (#201), PR10 (#203) and PR11 (#205), stacked, each with its Codex review merged
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
-Branch association: `ws-capsule-webconsole/first-slice` (PR1, #184); `ws-capsule-webconsole/console-app` (PR2, stacked on PR1); `ws-capsule-webconsole/runtime-base` (PR3, stacked on PR2); `ws-capsule-webconsole/project-info-checkout-name` (PR4, stacked on PR3)
+Branch association: `ws-capsule-webconsole/live-resources` (PR5, #192, from `main`); `ws-capsule-webconsole/records` (PR6, #194, stacked on PR5); `ws-capsule-webconsole/decisions` (PR7, stacked on PR6); the first iteration's branches `first-slice`, `console-app`, `runtime-base` and `project-info-checkout-name` are merged and closed
 
 Integration target: `main`
 
@@ -42,6 +42,320 @@ Owner decisions of 2026-10-09 that shape the work:
    no product renders them.
 
 ## Current State
+
+**2026-10-10, PR11: every test gets an empty artifact cache of its own.**
+The owner's plain `pytest` run filled a 2 GB `/tmp`. Diagnosed with one
+command each: `cache_root()` follows `XDG_CACHE_HOME`, which a capsule
+exports as the developer's real cache, 7.2 GB here; the `checkout`
+fixture of `tests/test_upgrade_recovery.py` and four fixtures in
+`tests/test_project_commands.py` and `tests/configuration/test_history.py`
+redirect the other XDG homes but not the cache; and `_retain` in
+`version_sets.py` copies every locked artifact, the 1.2 GB PyCharm
+tarball among them, from that cache into each resolving test's state.
+One test's two cases wrote 2.4 GB in 7 s, and 68 KB with an empty cache;
+the unit suite wrote 3.7 GB per run, and pytest keeps three runs. The
+test, its fixture and the retention step date from 2026-09-20 and 21,
+on `main` since; the gate's many runs from a capsule made it visible.
+The fix, by the owner's direction and stacked on PR10: one autouse
+fixture in the root `tests/conftest.py`, beside `host_launch_by_default`
+which exists for the same reason, points `XDG_CACHE_HOME` at an empty
+directory under `tmp_path` for every test without a Docker marker. The
+unit suite now writes 37 MB and runs in 28 s instead of 74 s.
+
+**PR #205 is open against PR10's branch. Its review, PR #206 by the Codex
+and gpt-6-astra pair, was merged without a round.** The fixture, now
+`private_user_directories`, gives every non-Docker test private `HOME` and
+every XDG directory under its `tmp_path`, not only the cache; a regression
+test runs the real conftest under pytester for both inherited layouts, a
+laptop without exported XDG paths and a capsule with them, proving that
+retention reads and restoration writes stay private, that a test's own
+fixture still wins, and that the Docker-marked suites keep their inherited
+directories; the Docker marker list is pinned to `pyproject.toml`. The
+measurements used a synthetic artifact, never the real cache. Gate on the
+merged branch below.
+
+**Follow-up, 2026-10-10.** The owner's plain `nox -s build` still left 900 MB
+under `/tmp`: the widened fixture had moved `~/.cache/pex` and
+`~/.cache/nce` under each test's scratch, so the three clean-revision
+builds of the integration session downloaded the scie launcher and its
+Python again and unpacked them per case, 872 MB and 145 s for the session.
+Both are build tools' content-addressed caches, not DevCapsule state; the
+fixture now pins `PEX_ROOT` and `SCIE_BASE` to the inherited cache before
+the homes move, with the regression test asserting both. Measured after:
+the integration session 134 MB and 43 s, and a plain `nox -s build`
+leaves 175 MB under `/tmp/pytest-of-<user>` (36 unit, 134 integration,
+7 console) in 2 minutes. The Codex pair reviewed the pins commit as a
+round on #205 and accepted it: the helper matches pex 2.97.1's and
+scie-jump 1.11.2's own cache defaults on both Linux layouts, no other tool
+cache fills the private home beyond 1.3 MB of pip metadata, and each
+regression assertion fails when its pin is removed.
+
+Judgments recorded for PR11:
+
+- Hermetic in both directions: the real cache was read by tests, and
+  `_restore_artifacts` could have written fixture bytes into it on a
+  machine with a partial cache. A test that wants a particular cache sets
+  the variable itself, after the fixture, as `test_version_sets.py` does.
+- The Docker-marked suites keep the real cache: their base builds would
+  download every artifact again.
+- Not fixed here: the artifact path under the state home nears the NTFS
+  260-character limit under a Windows profile. A state-layout question for
+  the owner of version sets; see Open Threads.
+
+**2026-10-09, slice 8, workflow half (PR10).** The rule: topic 8.8 of
+this repository's `WORKFLOW.md`, "Handing a decision to the human", five
+sentences, with a pointer in `AGENTS.md`; the shipped definition under
+`devcapsule-src/devcapsule/assets/project_workflow/definition/` has
+another layout and belongs to workflow-improvements, which gets the same
+text at its next sync (noted in Open Threads). One CLI for agents:
+`devcapsule project checkout decisions from-table | check | hand-off`
+runs the console's installed module inside a capsule, the mounted source
+first when the runtime plan names one, and outside a capsule says where
+the module is. The first real decision: the 38 undecided items of
+project-management's intake, as one document in this capsule's decisions
+directory, with its table and hand-off text under
+`evidence/2026-10-09-intake-pass/`; this capsule runs no console, so the
+hand-off here names the page, and the owner's next launch on a base with
+the console lists it under the bell.
+
+**PR #203 is open against PR9's branch. Its review, PR #204 by the Codex
+and gpt-6-astra pair, was merged without a round.** Five findings, all
+accepted: an unreadable plan with invalid UTF-8 falls back to the
+installed console; an interpreter that cannot start is the CLI's refusal,
+not a traceback; the wrapper's passthrough is proven on exact arguments;
+the rule was rewritten so outcomes are recorded under topics 8.2, 8.3 and
+12.7 before any deletion, unanswered items stay pending, and intake
+decisions use 8.2's acknowledge-or-forward instead of the builder's
+defaults; and the Unreleased entry and the humane paragraph that
+WORKFLOW-LOCAL requires accompany the rule. That last rule reached the
+first real decision: the intake pass was regenerated with acknowledge and
+forward per item, in the capsule's state and in the evidence. Gate on the
+merged branch below.
+
+Judgments recorded for slice 8's workflow half:
+
+- The rule lives in this repository's copy by the owner's word; the
+  shipped definition is another workstream's file.
+- The wrapper runs the console's module rather than importing it: the
+  console is not in the runtime PEX by binding decision 2, and the
+  subprocess boundary stays the contract.
+- The decision document is capsule state and is not committed; the table
+  and the hand-off text are evidence of the mechanism, as for the sample.
+
+**2026-10-09, slice 8, console half (PR9).** The hand-off:
+`python -m devcapsule_webconsole.decisions hand-off <decisions-dir>/<id>.json`
+prints a decision as chat text, every item numbered with its options by
+key, ending with the link `$DEVCAPSULE_CONSOLE_URL/decisions/<id>?token=…`
+from the launcher's origin and the mounted token file; without the origin
+the text says the console is not reachable, without a readable token the
+link goes out bare. Notifications in the console: `/api/notifications` is
+the runtime CLI's listing with the pending decisions merged in, read and
+dismiss go back through the CLI, same-origin only, the CLI's refusal is a
+422 and its failure a 502; a bell on every page shows the unread count and
+the newest five, polled every 30 seconds; the `/notifications` page lists
+everything with mark-read and dismiss, a decision entry linking to its
+page. Browser run against this checkout with the real CLI and a scratch
+store: three unread under the bell, the page listed them, read and dismiss
+went through the CLI and the page refreshed; screenshots
+`notifications-*.png` under `evidence/2026-10-09-console-pages/`, the
+hand-off text under `evidence/2026-10-09-decision-sample/hand-off.txt`.
+
+**PR #201 is open against PR8's branch. Its review, PR #202 by the Codex
+and gpt-6-astra pair, was merged without a round.** Six findings, all
+accepted: the console's selected decisions directory now reaches the
+CLI's listing through its environment hook, so the bell and the decision
+pages cannot disagree; the hand-off keeps multiline fields and
+double-digit items aligned and refuses a non-JSON path instead of
+silently taking a sibling; the badge hides at zero; the bell exposes its
+state, closes on Escape and clears the unread emphasis when polling
+fails; the texts say what the console writes; 42 more tests including a
+Node run of the notifications page. One more fix of ours from the
+browser check on the merged branch: a page action now refreshes the bell
+at once instead of waiting for the 30-second timer; screenshot
+`notifications-merged.png`. Gate on the merged branch below.
+
+Judgments recorded for slice 8's console half:
+
+- The console renders the CLI's listing and never reads the notifications
+  directory itself: one source of truth, and the subprocess boundary stays
+  the console's contract, as for configuration and versions.
+- The bell polls, every 30 seconds, one small request. A push channel
+  waits for the notification system the owner deferred.
+- The link carries the token: the launcher already prints it on the host,
+  the cookie is a session cookie, and the hand-off text says the link
+  belongs in the chat and never in a record.
+- The console's writes are three, all into capsule state; the docs say so
+  in place of "one write".
+
+**2026-10-09, slice 8, runtime half (PR8).** The launcher passes
+`DEVCAPSULE_CONSOLE_URL`, the console's host-side origin without the
+token, into the capsule, so an agent can end a decision hand-off with a
+link; `project info` names the value. A notifications store,
+`devcapsule/notifications.py`: one JSON file per notification under
+`$XDG_STATE_HOME/devcapsule/notifications/`, the checkout's state beside
+the decisions directory, never a record; validation names its field,
+reads are bounded and never follow a link, writes are atomic. The listing
+merges unanswered decisions as the kind `decision` and never copies them.
+A `notifications` group under `project checkout` lists, posts, reads and
+dismisses; inside a capsule it acts on the capsule's own state whatever
+`--path` says, on the host it finds the checkout's persistent home as
+`project info` reports it.
+
+**PR #199 is open against PR7's branch. Its review, PR #200 by the Codex
+and gpt-6-astra pair, was merged after one round.** Eight findings, all
+accepted: the store pins every path component below a resolved base
+without following links, so a link an agent plants in the persistent home
+cannot send a host command into another checkout; temporary files are
+exclusive and 0600; the encoded size is checked before any write; links
+stay on the console's origin, refusing `//` and backslashes; decisions are
+read under their own 1 MiB limit with their metadata and answer envelopes
+validated, invalid ones listed as errors; the modification time comes from
+the descriptor that was read; every filesystem failure is the command's
+refusal; and 60 more tests. The round: the first version of finding 1
+refused a HOME that is a symbolic link, or an override through one, as
+"Not a directory"; the environment-named base is now resolved before
+pinning, with two tests. Gate on the merged branch below.
+
+Judgments recorded for slice 8's runtime half:
+
+- Under `project checkout`, not `project`: the store is keyed by the
+  checkout through the persistent home the launcher mounts, and the
+  workflow's vocabulary makes a checkout one clone with one workstream.
+- `CapsuleAccess.INDEPENDENT` for every leaf: the writes go to capsule
+  state only, so the vocabulary of refusing inside a capsule does not
+  apply, and an agent inside must be able to post.
+- Decisions are merged at listing time, never copied; `read` and
+  `dismiss` refuse a decision and say how it is settled.
+- The token never enters the environment: the origin is enough for a
+  link once the hand-off command adds the token from its file, and the
+  browser's cookie carries it afterwards.
+
+**2026-10-09, slice 7: decision pages (deliverable 5).** The contract is
+`devcapsule-webconsole/DECISIONS.md`: an agent writes `<id>.json` into the
+capsule's decisions directory, `$XDG_STATE_HOME/devcapsule/decisions` by
+default; the console lists and renders it, the human chooses, the console
+writes `<id>.answer.json` beside it, and the agent reads the answer,
+records the outcome in the normal files and deletes both. A decision has
+a title, who asks, a markdown context, and items, each with a summary,
+records cited as paths, two or more options, and single or multiple
+choice. `python -m devcapsule_webconsole.decisions from-table` builds a
+decision from a markdown table, so any agent can produce one; `check`
+validates a document and its answer. The answer route is the console's one
+write: same-origin only, on top of the `SameSite=Strict` cookie, and a
+refusal writes nothing. Run by hand with two intake items as a sample: the
+page rendered, a browser answered it, the answer file holds the choices;
+see [evidence/2026-10-09-decision-sample](evidence/2026-10-09-decision-sample/).
+
+**PR #196 is open against PR6's branch. Its review, PR #197 by the Codex
+and gpt-6-astra pair, was merged without a round.** Eight findings, all
+accepted: the answer's temporary file is created exclusively, so a planted
+symlink cannot redirect the write into a record; decision and answer reads
+open regular files only, never following a link, bounded at 1 MiB; the
+answer route requires exactly one `Origin` equal to the console's and
+checks the 64 KiB limit per chunk; JSON refusals and validation refusals
+are separate, so a refusal names the real fault; `format` must be the
+integer 1, timestamps must be ISO 8601, and a stored answer without one is
+refused rather than given the current time; the table builder keeps empty
+edge cells and requires unique columns and a separator row; the page shows
+the title as a heading, resolves record links from the project root and
+treats an item keyed `constructor` correctly. 56 more tests, including a
+Node run of the page script against the real renderer. Re-checked in a
+browser on the merged branch: the sample decision rendered with its
+heading and record links, a submission wrote the answer file with mode
+0600, safe because the console child runs as the capsule identity, the
+agent's own user; screenshots `decisions-merged-*.png` under
+`evidence/2026-10-09-console-pages/`.
+
+Judgments recorded for slice 7:
+
+- The answer lands under XDG state inside the capsule, never in the
+  project. The first use is project-management's intake pass, and nothing
+  the console writes may become a record by accident.
+- The console never deletes a decision or an answer: discarding is the
+  agent's step after it has recorded the outcome, so the human can submit
+  again until then and the latest answer stands.
+- The contract is one JSON object with a table-shaped item list, and the
+  table builder is part of the package, which is the "small enough to
+  produce from a markdown table" test of the work order.
+- Markdown in a decision renders with the same settings as a record: no
+  raw HTML, no active links from the content.
+
+**2026-10-09, slice 6: records and DOT (deliverable 4).** Any markdown file
+in the project renders in the browser: `index.md` is the front page, a
+record's relative links are rewritten to stay inside the console, a fenced
+`dot` block renders as a Graphviz diagram, and images and other linked
+files are served raw through a new bytes route confined like the text one.
+The renderers are vendored browser builds, `markdown-it` 15.0.2 (the
+website's) and `viz.js` 3.31.0, with their provenance and digests in
+`VENDORED.md` and a test that checks the digests. Run by hand against this
+checkout: the index renders with its 283 links rewritten, and this status
+file renders with its DOT stack diagram drawn.
+
+**PR #194 is open against PR5's branch. Its review, PR #195 by the Codex
+and gpt-6-astra pair, was merged without a round.** Six findings, all
+accepted: the wheel omitted the vendored renderers, so a capsule's
+installed console would have had none, now packaged and tested; raw
+responses carry a sandbox policy and `nosniff`, so an opened SVG cannot
+use the console's origin; Graphviz output is shown as an image, so a DOT
+`URL` attribute cannot become an active link; record links are decoded
+once, query-only links and raw fragments are kept, invalid targets become
+inert; headings have fragment targets; and more coverage of the raw route
+and the bytes reader. Re-checked in a browser on the merged branch: the
+diagram renders as an image, headings carry ids, raw responses carry the
+headers.
+
+Judgments recorded for slice 6:
+
+- Raw HTML inside a record is not rendered (`html: false`): a record is the
+  project's own text, but the console's origin carries the run token in a
+  cookie, and no project file may run as a page in that origin. For the same
+  reason the raw route serves HTML and scripts as plain text.
+- A link to a `.md` file goes to the records page; any other relative link
+  goes to the raw route; absolute URLs, root paths and fragments are left as
+  written. A link that climbs above the project is left as written too, and
+  the server refuses it.
+- The page is one static file for every record path; the script reads the
+  path from the URL. No server-side rendering, no template engine.
+- DOT only, as the owner decided; a block in any other diagram notation is
+  shown as code.
+
+**2026-10-09, slice 5: live processes and resources (deliverable 3).** The
+owner merged #184 and #190, so the first iteration is on `main`, and
+directed the second iteration, deliverables 3, 4 and 5. This slice adds a
+monitor module to the console: psutil for the processes, each with its CPU
+share over a short interval and its resident memory; the cgroup v2 root for
+the capsule's CPU time against its quota or the host's CPUs, its memory
+charge against its limit, and its process count. Two `GET` routes serve the
+readings and a Processes page refreshes them every three seconds, with a
+pause. psutil joins the console's hash-pinned set, so base recipe 11
+rebuilds the console venv; an older base runs the previous console. Run by
+hand against this capsule: the page renders the real readings.
+
+**PR #192 is open against `main`. Its review, PR #193 by the Codex and
+gpt-6-astra pair, was merged without a round.** Eight findings, all
+accepted: psutil's cached process objects shared CPU baselines between
+concurrent requests, now per-request CPU-time deltas with an identity
+check; a reused pid could stand for another process; the host's cgroup
+root could pass as the capsule's; reset counters gave negative rates;
+denied processes vanished instead of showing null CPU; the page's pause
+raced its refresh; the pid meter counts tasks, now labelled so; and a
+recipe 10 base now runs its installed console instead of mounted slice-5
+source it cannot import, with a probe that says why.
+
+Judgments recorded for slice 5:
+
+- CPU use is a rate over a quarter second, measured on the server at each
+  request, against the CPUs the capsule may use: its quota when it has one,
+  the host's count otherwise. Memory is the cgroup's current charge against
+  `memory.max`, unlimited shown as such.
+- Outside a cgroup v2 root the resource reading says it is unavailable,
+  with every figure null; the process list still works. A host-run console
+  therefore shows processes and no meters, and says why.
+- The process list omits a process that ends during the sample and shows
+  one it may not fully read without the fields it could not read.
+- The dependency change bumps the base recipe to 11: the self-hosting
+  source mount cannot add a dependency to the image's venv, so a capsule
+  with the recipe 10 base runs the console without the monitor's module.
 
 **2026-10-09, evening: integration state.** The owner merged #184 to
 `main`, then #186 into `ws-capsule-webconsole/first-slice` and #188 into
@@ -249,8 +563,33 @@ digraph stack {
 
 ## Planned Next Step
 
-The first iteration is delivered: slice 1 is on `main`; slices 2 to 4 are
-in #190 against `main`. On resumption, after the owner's merges or push-backs, the
+1. PR5, #192: deliverable 3.
+2. PR6, #194, on PR5's branch: deliverable 4.
+3. PR7, on PR6's branch: deliverable 5, this branch.
+4. Done: a base rebuild from PR7's revision and the console smoke with the
+   records and decision probes; see Validation below.
+5. Slice 8, directed by the owner on 2026-10-09 after reviewing #196: the
+   decision pages need a hand-off and a home. Three stacked PRs on PR7's
+   branch, each with its Codex review:
+   - PR8, runtime: the launcher passes `DEVCAPSULE_CONSOLE_URL`, the
+     host-side console origin without the token, into the capsule; a
+     `notifications` group under `project checkout` with `list`, `post`,
+     `read` and `dismiss` over a store at
+     `$XDG_STATE_HOME/devcapsule/notifications/`, the checkout's state
+     beside the decisions directory; the listing merges unanswered
+     decisions as the `decision` kind, never copying them.
+   - PR9, console: a bell in the header with the unread count, a dropdown
+     with the top items and a `/notifications` page; read and dismiss
+     through the CLI as further writes into capsule state only; a
+     `decisions` group under `project checkout` that runs the console's
+     installed module, so an agent sees one CLI; `hand-off` prints the
+     numbered text for chat and a closing line with the tokened link,
+     which the cookie then carries for every later request.
+   - PR10, workflow: done on `ws-capsule-webconsole/hand-off-rule`; see
+     Current State.
+6. Deliverable 6, materialized views, in a third iteration.
+
+The first iteration is on `main`: #184 and #190, merged 2026-10-09. On resumption, after the owner's merges or push-backs, the
 next iteration is deliverables 3 and 4 in the order this workstream
 chooses, then 5, then 6.
 
@@ -267,6 +606,84 @@ then 5, then 6.
 
 ## Validation And External State
 
+- Slice 5 console session: strict mypy on 7 files, 100 tests. Build gate on
+  PR5's branch, 2026-10-09: 1,329 unit cases, 17 packaged integrations,
+  type check, smokes, documentation contract, then the console session;
+  successful. Manual run against this capsule: the Processes page renders
+  the real readings; screenshot under `evidence/2026-10-09-console-pages/`.
+- Slice 6 console session: strict mypy on 7 files, 138 tests. Build gate on
+  PR6's branch, 2026-10-09: 1,333 unit cases, 17 packaged integrations, type
+  check, smokes, documentation contract, then the console session;
+  successful. Manual run against this checkout: records index
+  and this status file rendered in a browser, DOT drawn; screenshots under
+  `evidence/2026-10-09-console-pages/`.
+- Slice 7 console session: strict mypy on 8 files, 182 tests. Build gate on
+  PR7's branch, 2026-10-09: 1,333 unit cases, 17 packaged integrations, type
+  check, smokes, documentation contract, then the console session;
+  successful. Manual run: a sample decision built from a table,
+  served, answered in a browser, written back; evidence under
+  `evidence/2026-10-09-decision-sample/`.
+- PR11 on its first base, `main`, 2026-10-10: 1,329 unit cases, 17 packaged
+  integrations, type check, smokes, documentation contract, then the
+  console session with 89 tests; successful, with 2.2 MB of pytest
+  scratch. Rebased onto PR10's branch.
+- PR11 with the build-tool cache pins at `5cdf216`, 2026-10-10, a plain
+  `nox -s build` writing to `/tmp` as the owner runs it: 1,477 unit cases,
+  17 packaged integrations, type check, smokes, documentation contract,
+  then the console session with 290 tests; successful in 2 minutes, with
+  175 MB left under `/tmp/pytest-of-<user>`.
+- Build gate on the merged PR11 branch at `12e9e33`, 2026-10-10: 1,477 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
+- PR11 on the stacked branch at `135ecbb`, 2026-10-10: 1,474 unit cases, 17
+  packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful, with 7.6 MB of pytest scratch.
+- Build gate on the merged PR10 branch at `405e884`, 2026-10-09: 1,474 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful. `check` on the regenerated decision document: 38 items,
+  unanswered.
+- Slice 8 workflow half, PR10 branch, 2026-10-09: 1,454 unit cases, 17
+  packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful. `check` on the real decision document: 38 items, unanswered.
+- Build gate on the merged PR9 branch at `db7d85d`, 2026-10-09: 1,449 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 290 tests;
+  successful.
+- Slice 8 console half, PR9 branch, 2026-10-09: console session with strict
+  mypy on 8 files and 248 tests; build gate: 1,449 unit cases, 17 packaged integrations, type check of package and tests, smokes, documentation contract, then the console session; successful.
+- Build gate on the merged PR8 branch at `e97aaeb`, 2026-10-09: 1,449 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 238 tests;
+  successful.
+- Slice 8 runtime half, PR8 branch, 2026-10-09: 1,362 unit cases, 17 packaged integrations, type check of package and tests, smokes, documentation contract, then the console session with 238 tests; successful.
+- Console smoke on the base built from `ec7c1b7` with PR8's PEX: passed with the display and headless; inside the capsule `DEVCAPSULE_CONSOLE_URL` is the console's host-side origin without the token. See the `pr8-*` files under `evidence/2026-10-09-console-smoke/`.
+- Build gate on the merged PR7 branch at `06d4943`, 2026-10-09: 1,333 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 238 tests;
+  successful.
+- Base recipe 11 rebuilt from PR7's revision `ec7c1b7`, 2026-10-09: the
+  built-base test passed; the console smoke, now probing the records page,
+  the raw route, the packaged renderer and the decisions listing, passed
+  with the display and headless; and inside the capsule with the display a
+  decision written to the default directory was listed, answered through
+  the `POST` route and read back as the answer file. See the `decisions-*`
+  files under `evidence/2026-10-09-console-smoke/`.
+- Build gate on the merged PR6 branch at `615bb86`, 2026-10-09: 1,333 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 156 tests;
+  successful.
+- Build gate on the merged PR5 branch at `a427a09`, 2026-10-09: 1,333 unit
+  cases, 17 packaged integrations, type check of package and tests, smokes,
+  documentation contract, then the console session with 117 tests;
+  successful.
+- Base recipe 11 built locally from the public PEX of `9ac19b8`: the built-base
+  test passed with psutil importable offline; the console smoke, now probing
+  the monitor routes, passed with the display and headless. See the `r11-*`
+  files under `evidence/2026-10-09-console-smoke/`.
 - Slice 1 unit modules: 468 passed with `PYTEST_ADDOPTS` scratch under
   `/opt/devcapsule-gate/pytest`; `/tmp` overflowed at 2 GB first.
 - `mypy devcapsule`: no issues in 112 files.
@@ -346,6 +763,31 @@ then 5, then 6.
   a hash-pinned venv at image build is the plan, like Playwright's.
 - The work order on `main` lacks deliverable 6; the amended text is on
   `project-management`'s branch. The mail item carries its substance.
+- Mailed to `project-management` on 2026-10-10, at the owner's request:
+  `2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md`,
+  a decision to take and record on the project's testing tiers, what gates
+  a pull request and a merge, the gate's time and scratch budget, and the
+  hermeticity rule, against the practice the owner summarized; the
+  evidence is this workstream's PR11.
+- Windows path length, raised by the owner on 2026-10-10: the retained
+  artifact path `<state>/devcapsule/version-sets/<64 hex>/artifacts/sha256/<64
+  hex>` runs to about 150 characters before the profile prefix, and NTFS
+  still enforces 260 without the long-path opt-in. Not this workstream's
+  layout; to be mailed to the workstream that owns version sets once the
+  owner names it.
+- The hand-off rule, topic 8.8, is in this repository's `WORKFLOW.md` only.
+  The shipped definition under `devcapsule-src/devcapsule/assets/` has
+  another layout and belongs to workflow-improvements; it takes the same
+  text at that workstream's next sync so adopters get it with 0.3.0.
+- Notifications are local for now, by the owner's decision of 2026-10-09: a
+  mechanism between the human and the DevCapsule environment of one
+  checkout, stored in that checkout's state home. Project-wide
+  notifications are a realistic future use the owner named, a coordinator
+  telling every collaborator "submit your PRs by Friday", and they create
+  a dilemma for the store and the command's name that slice 8 does not
+  resolve. When they come, they are a second source merged into the same
+  listing, carried by the coordination branch or another shared channel,
+  and the local store stays what it is.
 - Deliberately not preserved: the exploration of adopting Glances, Netdata,
   Cockpit or a Docker dashboard as the framework; the reasons are summarized
   in decision 3 above.
