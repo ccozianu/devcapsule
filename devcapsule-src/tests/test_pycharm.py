@@ -1675,6 +1675,7 @@ def test_every_launch_gets_a_session_log_directory_bound_into_the_capsule(
 
 def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_old_sessions(tmp_path: Path) -> None:
     import json
+    import logging
 
     from devcapsule import logs
     from devcapsule.launch.pycharm._launcher import begin_session_logs
@@ -1688,6 +1689,9 @@ def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_
         (old / "devcapsule-pycharm.log").write_bytes(b"x" * (6 * 1024 * 1024))
     try:
         begin_session_logs(config, env)
+        handler = next(h for h in logging.getLogger().handlers if isinstance(h, logs._SessionFileHandler))
+        assert handler._file is not None and handler._file.path == directory / "devcapsule-launcher.log"
+        assert (handler._file._segment, handler._file._rotations) == (1024 * 1024, 4)
         manifest = json.loads((directory / "session.json").read_text(encoding="utf-8"))
         assert manifest["session"] == config.session_id
         assert manifest["container"] == config.name and manifest["image"] == config.image
