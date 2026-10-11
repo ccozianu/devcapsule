@@ -85,8 +85,9 @@ at WARNING.
 ## How much disk this takes
 
 `logrotate` runs inside the capsule, over the session directory, as one of
-the supervisor's own processes: every 30 seconds, from the session's start to
-its end. Its complaints, if any, are in `devcapsule-logrotate.log`. The
+the supervisor's own processes, waiting 30 seconds before each run. Shutdown
+stops the loop without a final rotation attempt. Its complaints, if any,
+are in `devcapsule-logrotate.log`. The
 rules it applies are in `logrotate.conf` beside the logs:
 
 - Each file rotates when it exceeds its segment, 8 MiB by default. Four

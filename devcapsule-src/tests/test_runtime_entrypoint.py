@@ -427,7 +427,7 @@ def test_entrypoint_rotates_with_a_supervised_logrotate_child_when_the_base_has_
         monkeypatch.setattr(entrypoint.shutil, "which", lambda name: f"/usr/sbin/{name}")
         assert run(RuntimePlan.from_mapping(document)) == 42
         supervisor = captured_supervisor.instances[-1]
-        # The rotation child comes first, so it is stopped last, after every writer.
+        # The rotation child comes first, so it receives SIGTERM after every writer.
         assert [child.name for child in supervisor.children] == ["logrotate", "jetbrains"]
         rotation = supervisor.children[0]
         assert not rotation.foreground and rotation.ready is None
@@ -453,3 +453,21 @@ def test_entrypoint_rotates_with_a_supervised_logrotate_child_when_the_base_has_
         assert not (tmp_path / "plain" / "logrotate.conf").exists()
     finally:
         logs.reset()
+
+
+def test_rotation_wraps_the_whole_shell_loop_in_the_capsule_identity_when_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from devcapsule import logs
+    from devcapsule.container_runtime.entrypoint import log_rotation
+
+    (tmp_path / "logs").mkdir()
+    document = runtime_document(tmp_path)
+    document["logs"] = {"directory": str(tmp_path / "logs"), "segment_bytes": 2048, "rotations": 3}
+    plan = RuntimePlan.from_mapping(document)
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
+    monkeypatch.setattr(logs, "own", lambda *_args: None)
+    monkeypatch.setattr("devcapsule.container_runtime.entrypoint.shutil.which", lambda _name: "/usr/sbin/logrotate")
+    children, budget = log_rotation(plan, lambda command: foreground_command(command, plan.identity))
+    assert children[0].command == ("gosu", "1000:1001", *logs.logrotate_loop_command(tmp_path / "logs"))
+    assert budget is None

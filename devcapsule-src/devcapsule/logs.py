@@ -434,10 +434,11 @@ def logrotate_loop_command(
 ) -> tuple[str, ...]:
     """The rotation as a supervised child: sleep the interval, run logrotate, repeat.
 
-    The supervisor owns it like the display's children: started first,
-    stopped last, its exit attributed, its output teed into
-    ``devcapsule-logrotate.log``. A failed run is logrotate's complaint on
-    stderr, kept in that file; the loop goes on. A thread of the
+    The supervisor starts it first and sends it SIGTERM last, without
+    waiting for the other children to finish. There is no final rotation.
+    Its exit is attributed and its output teed into ``devcapsule-logrotate.log``.
+    Each run's stdout and stderr are kept, but its exit status is discarded
+    so the loop retries; a silent failure adds no diagnostic. A thread of the
     supervisor's own would sit outside its signal mask and its reaping; a
     child sits inside both.
     """
