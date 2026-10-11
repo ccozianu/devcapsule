@@ -50,8 +50,7 @@ accepted.**
   coordinates with that work, as the assignment asks.
 - This capsule's base has no web console tools, so decisions reach the
   owner as numbered chat text under topic 8.8.
-- The gate on the merged tree is recorded under *Validation And External
-  State* when it completes.
+- The gate on the merged tree passed; see *Validation And External State*.
 
 **2026-10-08: PR #172 reviewed at `4be56a7`; fixes are in
 [PR #174](https://github.com/ccozianu/devcapsule/pull/174), from
@@ -561,6 +560,15 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate on the merged tree (2026-10-11, commit `e7e441f` plus records): full
+`nox -s build` passed with exit 0, scratch on the overlay. Type check clean
+over 211 source files; 1498 unit tests passed, 35 deselected, one xfail,
+one xpass; packaging integration 17 passed; PEX built and smoked; the
+documentation contract rendered 184 pages; the web console session passed
+with mypy clean over 8 files and 290 tests. Log
+`/opt/devcapsule-gate/2026-10-11-merged-main-build.log`. No Docker or IDE
+acceptance was run; nothing in the merge needs one.
 
 2026-09-27 resumption: SSH refs, waiting mail and the current main disposition
 were rechecked; no candidate tag exists. Record-only acknowledgement changes
