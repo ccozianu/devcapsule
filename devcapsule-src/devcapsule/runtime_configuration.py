@@ -16,7 +16,7 @@ import shlex
 from typing import Any, Mapping, Sequence
 
 from devcapsule.configuration.file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, render_toml, selected_version_lock
-from devcapsule.configuration.storage import ResolvedProject, discover_project, load_toml, manifest_for, recommendation_lock_for
+from devcapsule.configuration.storage import ResolvedProject, checkout_name_for, checkout_record_name, discover_project, load_toml, manifest_for, recommendation_lock_for
 
 
 CONTEXT_PATH = Path("/etc/devcapsule/launch-context.json")
@@ -65,12 +65,17 @@ class LaunchConfiguration:
     def capture(cls, selected: ResolvedProject, identity: str) -> LaunchConfiguration:
         from devcapsule.project_information import configured_information
 
+        checkout_name = checkout_name_for(selected.manifest, selected.checkout_path)
         return cls(selected.checkout_path.parent, {
             "format": 1, "project": deepcopy(selected.manifest["project"]),
             "launcher-root": str(selected.root),
             "runtime-root": selected.resolution["runtime"]["project-mount"],
             "checkout-file": selected.checkout_path.name,
-            "info": configured_information(selected.root, selected.manifest, selected.lock, selected.checkout),
+            # The mount hides whether this file came from the named directory.
+            "checkout-name": checkout_name,
+            "info": configured_information(
+                selected.root, selected.manifest, selected.lock, selected.checkout,
+                checkout_name=checkout_name),
             "running": {"identity": identity, "lock": deepcopy(selected.lock),
                         "origin": "local selection" if selected_version_lock(selected.checkout) else "project recommendation",
                         "base": deepcopy(selected.checkout.get("authorization", {}).get("base-image", {}))},
@@ -88,6 +93,18 @@ class RuntimeConfiguration:
     @property
     def checkout_path(self) -> Path:
         return CONFIGURATION_PATH / self.document["checkout-file"]
+
+    @property
+    def checkout_name(self) -> str:
+        """Use the launch context's name, or infer it from the mounted filename.
+
+        Older contexts lack ``checkout-name``. Strip ``.checkout.toml`` from
+        their filename, except that ``devcapsule.checkout.toml`` means
+        ``default``. The mount hides whether that file was a named checkout
+        called ``devcapsule``, so the fallback cannot distinguish the two.
+        """
+        name = self.document.get("checkout-name")
+        return name if isinstance(name, str) else checkout_record_name(self.checkout_path)
 
     def launcher_command(self, arguments: Sequence[str]) -> str:
         return shlex.join(["devcapsule", "project", "--path", self.document["launcher-root"], *arguments])
@@ -112,9 +129,33 @@ class RuntimeConfiguration:
         from .configuration.capability_selection import selected_lock
         return manifest, selected_lock(manifest, lock, checkout), checkout
 
-    def configuration_report(self) -> str:
+    def _recorded_checkout(self) -> dict[str, Any]:
+        """The mounted checkout record for the next launch, without the
+        version-set selection, which ``versions show`` reports."""
         _, _, checkout = self.current()
-        shown = {key: value for key, value in checkout.items() if key != "version-set"}
+        return {key: value for key, value in checkout.items() if key != "version-set"}
+
+    def configuration_document(self) -> dict[str, Any]:
+        """The ``config list --json`` document inside a capsule: schema
+        version 1, the same facts as ``configuration_report`` prints.
+
+        The record's host paths and permissions are the launcher's recorded
+        choices, not observations of this session; ``rows`` are absent because
+        the launcher's table is computed against the host, not here.
+        """
+        return {
+            "schema-version": 1,
+            "context": "running capsule (next launch, read-only)",
+            "project": {key: self.document["project"][key] for key in ("creator", "slug")},
+            "checkout": {"name": self.checkout_name,
+                         "launcher-path": self.document["launcher-root"],
+                         "runtime-path": self.document["runtime-root"],
+                         "record": self._recorded_checkout()},
+            "launcher-command": self.launcher_command(["config", "list"]),
+        }
+
+    def configuration_report(self) -> str:
+        shown = self._recorded_checkout()
         return ("Runtime context: read-only launcher configuration for the next launch.\n"
                 "Host paths and permissions below are recorded choices, not observations of this running session.\n"
                 "Use 'devcapsule project versions show' for running and next-launch software.\n\n"
@@ -171,6 +212,10 @@ def for_project(start: Path, *, fallback: bool = False) -> RuntimeConfiguration 
         name = document.get("checkout-file")
         if not isinstance(name, str) or Path(name).name != name or not name.endswith(".checkout.toml"):
             raise ValueError("invalid checkout record name")
+        if "checkout-name" in document:
+            checkout_name = document["checkout-name"]
+            if not isinstance(checkout_name, str) or not checkout_name or "/" in checkout_name or "\\" in checkout_name:
+                raise ValueError("invalid checkout name")
         project, running = document["project"], document["running"]
         if not isinstance(project, dict) or not all(isinstance(project.get(key), str) for key in ("creator", "slug")):
             raise ValueError("missing project identity")

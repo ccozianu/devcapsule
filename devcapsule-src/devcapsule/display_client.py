@@ -1,10 +1,11 @@
-"""Host side of the contained display: the port, the token, the URL, the browser.
+"""Host side of the contained display and the web console: ports, tokens, URLs.
 
-The capsule's noVNC bridge (see ``container_runtime/display.py``) is reached
-from the host through one loopback port carrying one per-run token. This
-module allocates that port, shapes the URL a browser (or a person) needs, and
-opens it once the bridge accepts connections. Nothing here touches the host's
-own X session.
+The capsule's noVNC bridge (see ``container_runtime/display.py``) and its web
+console (see ``container_runtime/console.py``) are each reached from the host
+through one loopback port carrying one per-run token. This module allocates
+those ports, shapes the URLs a browser (or a person) needs, and opens one
+once its listener accepts connections. Nothing here touches the host's own X
+session.
 """
 
 from __future__ import annotations
@@ -25,11 +26,15 @@ from devcapsule.host_daemon import in_container
 from devcapsule.images.metadata import CONTAINED_DISPLAY_LABEL_VALUE, DISPLAY_LABEL
 from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenError, open_host_url
 
-# Where the launcher bind-mounts the per-run token inside the capsule and
-# where the bridge listens inside the container when Docker publishes it.
+# Where the launcher bind-mounts each per-run token inside the capsule and
+# where each listener binds inside the container when Docker publishes it.
 DISPLAY_TOKEN_DESTINATION = "/run/devcapsule-display-token"
 CONTAINER_DISPLAY_PORT = 6080
+CONSOLE_TOKEN_DESTINATION = "/run/devcapsule-console-token"
+CONTAINER_CONSOLE_PORT = 6081
 DISPLAY_TOKEN_BYTES = 24
+DISPLAY_LABEL_TEXT = "Contained display"
+CONSOLE_LABEL_TEXT = "Web console"
 DEFAULT_READY_TIMEOUT_SECONDS = 180.0
 _READY_POLL_SECONDS = 0.25
 
@@ -81,8 +86,12 @@ def select_display_transport(image_labels: Mapping[str, str], *, host_x11_answer
     )
 
 
-def new_display_token() -> str:
+def new_run_token() -> str:
+    """A per-run token: hexadecimal, so a query string, a header and a cookie carry it as is."""
     return secrets.token_hex(DISPLAY_TOKEN_BYTES)
+
+
+new_display_token = new_run_token
 
 
 def allocate_loopback_port() -> int:
@@ -107,6 +116,12 @@ def display_url(port: int, token: str) -> str:
     return f"http://127.0.0.1:{port}/vnc.html?autoconnect=1&resize=remote&path={path}"
 
 
+def console_url(port: int, token: str) -> str:
+    """The console's home page; the token travels once in the query and then in a cookie."""
+
+    return f"http://127.0.0.1:{port}/?token={quote(token, safe='')}"
+
+
 def accepts_connections(port: int, timeout: float = 0.5) -> bool:
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=timeout):
@@ -115,8 +130,11 @@ def accepts_connections(port: int, timeout: float = 0.5) -> bool:
         return False
 
 
-def default_opener(env: Mapping[str, str] | None = None) -> Opener:
-    """How this host opens a URL: its browser, or the host-open bridge from a capsule."""
+def default_opener(env: Mapping[str, str] | None = None, *, label: str = DISPLAY_LABEL_TEXT) -> Opener:
+    """How this host opens a URL: its browser, or the host-open bridge from a capsule.
+
+    ``label`` names what is being opened in the messages: the display or the console.
+    """
 
     environment = os.environ if env is None else env
     if in_container():
@@ -124,24 +142,32 @@ def default_opener(env: Mapping[str, str] | None = None) -> Opener:
         # the physical host is the only way out, and printing is the fallback.
         bridge = environment.get(HOST_OPEN_SOCKET_ENV)
         if not bridge:
-            return _print_only
+            return print_only_opener(label)
 
         def open_through_bridge(url: str) -> None:
             open_host_url(url, environ=environment)
-            print("Contained display is ready; opened through the host-browser bridge.", file=sys.stderr, flush=True)
+            print(f"{label} is ready; opened through the host-browser bridge.", file=sys.stderr, flush=True)
 
         return open_through_bridge
 
     def open_in_browser(url: str) -> None:
         if not webbrowser.open(url, new=2):
             raise HostOpenError("no browser could be started")
-        print("Contained display is ready; opened in your browser.", file=sys.stderr, flush=True)
+        print(f"{label} is ready; opened in your browser.", file=sys.stderr, flush=True)
 
     return open_in_browser
 
 
-def _print_only(url: str) -> None:
-    print(f"Contained display is ready; open it in a browser: {url}", file=sys.stderr, flush=True)
+def print_only_opener(label: str = DISPLAY_LABEL_TEXT) -> Opener:
+    """An opener that only announces the URL, for a second page the browser need not open itself."""
+
+    def announce(url: str) -> None:
+        print(f"{label} is ready; open it in a browser: {url}", file=sys.stderr, flush=True)
+
+    return announce
+
+
+_print_only = print_only_opener()
 
 
 def watch_display_ready(
@@ -151,11 +177,13 @@ def watch_display_ready(
     stop: Event,
     *,
     timeout: float = DEFAULT_READY_TIMEOUT_SECONDS,
+    label: str = DISPLAY_LABEL_TEXT,
 ) -> Thread:
     """Open ``url`` on a daemon thread once ``port`` answers; give up on ``stop``.
 
     The launcher keeps ``docker run`` in the foreground, so readiness is
-    watched beside it rather than after it.
+    watched beside it rather than after it. ``label`` names the page in the
+    messages: the display or the console.
     """
 
     def watch() -> None:
@@ -166,7 +194,7 @@ def watch_display_ready(
                     opener(url)
                 except HostOpenError as error:
                     print(
-                        f"Contained display is ready but could not be opened ({error}); "
+                        f"{label} is ready but could not be opened ({error}); "
                         f"open it yourself: {url}",
                         file=sys.stderr,
                         flush=True,
@@ -174,7 +202,7 @@ def watch_display_ready(
                 return
             if time.monotonic() >= deadline:
                 print(
-                    f"Contained display did not answer on port {port} within {timeout:g}s; "
+                    f"{label} did not answer on port {port} within {timeout:g}s; "
                     f"if the capsule is still starting, open it yourself: {url}",
                     file=sys.stderr,
                     flush=True,
@@ -182,6 +210,6 @@ def watch_display_ready(
                 return
             stop.wait(_READY_POLL_SECONDS)
 
-    thread = Thread(target=watch, name="devcapsule-display-ready", daemon=True)
+    thread = Thread(target=watch, name=f"devcapsule-ready-{label.lower().replace(' ', '-')}", daemon=True)
     thread.start()
     return thread

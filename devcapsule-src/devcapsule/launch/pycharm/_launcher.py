@@ -24,16 +24,22 @@ from ...container_runtime.contract import (
     CONTAINED_DISPLAY_TRANSPORT,
     DISPLAY_TRANSPORTS,
     HOST_X11_DISPLAY_TRANSPORT,
+    ConsolePlan,
     DisplayPlan,
     RuntimePlan,
 )
 from ...display_client import (
+    CONSOLE_LABEL_TEXT,
+    CONSOLE_TOKEN_DESTINATION,
+    CONTAINER_CONSOLE_PORT,
     CONTAINER_DISPLAY_PORT,
     DISPLAY_TOKEN_DESTINATION,
     allocate_loopback_port,
+    console_url,
     default_opener,
     display_url,
-    new_display_token,
+    new_run_token,
+    print_only_opener,
     watch_display_ready,
 )
 from ...host_daemon import (
@@ -97,6 +103,7 @@ class TempRuntimeFiles:
     token_file: Path | None = None
     runtime_plan_file: Path | None = None
     display_token_file: Path | None = None
+    console_token_file: Path | None = None
     launch_context_file: Path | None = None
 
 
@@ -163,6 +170,7 @@ class PycharmRunOptions:
     display_transport: str = HOST_X11_DISPLAY_TRANSPORT
     # Test seam: how the contained display's URL is opened once ready.
     open_display_url: Callable[[str], None] | None = None
+    open_console_url: Callable[[str], None] | None = None
 
 
 @dataclass
@@ -208,6 +216,12 @@ class PycharmRunConfig:
     display_host_port: int | None = None
     display_token: str = ""
     open_display_url: Callable[[str], None] | None = None
+    # The web console, whenever the runtime runs: the host loopback port
+    # Docker publishes (or the console listens on directly under host
+    # networking) and its per-run token. None without a runtime plan.
+    console_host_port: int | None = None
+    console_token: str = ""
+    open_console_url: Callable[[str], None] | None = None
     interactive_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_environment: tuple[tuple[str, str], ...] = ()
@@ -267,6 +281,24 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                         config.open_display_url or default_opener(runtime_env),
                         stop_watching,
                     )
+                if config.console_host_port is not None:
+                    console = console_url(config.console_host_port, config.console_token)
+                    print(
+                        f"Web console: {console}\n"
+                        "  (the capsule as a page; the link works for this run only)",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    # One page opens by itself: the desktop when there is one,
+                    # else the console. The other is announced, not opened.
+                    opener = config.open_console_url or (
+                        print_only_opener(CONSOLE_LABEL_TEXT)
+                        if config.display_transport == CONTAINED_DISPLAY_TRANSPORT
+                        else default_opener(runtime_env, label=CONSOLE_LABEL_TEXT)
+                    )
+                    watch_display_ready(
+                        config.console_host_port, console, opener, stop_watching, label=CONSOLE_LABEL_TEXT,
+                    )
                 try:
                     completed = subprocess.run(command, check=False, env=runtime_env)
                 finally:
@@ -294,7 +326,8 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
         ("User identity", files.passwd_file), ("Group identity", files.group_file),
         ("Shadow file", files.shadow_file), ("Sudo policy", files.sudoers_file),
         ("Git token file", files.token_file), ("Runtime plan", files.runtime_plan_file),
-        ("Display token", files.display_token_file), ("Launch context", files.launch_context_file),
+        ("Display token", files.display_token_file), ("Console token", files.console_token_file),
+        ("Launch context", files.launch_context_file),
     ):
         if path is not None:
             comments.append(f"Temporary {label}: {path}")
@@ -302,6 +335,8 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
         comments.append("Host-browser socket requires a live broker; a broker owned by this invocation stops on return.")
     if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
         comments.append("Contained display needs its temporary token file; the chosen host port is not reserved for later use.")
+    if config.console_host_port is not None:
+        comments.append("The web console needs its temporary token file; the chosen host port is not reserved for later use.")
     if config.secret_environment:
         comments.append("Required environment variables (values omitted): " + ", ".join(config.secret_environment))
     comments.append("No successful-use history was recorded. Manual execution and any edits are your responsibility.")
@@ -629,10 +664,12 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         )
     display_host_port: int | None = None
     display_token = ""
+    console_host_port: int | None = None
+    console_token = ""
     if selected_runtime_plan is not None:
         if contained_display:
             display_host_port = allocate_loopback_port()
-            display_token = new_display_token()
+            display_token = new_run_token()
             # Under host networking the bridge is on the host's loopback
             # directly; otherwise it listens on the container's interfaces
             # and Docker publishes it to host loopback (T4 of the design note).
@@ -643,6 +680,23 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             )
         else:
             selected_runtime_plan = selected_runtime_plan.with_display(DisplayPlan.host_x11())
+        # The web console runs whenever the runtime runs, with or without a
+        # display, reached like the display: one loopback port, one token.
+        # Allocation releases its socket. The OS can return the display's
+        # port again before either listener starts.
+        for _ in range(10):
+            console_host_port = allocate_loopback_port()
+            if console_host_port != display_host_port:
+                break
+        else:
+            raise PycharmRunError("Could not allocate distinct display and web console ports; retry the launch.")
+        console_token = new_run_token()
+        console_listen = "127.0.0.1" if options.network_mode == "host" else "0.0.0.0"
+        console_port = console_host_port if options.network_mode == "host" else CONTAINER_CONSOLE_PORT
+        selected_runtime_plan = selected_runtime_plan.with_console(ConsolePlan(
+            console_listen, console_port, CONSOLE_TOKEN_DESTINATION,
+            source_path=console_development_source(project, runtime_plan.project_mount),
+        ))
     fixed_environment = selected_runtime_plan.component_environment() if selected_runtime_plan else {}
     if host_browser_socket is not None and (
         "BROWSER" in fixed_environment or HOST_OPEN_SOCKET_ENV in fixed_environment
@@ -720,6 +774,9 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         display_host_port=display_host_port,
         display_token=display_token,
         open_display_url=options.open_display_url,
+        console_host_port=console_host_port,
+        console_token=console_token,
+        open_console_url=options.open_console_url,
         interactive_state_mounts=tuple(interactive_state_mounts),
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),
@@ -890,6 +947,7 @@ def build_docker_args(
         f"type=bind,src={config.persistent_home},dst=/home/devcapsule",
         *_surface_state_mount_args(config),
         *_display_mount_args(config, files),
+        *_console_mount_args(config, files),
         "--mount",
         f"type=bind,src={files.passwd_file},dst=/etc/passwd,ro",
         "--mount",
@@ -1029,6 +1087,18 @@ def _display_environment_args(config: PycharmRunConfig) -> list[str]:
         "--env",
         "_JAVA_AWT_WM_NONREPARENTING=1",
     ]
+
+
+def _console_mount_args(config: PycharmRunConfig, files: TempRuntimeFiles) -> list[str]:
+    """The console's token mount and, off host networking, its published port."""
+    if config.console_host_port is None:
+        return []
+    if files.console_token_file is None:
+        raise PycharmRunError("The web console requires a generated token file.")
+    args = ["--mount", f"type=bind,src={files.console_token_file},dst={CONSOLE_TOKEN_DESTINATION},ro"]
+    if config.network_mode != "host":
+        args.extend(["--publish", f"127.0.0.1:{config.console_host_port}:{CONTAINER_CONSOLE_PORT}"])
+    return args
 
 
 def _display_mount_args(config: PycharmRunConfig, files: TempRuntimeFiles) -> list[str]:
@@ -1213,6 +1283,10 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
             files.display_token_file.chmod(0o600)
         else:
             write_xauthority(files.xauth_file, env)
+        if config.console_host_port is not None:
+            files.console_token_file = make_temp(runtime_parent, "devcapsule-console-token.")
+            files.console_token_file.write_text(config.console_token + "\n", encoding="utf-8")
+            files.console_token_file.chmod(0o600)
         write_user_files(config, files)
         if config.enable_sudo:
             files.sudoers_directory = Path(
@@ -1408,6 +1482,7 @@ def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
         files.token_file,
         files.runtime_plan_file,
         files.display_token_file,
+        files.console_token_file,
         files.launch_context_file,
     ]:
         if path:
@@ -1568,7 +1643,7 @@ Embedded browser security:
 Host browser integration:
   Enabled through a URL-only HTTP(S) broker. Any process running as the
   capsule user can ask the physical host to navigate its default browser."""
-    host_browser_disclosure += display_disclosure(config)
+    host_browser_disclosure += display_disclosure(config) + console_disclosure(config)
     if config.interactive_state_mounts:
         component_id = (
             config.runtime_plan.component.id if config.runtime_plan is not None else "surface"
@@ -1604,6 +1679,37 @@ Renderer security:
   Container project path: {config.project_mount}{browser_disclosure}{host_browser_disclosure}""",
         file=sys.stderr,
     )
+
+
+def console_disclosure(config: PycharmRunConfig) -> str:
+    """The run's web console, stated the way the run manifest records it."""
+
+    if config.console_host_port is None:
+        return ""
+    where = (
+        f"host loopback port {config.console_host_port} (host networking)"
+        if config.network_mode == "host"
+        else f"container port {CONTAINER_CONSOLE_PORT}, published to host loopback port {config.console_host_port}"
+    )
+    return f"""
+
+Web console:
+  The capsule serves its configuration, versions and project information as
+  pages on {where}, behind this run's token. It is read-only."""
+
+
+def console_development_source(project: Path, project_mount: str) -> str:
+    """The mounted path of the checkout's own console source, or empty.
+
+    The self-hosting exception: a DevCapsule checkout that carries the console
+    subproject runs that source instead of the base's installed copy, so an
+    edit shows on the next run without a base release. Any other project
+    returns empty and the base's console runs.
+    """
+
+    if (project / "devcapsule-webconsole" / "devcapsule_webconsole" / "__init__.py").is_file():
+        return f"{project_mount}/devcapsule-webconsole"
+    return ""
 
 
 def display_disclosure(config: PycharmRunConfig) -> str:

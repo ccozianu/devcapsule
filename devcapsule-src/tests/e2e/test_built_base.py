@@ -17,7 +17,8 @@ def test_release_built_base_has_tools_and_no_embedded_runtime() -> None:
     labels = inspection["Config"]["Labels"]
     assert labels["devcapsule.image.kind"] == "base"
     assert labels["devcapsule.base.recipe"] == "ubuntu-24.04"
-    assert labels["devcapsule.base.recipe-version"] == "9"
+    assert labels["devcapsule.base.recipe-version"] == "10"
+    assert labels["devcapsule.base.webconsole"] == "/opt/devcapsule-webconsole"
     assert labels["devcapsule.base.display"] == "contained"
     assert labels["devcapsule.base.runtime"] == "launcher-supplied"
     assert labels["devcapsule.source.revision"] == os.environ["DEVCAPSULE_EXPECTED_BASE_SOURCE"]
@@ -47,10 +48,14 @@ websockify --help >/dev/null
 openbox --version | head -1
 tint2 --version 2>&1 | head -1
 test -r /usr/share/novnc/vnc.html
+# Recipe 10: the web console in its own hash-pinned venv, importable offline.
+/opt/devcapsule-webconsole/venv/bin/python -c "import devcapsule_webconsole, fastapi, uvicorn; print('webconsole', devcapsule_webconsole.__version__)"
+/opt/devcapsule-webconsole/venv/bin/python -m devcapsule_webconsole --help >/dev/null
 """
     result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", "/bin/sh",
                              image, "-c", script], capture_output=True, text=True, check=True)
     assert "v22.23.1" in result.stdout
+    assert "webconsole 0.1.0" in result.stdout
     assert labels["devcapsule.component.temurin.version"] in result.stdout
     assert "Apache Maven " + labels["devcapsule.component.maven.version"] in result.stdout
     print(result.stdout)

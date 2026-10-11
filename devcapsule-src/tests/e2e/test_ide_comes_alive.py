@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, command, desktop_page_answers, ide_session, launched_ide, stop_session, wait_for_ide_window
+from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, command, desktop_page_answers, ide_session, launched_ide, stop_session, wait_for_console_url, wait_for_ide_window
 
 EVIDENCE_ROOT = Path(__file__).resolve().parents[2] / "dist" / "e2e-evidence" / "ide-smoke"
 
@@ -50,6 +50,12 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
         assert desktop_page_answers(session.desktop_url) == 200, session.desktop_url
         # 2. The IDE owns a top-level window on the capsule's own display.
         window = wait_for_ide_window(session)
+        # 2b. The web console answers beside the desktop, and only with the token.
+        assert session.launcher is not None
+        console_url = wait_for_console_url(session.launcher, session.launcher_log)
+        console_answers = desktop_page_answers(console_url)
+        assert console_answers == 200, console_url
+        assert desktop_page_answers(console_url.split("?", 1)[0]) == 403, "the console admitted a tokenless request"
         # 3. Optional pixel evidence: the desktop renders more than a bare desktop.
         pixels = capture_desktop(session, evidence)
         if os.environ.get("DEVCAPSULE_SMOKE_DISPLAY") == "1":
@@ -62,6 +68,8 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
             "needs": list(surface.needs),
             "container": session.container,
             "desktop_url_port": session.desktop_url.split(":")[2].split("/")[0],
+            "console_url_port": console_url.split(":")[2].split("/")[0],
+            "console_answers": console_answers,
             "ide_window": window,
             "pixels": pixels if pixels is not None else "not captured: Playwright and its browser are optional",
         }

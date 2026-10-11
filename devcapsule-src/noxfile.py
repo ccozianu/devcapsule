@@ -22,6 +22,7 @@ PUBLIC_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
 PUBLIC_PEX_REPOSITORY_ENV = "DEVCAPSULE_PUBLIC_PEX_SOURCE_REPOSITORY"
 PEX_UNDER_TEST_ENV = "DEVCAPSULE_PEX_UNDER_TEST"
 VERSION_SCRIPT = PROJECT_ROOT / "scripts" / "bump-version.py"
+WEBCONSOLE_ROOT = REPO_ROOT / "devcapsule-webconsole"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -273,6 +274,20 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "pycharm", "build", "--help", external=True)
 
 
+def run_webconsole_checks(session: nox.Session) -> None:
+    """Type-check and test the capsule web console in its own environment.
+
+    The console is a separate distribution with its own hash-pinned
+    dependency set, so it never shares the runtime's environment: the base
+    image installs it the same way.
+    """
+    session.install("--require-hashes", "-r", str(WEBCONSOLE_ROOT / "requirements-dev.txt"))
+    session.install("-e", str(WEBCONSOLE_ROOT), "--no-deps")
+    session.run("python", "-m", "mypy", "--config-file", str(WEBCONSOLE_ROOT / "pyproject.toml"),
+                str(WEBCONSOLE_ROOT / "devcapsule_webconsole"))
+    session.run("python", "-m", "pytest", str(WEBCONSOLE_ROOT / "tests"))
+
+
 def check_docs_contract(session: nox.Session) -> None:
     """Check docs/, the journal and the release notes against the website's contract.
 
@@ -476,6 +491,12 @@ def recursive_dogfood_e2e(session: nox.Session) -> None:
     run_recursive_e2e_tests(session)
 
 
+@nox.session(python="3.12")
+def webconsole(session: nox.Session) -> None:
+    """Checks of the capsule web console, in its own environment."""
+    run_webconsole_checks(session)
+
+
 @nox.session(name="docs-contract", python=False)
 def docs_contract(session: nox.Session) -> None:
     """Run only the website content-contract check against this checkout."""
@@ -497,3 +518,4 @@ def build(session: nox.Session) -> None:
     check_docs_contract(session)
     if build_public_pex_if_clean(session):
         smoke_pex(session, PUBLIC_PEX_PATH)
+    session.notify("webconsole")
