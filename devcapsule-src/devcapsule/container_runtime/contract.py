@@ -213,6 +213,58 @@ class DisplayPlan:
 
 
 @dataclass(frozen=True)
+class ConsolePlan:
+    """The capsule web console, as the run manifest records it.
+
+    The entrypoint starts the console beside the interactive surface, or
+    alone in a headless capsule. It listens at ``listen_address``:``port``
+    inside the container and admits only requests carrying the token read
+    from ``token_path``, the same model as the contained display. A plan
+    without a console section starts none, which is what every plan meant
+    before the section existed.
+
+    ``source_path``, when set, names a checkout of the console's own source
+    inside the container; the entrypoint runs that source instead of the
+    image's installed copy. The launcher sets it only for a DevCapsule
+    checkout that carries ``devcapsule-webconsole/`` (the self-hosting
+    exception), so an edit shows on the next run without a base release.
+    """
+
+    listen_address: str
+    port: int
+    token_path: str
+    source_path: str = ""
+
+    @classmethod
+    def from_mapping(cls, value: object, field: str) -> ConsolePlan:
+        if not isinstance(value, dict):
+            raise RuntimePlanError(f"{field} must be an object")
+        extra = sorted(set(value) - {"listen_address", "port", "token_path", "source_path"})
+        if extra:
+            raise RuntimePlanError(f"{field} must not carry {', '.join(extra)}")
+        listen_address = _required_string(value.get("listen_address"), f"{field}.listen_address")
+        if re.fullmatch(r"[0-9A-Za-z.:\-]+", listen_address) is None:
+            raise RuntimePlanError(f"{field}.listen_address must be a host address")
+        port = value.get("port")
+        if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
+            raise RuntimePlanError(f"{field}.port must be a TCP port number")
+        token_path = _absolute_path(value.get("token_path"), f"{field}.token_path")
+        source = value.get("source_path", "")
+        source_path = "" if source == "" else _absolute_path(source, f"{field}.source_path")
+        return cls(listen_address, port, token_path, source_path)
+
+    def to_mapping(self) -> dict[str, object]:
+        result: dict[str, object] = {
+            "listen_address": self.listen_address,
+            "port": self.port,
+            "token_path": self.token_path,
+        }
+        if self.source_path:
+            result["source_path"] = self.source_path
+        return result
+
+
+@dataclass(frozen=True)
 class ComponentRuntimeTemplate:
     version: int
     component: Component
@@ -345,6 +397,7 @@ class RuntimePlan:
     ancillary_components: tuple[Component, ...] = ()
     host_integrations: tuple[str, ...] = ()
     display: DisplayPlan | None = None
+    console: ConsolePlan | None = None
 
     @classmethod
     def for_component(
@@ -462,6 +515,8 @@ class RuntimePlan:
             raise RuntimePlanError("host_integrations must not contain duplicates")
         display_value = document.get("display")
         display = None if display_value is None else DisplayPlan.from_mapping(display_value, "display")
+        console_value = document.get("console")
+        console = None if console_value is None else ConsolePlan.from_mapping(console_value, "console")
         prefixes = {item.id for item in (component, *ancillary)}
         for slot in slots:
             namespace, separator, local_name = slot.name.partition("/")
@@ -480,6 +535,7 @@ class RuntimePlan:
             ancillary_components=ancillary,
             host_integrations=integrations,
             display=display,
+            console=console,
         )
 
     @staticmethod
@@ -531,6 +587,9 @@ class RuntimePlan:
     def with_display(self, display: DisplayPlan) -> RuntimePlan:
         return replace(self, display=display)
 
+    def with_console(self, console: ConsolePlan) -> RuntimePlan:
+        return replace(self, console=console)
+
     def display_transport(self) -> str:
         """The transport this plan records; absent means host X11 passthrough."""
 
@@ -566,6 +625,8 @@ class RuntimePlan:
             result["host_integrations"] = list(self.host_integrations)
         if self.display is not None:
             result["display"] = self.display.to_mapping()
+        if self.console is not None:
+            result["console"] = self.console.to_mapping()
         return result
 
     def to_json(self) -> str:

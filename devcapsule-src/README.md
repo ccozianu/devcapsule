@@ -510,6 +510,56 @@ mismatch reports that the selected PEX embeds `unknown`, rebuild
 `dist/devcapsule.pex` with the default `scripts/build-pex.sh`, inspect it with
 `dist/devcapsule.pex version --json`, and retry.
 
+### Checkout notifications
+
+What one checkout's DevCapsule environment tells its human, local to that
+checkout and never a record. An agent or a tool inside the capsule posts; the
+human reads under the web console's bell or with the same commands from the
+host. Unanswered decision pages of the console appear in the listing as the
+kind `decision`, linking to their page; they are never copied.
+
+```bash
+devcapsule project checkout notifications list [--unread] [--json]
+devcapsule project checkout notifications post --kind gate --title "Gate failed on main" \
+    --summary "Two unit cases; see the log." --link /records/engineering-docs/README.md
+devcapsule project checkout notifications read ID
+devcapsule project checkout notifications dismiss ID
+```
+
+The store is `$XDG_STATE_HOME/devcapsule/notifications/<id>.json` inside the
+capsule, which is the checkout's persistent home on the host; from the host
+the commands find that home as `project info` reports it, honoring
+`DEVCAPSULE_HOME_DIR`. `DEVCAPSULE_NOTIFICATIONS` names another directory
+outright. The document format is in `devcapsule/notifications.py`.
+Project-wide notifications, a coordinator reaching every collaborator, are a
+later source merged into the same listing (owner's note, 2026-10-09).
+
+### Checkout decisions
+
+The web console's decision tools from the runtime CLI, inside a capsule:
+
+```bash
+devcapsule project checkout decisions from-table TABLE.md --id ID --title TITLE [--asked-by WHO] [--context MD]
+devcapsule project checkout decisions check DECISIONS-DIR/ID.json
+devcapsule project checkout decisions hand-off DECISIONS-DIR/ID.json
+```
+
+Each runs `python -m devcapsule_webconsole.decisions` with the console the
+base installs under `/opt/devcapsule-webconsole`, or the checkout's mounted
+console source when the runtime plan names one. `hand-off` prints the
+decision as numbered chat text ending with the link into the console, with
+the run's token; the link belongs in the chat, never in a record. Outside a
+capsule the command says where the module is. The contract is
+`DECISIONS.md` in the console's source; the rule for agents is topic 8.8 of
+`WORKFLOW.md`.
+
+`decisions --help` shows the wrapper's help without a console.
+`decisions SUBCOMMAND --help` shows that tool's help inside a capsule.
+With no arguments, the console module reports a missing subcommand and
+returns status 2. The wrapper preserves the tool's output and exit status.
+`from-table` prints JSON to standard output; redirect it to
+`DECISIONS-DIR/ID.json` to save the document.
+
 ### Shared component installations
 
 Node, Temurin, and Maven install in separate BuildKit stages when building a

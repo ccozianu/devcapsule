@@ -17,7 +17,9 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Claude compatibility pointer](CLAUDE.md)
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
+- [Human / agent workflow: the reasons, for humans](WORKFLOW-humane.md)
 - [This project's local workflow](WORKFLOW-LOCAL.md)
+- [This project's local workflow: the reasons, for humans](WORKFLOW-LOCAL-humane.md)
 - [Product documentation](docs/README.md), versioned per release under the content–website contract; pages marked *coming soon* are planned stubs
   - Getting started: [Install](docs/getting-started/install.md), [Your first session](docs/getting-started/first-session.md), [Stop and come back](docs/getting-started/stop-and-come-back.md)
   - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
@@ -25,7 +27,7 @@ status file; internal WIP/archive documents use the local index in that status.
   - Everyday development: [Clipboard, keys and browser](docs/everyday-development/clipboard-and-browser.md); coming soon: [IDEs and terminals](docs/everyday-development/ides-and-terminals.md), [Git](docs/everyday-development/git.md), [Run, debug, test](docs/everyday-development/run-debug-test.md), [Previews and ports](docs/everyday-development/previews-and-ports.md)
   - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Capabilities and personal choices](docs/configuration/capabilities.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
   - Containment: [The boundary](docs/containment/the-boundary.md), [Granting and withdrawing access](docs/containment/granting-and-withdrawing.md)
-  - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
+  - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md), [The web console](docs/sessions/web-console.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
   - Collaboration: [Work in workstreams with humans and agents](docs/collaboration/working-in-workstreams.md)
   - Updates: [Supported versions](docs/updates/supported-versions.md), [Launcher updates](docs/updates/launcher-updates.md), [Component freshness](docs/updates/component-freshness.md), [Component upgrades](docs/updates/component-upgrades.md)
   - Troubleshooting: [First session](docs/troubleshooting/first-session.md); coming soon: [Diagnostics and logs](docs/troubleshooting/diagnostics-and-logs.md), [Cleanup and uninstall](docs/troubleshooting/cleanup-and-uninstall.md)
@@ -65,6 +67,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Root Requirement Records
 
 - [Conservative configuration writers and tolerant readers](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — R-CONFIG-001, accepted 0.3 direction.
+- [R-CONSOLE-001 Every capsule serves a web console](engineering-docs/requirements/product/r-console-001-capsule-web-console.md)
 - [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
 - [R-UPGRADE-002 Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md)
 
@@ -119,6 +122,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [The capsule web console](engineering-docs/work-orders/2026-10-09-capsule-webconsole.md)
 - [Playwright, IntelliJ IDEA and reusable agent-driven IDE smoke](engineering-docs/work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
 - [The website, seen from the visitor's chair](engineering-docs/work-orders/2026-09-28-website-visitor-experience.md)
 - [The visitor content and the producer migration](engineering-docs/work-orders/2026-09-28-visitor-content-and-producer-migration.md)
@@ -142,6 +146,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Workflow improvements current status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md)
 - [Component upgrades current status](engineering-docs/wip/2026-09-21-component-upgrades/CURRENT-STATUS.md)
 - [Maintenance current status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md)
+- [Capsule web console current status](engineering-docs/wip/2026-10-09-capsule-webconsole/CURRENT-STATUS.md)
 - [Sample demo projects current status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md)
 - [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)
 

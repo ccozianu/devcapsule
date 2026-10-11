@@ -1,0 +1,14 @@
+{
+  "answered-at": "2026-10-09T19:09:12+00:00",
+  "answers": {
+    "go": {
+      "chosen": [
+        "yes"
+      ],
+      "note": "from the smoke"
+    }
+  },
+  "format": 1,
+  "id": "smoke-decision",
+  "note": "ok"
+}

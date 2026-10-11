@@ -319,6 +319,125 @@ def test_project_config_list_materializes_default_checkout_and_reports_readiness
         assert resolved_path.read_bytes() == original_resolution
 
 
+def _listing_document(project: Path, capsys) -> tuple[dict, str]:
+    assert cli.main(["project", "--path", str(project), "config", "list", "--json"]) == 0
+    captured = capsys.readouterr()
+    return json.loads(captured.out), captured.err
+
+
+def test_project_config_list_json_carries_the_table_and_keeps_notices_off_stdout(
+    tmp_path: Path, capsys
+) -> None:
+    """``--json`` is the contract the web console reads: schema version 1,
+    the identity, and every row of the text table under the same columns."""
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        append_manifest_metadata(
+            project,
+            """
+            [configuration.values."runtime.memory-limit"]
+            type = "memory-size"
+            runtime-effect = "docker.memory-limit"
+            """,
+        )
+        write_formation_lock(project)
+        select_codex_component(project)
+
+        document, stderr = _listing_document(project, capsys)
+        # The first listing materializes the checkout records; the notices
+        # must not corrupt the JSON on standard output.
+        assert "Initialized checkout input:" in stderr
+        assert "Initialized resolution placeholder:" in stderr
+        assert document["schema-version"] == 1
+        assert document["context"] == "host selection (next launch)"
+        assert document["project"] == {"creator": "mailto:dev@example.test", "slug": "project"}
+        record = registered_checkouts()[0].record_path
+        assert document["checkout"] == {
+            "name": "default",
+            "launcher-path": str(project.resolve()),
+            "input": str(record),
+            "resolution": str(record.with_name("devcapsule.resolved.toml")),
+        }
+        rows = {(row["kind"], row["name"]): row for row in document["rows"]}
+        assert set(rows[("value", "runtime.memory-limit")]) == {"kind", "name", "status", "source", "value"}
+        assert rows[("value", "runtime.memory-limit")]["status"] == "unset-optional"
+        assert rows[("secret", "codex/openai-api-key")]["status"] == "optional-unbound"
+        assert rows[("authorization", "base-image")]["status"] == "missing-required"
+        assert document["rows"][-1]["kind"] == "resolution"
+        assert document["rows"][-1]["status"] == "unresolved"
+
+        # A second listing is silent, and the JSON names the same rows the
+        # text table prints, in the same order.
+        again, stderr = _listing_document(project, capsys)
+        assert stderr == ""
+        assert again == document
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        text = capsys.readouterr().out
+        header, *printed = text.splitlines()[text.splitlines().index("") + 1:]
+        columns = ("KIND", "NAME", "STATUS", "SOURCE", "VALUE / RECOMMENDATION")
+        starts = [header.index(column) for column in columns]
+        ends = [*starts[1:], None]
+        assert [
+            [line[start:end].rstrip() for start, end in zip(starts, ends)] for line in printed
+        ] == [
+            [row[key] for key in ("kind", "name", "status", "source", "value")] for row in document["rows"]
+        ]
+
+        assert cli.main(["project", "--path", str(project), "config", "set", "runtime.memory-limit", "2GiB"]) == 0
+        capsys.readouterr()
+        changed, _ = _listing_document(project, capsys)
+        assert {(row["kind"], row["name"]): row for row in changed["rows"]}[("value", "runtime.memory-limit")]["status"] == "configured"
+
+
+@pytest.mark.parametrize("name", ["second-checkout", "devcapsule"])
+def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, capsys, name: str) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(first)
+        shutil.copytree(first / ".devcapsule", second / ".devcapsule")
+        assert cli.main(["project", "--path", str(first), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(second), "checkout", "register", name]) == 0
+        capsys.readouterr()
+        document, _ = _listing_document(second, capsys)
+        assert document["checkout"]["name"] == name
+        assert document["checkout"]["launcher-path"] == str(second.resolve())
+        assert document["checkout"]["input"].endswith(f"{name}.checkout.toml")
+        assert next(record for record in registered_checkouts() if record.checkout_path == second).checkout_name == name
+        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        assert f"Checkout name: {name}\n" in capsys.readouterr().out
+
+    # An explicit registry environment must also govern name derivation.
+    with patch.dict(os.environ, {"XDG_CONFIG_HOME": str(tmp_path / "unrelated-config")}):
+        records = registered_checkouts(env)
+        assert [(record.checkout_name, record.checkout_path) for record in records] == sorted([
+            ("default", first), (name, second),
+        ])
+
+
+def test_checkout_record_name_rejects_a_non_record_path() -> None:
+    from devcapsule.configuration.storage import checkout_record_name
+
+    with pytest.raises(ValueError, match="not a DevCapsule checkout record path"):
+        checkout_record_name(Path("devcapsule.resolved.toml"))
+
+
+@pytest.mark.parametrize("command", [("config", "list"), ("versions", "show")])
+def test_json_help_names_the_schema_contract(command, capsys) -> None:
+    assert cli.main(["project", *command, "--help"]) == 0
+    help_text = capsys.readouterr().out
+    assert "--json" in help_text
+    assert "schema-version1" in "".join(help_text.split())
+
+
 def test_project_config_list_materializes_named_checkout_placeholder(
     tmp_path: Path, capsys
 ) -> None:
@@ -2232,3 +2351,181 @@ def test_every_project_leaf_declares_its_capsule_access() -> None:
     assert declared[("init",)] is CapsuleAccess.CREATES_HERE
     assert declared[("list",)] is CapsuleAccess.INDEPENDENT
     assert declared[("recursive-e2e", "preflight")] is CapsuleAccess.INDEPENDENT
+    # Notifications are capsule state, never the project's records: they are
+    # neither refused inside a capsule nor sent to the launcher.
+    for leaf in ("list", "post", "read", "dismiss"):
+        assert declared[("checkout", "notifications", leaf)] is CapsuleAccess.INDEPENDENT
+    assert declared[("checkout", "decisions")] is CapsuleAccess.INDEPENDENT
+
+
+def test_checkout_notifications_round_trip_from_the_host(tmp_path: Path, capsys, monkeypatch) -> None:
+    """From the host the group acts on the checkout's persistent home, where the
+    capsule's state lives; the file lands exactly where `project info` says the
+    home is backed, and the listing shows it with its unread mark."""
+    from devcapsule.configuration.bindings import configuration_binding_declarations, managed_binding_path
+    from devcapsule.configuration.storage import lock_for, manifest_for
+
+    project = tmp_path / "project"
+    project.mkdir()
+    initialize_project(project)
+    for key, leaf in [("HOME", "home"), ("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"),
+                      ("XDG_STATE_HOME", "state")]:
+        monkeypatch.setenv(key, str(tmp_path / leaf))
+    for key in ("DEVCAPSULE_CONTAINER_NAME", "DEVCAPSULE_NOTIFICATIONS", "DEVCAPSULE_HOME_DIR",
+                "DEVCAPSULE_CONSOLE_DECISIONS"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("USER", "owner")
+    _, manifest = manifest_for(project)
+    _, lock = lock_for(project, manifest)
+    home = managed_binding_path(project, configuration_binding_declarations(lock)["home"])
+    state = home / ".local" / "state" / "devcapsule"
+
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "post", "--kind", "gate",
+                     "--title", "Gate failed on main", "--summary", "Two cases.", "--link", "/records/README.md",
+                     "--json"]) == 0
+    posted = json.loads(capsys.readouterr().out)
+    assert posted["kind"] == "gate" and posted["posted-by"] == "owner" and posted["read-at"] is None
+    assert (state / "notifications" / f"{posted['id']}.json").is_file()
+    assert json.loads((state / "notifications" / f"{posted['id']}.json").read_text(encoding="utf-8")) == posted
+
+    # A pending decision page of the console is merged into the listing, never copied.
+    (state / "decisions").mkdir(parents=True)
+    (state / "decisions" / "intake-pass.json").write_text(json.dumps(
+        {"format": 1, "id": "intake-pass", "title": "Intake pass", "asked-by": "project-management",
+         "asked-at": "2026-10-09T12:00:00+00:00", "items": []}), encoding="utf-8")
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "list"]) == 0
+    listing = capsys.readouterr().out
+    assert listing.startswith("2 unread of 2; * marks unread.\n")
+    assert f"* {posted['posted-at']}  gate        {posted['id']}  Gate failed on main  /records/README.md" in listing
+    assert "* 2026-10-09T12:00:00+00:00  decision    intake-pass  Intake pass  /decisions/intake-pass" in listing
+
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "read", posted["id"]]) == 0
+    assert capsys.readouterr().out.startswith(f"Read {posted['id']} at ")
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "list", "--unread", "--json"]) == 0
+    unread = json.loads(capsys.readouterr().out)
+    assert unread["unread"] == 1 and [entry["id"] for entry in unread["notifications"]] == ["intake-pass"]
+    assert unread["directory"] == str(state / "notifications") and unread["decisions"] == str(state / "decisions")
+
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "dismiss", "intake-pass"]) == 2
+    assert "'intake-pass' is a decision: answer it in the web console" in capsys.readouterr().err
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "dismiss", posted["id"]]) == 0
+    assert capsys.readouterr().out == f"Dismissed {posted['id']}\n"
+    assert list((state / "notifications").iterdir()) == []
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "read", posted["id"]]) == 2
+    assert "no notification" in capsys.readouterr().err
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "post", "--kind", "decision",
+                     "--title", "No"]) == 2
+    assert "Cannot post the notification: kind 'decision' is reserved" in capsys.readouterr().err
+
+    # The launcher's home override moves the store with the home it mounts.
+    monkeypatch.setenv("DEVCAPSULE_HOME_DIR", str(tmp_path / "elsewhere"))
+    assert cli.main(["project", "--path", str(project), "checkout", "notifications", "list", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["directory"] == str(
+        tmp_path / "elsewhere" / ".local" / "state" / "devcapsule" / "notifications")
+
+
+def test_checkout_notifications_inside_a_capsule_use_its_own_state(tmp_path: Path, capsys, monkeypatch) -> None:
+    """Inside a capsule the environment names the one checkout; `--path`, which
+    the web console always passes, does not send the store to a host-side path."""
+    monkeypatch.setenv("DEVCAPSULE_CONTAINER_NAME", "capsule-fixture")
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "home" / ".local" / "state"))
+    monkeypatch.delenv("DEVCAPSULE_NOTIFICATIONS", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["project", "--path", str(tmp_path / "workspace" / "project"), "checkout", "notifications",
+                     "post", "--kind", "note", "--title", "Hello", "--posted-by", "agent"]) == 0
+    out = capsys.readouterr().out
+    directory = tmp_path / "home" / ".local" / "state" / "devcapsule" / "notifications"
+    assert out.startswith("Posted ") and out.rstrip().endswith(".json") and str(directory) in out
+    assert len(list(directory.iterdir())) == 1
+    assert cli.main(["project", "checkout", "notifications", "list", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["notifications"][0]["posted-by"] == "agent"
+
+
+def test_checkout_notifications_outside_a_project_name_the_problem(tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.delenv("DEVCAPSULE_CONTAINER_NAME", raising=False)
+    monkeypatch.delenv("DEVCAPSULE_NOTIFICATIONS", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert cli.main(["project", "checkout", "notifications", "list"]) == 2
+    assert "Cannot locate this checkout's notifications" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("binding", ["managed", "adopted", "explicit"])
+def test_notification_host_store_matches_info_and_isolates_checkouts(tmp_path: Path, monkeypatch, binding: str) -> None:
+    from devcapsule import notifications
+    from devcapsule.configuration.file_formats import render_toml
+    from devcapsule.configuration.storage import checkout_record_paths, manifest_for
+    from devcapsule.project_information import project_information
+
+    for key in ("HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
+        monkeypatch.setenv(key, str(tmp_path / key))
+    for key in ("DEVCAPSULE_CONTAINER_NAME", "DEVCAPSULE_NOTIFICATIONS", "DEVCAPSULE_HOME_DIR"):
+        monkeypatch.delenv(key, raising=False)
+    project = tmp_path / "project"
+    project.mkdir()
+    initialize_project(project)
+    other = tmp_path / "other"
+    shutil.copytree(project, other)
+    _, manifest = manifest_for(project)
+    if binding != "managed":
+        record, _ = checkout_record_paths(manifest, project)
+        record.parent.mkdir(parents=True)
+        document = {"devcapsule-checkout-schema-version": 1, "project": {key: manifest["project"][key] for key in ("creator", "slug")},
+                    "checkout": {"path": str(project)}, "state": {"adopted": {"home": str(tmp_path / "adopted")}}}
+        if binding == "explicit":
+            document["configuration"] = {"bindings": {"host-directory": {"home": str(tmp_path / "explicit")}}}
+        record.write_text(render_toml(document), encoding="utf-8")
+    nested = project / "src"
+    nested.mkdir()
+    report = project_information(nested, runtime_fallback=False)
+    home = Path(next(row["backing"] for row in report["persistence"] if row["name"] == "home"))
+    store = notifications.store_for(nested)
+    assert store.directory == home / ".local/state/devcapsule/notifications"
+    if binding != "managed":
+        assert home == tmp_path / binding
+    second = notifications.store_for(other)
+    assert store.directory != second.directory
+    entry = store.post(kind="note", title="First checkout only", posted_by="agent")
+    assert store.read(entry.id) == entry
+    assert second.list() == [] and not second.directory.exists()
+    override = tmp_path / "override"
+    override.mkdir()
+    alias = tmp_path / "home-link"
+    alias.symlink_to(override, target_is_directory=True)
+    monkeypatch.setenv("DEVCAPSULE_HOME_DIR", str(alias))
+    assert notifications.store_for(nested).directory == override / ".local/state/devcapsule/notifications"
+
+
+def test_notification_cli_empty_errors_read_and_no_link_text(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("DEVCAPSULE_NOTIFICATIONS", str(tmp_path / "notifications"))
+    monkeypatch.delenv("DEVCAPSULE_CONSOLE_DECISIONS", raising=False)
+    monkeypatch.delenv("USER", raising=False)
+    command = ["project", "checkout", "notifications"]
+    assert cli.main([*command, "list"]) == 0
+    assert capsys.readouterr().out == f"No notifications under {tmp_path / 'notifications'}.\n"
+    assert cli.main([*command, "post", "--kind", "note", "--title", "Hello", "--json"]) == 0
+    entry = json.loads(capsys.readouterr().out)
+    assert entry["posted-by"] == "unknown"
+    assert cli.main([*command, "read", entry["id"]]) == 0
+    capsys.readouterr()
+    (tmp_path / "notifications/broken.json").write_text("{", encoding="utf-8")
+    assert cli.main([*command, "list"]) == 0
+    output = capsys.readouterr().out
+    assert output.startswith("0 unread of 2; * marks unread.\n")
+    assert f"  {entry['posted-at']}  note        {entry['id']}  Hello\n" in output
+    assert "  ! broken: broken.json is not a JSON document" in output
+    assert cli.main([*command, "list", "--unread", "--json"]) == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["unread"] == 0 and [item["id"] for item in document["notifications"]] == ["broken"]
+
+
+@pytest.mark.parametrize("operation", ["list", "post", "read", "dismiss"])
+def test_notification_cli_reports_filesystem_refusals(tmp_path: Path, monkeypatch, capsys, operation: str) -> None:
+    directory = tmp_path / "notifications"
+    monkeypatch.setenv("DEVCAPSULE_NOTIFICATIONS", str(directory))
+    directory.write_text("not a directory", encoding="utf-8")
+    arguments = {"list": [], "post": ["--kind", "note", "--title", "No"], "read": ["missing"], "dismiss": ["missing"]}
+    assert cli.main(["project", "checkout", "notifications", operation, *arguments[operation]]) == 2
+    error = capsys.readouterr().err
+    assert "not a directory" in error.lower() and "Traceback" not in error
+    assert directory.read_text() == "not a directory"
