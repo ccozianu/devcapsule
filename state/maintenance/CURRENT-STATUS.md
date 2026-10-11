@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, its review PRs #210 and #211 merged and the acceptance on a recipe-12 base passed; both PRs await the owner; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, rotation moved into the writers by the owner's clarification, a third Codex round on that change pending; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -23,6 +23,23 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-11, later again: the owner clarified the rotation; every writer rotates its
+own file.** The owner's mental model was the piped rotator, the writer
+that rotates on write when the size is reached, and asked for "the solid
+approach with no overshooting". PR2 changes accordingly: `SegmentedFile`
+in `devcapsule.logs` rotates the live file the moment a write would carry
+it past its segment, compresses it to `.1.gz`, shifts the older segments
+and drops the one beyond the count; the tee and the Python handler both
+write through it. The logrotate child, its stanza, the reopen-on-rename
+logic and base recipe 12 are gone; the base stays at recipe 11 and the
+behavior is the same on every base. Exact bound: the live file never
+exceeds its segment, except a single write longer than the segment, which
+goes into a fresh file alone. The budget knob, the segment derivation, the
+manifest and the pruning are unchanged. The earlier logrotate acceptance
+evidence stands as history; the rotation it proved is replaced, and the
+unit suite now proves rotation with a real child writing 4000 lines
+through the tee. A third Codex round reviews this change.
 
 **2026-10-11, late: acceptance passed on a real capsule; PR #207 and PR
 #209 await the owner.** From a clean clone of PR2's branch at `174480f`, a
@@ -450,7 +467,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner reviews and merges PR #207, then PR #209.
+1. PR2.3: the Codex pair's third round on the in-process rotation; review
+   it, merge it or push back; the last round of the three.
+2. A real session on this capsule's base to show the files and the
+   manifest with the new rotation; then the owner reviews and merges
+   PR #207, then PR #209.
 3. Acceptance: build a recipe-12 base and run a fresh-workspace launch,
    proving the files, the rotation and the budget on a real capsule.
 4. Slice 3: the live snapshot and export command; then browser evidence.
@@ -661,6 +682,15 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+In-process rotation gate (2026-10-11, PR #209 after the owner's
+clarification): full `nox -s build` passed, exit 0: mypy clean over 214
+files; 1571 unit tests passed, 35 deselected, 1 xfailed, 1 xpassed;
+packaging integration 17 passed; PEX built and smoked; documentation
+contract 184 pages; web console session mypy clean, 293 tests. Log
+`/opt/devcapsule-gate/2026-10-11-log-rotation-build-3.log`. Rotation is
+proven in the unit suite with a real child writing 4000 lines through the
+tee at a 100 KB segment, and the handler at a 160-byte segment.
 
 Acceptance (2026-10-11): base `devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151`,
 id `sha256:5034721d…`, built over host networking from the public PEX of
