@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, rotation moved into the writers by the owner's clarification, a third Codex round on that change pending; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, rotation moved into the writers by the owner's clarification, all three Codex rounds merged (#210, #211, #212); PR #207 and PR #209 await the owner; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -23,6 +23,18 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-11, last: round three merged; the rounds on PR2 are used; the
+owner's turn.** [PR #212](https://github.com/ccozianu/devcapsule/pull/212),
+the Codex pair's review of the in-process rotation, was merged: compression
+completes before any history is expired, a gap in the archives ages its
+slot out, short raw writes are completed and accounted, a second failure
+while closing cannot stop the tee from draining the pipe, and the docs
+state the limits: synchronous compression on the writer, a non-atomic
+sequence with a crash table, a write rather than a line as the unit. Two
+proposals stay as threads below. The gate on the merged branch is recorded
+under *Validation*. The owner also asked that this change go through the
+same review scheme; it did.
 
 **2026-10-11, later again: the owner clarified the rotation; every writer rotates its
 own file.** The owner's mental model was the piped rotator, the writer
@@ -467,9 +479,8 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. PR2.3: the Codex pair's third round on the in-process rotation; review
-   it, merge it or push back; the last round of the three.
-2. The owner reviews and merges PR #207, then PR #209.
+1. The owner reviews and merges PR #207, then PR #209. The three review
+   rounds on PR2 are used; a further change needs the owner's word.
 3. Acceptance: build a recipe-12 base and run a fresh-workspace launch,
    proving the files, the rotation and the budget on a real capsule.
 4. Slice 3: the live snapshot and export command; then browser evidence.
@@ -680,6 +691,13 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate after round three (2026-10-11, PR #209 at `c3dd82a`): full `nox -s
+build` passed, exit 0: mypy clean over 214 files; 1584 unit tests passed,
+35 deselected, 1 xfailed, 1 xpassed; packaging integration 17 passed; PEX
+built and smoked; documentation contract 184 pages; web console session
+mypy clean, 293 tests. Log
+`/opt/devcapsule-gate/2026-10-11-log-rotation-build-4.log`.
 
 Second session (2026-10-11, PEX of `b86b899`, the recommended recipe-9
 base, budget 16 MiB): the directory held every component's file present
@@ -1229,9 +1247,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - Weighed and unresolved, from PR1.1: the supervisor's `preexec_fn` runs
   with tee threads alive, which Python documents as unsafe; a helper that
   sets the mask and execs would remove it. Not changed, no failure seen.
-- Weighed and unresolved: logrotate's own log is one of the rotated files;
-  its loop never exits, so an OOM kill of the `sh` loop would fail the
-  session like any infrastructure child. Accepted for now.
+- Weighed and unresolved, from PR2.3: an atomic replacement of the live
+  path for readers that follow it across a rotation; a drain policy for a
+  compression that outlasts the supervisor's 0.5 s allowance at shutdown.
+  Neither changes the contract; both are candidates for the next slice.
 - Weighed and unresolved: the budget knob is an environment variable; a
   configuration node would be durable but touches the guarded vocabulary.
   Xvnc at status level rather than errors only.
