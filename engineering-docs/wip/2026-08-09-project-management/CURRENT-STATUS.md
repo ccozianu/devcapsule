@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-11; persistent diagnostics assigned to maintenance for 0.3.0; 30 intake dispositions recorded; items 7, 8 and 12 remain pre-V1, tentatively 0.9
+State: active 2026-10-11; ecosystem bootstrap moved to 0.9; project-operation instructions assigned to workflow-improvements for 0.3.0; approved intake dispositions retained
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Branch association: `ws-project-management/coordination`
 
@@ -39,6 +39,32 @@ ruling. Current planning uses that name. Historical references and the source
 version 0.2.16.dev0 remain unchanged. Scope, driver and cut still need decisions.
 The [current proposal](2026-09-27-0216-release-planning.md) separates accepted
 commitments from proposals; its historical filename is retained.
+
+### Latest Decision: Project Operations Now, Bootstrap At 0.9
+
+Owner decision, 2026-10-11: ecosystem-aware project bootstrap moves from
+0.3.0 to 0.9, dependent on project-type templating. Project tools should be on
+PATH throughout the capsule by default; exceptional project types may require
+`devcapsule project shell` to activate them. The examples include Java/Maven,
+Scala/sbt, Python/nox, Node/npm and Node/Yarn. The [complete decision](2026-10-11-decision-project-operations-and-bootstrap.md)
+preserves the scope and the distinction from earlier agenda item 7.
+
+For 0.3.0, the agent must know how to build, run each test tier and selective
+tests, run the default program, debug it, and explain debugger attachment.
+WORKFLOW.md must require this continuing responsibility. WORKFLOW-LOCAL.md
+must hold each project's actual instructions, established and maintained with
+the human even when all execution is delegated to the agent. This is assigned
+to workflow-improvements; the testing-policy intake remains separately undecided.
+
+Delivered the full decision to maintenance as
+`2026-10-11-project-management-bootstrap-target-09.md` at coordination
+`133a049ad96e`, and to workflow-improvements as
+`2026-10-11-project-management-project-operation-instructions-030.md` at
+`c878496a5533`. Maintenance owns updating the canonical bug and its plate;
+workflow-improvements owns rule implementation. Neither recipient's source or
+status file was edited here. The new rule and shell command are not claimed
+implemented. The templating dependency's implementation owner remains open
+for 0.9 planning.
 
 ### Reasons for closing the 23 messages
 
@@ -83,7 +109,10 @@ remain subject to scoping; no implementation completion is claimed.
 
 Delivered the complete work order to maintenance as
 `2026-10-11-project-management-maintenance-persistent-diagnostics.md` at
-coordination `a535ccf3a44e`. The recipient has the full text. Its acknowledgement and execution are next.
+coordination `a535ccf3a44e`. Maintenance acknowledged it. A fresh main fetch
+verified the logging/rotation stack merged through PR #209 at 26fdc6a;
+snapshot/export and browser evidence remain in its published plan. Older
+acceptance evidence does not automatically establish the later rotation design.
 
 ### Pagefind catalog proposal closed; website handoff delivered
 
@@ -124,8 +153,9 @@ of further console work.
 
 ## Planned Next Step
 
-Persistent diagnostics (C21) is assigned to maintenance, targeted ready for
-0.3.0. Its next action is bounded scoping, implementation and acceptance there.
+Follow the two delivered scope decisions in recipient publications. Bootstrap
+is excluded from 0.3.0; the project-operation instruction rule is included.
+Maintenance continues the remaining diagnostics slices and acceptance.
 Project-management resumes final release scope and ship criteria with the owner.
 The broader critical path remains
 0.3.0 scope, driver and cut, and the eleven user-docs proposals. The release
@@ -152,6 +182,19 @@ older context, including the lifecycle question for contained-display and
 sample-projects. Neither lack of a live publication nor this cleanup closes them.
 
 ## Validation And External State
+
+For this records-only scope checkpoint, main is at 61396e8. Its newer changes
+do not touch the selected PM records or change WORKFLOW.md/WORKFLOW-LOCAL.md.
+Synchronization is deferred to the next implementation boundary; no source or
+other workstream's records are edited. Mail was empty at entry. No new project-
+management bug or intake disposition is created by the owner's direct decision.
+The scope checkpoint's full build gate passed: 1,498 runtime tests, 17
+packaged integration tests and 290 web-console tests, plus type, syntax,
+smoke and documentation-contract checks. The runtime suite retained one
+xfail and one XPASS, with 35 deselected. Changed-document links and whitespace
+passed; both delivered items byte-match the prepared decisions. The final
+mail take returned no items. No container or service was started.
+
 
 The approved records were committed and pushed as 9139717 after the initial
 main merge 263f5d0. The checkpoint then merged origin/main at 435d3d4;
@@ -202,6 +245,8 @@ completed decision batch instead of accumulating several batches uncommitted.
   reminder service. Historical handoff and release proposal are retained verbatim.
 
 ## Workstream Document Index
+
+- [Project operations for 0.3.0; ecosystem bootstrap for 0.9](2026-10-11-decision-project-operations-and-bootstrap.md): accepted owner decision, default PATH and exceptional project shell direction, and continuing agent responsibility for project instructions.
 
 - [Persistent session diagnostics work order](../../work-orders/2026-10-08-persistent-session-diagnostics.md): C21 assigned to maintenance on 2026-10-11, targeted ready for 0.3.0; bounded scope and acceptance remain.
 

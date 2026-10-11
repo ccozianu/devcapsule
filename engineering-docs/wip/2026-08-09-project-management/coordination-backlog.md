@@ -68,6 +68,27 @@ consent remains with component-upgrades. These are assigned work, not new
 adoption votes. The eleven user-docs proposals still require an owner decision
 before 0.3.0; L1-L13 and chosen delivery still gate V1.
 
+## Ecosystem Bootstrap: 0.9, After Project-Type Templating
+
+Owner decision, 2026-10-11: move ecosystem-aware bootstrap from 0.3.0 to 0.9.
+Maintenance retains the bug; project-management coordinates the prerequisite
+project-type templating, whose implementation owner remains to be selected.
+Revisit at 0.9 planning with that dependency explicit, not during routine 0.3.0
+planning. This is the bootstrap feature numbered 7 in the later release-work
+list, distinct from agenda item 7 (mycodespace/checkout naming) below.
+
+The user's intended ecosystem (Java/Maven, Scala/sbt, Python/nox, Node/npm or
+Node/Yarn, for example) determines tooling discovery and environment setup.
+Project utilities should be on PATH throughout the capsule by default.
+Exceptional project types may use `devcapsule project shell` inside the capsule
+to activate the required environment. The [accepted decision](2026-10-11-decision-project-operations-and-bootstrap.md)
+preserves the details, dependency and separate 0.3.0 workflow obligation.
+
+For 0.3.0, workflow-improvements owns the generic rule requiring the agent to
+establish and maintain project build, test, run and debug instructions with the
+human in WORKFLOW-LOCAL.md. This remains necessary when all execution is
+delegated to the agent. It does not wait for bootstrap automation.
+
 ## Pagefind: Catalog Proposal Closed, Website Owns Integration
 
 Owner decision, 2026-10-10. Do not create a Pagefind DevCapsule component for

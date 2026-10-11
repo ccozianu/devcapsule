@@ -26,7 +26,14 @@ remains at 0.2.16.dev0 until the release version step under the local scheme.
   the next release, now 0.3.0. Its published next task is implementation.
 - Maintenance's published 0.3.0 plate retains fresh-workspace E2E, in-capsule
   commands, named contexts, reuse/reaping design, network authorization,
-  first-session UX, release notes/gate tooling and ecosystem bootstrap.
+  first-session UX and release notes/gate tooling. The owner's 2026-10-11
+  decision moves ecosystem bootstrap to 0.9, after project-type templating.
+- For 0.3.0, workflow-improvements must make project-operation instructions
+  a continuing agent responsibility: build, separate test tiers and selective
+  tests, default program execution, debugging and debugger attachment. The
+  generic rule belongs in WORKFLOW.md; each project's commands belong in
+  WORKFLOW-LOCAL.md, established with the human and kept current even when all
+  execution is delegated. See the [accepted decision](2026-10-11-decision-project-operations-and-bootstrap.md).
 - Maintenance retains the accepted forced-configuration preview/run follow-up.
   Command spelling and its interaction with mandatory requirements need design
   reconciliation. This does not authorize bypassing host-access boundaries.
@@ -79,7 +86,7 @@ means source delivery, not downloaded-candidate acceptance.
 | C14 | mycodespace | Explicitly outside 0.3.0 by owner decision of 2026-10-10; revisit direction before V1, tentatively 0.9. |
 | C15 | Legacy launch capabilities | Mandatory V1 decision/delivery gate; not automatically a 0.3.0 implementation commitment. |
 | C16 | Current release documentation | Standing release obligation; 0.2.15 docs delivered, 0.3.0 docs must describe the accepted candidate. |
-| C17 | Workflow improvements | Existing workstream scope; no new gate added by this reconciliation. |
+| C17 | Workflow improvements | Project-operation instructions and the agent's continuing responsibility explicitly assigned for 0.3.0 on 2026-10-11; other existing scope remains separate. |
 | C18 | Legacy branch migration | Completed for active workstreams; no current release hold. |
 | C19 | Adopter/contributor positioning | Reconcile existing README/blog/docs delivery before asking for remaining editorial/product choices. |
 | C20 | Notes and documentation release automation | Accepted on maintenance's 0.3.0 plate; retain operator steps until implemented and validated. |
@@ -106,6 +113,13 @@ Do not put later work back on the immediate agenda merely because an intake
 message was closed. Consult its recorded home at its planning trigger.
 
 ## Explicitly Outside 0.3.0
+
+Owner direction, 2026-10-11: ecosystem-aware bootstrap moves to **0.9**,
+dependent on project-type templating. Tools should be on PATH throughout the
+capsule by default; exceptional ecosystems may use `devcapsule project shell`
+for activation. The [decision](2026-10-11-decision-project-operations-and-bootstrap.md)
+records the full direction and replaces the earlier 0.3.0 maintenance target.
+The 0.3.0 project-operation instruction requirement above remains in scope.
 
 Owner direction, 2026-10-10: mycodespace/checkout naming (agenda item 7),
 OpenCode evaluation (8), and routine intake-README/contract-wording cleanup (12)
