@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, its Codex review running; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, its review PR #210 merged and a second Codex round on the supervised-child rotation running; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -12,7 +12,7 @@ Integration target: `main`
 
 Delivery method: stacked pull request against `ws-maintenance/post-0.2.15`; owner authorized authenticated `gh` to create/update/consult PRs on 2026-10-08; merging remains with the owner
 
-Branch association: `ws-maintenance/session-logs` (PR #207, from `main`; PR1.1 #208 merged in); `ws-maintenance/log-rotation` (PR #209, stacked on PR1); `ws-maintenance/log-rotation-review` (the Codex pair's PR2.1); `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
+Branch association: `ws-maintenance/session-logs` (PR #207, from `main`; PR1.1 #208 merged in); `ws-maintenance/log-rotation` (PR #209, stacked on PR1); `ws-maintenance/log-rotation-review` (PR2.1 #210, merged) and `ws-maintenance/log-rotation-review-2` (the pair's second round); `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -23,6 +23,20 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-11, night: PR2.1 accepted; logrotate became a supervised child.**
+The Codex pair's review of PR2, [PR #210](https://github.com/ccozianu/devcapsule/pull/210),
+was merged: UTC arithmetic for abandonment, the budget falls back to the
+default with a warning instead of refusing the launch, `nocreate` so the
+writers own the replacement file, and both rotation keys required
+together. Its three proposals were right and were taken as defects: the
+rotation thread was created before the supervisor blocks its signals, so a
+SIGTERM could end PID 1 without the orderly stop, and the supervisor's reap
+loop could take logrotate's exit first. Commit `adfbff7` runs logrotate as
+a supervised child, a `sh` loop that sleeps the interval and runs
+logrotate, started first and stopped last, teed into
+`devcapsule-logrotate.log`. The gate passed again; a second Codex round
+reviews that delta. Rounds used on PR2: one of three.
 
 **2026-10-11, evening: PR1.1 accepted; slice 2 is
 [PR #209](https://github.com/ccozianu/devcapsule/pull/209), stacked on PR1.**
@@ -415,9 +429,9 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. PR2.1: the Codex pair's review of [PR #209](https://github.com/ccozianu/devcapsule/pull/209)
-   on `ws-maintenance/log-rotation-review`; review it, merge it into PR2's
-   branch or push back, at most three rounds.
+1. PR2.2: the Codex pair's second round on [PR #209](https://github.com/ccozianu/devcapsule/pull/209),
+   branch `ws-maintenance/log-rotation-review-2`; review it, merge it or
+   push back; one more round remains before the owner is asked.
 2. The owner reviews and merges PR #207, then PR #209.
 3. Acceptance: build a recipe-12 base and run a fresh-workspace launch,
    proving the files, the rotation and the budget on a real capsule.
@@ -629,6 +643,14 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Slice 2 gate after the review (2026-10-11, PR #209 at `adfbff7`): full
+`nox -s build` passed, exit 0: mypy clean over 214 files; 1571 unit tests
+passed, 35 deselected, 1 xfailed, 1 xpassed; packaging integration 17
+passed; PEX built and smoked; documentation contract 184 pages; web
+console session mypy clean, 293 tests. Log
+`/opt/devcapsule-gate/2026-10-11-log-rotation-build-2.log`. The rotation
+loop is proven under a real `sh` with a fake logrotate.
 
 Slice 2 gate (2026-10-11, PR #209 at `4820289`): full `nox -s build`
 passed, exit 0: mypy clean over 214 files; 1548 unit tests passed, 35
@@ -1144,6 +1166,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - Weighed and unresolved, from PR1.1: the supervisor's `preexec_fn` runs
   with tee threads alive, which Python documents as unsafe; a helper that
   sets the mask and execs would remove it. Not changed, no failure seen.
+- Weighed and unresolved: logrotate's own log is one of the rotated files;
+  its loop never exits, so an OOM kill of the `sh` loop would fail the
+  session like any infrastructure child. Accepted for now.
 - Weighed and unresolved: the budget knob is an environment variable; a
   configuration node would be durable but touches the guarded vocabulary.
   Xvnc at status level rather than errors only.
