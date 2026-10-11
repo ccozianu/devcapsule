@@ -181,6 +181,79 @@ ENTRYPOINT_CONTRACT = (
 )
 
 
+UNPACKED_DIRECTORY = "unpacked"
+UNPACKED_MARKER = ".devcapsule-unpacked.json"
+
+
+def unpacked_tree(cache_root: Path, sha256: str, unpack: Callable[[Path], Path]) -> Path:
+    """Return the cached installation tree of an already verified archive.
+
+    ``sha256`` identifies the archive. Callers of the same key must use the
+    same extraction layout. ``unpack`` receives a nonexistent destination
+    and returns an existing directory inside it. Its exceptions propagate.
+
+    A per-digest lock covers inspection, recovery, extraction and publication,
+    including cache hits: no caller may remove another's completed tree after
+    observing an earlier miss. The marker is written last, then the directory
+    is renamed into place. A failed extraction is cleaned up; an abrupt exit
+    leaves a fixed staging path that the next caller recovers under the lock.
+    Completed trees stay at stable paths and are treated as immutable by users
+    of this cache. Marker validation checks structure, not file-content hashes.
+    """
+    sha256 = _validated_sha256(sha256, "Unpacked archive SHA-256")
+    home = cache_root / UNPACKED_DIRECTORY / sha256
+    marker = home / UNPACKED_MARKER
+    with _exclusive_lock(cache_root / "locks" / "unpacked" / f"{sha256}.lock"):
+        recorded = _unpacked_root(marker, sha256)
+        if recorded is not None:
+            return home / recorded
+        _remove_unpacked_entry(home)
+        partial = home.with_name(f"{home.name}.partial")
+        _remove_unpacked_entry(partial)
+        # Extractors create the destination themselves; prepare only its parent.
+        partial.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            root = unpack(partial)
+            relative = root.relative_to(partial).as_posix()
+            (partial / UNPACKED_MARKER).write_text(
+                json.dumps({"schema_version": 1, "sha256": sha256, "root": relative}) + "\n",
+                encoding="utf-8",
+            )
+            if _unpacked_root(partial / UNPACKED_MARKER, sha256) is None:
+                raise CliError("Archive extractor did not return a directory inside its destination.")
+            partial.rename(home)
+        finally:
+            _remove_unpacked_entry(partial)
+        return home / relative
+
+
+def _remove_unpacked_entry(path: Path) -> None:
+    """Remove an owned cache entry without traversing a replaced root symlink."""
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+
+
+def _unpacked_root(marker: Path, sha256: str) -> str | None:
+    """Read a supported completion record whose root still exists inside the entry."""
+    try:
+        if marker.parent.is_symlink():
+            return None
+        document = json.loads(marker.read_text(encoding="utf-8"))
+        if not isinstance(document, dict) or document.get("schema_version") != 1 or document.get("sha256") != sha256:
+            return None
+        root = document["root"]
+        if not isinstance(root, str) or not root or Path(root).is_absolute() or ".." in Path(root).parts:
+            return None
+        directory = marker.parent / root
+        if not directory.is_dir() or not directory.resolve().is_relative_to(marker.parent.resolve()):
+            return None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return root
+
+
 def cache_root(env: Mapping[str, str] | None = None) -> Path:
     return XdgHomes.from_environment(env).cache
 
@@ -702,10 +775,14 @@ def ensure_materialized_surface(
         with tempfile.TemporaryDirectory(prefix="devcapsule-materialize-", dir=work_root) as temporary_value:
             temporary = Path(temporary_value)
             try:
-                surface_root = normalize_archive_directory(acquisition.path, temporary)
+                surface_root = unpacked_tree(
+                    cache_root, artifact.sha256,
+                    lambda destination: normalize_archive_directory(acquisition.path, destination),
+                )
             except OSError as exc:
                 raise CliError(
-                    f"Cannot unpack the verified {component_id} archive beneath {work_root}: {exc}"
+                    f"Cannot unpack the verified {component_id} archive beneath "
+                    f"{cache_root / UNPACKED_DIRECTORY}: {exc}"
                 ) from exc
             for probe in profile.archive_probes:
                 if not (surface_root / probe).is_file():
@@ -722,6 +799,7 @@ def ensure_materialized_surface(
                         acquired.path,
                         declaration,
                         temporary / f"{declaration.component_id}-{index}",
+                        cache_root=cache_root,
                     ),
                     declaration,
                 )
@@ -851,11 +929,17 @@ def _prepare_locked_artifact(
     acquired: Path,
     declaration: LockedArtifactDeclaration,
     destination: Path,
+    *,
+    cache_root: Path,
 ) -> Path:
+    # Directory artifacts (IDE trees, browsers) are the large ones; they are
+    # unpacked once under the cache by digest, like the surface archive.
     if declaration.artifact_format == "tar-gz-directory":
-        return extract_tar_directory(acquired, destination)
+        return unpacked_tree(cache_root, declaration.sha256,
+                             lambda tree: extract_tar_directory(acquired, tree))
     if declaration.artifact_format == "zip-directory":
-        return extract_zip(acquired, destination)
+        return unpacked_tree(cache_root, declaration.sha256,
+                             lambda tree: extract_zip(acquired, tree))
     if declaration.artifact_format in {"file", "python-wheel"}:
         shutil.copyfile(acquired, destination)
         destination.chmod(0o700)
