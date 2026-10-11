@@ -26,7 +26,16 @@ from ...container_runtime.contract import (
     HOST_X11_DISPLAY_TRANSPORT,
     ConsolePlan,
     DisplayPlan,
+    LogsPlan,
     RuntimePlan,
+)
+from ... import logs
+from ..session_logs import (
+    LAUNCHER_LOG_COMPONENT,
+    SESSION_LOG_DESTINATION,
+    session_logs_root,
+    session_manifest,
+    write_session_manifest,
 )
 from ...display_client import (
     CONSOLE_LABEL_TEXT,
@@ -224,6 +233,11 @@ class PycharmRunConfig:
     console_host_port: int | None = None
     console_token: str = ""
     open_console_url: Callable[[str], None] | None = None
+    # This session's log directory on the host, bound into the capsule at
+    # SESSION_LOG_DESTINATION: the launcher's own log, the supervisor's, and
+    # one file per supervised child (see devcapsule.logs).
+    session_id: str = ""
+    session_log_directory: Path | None = None
     interactive_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_state_mounts: tuple[tuple[str, str, str], ...] = ()
     additional_environment: tuple[tuple[str, str], ...] = ()
@@ -250,6 +264,7 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
             else:
                 runtime_env[HOST_OPEN_SOCKET_ENV] = str(browser_socket)
             config = build_run_config(options, runtime_env)
+            begin_session_logs(config, runtime_env)
             prepare_home_mount_points(config)
             files = prepare_temp_runtime_files(config, runtime_env)
             try:
@@ -301,15 +316,50 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     watch_display_ready(
                         config.console_host_port, console, opener, stop_watching, label=CONSOLE_LABEL_TEXT,
                     )
+                _session_events.info("docker run: %s", shlex.join(command))
                 try:
                     completed = subprocess.run(command, check=False, env=runtime_env)
+                except KeyboardInterrupt:
+                    _session_events.info("session end: interrupted from the terminal (Ctrl+C)")
+                    raise
                 finally:
                     stop_watching.set()
+                _session_events.info("session end: docker run exit code %d", completed.returncode)
                 return completed.returncode
             finally:
                 cleanup_temp_runtime_files(files)
     except HostOpenError as exc:
         raise PycharmRunError(str(exc)) from exc
+
+
+_session_events = logs.events_logger(LAUNCHER_LOG_COMPONENT)
+
+
+def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None:
+    """Open the launcher's log, write the session manifest, prune old sessions.
+
+    Nothing here may stop the launch: a log directory that cannot be written
+    is reported on the console and the session runs without files.
+    """
+
+    directory = config.session_log_directory
+    if directory is None:
+        return
+    logs.configure(LAUNCHER_LOG_COMPONENT, directory, environ=env)
+    component = config.runtime_plan.component.id if config.runtime_plan is not None else "pycharm"
+    try:
+        write_session_manifest(directory, session_manifest(
+            session_id=config.session_id, project=config.project, project_mount=config.project_mount,
+            image=config.image, container_name=config.name, component=component,
+        ))
+    except OSError as error:
+        print(f"devcapsule launcher: cannot write the session manifest in {directory} ({error})", file=sys.stderr)
+    _session_events.info(
+        "session %s start: image %s, container %s, project %s", config.session_id, config.image, config.name, config.project,
+    )
+    removed = logs.prune_sessions(directory.parent)
+    if removed:
+        _session_events.info("removed %d older session log directories: %s", len(removed), ", ".join(removed))
 
 
 def describe_run_command(command: list[str], config: PycharmRunConfig,
@@ -333,6 +383,8 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
     ):
         if path is not None:
             comments.append(f"Temporary {label}: {path}")
+    if config.session_log_directory is not None:
+        comments.append(f"Session logs: {config.session_log_directory} (bound at {SESSION_LOG_DESTINATION})")
     if config.host_browser_socket is not None:
         comments.append("Host-browser socket requires a live broker; a broker owned by this invocation stops on return.")
     if config.display_transport == CONTAINED_DISPLAY_TRANSPORT:
@@ -699,6 +751,10 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             console_listen, console_port, CONSOLE_TOKEN_DESTINATION,
             source_path=console_development_source(project, runtime_plan.project_mount),
         ))
+    session_id = logs.new_session_id()
+    session_log_directory = resolve_existing_or_create(session_logs_root(project, env) / session_id)
+    if selected_runtime_plan is not None:
+        selected_runtime_plan = selected_runtime_plan.with_logs(LogsPlan(SESSION_LOG_DESTINATION))
     fixed_environment = selected_runtime_plan.component_environment() if selected_runtime_plan else {}
     if host_browser_socket is not None and (
         "BROWSER" in fixed_environment or HOST_OPEN_SOCKET_ENV in fixed_environment
@@ -777,6 +833,8 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         display_token=display_token,
         open_display_url=options.open_display_url,
         console_host_port=console_host_port,
+        session_id=session_id,
+        session_log_directory=session_log_directory,
         console_token=console_token,
         open_console_url=options.open_console_url,
         interactive_state_mounts=tuple(interactive_state_mounts),
@@ -920,6 +978,7 @@ def build_docker_args(
         # The console's host-side origin, so an agent inside can hand the human
         # a link; the token stays in its file and in the browser's cookie.
         *_console_environment_args(config),
+        *_session_log_environment_args(config),
         "--env",
         "HOME=/home/devcapsule",
         "--env",
@@ -953,6 +1012,7 @@ def build_docker_args(
         *_surface_state_mount_args(config),
         *_display_mount_args(config, files),
         *_console_mount_args(config, files),
+        *_session_log_mount_args(config),
         "--mount",
         f"type=bind,src={files.passwd_file},dst=/etc/passwd,ro",
         "--mount",
@@ -1073,6 +1133,19 @@ def build_docker_args(
         args.extend(["--memory", str(config.memory_limit_bytes)])
     args.extend(config.extra_docker_args)
     return args
+
+
+def _session_log_environment_args(config: PycharmRunConfig) -> list[str]:
+    if config.session_log_directory is None:
+        return []
+    return ["--env", f"{logs.DIRECTORY_ENV}={SESSION_LOG_DESTINATION}"]
+
+
+def _session_log_mount_args(config: PycharmRunConfig) -> list[str]:
+    """The session's host-backed log directory, writable, so the logs outlive the container."""
+    if config.session_log_directory is None:
+        return []
+    return ["--mount", f"type=bind,src={config.session_log_directory},dst={SESSION_LOG_DESTINATION}"]
 
 
 def _console_environment_args(config: PycharmRunConfig) -> list[str]:
@@ -1675,6 +1748,7 @@ Renderer security:
             f"""{component_id} storage:
   Persistent home:       {config.persistent_home}
 {slot_lines}
+  Session logs:           {config.session_log_directory}
   Container project path: {config.project_mount}{browser_disclosure}{sandbox_disclosure}{host_browser_disclosure}""",
             file=sys.stderr,
         )
@@ -1687,6 +1761,7 @@ Renderer security:
   PyCharm system:         {config.ide_system}
   PyCharm logs:           {config.ide_log}
   Tool cache:             {config.tool_cache}
+  Session logs:           {config.session_log_directory}
   Container project path: {config.project_mount}{browser_disclosure}{host_browser_disclosure}""",
         file=sys.stderr,
     )

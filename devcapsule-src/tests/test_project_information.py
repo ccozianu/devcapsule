@@ -59,6 +59,8 @@ def test_info_without_registration_is_read_only_and_ignores_host_secrets(project
     assert "must-not-appear" not in json.dumps(report) and "/host/private-bin" not in json.dumps(report)
     persistence = {row["name"]: row for row in report["persistence"]}
     assert persistence["xtras"]["backing"] == persistence["home"]["backing"] + "/xtras"
+    assert persistence["logs"]["path"] == "/var/log/devcapsule" and persistence["logs"]["kind"] == "state"
+    assert persistence["logs"]["backing"].endswith("/logs") and "newest 20" in persistence["logs"]["lifecycle"]
     assert persistence["codex/home"]["path"] == "/home/devcapsule/.codex"
     assert {row["path"] for row in report["temporary"]} >= {"/tmp", "/run", "/var/tmp"}
     assert not (tmp_path / "xdg_data_home").exists()
