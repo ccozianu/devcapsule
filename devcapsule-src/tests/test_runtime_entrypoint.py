@@ -414,46 +414,42 @@ def test_contract_carries_the_rotation_both_or_neither(tmp_path: Path) -> None:
             RuntimePlan.from_mapping({**runtime_document(tmp_path), "logs": logs_value})
 
 
-def test_entrypoint_rotates_with_logrotate_when_the_base_has_it_and_cuts_otherwise(
+def test_entrypoint_rotates_with_a_supervised_logrotate_child_when_the_base_has_it_and_cuts_otherwise(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, captured_supervisor: type[SupervisorCapture],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     from devcapsule import logs
     from devcapsule.container_runtime import entrypoint
 
-    started: list[tuple[str, ...]] = []
-
-    class FakeRotation:
-        def __init__(self, command: tuple[str, ...], **_options: object) -> None:
-            started.append(command)
-
-        def __enter__(self) -> "FakeRotation":
-            return self
-
-        def __exit__(self, *_exception: object) -> None:
-            pass
-
-    monkeypatch.setattr(entrypoint.logs, "Rotation", FakeRotation)
     document = runtime_document(tmp_path)
     document["logs"] = {"directory": str(tmp_path / "logs"), "segment_bytes": 2048, "rotations": 3}
     try:
         monkeypatch.setattr(entrypoint.shutil, "which", lambda name: f"/usr/sbin/{name}")
         assert run(RuntimePlan.from_mapping(document)) == 42
-        assert started == [("logrotate", "-s", str(tmp_path / "logs" / ".logrotate.state"), str(tmp_path / "logs" / "logrotate.conf"))]
-        assert captured_supervisor.instances[-1].tee_budget_bytes is None
+        supervisor = captured_supervisor.instances[-1]
+        # The rotation child comes first, so it is stopped last, after every writer.
+        assert [child.name for child in supervisor.children] == ["logrotate", "jetbrains"]
+        rotation = supervisor.children[0]
+        assert not rotation.foreground and rotation.ready is None
+        assert rotation.command == logs.logrotate_loop_command(tmp_path / "logs")
+        assert rotation.log_path == str(tmp_path / "logs" / "devcapsule-logrotate.log")
+        assert supervisor.tee_budget_bytes is None
         text = (tmp_path / "logs" / "logrotate.conf").read_text(encoding="utf-8")
         assert "    size 2048\n" in text and "    rotate 3\n" in text
         assert "logrotate" not in capsys.readouterr().err
 
         monkeypatch.setattr(entrypoint.shutil, "which", lambda name: None)
         assert run(RuntimePlan.from_mapping(document)) == 42
-        assert captured_supervisor.instances[-1].tee_budget_bytes == logs.TEE_BUDGET_BYTES
+        supervisor = captured_supervisor.instances[-1]
+        assert [child.name for child in supervisor.children] == ["jetbrains"]
+        assert supervisor.tee_budget_bytes == logs.TEE_BUDGET_BYTES
         assert "this base has no logrotate (base recipe 12 adds it); each copied child's file is cut at 50 MiB" in capsys.readouterr().err
-        assert len(started) == 1
 
         document["logs"] = {"directory": str(tmp_path / "plain")}
         assert run(RuntimePlan.from_mapping(document)) == 42
-        assert captured_supervisor.instances[-1].tee_budget_bytes == logs.TEE_BUDGET_BYTES
-        assert not (tmp_path / "plain" / "logrotate.conf").exists() and len(started) == 1
+        supervisor = captured_supervisor.instances[-1]
+        assert [child.name for child in supervisor.children] == ["jetbrains"]
+        assert supervisor.tee_budget_bytes == logs.TEE_BUDGET_BYTES
+        assert not (tmp_path / "plain" / "logrotate.conf").exists()
     finally:
         logs.reset()

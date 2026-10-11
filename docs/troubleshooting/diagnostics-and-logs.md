@@ -41,6 +41,7 @@ with the exact path for your checkout.
 | `session.json` | the launcher | The session id, start time, launcher version and source revision, image, container name, project path and mount, the IDE |
 | `devcapsule-launcher.log` | the launcher, on your computer | The session's start and end, the `docker run` command, warnings |
 | `devcapsule-supervisor.log` | the capsule's process supervisor | Every child's start, readiness, exit and signal, with the exit code or signal name; warnings |
+| `devcapsule-logrotate.log` | the rotation process | What `logrotate` complained about, if anything |
 | `devcapsule-xvnc.log` | Xvnc, the capsule's X server | Errors and connection events: a viewer accepted or closed |
 | `devcapsule-window-manager.log`, `devcapsule-panel.log` | openbox, tint2 | Their standard output and error, as they print it |
 | `devcapsule-novnc.log` | websockify, the browser bridge | Connections opened and closed, handshake failures |
@@ -83,8 +84,9 @@ at WARNING.
 
 ## How much disk this takes
 
-`logrotate` runs inside the capsule, over the session directory, with a
-30-second wait between runs and another attempt at session shutdown. The
+`logrotate` runs inside the capsule, over the session directory, as one of
+the supervisor's own processes: every 30 seconds, from the session's start to
+its end. Its complaints, if any, are in `devcapsule-logrotate.log`. The
 rules it applies are in `logrotate.conf` beside the logs:
 
 - Each file rotates when it exceeds its segment, 8 MiB by default. Four

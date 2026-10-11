@@ -19,8 +19,8 @@ Two levels are in play:
   :func:`events_logger`, because they are what reconstructs an incident.
 
 Rotation belongs to ``logrotate``, run inside the capsule over the session
-directory (:class:`Rotation`); the writers here reopen their file when it has
-been rotated away. ``DEVCAPSULE_LOG_BUDGET`` sets a retention target, not a
+directory as a supervised child (:func:`logrotate_loop_command`); the writers
+here reopen their file when it has been rotated away. ``DEVCAPSULE_LOG_BUDGET`` sets a retention target, not a
 hard disk quota: the launcher derives each file's segment size from it and
 removes the oldest ended sessions beyond it at the next launch.
 
@@ -39,8 +39,8 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shlex
 import shutil
-import subprocess
 import sys
 import threading
 import time
@@ -69,6 +69,8 @@ ROTATIONS = 4
 """Older segments kept per file; the newest stays uncompressed, the rest are gzipped."""
 ROTATION_INTERVAL_SECONDS = 30.0
 """Delay between logrotate runs; execution time and failures add to the size overshoot."""
+LOGROTATE_CHILD = "logrotate"
+"""The supervised child that runs the rotation; its file is ``devcapsule-logrotate.log``."""
 LOGROTATE_EXECUTABLE = "logrotate"
 LOGROTATE_CONFIGURATION = "logrotate.conf"
 LOGROTATE_STATE = ".logrotate.state"
@@ -424,61 +426,26 @@ def logrotate_command(directory: Path, *, executable: str = LOGROTATE_EXECUTABLE
     return (executable, "-s", str(directory / LOGROTATE_STATE), str(directory / LOGROTATE_CONFIGURATION))
 
 
-class Rotation:
-    """Run logrotate over the session directory every interval, on a daemon thread.
+def logrotate_loop_command(
+    directory: Path,
+    *,
+    interval_seconds: float = ROTATION_INTERVAL_SECONDS,
+    executable: str = LOGROTATE_EXECUTABLE,
+) -> tuple[str, ...]:
+    """The rotation as a supervised child: sleep the interval, run logrotate, repeat.
 
-    ``command`` is the complete logrotate invocation, wrapped to run as the
-    capsule user when the caller is root, so the state file and the rotated
-    segments stay the user's. A failing run is reported once as a warning
-    and the thread keeps trying; logrotate's own output goes to the
-    supervisor's log at WARNING when it fails.
+    The supervisor owns it like the display's children: started first,
+    stopped last, its exit attributed, its output teed into
+    ``devcapsule-logrotate.log``. A failed run is logrotate's complaint on
+    stderr, kept in that file; the loop goes on. A thread of the
+    supervisor's own would sit outside its signal mask and its reaping; a
+    child sits inside both.
     """
 
-    def __init__(self, command: tuple[str, ...], *, interval_seconds: float = ROTATION_INTERVAL_SECONDS) -> None:
-        if not command or interval_seconds <= 0:
-            raise ValueError("rotation needs a command and a positive interval")
-        self._command = command
-        self._interval = interval_seconds
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._loop, name="logrotate", daemon=True)
-        self._reported = False
-        self.runs = 0
-
-    def __enter__(self) -> Rotation:
-        self._thread.start()
-        return self
-
-    def __exit__(self, *_exception: object) -> None:
-        self._stop.set()
-        self._thread.join(self._interval + 5.0)
-
-    def _loop(self) -> None:
-        while not self._stop.wait(self._interval):
-            self.run_once()
-        self.run_once()  # the session's last lines get their rotation too
-
-    def run_once(self) -> bool:
-        self.runs += 1
-        try:
-            completed = subprocess.run(self._command, capture_output=True, text=True, timeout=60.0, check=False)
-        except (OSError, subprocess.SubprocessError) as error:
-            self._report(f"logrotate did not run: {error}")
-            return False
-        # Inside the capsule the supervisor is PID 1 and reaps every child it
-        # is woken for, logrotate included, so this thread's wait can find
-        # the exit already collected and read it as 0. logrotate is silent
-        # when it succeeds; anything on stderr is a failure whatever the code.
-        # This cannot detect a silent failure whose status the supervisor took.
-        complaint = completed.stderr.strip()
-        if completed.returncode != 0 or complaint:
-            self._report(f"logrotate exited {completed.returncode}: {complaint}")
-            return False
-        return True
-
-    def _report(self, message: str) -> None:
-        if not self._reported:
-            logging.getLogger("devcapsule.logs").warning("%s; rotation keeps retrying every %gs", message, self._interval)
-            self._reported = True
+    if interval_seconds < 1:
+        raise ValueError("the rotation interval must be at least one second")
+    run = shlex.join(logrotate_command(directory, executable=executable))
+    return ("sh", "-c", f"while :; do sleep {int(interval_seconds)}; {run} || true; done")
 
 
 class Tee:

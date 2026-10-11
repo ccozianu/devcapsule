@@ -14,7 +14,7 @@ the plan carries a console section, the web console runs beside either; see
 
 from __future__ import annotations
 
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import nullcontext
 from dataclasses import replace
 import os
 from pathlib import Path
@@ -93,25 +93,26 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
         )
     guard = jetbrains.session_lock(plan) if plan.component.adapter == "jetbrains" and job is None else nullcontext()
     rotation, tee_budget = log_rotation(plan, as_capsule_user)
-    with guard, rotation:
+    with guard:
         return Supervisor(
-            logged_children((*infrastructure, child), log_directory), log_owner=owner, tee_budget_bytes=tee_budget,
+            logged_children((*rotation, *infrastructure, child), log_directory), log_owner=owner, tee_budget_bytes=tee_budget,
         ).run()
 
 
 def log_rotation(
     plan: rtcontract.RuntimePlan, run_as_identity: Callable[[tuple[str, ...]], tuple[str, ...]]
-) -> tuple[AbstractContextManager[object], int | None]:
+) -> tuple[tuple[SupervisedChild, ...], int | None]:
     """logrotate over the session directory when the plan asks and the base has it.
 
-    Returns the rotation to run the session inside, and the tee cut to use
-    instead: ``None`` when rotation bounds the files, the fixed cut when it
-    does not. A base before recipe 12 has no logrotate; that is announced
-    once and the session runs with the cut, never without logs.
+    Returns the rotation child to start ahead of every other, or none, and
+    the tee cut to use instead: ``None`` when rotation bounds the files, the
+    fixed cut when it does not. A base before recipe 12 has no logrotate;
+    that is announced once and the session runs with the cut, never without
+    logs.
     """
 
     if plan.logs is None or not plan.logs.rotates:
-        return nullcontext(), logs.TEE_BUDGET_BYTES
+        return (), logs.TEE_BUDGET_BYTES
     directory = Path(plan.logs.directory)
     owner = (plan.identity.uid, plan.identity.gid)
     try:
@@ -121,11 +122,12 @@ def log_rotation(
     except OSError as error:
         print(f"devcapsule logs: cannot write {directory / logs.LOGROTATE_CONFIGURATION} ({error}); files are cut, not rotated",
               file=sys.stderr, flush=True)
-        return nullcontext(), logs.TEE_BUDGET_BYTES
+        return (), logs.TEE_BUDGET_BYTES
     if shutil.which(logs.LOGROTATE_EXECUTABLE) is None:
         print(LOGROTATE_RECIPE_NOTICE, file=sys.stderr, flush=True)
-        return nullcontext(), logs.TEE_BUDGET_BYTES
-    return logs.Rotation(run_as_identity(logs.logrotate_command(directory))), None
+        return (), logs.TEE_BUDGET_BYTES
+    child = SupervisedChild(name=logs.LOGROTATE_CHILD, command=run_as_identity(logs.logrotate_loop_command(directory)))
+    return (child,), None
 
 
 def logged_children(

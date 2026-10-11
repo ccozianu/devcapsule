@@ -167,34 +167,6 @@ def test_logrotate_configuration_bounds_every_component_file_and_delays_compress
         logs.logrotate_configuration(tmp_path, segment_bytes=0, rotations=4)
 
 
-def test_rotation_runs_logrotate_every_interval_and_once_more_at_the_end(tmp_path: Path) -> None:
-    marks = tmp_path / "runs"
-    command = ("sh", "-c", f"echo run >> {marks}")
-    with logs.Rotation(command, interval_seconds=0.05) as rotation:
-        deadline = time.monotonic() + 5.0
-        while rotation.runs < 2 and time.monotonic() < deadline:
-            time.sleep(0.01)
-    assert rotation.runs >= 3  # two timed runs and the final one
-    assert marks.read_text(encoding="utf-8").count("run") == rotation.runs
-
-
-def test_rotation_reports_a_failing_logrotate_once_and_keeps_trying(tmp_path: Path) -> None:
-    path = logs.configure("supervisor", tmp_path, environ={})
-    rotation = logs.Rotation(("sh", "-c", "echo bad config >&2; exit 1"), interval_seconds=1.0)
-    assert rotation.run_once() is False and rotation.run_once() is False
-    assert path is not None
-    text = path.read_text(encoding="utf-8")
-    assert text.count("logrotate exited 1: bad config; rotation keeps retrying every 1s") == 1
-    absent = logs.Rotation(("/nonexistent/logrotate",), interval_seconds=1.0)
-    assert absent.run_once() is False
-    # A complaint on stderr is reported even with a zero exit code.
-    complaining = logs.Rotation(("sh", "-c", "echo 'error: bad stanza' >&2; exit 0"), interval_seconds=1.0)
-    assert complaining.run_once() is False
-    assert "logrotate exited 0: error: bad stanza" in path.read_text(encoding="utf-8")
-    with pytest.raises(ValueError):
-        logs.Rotation((), interval_seconds=1.0)
-
-
 def test_tee_follows_the_file_logrotate_moves_away(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(logs.os, "geteuid", lambda: 0)
     owned: list[tuple[Path, int, int]] = []
@@ -430,3 +402,33 @@ def test_inaccessible_manifest_does_not_make_a_young_session_prunable(tmp_path: 
     (directory / "devcapsule-job.log").write_bytes(b"output")
     now = datetime(2026, 7, 1, 13, tzinfo=timezone.utc).timestamp()
     assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=now) == []
+
+
+def test_the_rotation_child_sleeps_then_runs_logrotate_and_never_stops_on_a_failure(tmp_path: Path) -> None:
+    import subprocess
+
+    command = logs.logrotate_loop_command(tmp_path / "with space", interval_seconds=30)
+    assert command[:2] == ("sh", "-c")
+    assert command[2] == (
+        f"while :; do sleep 30; logrotate -s '{tmp_path}/with space/.logrotate.state'"
+        f" '{tmp_path}/with space/logrotate.conf' || true; done"
+    )
+    # A failing logrotate complains on stderr and the loop goes on: two sleeps, two complaints.
+    fake = tmp_path / "logrotate"
+    fake.write_text(f"#!/bin/sh\necho run >> {tmp_path / 'runs'}\necho error: bad >&2\nexit 1\n", encoding="utf-8")
+    fake.chmod(0o755)
+    process = subprocess.Popen(
+        logs.logrotate_loop_command(tmp_path, interval_seconds=1, executable=str(fake)), stderr=subprocess.PIPE, text=True,
+    )
+    try:
+        deadline = time.monotonic() + 10.0
+        marks = tmp_path / "runs"
+        while (not marks.exists() or marks.read_text().count("run") < 2) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert marks.read_text().count("run") >= 2
+    finally:
+        process.terminate()
+        _out, err = process.communicate(timeout=5)
+    assert err.count("error: bad") >= 2
+    with pytest.raises(ValueError):
+        logs.logrotate_loop_command(tmp_path, interval_seconds=0)
