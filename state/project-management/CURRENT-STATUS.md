@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-11; persistent diagnostics assigned to maintenance for 0.3.0; 30 intake dispositions prepared; items 7, 8 and 12 remain pre-V1, tentatively 0.9
+State: active 2026-10-11; persistent diagnostics assigned to maintenance for 0.3.0; 30 intake dispositions recorded; items 7, 8 and 12 remain pre-V1, tentatively 0.9
 
-Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
+Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Branch association: `ws-project-management/coordination`
 
@@ -29,9 +29,9 @@ closure of the obsolete Stage 7 resource-convention request with no action.
 The owner then prioritized the separate persistent-diagnostics request for
 active implementation planning, targeted ready for 0.3.0. On 2026-10-10 the owner postponed agenda items 7, 8 and 12 until before V1,
 tentatively 0.9, explicitly outside 0.3.0. The owner also dropped Pagefind catalog inclusion and required a portable
-website dependency handoff. Thirty messages are removed for the commit
-containing their appended log entries: 29 acknowledgements and one dropped
-request. Eight messages remain undecided.
+website dependency handoff. Thirty messages are closed in the same commit as their appended log entries: 29 acknowledgements and one dropped
+request. Eight original messages remain undecided; one new testing-policy
+reconciliation message is received and pending separately.
 Closing an intake does not complete retained implementation or acceptance work.
 
 The next release is **0.3.0**, by the owner's unconditional 2026-10-05
@@ -83,8 +83,7 @@ remain subject to scoping; no implementation completion is claimed.
 
 Delivered the complete work order to maintenance as
 `2026-10-11-project-management-maintenance-persistent-diagnostics.md` at
-coordination `a535ccf3a44e`. The recipient has the full text and need not wait
-for this checkout's pending commit. Its acknowledgement and execution are next.
+coordination `a535ccf3a44e`. The recipient has the full text. Its acknowledgement and execution are next.
 
 ### Pagefind catalog proposal closed; website handoff delivered
 
@@ -117,10 +116,11 @@ reliability commitments to component-upgrades as
 `2026-10-09-project-management-accepted-upgrade-followups.md` at coordination
 `387656fed15e`. No implementation priority or new release gate was assigned.
 
-The seven-item Karpathy list remains closed. The console work order is with
-capsule-webconsole in a separate checkout. Its published status reports the
-second iteration awaiting owner review and the view registry in a later
-iteration. This reconciliation does not change its work or claim new acceptance.
+The seven-item Karpathy list remains closed. The console work order remains
+with capsule-webconsole in its separate checkout. Main includes subsequent
+console integrations through PR #201; the earlier published second-iteration
+handoff is historical. This reconciliation does not claim owner acceptance
+of further console work.
 
 ## Planned Next Step
 
@@ -153,43 +153,47 @@ sample-projects. Neither lack of a live publication nor this cleanup closes them
 
 ## Validation And External State
 
-Prepared a clean merge of origin/main at 2258ab1 before editing; the merge
-commit is still pending. The 2026-10-11 checkpoint fetch finds main at 435d3d4,
-including a new workflow topic 8.8 on human decision handoffs, now read.
-Finish the prepared checkpoint, then merge this newer main and validate before
-resuming product decisions; the changed definition makes synchronization required.
+The approved records were committed and pushed as 9139717 after the initial
+main merge 263f5d0. The checkpoint then merged origin/main at 435d3d4;
+its only conflict was the root workstream list. Resolution preserves the
+current project-management row and main's rows for every other workstream.
+The new workflow topic 8.8 on human decision handoffs and the accompanying
+AGENTS.md instruction have been read. No product decision changed in the merge.
 The updated local gate includes the separate web-console session. No mailbox
 items waited at the reconciliation entry and no open bug is owned by
-project-management. On 2026-10-11 one new item waits in the mailbox:
+project-management. On 2026-10-11 one new item was taken into intake:
 `2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md`.
-It is not part of the eight remaining local intake items; take and decide it
-when the prepared merge/records can be committed promptly.
+It is additional to the eight original intake items and remains undecided.
+It asks for a project-wide testing-policy reconciliation; no policy change or
+release target is inferred from receipt.
 The known manifest/definition version mismatch is unchanged; this records pass
 does not refresh the workflow or edit project configuration.
 
-The required build gate passed: 1,329 runtime tests, 35 deselected, one existing
-xfail and one XPASS; packaged integration checks, type checks, syntax, source/
-PEX smokes and the documentation contract passed. The separate web-console
-session passed its type check and 89 tests. No container or service was started.
+The required build gate passed again after merging main at 435d3d4:
+1,498 runtime tests, 35 deselected, one xfail and one XPASS; all 17 packaged
+integration tests, type checks, syntax, source/PEX smokes and the 184-page
+documentation contract passed. The separate web-console session passed its
+type check and 290 tests. Both nox sessions succeeded in about three minutes.
+No container or service was started. The dirty-tree validation artifact is
+`dist/devcapsule-local.pex`; this checkpoint does not produce a release artifact.
+The final mailbox check found no waiting mail.
 Record checks establish exactly 30 deletions and unique appended dispositions
 (29 acknowledgements and one drop), eight byte-identical remaining messages, the
 diagnostics proposal retained with the owner's subsequent assignment, both historical records preserved verbatim,
 resolved links in changed documents and only this workstream's list row edited.
 A pre-existing broken ledger link was corrected to its current engineering home.
 
-Commit pending only the active model's displayed name, requested from the human
-for the mandatory WORKFLOW-LOCAL.md co-author trailer. The clean main merge is
-prepared in the index; the records are prepared in the working tree. No record
-has been published as committed. Pre-existing or IDE-generated .idea edits remain
-outside the commit. The selected workstream has not changed.
+The owner identified the current session as GPT-6 Astra on 2026-10-11.
+Commits retain the human author and credit GPT-6 Astra Codex. This is a
+session-specific attribution, not a model default for future sessions.
+Pre-existing or IDE-generated .idea edits remain outside the checkpoint.
+The selected workstream has not changed.
 The owner requested regular commits and pushes on 2026-10-11. Checkpoint each
 completed decision batch instead of accumulating several batches uncommitted.
 
 ## Open Threads
 
-- Awaiting the human: displayed active model name for commit attribution; then
-  commit and publish the prepared reconciliation. Next bounded decision begins
-  with 0.3.0 release scope and ship criteria unless the owner chooses another
+- Awaiting the human: next bounded decision begins with 0.3.0 release scope and ship criteria unless the owner chooses another
   slice; maintenance now owns diagnostics implementation. The eight remaining messages are not yet approved for disposition.
 - Weighed and unresolved: the older local GitHub UI-only rule versus scoped gh
   grants, workflow-rule stewardship, and timing of humane-view dependencies.
@@ -215,7 +219,7 @@ completed decision batch instead of accumulating several batches uncommitted.
 - [0.2.14 bug triage](../../releases/v0.2.14/bugs.md): release dispositions and next actions; canonical bug records remain linked.
 
 - [Prior coordination status](2026-09-22-record-prior-coordination-status.md): full historical handoff, decisions, open-thread context and external-state claims; read when reconciling a specific prior topic.
-- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains eight undecided items after 29 acknowledgements and the Stage 7 closure.
+- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains eight original undecided items plus the new testing-policy reconciliation, after 29 acknowledgements and the Stage 7 closure.
 
 - [Diagnostic print-command and run-image retirement](2026-09-21-design-editable-project-launch.md): accepted simplified contract and maintenance implementation scope.
 - [Design issue: V1 completeness and the WOW experience](2026-09-19-v1-wow-functionality-areas.md)
