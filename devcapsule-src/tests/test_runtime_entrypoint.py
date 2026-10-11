@@ -400,7 +400,10 @@ def test_contract_carries_the_rotation_both_or_neither(tmp_path: Path) -> None:
     assert plan.to_mapping()["logs"] == document["logs"]
     assert RuntimePlan.from_mapping(plan.to_mapping()) == plan
     assert not LogsPlan("/var/log/devcapsule").rotates
+    assert LogsPlan.from_mapping({"directory": "/var/log/devcapsule", "segment_bytes": 0, "rotations": 0}, "logs") == LogsPlan("/var/log/devcapsule")
     for logs_value, message in (
+        ({"directory": "/var/log/devcapsule", "segment_bytes": 0}, "go together"),
+        ({"directory": "/var/log/devcapsule", "rotations": 0}, "go together"),
         ({"directory": "/var/log/devcapsule", "segment_bytes": 1}, "go together"),
         ({"directory": "/var/log/devcapsule", "rotations": 1}, "go together"),
         ({"directory": "/var/log/devcapsule", "segment_bytes": -1, "rotations": 1}, "segment_bytes must be a non-negative integer"),

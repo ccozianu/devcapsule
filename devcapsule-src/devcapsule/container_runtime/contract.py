@@ -302,7 +302,7 @@ class LogsPlan:
         for name, number in (("segment_bytes", segment_bytes), ("rotations", rotations)):
             if not isinstance(number, int) or isinstance(number, bool) or number < 0:
                 raise RuntimePlanError(f"{field}.{name} must be a non-negative integer")
-        if (segment_bytes > 0) != (rotations > 0):
+        if ("segment_bytes" in value) != ("rotations" in value) or (segment_bytes > 0) != (rotations > 0):
             raise RuntimePlanError(f"{field}.segment_bytes and {field}.rotations go together")
         return cls(directory, segment_bytes, rotations)
 
