@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Buffer
+from datetime import datetime, timezone
 import io
 import logging
 import os
@@ -356,7 +357,7 @@ def test_prune_never_takes_a_session_that_is_still_running_unless_it_is_abandone
     import json
     import time
 
-    now = time.mktime(time.strptime("20260110-120000", "%Y%m%d-%H%M%S")) - time.timezone
+    now = datetime(2026, 1, 10, 12, tzinfo=timezone.utc).timestamp()
     running = tmp_path / "20260110-100000-aaaa"  # two hours old, no end recorded
     abandoned = tmp_path / "20260101-100000-bbbb"  # nine days old, no end recorded
     ended = tmp_path / "20260110-110000-cccc"
@@ -370,3 +371,43 @@ def test_prune_never_takes_a_session_that_is_still_running_unless_it_is_abandone
     assert logs.session_ended(tmp_path / "not-a-session", now=now)
     assert logs.prune_sessions(tmp_path, budget_bytes=0, current="20260110-120000-dddd", now=now) == [abandoned.name, ended.name]
     assert sorted(entry.name for entry in tmp_path.iterdir()) == [running.name]
+
+
+@pytest.mark.parametrize("tz", ["UTC0", "EST5EDT,M3.2.0,M11.1.0", "JST-9"])
+def test_abandonment_uses_utc_even_during_daylight_saving(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tz: str,
+) -> None:
+    directory = tmp_path / "20260701-120000-aaaa"
+    boundary = datetime(2026, 7, 8, 12, tzinfo=timezone.utc).timestamp()
+    try:
+        with monkeypatch.context() as context:
+            context.setenv("TZ", tz)
+            time.tzset()
+            assert not logs.session_ended(directory, now=boundary - 1)
+            assert not logs.session_ended(directory, now=boundary)
+            assert logs.session_ended(directory, now=boundary + 1)
+    finally:
+        time.tzset()
+
+
+@pytest.mark.parametrize("manifest", [None, b"{", b"\xff", b"[]", b'{"ended-at": null}'])
+def test_unreadable_manifest_requires_abandonment_before_pruning(tmp_path: Path, manifest: bytes | None) -> None:
+    directory = tmp_path / "20260701-120000-aaaa"
+    directory.mkdir()
+    (directory / "devcapsule-job.log").write_bytes(b"output")
+    if manifest is not None:
+        (directory / logs.SESSION_MANIFEST).write_bytes(manifest)
+    boundary = datetime(2026, 7, 8, 12, tzinfo=timezone.utc).timestamp()
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=boundary) == []
+    assert directory.exists()
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=boundary + 1) == [directory.name]
+
+
+def test_inaccessible_manifest_does_not_make_a_young_session_prunable(tmp_path: Path) -> None:
+    directory = tmp_path / "20260701-120000-aaaa"
+    directory.mkdir()
+    # Reading a directory as the manifest raises OSError even when run as root.
+    (directory / logs.SESSION_MANIFEST).mkdir()
+    (directory / "devcapsule-job.log").write_bytes(b"output")
+    now = datetime(2026, 7, 1, 13, tzinfo=timezone.utc).timestamp()
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="other", now=now) == []

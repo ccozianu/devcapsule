@@ -30,6 +30,7 @@ to the console with one line saying what was lost.
 
 from __future__ import annotations
 
+import calendar
 from io import TextIOWrapper
 import json
 import logging
@@ -329,7 +330,8 @@ def session_ended(directory: Path, *, now: float | None = None) -> bool:
     except (OSError, ValueError):
         pass
     try:
-        started = time.mktime(time.strptime(directory.name[:15], "%Y%m%d-%H%M%S")) - time.timezone
+        # Session ids are UTC, independent of the launcher's timezone or DST.
+        started = calendar.timegm(time.strptime(directory.name[:15], "%Y%m%d-%H%M%S"))
     except ValueError:
         return True
     return (time.time() if now is None else now) - started > ABANDONED_SESSION_SECONDS
