@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Buffer
 import io
 import logging
 import os
@@ -215,3 +216,50 @@ def test_rollover_failure_reports_once_and_keeps_console(tmp_path: Path, monkeyp
     assert handler.stream is None
     assert len(reports) == 1 and "bind mount unavailable" in reports[0]
     assert capsys.readouterr().err == "devcapsule supervisor: first warning\ndevcapsule supervisor: second warning\n"
+
+
+def test_tee_write_failure_at_budget_cut_keeps_forwarding(tmp_path: Path, monkeypatch) -> None:
+    class FullDisk(io.BytesIO):
+        def write(self, data: Buffer, /) -> int:
+            raise OSError("disk full")
+
+    file = FullDisk()
+    monkeypatch.setattr("builtins.open", lambda *args, **kwargs: file)
+    passthrough = io.BytesIO()
+    reports: list[str] = []
+    tee = logs.Tee(io.BytesIO(), tmp_path / "log", passthrough, budget_bytes=0, console=reports.append)
+    # Run synchronously so a broken budget path fails this test directly.
+    tee._forward(b"first\n")
+    tee._forward(b"second\n")
+    assert passthrough.getvalue() == b"first\nsecond\n"
+    assert file.closed and len(reports) == 1 and "disk full" in reports[0]
+
+
+def test_tee_ownership_failure_closes_file_and_keeps_console(tmp_path: Path, monkeypatch) -> None:
+    file = io.BytesIO()
+    monkeypatch.setattr("builtins.open", lambda *args, **kwargs: file)
+
+    def fail(path, owner):
+        raise PermissionError("chown denied")
+
+    monkeypatch.setattr(logs, "own", fail)
+    reports: list[str] = []
+    passthrough, _ = run_tee(tmp_path, b"still seen\n", owner=(1234, 5678), console=reports.append)
+    assert file.closed and passthrough == b"still seen\n"
+    assert len(reports) == 1 and "chown denied" in reports[0]
+
+
+def test_tee_bounds_reads_without_repeating_timestamps_within_a_line(tmp_path: Path) -> None:
+    payload = b"x" * (2 * logs._TEE_READ_BYTES) + b"\nlast\rbyte\n"
+
+    class BoundedSource(io.BytesIO):
+        def read1(self, size: int | None = -1) -> bytes:
+            assert size is not None and 0 < size <= logs._TEE_READ_BYTES
+            return super().read1(size)
+
+    path = tmp_path / "log"
+    passthrough = io.BytesIO()
+    tee = logs.Tee(BoundedSource(payload), path, passthrough, clock=lambda: 0.0).start()
+    tee.join(5)
+    assert passthrough.getvalue() == payload
+    assert path.read_bytes() == b"1970-01-01T00:00:00Z " + payload.replace(b"\nlast", b"\n1970-01-01T00:00:00Z last")
