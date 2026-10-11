@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import grp
 import json
+import logging
 import os
 import pwd
 import re
@@ -344,9 +345,9 @@ def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None
     """
 
     directory = config.session_log_directory
+    logs.configure(LAUNCHER_LOG_COMPONENT, directory, environ=env)
     if directory is None:
         return
-    logs.configure(LAUNCHER_LOG_COMPONENT, directory, environ=env)
     component = config.runtime_plan.component.id if config.runtime_plan is not None else "pycharm"
     try:
         write_session_manifest(directory, session_manifest(
@@ -760,12 +761,23 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             source_path=console_development_source(project, runtime_plan.project_mount),
         ))
     session_id = logs.new_session_id()
-    session_log_directory = resolve_existing_or_create(session_logs_root(project, env) / session_id)
+    session_log_path = session_logs_root(project, env) / session_id
+    session_log_directory: Path | None
+    try:
+        session_log_directory = resolve_existing_or_create(session_log_path)
+        if requires_translation(env) and not is_host_backed(session_log_directory, current_container(env)):
+            raise OSError("the session log directory is not backed by a mount visible to the external Docker daemon")
+    except OSError as error:
+        print(
+            f"devcapsule launcher: cannot use session logs at {session_log_path} ({error}); logging to the console only",
+            file=sys.stderr,
+        )
+        session_log_directory = None
     try:
         log_budget_bytes = logs.budget_from_environment(env)
     except logs.LogBudgetError as error:
         raise PycharmRunError(str(error)) from error
-    if selected_runtime_plan is not None:
+    if selected_runtime_plan is not None and session_log_directory is not None:
         selected_runtime_plan = selected_runtime_plan.with_logs(LogsPlan(
             SESSION_LOG_DESTINATION, segment_bytes=logs.segment_bytes_for(log_budget_bytes), rotations=logs.ROTATIONS,
         ))
@@ -993,7 +1005,7 @@ def build_docker_args(
         # The console's host-side origin, so an agent inside can hand the human
         # a link; the token stays in its file and in the browser's cookie.
         *_console_environment_args(config),
-        *_session_log_environment_args(config),
+        *_session_log_environment_args(config, env),
         "--env",
         "HOME=/home/devcapsule",
         "--env",
@@ -1150,10 +1162,16 @@ def build_docker_args(
     return args
 
 
-def _session_log_environment_args(config: PycharmRunConfig) -> list[str]:
-    if config.session_log_directory is None:
-        return []
-    return ["--env", f"{logs.DIRECTORY_ENV}={SESSION_LOG_DESTINATION}"]
+def _session_log_environment_args(config: PycharmRunConfig, env: Mapping[str, str]) -> list[str]:
+    args = []
+    if config.session_log_directory is not None:
+        args.extend(["--env", f"{logs.DIRECTORY_ENV}={SESSION_LOG_DESTINATION}"])
+    try:
+        level = logs.level_from_environment(env)
+    except logs.LogLevelError:
+        level = logs.DEFAULT_LEVEL  # begin_session_logs reports the bad value once
+    args.extend(["--env", f"{logs.LEVEL_ENV}={logging.getLevelName(level)}"])
+    return args
 
 
 def _session_log_mount_args(config: PycharmRunConfig) -> list[str]:

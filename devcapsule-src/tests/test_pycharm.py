@@ -1617,14 +1617,13 @@ def test_console_environment_contains_only_the_origin(tmp_path: Path, enabled: b
     assert console_url(41001, config.console_token) == "http://127.0.0.1:41001/?token=private%2Ftoken%3Fvalue"
 
 
-def session_config(tmp_path: Path, budget: str | None = None) -> tuple[PycharmRunConfig, dict[str, str]]:
+def session_config(tmp_path: Path, **environment: str) -> tuple[PycharmRunConfig, dict[str, str]]:
     project = tmp_path / "project"
     project.mkdir(exist_ok=True)
     env = base_env(tmp_path)
     env["XDG_STATE_HOME"] = str(tmp_path / "state")
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
-    if budget is not None:
-        env["DEVCAPSULE_LOG_BUDGET"] = budget
+    env.update(environment)
     config = build_run_config(
         PycharmRunOptions(
             project=project,
@@ -1680,7 +1679,7 @@ def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_
     from devcapsule import logs
     from devcapsule.launch.pycharm._launcher import begin_session_logs
 
-    config, env = session_config(tmp_path, budget="16M")
+    config, env = session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="16M")
     directory = config.session_log_directory
     assert directory is not None
     for index in range(3):
@@ -1709,14 +1708,116 @@ def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_
         logs.reset()
 
 
+def test_unusable_session_directory_does_not_add_a_mount_or_stop_launch(tmp_path, capsys):
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    blocked = tmp_path / "blocked-state"
+    blocked.write_text("not a directory")
+    # Existing IDE storage still has to be writable; this regression isolates
+    # the new session directory from that pre-existing launch requirement.
+    with patch.object(launcher, "session_logs_root", return_value=blocked):
+        config, env = session_config(tmp_path)
+    assert config.session_log_directory is None
+    assert config.runtime_plan is not None and config.runtime_plan.logs is None
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "run", return_value=SimpleNamespace(returncode=7)) as docker,
+        ):
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == 7
+        command = docker.call_args.args[0]
+        assert not any(SESSION_LOG_DESTINATION in arg for arg in command)
+        assert "cannot use session logs" in capsys.readouterr().err
+    finally:
+        logs.reset()
+
+
+@pytest.mark.parametrize("override,expected", [("debug", "DEBUG"), (" Info ", "INFO"), ("loud", "WARNING")])
+def test_session_log_level_reaches_the_capsule(tmp_path, override, expected):
+    config, env = session_config(tmp_path, DEVCAPSULE_LOG_LEVEL=override)
+    with patch("devcapsule.launch.pycharm._launcher.write_xauthority"), patch("devcapsule.launch.pycharm._launcher.write_user_files"):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert f"DEVCAPSULE_LOG_LEVEL={expected}" in build_docker_args(config, files, env)
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+@pytest.mark.parametrize("backed", [True, False])
+def test_session_logs_with_an_external_daemon(tmp_path, backed, capsys):
+    from devcapsule.launch.pycharm import _launcher as launcher
+    from devcapsule.recursive_dogfood import ContainerInspection, Mount
+
+    # All existing launch storage is mounted; the optional state root may be
+    # outside those mounts. Use the real translation, only fake inspection.
+    mounts = [Mount(source="/tmp/.X11-unix", destination="/tmp/.X11-unix", kind="bind", writable=True)]
+    if backed:
+        mounts.append(Mount(source="/host/checkout", destination=str(tmp_path), kind="bind", writable=True))
+    inspection = ContainerInspection(
+        identity="c" * 64, name="outer", image="sha256:" + "ab" * 32,
+        source_revision=None, network_mode="host", mounts=tuple(mounts), upper_directory=None,
+    )
+    with (
+        patch.object(launcher, "requires_translation", return_value=True),
+        patch.object(launcher, "current_container", return_value=inspection),
+    ):
+        config, env = session_config(tmp_path)
+        if backed:
+            assert config.session_log_directory is not None
+            with patch.object(launcher, "write_xauthority"), patch.object(launcher, "write_user_files"):
+                files = prepare_temp_runtime_files(config, env)
+            try:
+                args = launcher.translate_for_external_daemon(build_docker_args(config, files, env), env)
+                relative = config.session_log_directory.relative_to(tmp_path)
+                assert f"type=bind,src=/host/checkout/{relative},dst={SESSION_LOG_DESTINATION}" in args
+                assert config.session_log_directory.is_dir()  # launcher still writes through its own path
+            finally:
+                cleanup_temp_runtime_files(files)
+        else:
+            assert config.session_log_directory is None
+            assert config.runtime_plan is not None and config.runtime_plan.logs is None
+            assert "not backed by a mount" in capsys.readouterr().err
+
+
+def test_interrupted_launch_records_the_end_and_reraises(tmp_path):
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, env = session_config(tmp_path)
+    interrupted = KeyboardInterrupt()
+    stops = []
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready", side_effect=lambda port, url, opener, stop, **kw: stops.append(stop)),
+            patch.object(launcher.subprocess, "run", side_effect=interrupted),
+        ):
+            with pytest.raises(KeyboardInterrupt) as raised:
+                run_pycharm(PycharmRunOptions(project=config.project), env)
+        assert raised.value is interrupted
+        assert stops and all(stop.is_set() for stop in stops)
+        assert list((tmp_path / "runtime").iterdir()) == []
+        assert config.session_log_directory is not None
+        record = (config.session_log_directory / "devcapsule-launcher.log").read_text()
+        assert "session end: interrupted from the terminal (Ctrl+C)" in record
+    finally:
+        logs.reset()
+
+
 def test_the_log_budget_knob_sets_the_segment_and_refuses_nonsense(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    config, _env = session_config(tmp_path, budget="1G")
+    config, _env = session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="1G")
     assert config.log_budget_bytes == 1024 ** 3
     assert config.runtime_plan is not None and config.runtime_plan.logs is not None
     assert (config.runtime_plan.logs.segment_bytes, config.runtime_plan.logs.rotations) == (10 * 1024 * 1024, 4)
     print_storage_summary(config)
     assert "(budget 1 GiB)" in capsys.readouterr().err
     with pytest.raises(PycharmRunError, match="DEVCAPSULE_LOG_BUDGET: 'lots' is not a size"):
-        session_config(tmp_path, budget="lots")
+        session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="lots")
     with pytest.raises(PycharmRunError, match="DEVCAPSULE_LOG_BUDGET must be at least 16 MiB"):
-        session_config(tmp_path, budget="1M")
+        session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="1M")

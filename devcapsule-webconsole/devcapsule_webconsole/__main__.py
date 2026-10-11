@@ -10,7 +10,7 @@ from typing import Sequence
 import uvicorn
 
 from .app import create_app
-from .settings import LOG_LEVEL_ENV, SettingsError, log_level_from_environment, settings_from_arguments
+from .settings import SettingsError, log_level_from_environment, settings_from_arguments
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -33,6 +33,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     uvicorn.run(
         create_app(settings), host=settings.listen, port=settings.port,
         log_level=logging.getLevelName(level).lower(), log_config=None,
+        # Requests can carry the run token in their query string. Raising the
+        # diagnostic level must not persist those URLs in the session log.
+        access_log=False,
     )
     return 0
 

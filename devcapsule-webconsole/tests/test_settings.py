@@ -100,13 +100,14 @@ def test_main_serves_the_application_with_the_settings(project: Path, token_file
     monkeypatch.delenv(CLI_ENV, raising=False)
     served: dict[str, object] = {}
 
-    def fake_run(app, *, host, port, log_level, log_config):
-        served.update(app=app, host=host, port=port, log_level=log_level, log_config=log_config)
+    def fake_run(app, *, host, port, log_level, log_config, access_log):
+        served.update(app=app, host=host, port=port, log_level=log_level, log_config=log_config, access_log=access_log)
 
     monkeypatch.setattr(entry.uvicorn, "run", fake_run)
     assert entry.main(["--project", str(project), "--token-file", str(token_file), "--port", "7000"]) == 0
     assert (served["host"], served["port"], served["log_level"], served["log_config"]) == ("127.0.0.1", 7000, "warning", None)
     assert served["app"].state.settings.token == "abc123"  # type: ignore[attr-defined]
+    assert served["access_log"] is False
     assert "serving" in capsys.readouterr().err
 
 
@@ -125,9 +126,31 @@ def test_main_configures_logging_and_runs_uvicorn_at_the_session_level(project, 
     monkeypatch.setenv(LOG_LEVEL_ENV, "info")
     assert entry.main(arguments) == 0
     assert calls["log_level"] == "info" and calls["log_config"] is None
+    assert calls["access_log"] is False
     assert logging.getLogger().level == logging.INFO
     monkeypatch.setenv(LOG_LEVEL_ENV, "loud")
     assert entry.main(arguments) == 0
     assert calls["log_level"] == "warning"
     assert "$DEVCAPSULE_LOG_LEVEL must be one of DEBUG, INFO, WARNING, ERROR, not 'loud'; logging at WARNING" in capsys.readouterr().err
     logging.basicConfig(level=logging.WARNING, force=True)
+
+
+def test_uvicorn_records_use_the_console_handler_without_logging_request_tokens(project, token_file, monkeypatch, capsys):
+    def configure_server(app, **options):
+        # Exercise uvicorn's real logging configuration without opening a
+        # listener. A mocked run alone cannot prove log_config=None routing.
+        entry.uvicorn.Config(app, **options)
+        logging.getLogger("uvicorn.error").warning("server warning")
+        logging.getLogger("uvicorn.error").info("server diagnostic")
+        logging.getLogger("uvicorn.access").info("GET /?token=private-token")
+
+    monkeypatch.setattr(entry.uvicorn, "run", configure_server)
+    monkeypatch.setenv(LOG_LEVEL_ENV, "INFO")
+    try:
+        assert entry.main(["--project", str(project), "--token-file", str(token_file)]) == 0
+        stderr = capsys.readouterr().err
+        assert stderr.count("server warning") == 1
+        assert stderr.count("server diagnostic") == 1
+        assert "private-token" not in stderr
+    finally:
+        logging.basicConfig(level=logging.WARNING, force=True)

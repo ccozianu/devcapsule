@@ -11,6 +11,10 @@ depends on a flag you had to set before the problem happened: the files are
 there by default, and they survive the browser tab, Ctrl+C in the launcher,
 the IDE's exit and the container's removal.
 
+If the session directory cannot be created, or an external Docker daemon
+cannot see its backing mount, the launcher reports that and continues with
+console output only.
+
 ## Where the logs are
 
 The launcher prints the directory at every start, on the line `Session logs:`
@@ -46,7 +50,8 @@ with the exact path for your checkout.
 
 Every file of the capsule side is also what you see on the launcher's
 terminal: the supervisor copies each child's output to its file and to the
-console, line by line, with a UTC timestamp in front of each line in the file.
+console, with a UTC timestamp in front of each line in the file. Partial
+lines reach the console without waiting for a newline.
 The launcher's and the supervisor's own records carry the level and the
 process id as well.
 
@@ -80,7 +85,8 @@ at WARNING.
 
 - The launcher's and the supervisor's files rotate at 10 MiB, keeping five
   older segments each.
-- A copied child's file stops at 50 MiB. One last line in the file says so,
+- A copied child's payload stops at 50 MiB, including timestamps. One extra
+  line in the file says so,
   and the console keeps showing the rest.
 - A checkout keeps its newest 20 session directories. Older ones are removed
   at the next launch, and the launcher's log names what was removed.
@@ -99,5 +105,7 @@ Attach, from the session directory:
    file for an IDE that did not come up.
 4. What you did, in order, and what you expected to see.
 
-The files carry no run token and no credential. The IDE's own log can
-contain project content; read it before sharing it.
+The web console's request access log is disabled, so raising verbosity does
+not record run tokens from request URLs. Child output, custom Docker
+arguments and the IDE's own log can contain credentials or project content;
+read the files before sharing them.

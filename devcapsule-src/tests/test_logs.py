@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Buffer
 import io
 import logging
 import os
@@ -235,3 +236,109 @@ def test_tee_follows_a_real_child_process(tmp_path: Path) -> None:
     tee.join(5.0)
     assert sorted(passthrough.getvalue().split()) == [b"err", b"out"]
     assert path.read_text(encoding="utf-8").count("Z ") == 2
+
+
+def test_reconfigure_closes_old_file_and_keeps_unrelated_handlers(tmp_path: Path) -> None:
+    unrelated = logging.NullHandler()
+    root = logging.getLogger()
+    root.addHandler(unrelated)
+    try:
+        first = logs.configure("launcher", tmp_path / "first", environ={logs.LEVEL_ENV: "DEBUG"})
+        old = next(h for h in root.handlers if isinstance(h, logging.handlers.WatchedFileHandler))
+        logging.getLogger("devcapsule.launcher").debug("first session")
+        second = logs.configure("launcher", tmp_path / "second", environ={logs.LEVEL_ENV: "ERROR"})
+        assert old.stream is None and unrelated in root.handlers
+        logger = logging.getLogger("devcapsule.launcher")
+        logger.debug("discarded debug")
+        logger.warning("discarded warning")
+        logs.events_logger("launcher").info("second session")
+        assert first is not None and second is not None
+        assert "second session" not in first.read_text()
+        assert "first session" not in second.read_text()
+        assert "discarded" not in second.read_text()
+        assert second.read_text().count("second session") == 1
+        logs.configure("launcher", None, environ={})
+        logs.events_logger("launcher").info("console only")
+        assert "console only" not in second.read_text()
+    finally:
+        root.removeHandler(unrelated)
+
+
+def test_the_handler_follows_logrotate_and_owns_the_reopened_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(logs.os, "geteuid", lambda: 0)
+    owned: list[tuple[Path, int, int]] = []
+    monkeypatch.setattr(logs.os, "chown", lambda path, uid, gid: owned.append((path, uid, gid)))
+    path = logs.configure("supervisor", tmp_path, environ={}, owner=(1234, 5678))
+    assert path is not None
+    logs.events_logger("supervisor").info("first segment")
+    path.rename(path.with_suffix(".log.1"))  # what logrotate does before `create`
+    logs.events_logger("supervisor").info("second segment")
+    assert "first segment" in path.with_suffix(".log.1").read_text()
+    assert path.read_text().count("second segment") == 1 and "first segment" not in path.read_text()
+    assert owned == [(path, 1234, 5678), (path, 1234, 5678)]
+
+
+def test_a_failed_reopen_reports_once_and_keeps_the_console(tmp_path: Path, monkeypatch, capsys) -> None:
+    reports: list[str] = []
+    logs.configure("supervisor", tmp_path, environ={}, console=reports.append)
+    handler = next(h for h in logging.getLogger().handlers if isinstance(h, logging.handlers.WatchedFileHandler))
+
+    def fail():
+        raise OSError("bind mount unavailable")
+
+    monkeypatch.setattr(handler, "reopenIfNeeded", fail)
+    logger = logging.getLogger("devcapsule.supervisor")
+    logger.warning("first warning")
+    logger.warning("second warning")
+    assert handler.stream is None
+    assert len(reports) == 1 and "bind mount unavailable" in reports[0]
+    assert capsys.readouterr().err == "devcapsule supervisor: first warning\ndevcapsule supervisor: second warning\n"
+
+
+def test_tee_write_failure_at_budget_cut_keeps_forwarding(tmp_path: Path, monkeypatch) -> None:
+    class FullDisk(io.BytesIO):
+        def write(self, data: Buffer, /) -> int:
+            raise OSError("disk full")
+
+    real = open(tmp_path / "log", "ab")  # the tee stats the path and its descriptor to follow logrotate
+    file = FullDisk()
+    file.fileno = real.fileno  # type: ignore[method-assign]
+    monkeypatch.setattr("builtins.open", lambda *args, **kwargs: file)
+    passthrough = io.BytesIO()
+    reports: list[str] = []
+    tee = logs.Tee(io.BytesIO(), tmp_path / "log", passthrough, budget_bytes=0, console=reports.append)
+    # Run synchronously so a broken budget path fails this test directly.
+    tee._forward(b"first\n")
+    tee._forward(b"second\n")
+    assert passthrough.getvalue() == b"first\nsecond\n"
+    assert file.closed and len(reports) == 1 and "disk full" in reports[0]
+
+
+def test_tee_ownership_failure_closes_file_and_keeps_console(tmp_path: Path, monkeypatch) -> None:
+    file = io.BytesIO()
+    monkeypatch.setattr("builtins.open", lambda *args, **kwargs: file)
+
+    def fail(path, owner):
+        raise PermissionError("chown denied")
+
+    monkeypatch.setattr(logs, "own", fail)
+    reports: list[str] = []
+    passthrough, _ = run_tee(tmp_path, b"still seen\n", owner=(1234, 5678), console=reports.append)
+    assert file.closed and passthrough == b"still seen\n"
+    assert len(reports) == 1 and "chown denied" in reports[0]
+
+
+def test_tee_bounds_reads_without_repeating_timestamps_within_a_line(tmp_path: Path) -> None:
+    payload = b"x" * (2 * logs._TEE_READ_BYTES) + b"\nlast\rbyte\n"
+
+    class BoundedSource(io.BytesIO):
+        def read1(self, size: int | None = -1) -> bytes:
+            assert size is not None and 0 < size <= logs._TEE_READ_BYTES
+            return super().read1(size)
+
+    path = tmp_path / "log"
+    passthrough = io.BytesIO()
+    tee = logs.Tee(BoundedSource(payload), path, passthrough, clock=lambda: 0.0).start()
+    tee.join(5)
+    assert passthrough.getvalue() == payload
+    assert path.read_bytes() == b"1970-01-01T00:00:00Z " + payload.replace(b"\nlast", b"\n1970-01-01T00:00:00Z last")
