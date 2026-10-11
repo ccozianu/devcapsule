@@ -158,3 +158,60 @@ def test_tee_follows_a_real_child_process(tmp_path: Path) -> None:
     tee.join(5.0)
     assert sorted(passthrough.getvalue().split()) == [b"err", b"out"]
     assert path.read_text(encoding="utf-8").count("Z ") == 2
+
+
+def test_reconfigure_closes_old_file_and_keeps_unrelated_handlers(tmp_path: Path) -> None:
+    unrelated = logging.NullHandler()
+    root = logging.getLogger()
+    root.addHandler(unrelated)
+    try:
+        first = logs.configure("launcher", tmp_path / "first", environ={logs.LEVEL_ENV: "DEBUG"})
+        old = next(h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler))
+        logging.getLogger("devcapsule.launcher").debug("first session")
+        second = logs.configure("launcher", tmp_path / "second", environ={logs.LEVEL_ENV: "ERROR"})
+        assert old.stream is None and unrelated in root.handlers
+        logger = logging.getLogger("devcapsule.launcher")
+        logger.debug("discarded debug")
+        logger.warning("discarded warning")
+        logs.events_logger("launcher").info("second session")
+        assert first is not None and second is not None
+        assert "second session" not in first.read_text()
+        assert "first session" not in second.read_text()
+        assert "discarded" not in second.read_text()
+        assert second.read_text().count("second session") == 1
+        logs.configure("launcher", None, environ={})
+        logs.events_logger("launcher").info("console only")
+        assert "console only" not in second.read_text()
+    finally:
+        root.removeHandler(unrelated)
+
+
+def test_rotation_owns_every_new_segment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(logs, "SEGMENT_BYTES", 140)
+    monkeypatch.setattr(logs.os, "geteuid", lambda: 0)
+    owned: list[tuple[Path, int, int]] = []
+    monkeypatch.setattr(logs.os, "chown", lambda path, uid, gid: owned.append((path, uid, gid)))
+    path = logs.configure("supervisor", tmp_path, environ={}, owner=(1234, 5678))
+    logs.events_logger("supervisor").info("first segment")
+    logs.events_logger("supervisor").info("second segment")
+    assert path is not None
+    assert "first segment" in path.with_suffix(".log.1").read_text()
+    assert "second segment" in path.read_text()
+    assert owned == [(path, 1234, 5678), (path, 1234, 5678)]
+
+
+def test_rollover_failure_reports_once_and_keeps_console(tmp_path: Path, monkeypatch, capsys) -> None:
+    reports: list[str] = []
+    logs.configure("supervisor", tmp_path, environ={}, console=reports.append)
+    handler = next(h for h in logging.getLogger().handlers if isinstance(h, logging.handlers.RotatingFileHandler))
+
+    def fail(record):
+        raise OSError("bind mount unavailable")
+
+    monkeypatch.setattr(handler, "shouldRollover", fail)
+    logger = logging.getLogger("devcapsule.supervisor")
+    logger.warning("first warning")
+    logger.warning("second warning")
+    assert handler.stream is None
+    assert len(reports) == 1 and "bind mount unavailable" in reports[0]
+    assert capsys.readouterr().err == "devcapsule supervisor: first warning\ndevcapsule supervisor: second warning\n"

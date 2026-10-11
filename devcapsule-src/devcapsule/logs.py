@@ -24,6 +24,7 @@ to the console with one line saying what was lost.
 
 from __future__ import annotations
 
+from io import TextIOWrapper
 import logging
 import logging.handlers
 import os
@@ -67,6 +68,40 @@ Owner = tuple[int, int] | None
 
 class LogLevelError(ValueError):
     """The verbosity override names no known level."""
+
+
+class _OwnedRotatingFileHandler(logging.handlers.RotatingFileHandler):
+    """Keep newly opened segments developer-owned, including after rollover."""
+
+    def __init__(self, path: Path, owner: Owner, report: Callable[[str], None]) -> None:
+        self._owner = owner
+        self._report = report
+        self._failed = False
+        super().__init__(path, maxBytes=SEGMENT_BYTES, backupCount=SEGMENTS_KEPT, encoding="utf-8")
+
+    def _open(self) -> TextIOWrapper:
+        stream = super()._open()
+        try:
+            own(Path(self.baseFilename), self._owner)
+        except OSError:
+            stream.close()
+            raise
+        return stream
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if not self._failed:
+            super().emit(record)
+
+    def handleError(self, record: logging.LogRecord) -> None:
+        # A full or disconnected bind mount must not flood stderr with a
+        # traceback for every subsequent record. The console handler remains.
+        self._failed = True
+        error = sys.exc_info()[1]
+        try:
+            self.close()
+        except OSError:
+            pass  # flushing the same unavailable mount can fail too
+        self._report(f"devcapsule logs: cannot write {self.baseFilename} ({error}); logging to the console only")
 
 
 def log_path(directory: str | Path, component: str) -> Path:
@@ -132,10 +167,7 @@ def configure(
     path = log_path(directory, component)
     try:
         Path(directory).mkdir(parents=True, exist_ok=True)
-        file = logging.handlers.RotatingFileHandler(
-            path, maxBytes=SEGMENT_BYTES, backupCount=SEGMENTS_KEPT, encoding="utf-8",
-        )
-        own(path, owner)
+        file = _OwnedRotatingFileHandler(path, owner, report)
     except OSError as error:
         report(f"devcapsule {component}: cannot write {path} ({error}); logging to the console only")
         return None
