@@ -84,9 +84,12 @@ at WARNING.
 ## How much disk this takes
 
 Every writer rotates its own file, in the process that writes it, the moment
-a line would carry the file past its segment. The live file never exceeds
-the segment; the one exception is a single line longer than the segment,
-which goes into a fresh file on its own.
+a write would carry the file past its segment. The live file never exceeds
+the segment; the one exception is a single write longer than the segment,
+which goes into a fresh file on its own. Python logs write whole formatted
+records, including tracebacks. Copied child output is read in bounded chunks,
+so a line split across reads can span segments; a segment can start without
+a timestamp when it continues a line from the preceding segment.
 
 - Each file rotates at its segment, 8 MiB by default. The live file becomes
   `devcapsule-novnc.log.1.gz`, the older segments shift to `.2.gz` and on,
@@ -95,6 +98,13 @@ which goes into a fresh file on its own.
   rotate the same way, each by its own process.
 - There is no rotation daemon, no polling and no window in which output
   lands in a rotated file.
+- Compression runs on the writer. While a child's copied log is compressed,
+  its output pipe is not drained; if the pipe fills, the child waits until
+  copying resumes. Slow storage can prolong that wait.
+- Rotation is not atomic as a whole. A crash can leave a temporary `.gz.tmp`
+  file, partly shifted archives, or the latest output in both the live file
+  and `.1.gz`. The live path briefly disappears between removal and reopening;
+  a reader following an open file must reopen the path to see new output.
 
 One knob sets the checkout's retention target: `DEVCAPSULE_LOG_BUDGET` on the
 launcher's shell, `256M` by default. It accepts a number with `K`, `M` or
@@ -106,8 +116,9 @@ DEVCAPSULE_LOG_BUDGET=1G devcapsule project run
 ```
 
 - The segment size follows the budget: one thirty-second of it, between
-  1 MiB and 10 MiB. A session's files are therefore bounded by its number of
-  components times the segment plus four compressed segments each.
+  1 MiB and 10 MiB. Each component normally keeps one live segment and four
+  compressed segments. Oversize writes, temporary compression space and gzip
+  overhead mean this is not a hard bound on disk use.
 - At each launch, the oldest ended sessions are removed until the checkout's
   logs directory fits the budget or no eligible session can be removed,
   and the launcher's log names what was removed. The session being launched

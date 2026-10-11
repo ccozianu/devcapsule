@@ -20,7 +20,7 @@ Two levels are in play:
 
 Every writer rotates its own file, in process, the moment a write would
 carry it past its segment (:class:`SegmentedFile`): the live file is
-renamed, compressed to ``.1.gz``, the older segments shift up and the one
+compressed to ``.1.gz``, the older segments shift up and the one
 beyond the count is removed. No external rotator, no polling, no window in
 which output lands in a rotated segment, and no base image requirement.
 ``DEVCAPSULE_LOG_BUDGET`` sets a retention target for the checkout, not a
@@ -37,7 +37,6 @@ import calendar
 import gzip
 import json
 import logging
-import logging.handlers
 import os
 from pathlib import Path
 import re
@@ -146,6 +145,7 @@ class _SessionFileHandler(logging.Handler):
     A write that fails, on a full or disconnected bind mount, is reported
     once and the handler goes quiet, so the console is not flooded with a
     traceback per record. The console handler remains.
+    Logging's handler lock serializes calls to ``emit`` across threads.
     """
 
     def __init__(
@@ -376,7 +376,14 @@ class SegmentedFile:
     the segment, with one exception: a single write larger than the segment
     goes into a fresh file on its own. Every file created here is given to
     ``owner`` when the writer is root. Failures raise ``OSError`` to the
-    caller, which decides how to degrade.
+    caller, which must close the file and decide how to degrade.
+
+    One writer owns each path, including its archives and staging file.
+    There is no internal lock: callers must serialize access and must not
+    rename or truncate the live file externally. Compression is synchronous.
+    Rotation is not a transaction: a crash can leave shifted archives, a
+    temporary file, or both the live file and its compressed copy. Between
+    unlink and reopen the live path is absent. No fsync durability is promised.
     """
 
     def __init__(self, path: Path, *, segment_bytes: int, rotations: int, owner: Owner = None) -> None:
@@ -406,34 +413,57 @@ class SegmentedFile:
     def write(self, data: bytes) -> None:
         if self._file is None:
             raise ValueError("the segmented file is closed")
+        if not data:
+            return
         if self._size and self._size + len(data) > self._segment:
             self.rotate()
         assert self._file is not None
-        self._file.write(data)
-        self._size += len(data)
+        remaining = memoryview(data)
+        while remaining:
+            written = self._file.write(remaining)
+            if not written:
+                raise OSError("log write made no progress")
+            self._size += written
+            remaining = remaining[written:]
 
     def rotate(self) -> None:
         """Compress the live file into ``.1.gz``, shift the older segments, start a new live file."""
 
-        if self._file is not None:
-            self._file.close()
-            self._file = None
-        for index in range(self._rotations - 1, 0, -1):
-            older = self.segment_path(index)
-            if older.exists():
-                os.replace(older, self.segment_path(index + 1))
+        if self._file is None:
+            raise ValueError("the segmented file is closed")
+        if not self._size:
+            return
+        self.close()
         staging = self.segment_path(1).with_name(self.segment_path(1).name + ".tmp")
-        with open(self._path, "rb") as source, gzip.open(staging, "wb", compresslevel=6) as target:
-            shutil.copyfileobj(source, target)
-        own(staging, self._owner)
-        os.replace(staging, self.segment_path(1))
+        try:
+            # Finish compression before expiring any history. Give even a
+            # partial staging file to the owner, including after a crash.
+            with open(staging, "wb") as staged:
+                own(staging, self._owner)
+                with open(self._path, "rb") as source, gzip.GzipFile(fileobj=staged, mode="wb", compresslevel=6) as target:
+                    shutil.copyfileobj(source, target)
+            for index in range(self._rotations - 1, 0, -1):
+                older = self.segment_path(index)
+                destination = self.segment_path(index + 1)
+                if older.exists():
+                    os.replace(older, destination)
+                else:
+                    # A gap still ages the destination out of this slot.
+                    destination.unlink(missing_ok=True)
+            os.replace(staging, self.segment_path(1))
+        finally:
+            try:
+                staging.unlink(missing_ok=True)
+            except OSError:
+                pass  # preserve the original failure on an unavailable mount
         os.unlink(self._path)
         self._open()
 
     def close(self) -> None:
         if self._file is not None:
-            self._file.close()
+            file = self._file
             self._file = None
+            file.close()
 
     def _open(self) -> None:
         file = open(self._path, "ab", buffering=0)
@@ -455,6 +485,8 @@ class Tee:
     each line, into a :class:`SegmentedFile` rotated at ``segment_bytes``. A
     file that cannot be opened or written is reported once and the tee
     degrades to a plain copy to the console.
+    A line split across reads may span segments. While this thread compresses
+    a segment it does not drain the pipe; a child can block on a full pipe.
     """
 
     def __init__(
@@ -499,8 +531,7 @@ class Tee:
         except (OSError, ValueError):
             pass  # the child or the console went away; nothing left to copy
         finally:
-            if self._file is not None:
-                self._file.close()
+            self._quiet()
 
     def _forward(self, chunk: bytes) -> None:
         try:
@@ -531,9 +562,16 @@ class Tee:
         try:
             self._file.write(data)
         except OSError as error:
-            self._file.close()
-            self._file = None
+            self._quiet()
             self._report(f"devcapsule logs: cannot write {self._path} ({error}); the rest goes to the console only")
+
+    def _quiet(self) -> None:
+        file, self._file = self._file, None
+        if file is not None:
+            try:
+                file.close()
+            except OSError:
+                pass  # a second mount error must not stop draining the pipe
 
 
 def _report(message: str) -> None:
