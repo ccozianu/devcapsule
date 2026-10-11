@@ -4,621 +4,218 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-09 at owner direction; the pair moves to `capsule-webconsole` in a separate checkout; the older decision list, nine items plus the disposition pass, awaits the owner on resumption
+State: active 2026-10-11; persistent diagnostics assigned to maintenance for 0.3.0; 30 intake dispositions prepared; items 7, 8 and 12 remain pre-V1, tentatively 0.9
 
 Definition read: WORKFLOW.md@9593256c1f36, WORKFLOW-LOCAL.md@94e091bf2579
 
-Branch association: `ws-project-management/coordination` (renamed from `project-management/coordination` by the owner-directed migration on `main`, commit `4827ade`)
+Branch association: `ws-project-management/coordination`
 
 Integration target: `main`
 
-Delivery method: pull request
+Delivery method: pull request for deliverables; records published on coordination
 
 Requirements: `R-PRODUCT-003`, `R-PRODUCT-005`, `R-PRODUCT-006`
 
 ## Goal
 
-Own project-wide priorities, sequencing, cross-workstream dependencies and
-lifecycle decisions. This reserved workstream remains open for the lifetime of
-multiple-stream mode. Its immutable 2026-08-09 start predates the general rule;
-the adoption exception remains recorded in the mainline registry.
+Own project-wide priorities, sequencing, dependencies and lifecycle decisions.
+This reserved workstream remains open for the lifetime of multiple-stream mode.
+The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
 
-- 2026-10-09: began the `capsule-webconsole` workstream at the owner's
-  direction, registered on `ws-capsule-webconsole/first-slice` through a
-  temporary worktree so this checkout stayed on project-management; published
-  at coordination `3ee8fc99`. Owner decisions recorded there and in proposed
-  R-CONSOLE-001: the console is in the base image for everyone, not a
-  component; a static web structure plus a FastAPI application as a separate
-  process outside the runtime PEX, reading the mounted project and the
-  runtime CLI's `--json`; no open-source console adopted as the framework,
-  Glances or similar possible later as an optional component. The owner
-  held the switch: further decisions are to be made here first. Karpathy
-  list item 4, decisions as structured artifacts, is accepted in principle
-  and its rule text waits on the owner's answers to three points: local
-  HTML file as baseline with hosted pages allowed; pages that collect input
-  as well as present; threshold by judgment with three named examples.
-- Later the same day: the owner folded Karpathy item 4 into the web console
-  and asked for a work order. Defined the work order kind in `WORKFLOW.md`
-  topic 12.11, with topic 7.5 letting a workstream begin from one (PR #179,
-  on `main`). Wrote and committed
-  `engineering-docs/work-orders/2026-10-09-capsule-webconsole.md`: outcome,
-  five deliverables with done conditions, acceptance evidence, decisions
-  taken, decisions left to the workstream and to the owner, mainline
-  evidence read. Deliverable 5 is the decision pages, with the three item-4
-  points decided: the console is the baseline host; pages present and
-  collect, answers land in capsule state and the agent records the decision;
-  threshold by judgment with the intake pass, L1 to L13 and release scope as
-  first uses. Delivered to `capsule-webconsole` by mail at coordination
-  `24313ae8`. Karpathy list: 1, 2, 4, 7 done; 3 is the console's later
-  slices; 5 rides the resilience item; 6 is a recorded no, pending.
-- Karpathy item 5 decided and on `main`: diagrams first for explanations
-  with structure, in DOT only, rendered by Graphviz and related software
-  (`WORKFLOW.md` topic 9.6 rule 6). The owner's reading of the post is
-  general, not workflow-specific, and the rule is written that way. The
-  console work order is amended from Mermaid to DOT and the amendment mailed
-  to `capsule-webconsole`.
-- Karpathy item 6 decided and on `main`: no generated explainer videos; a
-  recording harness is preferred for end-to-end tests of visual software and
-  the recording is acceptance evidence (`WORKFLOW.md` topic 9.6 rule 7).
-  Remaining on the list: item 3, human views generated from records.
-- Karpathy item 3 decided and on `main`: human-facing documents are
-  materialized views with in-document dependency records, section-level when
-  authored, file-level when rendered; staleness from content ids;
-  regeneration mechanical or by an agent task; humans review, do not maintain
-  (`WORKFLOW.md` topic 12.12). The humane companions are the first authored
-  views, agent-maintained and owner-reviewed. The console work order gained
-  deliverable 6 for the view registry, amendment mailed to
-  `capsule-webconsole`. The Karpathy list is closed.
+The owner confirmed the proposed 23 dispositions on 2026-10-09, then directed
+closure of the obsolete Stage 7 resource-convention request with no action.
+The owner then prioritized the separate persistent-diagnostics request for
+active implementation planning, targeted ready for 0.3.0. On 2026-10-10 the owner postponed agenda items 7, 8 and 12 until before V1,
+tentatively 0.9, explicitly outside 0.3.0. The owner also dropped Pagefind catalog inclusion and required a portable
+website dependency handoff. Thirty messages are removed for the commit
+containing their appended log entries: 29 acknowledgements and one dropped
+request. Eight messages remain undecided.
+Closing an intake does not complete retained implementation or acceptance work.
 
-- 2026-10-09 pilot, owner-directed, on sub-branch
-  `ws-project-management/ste-pilot`: `WORKFLOW.md` and `WORKFLOW-LOCAL.md`
-  rewritten at about 80% ASD-STE100, one rule per sentence, grouped by topic,
-  every rule kept; reasons and worked examples moved to `WORKFLOW-humane.md`
-  and `WORKFLOW-LOCAL-humane.md`, marked *for humans*, with a map from the
-  previous section names. `AGENTS.md` references repointed; `index.md`
-  updated. The `### Changes` section, frontmatter and *Validation Commands*
-  heading the tooling parses are unchanged in shape; workflow tests pass and
-  the brief prints the new local section. Measured by a separate agent:
-  required session-start reading 40,847 to 29,980 tokens (−27%), sentences
-  over twenty words 31.6% to 10.6%, a fourteen-question fidelity quiz
-  answered fully from the new text. The owner read it and merged PR #175
-  into this branch at `429f32f` on 2026-10-09. It reaches `main` with this
-  workstream's next integration; every other workstream then sees a changed
-  definition and must synchronize. The decision to make the style a rule is
-  still the owner's; see *Open Threads*.
-  Known stale rule carried as written: *GitHub Integration: Owner Through The
-  UI* predates the owner's 2026-10-08 `gh` direction and needs an owner update.
+The next release is **0.3.0**, by the owner's unconditional 2026-10-05
+ruling. Current planning uses that name. Historical references and the source
+version 0.2.16.dev0 remain unchanged. Scope, driver and cut still need decisions.
+The [current proposal](2026-09-27-0216-release-planning.md) separates accepted
+commitments from proposals; its historical filename is retained.
 
-Resumed 2026-10-09 (Claude Fable 5.1) at the owner's direction after the
-component-catalog slice integrated. Fast-forwarded to origin, then merged
-`main` in (clean; the branch was a strict ancestor), because the definition
-and local workflow changed since the last read: the two files *for humans*,
-the information model with *backlog entry* and *work order*, required
-validation commands, the validation vocabulary, and integration as a merge
-commit. Ten mailed items were taken into `intake/`; three record owner
-decisions already taken (the next release is **0.3.0**, not 0.2.16;
-IntelliJ and the configuration contract are integrated), one is a
-maintenance work-order proposal for persistent capsule diagnostics. No
-bugs are owned here. Sent `2026-10-09-project-management-protocol-state-transitions.md`
-to `workflow-improvements` at the owner's request: review the commands above
-the failsafe git layer as transitions between consistent states, after an
-interrupted `mail take` converged by design and a ten-second GitHub outage
-was survived only by the agent's own retry. The owner also asked why this
-switch, a routine operation, took so long for a human; findings are in the
-session summary. Owner direction of 2026-10-09, recorded as a decision:
-workstream selection becomes one deterministic command, `devcapsule
-workflow select <name>`, driven the same way by a human or an agent; it
-stops at three consistent states (merge conflict, dirty tree with workstream
-state, routing mismatch) with a structured report; DevCapsule invoking an
-agent on conflict is a deferred, configurable hook, not part of the command.
-Sent `2026-10-09-project-management-workstream-select-command.md` to
-`workflow-improvements` with that design, the brief additions (definition
-text since the stamp, owned bugs, clean-merge check) and a status-file
-length budget. The slice is registered when they scope it.
+### Reasons for closing the 23 messages
 
-Afternoon of 2026-09-28: the owner found the website unpublished since
-2026-09-21 and its guides pinned to v0.2.12, defined the problem with the
-agent in [the documentation-currency design issue](2026-09-28-design-docs-current-at-release.md)
-(P1-P7, the per-version system S1, the pre-V1 support commitment D1 with
-approved wording), directed [the content–website contract, version 1](../../specifications/product/content-website-contract.md),
-and then granted this workstream the remaining decisions and the plan, to be
-run without consulting the owner except for production promotion. Taken and
-recorded: six contract roles, `docs-<version>` project refs, 0.2.12
-published, 0.2.15 corrected on `docs-0.2.15`, a `planned` page status.
-Issued two work orders: [the website from the visitor's chair](../../work-orders/2026-09-28-website-visitor-experience.md),
-executed in the website repository and delivered there on branch
-`requests-from-devcapsule-2026-09-28` at `daa39fe`; and
-[the visitor content and producer migration](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md),
-executed here in `user-docs` (content), `website` (migration and pin) and
-this workstream (runbook and local workflow), delivered to the first two by
-mail at coordination `947f826ffc54` and `1326561eeba9`. The owner's design
-reference for the site is recorded in the website order. Documentation
-only; no build.
+| Messages | Decision and evidence |
+|---|---|
+| Blog establishment and review (2) | Local blog rules, the repository blog and website publication mechanism exist. The broken PUBLISHING.md link is resolved. Optional editorial suggestions are not outstanding obligations. |
+| Display delivery (1) | v0.2.12 acceptance and the delivery notice establish the contained desktop; the V1 ledger is ratified. Display follow-ups remain separate. |
+| Maintenance ownership (1) | Workflow and runbook already assign maintenance releases and bug triage; no repeated owner decision is needed. |
+| Branch migration (3) and definition notice (1) | Active workstream rows use ws-prefixed branches; this workstream publishes to coordination, has no old outbox ref and has read the current definition. The old deadlines and instructions are historical. |
+| Configuration decisions, assignment and delivery (3) | R-CONFIG-001 and PR #170 at 6ae1a01 establish the accepted contract and integration. Rollout and recovery limits remain; integration does not prove host restart. |
+| IntelliJ/Playwright delivery (1) | PR #170 integrated the slice. The separate Playwright host-restart acceptance condition remains with component-catalog. |
+| Release rename (1) | Owner ruling fixes 0.3.0 unconditionally, without choosing the driver or cut. |
+| Configuration presentation (2) | Both owner rulings are accepted: recorded schema controls listing; pinned, newer and overridden base choices must be clear. Retained in the coordination backlog for the upgrade design, not claimed implemented. |
+| First-session UX (1) | New base naming covers the old RC-label complaint; maintenance's published 0.3.0 plate retains terminal presentation and normal Ctrl+C handling. |
+| Status reliability (1) | Accepted R-UPGRADE-002 already belongs to component-upgrades; preserve wanted V1 work and operational choices without adding a gate. |
+| Legacy capabilities (1) and user-docs proposals (1) | The owner already mandated these decision gates. The ledger and release proposal preserve them; their individual product choices remain open. |
+| Release notes (1) | Notes, backfill and runbook obligations are adopted; maintenance's 0.3.0 plate retains automation. |
+| Consent (1) | The owner explicitly assigned D-0011 through D-0013 to the next release, now 0.3.0. Do not ask whether it is in scope again. |
+| IDE files (1) | The repository ignore policy is decided. Project-management retains execution without deleting local files; no IDE edits are included in this reconciliation. |
+| Forced configuration (1) | Maintenance holds the accepted behavior. Exact interface and mandatory-guarantee reconciliation remain design work, not an unresolved adoption vote. |
 
-Resumed 2026-09-28 in this checkout, now a released-0.2.15 capsule with the
-shipped `devcapsule0` on PATH and the development CLI in the source tree's
-virtualenv; workflow commands ran through the development CLI per the local
-rule. Maintenance's publication notice was taken and acknowledged: **0.2.15
-is final and verified from the record**, tag `v0.2.15` at accepted RC1 source
-`a15ff8b`, acceptance record `releases/v0.2.15.json` on `main` (ancestry
-method, baseline `abb785d`), release branch merged through PRs #145, #146
-and #148, `main` reopened at 0.2.16.dev0 by PR #149 at `6980b60`. That
-closes the pause note's verification step and the proposal's candidate C2:
-0.2.15's additions are on `main`, so the 0.2.16 cut can be ordinary.
-Synchronized by merging `main` at `6980b60`: the definition changed only in
-its version line (0.2.16.dev0); two mechanical conflicts, this workstream's
-registry row kept beside maintenance's new row, and the 0.2.15 work order
-taking `main`'s implemented status. The owner's note that the pace has
-accelerated was checked against `main`: non-merge commits per week rose
-from about 35 in early August to about 90 through mid-September and about
-135-140 in the last two weeks; merged pull requests from 5-8 to 24, 53 and
-35; eight final releases since 2026-08-26, the last two days apart; since
-2026-09-19, 17 bug records opened and 19 closed. Activity counts, not value.
+### Obsolete Stage 7 request closed
 
-Resumed 2026-09-27 at the owner's explicit direction, in this checkout,
-to consider what is reasonable for 0.2.16 and plan it, while 0.2.15 is
-still being implemented under maintenance in a different checkout. This
-supersedes the pause note's ordering "after 0.2.15 is released"; the owner
-chose to plan ahead, not the agent. The pause note's first step, verifying
-the published 0.2.15 artifact and maintenance's acceptance record, stays
-pending until that release is final. Fast-forwarded to the pushed branch
-tip; zero commits behind `main`; definition and local workflow unchanged
-since the last read, so nothing to synchronize. One mail item taken: the
-owner's standing agent-freshness practice, acknowledged below. The
-[0.2.16 planning proposal](2026-09-27-0216-release-planning.md) maps the
-0.2.15 leftovers, what `main` already carries, the bug inventory and the
-intake queue to nineteen candidates with a recommended scope and seven
-owner decisions. No intake item other than the freshness practice is
-dispositioned by the proposal; each is decided when its owner decision
-lands. Documentation only; no build, container or source change.
+The owner identified the old plan as out of sync with development and directed
+its closure. The 2026-09-21 forwarded convention request itself confirms that
+Stage 7 was dissolved on 2026-08-27 and explicitly retired on 2026-09-21.
+It is dropped with no task, reminder or new workstream. Existing maintenance
+bugs and any retained-resource constraints are separate and unchanged.
 
-Previous pause note follows.
+The previous grouping with persistent diagnostics was misleading. That proposal
+arose from the owner's 2026-10-08 noVNC disconnect and requests persistent,
+bounded logs. The owner clarified that it is urgent and must enter active
+implementation planning targeted ready for 0.3.0. Its intake is acknowledged;
+the complete proposal is preserved in the [assigned work order](../../work-orders/2026-10-08-persistent-session-diagnostics.md).
+Candidate C21 is active, priority wanted. The owner assigned implementation to
+maintenance on 2026-10-11: reliable logs are a prerequisite for maintenance to
+diagnose and fix failures. Maintenance owns the needed supervisor/display,
+launcher and IDE logging work, scopes the bounded release slice and acceptance,
+and coordinates the existing C10 terminal/shutdown work. Ownership does not
+wait on contained-display's lifecycle. Detailed engineering recommendations
+remain subject to scoping; no implementation completion is claimed.
 
-Paused 2026-09-27 at the owner's explicit direction until 0.2.15 is released.
-All three release-scope messages are verified in maintenance's mailbox;
-implementation, validation and release now move to that workstream under the
-same owner's instruction. The final work-order revision is `d34fb06`; its
-source is available on the pushed project-management branch. The two older
-brief observations were sent for triage to workflow-improvements as
-`2026-09-27-project-management-brief-observations.md` at `5286a7bfbeb4`.
-No source work or user edits remain in this checkout. The 25 pre-existing
-intake items stay queued until resumption; no session record was requested.
+Delivered the complete work order to maintenance as
+`2026-10-11-project-management-maintenance-persistent-diagnostics.md` at
+coordination `a535ccf3a44e`. The recipient has the full text and need not wait
+for this checkout's pending commit. Its acknowledgement and execution are next.
 
+### Pagefind catalog proposal closed; website handoff delivered
 
-Resumed 2026-09-27 for the owner's release-scope decision in a clean checkout
-at `/tmp/devcapsule-project-management`, on the registered branch. The original
-checkout remains on `release-0.2.14` with its two pre-existing document edits
-and dirty website submodule untouched. This is initial selection of the
-explicitly requested workstream, not resumption of obsolete local release
-state. Main was merged through `0cb4b0a`: nine commits behind, current rules
-unchanged, new release evidence relevant to this decision. Mechanical conflicts
-kept main's fixed init-bug record and added bug-index entries. No open bug
-owned by project-management was found. No waiting mail; 25 intake items remain.
+Owner direction, 2026-10-10: Pagefind belongs in the website's npm dependencies
+when search is implemented. The /opt/xtras installation was a temporary
+experiment, not a portable build prerequisite. Current package.json and build
+script inspection found no Pagefind integration; this is not a claim of an
+existing production dependency. Playwright's delivered component is separate.
 
-The owner approved persistent `/opt/xtras` and read-only `project info` for
-0.2.15, and accepted deferring the general in-capsule project-command guard
-bug. The [accepted work order](../../work-orders/2026-09-27-project-environment-discovery.md)
-is the current scope and acceptance contract. Maintenance is the release
-driver for these three bounded slices; its general scope is not expanded.
-The owner subsequently approved Antigravity's `toolPermission` default as
-`always-proceed` in `$HOME/.gemini/antigravity-cli/settings.json`, completing
-the initial three-slice scope. The owner then explicitly extended the agent
-defaults slice to Claude: seed minimal user settings before its first launch,
-with `permissions.defaultMode` set to `bypassPermissions`. Official vendor
-docs permit pre-creating the file. Selected-version interactive acceptance
-must establish first-use notice behavior and preservation of Claude-written
-state; do not claim a fresh-launch test from documentation alone. New state
-and a missing key in managed settings get the default; explicit choices and unrelated settings are preserved. Codex's
-v0.2.14 seed already sets approvals to never and sandbox to danger-full-access;
-existing configurations are not overwritten. Branch is current with main;
-workflow definitions unchanged. No runtime implementation or new candidate
-acceptance is claimed here.
+Delivered `2026-10-10-project-management-pagefind-project-dependency.md` to
+website at coordination `5b05eeecda11`. The handoff asks that website record
+this in its independent project's W10 work: pinned npm devDependency and
+lockfile, project-local build invocation, generated static assets, and a
+fresh-checkout build/browser check without global Pagefind or /opt/xtras.
+Indexing must preserve the build's atomic publication behavior. No new search
+schedule or implementation was authorized. The original combined intake is
+closed; implementation and acknowledgement of this new handoff belong to website.
 
-Earlier coordination history follows; the 2026-09-27 decision supersedes the
-fix-only restriction wherever it appears below.
+### Retained work and when to revisit it
 
-The owner explicitly returned this checkout from maintenance on 2026-09-22.
-Maintenance was paused, committed, pushed and published first, with its bug
-triage preserved. PR #125 integrated the run-image replacement at `f0d6901`;
-PR #128 integrated model-first Codex attribution and the owner-validated bug
-closure at `ca3f1d3`. Both deliveries were verified through fetched main, not
-inferred from the owner's report alone. The legacy PyCharm network-default
-bug remains with maintenance; the coordination data-loss fix remains with
-workflow-improvements. The recovered mail and source patch are historical
-custody evidence, not outstanding delivery tasks.
+The [coordination backlog](coordination-backlog.md#accepted-work-retained-after-intake-closure)
+records the accepted configuration-presentation, reliability and IDE-file work.
+The release proposal records 0.3.0 obligations, and the V1 ledger records the
+legacy-capability gate. These are the homes of the work; the intake log is the
+receipt. Do not duplicate those receipts as questions on every resumption.
+A later priority must not weaken either existing release gate.
 
-Synchronized with main through `2c1a503` (PR #129), including the coordination
-nested-directory and claim-preservation repair. Existing project-management
-blog instructions and design documents remain on this branch. The legacy
-branch remains registered; use explicit `--workstream project-management`.
+Delivered the configuration-presentation requirements and confirmed consent/
+reliability commitments to component-upgrades as
+`2026-10-09-project-management-accepted-upgrade-followups.md` at coordination
+`387656fed15e`. No implementation priority or new release gate was assigned.
 
-The owner selected 0.2.14 release readiness, then challenged the generic
-merge-only rule. The 2026-09-22 decision is now in `WORKFLOW-LOCAL.md` and the
-canonical release runbook: main stays open; merge when suitable, otherwise
-cherry-pick, adapt the correction, or establish that main is unaffected.
-Record the inspected revisions and proportionate evidence with the bug.
-Method selection needs no further owner approval. Git topology alone is not
-proof that the correction works. The same judgment permits selective transfer
-of a main-first fix onto the release line.
-
-The decision changes propagation methods. Existing before-each-candidate timing
-is retained; the optional timing question has not received a separate owner
-decision. An unresolved main bug still needs an explicit owner decision before
-deferral. The existing candidate gate accepts ancestry/patch equivalence;
-adapted or unaffected-main outcomes use its existing evidence record under the
-standing owner direction. No release gate implementation changed.
-
-Acknowledged the 2026-09-16 runbook-alignment intake: the guide now follows
-current release branch selection, driver and version rules, with the owner's
-new propagation rule superseding the intake's merge-only instruction. The
-remaining 20 intake items are undecided; the maintenance-release and branch
-migration items still need their other requested coordination decisions.
-Generic-rule revision was delivered to workflow-improvements as
-`2026-09-22-project-management-release-fix-propagation.md` on coordination commit
-`5d47a901d22d`; that includes clarifying routing for selective mainline delivery.
-No other workstream's records or generic workflow source were edited.
-
-## Release 0.2.15 (initial decision 2026-09-26; expanded 2026-09-27)
-
-The owner's first-session attempt with the released 0.2.14 launcher hit a
-show stopper: `project init` discards every interactive answer when a
-`--authorize` name is unknown, filed as
-[the init bug](../../bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md),
-owner maintenance, severity blocking, target 0.2.15. The owner ruled the same
-day: no fourth version number; fix it and release 0.2.15. This decides the
-first ask of maintenance's 0.2.15 plan:
-
-- Maintenance cut 0.2.15 from `v0.2.14` under the owner's fix-only ruling;
-  the published maintenance state records that cut and the passing local gate.
-  On 2026-09-27 the owner added `/opt/xtras` and `project info` via the linked
-  work order. The init fix and all three additions require candidate acceptance.
-- Owner ruling, same day: everything else named for 0.2.15 moves to
-  0.2.16. That is the cleanup and optimization list from the 2026-09-25
-  plan, its five candidates, the IDE-surface wish (maintenance estimates
-  only IntelliJ fits a week and recommends none), and the release-notes
-  artifact proposal. 0.2.16 is not yet registered; its driver and scope
-  are the next planning decision.
-
-Delivered to maintenance by mail on 2026-09-26; the acknowledgement is in
-the decision log.
-
-## Claim Test Quarantine (2026-09-22)
-
-The owner reported inconsistent CI results at one revision for the claim
-lifecycle test. A disposable-local-remote probe confirmed the assertion depends
-on two real-clock calls remaining in the same second. On explicit owner
-instruction, this release-readiness slice marks the existing test non-strict
-xfail without changing its assertions or runtime behavior. The owner rejected
-a quick fix and requested review of the testing approach. The confirmed minor
-bug is `engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md`,
-owned by workflow-improvements, with no release target yet. Its scope is the
-claim/renewal/expiry contract and reliable tests; the combined test's assertion
-coverage is temporarily quarantined. This adds one bug to the earlier inventory
-(19 nonterminal records now). The full build passed: 1,044 tests passed,
-18 deselected, one existing xfail and this test XPASS; mypy and nine packaged
-checks passed. The owner-requested marker is the only test/source change;
-no quick repair was made. Bug/design handoff delivered by coordination mail
-`2026-09-22-project-management-claim-test-design.md` at `f263535437cb`.
-The marker and bug await owner PR integration.
-
-## Release 0.2.16 Planning (2026-09-27)
-
-The [proposal](2026-09-27-0216-release-planning.md) recommends 0.2.16 as
-"what `main` already carries, made releasable, plus the bounded cleanup
-0.2.15 set aside": acceptance of the base-contract naming already on
-`main`, 0.2.15's additions forward-ported before the cut, the standing
-agent freshness review, release notes as a gated artifact, the named
-build-context fix, the in-capsule guard bug, triage of the seven
-untargeted maintenance bugs, the two first-session UX fixes as bugs, and
-the first-session guide refresh, and, by owner decision on 2026-10-01,
-IntelliJ IDEA as a second JetBrains surface (C12), validated by the
-parametrized IDE smoke test. The checkout-naming default is the owner's
-remaining option; the upgrade experience,
-mycodespace and the legacy L1-L13 capabilities are decisions, not 0.2.16
-implementation. Driver recommended: maintenance, cutting from `main` as an
-ordinary release. Estimate: one to two weeks of pair time after 0.2.15 is
-final, IntelliJ adding days. Nothing is registered until the owner decides.
-
-## Owner Decisions Of 2026-10-01
-
-Taken in this checkout, recorded here and in the proposal's addendum:
-
-1. **C12 is in 0.2.16.** IntelliJ IDEA as a second JetBrains surface; the
-   parametrized IDE smoke test makes a new surface cheap to accept.
-2. **An IDE is a component.** `component-catalog` is where new components
-   are accepted and tested, and owns IntelliJ and any later surface.
-   `component-upgrades` owns the code that wires components: orchestration,
-   upgrades, channels. Its name undersells that remit and stays; a rename
-   operation is not worth building. This is the standing routing rule for
-   component work from now on.
-3. **`eclipse-surface` concluded unsuccessfully and is archived** at
-   `engineering-docs/archive/2026-09-09-eclipse-surface/`. It had no
-   branch, no work and one unread fan-out notice, taken and acknowledged
-   in its log. Its entry survey is `component-catalog`'s starting material
-   for Eclipse. Row removed from the registry; index updated.
-
-4. **In-capsule `project` commands are a 0.2.16 fix.** Reproduced on
-   v0.2.15 in this capsule: `config show` refused from the project tree,
-   `config list`/`config show`/`versions show` failing from `/opt`, `info`
-   working everywhere. Ruling: inside a capsule every `project` subcommand
-   selects the capsule's project automatically. Bug records 2026-09-24
-   (now major, maintenance) and 2026-09-26 retargeted to 0.2.16 with the
-   three causes and the fix shape; proposal candidate C8 broadened.
-5. **Workstream selection is `devcapsule project workflow --select
-   <name>`**, not a top-level `workflow select`; inside a capsule it
-   inherits the automatic project selection above. Design request for
-   `workflow-improvements`, with the website-submodule tooling (a pin fact
-   in the brief, a pre-commit invariant on the gitlink, the owning
-   workstream declared in the `[workflow]` table), once the owner confirms
-   the local submodule rule.
-
-6. **Consent design.** The owner found that compatibility and consent
-   had been conflated and that consent prompts are too many to mean
-   anything. Problem statement and candidates recorded in the
-   [consent design issue](2026-10-01-design-consent-and-vendor-trust.md):
-   vendor terms once per vendor product per user, trust bound to a
-   verified channel rather than signatures, host access as the real
-   question. The owner intends to rule and fix it in `component-upgrades`.
-
-Delivered by mail to `component-catalog` the same day
-(`2026-10-01-project-management-ide-surfaces-are-yours.md`): the fold-in
-and the IntelliJ target, so it can lift its frozen-scope row and plan. The
-formal 0.2.16 work order still follows registration.
+The seven-item Karpathy list remains closed. The console work order is with
+capsule-webconsole in a separate checkout. Its published status reports the
+second iteration awaiting owner review and the view registry in a later
+iteration. This reconciliation does not change its work or claim new acceptance.
 
 ## Planned Next Step
 
-On resumption, decide the older list with the owner, in this order. Critical
-path first: (1) register 0.3.0: scope, driver, cut trigger, and rename every
-0.2.16 reference in the proposal, the registry row and this file to 0.3.0 per
-the 2026-10-05 decision; (2) the user-docs improvement list, eleven items on
-`ws-user-docs/first-session`, which the owner made a release gate. Then: (3)
-route the maintenance diagnostics work order and decide whether
-`contained-display` and `sample-projects`, both without published state, are
-open; (4) the 0.3 compatibility direction from component-catalog's
-launcher-bootstrap lessons, three proposed requirements; (5) the consent
-slice from component-upgrades, in or out of 0.3.0; (6) release-notes
-tooling, C20. Decision sessions, not release content: (7) legacy launch
-capabilities L1 to L13 and the non-DevCapsule directory question; (8)
-mycodespace and the checkout-naming default; (9) the managed agent updates
-design slice, C13. Then the disposition pass over the 38 intake items, half of
-which are notices or already-decided facts that settle without the owner.
-Each decision: record it here, register or mail what it settles, and
-disposition the items it closes in the same commit.
+Persistent diagnostics (C21) is assigned to maintenance, targeted ready for
+0.3.0. Its next action is bounded scoping, implementation and acceptance there.
+Project-management resumes final release scope and ship criteria with the owner.
+The broader critical path remains
+0.3.0 scope, driver and cut, and the eleven user-docs proposals. The release
+name, consent inclusion, release-notes adoption and the two decision gates are
+already settled. Do not present them as open product decisions.
 
-Disposition pass over the ten items taken on 2026-10-09, starting with the
-0.3.0 rename: the proposal, the registry row and every "0.2.16" reference in
-this file follow the owner's 2026-10-05 decision; then the two integration
-notices from component-catalog, the diagnostics work-order routing from
-maintenance, and the two component-upgrades items. Each ends acknowledged or
-forwarded, recorded in `intake-dispositions.md` in the commit that removes it.
-Then the older 28.
+Items 7 (mycodespace/checkout naming), 8 (OpenCode evaluation) and 12 (routine
+documentation cleanup) are recorded in the [pre-V1 backlog](coordination-backlog.md#pre-v1-work-tentatively-09-excluded-from-030).
+They are explicitly outside 0.3.0. Revisit at 0.9 or the final pre-V1 planning
+cycle, whichever comes first; do not raise them during ordinary 0.3.0 planning.
 
-Earlier plan, kept for context:
+The eight remaining intake messages form the following groups, not another
+38-item review after the older agenda:
 
-Done 2026-09-28 evening: the three slices below. `docs-0.2.15` is on origin
-at `a15ff8b`; `WORKFLOW-LOCAL.md` declares the ref; the runbook carries
-*Documentation Is Part Of The Release* and *Agent Freshness Review*; the
-0.2.16 proposal carries C20. Remaining for this workstream: nothing until
-the owner's decisions or the other workstreams' deliveries.
+| Group | Messages | Remaining work |
+|---|---:|---|
+| Upgrade design | 3 | Experience, automated component validation and claims from experiments; one design discussion. |
+| Configuration and recovery | 3 | init/config boundary, internal generation vocabulary and launcher-bootstrap recovery; reconcile with the newer contract first. |
+| Product direction | 2 | Two adopter/blog inputs; separate delivered positioning from unsettled choices. mycodespace/checkout naming is in the pre-V1 backlog. |
 
-The slices were, from the content work order, section 4, in
-order: (1) declare the `docs-<version>` project ref in `WORKFLOW-LOCAL.md`
-and create `docs-0.2.15` from `v0.2.15`, ready to receive user-docs'
-corrected guides; (2) add the three documentation obligations and the
-*Agent Freshness Review* section to the release runbook; (3) add the
-website publication as a candidate to the 0.2.16 proposal. When the owner
-selects `user-docs` or `website` in this checkout, those workstreams take
-their sections. Production promotion of the site stays the owner's single
-Actions run.
-
-Then collect the owner's 0.2.15 dogfooding feedback as it arrives: defects
-go to bug records owned by maintenance with their evidence, not into this
-status. Then put the seven decisions in the 0.2.16 proposal to the owner. On each decision:
-register 0.2.16 in the registry with its driver and scope, deliver the
-scope to the driver by mail as a work order, file the two first-session
-UX bug records with target 0.2.16, and disposition the intake items the
-decision settles. Independently of the decisions, add the *Agent
-Freshness Review* section to the release runbook, the task acknowledged
-from maintenance's 2026-09-27 item, and reference it from preparation and
-final acceptance. The 0.2.15 verification step is done (see *Current State*).
-
-Superseded 2026-09-27 by the owner's direction to plan ahead: after 0.2.15
-is released and the owner resumes this workstream, verify the published
-final artifact and maintenance acceptance record, then register 0.2.16
-scope/driver and resume the coordination queue below.
-
-Completed handoffs:
-
-Maintenance received `2026-09-27-project-management-0215-xtras-info-scope.md`
-at coordination commit `2e76c7989b32`, including the full work order. Next:
-check its acknowledgement when reviewing release progress, then resume the
-remaining coordination decisions below. Implementation and candidate validation
-belong to maintenance; remain in project-management unless the owner explicitly
-selects that workstream. The third addition is Antigravity
-`toolPermission: "always-proceed"`; its supplemental maintenance handoff
-`2026-09-27-project-management-0215-antigravity-default.md` was delivered at
-coordination commit `ebf07f17ef87`. Claude is now also in the agent-defaults
-slice; `2026-09-27-project-management-0215-claude-default.md` was delivered
-at coordination commit `0b272657b687`. Check both acknowledgements. No further
-slice is selected.
-
-Previous planning context (2026-09-26):
-
-Resumed 2026-09-26 on `ws-project-management/coordination`, synchronized with
-`main` at `f4949aa` (v0.2.14 published 2026-09-25; `main` reopened at
-0.2.15.dev0). The definition text is unchanged since the last read apart from
-its version line; `WORKFLOW-LOCAL.md` gained the dogfooding CLI selection,
-local launch networking and the deferred rename deadline, all read.
-
-Six mailed items were taken on resume and joined the 20 already in `intake/`;
-the 0.2.15 plan is decided, 25 remain. The first decisions to put to the owner, in order:
-
-1. Done 2026-09-26: 0.2.15 registered with maintenance as driver, the
-   blocking init bug initially its only content (expanded 2026-09-27); see *Release 0.2.15* above. The rest
-   of that plan is 0.2.16 material: register 0.2.16 with the owner once
-   0.2.15 is out, sequencing the cleanup candidates and ruling on surfaces.
-2. Release notes as a release artifact
-   (`2026-09-26-maintenance-release-notes-artifact.md`): adopt into the
-   runbook and the 0.2.15 plan or not.
-3. The mycodespace design note and checkout-naming default
-   (`2026-09-25-maintenance-mycodespace-and-checkout-naming.md`).
-4. The V1 gate on legacy launch capabilities
-   (`2026-09-22-maintenance-v1-legacy-launch-capabilities.md`): acknowledge
-   into the V1 scope ledger.
-5. The two branch-migration items from 2026-09-22 are overtaken by the
-   migration `main` carried on 2026-09-25; decide them as acknowledged with
-   the remaining cleanup named.
-
-Then the 20 older intake items, oldest first, and the queued V1
-functionality/WOW discussion. Legacy branch migration is done for the active
-workstreams; `eclipse-surface` has no branch yet.
-
-The previous planned next step, the handoff of the 0.2.14 cut to maintenance,
-completed: PR #131 was the baseline, maintenance cut and published 0.2.14.
+Do not implement or disposition these eight under the earlier approvals.
+The [prior handoff](2026-10-09-record-before-intake-reconciliation.md) preserves
+older context, including the lifecycle question for contained-display and
+sample-projects. Neither lack of a live publication nor this cleanup closes them.
 
 ## Validation And External State
 
-2026-09-27 planning checkpoint: documentation only. Relative links in the
-changed documents checked; no build run, since no source or test changed
-and the developer virtualenv is absent in this checkout. Facts in the
-proposal were read from `origin/main` at `0cb4b0a`, `origin/release-0.2.15`
-at `8028a11` and the live coordination state, not from this checkout's
-stale local `main`. The stray edit found on arrival, a typed "Will" at the
-top of the legacy launch work order on `release-0.2.15`, was discarded
-before switching; nothing else was dirty. Git author verified as Costin
-Cozianu; this session's model is Claude Fable 5.1.
+Prepared a clean merge of origin/main at 2258ab1 before editing; the merge
+commit is still pending. The 2026-10-11 checkpoint fetch finds main at 435d3d4,
+including a new workflow topic 8.8 on human decision handoffs, now read.
+Finish the prepared checkpoint, then merge this newer main and validate before
+resuming product decisions; the changed definition makes synchronization required.
+The updated local gate includes the separate web-console session. No mailbox
+items waited at the reconciliation entry and no open bug is owned by
+project-management. On 2026-10-11 one new item waits in the mailbox:
+`2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md`.
+It is not part of the eight remaining local intake items; take and decide it
+when the prepared merge/records can be committed promptly.
+The known manifest/definition version mismatch is unchanged; this records pass
+does not refresh the workflow or edit project configuration.
 
-2026-09-27 coordination checkpoint, including the Antigravity and Claude supplements:
-diff whitespace and changed-document relative links checked. Codex defaults
-were verified in v0.2.14 source and the current component/seed implementation.
-No live agent settings were edited. The required `.venv/bin/python -m nox -s build` could
-not start in the clean checkout because its developer virtualenv is absent
-(exit 127). No environment provisioned for this documentation-only handoff;
-no new build pass or implementation validation claimed. Earlier build results
-below belong to their recorded checkpoints. The original checkout and website
-edits remain untouched. Git author identity was verified as Costin Cozianu.
+The required build gate passed: 1,329 runtime tests, 35 deselected, one existing
+xfail and one XPASS; packaged integration checks, type checks, syntax, source/
+PEX smokes and the documentation contract passed. The separate web-console
+session passed its type check and 89 tests. No container or service was started.
+Record checks establish exactly 30 deletions and unique appended dispositions
+(29 acknowledgements and one drop), eight byte-identical remaining messages, the
+diagnostics proposal retained with the owner's subsequent assignment, both historical records preserved verbatim,
+resolved links in changed documents and only this workstream's list row edited.
+A pre-existing broken ledger link was corrected to its current engineering home.
 
-
-Release-workspace setup changes documentation only; relative links, all 19 bug
-rows against committed metadata, and whitespace were checked. Reuse the full
-build result recorded above for the unchanged runtime/test tree. A pre-existing
-working-tree edit changed the Codium sudo bug's opening delimiter from `---`
-to `--`. Before switching workstreams, preserved its exact diff in
-`.git/codex-preserved-codium-sudo-edit.patch` and restored the committed file
-for a clean switch. The edit can be recovered with `git apply` of that patch;
-it has not been incorporated into release source.
-
-
-The required `.venv/bin/python -m nox -s build` passed on the synchronized
-source: 1,045 tests, 18 deselected, one existing xfail, mypy across 167 source
-files, shell/CLI checks, local PEX build/smoke and nine packaged checks. Reviewed
-the guide against the release gate implementation and checked whitespace. The
-working-tree build produced the local validation artifact; no release artifact
-or downloaded-candidate acceptance is claimed by these documentation changes.
-
-The Git author is Costin Cozianu and this session's recorded model is
-`gpt-6-astra`; new authored commits use the model-first Codex trailer. Git uses
-SSH; all GitHub PR and publication operations remain owner-operated via UI.
-Coordination commands ran from the repository root with an absolute `--project`;
-the nested-directory repair is now on main, but these commands do not constitute
-its next real nested-directory acceptance run. No containers, host settings or
-submodules were changed.
+Commit pending only the active model's displayed name, requested from the human
+for the mandatory WORKFLOW-LOCAL.md co-author trailer. The clean main merge is
+prepared in the index; the records are prepared in the working tree. No record
+has been published as committed. Pre-existing or IDE-generated .idea edits remain
+outside the commit. The selected workstream has not changed.
+The owner requested regular commits and pushes on 2026-10-11. Checkpoint each
+completed decision batch instead of accumulating several batches uncommitted.
 
 ## Open Threads
 
-- Paused 2026-10-09 at the owner's direction: the owner continues with Fable
-  as implementer and Codex as reviewer on `capsule-webconsole`, the highest
-  priority for its wow factor, in a separate checkout. This checkout stays on
-  `ws-project-management/coordination`, clean apart from the owner's
-  pre-existing `.idea/project.iml` edit. Nothing external is running.
-- **Awaiting the human on resumption:** the older decision list in *Planned
-  Next Step*, items 1 to 9, then the disposition pass. Items 1 and 2 are the
-  critical path; 7 and 8 shape V1 and have waited since September.
-- **Weighed and unresolved:** whether the stale *GitHub Integration: Owner
-  Through The UI* section of `WORKFLOW-LOCAL.md` is reworded by the owner
-  before or after `gh` becomes a component; whether `project-management`
-  keeps making low-ceremony definition changes or hands the practice back to
-  `workflow-improvements` now that the scheme exists; whether the humane
-  companions gain their dependency records by hand before the console's view
-  registry exists.
-- **Deliberately not preserved:** the exploration of Glances, Netdata,
-  Cockpit and Docker dashboards as a console framework, summarized in the
-  console's status file; the Karpathy list's working notes, closed on `main`
-  as topics 9.6 rules 5 to 7, 12.11 and 12.12.
-- The controlled-language edition is on `main` (PR #176, owner-merged) and
-  the owner's 2026-10-09 direction that every later definition change follows
-  the same scheme is in `WORKFLOW-LOCAL.md`, *Workflow Definition Changes*
-  (PR #177). Agent reports and human-facing record text follow the same
-  style by topic 9.6 rule 5 (PR #178, on `main` at `1bddaf9`). Still the
-  owner's: the updated wording of the stale *GitHub Integration: Owner
-  Through The UI* section. Remaining Karpathy items: decisions as structured
-  artifacts (4), generated human views (3), diagrams (5), video no (6).
-  `workflow-improvements` regenerates the packaged definition at the release
-  or earlier.
-- Sent `2026-10-09-project-management-github-cli-component.md` to
-  `component-catalog` at the owner's direction: make `gh` a component. It is
-  MIT licensed and redistributable; upstream ships a checksummed tarball with
-  no installer; the terms prompt the owner met was Anaconda's, not gh's. The
-  item names the authentication design as the real work and assigns no
-  release target.
-
-- Paused 2026-09-28 evening at the owner's direction: the owner posted a
-  first LinkedIn announcement and judges the documentation the most glaring
-  deficiency of 0.2.x and the highest return for gaining adopters; the pair
-  moves to `user-docs` to execute the content work order. Resume here when
-  the owner decides the 0.2.16 proposal or the other workstreams deliver.
-  Nothing external is left running; no containers or builds were started.
-- Under the owner's grant of 2026-09-28, this workstream decides the
-  documentation and website plan alone; only production promotion and the
-  owner's later adjustments come back to the owner. The grant covers the
-  two work orders and the contract, not release scope. The decisions taken
-  are listed in the content work order, section 5.
-- Owner finding 2026-09-28, defined as P1-P7 in the design issue and
-  answered by the two work orders. Origin: the website at
-  devcapsule.mycodespace.ai was last published 2026-09-21 and still pins the
-  first-session guide to v0.2.12, although 0.2.14 and 0.2.15 have shipped.
-  Three layers: the guide on `main` itself still says v0.2.12, so a republish
-  alone would not help; `docs/versions.yaml`, which R-DOCS-003 calls
-  authoritative, does not exist on `main`; and publication is two manual
-  Actions runs that no runbook step names. Decisions are the owner's: whether
-  documentation refresh and website publication become release gates, and
-  which workstream owns each.
-- Awaiting the human: the remaining 0.2.16 decisions in the proposal,
-  chiefly scope, driver, and the release-notes tooling. IntelliJ was
-  decided in on 2026-10-01 and given to `component-catalog`. The registration
-  waits on them; the runbook freshness section does not.
-- Awaiting the owner's 0.2.15 dogfooding verdict, which may add bug
-  records to the 0.2.16 triage candidate C9 or change the scope.
-- Weighed and unresolved: whether C7, choosing a
-  newer recommended base from `config`, is left with anything after the
-  base-contract change. The upgrade experience is deliberately kept out of
-  0.2.16 as implementation; a parallel design slice is proposed instead.
-- Observed, not owned here: the website-link bug still targets shipped
-  0.2.14 and needs its owner's retarget; `[workflow] version` in the
-  declaration reads 0.2.14.dev0 while the definition's frontmatter reads
-  0.2.15.dev0, a doctor-class finding for workflow-improvements if it recurs.
-- Handed off earlier: init fix plus xtras, project info and Claude/Antigravity
-  defaults to maintenance; two brief observations to workflow-improvements.
-- Preserved separately: original checkout's release-document and website edits;
-  historical host settings on `project-management/local-host-settings-20260915`.
-- Deliberately not preserved: no transcript/session record or disposable builds.
+- Awaiting the human: displayed active model name for commit attribution; then
+  commit and publish the prepared reconciliation. Next bounded decision begins
+  with 0.3.0 release scope and ship criteria unless the owner chooses another
+  slice; maintenance now owns diagnostics implementation. The eight remaining messages are not yet approved for disposition.
+- Weighed and unresolved: the older local GitHub UI-only rule versus scoped gh
+  grants, workflow-rule stewardship, and timing of humane-view dependencies.
+  These are preserved context, not questions to repeat during unrelated work.
+- Deliberately not preserved: no transcript, new feature experiment or automatic
+  reminder service. Historical handoff and release proposal are retained verbatim.
 
 ## Workstream Document Index
 
+- [Persistent session diagnostics work order](../../work-orders/2026-10-08-persistent-session-diagnostics.md): C21 assigned to maintenance on 2026-10-11, targeted ready for 0.3.0; bounded scope and acceptance remain.
+
+- [Handoff before intake reconciliation](2026-10-09-record-before-intake-reconciliation.md): verbatim historical status; read for prior decisions and open-thread context.
+- [Prior release proposal](2026-10-09-record-prior-release-proposal.md): verbatim 0.2.16-era proposal before the 0.3.0 reconciliation; historical recommendations, not current scope.
+
 - [Work order: the website from the visitor's chair](../../work-orders/2026-09-28-website-visitor-experience.md) and [work order: visitor content and producer migration](../../work-orders/2026-09-28-visitor-content-and-producer-migration.md): issued 2026-09-28.
 - [The content–website contract, version 1](../../specifications/product/content-website-contract.md): accepted 2026-09-28, promoted to the specifications on 2026-09-30; the website's `CONTRACT.md` is the authoritative text.
-- [Design issue: the documentation is current when a release drops](2026-09-28-design-docs-current-at-release.md): work in progress, accumulating problem statements P1-P6 with evidence; no decision yet.
-- [0.2.16 planning proposal](2026-09-27-0216-release-planning.md): candidates, recommended scope, driver and the owner decisions; proposed 2026-09-27.
-- [Design issue: consent that means something](2026-10-01-design-consent-and-vendor-trust.md): four questions under one word, vendor terms once per user, trust bound to a verified channel; opened 2026-10-01, undecided.
+- [Design issue: the documentation is current when a release drops](2026-09-28-design-docs-current-at-release.md): historical design discussion; the contract and work orders record the subsequent decisions.
+- [0.3.0 planning proposal](2026-09-27-0216-release-planning.md): current 0.3.0 commitments and remaining release decisions; historical filename retained.
+- [Design issue: consent that means something](2026-10-01-design-consent-and-vendor-trust.md): historical problem statement; consent decisions are D-0011 through D-0013 and assigned for 0.3.0.
 - [0.2.15 environment discovery work order](../../work-orders/2026-09-27-project-environment-discovery.md): approved xtras/info/agent-defaults scope, guard deferral and acceptance checks.
 
 - [0.2.14 release overview](../../releases/v0.2.14/README.md): maintained release checklist and evidence.
 - [0.2.14 bug triage](../../releases/v0.2.14/bugs.md): release dispositions and next actions; canonical bug records remain linked.
 
 - [Prior coordination status](2026-09-22-record-prior-coordination-status.md): full historical handoff, decisions, open-thread context and external-state claims; read when reconciling a specific prior topic.
-- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains the 25 pending items.
+- [Intake decisions](intake-dispositions.md): append-only outcomes; `intake/` contains eight undecided items after 29 acknowledgements and the Stage 7 closure.
 
 - [Diagnostic print-command and run-image retirement](2026-09-21-design-editable-project-launch.md): accepted simplified contract and maintenance implementation scope.
 - [Design issue: V1 completeness and the WOW experience](2026-09-19-v1-wow-functionality-areas.md)
