@@ -1,5 +1,12 @@
 # Session logs acceptance, 2026-10-11
 
+Superseded in part later on 2026-10-11: the owner asked for rotation in the
+writer itself, with no overshoot, so PR2 no longer runs logrotate and no
+longer needs base recipe 12. The base build and the e2e session below
+remain valid evidence of the branch at `174480f`; the rotation they show,
+by logrotate, is replaced by `devcapsule.logs.SegmentedFile`, which the
+unit suite proves with a real child process.
+
 Slices 1 and 2 of persistent session diagnostics, PR #207 and PR #209,
 proven on a real capsule. The base is recipe 12, built from the public PEX
 of PR2's branch at `174480f9ba2c99b7f0348f7da0e097db6179afd6`.
