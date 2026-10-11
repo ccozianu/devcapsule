@@ -37,7 +37,8 @@ from devcapsule.launch.pycharm._launcher import (
     run_pycharm,
     write_user_files,
 )
-from devcapsule.container_runtime.contract import DisplayPlan, Identity, RuntimePlan
+from devcapsule.container_runtime.contract import DisplayPlan, Identity, LogsPlan, RuntimePlan
+from devcapsule.launch.session_logs import SESSION_LOG_DESTINATION
 from devcapsule.materialization import RUNTIME_PLAN_PATH
 from devcapsule.host_open import (
     HOST_OPEN_BROWSER,
@@ -97,7 +98,8 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         written = RuntimePlan.from_file(files.runtime_plan_file)
         assert written.display == DisplayPlan.host_x11()
         assert written.console == ConsolePlan("0.0.0.0", 6081, "/run/devcapsule-console-token")
-        assert written == external_runtime_plan().with_display(DisplayPlan.host_x11()).with_console(written.console)
+        assert written.logs == LogsPlan(SESSION_LOG_DESTINATION)
+        assert written == external_runtime_plan().with_display(DisplayPlan.host_x11()).with_console(written.console).with_logs(written.logs)
         args = build_docker_args(config, files, env)
         assert "JAVA_TOOL_OPTIONS=-Dide.browser.jcef.sandbox.enable=false" in args
         assert "SYS_ADMIN" not in args
@@ -1613,3 +1615,81 @@ def test_console_environment_contains_only_the_origin(tmp_path: Path, enabled: b
     )
     assert console_origin(41001) == "http://127.0.0.1:41001"
     assert console_url(41001, config.console_token) == "http://127.0.0.1:41001/?token=private%2Ftoken%3Fvalue"
+
+
+def session_config(tmp_path: Path) -> tuple[PycharmRunConfig, dict[str, str]]:
+    project = tmp_path / "project"
+    project.mkdir(exist_ok=True)
+    env = base_env(tmp_path)
+    env["XDG_STATE_HOME"] = str(tmp_path / "state")
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=external_runtime_plan(),
+            use_image_process=True,
+        ),
+        env,
+    )
+    return config, env
+
+
+def test_every_launch_gets_a_session_log_directory_bound_into_the_capsule(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import re
+
+    from devcapsule.launch.session_logs import session_logs_root
+    from devcapsule.project import project_namespace
+
+    config, env = session_config(tmp_path)
+    directory = config.session_log_directory
+    assert directory is not None and directory.is_dir()
+    assert directory.parent == session_logs_root(config.project, env)
+    assert directory.parent == tmp_path / "state" / "devcapsule" / "projects" / "by-path" / project_namespace(config.project) / "logs"
+    assert directory.name == config.session_id and re.fullmatch(r"\d{8}-\d{6}-[0-9a-f]{4}", config.session_id)
+    assert config.runtime_plan is not None and config.runtime_plan.logs == LogsPlan(SESSION_LOG_DESTINATION)
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        args = build_docker_args(config, files, env)
+        assert f"type=bind,src={directory},dst={SESSION_LOG_DESTINATION}" in args
+        assert f"DEVCAPSULE_LOG_DIR={SESSION_LOG_DESTINATION}" in args
+        assert f"Session logs: {directory} (bound at {SESSION_LOG_DESTINATION})" in describe_run_command(args, config, files)
+    finally:
+        cleanup_temp_runtime_files(files)
+    print_storage_summary(config)
+    assert f"Session logs:           {directory}" in capsys.readouterr().err
+
+
+def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_old_sessions(tmp_path: Path) -> None:
+    import json
+
+    from devcapsule import logs
+    from devcapsule.launch.pycharm._launcher import begin_session_logs
+
+    config, env = session_config(tmp_path)
+    directory = config.session_log_directory
+    assert directory is not None
+    for index in range(25):
+        (directory.parent / f"20200101-0000{index:02d}-aaaa").mkdir()
+    try:
+        begin_session_logs(config, env)
+        manifest = json.loads((directory / "session.json").read_text(encoding="utf-8"))
+        assert manifest["session"] == config.session_id
+        assert manifest["container"] == config.name and manifest["image"] == config.image
+        assert manifest["component"] == "pycharm"
+        assert manifest["logs"] == {"directory": SESSION_LOG_DESTINATION, "pattern": "devcapsule-<component>.log"}
+        assert manifest["launcher"]["version"]
+        record = (directory / "devcapsule-launcher.log").read_text(encoding="utf-8")
+        assert f"session {config.session_id} start: image {config.image}, container {config.name}" in record
+        assert "removed 6 older session log directories: 20200101-000000-aaaa" in record
+        assert sum(1 for entry in directory.parent.iterdir() if entry.is_dir()) == 20 and directory.is_dir()
+    finally:
+        logs.reset()
