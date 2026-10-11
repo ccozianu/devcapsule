@@ -76,3 +76,23 @@ def write_session_manifest(directory: Path, manifest: Mapping[str, Any]) -> Path
     path = directory / logs.SESSION_MANIFEST
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return path
+
+
+def mark_session_ended(directory: Path, exit_code: int | None, *, ended_at: float | None = None) -> Path:
+    """Record the session's end in its manifest: when, and the exit code, or ``None`` when interrupted.
+
+    The end record is what lets a later launch prune the session; see
+    ``devcapsule.logs.session_ended``. A manifest that is missing or
+    unreadable is replaced by one that carries the end alone.
+    """
+
+    path = directory / logs.SESSION_MANIFEST
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict):
+            manifest = {"format": 1}
+    except (OSError, ValueError):
+        manifest = {"format": 1}
+    manifest["ended-at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() if ended_at is None else ended_at))
+    manifest["exit-code"] = exit_code
+    return write_session_manifest(directory, manifest)

@@ -102,12 +102,16 @@ def test_session_ids_sort_by_start_time() -> None:
 
 
 def test_prune_removes_the_oldest_sessions_until_the_budget_fits_and_spares_the_current(tmp_path: Path) -> None:
+    manifest = '{"format": 1, "ended-at": "2026-01-05T00:00:00Z"}'
     for name, size in (("20260101-000000-aaaa", 30), ("20260102-000000-bbbb", 30), ("20260103-000000-cccc", 30), ("20260104-000000-dddd", 5)):
         (tmp_path / name).mkdir()
         (tmp_path / name / "devcapsule-x.log").write_bytes(b"x" * size)
+        (tmp_path / name / "session.json").write_text(manifest, encoding="utf-8")
     (tmp_path / "not-a-dir").write_text("", encoding="utf-8")
-    assert logs.directory_size(tmp_path / "20260101-000000-aaaa") == 30
-    assert logs.prune_sessions(tmp_path, budget_bytes=70, current="20260104-000000-dddd") == ["20260101-000000-aaaa"]
+    session = 30 + len(manifest)
+    assert logs.directory_size(tmp_path / "20260101-000000-aaaa") == session
+    # Three full sessions and a small one; removing the oldest is enough.
+    assert logs.prune_sessions(tmp_path, budget_bytes=2 * session + (5 + len(manifest)) + 10, current="20260104-000000-dddd") == ["20260101-000000-aaaa"]
     assert logs.prune_sessions(tmp_path, budget_bytes=0, current="20260101-000000-aaaa") == ["20260102-000000-bbbb", "20260103-000000-cccc", "20260104-000000-dddd"]
     assert sorted(entry.name for entry in tmp_path.iterdir()) == ["not-a-dir"]
     assert logs.prune_sessions(tmp_path / "absent", budget_bytes=1, current="x") == []
@@ -165,6 +169,10 @@ def test_rotation_reports_a_failing_logrotate_once_and_keeps_trying(tmp_path: Pa
     assert text.count("logrotate exited 1: bad config; rotation keeps retrying every 1s") == 1
     absent = logs.Rotation(("/nonexistent/logrotate",), interval_seconds=1.0)
     assert absent.run_once() is False
+    # PID 1 may reap logrotate first and the code then reads 0; stderr still tells.
+    complaining = logs.Rotation(("sh", "-c", "echo 'error: bad stanza' >&2; exit 0"), interval_seconds=1.0)
+    assert complaining.run_once() is False
+    assert "logrotate exited 0: error: bad stanza" in path.read_text(encoding="utf-8")
     with pytest.raises(ValueError):
         logs.Rotation((), interval_seconds=1.0)
 
@@ -342,3 +350,23 @@ def test_tee_bounds_reads_without_repeating_timestamps_within_a_line(tmp_path: P
     tee.join(5)
     assert passthrough.getvalue() == payload
     assert path.read_bytes() == b"1970-01-01T00:00:00Z " + payload.replace(b"\nlast", b"\n1970-01-01T00:00:00Z last")
+
+
+def test_prune_never_takes_a_session_that_is_still_running_unless_it_is_abandoned(tmp_path: Path) -> None:
+    import json
+    import time
+
+    now = time.mktime(time.strptime("20260110-120000", "%Y%m%d-%H%M%S")) - time.timezone
+    running = tmp_path / "20260110-100000-aaaa"  # two hours old, no end recorded
+    abandoned = tmp_path / "20260101-100000-bbbb"  # nine days old, no end recorded
+    ended = tmp_path / "20260110-110000-cccc"
+    for directory in (running, abandoned, ended):
+        directory.mkdir()
+        (directory / "devcapsule-x.log").write_bytes(b"x" * 10)
+    (ended / "session.json").write_text(json.dumps({"format": 1, "ended-at": "2026-01-10T11:30:00Z"}), encoding="utf-8")
+    (running / "session.json").write_text(json.dumps({"format": 1}), encoding="utf-8")
+    assert not logs.session_ended(running, now=now)
+    assert logs.session_ended(abandoned, now=now) and logs.session_ended(ended, now=now)
+    assert logs.session_ended(tmp_path / "not-a-session", now=now)
+    assert logs.prune_sessions(tmp_path, budget_bytes=0, current="20260110-120000-dddd", now=now) == [abandoned.name, ended.name]
+    assert sorted(entry.name for entry in tmp_path.iterdir()) == [running.name]

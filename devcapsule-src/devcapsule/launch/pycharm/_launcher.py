@@ -34,6 +34,7 @@ from ... import logs
 from ..session_logs import (
     LAUNCHER_LOG_COMPONENT,
     SESSION_LOG_DESTINATION,
+    mark_session_ended,
     session_logs_root,
     session_manifest,
     write_session_manifest,
@@ -323,10 +324,12 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     completed = subprocess.run(command, check=False, env=runtime_env)
                 except KeyboardInterrupt:
                     _session_events.info("session end: interrupted from the terminal (Ctrl+C)")
+                    end_session_logs(config, None)
                     raise
                 finally:
                     stop_watching.set()
                 _session_events.info("session end: docker run exit code %d", completed.returncode)
+                end_session_logs(config, completed.returncode)
                 return completed.returncode
             finally:
                 cleanup_temp_runtime_files(files)
@@ -366,6 +369,18 @@ def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None
             "removed %d older session log directories to fit the %s budget: %s",
             len(removed), logs.format_size(config.log_budget_bytes), ", ".join(removed),
         )
+
+
+def end_session_logs(config: PycharmRunConfig, exit_code: int | None) -> None:
+    """Record the session's end in its manifest, so a later launch may prune it."""
+
+    directory = config.session_log_directory
+    if directory is None:
+        return
+    try:
+        mark_session_ended(directory, exit_code)
+    except OSError as error:
+        print(f"devcapsule launcher: cannot record the session's end in {directory} ({error})", file=sys.stderr)
 
 
 def describe_run_command(command: list[str], config: PycharmRunConfig,

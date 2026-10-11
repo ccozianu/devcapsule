@@ -31,6 +31,7 @@ to the console with one line saying what was lost.
 from __future__ import annotations
 
 from io import TextIOWrapper
+import json
 import logging
 import logging.handlers
 import os
@@ -77,6 +78,8 @@ TEE_BUDGET_BYTES = 50 * 1024 * 1024
 TEE_BUDGET_NOTICE = "[devcapsule logs: size budget reached; the rest of this output went to the console only]\n"
 
 SESSION_MANIFEST = "session.json"
+ABANDONED_SESSION_SECONDS = 7 * 24 * 3600
+"""A session with no end recorded counts as abandoned, and prunable, after this long."""
 EVENTS_SUFFIX = ".events"
 
 _TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -309,14 +312,38 @@ def directory_size(path: Path) -> int:
     return total
 
 
-def prune_sessions(root: Path, *, budget_bytes: int, current: str) -> list[str]:
-    """Remove the oldest session directories under ``root`` until it fits the budget.
+def session_ended(directory: Path, *, now: float | None = None) -> bool:
+    """Whether the session that owns ``directory`` is over.
+
+    The launcher records ``ended-at`` in the manifest when its ``docker run``
+    returns. A session without that record is still running, or its launcher
+    died before writing it; after :data:`ABANDONED_SESSION_SECONDS` from the
+    start time in the directory's name it counts as abandoned. A directory
+    whose name is not a session id is not ours to judge and counts as ended.
+    """
+
+    try:
+        manifest = json.loads((directory / SESSION_MANIFEST).read_text(encoding="utf-8"))
+        if isinstance(manifest, dict) and manifest.get("ended-at"):
+            return True
+    except (OSError, ValueError):
+        pass
+    try:
+        started = time.mktime(time.strptime(directory.name[:15], "%Y%m%d-%H%M%S")) - time.timezone
+    except ValueError:
+        return True
+    return (time.time() if now is None else now) - started > ABANDONED_SESSION_SECONDS
+
+
+def prune_sessions(root: Path, *, budget_bytes: int, current: str, now: float | None = None) -> list[str]:
+    """Remove the oldest ended session directories under ``root`` until it fits the budget.
 
     Session identifiers sort by start time, so the oldest are the first by
-    name. The ``current`` session is never removed, so the directory may
-    exceed the budget by that one session. Returns the names removed. A
-    directory that cannot be removed is left alone and omitted; this is
-    housekeeping, not a guarantee.
+    name. The ``current`` session and every session not yet ended (see
+    :func:`session_ended`) are never removed, so the directory may exceed
+    the budget by those sessions. Returns the names removed. A directory
+    that cannot be removed is left alone and omitted; this is housekeeping,
+    not a guarantee.
     """
 
     if budget_bytes < 0:
@@ -331,7 +358,7 @@ def prune_sessions(root: Path, *, budget_bytes: int, current: str) -> list[str]:
     for name in sessions:
         if total <= budget_bytes:
             break
-        if name == current:
+        if name == current or not session_ended(root / name, now=now):
             continue
         try:
             shutil.rmtree(root / name)
@@ -426,8 +453,13 @@ class Rotation:
         except (OSError, subprocess.SubprocessError) as error:
             self._report(f"logrotate did not run: {error}")
             return False
-        if completed.returncode != 0:
-            self._report(f"logrotate exited {completed.returncode}: {completed.stderr.strip()}")
+        # Inside the capsule the supervisor is PID 1 and reaps every child it
+        # is woken for, logrotate included, so this thread's wait can find
+        # the exit already collected and read it as 0. logrotate is silent
+        # when it succeeds; anything on stderr is a failure whatever the code.
+        complaint = completed.stderr.strip()
+        if completed.returncode != 0 or complaint:
+            self._report(f"logrotate exited {completed.returncode}: {complaint}")
             return False
         return True
 

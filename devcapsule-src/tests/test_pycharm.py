@@ -1821,3 +1821,38 @@ def test_the_log_budget_knob_sets_the_segment_and_refuses_nonsense(tmp_path: Pat
         session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="lots")
     with pytest.raises(PycharmRunError, match="DEVCAPSULE_LOG_BUDGET must be at least 16 MiB"):
         session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="1M")
+
+
+def test_the_launcher_records_the_sessions_end_in_its_manifest(tmp_path: Path) -> None:
+    import json
+
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, env = session_config(tmp_path)
+    assert config.session_log_directory is not None
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "run", return_value=SimpleNamespace(returncode=7)),
+        ):
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == 7
+        manifest = json.loads((config.session_log_directory / "session.json").read_text(encoding="utf-8"))
+        assert manifest["session"] == config.session_id and manifest["exit-code"] == 7
+        assert manifest["ended-at"].endswith("Z") and logs.session_ended(config.session_log_directory)
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "run", side_effect=KeyboardInterrupt()),
+        ):
+            with pytest.raises(KeyboardInterrupt):
+                run_pycharm(PycharmRunOptions(project=config.project), env)
+        manifest = json.loads((config.session_log_directory / "session.json").read_text(encoding="utf-8"))
+        assert manifest["exit-code"] is None and manifest["ended-at"]
+    finally:
+        logs.reset()
