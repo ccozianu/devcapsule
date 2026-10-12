@@ -24,6 +24,17 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-12: the process record was mailed to the trading-research sample
+project.** At the owner's request, an intake item describing the
+implementor, reviewer and owner loop with pull requests, what it produced,
+what we learned, and how it may inform that project's LLM debates, was
+delivered to `project-management` of
+`ccozianu/devcapsule-sample-trading-research` with `devcapsule workflow
+mail send`, run in the submodule checkout. That repository had no
+coordination branch; the tool created it, commit `9d26eed`. A sender from
+another repository is outside the definition; the item says so and the
+owner directed it. The submodule pointer is untouched.
+
 **2026-10-11, after the owner's report: the stack's conflict resolved.**
 PR1's branch was rebased on GitHub onto the newer `main`; its commits kept
 their content and changed their hashes, so PR2, which carried the old
