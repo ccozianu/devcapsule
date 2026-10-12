@@ -1264,7 +1264,16 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting the human: review and merge of PR #207 and PR #209.
+- Awaiting the human: review and merge of PR #207 and PR #209, merge
+  commits so the stack stays consistent. Paused 2026-10-12 at the owner's
+  word.
+- External state that outlives the session: review worktrees
+  `~/worktrees/maintenance-review` and `~/worktrees/maintenance-review-pr2`;
+  the acceptance clone and venv under
+  `~/.local/share/devcapsule/e2e-workspaces/logs-accept`; local images
+  `devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151` and
+  `devcapsule-local-codium:60ed46caf1a3e8897e5d`. All removable once the
+  PRs are merged.
 - Weighed and unresolved, from PR1.1: the supervisor's `preexec_fn` runs
   with tee threads alive, which Python documents as unsafe; a helper that
   sets the mask and execs would remove it. Not changed, no failure seen.
