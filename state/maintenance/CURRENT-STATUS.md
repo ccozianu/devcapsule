@@ -1264,6 +1264,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Undecided at the pause: two items from project-management taken on
+  2026-10-12, `2026-10-11-project-management-bootstrap-target-09.md` and
+  `2026-10-11-project-management-pre-rc-sequence.md`, in the intake; decide
+  them first on resumption, they are not forwardable.
 - Awaiting the human: review and merge of PR #207 and PR #209, merge
   commits so the stack stays consistent. Paused 2026-10-12 at the owner's
   word.
