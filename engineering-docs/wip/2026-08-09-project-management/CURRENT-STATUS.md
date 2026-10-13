@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-11 at owner direction; consent and forced configuration first, remaining 0.3.0 work during the RC cycle; diagnostics/image scope limits remain open
+State: resumed 2026-10-13 at owner direction; delivered work rechecked, the owner's decision agenda presented; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -264,6 +264,43 @@ Pre-existing or IDE-generated .idea edits remain outside the checkpoint.
 The selected workstream has not changed.
 The owner requested regular commits and pushes on 2026-10-11. Checkpoint each
 completed decision batch instead of accumulating several batches uncommitted.
+
+## Resumed 2026-10-13
+
+Synchronized with `main` by merge at `5dc95e9`; the definition is
+unchanged since the last read; no mail waited. Delivered work rechecked
+against the pull requests and the published states before any list was
+presented, as the suspension note asked:
+
+- The web console's second iteration is on `main` in full: PRs #192 to
+  #206, each with its Codex review merged. Deliverables 1 to 5 and slice 8
+  are delivered; deliverable 6, materialized views, is the third iteration
+  and is not started.
+- Persistent diagnostics, C21: slices 1 and 2 are on `main`, PRs #207 and
+  #209 with reviews #208 and #210 to #212. Every component's log file, a
+  WARNING baseline with lifecycle events, in-process rotation at an exact
+  segment, one budget knob, the session manifest. Remaining: the snapshot
+  and export command, browser evidence, and the Ctrl+C result shared with
+  C10.
+- Maintenance's plate: named build contexts (C5), the in-capsule project
+  commands (C8) and the fresh-workspace test are on `main`. Not started:
+  forced configuration (`resolve --force`, `run --force-config`), the
+  universal network node, C10, C20.
+- component-upgrades' consent slice: not started; the workstream is paused
+  since 2026-10-02 with the design fully ruled.
+- The trading-research sample project opened a `cli-engines` workstream on
+  2026-10-13 from this checkout at the owner's word, then the owner struck
+  the instruction as not meant for that session; that project's own
+  project-management has since routed input to it. Whether to remove it is
+  the owner's call, asked and pending.
+
+The decision agenda handed to the owner in chat on 2026-10-13, in the
+owner's own order: start of the two substantial implementations; the
+0.3.0 scope, headline, driver and cut trigger with the console's delivered
+state known; the eleven user-docs proposals; the upgrade-design slice; the
+RC bound for the diagnostics remainder and image reuse and cleanup. The
+launcher-recovery reconciliation with R-CONFIG-001 is agent work and is
+offered, not asked.
 
 ## Open Threads
 
