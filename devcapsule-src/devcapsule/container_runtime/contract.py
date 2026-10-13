@@ -265,6 +265,56 @@ class ConsolePlan:
 
 
 @dataclass(frozen=True)
+class LogsPlan:
+    """Where the session's logs live inside the capsule, as the run manifest records it.
+
+    ``directory`` is a host-backed bind mount the launcher prepared, one per
+    session, so the files outlive the container. The entrypoint writes the
+    supervisor's log there and tees every child's output into its own file,
+    ``devcapsule-<child>.log``; see ``devcapsule.logs``. A plan without a
+    logs section writes no files, which is what every plan meant before the
+    section existed: the console sees everything, nothing is kept.
+
+    ``segment_bytes`` and ``rotations``, both or neither, ask the entrypoint
+    to rotate every file with logrotate at that size, keeping that many
+    older segments. Without them the files are cut at the runtime's fixed
+    bound, which is what a plan from before rotation existed asks for.
+    """
+
+    directory: str
+    segment_bytes: int = 0
+    rotations: int = 0
+
+    @property
+    def rotates(self) -> bool:
+        return self.segment_bytes > 0 and self.rotations > 0
+
+    @classmethod
+    def from_mapping(cls, value: object, field: str) -> LogsPlan:
+        if not isinstance(value, dict):
+            raise RuntimePlanError(f"{field} must be an object")
+        extra = sorted(set(value) - {"directory", "segment_bytes", "rotations"})
+        if extra:
+            raise RuntimePlanError(f"{field} must not carry {', '.join(extra)}")
+        directory = _absolute_path(value.get("directory"), f"{field}.directory")
+        segment_bytes = value.get("segment_bytes", 0)
+        rotations = value.get("rotations", 0)
+        for name, number in (("segment_bytes", segment_bytes), ("rotations", rotations)):
+            if not isinstance(number, int) or isinstance(number, bool) or number < 0:
+                raise RuntimePlanError(f"{field}.{name} must be a non-negative integer")
+        if ("segment_bytes" in value) != ("rotations" in value) or (segment_bytes > 0) != (rotations > 0):
+            raise RuntimePlanError(f"{field}.segment_bytes and {field}.rotations go together")
+        return cls(directory, segment_bytes, rotations)
+
+    def to_mapping(self) -> dict[str, object]:
+        result: dict[str, object] = {"directory": self.directory}
+        if self.rotates:
+            result["segment_bytes"] = self.segment_bytes
+            result["rotations"] = self.rotations
+        return result
+
+
+@dataclass(frozen=True)
 class ComponentRuntimeTemplate:
     version: int
     component: Component
@@ -398,6 +448,7 @@ class RuntimePlan:
     host_integrations: tuple[str, ...] = ()
     display: DisplayPlan | None = None
     console: ConsolePlan | None = None
+    logs: LogsPlan | None = None
 
     @classmethod
     def for_component(
@@ -517,6 +568,8 @@ class RuntimePlan:
         display = None if display_value is None else DisplayPlan.from_mapping(display_value, "display")
         console_value = document.get("console")
         console = None if console_value is None else ConsolePlan.from_mapping(console_value, "console")
+        logs_value = document.get("logs")
+        logs = None if logs_value is None else LogsPlan.from_mapping(logs_value, "logs")
         prefixes = {item.id for item in (component, *ancillary)}
         for slot in slots:
             namespace, separator, local_name = slot.name.partition("/")
@@ -536,6 +589,7 @@ class RuntimePlan:
             host_integrations=integrations,
             display=display,
             console=console,
+            logs=logs,
         )
 
     @staticmethod
@@ -590,6 +644,9 @@ class RuntimePlan:
     def with_console(self, console: ConsolePlan) -> RuntimePlan:
         return replace(self, console=console)
 
+    def with_logs(self, logs: LogsPlan) -> RuntimePlan:
+        return replace(self, logs=logs)
+
     def display_transport(self) -> str:
         """The transport this plan records; absent means host X11 passthrough."""
 
@@ -627,6 +684,8 @@ class RuntimePlan:
             result["display"] = self.display.to_mapping()
         if self.console is not None:
             result["console"] = self.console.to_mapping()
+        if self.logs is not None:
+            result["logs"] = self.logs.to_mapping()
         return result
 
     def to_json(self) -> str:

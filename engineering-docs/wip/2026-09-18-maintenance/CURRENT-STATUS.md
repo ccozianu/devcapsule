@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; `main` merged in, PR #174 merged into this branch, PR #172 ready for the owner's integration after the gate; the 0.3.0 maintenance plate: persistent session diagnostics (owner assignment of 2026-10-11, plate position awaiting the owner), the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, rotation moved into the writers by the owner's clarification, all three Codex rounds merged (#210, #211, #212); PR #207 and PR #209 await the owner; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
@@ -12,7 +12,7 @@ Integration target: `main`
 
 Delivery method: stacked pull request against `ws-maintenance/post-0.2.15`; owner authorized authenticated `gh` to create/update/consult PRs on 2026-10-08; merging remains with the owner
 
-Branch association: `ws-maintenance/post-0.2.15` (PR #172, `main` merged in on 2026-10-11); `ws-maintenance/pr172-correctness` is merged through PR #174 and closed; release-0.2.15 is closed and retained
+Branch association: `ws-maintenance/session-logs` (PR #207, from `main`; PR1.1 #208 merged in); `ws-maintenance/log-rotation` (PR #209, stacked on PR1); `ws-maintenance/log-rotation-review` (PR2.1 #210, merged) and `ws-maintenance/log-rotation-review-2` (the pair's second round); `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -23,6 +23,141 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-11, after the owner's report: the stack's conflict resolved.**
+PR1's branch was rebased on GitHub onto the newer `main`; its commits kept
+their content and changed their hashes, so PR2, which carried the old
+merge, showed a conflict in every file. One merge of the rewritten PR1
+tip into PR2's branch resolved it: every conflict took PR2's version, the
+tree changed only by the coverage badge, and both PRs read mergeable
+again. Note for the next time: a rebase of a stacked branch's base rewrites
+history the branches above it carry; the local rule, merge rather than
+rebase for published branches, exists for this.
+
+**2026-10-11, last: round three merged; the rounds on PR2 are used; the
+owner's turn.** [PR #212](https://github.com/ccozianu/devcapsule/pull/212),
+the Codex pair's review of the in-process rotation, was merged: compression
+completes before any history is expired, a gap in the archives ages its
+slot out, short raw writes are completed and accounted, a second failure
+while closing cannot stop the tee from draining the pipe, and the docs
+state the limits: synchronous compression on the writer, a non-atomic
+sequence with a crash table, a write rather than a line as the unit. Two
+proposals stay as threads below. The gate on the merged branch is recorded
+under *Validation*. The owner also asked that this change go through the
+same review scheme; it did.
+
+**2026-10-11, later again: the owner clarified the rotation; every writer rotates its
+own file.** The owner's mental model was the piped rotator, the writer
+that rotates on write when the size is reached, and asked for "the solid
+approach with no overshooting". PR2 changes accordingly: `SegmentedFile`
+in `devcapsule.logs` rotates the live file the moment a write would carry
+it past its segment, compresses it to `.1.gz`, shifts the older segments
+and drops the one beyond the count; the tee and the Python handler both
+write through it. The logrotate child, its stanza, the reopen-on-rename
+logic and base recipe 12 are gone; the base stays at recipe 11 and the
+behavior is the same on every base. Exact bound: the live file never
+exceeds its segment, except a single write longer than the segment, which
+goes into a fresh file alone. The budget knob, the segment derivation, the
+manifest and the pruning are unchanged. The earlier logrotate acceptance
+evidence stands as history; the rotation it proved is replaced, and the
+unit suite now proves rotation with a real child writing 4000 lines
+through the tee. A third Codex round reviews this change.
+
+**2026-10-11, late: acceptance passed on a real capsule; PR #207 and PR
+#209 await the owner.** From a clean clone of PR2's branch at `174480f`, a
+public PEX built the recipe-12 base through `nox -s e2e -- --build-base`:
+nine end-to-end tests passed, the built base carries recipe-version 12 and
+answers `logrotate --version`. A fresh codium project then ran through the
+real launcher on that base with a 16 MiB budget. The session directory
+held every component's file, user-owned, plus `logrotate.conf` and
+`session.json`; the supervisor's record shows logrotate as the first child
+and the session's end; a log padded to 1.5 MiB was rotated to `.1` by the
+next tick with no complaint in `devcapsule-logrotate.log`; the launcher
+recorded the `docker run` and the end, and `session.json` carries
+`ended-at` and the exit code. Evidence under
+[evidence/2026-10-11-session-logs](evidence/2026-10-11-session-logs/).
+Not shown by this run: compression, which needs a second rotation of the
+same file, and a writer's reopen, since the padded panel printed nothing
+afterwards; both are pinned by unit tests.
+
+**2026-10-11, night: PR2.1 accepted; logrotate became a supervised child.**
+The Codex pair's review of PR2, [PR #210](https://github.com/ccozianu/devcapsule/pull/210),
+was merged: UTC arithmetic for abandonment, the budget falls back to the
+default with a warning instead of refusing the launch, `nocreate` so the
+writers own the replacement file, and both rotation keys required
+together. Its three proposals were right and were taken as defects: the
+rotation thread was created before the supervisor blocks its signals, so a
+SIGTERM could end PID 1 without the orderly stop, and the supervisor's reap
+loop could take logrotate's exit first. Commit `adfbff7` runs logrotate as
+a supervised child, a `sh` loop that sleeps the interval and runs
+logrotate, started first and stopped last, teed into
+`devcapsule-logrotate.log`. The gate passed again. The second round,
+[PR #211](https://github.com/ccozianu/devcapsule/pull/211), found no
+runtime defect and was merged: it pins SIGTERM and SIGKILL of the loop
+under the real supervisor, hostile paths through `shlex.join`, and the
+`gosu` wrap, and corrects the wording on shutdown. Rounds used on PR2: two
+of three. Acceptance on a real capsule follows; see *Validation*.
+
+**2026-10-11, evening: PR1.1 accepted; slice 2 is
+[PR #209](https://github.com/ccozianu/devcapsule/pull/209), stacked on PR1.**
+The Codex pair's review of PR1, [PR #208](https://github.com/ccozianu/devcapsule/pull/208),
+was merged into PR1's branch without a round. It found five real gaps:
+the tee waited for a newline, the per-child drain could delay signal
+forwarding, `DEVCAPSULE_LOG_LEVEL` never entered the container, a log
+directory an external daemon cannot see produced an empty bind, and the
+console's access log could persist tokens under INFO. Its two proposals are
+open threads below.
+
+Slice 2, by the owner's brief of the same day: logrotate owns the rotation
+and one knob, `DEVCAPSULE_LOG_BUDGET`, bounds the checkout's logs directory
+(256 MiB by default, 16 MiB floor). The entrypoint writes `logrotate.conf`
+and runs logrotate as the capsule user every 30 seconds; the writers reopen
+after a rotation; the segment per file is one thirty-second of the budget
+within 1 to 10 MiB, four rotations, delayed compression; the launcher
+records the session's end in `session.json` and prunes only ended sessions;
+base recipe 12 ships logrotate and an older base keeps the 50 MiB cut. The
+reviewed PR1 is merged into the slice. Gate green; see *Validation*.
+
+Judgments for the owner's review in PR #209: the knob is an environment
+variable, not a configuration node, because a node changes the manifest
+vocabulary released launchers guard; the directory may exceed the budget by
+the running sessions and a file its segment by thirty seconds of output,
+both stated in the docs.
+
+**2026-10-11, later: persistent session diagnostics, slice 1, is
+[PR #207](https://github.com/ccozianu/devcapsule/pull/207).** The owner
+merged PR #172 and said "go for it" on item 1 of the plate, with the brief:
+every critical component writes a log recognizable by its file name, at the
+WARNING equivalent of slf4j, with the launcher, the supervisor, the desktop
+manager, the IDE and the web console as the components; where a component
+has no level, redirect its stderr and stdout through a tee so the console
+keeps them. Slice 1 is the Python logging framework and that wiring:
+
+- `devcapsule.logs`: `devcapsule-<component>.log`, WARNING baseline,
+  `DEVCAPSULE_LOG_LEVEL` override, lifecycle events at INFO always, a
+  UTC-stamped rotating file (10 MiB, five segments), the tee with a 50 MiB
+  cut, the newest 20 sessions kept per checkout.
+- The runtime plan carries a `logs` section; the supervisor tees every
+  child and records starts, readiness, exits and signals; Xvnc logs at
+  status (`-Log *:stderr:10`); the console honours the override; the
+  launcher creates `<state namespace>/logs/<session id>`, binds it at
+  `/var/log/devcapsule`, writes `session.json` and its own log, and prints
+  the directory; `project info` lists the row; the diagnostics page is
+  written.
+- Delivery follows the owner's review scheme from the web console work:
+  stacked PRs, each reviewed by the Codex and gpt-6-astra pair as PRn.1
+  from a `-review` branch, at most three rounds, the owner merges.
+
+Judgments recorded for this slice, for the owner's review in the PR:
+
+- Xvnc's baseline is its status level, not errors only, because connection
+  accepted and closed are the events the original incident needs.
+- The web console writes no file of its own; its stderr is teed like every
+  other child, so one mechanism covers every component.
+- The IDE's native log stays in its slot; the session directory holds the
+  IDE's standard streams.
+- The size numbers are the work order's proposal; compression and the
+  aggregate budget are the next slice, with the snapshot command after.
 
 **2026-10-11: resumed; `main` merged in; the diagnostics work order is
 accepted.**
@@ -128,13 +263,14 @@ last; the middle is the agent's suggested order until the owner sets it):
 3. Named build contexts: done 2026-10-06, measured. Then the installed-IDE
    reuse and reaping design review with the owner.
 4. Persistent session diagnostics: the owner's assignment of 2026-10-11,
-   urgent and foundational, target ready for 0.3.0. First step: scope the
-   bounded slice and its acceptance with the owner, then implement and
-   validate. Default persistent component logs, bounded rotation with
-   compression and the WARNING baseline are owner direction; the numeric
-   limits, the snapshot and export design and the browser-evidence slice
-   are engineering choices for review. Its position relative to item 5
-   awaits the owner.
+   urgent and foundational, target ready for 0.3.0; started first by the
+   owner's word. Slice 1, the logging framework: PR #207, review merged.
+   Slice 2, logrotate and the budget: PR #209, review running. Next: the
+   recipe-12 base build and the fresh-workspace end-to-end proof; the live
+   snapshot and export command; browser evidence. Default persistent component
+   logs, bounded rotation with compression and the WARNING baseline are
+   owner direction; the numeric limits, the snapshot and export design and
+   the browser-evidence slice are engineering choices for review.
 5. The universal `network` authorization node.
 6. The first-session UX bugs (C10), release notes and gate tooling.
 7. Ecosystem-aware project bootstrap.
@@ -353,14 +489,19 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. Record the gate on the merged tree, push the branch, publish.
-2. The owner integrates [PR #172](https://github.com/ccozianu/devcapsule/pull/172) to `main`.
-3. The owner sets the plate position of persistent session diagnostics;
-   see *Open Threads*.
-4. Start that slice, or the universal network node, on a fresh sub-branch
-   from the integrated `main`. The installed-IDE reuse and reaping design
-   review follows. Configuration snapshot links stay an acknowledged
-   follow-up after integration.
+1. The owner reviews and merges PR #207, then PR #209. The three review
+   rounds on PR2 are used; a further change needs the owner's word.
+3. Acceptance: build a recipe-12 base and run a fresh-workspace launch,
+   proving the files, the rotation and the budget on a real capsule.
+4. Slice 3: the live snapshot and export command; then browser evidence.
+5. Then the universal network node and the installed-IDE reuse and reaping
+   design review. Configuration snapshot links stay an acknowledged
+   follow-up.
+
+Done 2026-10-11: PR1.1 (#208) merged into PR1's branch.
+
+Done 2026-10-11: PR #172 merged by the owner; the plate position was decided
+by the owner's "start working on #1".
 
 Superseded on 2026-10-11: await owner review of PR #174; after approval the
 owner merges the fix into #172, then the branch synchronizes and #172
@@ -560,6 +701,69 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate after round three (2026-10-11, PR #209 at `c3dd82a`): full `nox -s
+build` passed, exit 0: mypy clean over 214 files; 1584 unit tests passed,
+35 deselected, 1 xfailed, 1 xpassed; packaging integration 17 passed; PEX
+built and smoked; documentation contract 184 pages; web console session
+mypy clean, 293 tests. Log
+`/opt/devcapsule-gate/2026-10-11-log-rotation-build-4.log`.
+
+Second session (2026-10-11, PEX of `b86b899`, the recommended recipe-9
+base, budget 16 MiB): the directory held every component's file present
+on that base, the launcher's and the supervisor's, user-owned, and
+`session.json` with the 1 MiB segment and the end record; exit 133 as
+before. Evidence under `evidence/2026-10-11-session-logs/second-session/`.
+The fixture project `e2e-logs-2b5c80eb` was removed after the run.
+
+In-process rotation gate (2026-10-11, PR #209 after the owner's
+clarification): full `nox -s build` passed, exit 0: mypy clean over 214
+files; 1571 unit tests passed, 35 deselected, 1 xfailed, 1 xpassed;
+packaging integration 17 passed; PEX built and smoked; documentation
+contract 184 pages; web console session mypy clean, 293 tests. Log
+`/opt/devcapsule-gate/2026-10-11-log-rotation-build-3.log`. Rotation is
+proven in the unit suite with a real child writing 4000 lines through the
+tee at a 100 KB segment, and the handler at a 160-byte segment.
+
+Acceptance (2026-10-11): base `devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151`,
+id `sha256:5034721d…`, built over host networking from the public PEX of
+`174480f` (sha256 `6047ecf0…`) in the fresh workspace
+`~/.local/share/devcapsule/e2e-workspaces/logs-accept`; e2e session 9
+passed: built base, component cache (5), successor lifecycle, runtime
+image, self-contained PEX. Proof session `20261011-085622-321e` on the
+materialized codium image, exit 133 (codium's SIGTRAP on stop, as before).
+The clone, its venv, the base and the codium image remain on this machine;
+the fixture project `e2e-logs-1974aad7` was removed after the run.
+
+Slice 2 gate after the review (2026-10-11, PR #209 at `adfbff7`): full
+`nox -s build` passed, exit 0: mypy clean over 214 files; 1571 unit tests
+passed, 35 deselected, 1 xfailed, 1 xpassed; packaging integration 17
+passed; PEX built and smoked; documentation contract 184 pages; web
+console session mypy clean, 293 tests. Log
+`/opt/devcapsule-gate/2026-10-11-log-rotation-build-2.log`. The rotation
+loop is proven under a real `sh` with a fake logrotate.
+
+Slice 2 gate (2026-10-11, PR #209 at `4820289`): full `nox -s build`
+passed, exit 0: mypy clean over 214 files; 1548 unit tests passed, 35
+deselected, 1 xfailed, 1 xpassed; packaging integration 17 passed; PEX
+built and smoked; documentation contract 184 pages; web console session
+mypy clean, 293 tests. Log
+`/opt/devcapsule-gate/2026-10-11-log-rotation-build.log`. logrotate is
+absent on this capsule's recipe-11 base, so the real binary did not run;
+the rotation thread, the stanza, the reopen after a rename and the reaping
+race are proven with stand-ins. PR1's merged branch passed the focused
+suites and mypy in the review worktree. The second review worktree is
+`/home/devcapsule/worktrees/maintenance-review-pr2`.
+
+Slice 1 gate (2026-10-11, PR #207 at `0af89a2`): full `nox -s build`
+passed, exit 0, scratch on the overlay: mypy clean over 214 files; 1523
+unit tests passed, 35 deselected, 2 xfailed; packaging integration 17
+passed; PEX built and smoked; documentation contract 184 pages; web
+console session mypy clean, 292 tests. Log
+`/opt/devcapsule-gate/2026-10-11-session-logs-build.log`. The supervisor
+tee is proven with real child processes in the unit suite; no capsule was
+launched. The Codex pair's review worktree is
+`/home/devcapsule/worktrees/maintenance-review` with its own venv.
 
 Gate on the merged tree (2026-10-11, commit `e7e441f` plus records): full
 `nox -s build` passed with exit 0, scratch on the overlay. Type check clean
@@ -1049,12 +1253,17 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting the human: the plate position of persistent session
-  diagnostics. Option 1: next, before the network node, as the owner's
-  urgency suggests. Option 2: after the network node, which is small and
-  already decided. Only the order of the next two slices turns on it.
-- Awaiting the human: integration of PR #172 once the gate passes on the
-  merged tree.
+- Awaiting the human: review and merge of PR #207 and PR #209.
+- Weighed and unresolved, from PR1.1: the supervisor's `preexec_fn` runs
+  with tee threads alive, which Python documents as unsafe; a helper that
+  sets the mask and execs would remove it. Not changed, no failure seen.
+- Weighed and unresolved, from PR2.3: an atomic replacement of the live
+  path for readers that follow it across a rotation; a drain policy for a
+  compression that outlasts the supervisor's 0.5 s allowance at shutdown.
+  Neither changes the contract; both are candidates for the next slice.
+- Weighed and unresolved: the budget knob is an environment variable; a
+  configuration node would be durable but touches the guarded vocabulary.
+  Xvnc at status level rather than errors only.
 - Weighed and unresolved: the C10 first-session bug records are not on
   `main`. The diagnostics slice takes the Ctrl+C result into its scope
   unless project-management files them first.
@@ -1237,6 +1446,8 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
+- [Session logs acceptance](evidence/2026-10-11-session-logs/README.md): the recipe-12 base, the real session, the rotation; open when a reviewer asks what was proven on a capsule.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
 - [Unpacked cache publication/recovery bug](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md): fixed on review branch; close after main integration.
 

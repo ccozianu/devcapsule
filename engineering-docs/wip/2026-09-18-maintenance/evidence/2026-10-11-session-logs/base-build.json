@@ -1,0 +1,13 @@
+{
+  "tag": "devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151",
+  "image-id": "sha256:5034721d1f5bc3cc4c9f4fe983a6cbad5e6ce40bc620aba2b667337ef820a1eb",
+  "builder": {
+    "build_mnemonic": "v0.2.16.dev0-local-linux-x86_64",
+    "schema_version": 2,
+    "source_repository": "https://github.com/ccozianu/devcapsule",
+    "source_revision": "174480f9ba2c99b7f0348f7da0e097db6179afd6",
+    "source_url": "https://github.com/ccozianu/devcapsule/commit/174480f9ba2c99b7f0348f7da0e097db6179afd6",
+    "version": "0.2.16.dev0"
+  },
+  "builder-sha256": "6047ecf0e228556514583c4fd3240a017eac5792c5c74b6a5e3d0031b055ffdb"
+}

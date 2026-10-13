@@ -1,8 +1,146 @@
 ---
-description: Where the launcher and the capsule write their logs, how to read a launch that failed, and what to include when asking for help.
-status: planned
+description: Where every component of a session writes its log, what the files are called, how to raise the verbosity, and what to include when asking for help.
 weight: 2
+updated: 2026-10-11
 ---
 # Diagnostics and logs
 
-*Coming soon.* This page will cover the launcher's output, the IDE's log directory, the container's own logs, and a minimal report for an issue.
+Every launch gets its own log directory on your computer. Every critical
+component of the session writes one file there, named after itself. Nothing
+depends on a flag you had to set before the problem happened: the files are
+there by default, and they survive the browser tab, Ctrl+C in the launcher,
+the IDE's exit and the container's removal.
+
+If the session directory cannot be created, or an external Docker daemon
+cannot see its backing mount, the launcher reports that and continues with
+console output only.
+
+## Where the logs are
+
+The launcher prints the directory at every start, on the line `Session logs:`
+of the storage summary. Inside the capsule the same directory is mounted at
+`/var/log/devcapsule`, and the environment variable `DEVCAPSULE_LOG_DIR`
+names it, so a tool or an agent in the capsule finds it without guessing.
+
+On your computer the directory lives in your DevCapsule state storage, per
+checkout, one directory per session:
+
+```text
+$XDG_STATE_HOME/devcapsule/projects/by-path/<checkout id>/logs/<session id>/
+```
+
+`$XDG_STATE_HOME` is `~/.local/state` unless you set it. The session id is
+the start time in UTC and a short random suffix, `20261011-041533-3f9a`, so
+the directories sort by time. `devcapsule project info` lists the `logs` row
+with the exact path for your checkout.
+
+## What is in a session directory
+
+| File | Written by | What it holds |
+|---|---|---|
+| `session.json` | the launcher | The session id, start time, launcher version and source revision, image, container name, project path and mount, the IDE |
+| `devcapsule-launcher.log` | the launcher, on your computer | The session's start and end, the `docker run` command, warnings |
+| `devcapsule-supervisor.log` | the capsule's process supervisor | Every child's start, readiness, exit and signal, with the exit code or signal name; warnings |
+| `devcapsule-xvnc.log` | Xvnc, the capsule's X server | Errors and connection events: a viewer accepted or closed |
+| `devcapsule-window-manager.log`, `devcapsule-panel.log` | openbox, tint2 | Their standard output and error, as they print it |
+| `devcapsule-novnc.log` | websockify, the browser bridge | Connections opened and closed, handshake failures |
+| `devcapsule-console.log` | the web console | Warnings and errors of the console and its server |
+| `devcapsule-<ide>.log`, for example `devcapsule-pycharm.log` | the IDE's standard output and error | What the IDE prints when it starts and fails; its own log stays in its log directory, see below |
+| `devcapsule-job.log` | a headless job | The job's output |
+
+Every file of the capsule side is also what you see on the launcher's
+terminal: the supervisor copies each child's output to its file and to the
+console, with a UTC timestamp in front of each line in the file. Partial
+lines reach the console without waiting for a newline.
+The launcher's and the supervisor's own records carry the level and the
+process id as well.
+
+The IDE keeps its own log where it always did, in its persistent log
+directory: `idea.log` for the JetBrains IDEs, under the log slot listed by
+`devcapsule project info`; the `logs` directory of VSCodium's user data;
+`.metadata/.log` of the Eclipse workspace. Those logs are not copied; the
+session directory holds the IDE's standard streams only.
+
+## Levels and the verbosity override
+
+The baseline is the equivalent of WARNING: each component records warnings
+and errors, and the session's lifecycle events, which are recorded whatever
+the baseline says, because they are what reconstructs an incident. For Xvnc
+the baseline is its status level, errors plus connection and server state
+changes.
+
+To see more for one launch, set `DEVCAPSULE_LOG_LEVEL` on the launcher's
+shell. It accepts `DEBUG`, `INFO`, `WARNING` and `ERROR` and reaches every
+component: the launcher, the supervisor, the web console, and Xvnc, which
+logs everything under `DEBUG`.
+
+```bash
+DEVCAPSULE_LOG_LEVEL=DEBUG devcapsule project run
+```
+
+A value the variable does not accept is reported once, and the session logs
+at WARNING.
+
+## How much disk this takes
+
+Every writer rotates its own file, in the process that writes it, the moment
+a write would carry the file past its segment. The live file never exceeds
+the segment; the one exception is a single write longer than the segment,
+which goes into a fresh file on its own. Python logs write whole formatted
+records, including tracebacks. Copied child output is read in bounded chunks,
+so a line split across reads can span segments; a segment can start without
+a timestamp when it continues a line from the preceding segment.
+
+- Each file rotates at its segment, 8 MiB by default. The live file becomes
+  `devcapsule-novnc.log.1.gz`, the older segments shift to `.2.gz` and on,
+  and the fifth is removed: four compressed segments per file, at most.
+- The launcher's log on your computer and the supervisor's in the capsule
+  rotate the same way, each by its own process.
+- There is no rotation daemon, no polling and no window in which output
+  lands in a rotated file.
+- Compression runs on the writer. While a child's copied log is compressed,
+  its output pipe is not drained; if the pipe fills, the child waits until
+  copying resumes. Slow storage can prolong that wait.
+- Rotation is not atomic as a whole. A crash can leave a temporary `.gz.tmp`
+  file, partly shifted archives, or the latest output in both the live file
+  and `.1.gz`. The live path briefly disappears between removal and reopening;
+  a reader following an open file must reopen the path to see new output.
+
+One knob sets the checkout's retention target: `DEVCAPSULE_LOG_BUDGET` on the
+launcher's shell, `256M` by default. It accepts a number with `K`, `M` or
+`G`, with a minimum of `16M`. An invalid or smaller value prints a warning
+and uses `256M`, so a logging option cannot prevent a launch.
+
+```bash
+DEVCAPSULE_LOG_BUDGET=1G devcapsule project run
+```
+
+- The segment size follows the budget: one thirty-second of it, between
+  1 MiB and 10 MiB. Each component normally keeps one live segment and four
+  compressed segments. Oversize writes, temporary compression space and gzip
+  overhead mean this is not a hard bound on disk use.
+- At each launch, the oldest ended sessions are removed until the checkout's
+  logs directory fits the budget or no eligible session can be removed,
+  and the launcher's log names what was removed. The session being launched
+  is never removed. Other sessions without a recorded end are protected for
+  seven days from their start, then count as abandoned even if still running.
+  Missing or unreadable manifests use the same age rule. The directory may
+  exceed the target between launches, while sessions are protected, or when
+  cleanup fails.
+- `session.json` records when the session ended and with which exit code.
+
+## When asking for help
+
+Attach, from the session directory:
+
+1. `session.json`, which ties the logs to the exact launcher and image.
+2. `devcapsule-launcher.log` and `devcapsule-supervisor.log`.
+3. The file of the component that misbehaved, for example
+   `devcapsule-novnc.log` for a browser that could not connect, or the IDE's
+   file for an IDE that did not come up.
+4. What you did, in order, and what you expected to see.
+
+The web console's request access log is disabled, so raising verbosity does
+not record run tokens from request URLs. Child output, custom Docker
+arguments and the IDE's own log can contain credentials or project content;
+read the files before sharing them.

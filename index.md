@@ -30,7 +30,7 @@ status file; internal WIP/archive documents use the local index in that status.
   - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md), [The web console](docs/sessions/web-console.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
   - Collaboration: [Work in workstreams with humans and agents](docs/collaboration/working-in-workstreams.md)
   - Updates: [Supported versions](docs/updates/supported-versions.md), [Launcher updates](docs/updates/launcher-updates.md), [Component freshness](docs/updates/component-freshness.md), [Component upgrades](docs/updates/component-upgrades.md)
-  - Troubleshooting: [First session](docs/troubleshooting/first-session.md); coming soon: [Diagnostics and logs](docs/troubleshooting/diagnostics-and-logs.md), [Cleanup and uninstall](docs/troubleshooting/cleanup-and-uninstall.md)
+  - Troubleshooting: [First session](docs/troubleshooting/first-session.md), [Diagnostics and logs](docs/troubleshooting/diagnostics-and-logs.md); coming soon: [Cleanup and uninstall](docs/troubleshooting/cleanup-and-uninstall.md)
   - Platforms: [Linux](docs/platforms/linux.md), [Windows via WSL2](docs/platforms/windows-wsl2.md), [macOS](docs/platforms/macos.md)
   - Reference: [Configuration nodes](docs/reference/configuration-nodes.md); coming soon: [Command reference](docs/reference/cli.md), [project info fields](docs/reference/project-info.md)
 - [Engineering documentation](engineering-docs/README.md)
