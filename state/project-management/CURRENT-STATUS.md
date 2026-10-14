@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: resumed 2026-10-13 at owner direction; delivered work rechecked, the owner's decision agenda presented; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
+State: paused 2026-10-14 at owner direction, the pair moves to the trading-research sample project; the decision agenda of 2026-10-13 awaits the owner; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
