@@ -181,7 +181,7 @@ next stage boundary with the reason recorded. `devcapsule workflow status`
 shows the facts: commits behind `main`, and whether the definition changed
 since the status file's `Definition read:` stamp, which `publish` writes.
 Synchronize a pushed branch by merging `main` into it; rebase only a branch
-that was never pushed, as `WORKFLOW.md` topic 7 rules. Before editing, `devcapsule workflow claim
+that was never pushed, as `WORKFLOW.md` topic 5.5 rules. Before editing, `devcapsule workflow claim
 "<slice>"` so other checkouts see what you are on, and release it when you
 pause; a claim informs and never refuses. To
 send an intake item to another workstream, deliver it by mail on the
