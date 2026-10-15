@@ -152,16 +152,21 @@ in [`INFORMATION-MODEL.md`](devcapsule-src/devcapsule/assets/project_workflow/de
 5. A search match is a navigation aid. It is never evidence that a contract is
    satisfied. Do not substitute repeated pattern searches for reasoning.
 
-## Component Status Publication Ref
+## Publication Refs
 
-1. `component-status` is a project-owned generated publication branch.
-2. The `component-status.yml` action may create it and advance it by
-   fast-forward commits that contain the compatibility feed and the
-   GitHub-rendered status page.
-3. Never select it as an editing workstream. Never merge it into `main`. Never
-   force-push it.
-4. Authored policy and implementation follow ordinary workstream PR delivery.
-   See [service operations](component-status/README.md).
+1. `component-status` and `badges` are project-owned generated publication
+   branches. Never select one as an editing workstream. Never merge one into
+   `main`. Never force-push one. Commit nothing generated to `main`.
+2. The `component-status.yml` action may create `component-status` and advance
+   it by fast-forward commits that contain the compatibility feed and the
+   GitHub-rendered status page. See
+   [service operations](component-status/README.md).
+3. The `tests.yml` action may create `badges` and advance it by fast-forward
+   commits that contain `coverage.svg`, the coverage badge of the mainline run
+   it reports on. `README.md` links the badge by its raw address on that
+   branch.
+4. Authored policy and implementation of both follow ordinary workstream PR
+   delivery.
 
 ## Host Capabilities
 
@@ -308,7 +313,11 @@ Owner direction, 2026-09-22.
 
 Merge commits, as the definition prescribes since 2026-10-03: one merge per
 reviewed deliverable, `main` read by first parent, pushed branches synchronized
-by merging `main` in. The hosting platform's merge method is set accordingly.
+by merging `main` in. The hosting platform allows merge commits only. It
+deletes the head branch on merge. It refuses force pushes to `main` and
+deletion of `main`. The merge commit is the record of the branch: its second
+parent is the merged head and its message names the source branch. Delete a
+merged branch.
 The earlier ruling that `ws-workflow-improvements/v1` rebases onto `main` is
 retired. That branch merges like the others. The engineering source is
 [merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md).

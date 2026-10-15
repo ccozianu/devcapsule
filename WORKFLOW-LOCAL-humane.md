@@ -105,17 +105,22 @@ the most common way an agent convinces itself that a contract holds when it
 has only found a name. Reasoning from the contract first makes the code read
 targeted, which is both cheaper and more reliable.
 
-## Component Status Publication Ref
+## Publication Refs
 
-**Rule.** `component-status` is a generated branch the action advances by
-fast-forward; never a workstream, never merged, never force-pushed.
+**Rule.** `component-status` and `badges` are generated branches their actions
+advance by fast-forward; never a workstream, never merged, never force-pushed;
+nothing generated is committed to `main`.
 
-**Intended effect.** The compatibility feed and status page publish without a
-human and without touching `main`.
+**Intended effect.** The compatibility feed, the status page and the coverage
+badge publish without a human and without touching `main`, so every
+first-parent commit on `main` is a pull-request merge.
 
 **Motivation.** A generated branch that anyone could select as a workstream
 would eventually receive authored commits; keeping it out of the workflow's
-vocabulary keeps the action the only writer.
+vocabulary keeps the action the only writer. The badge moved off `main` on
+2026-10-15 by owner direction: its direct pushes were the one thing that
+prevented a repository rule requiring pull requests on `main`, and they
+interleaved single-parent commits with the merge record.
 
 ## Host Capabilities
 
@@ -238,7 +243,8 @@ next definition change rather than after it.
 
 ## Integration Method And Exceptions
 
-**Rule.** Merge commits since 2026-10-03; four recorded exceptions:
+**Rule.** Merge commits since 2026-10-03, enforced by the hosting platform
+since 2026-10-15 together with head-branch deletion on merge; four recorded exceptions:
 release-fix propagation by judgment, the root definition as source, two
 adoption exceptions, and pre-`ws-` branch names.
 
@@ -251,4 +257,8 @@ without a fix; the owner ruled on 2026-09-22 that engineering judgment chooses
 merge, cherry-pick, or evidence that `main` lacks the bug, with the disposition
 recorded on the bug. The adoption exceptions record history rather than
 rewriting it. The branch-name exception records a migration the owner deferred
-past 0.2.14 so that candidates were not held for a rename.
+past 0.2.14 so that candidates were not held for a rename. The platform
+enforcement and head-branch deletion came on 2026-10-15, when the owner
+settled that a merged branch's record is its merge commit: the second parent
+is the merged head and the message names the branch, so the branch itself is
+deleted without loss and the branch listing stops growing.
