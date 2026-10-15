@@ -1,7 +1,7 @@
 # DevCapsule
 
 [![Tests](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
-[![Coverage](docs/badges/coverage.svg)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
+[![Coverage](https://raw.githubusercontent.com/ccozianu/devcapsule/badges/coverage.svg)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
 
 <!-- website:hero -->
 ## Start working on a project right away!
