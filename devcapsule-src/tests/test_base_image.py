@@ -9,7 +9,7 @@ from zipfile import ZipFile
 
 import pytest
 
-from devcapsule.base_image import (
+from devcapsule.images.base import (
     NVIDIA_CUDA_ROOT_IMAGE,
     BaseImageBuildOptions,
     build_base_image,
@@ -18,8 +18,8 @@ from devcapsule.base_image import (
 )
 from devcapsule.build_info import BuildInfo
 from devcapsule.compat import CliError
-from devcapsule.image_build import render_build_context
-from devcapsule.image_tooling import MAVEN_VERSION, TEMURIN_VERSION
+from devcapsule.images.build import render_build_context
+from devcapsule.images.tooling import MAVEN_VERSION, TEMURIN_VERSION
 
 
 def pex_fixture(
@@ -55,7 +55,7 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     plan = build_base_image_spec(options).build_plan()
     context = tmp_path / "context"
     context.mkdir()
-    dockerfile = render_build_context(plan, context).read_text(encoding="utf-8")
+    dockerfile = render_build_context(plan, context).dockerfile.read_text(encoding="utf-8")
 
     assert plan.base_image == "ubuntu:24.04"
     assert "python3" in plan.apt_packages
@@ -84,7 +84,23 @@ def test_base_image_exports_independent_tooling_without_runtime(tmp_path: Path) 
     assert ("devcapsule.image.kind", "base") in plan.labels
     assert ("devcapsule.image.canonical-name", "test-base:latest") in plan.labels
     assert ("devcapsule.base.recipe", "ubuntu-24.04") in plan.labels
-    assert ("devcapsule.base.recipe-version", "9") in plan.labels
+    assert ("devcapsule.base.recipe-version", "11") in plan.labels
+    # Recipe 10 installs the web console from the runtime's own verified
+    # revision, as an independently cached contribution (R-CONSOLE-001);
+    # recipe 11 rebuilds it with the monitor's dependency.
+    webconsole = next(stage for stage in plan.stages if stage.name == "webconsole")
+    assert webconsole.exports == ("/opt/devcapsule-webconsole",)
+    (install,) = webconsole.plan.exec_steps
+    script = install.args[-1]
+    assert 'git -C "$checkout" fetch -q --depth 1 "$source_repository" "$source_revision"' in script
+    assert 'source_repository=https://github.com/example/devcapsule' in script
+    assert f'source_revision={"a" * 40}' in script
+    assert 'test "$(git -C "$checkout" rev-parse HEAD)" = "$source_revision"' in script
+    assert "--require-hashes -r \"$subproject/requirements.txt\"" in script
+    assert "--require-hashes -r \"$subproject/requirements-build.txt\"" in script
+    assert "--no-deps --no-build-isolation \"$subproject\"" in script
+    assert "python3 -m venv \"/opt/devcapsule-webconsole/venv\"" in script
+    assert ("devcapsule.base.webconsole", "/opt/devcapsule-webconsole") in plan.labels
     # Recipe 8 ships the contained display stack and says so, which is how
     # the launcher decides the capsule needs no host X session; recipe 9
     # adds the panel.
@@ -202,21 +218,31 @@ def test_base_image_requires_public_pex_revision_by_default(tmp_path: Path) -> N
         build_base_image_spec(options)
 
 
-def test_base_image_allows_explicit_local_source_escape_hatch(tmp_path: Path) -> None:
+def test_base_without_baseline_allows_explicit_local_source_escape_hatch(tmp_path: Path) -> None:
     pex = pex_fixture(
         tmp_path / "devcapsule.pex",
         revision="unknown",
         public=False,
         build_mnemonic="local-v026",
     )
-    plan = build_base_image_spec(BaseImageBuildOptions(pex, allow_local_source=True)).build_plan()
+    plan = build_base_image_spec(BaseImageBuildOptions(pex, allow_local_source=True, install_baseline=False)).build_plan()
 
     assert ("devcapsule.source.revision", "unknown") in plan.labels
     assert ("org.opencontainers.image.version", "local-v026") in plan.labels
+    assert not any(stage.name == "webconsole" for stage in plan.stages)
+    assert not any(key == "devcapsule.base.webconsole" for key, _ in plan.labels)
+
+
+def test_console_base_rejects_missing_source_before_starting_the_builder(tmp_path: Path) -> None:
+    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    builder = Mock()
+    with pytest.raises(CliError, match="--allow-local-source cannot supply the console source"):
+        build_base_image(BaseImageBuildOptions(pex, allow_local_source=True), builder=builder)
+    builder.build.assert_not_called()
 
 
 def test_base_image_local_source_escape_hatch_skips_public_verification(tmp_path: Path) -> None:
-    pex = pex_fixture(tmp_path / "devcapsule.pex", revision="unknown", public=False)
+    pex = pex_fixture(tmp_path / "devcapsule.pex")
     builder = Mock()
     source_verifier = Mock()
 
@@ -242,7 +268,7 @@ def test_public_revision_verification_checks_exact_commit_url(monkeypatch: pytes
     response.status = 200
     response.__enter__.return_value = response
     urlopen = Mock(return_value=response)
-    monkeypatch.setattr("devcapsule.base_image.urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("devcapsule.images.base.urllib.request.urlopen", urlopen)
 
     verify_public_github_revision(info)
 
@@ -264,7 +290,7 @@ def test_public_revision_verification_rejects_missing_commit(monkeypatch: pytest
             info.source_url, 404, "Not Found", hdrs=Message(), fp=None
         )
     )
-    monkeypatch.setattr("devcapsule.base_image.urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("devcapsule.images.base.urllib.request.urlopen", urlopen)
 
     with pytest.raises(CliError, match=r"not publicly reachable.*HTTP 404"):
         verify_public_github_revision(info)

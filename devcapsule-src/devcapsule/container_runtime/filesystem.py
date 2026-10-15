@@ -26,7 +26,8 @@ def plan_filesystem(runtime: RuntimePlan) -> FilesystemPlan:
         "XDG_CACHE_HOME": str(home / ".cache"),
         "XDG_RUNTIME_DIR": f"/tmp/devcapsule-runtime-{runtime.identity.uid}",
     }
-    directories = (str(home), str(home / ".ssh"), *environment.values(), *slots)
+    directories = (str(home), str(home / ".ssh"), str(home / "xtras" / "bin"),
+                   *environment.values(), *slots)
     return FilesystemPlan(tuple(dict.fromkeys(directories)), environment)
 
 

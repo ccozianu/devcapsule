@@ -168,6 +168,18 @@ Two placement points, if the recommendation is adopted:
 The decision itself is the product owner's and is open; see *Open Threads* in the
 [workstream handoff](../../wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md).
 
+## Adopted, 2026-10-03
+
+The product owner adopted the recommendation, with one difference from the
+placement proposed above: the rule is in the definition itself, under
+*Development And Checkpoints* in `WORKFLOW.md`, so adopters inherit it, and
+a project that prefers squash records the exception in its local file with
+the consequence for cited commits. The owner's intent for a later feature is
+recorded in the workstream backlog: a Google-style mode in which a branch is
+developed freely and lands as one squashed commit on one subject, so that
+`main` never carries a task's intermediate states; the merge-commit rule
+answers the same concern today by making the first-parent line the story.
+
 ## Intended Reuse
 
 An adopter-facing treatment is a backlog item of the `workflow-improvements`

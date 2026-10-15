@@ -3,6 +3,9 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/devcapsule.iml" filepath="$PROJECT_DIR$/.idea/devcapsule.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/fixture.iml" filepath="$PROJECT_DIR$/.idea/fixture.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/fixture@1.iml" filepath="$PROJECT_DIR$/.idea/fixture@1.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/fixture@2.iml" filepath="$PROJECT_DIR$/.idea/fixture@2.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/project.iml" filepath="$PROJECT_DIR$/.idea/project.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/rotated-consensus.iml" filepath="$PROJECT_DIR$/.idea/rotated-consensus.iml" />
     </modules>

@@ -8,7 +8,7 @@ from typing import Mapping
 
 from devcapsule.commands.framework import Command, Group
 from devcapsule.compat import CliError
-from devcapsule import workflow_mail
+from devcapsule import workflow_coordination as workflow_mail
 
 
 def _add_mail_options(parser: argparse.ArgumentParser) -> None:
@@ -53,7 +53,11 @@ class MailSendCommand(Command):
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
         _add_mail_options(parser)
-        parser.add_argument("recipient", help="Workstream name of the recipient.")
+        parser.add_argument(
+            "recipient",
+            help="Recipient workstream name, a comma-separated list, or 'all' for every "
+            "workstream with published state.",
+        )
         parser.add_argument("item", type=Path, help="Item file, named YYYY-MM-DD-<sender>-<slug>.md.")
 
     @classmethod
@@ -139,13 +143,130 @@ class MailCommand(Group):
         }
 
 
+class PublishCommand(Command):
+    name = "publish"
+    help = "Push a workstream's status file and decision log to the coordination branch."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+        _add_name_option(parser)
+        parser.add_argument(
+            "--retire",
+            action="store_true",
+            help="Remove the workstream's published state instead; used when it concludes.",
+        )
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = _resolve_name(arguments)
+        try:
+            commit = workflow_mail.publish(
+                arguments.project_path,
+                name,
+                remote=arguments.remote,
+                branch=arguments.branch,
+                retire=arguments.retire,
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        if commit is None:
+            print(f"{name}: already current on {arguments.branch}")
+        elif arguments.retire:
+            print(f"{name}: retired from {arguments.branch} at {commit[:12]}")
+        else:
+            print(f"{name}: published to {arguments.branch} at {commit[:12]}")
+        return 0
+
+
+class StatusCommand(Command):
+    name = "status"
+    help = "Show every open workstream's live state from the coordination branch."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        try:
+            rows = workflow_mail.list_state(
+                arguments.project_path, remote=arguments.remote, branch=arguments.branch
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        print(workflow_mail.render_list(rows), end="")
+        return 0
+
+
+class ClaimCommand(Command):
+    name = "claim"
+    help = "Say what you are working on, so other checkouts see it; soft, never refusing."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+        _add_name_option(parser)
+        parser.add_argument("slice", nargs="?", help="What you are working on, in a few words.")
+        parser.add_argument(
+            "--hours", type=float, default=workflow_mail.DEFAULT_CLAIM_HOURS,
+            help="How long the claim stays live (default 12).",
+        )
+        parser.add_argument("--release", action="store_true", help="Remove the claim instead.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = _resolve_name(arguments)
+        try:
+            commit = workflow_mail.claim(
+                arguments.project_path, name, arguments.slice,
+                remote=arguments.remote, branch=arguments.branch,
+                hours=arguments.hours, release=arguments.release,
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        if commit is None:
+            print(f"{name}: claim already " + ("released" if arguments.release else "current"))
+        else:
+            print(f"{name}: claim " + ("released" if arguments.release else f"recorded for {arguments.hours:g} h"))
+        return 0
+
+
+class BriefCommand(Command):
+    name = "brief"
+    help = "Everything a session needs before acting, for the selected workstream."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        _add_mail_options(parser)
+        _add_name_option(parser)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = _resolve_name(arguments)
+        try:
+            text = workflow_mail.brief(
+                arguments.project_path, name, remote=arguments.remote, branch=arguments.branch
+            )
+        except workflow_mail.WorkflowMailError as exc:
+            raise CliError(str(exc)) from exc
+        print(text, end="")
+        return 0
+
+
 class WorkflowCommand(Group):
     name = "workflow"
     help = "Multiple-stream workflow operations."
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
-        return {MailCommand.name: MailCommand}
+        return {
+            MailCommand.name: MailCommand,
+            PublishCommand.name: PublishCommand,
+            StatusCommand.name: StatusCommand,
+            ClaimCommand.name: ClaimCommand,
+            BriefCommand.name: BriefCommand,
+        }
 
 
 COMMAND = WorkflowCommand

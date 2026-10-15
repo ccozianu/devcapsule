@@ -1,9 +1,10 @@
 ---
-status: fixed
+status: closed
 severity: untriaged
 target: none
 owner: maintenance
 opened: 2026-08-03
+closed: 2026-09-25
 requirements: [R-ENV-001, R-DEV-001, R-SCOPE-001, R-DOCKER-001]
 ---
 
@@ -211,3 +212,9 @@ unconfines the container in addition to disabling JCEF's inner sandbox.
 - [Ubuntu: Restricted unprivileged user namespaces](https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces)
 - [Ubuntu 24.04 LTS release notes: unprivileged user namespace restrictions](https://discourse.ubuntu.com/t/ubuntu-24-04-lts-noble-numbat-release-notes/39890#unprivileged-user-namespace-restrictions-15)
 - [Docker: Seccomp security profiles for Docker](https://docs.docker.com/engine/security/seccomp/)
+
+## Closure, 2026-09-25
+
+Owner ruling during 0.2.14 rc4 acceptance: closed. The embedded preview
+works in the rc4 sessions with the existing sandbox disclosure and Docker's
+outer isolation unchanged.

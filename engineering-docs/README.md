@@ -34,6 +34,8 @@ the canonical operator guide based on v0.2.11.
   decisions.
 - `design-notes/` — proposals, alternatives, design research, and unsettled
   architecture.
+- `development/` — how the project is built and tested today: environment,
+  source layout, and the unit, integration and end-to-end suites.
 - `implementation-notes/` — execution plans, milestone plans, checklists,
   implementation investigations, and validation exercises.
 - `wip/YYYY-MM-DD-NAME/` — temporary documentation and the detailed

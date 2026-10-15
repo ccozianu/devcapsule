@@ -1,0 +1,16 @@
+devcapsule-checkout-schema-version = 1
+
+[project]
+creator = "mailto:upgrade@example.test"
+slug = "project"
+
+[checkout]
+path = "@CHECKOUT_PATH@"
+
+[authorization."host-browser"]
+value = true
+recommendation-digest = "aedbe4b8b32c5901a487f804569ea9c4c0c01e71bfc64353ae3a47aceb04d0a2"
+
+[authorization.base-image]
+reference = "docker.io/mycodespaceai/devcapsule-base@sha256:4bb691b556a2cb9acffa4c0adddd9ada66864ee3c81f4f00ca35e9df9056bf9c"
+lock-digest = "f83e2c9e8958716214a946d554ad054b383d836ed7325ebb3477b7dc48f0acd3"

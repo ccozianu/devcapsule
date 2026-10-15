@@ -8,11 +8,15 @@ import tomllib
 import pytest
 
 import devcapsule.resolution_matrix as resolution_matrix_module
-from devcapsule.configuration_nodes import build_node_registry
+from devcapsule.configuration.nodes import (
+    build_node_registry,
+)
 from devcapsule.platforms import Platform
-from devcapsule.project_configuration import (
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     canonical_digest,
+)
+from devcapsule.configuration.storage import (
     lock_for,
 )
 from devcapsule.resolution_matrix import (
@@ -38,8 +42,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # deliberate pin advance they are regenerated in the same commit, so any
 # other diff in generated locks is a regression.
 GOLDEN_NEEDS = {
+    "eclipse-browser": ["eclipse-ide", "java", "browser-automation"],
     "pycharm-minimal": ["python", "python-ide"],
-    "dogfood": ["claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"],
+    "dogfood": ["antigravity-agent", "browser-automation", "claude-code-agent", "codex-agent", "docker-cli", "python", "python-ide"],
+    "rider-dotnet": ["dotnet-ide", "browser-automation"],
+    "codium-dotnet": ["frontend-ide", "dotnet"],
+    "intellij-browser": ["java", "java-ide", "browser-automation"],
     "codium-node": ["node", "frontend-ide"],
     "pycharm-full": [
         "python",
@@ -94,11 +102,16 @@ def test_matrices_is_total_over_platforms_and_read_only() -> None:
 def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
     assert MATRIX.capabilities() == (
         "antigravity-agent",
+        "browser-automation",
         "claude-code-agent",
         "codex-agent",
         "docker-cli",
+        "dotnet",
+        "dotnet-ide",
+        "eclipse-ide",
         "frontend-ide",
         "java",
+        "java-ide",
         "maven",
         "node",
         "postgresql-client",

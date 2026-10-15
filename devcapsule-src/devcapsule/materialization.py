@@ -11,6 +11,8 @@ from pathlib import Path
 import re
 import shutil
 import tempfile
+import base64
+import binascii
 import tarfile
 from typing import Any, Callable, Iterator, Mapping
 from urllib.error import URLError
@@ -18,6 +20,7 @@ from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from devcapsule.compat import CliError
+from devcapsule.runtime_command import RuntimeCommand
 from devcapsule.build_info import read_pex_build_info
 from devcapsule.platforms import XdgHomes
 from devcapsule.components.catalog import (
@@ -25,8 +28,10 @@ from devcapsule.components.catalog import (
     selected_component_definitions,
 )
 from devcapsule.components import LockedArtifactDeclaration
+from devcapsule.components.directory_artifacts import extract_tar_directory
+from devcapsule.components.browser_artifacts import extract_zip, wheel_install_step, wheel_name
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
-from devcapsule.image_build import (
+from devcapsule.images.build import (
     CommandComponent,
     ContributionComponent,
     DirectoryComponent,
@@ -39,7 +44,7 @@ from devcapsule.image_build import (
     normalize_archive_directory,
     shell_quote,
 )
-from devcapsule.image_metadata import (
+from devcapsule.images.metadata import (
     BASE_KIND,
     CANONICAL_NAME_LABEL,
     IMAGE_KIND_LABEL,
@@ -59,6 +64,7 @@ class ArtifactSpec:
     # Surfaces without a lock-recorded variant (VSCodium) carry None; the
     # ancillary-acquisition path reuses this field as a cache discriminator.
     variant: str | None = "professional"
+    integrity: str | None = None
 
 
 @dataclass(frozen=True)
@@ -122,6 +128,25 @@ class SurfaceMaterialization:
 
 
 SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
+    "eclipse": SurfaceMaterialization(
+        component_id="eclipse", family="eclipse",
+        recipe_id="eclipse-local-materialization", recipe_version="3",
+        installation_path="/opt/eclipse",
+        archive_probes=("eclipse", "eclipse.ini", "configuration/config.ini"),
+        requires_variant=True, post_install=(),
+    ),
+    "rider": SurfaceMaterialization(
+        component_id="rider", family="jetbrains",
+        recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
+        installation_path="/opt/jetbrains/rider", archive_probes=("bin/rider.sh",),
+        requires_variant=False, post_install=(),
+    ),
+    "intellij": SurfaceMaterialization(
+        component_id="intellij", family="jetbrains",
+        recipe_id=MATERIALIZATION_RECIPE_ID, recipe_version=MATERIALIZATION_RECIPE_VERSION,
+        installation_path="/opt/jetbrains/intellij", archive_probes=("bin/idea.sh",),
+        requires_variant=True, post_install=(),
+    ),
     "pycharm": SurfaceMaterialization(
         component_id="pycharm",
         family="jetbrains",
@@ -149,35 +174,128 @@ SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
 }
 COMPONENT_TEMPLATE_PATH = "/etc/devcapsule/component-runtime-template.json"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"
+RUNTIME_COMMAND_PATH = "/usr/local/bin/devcapsule"
 ENTRYPOINT_CONTRACT = (
     "/opt/devcapsule/bin/devcapsule.pex",
     "runtime",
 )
 
 
+UNPACKED_DIRECTORY = "unpacked"
+UNPACKED_MARKER = ".devcapsule-unpacked.json"
+
+
+def unpacked_tree(cache_root: Path, sha256: str, unpack: Callable[[Path], Path]) -> Path:
+    """Return the cached installation tree of an already verified archive.
+
+    ``sha256`` identifies the archive. Callers of the same key must use the
+    same extraction layout. ``unpack`` receives a nonexistent destination
+    and returns an existing directory inside it. Its exceptions propagate.
+
+    A per-digest lock covers inspection, recovery, extraction and publication,
+    including cache hits: no caller may remove another's completed tree after
+    observing an earlier miss. The marker is written last, then the directory
+    is renamed into place. A failed extraction is cleaned up; an abrupt exit
+    leaves a fixed staging path that the next caller recovers under the lock.
+    Completed trees stay at stable paths and are treated as immutable by users
+    of this cache. Marker validation checks structure, not file-content hashes.
+    """
+    sha256 = _validated_sha256(sha256, "Unpacked archive SHA-256")
+    home = cache_root / UNPACKED_DIRECTORY / sha256
+    marker = home / UNPACKED_MARKER
+    with _exclusive_lock(cache_root / "locks" / "unpacked" / f"{sha256}.lock"):
+        recorded = _unpacked_root(marker, sha256)
+        if recorded is not None:
+            return home / recorded
+        _remove_unpacked_entry(home)
+        partial = home.with_name(f"{home.name}.partial")
+        _remove_unpacked_entry(partial)
+        # Extractors create the destination themselves; prepare only its parent.
+        partial.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            root = unpack(partial)
+            relative = root.relative_to(partial).as_posix()
+            (partial / UNPACKED_MARKER).write_text(
+                json.dumps({"schema_version": 1, "sha256": sha256, "root": relative}) + "\n",
+                encoding="utf-8",
+            )
+            if _unpacked_root(partial / UNPACKED_MARKER, sha256) is None:
+                raise CliError("Archive extractor did not return a directory inside its destination.")
+            partial.rename(home)
+        finally:
+            _remove_unpacked_entry(partial)
+        return home / relative
+
+
+def _remove_unpacked_entry(path: Path) -> None:
+    """Remove an owned cache entry without traversing a replaced root symlink."""
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+
+
+def _unpacked_root(marker: Path, sha256: str) -> str | None:
+    """Read a supported completion record whose root still exists inside the entry."""
+    try:
+        if marker.parent.is_symlink():
+            return None
+        document = json.loads(marker.read_text(encoding="utf-8"))
+        if not isinstance(document, dict) or document.get("schema_version") != 1 or document.get("sha256") != sha256:
+            return None
+        root = document["root"]
+        if not isinstance(root, str) or not root or Path(root).is_absolute() or ".." in Path(root).parts:
+            return None
+        directory = marker.parent / root
+        if not directory.is_dir() or not directory.resolve().is_relative_to(marker.parent.resolve()):
+            return None
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return root
+
+
 def cache_root(env: Mapping[str, str] | None = None) -> Path:
     return XdgHomes.from_environment(env).cache
 
 
+class ArtifactUnavailable(CliError):
+    """A pinned URL could not be reached; integrity failures are a different error."""
+    def __init__(self, url: str, reason: object) -> None:
+        self.url = url
+        super().__init__(f"Cannot download locked artifact {url!r}: {reason}")
+
+
 def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
-    expected = _validated_sha256(spec.sha256, "Artifact SHA-256")
-    destination = root / "artifacts" / "sha256" / expected
+    algorithm = "sha256"
+    expected = spec.sha256
+    if not expected and spec.integrity is not None:
+        try:
+            prefix, encoded = spec.integrity.split("-", 1)
+            decoded = base64.b64decode(encoded, validate=True)
+            if prefix != "sha512" or len(decoded) != 64:
+                raise ValueError("requires SHA-512")
+            algorithm, expected = "sha512", decoded.hex()
+        except (ValueError, binascii.Error) as exc:
+            raise CliError("Invalid artifact integrity; expected SHA-512 SRI.") from exc
+    else:
+        expected = _validated_sha256(expected, "Artifact SHA-256")
+    destination = root / "artifacts" / algorithm / expected
     lock = root / "locks" / "artifacts" / f"{expected}.lock"
     with _exclusive_lock(lock):
         if destination.is_file():
-            if sha256_file(destination) == expected:
+            if _file_digest(destination, algorithm) == expected:
                 return Acquisition(destination, False)
             destination.unlink()
 
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary_path: Path | None = None
-        digest = hashlib.sha256()
+        digest = hashlib.new(algorithm)
         try:
             with tempfile.NamedTemporaryFile(
                 prefix=f".{destination.name}.", suffix=".download", dir=destination.parent, delete=False
             ) as output:
                 temporary_path = Path(output.name)
-                with urlopen(spec.url) as response:  # noqa: S310 - project-lock-pinned URL
+                with urlopen(spec.url, timeout=60) as response:  # noqa: S310 - project-lock-pinned URL
                     while chunk := response.read(1024 * 1024):
                         digest.update(chunk)
                         output.write(chunk)
@@ -186,11 +304,16 @@ def acquire_artifact(spec: ArtifactSpec, root: Path) -> Acquisition:
                 raise CliError(f"Artifact digest mismatch: expected {expected}, received {actual}.")
             temporary_path.replace(destination)
         except URLError as exc:
-            raise CliError(f"Cannot download locked artifact {spec.url!r}: {exc}") from exc
+            raise ArtifactUnavailable(spec.url, exc) from exc
         finally:
             if temporary_path is not None:
                 temporary_path.unlink(missing_ok=True)
         return Acquisition(destination, True)
+
+
+def _file_digest(path: Path, algorithm: str) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, algorithm).hexdigest()
 
 
 def sha256_file(path: Path) -> str:
@@ -237,6 +360,7 @@ def formation_descriptor(
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",
     runtime_sha256: str | None = None,
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> dict[str, Any]:
     operating_system, architecture = _split_platform(platform)
     profile = surface_profile(component_id)
@@ -289,7 +413,11 @@ def formation_descriptor(
             "parameters": {"installation-path": profile.installation_path},
         },
         "runtime": {
-            **({"pex-sha256": _validated_sha256(runtime_sha256, "Runtime PEX SHA-256")}
+            "xtras-layout": "home-symlink-v1",
+            # The public command is part of image identity: a cached image with
+            # the same PEX but without its command link cannot satisfy this plan.
+            **({"pex-sha256": _validated_sha256(runtime_sha256, "Runtime PEX SHA-256"),
+                "public-command": f"/usr/local/bin/{runtime_command}"}
                if runtime_sha256 is not None else {}),
             "component-template-sha256": template_digest,
             "entrypoint": list(ENTRYPOINT_CONTRACT),
@@ -304,6 +432,43 @@ def formation_identity(descriptor: Mapping[str, Any]) -> str:
 
 def canonical_image_name(descriptor: Mapping[str, Any], component_id: str = "pycharm") -> str:
     return f"devcapsule-local-{component_id}:{formation_identity(descriptor)[:20]}"
+
+
+def validate_locked_artifact(locked_artifact: LockedArtifactDeclaration) -> None:
+    """Validate one component artifact without acquisition or filesystem effects."""
+    _validated_sha256(
+        locked_artifact.sha256,
+        f"Locked {locked_artifact.component_id} artifact SHA-256",
+    )
+    if locked_artifact.artifact_format not in ARTIFACT_FORMATS:
+        raise CliError(
+            f"Locked {locked_artifact.component_id} artifact format must be one of "
+            + ", ".join(repr(name) for name in ARTIFACT_FORMATS)
+            + "."
+        )
+    if (
+        locked_artifact.artifact_format == "tar-gz-member"
+        and not locked_artifact.archive_member
+    ):
+        raise CliError(
+            f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
+            "an archive member."
+        )
+    if locked_artifact.artifact_format == "python-wheel":
+        wheel_name(locked_artifact.url)
+    if locked_artifact.artifact_format == "npm-package":
+        if not locked_artifact.npm_package:
+            raise CliError(
+                f"Locked {locked_artifact.component_id} npm-package artifact must "
+                "name its npm package."
+            )
+        # Fail at lock-reading time, not mid-build, when the URL
+        # cannot name the tarball inside the image.
+        _npm_tarball_name(locked_artifact)
+    if not Path(locked_artifact.destination).is_absolute():
+        raise CliError(
+            f"Locked {locked_artifact.component_id} destination must be absolute."
+        )
 
 
 def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
@@ -335,40 +500,10 @@ def parse_locked_environment(lock: Mapping[str, Any]) -> LockedEnvironment:
     )
     _validated_sha256(artifact.sha256, "Locked component SHA-256")
     ancillary_artifacts: list[LockedArtifactDeclaration] = []
-    for definition in ancillary_definitions:
+    for definition in (_interactive, *ancillary_definitions):
         metadata = _required_mapping(components, definition.id, "components")
         for locked_artifact in definition.locked_artifacts(metadata, platform):
-            _validated_sha256(
-                locked_artifact.sha256,
-                f"Locked {locked_artifact.component_id} artifact SHA-256",
-            )
-            if locked_artifact.artifact_format not in ARTIFACT_FORMATS:
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} artifact format must be one of "
-                    + ", ".join(repr(name) for name in ARTIFACT_FORMATS)
-                    + "."
-                )
-            if (
-                locked_artifact.artifact_format == "tar-gz-member"
-                and not locked_artifact.archive_member
-            ):
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} tar-gz-member artifact must name "
-                    "an archive member."
-                )
-            if locked_artifact.artifact_format == "npm-package":
-                if not locked_artifact.npm_package:
-                    raise CliError(
-                        f"Locked {locked_artifact.component_id} npm-package artifact must "
-                        "name its npm package."
-                    )
-                # Fail at lock-reading time, not mid-build, when the URL
-                # cannot name the tarball inside the image.
-                _npm_tarball_name(locked_artifact)
-            if not Path(locked_artifact.destination).is_absolute():
-                raise CliError(
-                    f"Locked {locked_artifact.component_id} destination must be absolute."
-                )
+            validate_locked_artifact(locked_artifact)
             ancillary_artifacts.append(locked_artifact)
     recipe_id = _required_string(materialization, "recipe", "materialization")
     recipe_version = _required_string(materialization, "recipe-version", "materialization")
@@ -430,11 +565,13 @@ def surface_materialization_spec(
     artifact: ArtifactSpec,
     ancillary_files: tuple[tuple[Path, LockedArtifactDeclaration], ...] = (),
     npm_projects: tuple[NpmProject, ...] = (),
+    native_package_directory: Path | None = None,
     platform: str,
     recipe_id: str = MATERIALIZATION_RECIPE_ID,
     recipe_version: str = MATERIALIZATION_RECIPE_VERSION,
     component_id: str = "pycharm",
     runtime_pex: Path | None = None,
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> ImageBuildSpec:
     profile = surface_profile(component_id)
     descriptor = formation_descriptor(
@@ -446,6 +583,7 @@ def surface_materialization_spec(
         recipe_version=recipe_version,
         component_id=component_id,
         runtime_sha256=sha256_file(runtime_pex) if runtime_pex is not None else None,
+        runtime_command=runtime_command,
     )
     identity = formation_identity(descriptor)
     environment = _ancillary_environment(
@@ -474,10 +612,32 @@ def surface_materialization_spec(
                 (profile.installation_path,),
             ),
             FileComponent(component_template, COMPONENT_TEMPLATE_PATH, permissions=0o644),
+            *_native_package_components(ancillary_files, native_package_directory),
             *_ancillary_contributions(ancillary_files, npm_projects),
-            *((FileComponent(runtime_pex, "/opt/devcapsule/bin/devcapsule.pex", permissions=0o755),)
+            # The image supplies the alias; the runtime creates its writable
+            # target in the persistent home as the capsule user. Never replace
+            # pre-existing content in a custom base to establish this mapping.
+            ExecComponent(("sh", "-ec",
+                'if [ -e /opt/xtras ] || [ -L /opt/xtras ]; then '
+                '[ "$(readlink /opt/xtras)" = /home/devcapsule/xtras ] || '
+                '{ echo "Cannot reserve /opt/xtras: base contains another path" >&2; exit 1; }; '
+                'else ln -s /home/devcapsule/xtras /opt/xtras; fi; '
+                'mkdir -p /etc/profile.d; '
+                "printf '%s\\n' 'export PATH=\"/opt/xtras/bin:$PATH\"' "
+                '> /etc/profile.d/devcapsule-xtras.sh')),
+            # Keep the shipped executable available to ordinary shells/scripts.
+            # Development checkouts reserve 'devcapsule' for their source build;
+            # clear only our canonical link if their base inherited one.
+            *((ExecComponent(("sh", "-c",
+                f'if [ "$(readlink {shell_quote(RUNTIME_COMMAND_PATH)})" = '
+                f'{shell_quote(ENTRYPOINT_CONTRACT[0])} ]; then '
+                f'rm -f {shell_quote(RUNTIME_COMMAND_PATH)}; fi')),)
+              if runtime_pex is not None and runtime_command is RuntimeCommand.DEVELOPMENT else ()),
+            *((FileComponent(runtime_pex, ENTRYPOINT_CONTRACT[0], permissions=0o755),
+               ExecComponent(("ln", "-sfn", ENTRYPOINT_CONTRACT[0], descriptor["runtime"]["public-command"])))
               if runtime_pex is not None else ()),
             *( (EnvComponent(environment),) if environment else () ),
+            EnvComponent((("PATH", "/opt/xtras/bin:${PATH}"),)),
             LabelComponent(
                 managed_labels(MATERIALIZED_KIND, image)
                 + runtime_labels
@@ -550,6 +710,7 @@ def ensure_materialized_surface(
     report: Callable[[str], None] | None = None,
     list_formations: Callable[[], tuple[ImageDetails, ...]] | None = None,
     runtime_pex: Path | None = None,
+    runtime_command: RuntimeCommand = RuntimeCommand.STANDARD,
 ) -> tuple[str, bool]:
     profile = surface_profile(component_id)
     descriptor = formation_descriptor(
@@ -561,6 +722,7 @@ def ensure_materialized_surface(
         recipe_version=recipe_version,
         component_id=component_id,
         runtime_sha256=sha256_file(runtime_pex) if runtime_pex is not None else None,
+        runtime_command=runtime_command,
     )
     image = canonical_image_name(descriptor, component_id)
     identity = formation_identity(descriptor)
@@ -613,10 +775,14 @@ def ensure_materialized_surface(
         with tempfile.TemporaryDirectory(prefix="devcapsule-materialize-", dir=work_root) as temporary_value:
             temporary = Path(temporary_value)
             try:
-                surface_root = normalize_archive_directory(acquisition.path, temporary)
+                surface_root = unpacked_tree(
+                    cache_root, artifact.sha256,
+                    lambda destination: normalize_archive_directory(acquisition.path, destination),
+                )
             except OSError as exc:
                 raise CliError(
-                    f"Cannot unpack the verified {component_id} archive beneath {work_root}: {exc}"
+                    f"Cannot unpack the verified {component_id} archive beneath "
+                    f"{cache_root / UNPACKED_DIRECTORY}: {exc}"
                 ) from exc
             for probe in profile.archive_probes:
                 if not (surface_root / probe).is_file():
@@ -633,12 +799,14 @@ def ensure_materialized_surface(
                         acquired.path,
                         declaration,
                         temporary / f"{declaration.component_id}-{index}",
+                        cache_root=cache_root,
                     ),
                     declaration,
                 )
                 for index, (acquired, declaration) in enumerate(ancillary_acquisitions)
             )
             npm_projects = _npm_projects(ancillary_files, temporary)
+            native_packages = _prepare_native_packages(ancillary_files, temporary / "native-packages")
             build(
                 surface_materialization_spec(
                     base_reference=base_reference,
@@ -649,11 +817,13 @@ def ensure_materialized_surface(
                     artifact=artifact,
                     ancillary_files=ancillary_files,
                     npm_projects=npm_projects,
+                    native_package_directory=native_packages,
                     platform=platform,
                     recipe_id=recipe_id,
                     recipe_version=recipe_version,
                     component_id=component_id,
                     runtime_pex=runtime_pex,
+                    runtime_command=runtime_command,
                 )
             )
         completed = inspect_image(image)
@@ -759,14 +929,24 @@ def _prepare_locked_artifact(
     acquired: Path,
     declaration: LockedArtifactDeclaration,
     destination: Path,
+    *,
+    cache_root: Path,
 ) -> Path:
-    if declaration.artifact_format == "file":
+    # Directory artifacts (IDE trees, browsers) are the large ones; they are
+    # unpacked once under the cache by digest, like the surface archive.
+    if declaration.artifact_format == "tar-gz-directory":
+        return unpacked_tree(cache_root, declaration.sha256,
+                             lambda tree: extract_tar_directory(acquired, tree))
+    if declaration.artifact_format == "zip-directory":
+        return unpacked_tree(cache_root, declaration.sha256,
+                             lambda tree: extract_zip(acquired, tree))
+    if declaration.artifact_format in {"file", "python-wheel"}:
         shutil.copyfile(acquired, destination)
         destination.chmod(0o700)
         return destination
     if declaration.artifact_format == "tar-gz-member" and declaration.archive_member is not None:
         return _extract_archive_member(acquired, declaration.archive_member, destination)
-    if declaration.artifact_format == "npm-package":
+    if declaration.artifact_format in {"npm-package", "deb-package"}:
         # The verified tarball travels whole; npm unpacks it inside the build.
         shutil.copyfile(acquired, destination)
         destination.chmod(0o600)
@@ -787,7 +967,7 @@ def _prepare_locked_artifact(
 # already checksummed. The tarballs stay beside the manifest so the recorded
 # package-lock.json keeps describing an install npm could repeat.
 
-ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package")
+ARTIFACT_FORMATS = ("file", "tar-gz-member", "npm-package", "python-wheel", "zip-directory", "tar-gz-directory", "deb-package")
 # Root-run inside the build; node and npm come from the base image. The cache
 # is pointed at a scratch path and removed in the same step and log files
 # are disabled, so no layer carries npm's working state; scripts are refused
@@ -820,22 +1000,71 @@ def _ancillary_contributions(
     files: tuple[tuple[Path, LockedArtifactDeclaration], ...],
     projects: tuple[NpmProject, ...],
 ) -> tuple[ContributionComponent, ...]:
+    files = tuple((path, item) for path, item in files if item.artifact_format != "deb-package")
     contributions = []
     for component_id in sorted({item.component_id for _path, item in files}):
         selected = [(path, item) for path, item in files if item.component_id == component_id]
         npm = [project for project in projects if project.component_id == component_id]
+        wheel_destinations = sorted({item.destination for _path, item in selected if item.artifact_format == "python-wheel"})
+        destinations = sorted({item.destination for _path, item in selected})
+        # A parent export already includes nested browser directories. Copying
+        # them again would retain duplicate payloads in the final image layers.
+        exports = tuple(destination for destination in destinations
+                        if not any(destination != parent and Path(destination).is_relative_to(parent)
+                                   for parent in destinations))
         contributions.append(ContributionComponent(
             component_id,
             (
-                *(FileComponent(path, _artifact_image_path(item), permissions=item.permissions)
+                *((DirectoryComponent(path, item.destination) if item.artifact_format in {"zip-directory", "tar-gz-directory"}
+                   else FileComponent(path, _artifact_image_path(item), permissions=item.permissions))
                   for path, item in selected),
+                *(ExecComponent(wheel_install_step(destination, tuple(wheel_name(item.url)
+                    for _path, item in selected if item.artifact_format == "python-wheel" and item.destination == destination)))
+                  for destination in wheel_destinations),
                 *(FileComponent(project.package_json, f"{project.destination}/package.json", permissions=0o644)
                   for project in npm),
                 *(ExecComponent(npm_install_step(project.destination)) for project in npm),
             ),
-            tuple(sorted({item.destination for _path, item in selected})),
+            exports,
         ))
     return tuple(contributions)
+
+
+def _native_package_components(
+    files: tuple[tuple[Path, LockedArtifactDeclaration], ...],
+    directory: Path | None,
+) -> tuple[DirectoryComponent | ExecComponent, ...]:
+    """Install checksummed distribution packages in the final image, offline.
+
+    dpkg executes the selected distribution's maintainer scripts, just as apt
+    would. Dependencies must all be pinned or already supplied by the base;
+    missing dependencies fail the build rather than downloading anything.
+    """
+    packages = [(path, item) for path, item in files if item.artifact_format == "deb-package"]
+    if not packages:
+        return ()
+    if directory is None:
+        raise CliError("Native packages must be staged before image construction.")
+    paths = [f"/tmp/devcapsule-native-debs/{item.sha256}.deb" for _path, item in packages]
+    quoted = " ".join(shell_quote(path) for path in paths)
+    return (
+        DirectoryComponent(directory, "/tmp/devcapsule-native-debs"),
+        ExecComponent(("sh", "-ec", f"DEBIAN_FRONTEND=noninteractive dpkg --install {quoted}; rm -f {quoted}")),
+    )
+
+
+def _prepare_native_packages(
+    files: tuple[tuple[Path, LockedArtifactDeclaration], ...], directory: Path,
+) -> Path | None:
+    packages = [(path, item) for path, item in files if item.artifact_format == "deb-package"]
+    if not packages:
+        return None
+    directory.mkdir()
+    for path, item in packages:
+        target = directory / f"{_validated_sha256(item.sha256, 'Native package SHA-256')}.deb"
+        shutil.copyfile(path, target)
+        target.chmod(0o644)
+    return directory
 
 
 def npm_install_step(destination: str) -> tuple[str, ...]:
@@ -876,6 +1105,8 @@ def _artifact_image_path(declaration: LockedArtifactDeclaration) -> str:
     destination is the project directory and the tarball keeps its name.
     """
 
+    if declaration.artifact_format == "python-wheel":
+        return f"{declaration.destination}/wheels/{wheel_name(declaration.url)}"
     if declaration.artifact_format == "npm-package":
         return f"{declaration.destination}/{_npm_tarball_name(declaration)}"
     return declaration.destination

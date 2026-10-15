@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from devcapsule.configurations.pycharm._launcher import (
+from devcapsule.launch.pycharm._launcher import (
     PycharmRunError,
     host_backed_runtime_environment,
     translate_for_external_daemon,
@@ -193,7 +193,7 @@ def test_named_container_is_translated_end_to_end(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda env: True
+        "devcapsule.launch.pycharm._launcher.requires_translation", lambda env: True
     )
 
     translated = translate_for_external_daemon(
@@ -210,10 +210,10 @@ def test_staging_moves_off_a_container_local_tmpfs(
 ) -> None:
     data_home = tmp_path / "data"
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: True
+        "devcapsule.launch.pycharm._launcher.requires_translation", lambda _env: True
     )
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.current_container",
+        "devcapsule.launch.pycharm._launcher.current_container",
         lambda _env: container(
             Mount(source="/host/data", destination=str(data_home), kind="bind", writable=True)
         ),
@@ -235,10 +235,10 @@ def test_already_host_backed_staging_is_kept(
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: True
+        "devcapsule.launch.pycharm._launcher.requires_translation", lambda _env: True
     )
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.current_container",
+        "devcapsule.launch.pycharm._launcher.current_container",
         lambda _env: container(
             Mount(source="/host/runtime", destination=str(runtime), kind="bind", writable=True)
         ),
@@ -254,10 +254,10 @@ def test_unmountable_staging_fails_loudly(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: True
+        "devcapsule.launch.pycharm._launcher.requires_translation", lambda _env: True
     )
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.current_container",
+        "devcapsule.launch.pycharm._launcher.current_container",
         lambda _env: container(),
     )
 
@@ -267,7 +267,7 @@ def test_unmountable_staging_fails_loudly(
 
 def test_host_launch_keeps_its_runtime_directory(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "devcapsule.configurations.pycharm._launcher.requires_translation", lambda _env: False
+        "devcapsule.launch.pycharm._launcher.requires_translation", lambda _env: False
     )
 
     assert host_backed_runtime_environment({"XDG_RUNTIME_DIR": "/tmp/x"})["XDG_RUNTIME_DIR"] == "/tmp/x"

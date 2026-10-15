@@ -5,6 +5,7 @@ import json
 import hashlib
 import uuid
 import argparse
+import shutil
 from pathlib import Path
 
 import nox
@@ -21,6 +22,7 @@ PUBLIC_PEX_PATH = PROJECT_ROOT / "dist" / "devcapsule.pex"
 PUBLIC_PEX_REPOSITORY_ENV = "DEVCAPSULE_PUBLIC_PEX_SOURCE_REPOSITORY"
 PEX_UNDER_TEST_ENV = "DEVCAPSULE_PEX_UNDER_TEST"
 VERSION_SCRIPT = PROJECT_ROOT / "scripts" / "bump-version.py"
+WEBCONSOLE_ROOT = REPO_ROOT / "devcapsule-webconsole"
 
 
 def install_locked(session: nox.Session) -> None:
@@ -67,6 +69,7 @@ def select_e2e_pex(session: nox.Session) -> bool:
     selected = session.env.get(PEX_UNDER_TEST_ENV) or os.environ.get(PEX_UNDER_TEST_ENV)
     if not selected:
         build_test_pex(session)
+        session.env[PEX_UNDER_TEST_ENV] = str(TEST_PEX_PATH)
         return False
     path = Path(selected).expanduser().resolve(strict=True)
     output = session.run(str(path), "version", "--json", external=True, silent=True)
@@ -138,7 +141,7 @@ def run_e2e_tests(session: nox.Session, *, release_smoke: bool = False) -> None:
         "pytest",
         "--no-cov",
         "-m",
-        "e2e and not recursive_e2e" + (" and not contributor_e2e" if release_smoke else "")
+        "e2e and not recursive_e2e and not ide_smoke" + (" and not contributor_e2e" if release_smoke else "")
         + ("" if session.env.get("DEVCAPSULE_E2E_BUILT_BASE") else " and not base_build_e2e"),
         str(PROJECT_ROOT / "tests" / "e2e"),
         env=environment,
@@ -177,7 +180,7 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "version", "--json")
     session.run("python", "-m", "devcapsule", "runtime", success_codes=[2])
     session.run("python", "-m", "devcapsule", "host-open", "--help")
-    session.run("python", "-m", "devcapsule", "pycharm", "run", "--help")
+    session.run("python", "-m", "devcapsule", "pycharm", "run", "--help", success_codes=[2])
     session.run("python", "-m", "devcapsule", "project", "--help")
     session.run("python", "-m", "devcapsule", "project", "list", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "list", "--help")
@@ -186,7 +189,7 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "project", "config", "bind", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "authorize", "--help")
     session.run("python", "-m", "devcapsule", "project", "run", "--help")
-    session.run("python", "-m", "devcapsule", "project", "run-image", "--help")
+    session.run("python", "-m", "devcapsule", "project", "run-image", "--help", success_codes=[2])
     session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "preflight", "--help")
     session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "run", "--help")
     session.run("python", "-m", "devcapsule", "project", "recursive-e2e", "launch-successor", "--help")
@@ -246,7 +249,7 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "version", "--json", external=True)
     session.run(str(path), "runtime", success_codes=[2], external=True)
     session.run(str(path), "host-open", "--help", external=True)
-    session.run(str(path), "pycharm", "run", "--help", external=True)
+    session.run(str(path), "pycharm", "run", "--help", success_codes=[2], external=True)
     session.run(str(path), "project", "--help", external=True)
     session.run(str(path), "project", "list", "--help", external=True)
     session.run(str(path), "project", "config", "list", "--help", external=True)
@@ -255,7 +258,7 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "project", "config", "bind", "--help", external=True)
     session.run(str(path), "project", "config", "authorize", "--help", external=True)
     session.run(str(path), "project", "run", "--help", external=True)
-    session.run(str(path), "project", "run-image", "--help", external=True)
+    session.run(str(path), "project", "run-image", "--help", success_codes=[2], external=True)
     session.run(
         str(path), "project", "recursive-e2e", "preflight", "--help", external=True
     )
@@ -269,6 +272,44 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "images", "list", "--help", external=True)
     session.run(str(path), "images", "build", "--help", external=True)
     session.run(str(path), "pycharm", "build", "--help", external=True)
+
+
+def run_webconsole_checks(session: nox.Session) -> None:
+    """Type-check and test the capsule web console in its own environment.
+
+    The console is a separate distribution with its own hash-pinned
+    dependency set, so it never shares the runtime's environment: the base
+    image installs it the same way.
+    """
+    session.install("--require-hashes", "-r", str(WEBCONSOLE_ROOT / "requirements-dev.txt"))
+    session.install("-e", str(WEBCONSOLE_ROOT), "--no-deps")
+    session.run("python", "-m", "mypy", "--config-file", str(WEBCONSOLE_ROOT / "pyproject.toml"),
+                str(WEBCONSOLE_ROOT / "devcapsule_webconsole"))
+    session.run("python", "-m", "pytest", str(WEBCONSOLE_ROOT / "tests"))
+
+
+def check_docs_contract(session: nox.Session) -> None:
+    """Check docs/, the journal and the release notes against the website's contract.
+
+    The pinned website submodule owns the check (``npm run check:content``); this
+    runs it against the repository root as the content checkout, so a producer
+    change that would break the site fails here first. Skipped with a notice
+    when the submodule is not initialized or npm is absent, as on the hosted
+    test runner, where the documentation is not built.
+    """
+    website = REPO_ROOT / "website"
+    if not (website / "package.json").exists():
+        session.log("docs contract: website submodule not initialized; skipped")
+        return
+    if shutil.which("npm") is None:
+        session.log("docs contract: npm not available; skipped")
+        return
+    if not (website / "node_modules").exists():
+        session.run("npm", "--prefix", str(website), "ci", external=True)
+    session.run(
+        "npm", "--prefix", str(website), "run", "check:content",
+        env={"CONTENT_DIR": str(REPO_ROOT)}, external=True,
+    )
 
 
 def run_clean_machine_pex_test(session: nox.Session) -> None:
@@ -371,6 +412,66 @@ def e2e(session: nox.Session) -> None:
     run_e2e_tests(session, release_smoke=release_smoke)
 
 
+PLAYWRIGHT_VERSION = "1.63.0"
+"""Browser automation for the optional pixel evidence of the IDE smoke; pinned here, outside the lock."""
+
+
+@nox.session(name="ide-smoke", python="3.12")
+def ide_smoke(session: nox.Session) -> None:
+    """Launch each IDE surface in a fresh project and prove it comes alive.
+
+    Uses DEVCAPSULE_PEX_UNDER_TEST when set, else the local build. Pass
+    ``--display`` to install Playwright and Chromium into the session and keep a
+    screenshot of each desktop as evidence; without it the X11 facts alone decide.
+    """
+    install_locked(session)
+    parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
+    parser.add_argument("--display", action="store_true")
+    parser.add_argument("--agent", action="store_true", help="require an AI-driven saved edit and visual recognition")
+    parser.add_argument("--component-browser", action="store_true", help="drive the child Playwright component; requires --display or --agent")
+    parser.add_argument("--relaunch", action="store_true", help="JetBrains: set editor font size through the UI and verify persistence")
+    parser.add_argument("--driver", choices=("codex", "claude"), default="codex")
+    parser.add_argument("--model", help="default: gpt-6-astra for Codex, claude-fable-5-1 for Claude")
+    parser.add_argument("--recognizer", choices=("codex", "claude"), help="defaults to the action driver")
+    parser.add_argument("--recognizer-model")
+    parser.add_argument("--max-actions", type=int, default=30)
+    parser.add_argument("--agent-timeout", type=int, default=900)
+    parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
+    options = parser.parse_args(session.posargs)
+    if options.component_browser and not (options.agent or options.display):
+        session.error("--component-browser requires --display or --agent")
+    if options.component_browser:
+        session.env["DEVCAPSULE_SMOKE_COMPONENT_BROWSER"] = "1"
+    if options.relaunch:
+        if not options.agent or options.surface not in (["intellij"], ["rider"]):
+            session.error("--relaunch requires --agent --surface intellij or rider")
+        session.env["DEVCAPSULE_SMOKE_RELAUNCH"] = "1"
+    select_e2e_pex(session)
+    if options.display or options.agent:
+        wheels = os.environ.get("DEVCAPSULE_PLAYWRIGHT_WHEELS")
+        if wheels:
+            session.install("--no-index", "--find-links", wheels, f"playwright=={PLAYWRIGHT_VERSION}")
+        else:
+            session.install(f"playwright=={PLAYWRIGHT_VERSION}")
+            session.run("playwright", "install", "chromium")
+        session.env["DEVCAPSULE_SMOKE_DISPLAY"] = "1"
+    if options.agent:
+        session.env.update({
+            "DEVCAPSULE_SMOKE_AGENT": "1", "DEVCAPSULE_SMOKE_DRIVER": options.driver,
+            "DEVCAPSULE_SMOKE_MAX_ACTIONS": str(options.max_actions),
+            "DEVCAPSULE_SMOKE_TIMEOUT": str(options.agent_timeout),
+        })
+        for key in ("model", "recognizer", "recognizer_model"):
+            if value := getattr(options, key):
+                session.env[f"DEVCAPSULE_SMOKE_{key.upper()}"] = value
+    session.run(
+        "python", "-m", "pytest", "--no-cov", "-m", "ide_smoke",
+        *(["-k", " or ".join(options.surface)] if options.surface else []),
+        str(PROJECT_ROOT / "tests" / "e2e" / "test_ide_comes_alive.py"),
+        env={PEX_UNDER_TEST_ENV: session.env[PEX_UNDER_TEST_ENV]},
+    )
+
+
 @nox.session(python="3.12")
 def recursive_dogfood_e2e(session: nox.Session) -> None:
     """Run explicit host-sensitive recursive dogfood checks."""
@@ -391,6 +492,18 @@ def recursive_dogfood_e2e(session: nox.Session) -> None:
 
 
 @nox.session(python="3.12")
+def webconsole(session: nox.Session) -> None:
+    """Checks of the capsule web console, in its own environment."""
+    run_webconsole_checks(session)
+
+
+@nox.session(name="docs-contract", python=False)
+def docs_contract(session: nox.Session) -> None:
+    """Run only the website content-contract check against this checkout."""
+    check_docs_contract(session)
+
+
+@nox.session(python="3.12")
 def build(session: nox.Session) -> None:
     install_locked(session)
     check_distribution_version(session)
@@ -402,5 +515,7 @@ def build(session: nox.Session) -> None:
     build_test_pex(session)
     smoke_pex(session)
     run_packaging_tests(session)
+    check_docs_contract(session)
     if build_public_pex_if_clean(session):
         smoke_pex(session, PUBLIC_PEX_PATH)
+    session.notify("webconsole")

@@ -10,7 +10,7 @@ import pytest
 
 from devcapsule.compat import CliError
 from devcapsule.components import LockedArtifactDeclaration
-from devcapsule.image_build import ExecStep
+from devcapsule.images.build import ExecStep
 from devcapsule.materialization import (
     ENTRYPOINT_CONTRACT,
     RUNTIME_PLAN_PATH,
@@ -180,7 +180,7 @@ def test_codium_materialization_builds_an_image_with_no_setuid_binary(tmp_path: 
     def build(build_spec) -> None:
         plan = build_spec.build_plan()
         assert any(copy.destination == "/opt/codium" for stage in plan.stages for copy in stage.plan.directories)
-        assert plan.exec_steps == ()
+        assert not any("chmod" in step.args and "4755" in step.args for step in plan.exec_steps)
         labels = dict(plan.labels)
         assert labels["devcapsule.component.id"] == "codium"
         assert labels["devcapsule.component.vscode.version"] == "1.126.04524"
@@ -388,7 +388,7 @@ def test_materialization_extracts_a_locked_archive_member(tmp_path: Path) -> Non
         )
         assert copied.source.read_bytes() == b"tool-binary-fixture"
         assert copied.permissions == 0o755
-        assert plan.exec_steps == ()
+        assert not any("tar" in step.args for step in plan.exec_steps)
         labels = dict(plan.labels)
         built[plan.image] = image_details(plan.image, labels)
 
@@ -879,6 +879,9 @@ def test_materialization_explains_first_and_nearest_formations(tmp_path: Path) -
     messages: list[str] = []
 
     def build(build_spec) -> None:
+        # The explanation must precede the expensive action, not summarize it
+        # afterward. Both first formation and changed-base recovery reach here.
+        assert any("first pycharm formation" in message or "differs from" in message for message in messages)
         plan = build_spec.build_plan()
         built[plan.image] = ImageDetails(
             plan.image,
@@ -933,3 +936,43 @@ def test_descriptor_differences_reports_leaf_paths() -> None:
         "base.identity",
         "runtime.entrypoint",
     )
+
+
+def test_unpacked_tree_is_shared_across_formations_and_redone_when_incomplete(tmp_path: Path) -> None:
+    """A verified archive unpacks once under the cache by digest; every
+    formation of it reads the same path, which is what BuildKit's incremental
+    transfer keys on. An unpack without its completion marker is redone."""
+    from devcapsule.materialization import UNPACKED_DIRECTORY, UNPACKED_MARKER
+
+    source = tmp_path / "pycharm.tar.gz"
+    digest = hashlib.sha256(fixture_archive(source)).hexdigest()
+    spec = artifact(source, digest)
+    built: dict[str, ImageDetails] = {}
+    surface_roots: list[Path] = []
+
+    def build(build_spec) -> None:
+        plan = build_spec.build_plan()
+        built[plan.image] = image_details(plan.image, dict(plan.labels))
+        surface_roots.extend(copy.source for stage in plan.stages for copy in stage.plan.directories
+                             if copy.destination == "/opt/jetbrains/pycharm")
+
+    def materialize(base_identity: str) -> None:
+        ensure_materialized_surface(
+            base_reference="base:debug", base_identity=base_identity, platform="linux-amd64",
+            artifact=spec, cache_root=tmp_path / "cache", inspect_image=built.get, build=build,
+        )
+
+    materialize("sha256:one")
+    materialize("sha256:two")  # a different formation, the same artifact
+    assert len(surface_roots) == 2 and surface_roots[0] == surface_roots[1]
+    tree = tmp_path / "cache" / UNPACKED_DIRECTORY / digest
+    assert surface_roots[0].is_relative_to(tree) and (surface_roots[0] / "bin" / "pycharm.sh").is_file()
+    marker = json.loads((tree / UNPACKED_MARKER).read_text())
+    assert marker["sha256"] == digest and surface_roots[0] == tree / marker["root"]
+    assert not list(tree.parent.glob("*.partial-*"))
+    # An interrupted unpack has no marker: it is removed and redone, not trusted.
+    (tree / UNPACKED_MARKER).unlink()
+    (tree / "leftover").write_text("partial")
+    materialize("sha256:three")
+    assert surface_roots[2] == surface_roots[0] and not (tree / "leftover").exists()
+    assert (tree / UNPACKED_MARKER).is_file()

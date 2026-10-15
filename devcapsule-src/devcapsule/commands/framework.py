@@ -50,6 +50,13 @@ class _LeafParser(argparse.ArgumentParser):
         raise UsageError(f"{message}\n{self.format_usage().rstrip()}")
 
 
+STABLE_JSON_HELP = (
+    "Emit stable machine-readable JSON instead of text: schema-version 1, "
+    "the contract the capsule web console reads."
+)
+"""Help text shared by the ``--json`` flags whose document shape is a contract."""
+
+
 class Command:
     """One leaf command: declarative argparse options plus a ``run`` body.
 
@@ -131,6 +138,37 @@ class Group:
 
         print(parser.format_help(), end="")
         return 0
+
+    @classmethod
+    def resolve(cls, argv: Sequence[str]) -> type[Command] | type[Group] | None:
+        """The command ``argv`` names, following nested groups; no side effects.
+
+        Returns the leaf, the nested group when ``argv`` stops at one (it
+        would print help), or ``None`` when ``argv`` fails the group's own
+        option grammar, asks for help, or names an unknown subcommand at any
+        level. Nothing is printed and nothing runs, so a group can apply a
+        policy to the command it is about to dispatch (``project`` decides
+        per command what the capsule may do) and leave the reporting of an
+        unknown name to the dispatch itself.
+        """
+        parser = _GroupParser(
+            prog=cls.name, allow_abbrev=False, add_help=False,
+            subcommand_table=dict(cls.subcommands()),
+        )
+        cls.configure(parser)
+        parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+        try:
+            rest: list[str] = list(parser.parse_args(list(argv)).rest)
+        except UsageError:
+            return None
+        if not rest:
+            return cls
+        subcommand = cls.subcommands().get(rest[0])
+        if subcommand is None:
+            return None
+        if issubclass(subcommand, Group):
+            return subcommand.resolve(rest[1:])
+        return subcommand
 
     @classmethod
     def invoke(cls, prog: str, argv: Sequence[str], context: object | None = None) -> int:

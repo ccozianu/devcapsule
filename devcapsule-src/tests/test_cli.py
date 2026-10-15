@@ -10,11 +10,13 @@ import zipfile
 import pytest
 
 from devcapsule import cli, compat
-from devcapsule.configurations.pycharm._image_build import PycharmImageBuildOptions
+from devcapsule.launch.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.environment_realization import RealizedEnvironment
-from devcapsule.image_metadata import LocalImageRecord
+from devcapsule.images.metadata import LocalImageRecord
 from devcapsule.materialization import ImageDetails, parse_locked_environment
-from devcapsule.project_configuration import canonical_digest
+from devcapsule.configuration.file_formats import (
+    canonical_digest,
+)
 
 
 def test_top_level_help_returns_success(capsys) -> None:
@@ -45,158 +47,43 @@ def test_runtime_command_forwards_arguments_to_container_entrypoint() -> None:
     runtime_main.assert_called_once_with(["plan.json", "--future-option", "value"])
 
 
-def test_run_pycharm_uses_translated_python_launcher(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-    data_home = tmp_path / "data"
-
+@pytest.mark.parametrize("options", [
+    [], ["--help"], ["--no-docker"],
+    ["--image", "legacy:unused", "--docker-in-docker"],
+    ["--project-config", "--shared-config"],
+])
+def test_pycharm_run_is_retired_without_launch_or_state_changes(
+    tmp_path: Path, monkeypatch, capsys, options: list[str],
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "state"))
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
-        patch.dict(
-            os.environ,
-            {
-                "DISPLAY": ":1",
-                "XDG_DATA_HOME": str(data_home),
-                "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
-            },
-            clear=False,
-        ),
+        patch("devcapsule.launch.pycharm._launcher.run_pycharm") as launch,
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as process,
     ):
-        run.return_value.returncode = 0
-
-        result = cli.main(["pycharm", "run", "--project", str(project), "--no-docker"])
-
-    assert result == 0
-    command = run.call_args.args[0]
-    assert command[:2] == ["docker", "run"]
-    assert "docker4pycharm/run-pycharm-container.sh" not in command[0]
-    assert any(arg.startswith(f"type=bind,src={project.resolve()},dst=") for arg in command)
-    assert "--cap-drop" in command
-    assert "--read-only" in command
-    assert "HOME=/home/devcapsule" in command
-    assert any(arg.endswith(",dst=/home/devcapsule") for arg in command)
-    assert any(arg.endswith(",dst=/ide-project-state/system") for arg in command)
-    assert any(arg.endswith(",dst=/ide-project-state/log") for arg in command)
-    assert any(arg.endswith(",dst=/home/devcapsule/.cache") for arg in command)
-    assert not any(arg.endswith(",dst=/ide-global-settings/home/.gemini") for arg in command)
+        assert cli.main(["pycharm", "run", *options]) == 2
+    launch.assert_not_called()
+    process.assert_not_called()
+    assert list(tmp_path.iterdir()) == []
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "was retired" in output.err
+    assert "devcapsule project --path DIRECTORY run" in output.err
+    assert "devcapsule project --path DIRECTORY init" in output.err
 
 
-def test_run_image_uses_pycharm_persistence_adapter(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-    global_settings = tmp_path / "global-settings"
-    plugins = tmp_path / "plugins"
-    project_state = tmp_path / "project-state"
-
-    with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
-        patch.dict(
-            os.environ,
-            {
-                "DISPLAY": ":1",
-                "HOME": str(tmp_path / "host-home"),
-                "XDG_DATA_HOME": str(tmp_path / "data"),
-                "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
-            },
-            clear=False,
-        ),
-    ):
-        run.return_value.returncode = 0
-        result = cli.main(
-            [
-                "project",
-                "--path",
-                str(project),
-                "run-image",
-                "mycodespace.ai/pycharm:debug-v017",
-                "--project-mount",
-                "/workspace/existing-checkout",
-                "--global-settings",
-                str(global_settings),
-                "--plugins",
-                str(plugins),
-                "--project-state",
-                str(project_state),
-            ]
-        )
-
-    assert result == 0
-    command = run.call_args.args[0]
-    assert "mycodespace.ai/pycharm:debug-v017" in command
-    assert "--pull=never" in command
-    assert "--workdir" in command
-    assert command[command.index("--workdir") + 1] == "/workspace/existing-checkout"
-    assert f"type=bind,src={project.resolve()},dst=/workspace/existing-checkout" in command
-    assert f"type=bind,src={(global_settings / 'home').resolve()},dst=/home/devcapsule" in command
-    assert f"type=bind,src={(global_settings / 'config').resolve()},dst=/ide-config" in command
-    assert f"type=bind,src={plugins.resolve()},dst=/ide-plugins" in command
+def test_pycharm_help_lists_only_retained_image_utilities(capsys) -> None:
+    assert cli.main(["pycharm", "--help"]) == 0
+    output = capsys.readouterr().out
+    assert "build" in output
+    assert "check-runtime" in output
+    assert not any(line.split()[:1] == ["run"] for line in output.splitlines())
 
 
-def test_run_pycharm_defaults_project_to_current_directory(tmp_path: Path, monkeypatch) -> None:
-    project = tmp_path / "current-project"
-    project.mkdir()
-    monkeypatch.chdir(project)
-
-    with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
-        patch.dict(
-            os.environ,
-            {
-                "DISPLAY": ":1",
-                "XDG_DATA_HOME": str(tmp_path / "data"),
-                "PYCHARM_GIT_IDENTITY_FROM_HOST": "0",
-            },
-            clear=False,
-        ),
-    ):
-        run.return_value.returncode = 0
-
-        result = cli.main(["pycharm", "run", "--no-docker"])
-
-    assert result == 0
-    command = run.call_args.args[0]
-    assert any(arg.startswith(f"type=bind,src={project.resolve()},dst=") for arg in command)
-
-
-def test_run_pycharm_rejects_conflicting_config_mode_options(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-
-    result = cli.main(
-        [
-            "pycharm",
-            "run",
-            "--project",
-            str(project),
-            "--config-mode",
-            "shared",
-            "--ide-config",
-            str(tmp_path / "custom-config"),
-        ]
-    )
-
-    assert result == 2
-
-
-def test_run_pycharm_rejects_multiple_config_shorthands(tmp_path: Path) -> None:
-    project = tmp_path / "example"
-    project.mkdir()
-
-    result = cli.main(
-        [
-            "pycharm",
-            "run",
-            "--project",
-            str(project),
-            "--project-config",
-            "--shared-config",
-        ]
-    )
-
-    assert result == 2
+def test_project_run_image_is_retired(tmp_path, capsys) -> None:
+    assert cli.main(["project", "--path", str(tmp_path), "--help"]) == 0
+    assert "run-image" not in capsys.readouterr().out
+    assert cli.main(["project", "--path", str(tmp_path), "run-image", "unused"]) != 0
 
 
 def test_build_pycharm_uses_python_buildx_builder(tmp_path: Path) -> None:
@@ -204,7 +91,7 @@ def test_build_pycharm_uses_python_buildx_builder(tmp_path: Path) -> None:
     (source / "bin").mkdir(parents=True)
     (source / "bin" / "pycharm.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
 
-    with patch("devcapsule.configurations.pycharm.configuration.build_pycharm_image") as build_image:
+    with patch("devcapsule.commands._pycharm.build_pycharm_image") as build_image:
         build_image.return_value = 0
         result = cli.main(
             [
@@ -237,7 +124,7 @@ def test_build_pycharm_accepts_host_network(tmp_path: Path) -> None:
     (source / "bin").mkdir(parents=True)
     (source / "bin" / "pycharm.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
 
-    with patch("devcapsule.configurations.pycharm.configuration.build_pycharm_image") as build_image:
+    with patch("devcapsule.commands._pycharm.build_pycharm_image") as build_image:
         build_image.return_value = 0
         result = cli.main(["pycharm", "build", "--pycharm", str(source), "--network", "host"])
 
@@ -378,8 +265,8 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
 
         with (
-            patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-            patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+            patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+            patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
         ):
             run.return_value.returncode = 0
             assert cli.main(
@@ -687,6 +574,8 @@ def test_images_build_environment_requires_immutable_locked_base(capsys) -> None
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},
@@ -716,6 +605,8 @@ def test_images_build_environment_requires_checkout_base_authorization(capsys) -
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},
@@ -749,6 +640,8 @@ def test_images_build_environment_allows_explicit_local_base_override(tmp_path: 
         "materialization": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
     }
     project = SimpleNamespace(
+        root=Path("/example/project"),
+        manifest={},
         lock=lock,
         checkout={},
         resolution={"runtime": {"component": "pycharm"}},

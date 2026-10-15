@@ -18,7 +18,7 @@ from devcapsule.components.codex import (
 )
 from devcapsule.components.pycharm import PyCharmComponent
 from devcapsule.container_runtime.contract import Identity, RuntimePlan
-from devcapsule.project_configuration import (
+from devcapsule.configuration.bindings import (
     component_secret_inputs,
     configuration_binding_declarations,
 )

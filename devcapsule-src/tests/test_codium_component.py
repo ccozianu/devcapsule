@@ -65,7 +65,7 @@ def test_shared_memory_declaration_reaches_the_launcher() -> None:
 
     from dataclasses import dataclass
 
-    from devcapsule.configurations.pycharm._launcher import (
+    from devcapsule.launch.pycharm._launcher import (
         PycharmRunError,
         declared_shared_memory_size,
     )

@@ -35,6 +35,15 @@ jobs:
       SITE_BASE_PATH: ${{ inputs.base_path }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The website builds every version docs/versions.yaml lists from its
+          # own ref: tags, docs-<version> branches and bare commits. A shallow,
+          # single-branch checkout resolves none of them.
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Fetch the documentation refs the manifest names
+        shell: bash
+        run: git fetch origin '+refs/heads/docs-*:refs/heads/docs-*'
       # Public checkout via HTTPS: no SSH/deployment secret needed in Actions.
       - name: Fetch the exact website submodule commit
         shell: bash

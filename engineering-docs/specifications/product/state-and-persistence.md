@@ -76,6 +76,22 @@ regenerable effective view and never becomes another configuration layer.
 
 ## Persistent Home
 
+From 0.2.15, `/opt/xtras` is an image-provided symlink to
+`/home/devcapsule/xtras`. Runtime preparation creates its `bin` directory
+without replacing existing files, and `/opt/xtras/bin` is on PATH for tools
+and terminals. The capsule user can install tools without sudo. A conflicting
+path in a custom base makes materialization fail rather than overwriting it.
+The alias follows the home's persistence, relocation and explicit sharing
+rules; it adds no separate component, version lock or package manager.
+Existing `$HOME/xtras` installations remain available unchanged.
+
+`devcapsule project info` reports persistent paths, their launcher-side backing
+and scope, plus temporary paths. It is read-only on the host and inside the
+capsule. Runtime backing paths come from launch evidence, so changing the
+next-launch configuration does not relabel the running mounts. Secret values
+are excluded. These paths may be outside the source checkout and are not
+automatically backed up or committed with it.
+
 Every normal V1 launch has a persistent, DevCapsule-managed home:
 
 ```text
@@ -169,6 +185,15 @@ home-relative XDG roots, plus any exceptional component-local slots. For
 example, a tool that stores everything conventionally declares `home =
 "required"`, `xdg = "home-relative"`, and no slots. DevCapsule must not add a
 tool-named field or mount to shared runtime code for such a component.
+
+IntelliJ's JetBrains adapter opts into session-long exclusive guards on its
+configuration and system directories. After obtaining both guards, it may
+recover a persisted Unix-domain directory socket that refuses connections and
+its regular numeric PID lock. Container PID reuse cannot establish liveness.
+A live endpoint, unexpected file format, symlink or inconclusive probe leaves
+the vendor IPC state intact. The guards remain held until the IDE session
+ends; saved configuration, plugins, indexes and logs retain their normal slots.
+See the [relaunch validation](../../implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md).
 
 Component-local names become namespaced logical names only when plans are
 combined: PyCharm's local `config` declaration becomes `pycharm/config`.

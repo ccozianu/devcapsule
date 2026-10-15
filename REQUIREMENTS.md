@@ -81,8 +81,15 @@ Current release/stabilization reality:
 - `R-PRODUCT-006` — [Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - `R-DOCS-001` — [Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - `R-DOCS-002` — [Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
+- `R-DOCS-003` — [Website Content Carries Explicit Front Matter And A Versions Manifest](engineering-docs/requirements/product/r-docs-003-website-content-carries-front-matter.md) (proposed)
 
 ### Developer Experience And Persistence
+
+- `R-CONFIG-001` — [Conservative Configuration Writers And Tolerant Readers](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — accepted for 0.3 planning; mandatory/optional needs, command-owned writes and graceful degradation.
+- `R-CONSOLE-001` — [Every Capsule Serves A Web Console](engineering-docs/requirements/product/r-console-001-capsule-web-console.md) — proposed and accepted 2026-10-09 by `capsule-webconsole` in its first integration; token-gated loopback console in the base image showing configuration, versions, info and live resources.
+
+- `R-UPGRADE-001` — [Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
+- `R-UPGRADE-002` — [Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md) — accepted V1 objective; independent monitoring and verified alerts remain outstanding.
 
 - `R-SETTINGS-001` — [Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 

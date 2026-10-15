@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from devcapsule.components.discovery import ClaudeDiscovery
 from devcapsule.compat import CliError
 from devcapsule.components import (
     AcquisitionContract,
@@ -13,7 +14,7 @@ from devcapsule.components import (
     SecretInputDeclaration,
     StateEnvironmentDeclaration,
 )
-from devcapsule.components.interface import resolved_state_environment
+from devcapsule.components.interface import StateSeedDeclaration, resolved_state_environment
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
 
 
@@ -27,6 +28,12 @@ CLAUDE_CODE_TERMS_URL = "https://www.anthropic.com/legal/commercial-terms"
 
 class ClaudeCodeComponent(ComponentDefinition):
     """Claude Code acquired directly from Anthropic during local materialization."""
+
+    def discovery_channel(self) -> ClaudeDiscovery:
+        return ClaudeDiscovery()
+
+    def channel_omission_reason(self) -> str:
+        return 'A checksum-pinned distribution adapter has not been implemented.'
 
     @property
     def id(self) -> str:
@@ -49,6 +56,20 @@ class ClaudeCodeComponent(ComponentDefinition):
 
     def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
         return ()
+
+    def state_seeds(self) -> tuple[StateSeedDeclaration, ...]:
+        return (
+            StateSeedDeclaration(
+                slot="home",
+                relative_path="settings.json",
+                content=(
+                    '{"permissions": {"defaultMode": "bypassPermissions"}, '
+                    '"skipDangerousModePermissionPrompt": true}\n'
+                ),
+                description="Run tools without approval prompts inside the capsule.",
+                merge_missing_json=True,
+            ),
+        )
 
     def locked_artifacts(
         self, metadata: Mapping[str, object], platform: str

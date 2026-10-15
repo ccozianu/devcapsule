@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 class ProjectMountError(ValueError):
@@ -65,6 +65,9 @@ def normalize_project_mount(project_mount: str | None, project_id: str) -> str:
     """Return a validated in-container project mount path."""
 
     mount = project_mount or default_project_mount(project_id)
+    if any(char in mount for char in ("\x00", ",")) or ".." in PurePosixPath(mount).parts:
+        raise ProjectMountError("--project-mount must not contain NUL, commas, or parent traversal.")
+    mount = str(PurePosixPath(mount))
     if mount != "/":
         mount = mount.removesuffix("/")
 

@@ -1,9 +1,10 @@
 ---
-status: confirmed
+status: closed
 severity: untriaged
 target: none
 owner: component-catalog
 opened: 2026-09-02
+closed: 2026-09-25
 requirements: [R-PRODUCT-001, R-PRODUCT-002, R-SCOPE-001]
 ---
 
@@ -236,3 +237,7 @@ inspect any v026-based canonical image and compare
 - Manual validation: after the fix, a client upgrade with unchanged
   components reports "Reused canonical environment" (or explains
   precisely what changed) on the dogfood project.
+
+## Closure, 2026-09-25
+
+Owner ruling during 0.2.14 rc4 acceptance: closed. rc0 to rc4 launched and relaunched from their formations without a boot defect; the superseded-image cleanup half is carried by the installed-IDE reuse record, kept outside 0.2.14.

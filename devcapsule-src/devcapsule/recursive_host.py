@@ -13,7 +13,7 @@ import stat
 import time
 from typing import Mapping, Sequence
 
-from devcapsule.configurations.pycharm._launcher import SUDOERS_POLICY
+from devcapsule.launch.pycharm._launcher import SUDOERS_POLICY
 from devcapsule.container_runtime.contract import RuntimePlan
 from devcapsule.recursive_dogfood import (
     ContainerInspection,

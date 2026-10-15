@@ -13,12 +13,14 @@ import shutil
 
 from devcapsule import cli
 from devcapsule.elicitation import ElicitationIncomplete
-from devcapsule.project_operations import (
+from devcapsule.configuration.operations import (
     InitializeRequest,
     ProvidedAnswer,
     initialize_project,
 )
-from devcapsule.project_configuration import ProjectConfigurationError
+from devcapsule.configuration.file_formats import (
+    ProjectConfigurationError,
+)
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
@@ -51,7 +53,7 @@ def sparse_matrix():
     """Patch the matrix project operations consult to the reduced one."""
 
     return patch(
-        "devcapsule.project_operations.MATRICES",
+        "devcapsule.configuration.operations.MATRICES",
         {Platform.LINUX_AMD64: matrix_without_antigravity_validation()},
     )
 
@@ -561,7 +563,7 @@ def test_fully_initialized_project_fails_loudly_naming_regenerate(
         assert cli.main([*arguments, "--regenerate"]) == 0
 
 
-def test_conflicting_recommendation_answer_is_rejected(tmp_path: Path, capsys) -> None:
+def test_init_denial_changes_checkout_without_rewriting_recommendation(tmp_path: Path, capsys) -> None:
     project = tmp_path / "project"
     project.mkdir()
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
@@ -587,6 +589,8 @@ def test_conflicting_recommendation_answer_is_rejected(tmp_path: Path, capsys) -
             )
             == 0
         )
+        manifest_path = project / ".devcapsule/devcapsule.toml"
+        manifest_before = manifest_path.read_bytes()
         capsys.readouterr()
         assert (
             cli.main(
@@ -601,9 +605,11 @@ def test_conflicting_recommendation_answer_is_rejected(tmp_path: Path, capsys) -
                     "none",
                 ]
             )
-            == 2
+            == 0
         )
-    assert "never" in capsys.readouterr().err
+        assert manifest_path.read_bytes() == manifest_before
+        record = next((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+        assert read_toml(record)["authorization"]["network"]["value"] == "bridge"
 
 
 def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
@@ -665,7 +671,7 @@ def test_init_records_a_local_base_selection_with_less_pedantic(
     identity = f"sha256:{'d' * 64}"
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, identity),
         ) as inspect_local:
             assert (
@@ -703,7 +709,7 @@ def test_init_base_selection_without_less_pedantic_batch_fails(
     selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, f"sha256:{'d' * 64}"),
         ):
             assert (
@@ -742,7 +748,7 @@ def test_init_base_selection_solicits_informed_consent_interactively(
     answers = io.StringIO("https://github.com/example\npython-ide\nno\n\n\n\n\n\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, identity),
         ):
             initialize_project(
@@ -776,7 +782,7 @@ def test_init_base_selection_consent_can_be_declined(tmp_path: Path) -> None:
     answers = io.StringIO("https://github.com/example\npython-ide\nno\n\n\n\n\nno\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
-            "devcapsule.project_operations.required_local_image",
+            "devcapsule.configuration.operations.required_local_image",
             return_value=local_base_details(selection, f"sha256:{'d' * 64}"),
         ):
             with pytest.raises(ProjectConfigurationError, match="declined"):
@@ -939,12 +945,12 @@ def test_init_unverified_resolves_past_the_matrix_with_a_gentle_warning(
         # exists, and the strict form discloses the gap and the experiment.
         assert cli.main(need) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.1.24 on base v0.2.12-rc5." in refusal
+        assert "Not yet validated: antigravity-cli 1.2.12 on base v0.2.12-rc5." in refusal
         assert "Run it as an experiment with --unverified" in refusal
 
         assert cli.main([*need, "--unverified"]) == 0
         warning = capsys.readouterr().err
-        assert "Running as an experiment. Not yet validated: antigravity-cli 1.1.24 on base v0.2.12-rc5." in warning
+        assert "Running as an experiment. Not yet validated: antigravity-cli 1.2.12 on base v0.2.12-rc5." in warning
 
     lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
     assert "antigravity-cli" in lock["unverified-combinations"]
@@ -1057,7 +1063,7 @@ def test_antigravity_capability_requires_the_acquisition_answer(
         record = read_toml(next(config_root.rglob("devcapsule.checkout.toml")))
         assert record["authorization"]["antigravity-download"]["value"] is True
         lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
-        assert lock["components"]["antigravity-cli"]["version"] == "1.1.24"
+        assert lock["components"]["antigravity-cli"]["version"] == "1.2.12"
 
 
 def test_noninteractive_need_without_an_agent_stays_explicit(tmp_path: Path) -> None:
@@ -1177,7 +1183,7 @@ def test_unknown_authorize_answer_is_reported_not_ignored(tmp_path: Path, capsys
             )
             == 2
         )
-    assert "matched no question" in capsys.readouterr().err
+    assert "not declared" in capsys.readouterr().err
 
 
 def test_set_and_bind_extras_are_applied_through_the_registry(tmp_path: Path) -> None:
@@ -1244,18 +1250,18 @@ def test_config_need_offers_and_accepts_the_experiment_lever(tmp_path: Path, cap
 
         assert cli.main(grow) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.1.24 on base v0.2.12-rc5." in refusal
+        assert "Not yet validated: antigravity-cli 1.2.12 on base v0.2.12-rc5." in refusal
         assert "Run it as an experiment with --unverified" in refusal
         manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
         assert manifest["capabilities"]["need"] == ["python", "python-ide"]
 
         assert cli.main([*grow, "--unverified"]) == 0
         warning = capsys.readouterr().err
-        assert "Running as an experiment. Not yet validated: antigravity-cli 1.1.24" in warning
+        assert "Running as an experiment. Not yet validated: antigravity-cli 1.2.12" in warning
         manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
         assert manifest["capabilities"]["need"] == ["antigravity-agent", "python", "python-ide"]
         lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
-        assert lock["unverified-combinations"] == "antigravity-cli 1.1.24 on base v0.2.12-rc5"
+        assert lock["unverified-combinations"] == "antigravity-cli 1.2.12 on base v0.2.12-rc5"
 
 
 def test_init_report_shows_recommendation_values_and_how_each_node_was_settled(
@@ -1285,3 +1291,89 @@ def test_init_report_shows_recommendation_values_and_how_each_node_was_settled(
     assert "Answered for this checkout: base-image." in output
     assert "Project recommendations applied to this checkout: docker-daemon." in output
     assert "Standing from the existing checkout record" not in output
+
+
+def test_undeclared_authorize_name_fails_before_any_prompt_or_write(tmp_path: Path) -> None:
+    """Bug of 2026-09-26: the owner's first init answered every prompt, then lost them all.
+
+    ``--authorize docker host`` names no node (``docker-daemon`` does). The
+    name check used to run last, after the recommendation and consent
+    prompts and after the manifest and lock were written; the checkout
+    record holding every answer was never written. The check now precedes
+    the first question: nothing is asked, nothing is on disk, and the
+    message names the likely spelling.
+    """
+    project = tmp_path / "chessclub-website"
+    project.mkdir()
+    prompts = io.StringIO()
+    unread = io.StringIO("")
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with pytest.raises(ProjectConfigurationError) as failure:
+            initialize_project(
+                InitializeRequest(
+                    directory=project,
+                    need=("python", "python-ide", "antigravity-agent"),
+                    creator="https://github.com/example",
+                    answers=(
+                        ProvidedAnswer("authorize", "base-image", "default"),
+                        ProvidedAnswer("authorize", "network", "host"),
+                        ProvidedAnswer("authorize", "docker", "host"),
+                    ),
+                    interactive=True,
+                ),
+                input_stream=unread,
+                output_stream=prompts,
+            )
+    message = str(failure.value)
+    assert "Configuration node 'docker' is not declared" in message
+    assert "Did you mean 'docker-daemon'?" in message
+    assert prompts.getvalue() == ""
+    assert unread.tell() == 0
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+
+
+def test_wrong_family_answer_fails_before_any_prompt_or_write(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    prompts = io.StringIO()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        with pytest.raises(ProjectConfigurationError, match="answered with --authorize, not --set"):
+            initialize_project(
+                InitializeRequest(
+                    directory=project,
+                    need=("python-ide", "antigravity-agent"),
+                    creator="https://github.com/example",
+                    answers=(ProvidedAnswer("set", "docker-daemon", "host-socket"),),
+                    interactive=True,
+                ),
+                input_stream=io.StringIO(""),
+                output_stream=prompts,
+            )
+    assert prompts.getvalue() == ""
+    assert not (project / ".devcapsule").exists()
+
+
+def test_curated_host_authorization_is_admitted_before_the_recommendation_exists(
+    tmp_path: Path,
+) -> None:
+    """``network`` has no workstation default; it is declared by the recommendation
+    the same invocation records, so the early name check must admit it."""
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
+        assert (
+            cli.main(
+                [
+                    "project", "--path", str(project), "init",
+                    "--need", "python-ide", "--creator", "https://github.com/example",
+                    "--authorize", "network", "host", "Host-bound development services.",
+                    "--authorize", "base-image", "default",
+                ]
+            )
+            == 0
+        )
+        manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
+        assert manifest["host"]["network"]["mode"]["recommended"]["value"] == "host"
+        record = read_toml(next((tmp_path / "config").rglob("devcapsule.checkout.toml")))
+        assert record["authorization"]["network"]["value"] == "host"

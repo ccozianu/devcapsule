@@ -1,0 +1,1466 @@
+"""Checkout-facing operations: one function per user-visible operation.
+
+Command modules translate parsed arguments into exactly one call here and
+print the returned report; policy, validation, and artifact writes live on
+this side of the boundary.  This is the operation layer the first-run design
+requires: the write half and the read half of each artifact contract sit in
+the same module instead of being split between a command callback and a
+library loader.
+
+Reports render themselves (`render()`), so the exact user-facing wording of
+an operation's outcome is owned here alongside the operation, not composed
+ad hoc at each call site.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from copy import deepcopy
+import tomllib
+from pathlib import Path
+import re
+import sys
+from typing import Any, Mapping, Sequence, TextIO
+
+from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
+from devcapsule.elicitation import SOURCE_EXISTING_RECORD, SOURCE_COMMAND_LINE, SOURCE_PROMPT, AnswerKey, Elicitor
+from devcapsule.environment_realization import required_local_image
+from devcapsule.materialization import validate_base_image
+from devcapsule.project import sanitize_name
+from devcapsule.platforms import Platform, UnsupportedPlatformError
+from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
+
+from .authorization import (
+    AuthorizationDeclaration,
+    CURATED_HOST_RECOMMENDATIONS,
+    authorization_declarations,
+    authorized_base_selection,
+    immutable_registry_reference,
+    normalize_authorization_value,
+    render_authorization_value,
+)
+from .file_formats import (
+    AuthorizationScalar,
+    ProjectConfigurationError,
+    quote_toml,
+    render_checkout,
+    render_toml,
+    render_toml_scalar,
+)
+from .freshness import stale_resolution_inputs
+from .manifest import validate_manifest
+from .model import Configuration
+from .nodes import (
+    CARRIER_FAMILY_AUTHORIZE,
+    CARRIER_FAMILY_BIND,
+    CARRIER_FAMILY_SET,
+    PROVIDER_HOST_DIRECTORY,
+    build_node_registry,
+)
+from .storage import (
+    atomic_write,
+    checkout_record_paths,
+    load_checkout,
+    load_resolution,
+    load_toml,
+    lock_for,
+    manifest_for,
+)
+from .values import checkout_omitted_values, normalize_configuration_value
+
+
+def _current_matrix() -> ResolutionMatrix:
+    """This host's resolution matrix, with platform failures as user errors."""
+
+    try:
+        return MATRICES[Platform.current()]
+    except UnsupportedPlatformError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
+
+__all__ = [
+    "CheckoutRecord",
+    "InitializeReport",
+    "NeedReport",
+    "InitializeRequest",
+    "ProvidedAnswer",
+    "ResolveReport",
+    "add_capability_need",
+    "initialize_project",
+    "resolve_checkout",
+]
+
+
+@dataclass(frozen=True)
+class ResolveReport:
+    """Outcome of one successful resolution."""
+
+    resolution_path: Path
+    lock_name: str
+    registered_checkout: Path | None
+
+    def render(self) -> str:
+        lines = []
+        if self.registered_checkout is not None:
+            lines.append(f"Registered checkout: {self.registered_checkout}")
+        lines.append(f"Resolved {self.resolution_path} from {self.lock_name}")
+        return "\n".join(lines)
+
+
+class CheckoutRecord:
+    """One checkout record loaded for mutation and written back atomically.
+
+    Every mutating operation (set, bind, authorize, adopt) edits the same
+    developer-owned record through this class, so the ownership check and the
+    table validation exist exactly once.
+    """
+
+    def __init__(self, manifest: Mapping[str, Any], root: Path) -> None:
+        input_path, _resolution_path = checkout_record_paths(manifest, root)
+        self.input_path = input_path
+        self.document = (
+            load_checkout(input_path, manifest, root) if input_path.is_file()
+            else tomllib.loads(render_checkout(manifest, root, {}, {}))
+        )
+        self._original = deepcopy(self.document)
+        # Each editable collection belongs to the retained document. No
+        # projection/serialization pair can drop an unrelated answer.
+        self.state = self.document.setdefault("state", {}).setdefault("adopted", {})
+        self.host = self.document.setdefault("host", {})
+        self.authorization = self.document.setdefault("authorization", {})
+        configuration = self.document.setdefault("configuration", {})
+        self.values = configuration.setdefault("values", {})
+        self.omitted_values = set(checkout_omitted_values(self.document))
+        bindings = configuration.setdefault("bindings", {})
+        self.directory_bindings = bindings.setdefault("host-directory", {})
+        self.environment_bindings = bindings.setdefault("host-environment", {})
+
+    def omit_value(self, name: str) -> None:
+        """Record the explicit 'none' answer: keep the node absent at runtime."""
+
+        self.values.pop(name, None)
+        self.omitted_values.add(name)
+
+    def set_value(self, name: str, value: Any) -> None:
+        """Record a value answer, clearing any standing omission."""
+
+        self.omitted_values.discard(name)
+        self.values[name] = value
+
+    def authorize(self, declaration: AuthorizationDeclaration, value: str | bool, image_identity: str | None = None) -> None:
+        """Replace one logical decision, including its obsolete legacy spelling."""
+        name = declaration.name
+        self.host.pop(name, None)
+        if name == "base-image":
+            answer = {"reference": value, "lock-digest": declaration.recommendation_digest}
+            if image_identity is not None:
+                answer["image-id"] = image_identity
+        else:
+            value = normalize_authorization_value(declaration, value)
+            answer = {"value": value, "recommendation-digest": declaration.recommendation_digest}
+        self.authorization[name] = answer
+
+    def write(self) -> None:
+        if self.omitted_values:
+            self.document["configuration"]["omitted-values"] = sorted(self.omitted_values)
+        else:
+            self.document["configuration"].pop("omitted-values", None)
+        def without_new_empty_tables(value: dict[str, Any], original: Mapping[str, Any]) -> dict[str, Any]:
+            result = {}
+            for key, item in value.items():
+                if isinstance(item, dict):
+                    prior = original.get(key, {})
+                    item = without_new_empty_tables(item, prior if isinstance(prior, dict) else {})
+                    if not item and key not in original:
+                        continue
+                result[key] = item
+            return result
+        atomic_write(self.input_path, render_toml(without_new_empty_tables(self.document, self._original)))
+
+
+def resolve_checkout(start_path: Path) -> ResolveReport:
+    """Validate one checkout's combined inputs and write its fresh resolution.
+
+    This is the explicit "my configuration choices are complete" step: it
+    validates completeness and consistency across manifest, lock, and the
+    developer-owned record, then writes the inspectable generated resolution
+    whose source digests reveal later drift.  It creates the checkout record
+    on a first resolution — record creation belongs to this path, which is
+    the first persistent developer-owned act.
+    """
+
+    root, manifest = manifest_for(start_path)
+    lock_path, lock = lock_for(root, manifest)
+    input_path, output = checkout_record_paths(manifest, root)
+    registered: Path | None = None
+    if not input_path.is_file():
+        atomic_write(input_path, render_checkout(manifest, root, {}, {}))
+        registered = input_path
+    checkout = load_checkout(input_path, manifest, root)
+    configuration = Configuration(manifest, lock, checkout)
+    configuration.review().require_ready(root)
+    resolution = configuration.resolve()
+    base_selection = authorized_base_selection(lock, checkout) if "base" in lock else None
+    if base_selection is not None and base_selection.local_image_identity is not None:
+        local_base = required_local_image(base_selection.reference)
+        validate_base_image(local_base, platform=str(lock["platform"]),
+                            expected_identity=base_selection.local_image_identity)
+    atomic_write(output, render_toml(resolution.document()))
+    return ResolveReport(
+        resolution_path=output,
+        lock_name=lock_path.name,
+        registered_checkout=registered,
+    )
+
+
+@dataclass(frozen=True)
+class ProvidedAnswer:
+    """One configuration answer supplied on the command line."""
+
+    family: str
+    name: str
+    value: str
+    justification: str | None = None
+
+
+@dataclass(frozen=True)
+class InitializeRequest:
+    """Everything ``devcapsule project init`` collected from its command line."""
+
+    directory: Path
+    need: tuple[str, ...] = ()
+    project_name: str | None = None
+    slug: str | None = None
+    creator: str | None = None
+    project_mount: str | None = None
+    answers: tuple[ProvidedAnswer, ...] = ()
+    regenerate: bool = False
+    # Skip consent solicitations for explicitly supplied values (today: a
+    # base-image selection); validation and recording are unchanged.
+    less_pedantic: bool = False
+    # Let resolution fall back past missing verified edges with a gentle
+    # warning (owner ruling 2026-09-03: the matrix may be stale or wrong);
+    # the generated lock names every unverified combination.
+    allow_unverified: bool = False
+    # None: decide from whether stdin is a terminal.
+    interactive: bool | None = None
+
+
+@dataclass(frozen=True)
+class InitializeReport:
+    """Outcome of one successful initialization, in owner order."""
+
+    manifest_path: Path
+    manifest_action: str
+    project_name: str
+    creator: str
+    slug: str
+    project_mount: str
+    capabilities: tuple[str, ...]
+    lock_path: Path
+    lock_action: str
+    base_display: str
+    # (name, rendered value, justification) for every recommendation the
+    # manifest carries after this init.
+    recommendations: tuple[tuple[str, str, str], ...]
+    # Authorization nodes by how this invocation settled them: answered
+    # here (a flag or a prompt), carried forward from the existing checkout
+    # record because their digest still matched, or explicitly accepted by
+    # this developer while authoring/reviewing the project recommendation. The report says which,
+    # so a re-run never reads as if it granted what already stood.
+    answered: tuple[str, ...]
+    carried: tuple[str, ...]
+    recommended: tuple[str, ...]
+    checkout_record: Path
+    resolve: ResolveReport
+
+    def render(self) -> str:
+        lines = [
+            f"{self.manifest_action} {self.manifest_path}",
+            f"Project: {self.project_name} — {self.creator}/{self.slug}",
+            f"Project mount: {self.project_mount}",
+            f"Capabilities: {' '.join(self.capabilities)}",
+            f"{self.lock_action} {self.lock_path} (base {self.base_display})",
+        ]
+        for name, value, justification in self.recommendations:
+            line = f"Recommended {name} = {value} for every checkout"
+            lines.append(f"{line} ({justification})." if justification else f"{line}.")
+        lines.extend(_authorization_lines(self.answered, self.carried, self.recommended))
+        lines.append(f"Checkout record: {self.checkout_record}")
+        lines.append(self.resolve.render())
+        lines.append("Project initialized; 'devcapsule project run' starts it.")
+        return "\n".join(lines)
+
+
+def _authorization_lines(
+    answered: tuple[str, ...], carried: tuple[str, ...], recommended: tuple[str, ...]
+) -> list[str]:
+    lines = []
+    if answered:
+        lines.append("Answered for this checkout: " + ", ".join(answered) + ".")
+    if carried:
+        lines.append(
+            "Standing from the existing checkout record: " + ", ".join(carried) + "."
+        )
+    if recommended:
+        lines.append(
+            "Project recommendations applied to this checkout: "
+            + ", ".join(recommended)
+            + "."
+        )
+    return lines
+
+
+@dataclass(frozen=True)
+class _Authorizations:
+    """Authorization nodes settled by one elicitation, by how they were settled."""
+
+    answered: list[str] = field(default_factory=list)
+    carried: list[str] = field(default_factory=list)
+
+    def settle(self, name: str, source: str) -> None:
+        (self.carried if source == SOURCE_EXISTING_RECORD else self.answered).append(name)
+
+
+@dataclass(frozen=True)
+class NeedReport:
+    """Outcome of ``config need``: what changed in the need, and what followed."""
+
+    manifest_path: Path
+    previous_need: tuple[str, ...]
+    need: tuple[str, ...]
+    lock_path: Path
+    lock_changed: bool
+    base_display: str
+    answered: tuple[str, ...]
+    carried: tuple[str, ...]
+    recommended: tuple[str, ...]
+    checkout_record: Path
+    resolve: ResolveReport
+
+    def render(self) -> str:
+        added = tuple(name for name in self.need if name not in self.previous_need)
+        if added:
+            lines = [
+                f"Need: added {', '.join(added)} → {' '.join(self.need)} ({self.manifest_path})"
+            ]
+        else:
+            lines = [
+                "Need: unchanged — already in capabilities.need "
+                f"({' '.join(self.need)}); {self.manifest_path} not rewritten"
+            ]
+        if self.lock_changed:
+            lines.append(f"Lock: regenerated {self.lock_path} (base {self.base_display})")
+        else:
+            lines.append(f"Lock: unchanged (base {self.base_display})")
+        lines.extend(_authorization_lines(self.answered, self.carried, self.recommended))
+        lines.append(f"Checkout record: {self.checkout_record}")
+        lines.append(self.resolve.render())
+        lines.append("Ready; 'devcapsule project run' starts it.")
+        return "\n".join(lines)
+
+
+def initialize_project(
+    request: InitializeRequest,
+    *,
+    input_stream: TextIO | None = None,
+    output_stream: TextIO | None = None,
+) -> InitializeReport:
+    """Bring the four owned artifacts into existence, in owner order.
+
+    The settled postcondition (*Initializing A New Project* in the
+    v1-user-experience design note): a valid manifest and a platform lock for
+    this platform exist, the owner's checkout record is registered, and a
+    fresh resolution stands — achieved by invoking the same resolution the
+    standalone command runs.  The three entry states are handled in order:
+    nothing initialized (author everything), partially initialized (honor
+    what exists, complete what is missing — repair is init's own job), and
+    fully initialized (fail loudly naming ``--regenerate``).
+    """
+
+    root = request.directory.expanduser().resolve()
+    if not root.is_dir():
+        raise ProjectConfigurationError(f"Project directory does not exist: {root}")
+    manifest_path = root / ".devcapsule" / "devcapsule.toml"
+    try:
+        platform = Platform.current()
+    except UnsupportedPlatformError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
+    lock_path = root / ".devcapsule" / f"devcapsule.{platform}.lock"
+
+    existing_manifest: dict[str, Any] | None = None
+    if manifest_path.is_file():
+        # A hand-authored or carried-over manifest is the ordinary form of
+        # partial initialization, not an error: honor it and generate what
+        # follows from it.
+        existing_manifest = load_toml(manifest_path)
+        validate_manifest(existing_manifest, manifest_path)
+        if any(key in existing_manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
+            raise ProjectConfigurationError("This project uses required/optional capability policy. Use 'project config capabilities' to change it, or 'project config resolve' to prepare this checkout.")
+        if lock_path.is_file():
+            lock_for(root, existing_manifest)
+        input_path, output_path = checkout_record_paths(existing_manifest, root)
+        if input_path.is_file():
+            load_checkout(input_path, existing_manifest, root)
+        if output_path.is_file():
+            load_resolution(output_path)
+
+    if existing_manifest is not None and lock_path.is_file() and not request.regenerate:
+        if _fully_initialized(root, existing_manifest):
+            if request.answers:
+                # A repeated init carrying --authorize/--set/--bind must not
+                # silently drop the developer's expressed answers (bug of
+                # 2026-09-01): they are "individual answers" in the design's
+                # own vocabulary, applied here through the same primitives
+                # the config family uses, then resolved afresh so the init
+                # postcondition — 'project run' starts it — holds.
+                return _apply_answers_to_standing_checkout(
+                    root, manifest_path, lock_path, platform, request
+                )
+            raise ProjectConfigurationError(
+                f"{root} is already fully initialized: manifest, platform lock, "
+                "checkout record, and a fresh resolution all stand. 'devcapsule "
+                "project init --regenerate' rewrites the derived platform lock; "
+                "the 'config' family changes individual answers."
+            )
+
+    elicitor = Elicitor(
+        _init_command_line(request),
+        interactive=request.interactive,
+        input_stream=input_stream,
+        output_stream=output_stream,
+    )
+    identity = _elicit_identity(elicitor, root, existing_manifest)
+    authored = frozenset(answer.name for answer in request.answers if answer.justification is not None)
+    # Fail now if identity or capabilities are unanswered: the lock cannot be
+    # generated without them, so later questions are unreachable and their
+    # supplied answers must not be misreported as unknown.
+    if elicitor.missing():
+        elicitor.finish(require_all_consumed=False)
+
+    # The lock, in memory first. Every name a supplied answer may use is
+    # fixed by the capabilities and the lock, both known here, so a
+    # misspelled or wrong-family name is rejected before the first question
+    # is asked and before anything is written.
+    generated = None
+    if lock_path.is_file() and not request.regenerate:
+        lock_action = "Kept"
+        preview_lock = load_toml(lock_path)
+    else:
+        lock_action = "Regenerated" if lock_path.is_file() else "Created"
+        generated = MATRICES[platform].resolve(
+            list(identity.capabilities), allow_unverified=request.allow_unverified
+        )
+        if generated.unverified:
+            # The owner's 2026-09-06 ruling: name the elements, call it what
+            # it is — an experiment — and say that the lock carries the fact
+            # to everyone who uses it.
+            print(
+                "Running as an experiment. Not yet validated: "
+                + "; ".join(generated.unverified)
+                + ".\nThe lock records this for everyone who uses it; if it works, "
+                "let the DevCapsule maintainers know so the matrix can learn.",
+                file=sys.stderr,
+            )
+        preview_lock = tomllib.loads(generated.render_lock())
+    _reject_undeclared_answers(
+        request.answers,
+        existing_manifest if existing_manifest is not None else _preview_manifest(identity),
+        preview_lock,
+        authoring=frozenset(CURATED_HOST_RECOMMENDATIONS) if existing_manifest is None else authored,
+    )
+
+    recommendations = _elicit_recommendations(
+        elicitor, existing_manifest, authored=authored,
+    )
+    # A recommendation answered without its justification is unanswered:
+    # report it now rather than authoring an incomplete block.
+    if elicitor.missing():
+        elicitor.finish(require_all_consumed=False)
+
+    manifest_action = _write_manifest(
+        manifest_path, existing_manifest, identity, recommendations
+    )
+    manifest = load_toml(manifest_path)
+    validate_manifest(manifest, manifest_path)
+
+    if generated is not None:
+        # World-readable like any committed project file; the 0600 default is
+        # for developer-owned records.
+        atomic_write(lock_path, generated.render_lock(), mode=0o644)
+    _, lock = lock_for(root, manifest)
+
+    declarations = authorization_declarations(manifest, lock)
+    record = CheckoutRecord(manifest, root)
+    settled = _elicit_acquisitions(
+        elicitor,
+        declarations,
+        record,
+        platform=str(platform),
+        less_pedantic=request.less_pedantic,
+    )
+    accepted_recommendations = _elicit_host_answers(elicitor, manifest, lock, record)
+    _elicit_extra_answers(elicitor, request.answers, manifest, lock, record)
+    elicitor.finish()
+    record.write()
+
+    resolve_report = resolve_checkout(root)
+    base_declaration = declarations.get("base-image")
+    if base_declaration is not None:
+        base_display = base_declaration.display_value or str(base_declaration.recommended_value)
+    else:
+        base_display = str(lock.get("image", {}).get("reference", "image lock"))
+    return InitializeReport(
+        manifest_path=manifest_path,
+        manifest_action=manifest_action,
+        project_name=identity.name,
+        creator=identity.creator,
+        slug=identity.slug,
+        project_mount=identity.mount,
+        capabilities=identity.capabilities,
+        lock_path=lock_path,
+        lock_action=lock_action,
+        base_display=base_display,
+        recommendations=tuple(
+            (name, render_authorization_value(CURATED_HOST_RECOMMENDATIONS[name][1]), justification)
+            for name, justification in recommendations
+        ),
+        answered=tuple(settled.answered),
+        carried=tuple(settled.carried),
+        recommended=accepted_recommendations,
+        checkout_record=record.input_path,
+        resolve=resolve_report,
+    )
+
+
+@dataclass(frozen=True)
+class _ProjectIdentity:
+    name: str
+    slug: str
+    creator: str
+    mount: str
+    capabilities: tuple[str, ...]
+
+
+def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
+    """Map init's dedicated flags and --authorize carriers to elicitation keys.
+
+    Values and bindings use a separate elicitation namespace once the lock
+    establishes their registry. Ordinary names may coincide with identity
+    names; the owning question, not its spelling alone, selects the answer.
+    """
+
+    command_line: dict[AnswerKey, str] = {}
+    if request.need:
+        command_line[("need", "value")] = " ".join(request.need)
+    for key, value in (
+        ("name", request.project_name),
+        ("slug", request.slug),
+        ("creator", request.creator),
+        ("project-mount", request.project_mount),
+    ):
+        if value is not None:
+            command_line[(key, "value")] = value
+    for answer in request.answers:
+        if answer.family != "authorize":
+            continue
+        command_line[(answer.name, "value")] = answer.value
+        if answer.justification is not None:
+            command_line[(answer.name, "justification")] = answer.justification
+    return command_line
+
+
+def _preview_manifest(identity: _ProjectIdentity) -> dict[str, Any]:
+    """The manifest a fresh init is about to author, as a mapping, before any write.
+
+    Only what the node registry reads: the capabilities and the identity.
+    Recommendations are absent because they are asked after this preview is
+    used; see ``authoring`` in :func:`_reject_undeclared_answers`.
+    """
+
+    return {
+        "devcapsule-schema-version": 1,
+        "capabilities": {"need": list(identity.capabilities)},
+        "project": {
+            "name": identity.name,
+            "slug": identity.slug,
+            "creator": identity.creator,
+            "mount": identity.mount,
+        },
+    }
+
+
+def _reject_undeclared_answers(
+    answers: tuple[ProvidedAnswer, ...],
+    manifest: Mapping[str, Any],
+    lock: Mapping[str, Any],
+    *,
+    authoring: frozenset[str],
+) -> None:
+    """Fail on a misspelled or wrong-family answer name before anything is asked or written.
+
+    The names an init can answer are fixed by the capabilities and the lock,
+    both known before the first prompt, so ``--authorize docker host`` for
+    ``docker-daemon`` is reported then, with nothing on disk and no prompt
+    consumed. Until 2026-09-26 this check ran last, after every prompt and
+    after the manifest and lock were written, and its failure discarded every
+    answer the owner had just given.
+
+    ``authoring`` names the curated host recommendations this invocation may
+    still record. Such a name is an authorization node only once the project
+    recommends it (``network`` has no workstation default), and the
+    recommendation question consumes the answer that authors it, so an
+    ``--authorize`` under one of these names is admitted here.
+    """
+
+    registry = build_node_registry(manifest, lock)
+    for answer in answers:
+        if (
+            answer.family == CARRIER_FAMILY_AUTHORIZE
+            and answer.name in authoring
+            and registry.get(answer.name) is None
+        ):
+            continue
+        registry.answerable(answer.name, answer.family)
+
+
+def _elicit_identity(
+    elicitor: Elicitor, root: Path, existing_manifest: Mapping[str, Any] | None
+) -> _ProjectIdentity:
+    project = (existing_manifest or {}).get("project", {})
+    existing_need = (existing_manifest or {}).get("capabilities", {}).get("need")
+
+    def existing_field(key: str) -> str | None:
+        value = project.get(key)
+        return str(value) if value else None
+
+    name = elicitor.seek(
+        "name",
+        description="Project name",
+        remedy="--name NAME",
+        existing=existing_field("name"),
+        default=root.name,
+    )
+    slug = elicitor.seek(
+        "slug",
+        description="Project slug",
+        remedy="--slug SLUG",
+        existing=existing_field("slug"),
+        default=sanitize_name(root.name).lower(),
+    )
+    creator = elicitor.seek(
+        "creator",
+        description="Project creator (URL or email address)",
+        remedy="--creator CREATOR",
+        existing=existing_field("creator"),
+        validate=_normalize_creator,
+    )
+    assert slug is not None  # a default always answers it
+    mount = elicitor.seek(
+        "project-mount",
+        description="In-container project mount path",
+        remedy="--project-mount PATH",
+        existing=existing_field("mount"),
+        default=f"/workspace/{slug.value}",
+    )
+    need = elicitor.seek(
+        "need",
+        description=(
+            "Capabilities the project needs, space-separated "
+            f"({', '.join(_current_matrix().capabilities())})"
+        ),
+        remedy="--need CAPABILITY [--need CAPABILITY ...]",
+        existing=" ".join(str(item) for item in existing_need) if existing_need else None,
+        validate=_normalize_need_string,
+    )
+    capabilities = tuple(need.value.split()) if need else ()
+    capabilities = _with_default_agent(elicitor, capabilities, existing_need)
+    return _ProjectIdentity(
+        name=name.value if name else "",
+        slug=slug.value,
+        creator=creator.value if creator else "",
+        mount=mount.value if mount else "",
+        capabilities=capabilities,
+    )
+
+
+def _with_default_agent(
+    elicitor: Elicitor,
+    capabilities: tuple[str, ...],
+    existing_need: object,
+) -> tuple[str, ...]:
+    """Offer the default-selected agent when a fresh need does not name one.
+
+    Per the component-catalog delivery contract (2026-08-30), the Antigravity
+    CLI is default-selected: "available by default" without living in any
+    base. Concretely: an interactive init whose freshly authored need omits
+    ``antigravity-agent`` asks once, with Enter meaning yes; a noninteractive
+    init keeps its explicit ``--need`` list unchanged (the remedy *is* the
+    need flag), and a re-init of an existing manifest never grows an authored
+    need behind the owner's back.
+    """
+
+    default_capability = ANTIGRAVITY_CLI.capability
+    if not capabilities or existing_need or default_capability in capabilities:
+        return capabilities
+    grown = tuple(sorted((*capabilities, default_capability)))
+    try:
+        # Only offer a default that resolves: while the matrix lacks verified
+        # edges combining the agent with this need's surface or siblings, the
+        # default silently does not apply rather than failing the init.
+        _current_matrix().resolve(grown)
+    except ProjectConfigurationError:
+        return capabilities
+    answer = elicitor.seek(
+        "default-agent",
+        description=(
+            f"Select the default agent component ({default_capability})? (yes/no)"
+        ),
+        remedy=f"--need {default_capability}",
+        empty_answer="yes",
+        omitted_answer="no",
+        validate=_yes_no_validator("default-agent"),
+    )
+    if answer is not None and answer.value == "yes":
+        return grown
+    return capabilities
+
+
+def _yes_no_validator(name: str) -> Any:
+    def validate(value: str) -> str:
+        candidate = value.strip().lower()
+        if candidate in {"yes", "y"}:
+            return "yes"
+        if candidate in {"no", "n"}:
+            return "no"
+        raise ProjectConfigurationError(f"Question {name!r} accepts yes or no.")
+
+    return validate
+
+
+def _elicit_recommendations(
+    elicitor: Elicitor, existing_manifest: Mapping[str, Any] | None,
+    *, authored: frozenset[str] = frozenset(),
+) -> list[tuple[str, str]]:
+    """Ask curated project-authoring questions, separately from local consent.
+
+    Interactively each is asked with Enter meaning "none"; noninteractively
+    an unflagged question records no recommendation — settled by the product
+    owner on 2026-08-24.  A command-line answer that contradicts what the
+    manifest already declares is a conflict, not an override: the manifest is
+    authored content, so changing it is a manifest edit, never a silent init
+    side effect.
+    """
+
+    recommendations: list[tuple[str, str]] = []
+    host = (existing_manifest or {}).get("host", {})
+    for name, (path, supported) in CURATED_HOST_RECOMMENDATIONS.items():
+        rendered = render_authorization_value(supported)
+        declared = _declared_recommendation(host, path)
+        existing_value = (
+            render_authorization_value(declared["value"])
+            if declared is not None and isinstance(declared.get("value"), (str, bool))
+            else None
+        )
+        if existing_manifest is not None and name not in authored:
+            # Existing repository content is read-only advice. Host carriers
+            # answer this checkout below. A justification explicitly requests
+            # recommendation authoring; otherwise no owner question is asked.
+            if declared is not None:
+                recommendations.append((name, str(declared.get("justification", ""))))
+            continue
+        answer = elicitor.seek(
+            name,
+            description=f"Recommend {name} = {rendered} for every checkout? ({rendered}/none)",
+            remedy=f"--authorize {name} {rendered}",
+            existing=existing_value,
+            empty_answer="none",
+            omitted_answer="none",
+            validate=_recommendation_validator(name, rendered),
+        )
+        if answer is None:
+            continue
+        if existing_value is not None and answer.value != existing_value:
+            raise ProjectConfigurationError(
+                f"The manifest already recommends {name} = {existing_value}; init never "
+                "rewrites an authored recommendation. Edit the manifest to change it."
+            )
+        if answer.value == "none":
+            continue
+        justification = elicitor.seek(
+            name,
+            facet="justification",
+            description=f"Justification recorded beside the {name} recommendation",
+            remedy=f'--authorize {name} {rendered} "JUSTIFICATION"',
+            existing=(
+                str(declared.get("justification"))
+                if declared is not None and declared.get("justification")
+                else None
+            ),
+        )
+        recommendations.append((name, justification.value if justification else ""))
+    return recommendations
+
+
+def _declared_recommendation(
+    host: Mapping[str, Any], path: tuple[str, ...]
+) -> Mapping[str, Any] | None:
+    node: object = host
+    for key in path:
+        if not isinstance(node, Mapping) or key not in node:
+            return None
+        node = node[key]
+    return node if isinstance(node, Mapping) else None
+
+
+def _recommendation_validator(name: str, rendered: str) -> Any:
+    def validate(value: str) -> str:
+        candidate = value.strip().lower()
+        if candidate == "default":
+            candidate = rendered
+        if rendered == "true" and candidate == "false":
+            candidate = "none"
+        if candidate not in {"none", rendered}:
+            raise ProjectConfigurationError(
+                f"Recommendation {name!r} accepts exactly {rendered!r} or 'none'."
+            )
+        return candidate
+
+    return validate
+
+
+def _elicit_acquisitions(
+    elicitor: Elicitor,
+    declarations: Mapping[str, Any],
+    record: CheckoutRecord,
+    *,
+    platform: str,
+    less_pedantic: bool = False,
+) -> _Authorizations:
+    """Elicit the owner's own executable and vendor-terms authorizations.
+
+    These have no safe omission — executing an artifact and accepting vendor
+    acquisition terms must be answered — so a noninteractive run without their
+    flags batch-fails rather than inferring authorization.  Interactively
+    each is asked with Enter meaning yes, because the owner just chose the
+    inputs that derived them.
+
+    The base-image answer additionally accepts an image reference — a
+    developer-owned base selection for this checkout (product-owner ruling
+    2026-09-03): the image is read from the local daemon, its identity and
+    metadata are presented, and consent is solicited; ``less_pedantic``
+    records the selection without the solicitation.
+    """
+
+    settled = _Authorizations()
+    base = declarations.get("base-image")
+    if base is None:
+        # A legacy image-reference lock has no formation base to authorize.
+        return _elicit_component_acquisitions(elicitor, declarations, record, settled)
+    reference = str(base.recommended_value)
+    existing_base = record.authorization.get("base-image")
+    # Consent binds to the image: the recommended digest, or a local image
+    # by ID, is an existing answer whatever the lock has done around it.
+    fresh = (
+        isinstance(existing_base, dict)
+        and isinstance(existing_base.get("reference"), str)
+        and (
+            existing_base.get("reference") == reference
+            or isinstance(existing_base.get("image-id"), str)
+        )
+    )
+    existing_answer = (
+        "default" if existing_base.get("reference") == reference else existing_base.get("reference")
+    ) if fresh and isinstance(existing_base, dict) else None
+    answer = elicitor.seek(
+        "base-image",
+        description=(
+            f"Authorize this checkout to execute {base.display_value or reference}? "
+            "(Enter accepts; 'no' declines; or name a locally built/pulled image)"
+        ),
+        remedy=f"--authorize base-image {reference}",
+        existing=existing_answer,
+        empty_answer="default",
+        validate=_base_answer_validator("base-image", reference),
+    )
+    if answer is not None:
+        if answer.source == SOURCE_EXISTING_RECORD:
+            settled.settle("base-image", answer.source)
+            return _elicit_component_acquisitions(elicitor, declarations, record, settled)
+        if answer.value == "no":
+            raise ProjectConfigurationError(
+                "Initialization needs the base authorization to reach a fresh resolution; "
+                "declined. Authorize later with 'devcapsule project config authorize "
+                f"base-image {reference}' and run 'devcapsule project config resolve'."
+            )
+        if answer.value != "default":
+            _record_base_selection(
+                elicitor,
+                record,
+                base,
+                selection=answer.value,
+                recommended=reference,
+                platform=platform,
+                less_pedantic=less_pedantic,
+            )
+            settled.settle("base-image", answer.source)
+            return _elicit_component_acquisitions(elicitor, declarations, record, settled)
+        record.authorize(base, reference)
+        settled.settle("base-image", answer.source)
+    return _elicit_component_acquisitions(elicitor, declarations, record, settled)
+
+
+def _elicit_component_acquisitions(
+    elicitor: Elicitor,
+    declarations: Mapping[str, Any],
+    record: CheckoutRecord,
+    settled: _Authorizations,
+) -> _Authorizations:
+    """Ask every component acquisition the lock's formation requires.
+
+    The declarations derive from the locked components' vendor contracts
+    (Claude Code, Antigravity CLI, …), one authorization node each; the
+    question wording and the persistence shape are uniform so a new curated
+    component never needs its own elicitation code.
+    """
+
+    for declaration in declarations.values():
+        if declaration.kind != "acquisition":
+            continue
+        existing = record.authorization.get(declaration.name)
+        fresh = (
+            isinstance(existing, dict)
+            and existing.get("recommendation-digest") == declaration.recommendation_digest
+        )
+        answer = elicitor.seek(
+            declaration.name,
+            description=f"{declaration.description} Authorize? (yes/no)",
+            remedy=f"--authorize {declaration.name} true",
+            existing=("yes" if existing.get("value") is True else "no")
+            if fresh and isinstance(existing, dict) else None,
+            empty_answer="yes",
+            validate=_acquisition_validator(declaration.name, "true"),
+        )
+        if answer is None:
+            continue
+        if answer.value == "no":
+            raise ProjectConfigurationError(
+                f"Initialization needs the {declaration.subject} acquisition answered; "
+                f"declined. Remove {declaration.capability!r} from capabilities.need or "
+                f"authorize with 'devcapsule project config authorize "
+                f"{declaration.name} true'."
+            )
+        record.authorize(declaration, True)
+        settled.settle(declaration.name, answer.source)
+    return settled
+
+
+def _acquisition_validator(name: str, accepted_value: str) -> Any:
+    # Boolean consent questions: yes/no is prompt vocabulary, the stored
+    # value is the accepted one; 'default' accepts the recommendation like
+    # everywhere else (owner ruling 2026-09-03).
+    def validate(value: str) -> str:
+        candidate = value.strip().lower()
+        if candidate in {"yes", "y", "default", accepted_value.lower()}:
+            return "yes"
+        if candidate in {"no", "n", "none"}:
+            # 'none' is the deny keyword; for a consent question denying is
+            # declining.
+            return "no"
+        raise ProjectConfigurationError(
+            f"Authorization {name!r} accepts yes, no, 'default', or the exact value "
+            f"{accepted_value!r}."
+        )
+
+    return validate
+
+
+def _looks_like_image_reference(value: str) -> bool:
+    """A candidate the daemon could plausibly resolve: a tag/digest reference
+    or a bare image ID — anything the developer might name a base by."""
+
+    if not value or any(character.isspace() for character in value):
+        return False
+    if re.fullmatch(r"(sha256:)?[0-9a-f]{12,64}", value):
+        return True
+    return "/" in value or ":" in value or "@" in value
+
+
+def _base_answer_validator(name: str, recommended: str) -> Any:
+    """Authorization values are values (owner ruling 2026-09-03): the exact
+    recommended digest, the reserved keyword ``default`` accepting it, or a
+    reference-shaped developer base selection.  ``no`` declines; ``yes`` is
+    not a value and was retired the same day it stopped making sense."""
+
+    def validate(value: str) -> str:
+        candidate = value.strip()
+        if candidate.lower() == "default" or candidate == recommended:
+            return "default"
+        if candidate.lower() == "none":
+            raise ProjectConfigurationError(
+                f"Authorization {name!r} is mandatory and has no deny state; 'none' "
+                "cannot apply. Accept the recommendation with 'default' (Enter) or "
+                "name a locally built/pulled image to select instead."
+            )
+        if candidate.lower() in {"no", "n"}:
+            return "no"
+        if _looks_like_image_reference(candidate):
+            return candidate
+        raise ProjectConfigurationError(
+            f"Authorization {name!r} takes a value: the base the resolution "
+            f"matrix selected from capabilities.need ({recommended}), accepted "
+            "as-is with the reserved keyword 'default' (interactively, Enter), "
+            "or a locally built or pulled image (tag or image ID) to run on "
+            "this checkout instead — DevCapsule reads its digest and metadata "
+            "and asks you to confirm the selection ('--less-pedantic' skips "
+            f"the confirmation). 'no' declines. {value!r} is neither a value "
+            "nor an image reference."
+        )
+
+    return validate
+
+
+def _record_base_selection(
+    elicitor: Elicitor,
+    record: CheckoutRecord,
+    declaration: Any,
+    *,
+    selection: str,
+    recommended: str,
+    platform: str,
+    less_pedantic: bool,
+) -> None:
+    """Record a developer-owned base selection with informed consent.
+
+    The selection must be daemon-local: trust binds to the inspected image
+    ID (D-0004 — never to a mutable tag), and init resolves offline, so a
+    reference the daemon cannot produce is refused with the pull remedy.
+    """
+
+    try:
+        immutable_registry_reference(selection)
+    except ProjectConfigurationError:
+        pass
+    else:
+        # D-0004: a different *published* digest needs its own
+        # project-reviewed metadata; only a daemon-local selection is exempt.
+        raise ProjectConfigurationError(
+            f"Published base {selection!r} is not the lock-recommended digest; "
+            "a different published artifact requires distinct project-reviewed "
+            "metadata. A locally built or pulled image (named by tag or image "
+            "ID) can be selected for this checkout instead."
+        )
+    local_base = required_local_image(selection)
+    validate_base_image(local_base, platform=platform, expected_identity=None)
+    if not less_pedantic:
+        base_labels = "\n".join(
+            f"  {key} = {value}"
+            for key, value in sorted(local_base.labels.items())
+            if key.startswith("devcapsule.")
+        )
+        presentation = (
+            f"The lock recommends base {recommended}.\n"
+            f"You selected local base {selection}:\n"
+            f"  Image ID: {local_base.identity}\n"
+            f"  Platform: {local_base.operating_system}/{local_base.architecture}\n"
+            + (f"{base_labels}\n" if base_labels else "")
+            + "This developer-owned selection overrides the recommendation for "
+            "this checkout only; trust binds to the image ID above.\n"
+            f"Authorize {selection}? (yes/no)"
+        )
+        consent = elicitor.seek(
+            "base-image",
+            facet="confirmation",
+            description=presentation,
+            remedy="--less-pedantic (records the reviewed selection without this confirmation)",
+            empty_answer="yes",
+            validate=_acquisition_validator("base-image (confirmation)", "yes"),
+        )
+        if consent is None:
+            return
+        if consent.value == "no":
+            raise ProjectConfigurationError(
+                f"Base selection {selection!r} declined; re-run with the "
+                "recommended base or a different selection."
+            )
+    record.authorize(declaration, selection, local_base.identity)
+
+
+def _elicit_host_answers(
+    elicitor: Elicitor, manifest: Mapping[str, Any], lock: Mapping[str, Any], record: CheckoutRecord,
+) -> tuple[str, ...]:
+    """Only developer answers enter the authorization table; advice never does."""
+    accepted: list[str] = []
+    for name, declaration in authorization_declarations(manifest, lock).items():
+        if declaration.required:
+            continue
+        answer = elicitor.seek(
+            name, description=declaration.description,
+            remedy=f"--authorize {name} VALUE", mandatory=False,
+        )
+        if answer is None or answer.source not in {SOURCE_COMMAND_LINE, SOURCE_PROMPT}:
+            continue
+        value = normalize_authorization_value(declaration, answer.value)
+        if declaration.project_recommended and value == declaration.recommended_value:
+            accepted.append(name)
+        record.authorize(declaration, value)
+
+    return tuple(accepted)
+
+
+def _elicit_extra_answers(
+    elicitor: Elicitor, answers: tuple[ProvidedAnswer, ...], manifest: Mapping[str, Any],
+    lock: Mapping[str, Any], record: CheckoutRecord,
+) -> None:
+    """Use the registry for every ordinary/binding question, including required ones.
+
+    Identity fields and configuration nodes can share a spelling; they must
+    never share an answer cache. Every supplied name was checked against the
+    registry by :func:`_reject_undeclared_answers` before the first question.
+    """
+    registry = build_node_registry(manifest, lock)
+    supplied = {(answer.name, "value"): answer.value for answer in answers
+                if answer.family in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND)}
+    questions = elicitor.child(supplied)
+    for family in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND):
+        for node in registry.family(family):
+            existing = None
+            if family == CARRIER_FAMILY_SET:
+                if node.name in record.values and (node.name, "value") not in supplied:
+                    value = normalize_configuration_value(manifest, node.name, record.values[node.name])
+                    existing = value if isinstance(value, str) else render_toml_scalar(value)
+                elif node.name in record.omitted_values:
+                    existing = "none"
+            else:
+                for provider, bindings in ((PROVIDER_HOST_DIRECTORY, record.directory_bindings),
+                                            ("host-environment", record.environment_bindings)):
+                    if node.name in bindings:
+                        existing = f"{provider}:{bindings[node.name]}"
+            def validate(value: str, name: str = node.name, kind: str = family) -> str:
+                # Stage on a copy: rejected prompt attempts cannot partially
+                # edit the real record or consume an earlier valid answer.
+                candidate = deepcopy(record)
+                apply_configuration_answers((ProvidedAnswer(kind, name, value),), manifest, lock, candidate)
+                return value
+            answer = questions.seek(
+                node.name, description=f"{node.name}: {node.description or 'configuration value'}",
+                remedy=f"--{family} {node.name} VALUE", mandatory=node.required,
+                existing=existing, validate=validate,
+            )
+            if answer is not None:
+                apply_configuration_answers((ProvidedAnswer(family, node.name, answer.value),), manifest, lock, record)
+                if family == CARRIER_FAMILY_BIND and answer.source != SOURCE_EXISTING_RECORD:
+                    provider, value = registry.split_bind_value(node.name, answer.value)
+                    if provider == PROVIDER_HOST_DIRECTORY:
+                        print(f"WARNING: exposing host directory read-write for {node.name}: {value} -> "
+                              f"{node.declaration.container_path}; sensitivity: {node.declaration.sensitivity}; "
+                              f"concurrent sharing: {node.declaration.concurrent}.", file=sys.stderr)
+                    else:
+                        print(f"WARNING: {value} will be visible to capsule processes and Docker inspection.",
+                              file=sys.stderr)
+    elicitor.include_missing(questions)
+    if not questions.missing():
+        questions.finish()
+
+
+def apply_configuration_answers(
+    answers: tuple[ProvidedAnswer, ...],
+    manifest: Mapping[str, Any],
+    lock: Mapping[str, Any],
+    record: CheckoutRecord,
+) -> None:
+    """Stage set/bind answers using the same rules for init and individual edits."""
+
+    registry = build_node_registry(manifest, lock)
+    for answer in answers:
+        if answer.family not in (CARRIER_FAMILY_SET, CARRIER_FAMILY_BIND):
+            raise ProjectConfigurationError(f"Use the authorization operation for {answer.name!r}.")
+        registry.answerable(answer.name, answer.family)
+        if answer.family == CARRIER_FAMILY_SET:
+            if answer.value.strip().lower() == "none":
+                # The explicit-absence answer (owner ruling 2026-09-03): a
+                # recorded decision to keep the node out of the runtime
+                # config. A mandatory node has no absent state to choose.
+                if registry.node(answer.name).required:
+                    raise ProjectConfigurationError(
+                        f"Configuration value {answer.name!r} is mandatory and cannot "
+                        "be 'none'; record a value instead."
+                    )
+                record.omit_value(answer.name)
+            else:
+                record.set_value(
+                    answer.name,
+                    normalize_configuration_value(manifest, answer.name, answer.value),
+                )
+        elif answer.family == CARRIER_FAMILY_BIND:
+            provider, value = registry.split_bind_value(answer.name, answer.value)
+            if answer.name in record.state:
+                raise ProjectConfigurationError(f"State resource {answer.name!r} was already adopted.")
+            if provider == PROVIDER_HOST_DIRECTORY:
+                source = Path(value).expanduser().resolve()
+                if not source.is_dir():
+                    raise ProjectConfigurationError(
+                        f"Binding source is not an existing directory: {source}"
+                    )
+                record.directory_bindings[answer.name] = str(source)
+            else:
+                declaration = registry.node(answer.name).declaration
+                if value != declaration.environment_variable:
+                    raise ProjectConfigurationError(
+                        f"Secret input {answer.name!r} must use host environment variable "
+                        f"{declaration.environment_variable!r}."
+                    )
+                record.environment_bindings[answer.name] = value
+
+
+def add_capability_need(
+    root: Path,
+    names: Sequence[str],
+    answers: tuple[ProvidedAnswer, ...] = (),
+    *,
+    allow_unverified: bool = False,
+) -> NeedReport:
+    """Grow the project's capability need; everything downstream re-derives.
+
+    The manifest gains the new names in its authored ``need`` line (a
+    surgical textual edit — authored content is never rewritten from its
+    parsed form), then the regenerate path rebuilds the lock from the
+    current matrix, elicits any acquisition gates the new components bring
+    (``--authorize`` carriers answer them noninteractively), and refreshes
+    the resolution — so ``project run`` works immediately afterward.
+    Adding an already-needed capability converges to the same state.
+    """
+
+    resolved_root = root.expanduser().resolve()
+    manifest_path = resolved_root / ".devcapsule" / "devcapsule.toml"
+    if not manifest_path.is_file():
+        raise ProjectConfigurationError(
+            f"{resolved_root} carries no project manifest; run 'devcapsule project init' first."
+        )
+    manifest = load_toml(manifest_path)
+    validate_manifest(manifest, manifest_path)
+    if any(key in manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
+        raise ProjectConfigurationError("Use 'project config capabilities --required ...' to replace required capabilities; --optional and --local select the other scopes.")
+    matrix = _current_matrix()
+    current = matrix.normalize(manifest.get("capabilities", {}).get("need", []))
+    requested = matrix.normalize([*current, *names])
+    if requested != current:
+        # Pre-flight the grown need before touching authored content: an
+        # unresolvable set (a second surface, no verified combination) must
+        # leave the manifest exactly as it was. The experiment lever is the
+        # same one init offers, so the refusal's remedy is reachable here.
+        matrix.resolve(requested, allow_unverified=allow_unverified)
+        _rewrite_manifest_need(manifest_path, requested)
+    lock_path = resolved_root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock"
+    lock_before = lock_path.read_bytes() if lock_path.is_file() else None
+    report = initialize_project(
+        InitializeRequest(
+            directory=resolved_root,
+            answers=answers,
+            regenerate=True,
+            allow_unverified=allow_unverified,
+        )
+    )
+    # The init report describes an initialization; this verb changed a need,
+    # and its report says exactly what that did and did not change.
+    return NeedReport(
+        manifest_path=manifest_path,
+        previous_need=current,
+        need=requested,
+        lock_path=report.lock_path,
+        lock_changed=report.lock_path.read_bytes() != lock_before,
+        base_display=report.base_display,
+        answered=report.answered,
+        carried=report.carried,
+        recommended=report.recommended,
+        checkout_record=report.checkout_record,
+        resolve=report.resolve,
+    )
+
+
+def _rewrite_manifest_need(manifest_path: Path, need: tuple[str, ...]) -> None:
+    """Replace the single authored ``need = […]`` line under ``[capabilities]``."""
+
+    text = manifest_path.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+    in_capabilities = False
+    replaced = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_capabilities = stripped == "[capabilities]"
+            continue
+        if in_capabilities and re.match(r"need\s*=\s*\[.*\]\s*$", stripped):
+            newline = "\n" if line.endswith("\n") else ""
+            lines[index] = (
+                "need = [" + ", ".join(quote_toml(name) for name in need) + "]" + newline
+            )
+            replaced = True
+            break
+    if not replaced:
+        raise ProjectConfigurationError(
+            f"{manifest_path} has no single-line 'need = [...]' under [capabilities]; "
+            "use 'devcapsule project config capabilities --required ...' to edit it through the supported writer."
+        )
+    atomic_write(manifest_path, "".join(lines), mode=0o644)
+
+
+def _fully_initialized(root: Path, manifest: Mapping[str, Any]) -> bool:
+    """Whether all four owned artifacts stand with a fresh resolution.
+
+    Partial and stale states stay init's own repair job; only this state
+    makes a plain re-init meaningless.
+    """
+
+    _path, lock = lock_for(root, manifest)
+    input_path, output_path = checkout_record_paths(manifest, root)
+    if not input_path.is_file() or not output_path.is_file():
+        return False
+    checkout = load_checkout(input_path, manifest, root)
+    resolution = load_resolution(output_path)
+    if resolution.get("status") == "unresolved":
+        return False
+    if stale_resolution_inputs(manifest, lock, checkout, resolution):
+        return False
+    return True
+
+
+def _apply_answers_to_standing_checkout(
+    root: Path,
+    manifest_path: Path,
+    lock_path: Path,
+    platform: Platform,
+    request: InitializeRequest,
+) -> InitializeReport:
+    """Apply a repeated init's carried answers to the standing checkout.
+
+    Init stays non-idempotent over authored artifacts — identity flags on a
+    standing manifest are not re-authored here — but the invocation's
+    authorization, set, and bind answers are applied exactly as the config
+    family would apply them, and the resolution is refreshed so 'project
+    run' works immediately afterward.
+    """
+
+    manifest = load_toml(manifest_path)
+    validate_manifest(manifest, manifest_path)
+    _, lock = lock_for(root, manifest)
+    _reject_undeclared_answers(request.answers, manifest, lock, authoring=frozenset())
+    declarations = authorization_declarations(manifest, lock)
+    record = CheckoutRecord(manifest, root)
+    authorize_answers = {
+        (answer.name, "value"): answer.value
+        for answer in request.answers
+        if answer.family == "authorize"
+    }
+    elicitor = Elicitor(authorize_answers, interactive=False)
+    settled = _elicit_acquisitions(
+        elicitor,
+        declarations,
+        record,
+        platform=str(platform),
+        less_pedantic=request.less_pedantic,
+    )
+    _elicit_host_answers(elicitor, manifest, lock, record)
+    _elicit_extra_answers(elicitor, request.answers, manifest, lock, record)
+    elicitor.finish()
+    record.write()
+    resolve_report = resolve_checkout(root)
+
+    project = manifest["project"]
+    base_declaration = declarations.get("base-image")
+    if base_declaration is not None:
+        base_display = base_declaration.display_value or str(
+            base_declaration.recommended_value
+        )
+    else:
+        base_display = str(lock.get("image", {}).get("reference", "image lock"))
+    return InitializeReport(
+        manifest_path=manifest_path,
+        manifest_action="Kept",
+        project_name=str(project["name"]),
+        creator=str(project["creator"]),
+        slug=str(project["slug"]),
+        project_mount=str(project["mount"]),
+        capabilities=MATRICES[platform].normalize(
+            manifest.get("capabilities", {}).get("need", [])
+        ),
+        lock_path=lock_path,
+        lock_action="Kept",
+        base_display=base_display,
+        recommendations=(),
+        answered=tuple(settled.answered),
+        carried=tuple(settled.carried),
+        recommended=(),
+        checkout_record=record.input_path,
+        resolve=resolve_report,
+    )
+
+
+def _normalize_creator(value: str) -> str:
+    candidate = value.strip()
+    if not candidate:
+        raise ProjectConfigurationError("The project creator must not be empty.")
+    return candidate if ":" in candidate else f"mailto:{candidate}"
+
+
+def _normalize_need_string(value: str) -> str:
+    names = [item for item in value.replace(",", " ").split() if item]
+    return " ".join(_current_matrix().normalize(names))
+
+
+def _write_manifest(
+    manifest_path: Path,
+    existing_manifest: Mapping[str, Any] | None,
+    identity: _ProjectIdentity,
+    recommendations: list[tuple[str, str]],
+) -> str:
+    """Author a fresh manifest, or append only what an existing one lacks.
+
+    An existing manifest is authored content: it is never rewritten from its
+    parsed form, which would destroy comments and fields init does not model.
+    """
+
+    if existing_manifest is None:
+        lines = [
+            "devcapsule-schema-version = 1",
+            "",
+            "[capabilities]",
+            "need = [" + ", ".join(quote_toml(name) for name in identity.capabilities) + "]",
+            "",
+            "[project]",
+            f"name = {quote_toml(identity.name)}",
+            f"slug = {quote_toml(identity.slug)}",
+            f"creator = {quote_toml(identity.creator)}",
+            f"mount = {quote_toml(identity.mount)}",
+        ]
+        for name, justification in recommendations:
+            lines.extend(_recommendation_block(name, justification))
+        manifest_path.parent.mkdir(mode=0o755, exist_ok=True)
+        atomic_write(manifest_path, "\n".join(lines) + "\n", mode=0o644)
+        return "Created"
+
+    host = existing_manifest.get("host", {})
+    appended = False
+    content = manifest_path.read_text(encoding="utf-8")
+    for name, justification in recommendations:
+        path = CURATED_HOST_RECOMMENDATIONS[name][0]
+        if _declared_recommendation(host if isinstance(host, Mapping) else {}, path) is not None:
+            continue
+        content = content.rstrip("\n") + "\n" + "\n".join(
+            _recommendation_block(name, justification)
+        ) + "\n"
+        appended = True
+    if appended:
+        atomic_write(manifest_path, content, mode=0o644)
+        return "Updated"
+    return "Honored existing"
+
+
+def _recommendation_block(name: str, justification: str) -> list[str]:
+    path, supported = CURATED_HOST_RECOMMENDATIONS[name]
+    value: AuthorizationScalar = supported
+    return [
+        "",
+        f"[host.{'.'.join(path)}]",
+        f"value = {render_toml_scalar(value)}",
+        f"justification = {quote_toml(justification)}",
+    ]

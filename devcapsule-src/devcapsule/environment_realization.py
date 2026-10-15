@@ -10,9 +10,8 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
-from devcapsule.components.claude_code import CLAUDE_CODE_AUTHORIZATION
-from devcapsule.image_build import BuildxImageBuilder, ImageBuildSpec
-from devcapsule.image_metadata import inspect_local_image
+from devcapsule.images.build import BuildxImageBuilder, ImageBuildSpec
+from devcapsule.images.metadata import inspect_local_image
 from devcapsule.materialization import (
     ImageDetails,
     LockedEnvironment,
@@ -21,12 +20,15 @@ from devcapsule.materialization import (
     parse_locked_environment,
     validate_base_image,
 )
-from devcapsule.project_configuration import (
+from devcapsule.configuration.storage import (
     ResolvedProject,
+)
+from devcapsule.configuration.authorization import (
     authorized_base_selection,
-    resolved_checkout_authorizations,
+    review_authorizations,
 )
 from devcapsule.runtime_artifact import runtime_artifact
+from devcapsule.runtime_command import RuntimeCommand
 
 
 @dataclass(frozen=True)
@@ -59,21 +61,23 @@ def realize_environment(
     build: ImageBuild | None = None,
     materialize: Materialize | None = None,
     report: Callable[[str], None] | None = None,
+    prepare_base: Callable[[ImageDetails], None] | None = None,
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
+    if base_override is not None and selected.manifest.get("capabilities", {}).get("sdk-major"):
+        if base_override != selected.lock.get("base", {}).get("reference"):
+            raise CliError("A base override cannot establish the project's SDK-major guarantee; use its pinned compatible base.")
     locked = parse_locked_environment(selected.lock)
-    if any(item.component_id == "claude-code" for item in locked.ancillary_artifacts):
-        authorizations = resolved_checkout_authorizations(
-            selected.manifest, selected.lock, selected.checkout
-        )
-        if authorizations.get(CLAUDE_CODE_AUTHORIZATION) is not True:
-            raise CliError(
-                "Claude Code is selected for direct, local acquisition but this checkout has not "
-                "authorized the download. Review Anthropic's terms and run "
-                f"'devcapsule project config authorize {CLAUDE_CODE_AUTHORIZATION} true', then "
-                "resolve the checkout again."
-            )
+    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout)
+    problems = [
+        item for item in reviews if item.problem is not None
+        and not (item.name == "base-image" and base_override is not None)
+    ]
+    if problems:
+        raise CliError("Configuration needs authorization decisions:\n" + "\n".join(
+            item.render(selected.root) for item in problems
+        ))
     runtime = selected.resolution.get("runtime", {})
     if not isinstance(runtime, dict) or runtime.get("component") != locked.component_id:
         component = runtime.get("component") if isinstance(runtime, dict) else None
@@ -112,10 +116,21 @@ def realize_environment(
         platform=locked.platform,
         expected_identity=expected_base_identity,
     )
+    if report is not None and local_authorization:
+        report(
+            f"Base selection: local override {base_reference} ({base.identity}); "
+            f"the project recommends {locked.base_reference}."
+        )
+    # Display capability is a property of the verified base. Explain and
+    # validate it before any component acquisition or environment build.
+    if prepare_base is not None:
+        prepare_base(base)
 
     selected_cache = (root or cache_root()).expanduser().resolve()
     if build is None:
-        builder = BuildxImageBuilder(temporary_root=selected_cache / "build-contexts")
+        # One context root for every build: BuildKit's incremental transfer of
+        # the IDE trees is keyed on this path, see BuildxImageBuilder.
+        builder = BuildxImageBuilder(context_root=selected_cache / "build-contexts" / "context")
         build = lambda spec: builder.build(spec, network="none")
     materialize_environment = materialize or ensure_materialized_surface
     # Explanation/reporting hooks ride only the real materializer; injected
@@ -125,6 +140,7 @@ def realize_environment(
         if materialize is not None
         else {
             "runtime_pex": runtime_artifact(),
+            "runtime_command": RuntimeCommand(runtime.get("devcapsule-command", RuntimeCommand.STANDARD)),
             "report": report,
             "list_formations": lambda: component_formations(locked.component_id),
         }
@@ -209,3 +225,39 @@ def component_formations(component_id: str) -> tuple[ImageDetails, ...]:
             if tag.startswith(f"{repository}:"):
                 details.append(image_details(tag, image))
     return tuple(details)
+
+
+def omit_unavailable_optional(selected: ResolvedProject, url: str) -> ResolvedProject | None:
+    """Derive a smaller run after a download failure, preserving mandatory closure.
+
+    No file changes and no integrity exception is caught. Returning None means
+    the failed artifact is mandatory (including developer-selected tools).
+    """
+    from copy import deepcopy
+    from dataclasses import replace
+    from devcapsule.components.catalog import COMPONENTS
+    from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+    from devcapsule.configuration.capability_selection import matrix_for, usable_lock
+    from devcapsule.configuration.model import Configuration
+    policy = CapabilityPolicy.read(selected.manifest)
+    if not policy.optional:
+        return None
+    matrix = matrix_for(selected.lock)
+    local = LocalCapabilities.read(selected.checkout)
+    failed = {name for name, metadata in selected.lock["components"].items()
+              if isinstance(metadata, dict) and name in COMPONENTS
+              and any(artifact.url == url for artifact in COMPONENTS[name].locked_artifacts(metadata, str(selected.lock["platform"])))}
+    mandatory = {component for capability in (*policy.required, *local.selected) for component in matrix.providers(capability)}
+    if not failed or failed & mandatory:
+        return None
+    omitted = {capability for capability in policy.optional if capability in matrix.capabilities()
+               and failed & set(matrix.providers(capability))}
+    if not omitted:
+        return None
+    choice = LocalCapabilities(local.selected, tuple(sorted(set(local.without) | omitted)))
+    lock, _ = usable_lock(policy, selected.lock, choice)
+    checkout = deepcopy(selected.checkout)
+    checkout.setdefault("capabilities", {})["without"] = list(choice.without)
+    configuration = Configuration(selected.manifest, lock, checkout)
+    configuration.review().require_ready(selected.root)
+    return replace(selected, lock=lock, checkout=checkout, resolution=configuration.resolve().document())

@@ -1,0 +1,1 @@
+{"available":true,"sampled-at":"2026-10-09T18:15:12+00:00","interval-seconds":0.251,"cpu":{"usage-seconds":7.363,"percent":29.5,"limit-cpus":null,"available-cpus":16.0},"memory":{"current-bytes":830861312,"limit-bytes":null,"anon-bytes":597778432,"file-bytes":201740288,"percent":null},"pids":{"current":186,"max":4096}}

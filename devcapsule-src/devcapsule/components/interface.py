@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
+from devcapsule.components.channels import DiscoveryChannel, DistributionChannel
 
 
 @dataclass(frozen=True)
@@ -33,16 +34,16 @@ class StateSeedDeclaration:
     """A default file a component wants present in one of its state slots.
 
     The slot is developer-owned, checkout-scoped state, so the host launcher
-    writes the seed as the invoking user and only when the file is absent:
-    a seed is a starting point the developer may edit or delete, never a
-    setting the component re-imposes.  Adopted directories (``project state
-    adopt``) are the developer's own and are never seeded.
+    writes the seed as the invoking user when the file is absent. Opt-in JSON
+    defaults also fill missing keys in an existing object, preserving explicit
+    values. Adopted directories (``project state adopt``) are never seeded.
     """
 
     slot: str
     relative_path: str
     content: str
     description: str
+    merge_missing_json: bool = False
 
 
 @dataclass(frozen=True)
@@ -68,8 +69,17 @@ class LockedArtifactDeclaration:
     ``artifact_format`` says how the verified download becomes image content:
 
     - ``file``: the download is the executable; it is copied to ``destination``.
+    - ``deb-package``: a checksummed native distribution package, installed by
+      dpkg in the final image with network disabled, including maintainer scripts.
+      All missing base dependencies must be separately pinned in the same lock.
     - ``tar-gz-member``: exactly one regular file, ``archive_member``, is
       extracted from the tarball and copied to ``destination``.
+    - ``python-wheel``: verified wheels sharing a destination install offline
+      into its ``venv/``, with the original wheels retained in ``wheels/``.
+    - ``tar-gz-directory``: bounded regular files and directories from a tar.gz,
+      preserving executable permissions without stripping a top-level directory.
+    - ``zip-directory``: bounded, regular-file-only extraction copied to the
+      destination directory, preserving executable permissions.
     - ``npm-package``: the download is an npm tarball, installed with npm's
       own layout into the ``destination`` directory under the dependency
       name ``npm_package``.  Every ``npm-package`` artifact sharing a
@@ -103,6 +113,26 @@ class ComponentDefinition(ABC):
     @abstractmethod
     def capability(self) -> str:
         """Project-facing capability implemented by this component."""
+
+    def distribution_channel(self) -> DistributionChannel | None:
+        """Optional discovery/selection adapter; omission never breaks old locks."""
+        return None
+
+    def discovery_channel(self) -> DiscoveryChannel | None:
+        """Availability can be checked before installation is implemented."""
+        return self.distribution_channel()
+
+    def discovery_adapter_id(self) -> str:
+        """Bump when the shipped discovery contract changes, even within a release."""
+        return self.id + "-v1"
+
+    def channel_omission_reason(self) -> str | None:
+        """Contributors must document why updates cannot be checked."""
+        return None
+
+    def required_components(self) -> tuple[str, ...]:
+        """Other catalog components required for this component to function."""
+        return ()
 
     def acquisition(self) -> AcquisitionContract | None:
         """The vendor acquisition this component requires, if any.

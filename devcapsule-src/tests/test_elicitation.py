@@ -15,7 +15,9 @@ from devcapsule.elicitation import (
     ElicitationIncomplete,
     Elicitor,
 )
-from devcapsule.project_configuration import ProjectConfigurationError
+from devcapsule.configuration.file_formats import (
+    ProjectConfigurationError,
+)
 
 
 def _validator(value: str) -> str:

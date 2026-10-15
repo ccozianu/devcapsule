@@ -1,6 +1,6 @@
 ---
 definition: devcapsule
-version: 0.2.14.dev0
+version: 0.2.16.dev0
 ---
 
 # Human / Agent Iteration Workflow
@@ -8,6 +8,11 @@ version: 0.2.14.dev0
 This project treats markdown files in the repository as the durable memory for
 human/agent work. Conversation is useful for speed, but project state must
 survive model changes, IDE restarts, and future sessions.
+
+Two files beside this one are marked *for humans*: [`PREAMBLE.md`](PREAMBLE.md),
+why this workflow is opinionated and for whom, and
+[`INFORMATION-MODEL.md`](INFORMATION-MODEL.md), the kinds of thing it stores
+and how they relate. They explain; this file rules.
 
 ## Purpose And Principles
 
@@ -92,7 +97,8 @@ Three tiebreaks, in order:
 
 ### How To Read This Document
 
-Humans: the *Glossary* names everything in plain words; the *Multiple-Stream
+Humans: `PREAMBLE.md` says why the workflow is what it is, and
+`INFORMATION-MODEL.md` draws what it stores; read those first. Here, the *Glossary* names everything in plain words; the *Multiple-Stream
 Workflow* and *Markdown Roles* sections carry the structure; the rest is
 detail you can consult when it becomes relevant. Explanation and examples
 written for people live in the project's user documentation, which explains
@@ -102,6 +108,12 @@ Agents: read the whole applicable path before acting, treat the numbered
 restrictions and procedures as binding, and treat prose as the reasoning that
 explains them. Where a rule and this preamble appear to disagree, the rule
 governs and the disagreement is a defect worth reporting.
+
+**The *for humans* marker.** A file or section that opens with *For humans*
+carries explanation, not rules. An agent skips it in ordinary work. It
+returns to the preamble when it must decide something the rules do not
+settle, alone or together with the human, and to the model when the
+question is what kind a thing is.
 
 ### Vocabulary
 
@@ -177,14 +189,18 @@ remain understood as synonyms for one release and are then retired.
   workstream. Not every branch: refs the workflow does not name are the
   project's.
 - **Coordination branch**: `coordination`, the shared branch on the remote
-  that carries mail, never merged into `main`, append-only. Not a workstream
-  branch and not a place for work.
+  that carries mail and published state, never merged into `main`, never
+  reset. Not a workstream branch and not a place for work.
 - **Mail**: an intake item in flight, as a file under `mail/<recipient>/` on
   the coordination branch. Not an intake item yet: it becomes one when the
   recipient takes it.
-- **Outbox**: the reserved workstream branch `ws-<name>/outbox`, a mechanism
-  carrying only a workstream's records to `main` ahead of its own
-  integration. Not mail, which travels the coordination branch.
+- **Claim**: a workstream's `state/<name>/claim` on the coordination branch,
+  saying who is working on it, on which branch, on what, until when. It
+  informs; it never refuses. Not a lock.
+- **Published state**: the live copy of a workstream's status file and
+  decision log under `state/<name>/` on the coordination branch, pushed by
+  the workstream from its working branch. The truth while the workstream is
+  open; the copies on `main` are the record as of its last integration.
 - **Release branch**: `release-<version>`, with candidate tags
   `v<version>-rc<n>` and the final tag `v<version>`. Not a workstream branch,
   even while a workstream drives the release.
@@ -211,8 +227,12 @@ remain understood as synonyms for one release and are then retired.
   is the project's status file. Not the workstream list, and not a bug's
   status. The older name was "handoff".
 - **Open-work directory**: `engineering-docs/wip/<start-date>-<name>/`,
-  holding a workstream's status file, intake, decision log, and temporary
-  documents. The directory keeps its short name `wip`.
+  holding a workstream's status file, intake, decision log, and dated
+  documents by kind; see *The Open-Work Directory*. The directory keeps its
+  short name `wip`.
+- **Record**: a dated document under the open-work directory holding history
+  shed from the status file, a checkpoint, or a custody account. Read for
+  retrospection, never required for work.
 - **Archive**: `engineering-docs/archive/<start-date>-<name>/`, where an ended
   workstream's directory moves unchanged.
 - **Intake**: a workstream's `intake/` directory on its working branch, the
@@ -228,7 +248,9 @@ remain understood as synonyms for one release and are then retired.
 - **Deliverable**: what a workstream exists to produce; travels its working
   branch and is reviewed as a whole. Not a record.
 - **Records**: the files that describe a workstream while it runs: its status
-  file, decision log, list row, and intake. Travel the outbox, at any time.
+  file, decision log, list row, and intake. Edited on the working branch,
+  published live to the coordination branch, and carried to `main` inside
+  the deliverable's own integration; never merged for their own sake.
 
 **Work and its units.**
 
@@ -252,6 +274,15 @@ remain understood as synonyms for one release and are then retired.
 - **Bug record**: a file under `engineering-docs/bugs/` with controlled
   `status`, `severity`, `target`, and `owner` fields. Routed by `owner`, never
   by intake.
+- **Backlog entry**: a wanted capability or improvement that is not yet a
+  requirement, with a priority, in a living list named for what it is under
+  `project-management`'s open-work directory. The everyday word is
+  "feature". Not a bug record; see *Bug Or Feature* in
+  `INFORMATION-MODEL.md`.
+- **Work order**: a scoped hand-over of requirements, decisions and backlog
+  entries to a workstream, with finish criteria, under
+  `engineering-docs/work-orders/`. An optional kind; delivered by mail like
+  any item. Not a requirement, and not the workstream's status file.
 - **Priority**: for requirements and backlog items, one of `gating`, the next
   release does not ship without it; `wanted`, high value, the release ships
   without it; `optional`, taken if cheap; `later`, not for this release. Not
@@ -259,6 +290,34 @@ remain understood as synonyms for one release and are then retired.
 - **Exception**: a recorded departure from a rule, with its reason and the
   condition that ends it, in the local workflow file or in the record it
   concerns. Not silence: a rule that does not exist needs no exception.
+**Validation.** The kinds of check a project may have, named the same way in
+every ecosystem; the local workflow file's *Validation commands* says which
+ones this project has and how each runs.
+
+- **Environment**: what must exist on the machine before any check runs,
+  the interpreter, the build tool, the dependencies, and how to obtain it.
+  Declared first, because every other kind assumes it.
+- **Unit test**: exercises code in one process with no network, no
+  subprocess and no external service; runs wherever the environment exists,
+  in seconds to minutes. Always in the gate.
+- **Integration test**: crosses a packaging or process boundary, a built
+  artifact, a subprocess, an external tool, a local service the project can
+  start itself, and still runs on any developer machine. In the gate when it
+  does.
+- **End-to-end test**: exercises the delivered software the way a user
+  would, with real infrastructure: containers, browsers, services. Opt-in or
+  run on a candidate; its evidence is kept.
+- **Smoke test**: the smallest end-to-end check that the software starts and
+  answers; what "it runs" means for the project. Run on every candidate and
+  after every deployment.
+- **Gate**: the fixed set of checks a pair runs before a checkpoint and
+  before integration; passes or fails as a whole. Not the candidate gate.
+- **Candidate gate**: the checks a release candidate must pass before
+  acceptance, with the acceptance evidence the release record keeps.
+- **Acceptance evidence**: the recorded proof, from a downloaded or deployed
+  candidate, that it does what the release claims; kept in the release
+  record, never inferred from the gate.
+
 - **Judgment where this document is silent**: the standing permission to
   resolve an uncovered situation and keep working, with the obligation to
   record what was done. The older name was "latitude".
@@ -276,6 +335,48 @@ One entry per DevCapsule release that changed a rule, newest first, each with
 the step a project takes to adopt it where one exists. The `version` in this
 file's frontmatter names the release this text ships in; see *Workflow
 Declaration* for what that version means and who keeps it correct.
+
+#### Unreleased
+
+Entered on the working branch; the release that ships it stamps this entry
+with its version. Rules changed since 0.2.14:
+
+- **Two files for humans.** `PREAMBLE.md`, why the workflow is opinionated
+  and for whom, and `INFORMATION-MODEL.md` are installed and refreshed beside
+  this file and marked *for humans*: explanation, not rules, which an agent
+  skips in ordinary work; *How To Read This Document* says when it returns.
+  The model is published as work in progress and says so. No migration.
+- **Information model.** `INFORMATION-MODEL.md`, installed beside this
+  file, names every kind of thing the workflow stores, its home, its controlled fields, what it may point at,
+  and how a thing moves between kinds; *Bug Or Feature* is the test by
+  field, and the *Glossary* gains **backlog entry** and **work order**.
+  Migration: a bug record that violates no requirement and no promised
+  behavior is retired with that reason and reopened as a backlog entry at
+  the next triage; nothing else changes shape.
+- **Validation commands are required, and the brief prints them.** *The
+  Project's Local Workflow* makes the local file's *Validation commands*
+  section required: the environment and the commands, runnable as written;
+  *Agent Reporting Contract* forbids reporting a check as not runnable
+  without having followed it; `workflow brief` prints the section at
+  session start. Migration: a local file whose section only points
+  elsewhere states the environment inline.
+- **Validation vocabulary and the checkpoint that keeps it true.** The
+  *Glossary* names the validation kinds, environment, unit, integration,
+  end-to-end, smoke, gate, candidate gate, acceptance evidence, the same in
+  every ecosystem; `INFORMATION-MODEL.md` says they are declared in the local
+  file's *Validation commands*, `none` allowed with a reason; *Checkpoint
+  Triggers* gains the change of how the software is built, tested, started
+  or smoke-tested; the local file template carries the structure and the
+  obligation. Migration: a project fills the kinds it has at its next
+  checkpoint.
+- **Integration is a merge commit.** *Development And Checkpoints*: one
+  merge commit per reviewed deliverable, never fast-forward, never squash;
+  `main` is read by first parent; pushed history is never rewritten.
+  *Successful Completion* follows in both delivery paths, and *Staying
+  Current With `main`* no longer assumes a configurable strategy. A project
+  that prefers squash records the exception in its local file with the
+  consequence for cited commits. Migration: set the hosting platform's merge
+  method to merge commits; nothing already on `main` changes.
 
 #### 0.2.14
 
@@ -303,21 +404,45 @@ There is no 0.2.13. Rules changed since 0.2.12:
   `ws-<name>/<sub>`, and the workflow claims no other ref. No migration
   is required: a workstream branch under an older name stays that
   workstream's through its workstream-list row. A project that chooses to rename
-  does so one workstream at a time, each through its own outbox, and may
+  does so one workstream at a time, each on its own working branch, and may
   record its schedule under *Exceptions* in `WORKFLOW-LOCAL.md`.
 - **The workflow declaration.** *Workflow Declaration*: the `[workflow]`
   table names the definition, its version, and the mode; the frontmatter of
   this file carries the same version. Migration: add the table; a definition
   refresh writes it.
-- **Mail moves off `main`.** *The Coordination Branch*: intake items travel
-  one shared, append-only `coordination` branch on the remote, sent and
-  taken with `devcapsule workflow mail`, and are decided on the recipient's
-  working branch. The outbox carries records only and is stated to be a
-  mechanism rather than a part of the model; its reset step is guarded.
-  Migration: an outbox send already in flight completes as it is; an item
-  still sitting on an outbox afterwards is sent again by mail; items already
-  in an intake on `main` are decided on the working branch and disappear
-  from `main` when that branch integrates.
+- **The open-work directory has a fixed shape.** *The Open-Work Directory*:
+  a bounded status file that sheds history into dated records, dated
+  documents by kind, and an index that says when to open each. No
+  migration: existing documents keep their names; new ones follow the form.
+- **A misplaced change travels as a patch.** *Publishing Before
+  Integration*: work found to belong to another workstream is sent to it as
+  a diff in an ordinary intake item and reverted from the sender's checkout,
+  never committed on the wrong branch; the recipient owns application and
+  integration. No migration.
+- **Claims and the brief.** *The Coordination Branch*: `workflow claim`
+  says who is on what, shown live and expiring, never refusing; `workflow
+  brief` prints the session's context in one command; `status` shows when
+  each workstream last published. *Resuming* ends with a claim and
+  *Pausing* with its release. No migration.
+- **The session-start synchronization judgment.** *Resuming* step 2 and
+  *Staying Current With `main`*: the agent proposes whether to synchronize,
+  from facts the tool reports, and a changed definition or local workflow
+  file is a must. `publish` stamps what was read; `list` shows commits
+  behind `main` and whether the definition changed; `mail send` accepts a
+  comma-separated list of recipients or `all`. No migration; the stamp
+  appears at each workstream's next publish.
+- **Coordination leaves `main`'s pull-request queue.** *The Coordination
+  Branch*: intake items travel one shared `coordination` branch on the
+  remote, sent and taken with `devcapsule workflow mail`, and are decided on
+  the recipient's working branch. Each workstream's status file and decision
+  log are published live to the same branch with `devcapsule workflow
+  publish`, read with `devcapsule workflow status`, and reach `main` only
+  inside the workstream's ordinary integration. The outbox is retired: its
+  one-way flow was right, and it put the buffer under the wrong owner and
+  the records behind a pull request nobody reviewed. A workstream edits only
+  its own row in the workstream list. Migration: an outbox send in flight is
+  folded into its sender's working branch or discarded once its content is
+  there; every open workstream publishes once; outbox branches are deleted.
 - **The information model.** *Glossary*: every term with a fixed meaning is
   defined once, in plain words, with what it must not be confused with. Six
   terms are renamed in prose and the old names remain understood as synonyms
@@ -342,6 +467,14 @@ There is no 0.2.13. Rules changed since 0.2.12:
 
 Unversioned. The definition shipped in each release is readable at that
 release's tag.
+
+## Information Model
+
+The kinds of thing this workflow stores, their homes and controlled fields,
+how a thing moves between kinds, the test that tells a bug from a feature,
+and where the validation kinds are declared, are in `INFORMATION-MODEL.md`
+beside this file, marked *for humans*, installed and refreshed with this
+document. The rules here assume it and do not repeat it.
 
 ## Checkouts, Branches, And Workstreams
 
@@ -377,9 +510,8 @@ name alone:
   another name, such as `master` or `trunk`, says so under *Integration
   Branch* in `WORKFLOW-LOCAL.md`, and every `main` in this document then
   means that branch;
-- `ws-<name>/<sub>`, a workstream branch. `ws` is short for workstream,
-  and `<sub>` is the workstream's own choice, except that
-  `ws-<name>/outbox` is reserved; see *The Outbox Branch*;
+- `ws-<name>/<sub>`, a workstream branch. `ws` is short for workstream, and
+  `<sub>` is the workstream's own choice;
 - `release-<version>`, a release branch, with its `v<version>` tags; see
   *Releases*. A project may spell these differently in `WORKFLOW-LOCAL.md`.
 
@@ -453,7 +585,7 @@ as permission to pick whichever side is convenient.
 permission safe. When a pair resolves something the protocol does not cover,
 record in the selected status file what was missing, what was done, and why. If the
 gap would recur in any project rather than only this one, deliver it to the
-workstream that owns the workflow, through the sender's outbox. Unrecorded
+workstream that owns the workflow, by mail. Unrecorded
 judgment means the gap stays invisible, the next pair re-derives it differently,
 and two projects using "the same" workflow quietly diverge. Recorded judgment is
 how the next version of this document gets written.
@@ -540,8 +672,15 @@ each answers:
 - **Release policy.** Ref spelling if it differs from the default, how a
   candidate is built and published, what the candidate gate checks, what
   acceptance evidence is required, and where the acceptance record lives.
-- **Validation commands.** What a pair runs before a checkpoint and before
-  integration, and where the full description lives.
+- **Validation commands.** The one heading that is required, not
+  recommended: how to obtain the environment the project's ecosystem needs,
+  the interpreter, the virtual environment or the build tool, and the
+  commands a pair runs before a checkpoint and before integration, each
+  runnable as written from a named directory. The section is what lets any
+  agent on any project build the software and run its tests without
+  guessing; `workflow brief` prints it at session start. An agent that
+  cannot run a check follows this section first. "The tool is missing" is a
+  finding only after that, reported with the step that failed.
 - **Host capabilities.** What the project needs from the machine and the
   hosting service that this document cannot assume: branch permissions,
   runners, credentials, and their declared justifications.
@@ -595,9 +734,7 @@ The following restrictions keep concurrent work understandable:
 5. Each workstream branch name begins with `ws-<name>/`. A release branch
    does not, because it is not a workstream branch; see *Releases*.
 6. A workstream may have more than one branch, but every branch starts from
-   `main` and is intended to return to `main` if the workstream succeeds. Its
-   outbox branch is the exception: it starts from `main` and returns to `main`
-   repeatedly, throughout the workstream's life rather than at its end. A
+   `main` and is intended to return to `main` if the workstream succeeds. A
    release branch is not a workstream branch: it starts from `main` or from a
    prior release tag, merges to `main` before every candidate, and is never
    deleted; see *Releases*.
@@ -611,9 +748,9 @@ The following restrictions keep concurrent work understandable:
 11. No workstream holds exclusive editing rights over a file. A workstream may
     edit any file its task genuinely requires, and exclusivity may not be
     inferred from a file's subject, its directory, or which workstream created
-    it. Two carve-outs stand: another workstream's open-work directory
-    excluding its `intake/` subdirectory, and uncommitted recovery state in
-    another checkout.
+    it. Three carve-outs stand: another workstream's open-work directory
+    excluding its `intake/` subdirectory, another workstream's row in the
+    workstream list, and uncommitted recovery state in another checkout.
     Each is a workstream's account of its own state, which another workstream
     cannot restate accurately; report what you observe about another workstream
     instead of editing its record. Delivering work to another workstream is a
@@ -625,9 +762,10 @@ The following restrictions keep concurrent work understandable:
     workstream in the project carries each, no ordinary workstream may take
     either, and neither is archived and recreated while the project stays in
     `multiple-streams` mode.
-13. `ws-<name>/outbox` is a reserved branch name in every workstream. It
-    carries only what the workstream sends to `main` ahead of its own
-    integration, never its working changes. See *The Outbox Branch*.
+13. A workstream's records travel its working branch and are published live
+    to the coordination branch. No branch exists to carry records alone, and
+    nothing is merged to `main` for a record's sake. See *The Coordination
+    Branch* and *Publishing Before Integration*.
 
 ### Initializing Multiple-Stream Mode
 
@@ -801,16 +939,14 @@ Begin from a clean, current `main` checkout:
    `intake-dispositions.md` beside it so the two halves of the record exist
    from the start; see *Workstream Intake* and *The Decision Log*.
 5. Add the workstream to root `CURRENT-STATUS.md`.
-6. Deliver that source-level registration to `main` through the outbox of the
-   workstream opening it; see *The Outbox Branch*. Registration is a message to
-   the project, not part of anyone's deliverable, so it travels the same route
-   as intake and does not require committing directly to `main`. At
-   initialization, when no workstream exists yet to send it, the initializing
-   commit on `main` carries it.
-7. Fork the first `ws-<name>/...` branch from the registration commit once it
-   is on `main`.
-8. Perform workstream changes only on its associated branch or branches. Its
-   own `ws-<name>/outbox` is created on first use, not at registration.
+6. Commit that registration on the workstream's first `ws-<name>/...`
+   branch, forked from `main`, and publish it: `devcapsule workflow publish`
+   puts the status file on the coordination branch, which is where every
+   checkout reads the live list, so the workstream exists for everyone at
+   once. The registration reaches `main` inside the workstream's first
+   integration. At initialization, when no working branch exists yet, the
+   initializing commit on `main` carries it.
+7. Perform workstream changes only on the workstream's branch or branches.
 
 A branch created before the registration commit is not a valid new workstream
 branch. Existing branches that predate adoption require an explicit migration
@@ -818,18 +954,49 @@ exception in their workstream status. An inactive legacy branch does not become
 an open workstream merely because the ref still exists; register and associate
 its continuation on `main` before committing new work to it.
 
+### The Open-Work Directory
+
+`engineering-docs/wip/<start-date>-<name>/` is everything a workstream keeps
+while it runs. Its contents are fixed in kind, so that a reader knows what to
+open and an agent knows what not to load:
+
+- **`CURRENT-STATUS.md`, the status file.** Bounded: what the workstream is,
+  its state and branch, what it is doing now, what is next, its open threads,
+  and an index of the directory's other documents. It is read in full at
+  every session start, so it stays short, roughly what a person reads in ten
+  minutes. Anything that has stopped changing leaves it.
+- **`intake/` and `intake-dispositions.md`**, the queue and the decision log.
+- **Dated documents**, `YYYY-MM-DD-<kind>-<slug>.md`, one per topic, opened
+  only when the task needs them. The kinds are **design**, a design
+  discussion or spike; **note**, evidence or analysis; and **record**, history
+  shed from the status file, a checkpoint, or a custody record. A project may
+  add kinds in its local workflow file. A living document with no date, such
+  as a backlog or a ledger, is allowed and is named for what it is.
+- Nothing else. Deliverable content never lives here; see *Publishing Before
+  Integration*.
+
+**The status file sheds history.** At each pause, and whenever a task's
+narrative is finished, its account moves verbatim into a dated record and the
+status file keeps one line pointing at it. What the status file says about the
+past is where to look, not what happened.
+
+**Every document is listed once, with when to open it**, in the status file's
+document index. The index is how a reader decides what to load; the documents
+are how a workstream's size stays out of every session's context. At
+conclusion the directory moves to `engineering-docs/archive/` unchanged.
+
 ### Selecting Work At Session Start
 
 Workstream discovery and checkout selection are related but distinct:
 
-- The workstream list is read from the locally accepted mainline ref,
-  not from a potentially stale copy of root `CURRENT-STATUS.md` on a long-lived
-  workstream branch. The mainline ref is normally current local `main`, or a
-  fetched remote-tracking `main` when it is newer and authoritative. If the
-  candidates have diverged, do not choose silently; resolve the divergence
-  under *Verifying Shared Branch State*. Refresh them according to repository
-  policy when an operation requires current shared state; routine offline
-  resumption may use the latest unambiguous locally available snapshot.
+- The live workstream list is read from the coordination branch,
+  `devcapsule workflow status`, which shows every open workstream's published
+  state, branch, and next step as of its last publish. The table in root
+  `CURRENT-STATUS.md` on the locally accepted mainline ref is the record as
+  of each workstream's last integration and the fallback when the remote
+  cannot be reached; a long-lived workstream branch's copy of it is never
+  consulted. If mainline candidates have diverged, do not choose silently;
+  resolve the divergence under *Verifying Shared Branch State*.
 - The current checkout and its branch provide the persistent local
   selection. This first protocol deliberately defines no second untracked
   "current workstream" preference file.
@@ -837,7 +1004,8 @@ Workstream discovery and checkout selection are related but distinct:
 Select exactly one editing workstream for the current checkout:
 
 1. Identify the current checkout, its branch, and its dirty state, then read
-   the workstream list from the locally accepted mainline ref.
+   the live workstream list from the coordination branch, falling back to
+   the mainline ref's table when offline.
 2. If the user explicitly names an open workstream, select it. Explicit intent
    chooses the target but does not reassign the current branch or authorize
    mixing dirty state.
@@ -851,11 +1019,11 @@ Select exactly one editing workstream for the current checkout:
    workstream. Workstream list coordination and repository-wide inspection may occur
    there. Workstream changes require an explicit selection followed by a switch
    to that workstream's branch in a clean checkout.
-6. A checked-out `ws-<name>/outbox` identifies its workstream but is not an
-   editing checkout. It carries only outbound messages; see *The Outbox
-   Branch*. Do not resume workstream work there. Switch to a working branch
-   first, and treat uncommitted working changes found on an outbox as recovery
-   material that belongs elsewhere.
+6. The coordination branch is never checked out for work. It is read and
+   written through the tool or through plumbing from whatever branch the
+   checkout is on; a checkout found on it is on no workstream. Switch to a
+   working branch first, and treat uncommitted changes found there as
+   recovery material that belongs elsewhere.
 7. Detached HEAD, an unregistered branch, or more than one plausible mapping
    has no default. Ask the user only when the desired workstream cannot be
    established from explicit intent and a unique registered association.
@@ -909,10 +1077,12 @@ reproduces the failure this mechanism exists to fix. Deliver it by mail, on
 the coordination branch, separately from the sender's ordinary work and
 without waiting for anyone's integration. See *The Coordination Branch*.
 
-**Ownership is asymmetric.** A sender may add files and amend files it wrote. It
-may not edit another sender's file, remove any file, or touch anything else in
-the recipient's directory. Only the receiving workstream removes or reclassifies
-items in its own intake. Its account of itself remains exclusively its own.
+**Ownership is asymmetric.** A sender adds files, and only adds: sent mail is
+append-only, so a correction is a new item under a new name that says what it
+supersedes. A sender never edits, removes, or reclassifies anything in the
+recipient's mailbox or intake. Only the receiving workstream removes or
+reclassifies items in its own intake. Its account of itself remains
+exclusively its own.
 
 **Decision has exactly two outcomes: acknowledge or forward.** Every item
 ends in one of them, and no item may be left alone indefinitely; see *Intake
@@ -961,8 +1131,9 @@ Intake is a queue, not an archive. Git retains every item and every reason.
 Each workstream keeps one append-only log at
 `engineering-docs/wip/<start-date>-<name>/intake-dispositions.md`, recording
 what became of every item it received. It is written by the receiving
-workstream only, and it is pushed to `main` through the outbox in the same
-commit that removes the item from the queue.
+workstream only, in the same commit that removes the item from the queue, and
+published live with the status file; it reaches `main` inside the
+workstream's ordinary integration.
 
 **The invariant that makes it useful.** Across the coordination branch and
 the recipient's branch, every item ever sent to a workstream is in exactly
@@ -973,9 +1144,9 @@ operation, and deciding moves it from the second to the third in one commit,
 which is why each is one step and not two.
 
 This is the acknowledgement path. A sender does not need to be told what
-happened to what it delivered; it looks, in one of two predictable places, and
-`main` is current for both because intake delivery and decision both travel
-the outbox promptly. It is also why no reply is written back into the sender's
+happened to what it delivered; it looks in three predictable places, the
+mailbox, the recipient's intake, and its published decision log, all live on
+the coordination branch or the recipient's branch. It is also why no reply is written back into the sender's
 intake: a reply is not work, and a queue whose whole meaning is "own this or
 forward it" should not carry messages that are neither.
 
@@ -1036,11 +1207,12 @@ lists workstream status files rather than their internal documents.
 Intake defines where an item lands. The coordination branch is how it
 travels. It exists so that a message between workstreams never needs `main`:
 no agent commits to `main` for mail, no human opens a pull request whose only
-content is somebody's outbox, and nothing waits for `main` to move.
+content is somebody's records, and nothing waits for `main` to move.
 
 **One branch, `coordination`, on the remote, never merged into `main`.** It
-carries only `mail/<recipient>/<item>.md` files and a README. Its history is
-append-only:
+carries mail, under `mail/<recipient>/<item>.md`, and published state, under
+`state/<name>/`, plus a README. Nobody resets or force-pushes it; every
+change is an ordinary commit on top. For mail its history is append-only:
 
 - **Senders add.** To deliver an item, add one file under
   `mail/<recipient>/` and push. A sender never edits, renames, or removes a
@@ -1050,7 +1222,7 @@ append-only:
   recipient copies every file addressed to it into its `intake/` on its
   working branch, stages them, and only then removes them from the branch in
   one commit. The party that empties the mailbox is the party that has
-  provably received its contents, which is what the outbox never had.
+  provably received its contents.
 - **Nobody resets or force-pushes.** A push that loses a race is retried from
   a fresh fetch. Racing commits touch different files, so the retry never
   conflicts. The host should forbid force-pushes to this one branch; the
@@ -1081,158 +1253,142 @@ integrates, at which point the item is already in the log or, rarely, still
 in the intake; either way nobody else touches that directory, so it merges
 without conflict.
 
-**What still travels the outbox.** Registrations, changes to the sender's own
-row in the workstream list, and the sender's records, until the second step
-of the coordination-off-`main` decision moves those as well. See *The Outbox
-Branch*.
+**Published state is the live view of every workstream.** `devcapsule
+workflow publish` pushes the working tree's current status file and decision
+log to `state/<name>/`, without a branch switch, replacing what was there.
+`devcapsule workflow status` renders every open workstream's state, branch,
+and next step from it. Publish at each checkpoint, before pausing, and at
+finish; `publish --retire` removes the directory when the workstream
+concludes. What is published is what the pair is looking at, committed or
+not, so the live view is never behind the checkout.
 
-### The Outbox Branch
+**Which copy is authoritative.** While a workstream is open, its published
+state is the truth for routing, selection, and resumption, and agents read it
+first. The copies on `main` are the record as of the workstream's last
+integration and become the permanent record when it concludes. The tool keeps
+the two identical whenever it runs, so they can lag but never disagree; if
+they ever do, the published copy is newer and the working branch is where to
+fix it.
 
-The outbox is a mechanism, not a part of the model. What the model requires
-is that a workstream's records reach `main` ahead of its integration without
-its unfinished work riding along. The standing branch below is the convention
-that provides it; any branch carrying the same guarantee, cut clean from
-`main` and holding only what is being sent, satisfies the rule. The reserved
-name exists so that an agent can find a workstream's outbox without asking,
-and for no other reason. Mail no longer travels it; see *The Coordination
-Branch*.
+**Claims say who is on what, and never refuse.** `devcapsule workflow claim
+"<slice>"` writes who, which branch, which slice, and an expiry, twelve hours
+by default, to `state/<name>/claim`; `status` and `brief` show live claims
+and mark expired ones; `claim --release` removes it, and so do pausing and
+finishing. A claim is information for the other checkouts, human or agent:
+a pair about to start on a claimed workstream sees it, tells its human, and
+chooses to wait, take another slice, take another workstream, or proceed
+knowingly. Nothing is locked, because locking source control is the failure
+git exists to end; a crashed session's claim simply expires.
 
-Every workstream may have one standing branch named `ws-<name>/outbox`. It
-carries what the workstream needs to publish to `main` ahead of, and
-independently of, its own integration. A workstream's working branch may run
-for weeks; anything riding along with it is invisible until it merges.
+**The brief is the session in one command.** `devcapsule workflow brief`
+prints, for the selected workstream, its row and next task, who is working
+on what, its waiting mail, the titles of the *Changes* entries it has not
+read since its stamp, and the synchronization facts with a suggested
+verdict. It is what a session reads first, before the status file; the
+judgment it suggests remains the agent's to propose and the human's to
+accept.
 
-**What the outbox carries.** The sender's records, and nothing that is anyone
-else's:
+**Records reach `main` with the deliverable, never alone.** A workstream edits
+its status file, decision log, intake, and its own row in the workstream list
+on its working branch, and they land on `main` inside its ordinary
+integration, the pull request that exists because the deliverable is
+reviewed. Nothing is ever merged for a record's sake, and no human is asked
+to click for bureaucracy. See *Publishing Before Integration*.
 
-- registrations of new workstreams the sender is opening;
-- changes to the sender's own row in root `CURRENT-STATUS.md` — state, branch
-  association, or anything else other agents route by; and
-- the sender's own records — its status file and its decision log — when
-  something on `main` refers to them or when it pauses. See *Publishing Before
-  Integration*.
-
-The last matters more than it looks. The workstream list is how every other checkout
-decides where work belongs, and a routing fact that waits for the sender's
-integration leaves `main` describing a branch that may no longer exist. Under
-*Selecting Work At Session Start* that is invalid routing, so a stale row does
-not merely mislead; it stops other agents before they edit.
-
-The outbox is also the answer to the standing question of how main-first
-registration coexists with a pull-request delivery policy: registration travels
-the same route as any other message, so nothing has to commit directly to
-`main`.
-
-**What it must never carry.** The sender's working changes. Merging an outbox
-publishes everything on it, so a working change that leaks into one is
-unfinished work promoted to `main` without review. Keep the two branches
-strictly separate; when in doubt, rebuild the outbox rather than reuse a dirty
-one.
-
-**Sending.** From a clean checkout, and never from the working branch:
-
-1. Fetch. If the previous send has landed, create or hard-reset
-   `ws-<name>/outbox` to current `main`; if it has not, append to it instead,
-   since it is still based on `main` and still carries only records. Never
-   reset a branch holding an unlanded send: that is how mail was lost before
-   mail left the outbox, and records are only safe to lose because their
-   source stays on the working branch.
-2. Add only the files being sent. One commit per coherent delivery.
-3. Push the branch and deliver it to `main` by the repository's default method.
-4. Leave the branch in place until the next send, then reset it again from
-   step 1.
-
-**Do not assume a merged outbox is an ancestor of `main`.** Whether it is
-depends on the repository's merge strategy: fast-forward and merge-commit
-delivery leave it reachable, while squash and rebase merges rewrite the commits
-and leave the branch pointing at history `main` no longer contains. Resetting
-from step 1 is correct under every strategy, which is why it is stated as a
-reset rather than as continuing from where the branch stands. Expect that reset
-to require a force-push, and note that this is a case the prohibition on
-force-pushing `main` does not reach: an outbox has no independent content to
-lose, since everything on it is either already merged or being replaced.
-
-Sending is a small, self-contained operation. It does not touch the sender's
-working branch, does not require that branch to be clean or current, and is not
-a checkpoint of the sender's own work.
-
-**Receiving is not symmetric.** A recipient does nothing to receive. Items
-appear in its `intake/` directory when the outbox merges to `main`, and it sees
-them by staying current with `main`.
-
-**Ending.** The outbox branch is deleted when the workstream ends, like any
-other branch it owns. An outbox with unmerged commits at that point is
-undelivered mail: merge it before concluding, or say in the final status why it
-was abandoned.
 
 ### Publishing Before Integration
 
 A workstream's branch holds its work until integration. Not everything on that
 branch is work: some files are how the rest of the project reads the workstream
-while it runs, and those are useless anywhere `main` cannot see them.
+while it runs, and those are useless where nobody can see them.
 
 **Two kinds of file, and they travel differently.**
 
-- **The deliverable** — changes to shared documents, code, and requirements: what
-  the workstream exists to produce. It travels the workstream's own branch and
-  reaches `main` by repository policy, because it is reviewed as a whole.
-- **Records** — the files that describe the workstream itself: its status file, its
-  decision log, its workstream-list row, and its intake directory. Nobody reviews
-  these as a deliverable; they are the project's view of a workstream in flight.
-  They travel the outbox, and may do so at any time.
+- **The deliverable**: changes to shared documents, code, and requirements,
+  what the workstream exists to produce. It travels the workstream's own
+  branch and reaches `main` by repository policy, because it is reviewed as a
+  whole.
+- **Records**: the files that describe the workstream itself: its status file,
+  its decision log, its intake directory, and its own row in the workstream
+  list. Nobody reviews these; they are the project's view of a workstream in
+  flight. They are edited on the working branch like everything else, made
+  visible at once by publishing, and carried to `main` inside the
+  deliverable's integration. No pull request ever exists for a record alone.
 
-**Publish a record early when something outside the branch depends on it.**
+**Publish whenever anyone outside the branch might read the workstream.**
 Three cases, each observed rather than imagined:
 
-1. **A document on `main` refers to it.** A rule that names a per-workstream
-   path — as *The Decision Log* does — sends every reader to that path. If
-   the file exists only on a branch, the rule points at nothing, and a reader
-   cannot tell an unwritten record from an unpublished one.
-2. **The workstream pauses or blocks.** The workstream list sends whoever considers
-   resuming it to its status file, and the copy on `main` is what they read before
-   deciding to check anything out. A status file frozen at the last integration
-   describes a workstream that no longer exists.
-3. **Another workstream needs it to act.** Anything a recipient must read before
-   it can proceed is undelivered until `main` has it, which is the whole reason
-   the outbox exists.
+1. **A document refers to a per-workstream path**, as *The Decision Log*
+   does. The reference resolves on the coordination branch first, where the
+   live copy is, and on `main` as of the last integration.
+2. **The workstream pauses or blocks.** Whoever considers resuming it reads
+   its published state before checking anything out. A state frozen at the
+   last integration describes a workstream that no longer exists.
+3. **Another workstream needs it to act.** Anything a recipient must read
+   before it can proceed is undelivered until it is published or sent.
 
-**The target lands no later than the reference.** When a change to a shared
-document creates a reference to a per-workstream file, send the file through the
-outbox before, or in the same round as, the referencing change reaches `main`.
-The deliverable travels a pull request and the record travels the outbox, so in
-practice the outbox goes first. A reference published ahead of its target is a
-broken rule for as long as the gap lasts.
+**What is published is the branch's current copy, verbatim.** Publishing is
+not an occasion to write a different version for others; the tool pushes what
+the working tree holds, so the published copy and the branch's copy are
+identical at every publish and the copy on `main` is one of them, older. Two
+versions of one record is the failure this whole mechanism exists to avoid.
 
-**Send the branch's current copy verbatim.** Publishing a record is not an
-occasion to write a different version for `main`. Copy what the branch holds, so
-the two are identical: the branch then needs no special treatment at its next
-synchronization, and identical content merges without conflict no matter which
-side a later reader compares. Two versions of one record is the failure this
-whole mechanism exists to avoid, reintroduced at a different level.
-
-**This is not a way to put deliverable content on `main` early.** The test is
+**This is not a way to integrate deliverable content early.** The test is
 whether anyone would review it as part of the workstream's work. If yes, it is
-deliverable and the outbox must not carry it; merging an outbox publishes
-everything on it, without the review the deliverable is owed. A workstream that
-finds itself wanting to publish half its deliverable has a scope problem or a
-second workstream, not a routing problem.
+deliverable, and it travels the owning workstream's branch under review. Mail
+may carry a proposed patch under the recovery rule below; sending a patch is
+neither applying it nor integrating anything.
+
+**A misplaced change travels to its owner as a patch.** When a pair finds
+that a bounded change it has been making belongs to another workstream, it
+stops expanding that work. If the change is separable and uncommitted, the
+pair sends the owning workstream an ordinary intake item carrying the diff,
+its base revision, the paths affected, new files in full, the reason for the
+handoff, and what validation was done or is still missing. The human may
+authorize finishing the bounded change first; nothing here permits starting
+another workstream's implementation on purpose.
+
+Verify delivery before removing anything, then restore the sender's checkout
+by reverting only what the delivered patch represents, preserving unrelated
+work, and record the handoff in the sender's status file. Do not switch
+workstreams for it, do not commit the source change on the sender's branch,
+and do not rewrite shared history to manufacture a clean handoff. If the
+change is already committed or cannot be separated safely, ask the human to
+choose the recovery, which may be to finish on the current branch.
+
+The recipient decides the item through ordinary intake, reviews the patch,
+checks that it applies to its current branch, and owns any application,
+validation, source commit, and integration. A patch is a proposal, not
+evidence that the recipient accepted or shipped the change. A later patch
+supersedes an earlier one by a new item that says so; sent mail stays
+append-only.
 
 **The deliverable may still land in slices.** Integrating a finished slice
-through an ordinary pull request before the workstream is done is permitted and
-often right: a correction other workstreams are waiting on should not sit behind
-work that has months to run. The completion sequence concludes a workstream; it
-is not the only moment one may deliver. Slices travel the working branch under
-repository policy, never the outbox, and the status file records what has already
-landed so a later reader is not misled about what remains.
+through an ordinary pull request before the workstream is done is permitted
+and often right: a correction other workstreams are waiting on should not sit
+behind work that has months to run. The completion sequence concludes a
+workstream; it is not the only moment one may deliver. The status file records
+what has already landed so a later reader is not misled about what remains.
 
 ### Staying Current With `main`
 
-`main` is the medium every message travels through, so a workstream that does
-not watch it does not receive. Intake arrives there, registrations arrive
-there, and repository-wide coordination facts arrive there.
+Mail and live state travel the coordination branch, but everything the
+project has agreed on travels `main`: the definition, the requirements, the
+decisions, and every workstream's records as of its last integration. A
+workstream that does not watch `main` works against a project that has
+moved on.
 
 Synchronize the working branch with `main` often — at least at every stage
-boundary, before beginning a substantial slice, and before integrating.
+boundary, before beginning a substantial slice, and before integrating — and
+at every session start propose whether to synchronize now, by the judgment
+in *Resuming*. Two facts feed it and the tool shows both beside every row of
+the live list: how many commits behind `main` the workstream's branch is,
+and whether the definition or the local workflow file on `main` differs from
+what the status file says was last read. `devcapsule workflow publish`
+writes that stamp, a `Definition read:` line naming the files' content ids
+as of the checkout, so nobody types a hash and a rewritten history cannot
+confuse it. A workstream that has never published shows no stamp, which the
+list says plainly.
 
 **Method follows publication state.** Rebasing an unpublished branch onto
 `main` is clean, and it silently drops commits that already landed, which
@@ -1241,19 +1397,20 @@ published branch rewrites shared history and needs a force-push; do that only
 when the branch is known to be unshared, and prefer merging `main` in
 otherwise. Rebase what only you have; merge what others may have.
 
-**After your own delivery lands, reset rather than rebase.** Under a squash or
-rebase merge, a branch whose pull request has merged holds no content `main`
-lacks, but its commits have different identities from the ones `main` now
-carries. Rebasing then replays commits one at a time onto a `main` that already
+**After your own delivery lands, reset rather than rebase.** Under a merge
+commit the branch is simply an ancestor of `main` and synchronizing is a
+fast-forward. Under the squash or rebase exception, a branch whose pull
+request has merged holds no content `main` lacks, but its commits have
+different identities from the ones `main` now carries. Rebasing then replays commits one at a time onto a `main` that already
 contains their final effect, which conflicts on intermediate states even though
 the end states agree. Confirm the branch has nothing unique — comparing trees,
 not commit identities, since the identities are guaranteed to differ — and hard
 reset it to `main`. Rebase is for carrying unlanded work forward; it is the
 wrong tool for a branch with nothing left to carry.
 
-This rule is about keeping a workstream branch current with `main`. It says
-nothing about how work is delivered *to* `main`, which follows repository
-policy and its configured merge strategy or merge queue.
+This rule is about keeping a workstream branch current with `main`. How work
+is delivered *to* `main` is the merge-commit rule under *Development And
+Checkpoints*.
 
 **Conflicts split by kind.** Mechanical conflicts — reformatting, moved
 sections, adjacent edits — are ordinary agent work; resolve them and say so.
@@ -1264,10 +1421,11 @@ that the conflict becomes unaffordable.
 
 Two practical consequences:
 
-- A stale branch cannot act on its own intake. Discovery reads `main`, so items
-  are visible from anywhere, but the files an agent must edit and delete when
-  deciding them exist only on a synchronized branch. Synchronize before
-  planning a session's work, not after.
+- A stale branch decides against stale rules. Mail arrives on the
+  coordination branch whatever the branch's age, but the definition, the
+  local workflow file, and the shared documents an item may ask to change
+  exist at their current versions only on a synchronized branch. Synchronize
+  before planning a session's work, not after.
 - A long-lived branch that never rebases accumulates conflicts against work it
   could have absorbed cheaply, and diverges from coordination decisions it is
   expected to be following.
@@ -1287,11 +1445,19 @@ complete. A checkpoint is a statement about project state and belongs in the
 status file; a commit is a save point. Every checkpoint is committed, but most
 commits are not checkpoints.
 
-Commits reach `main` through the repository's configured merge strategy, so
-whether frequent commits become individual commits on `main` is a property of
-that strategy rather than of this rule. Write commit messages that would read
-well either way, and do not let uncertainty about the merge boundary become a
-reason to delay committing.
+**Integration is a merge commit.** A workstream reaches `main` through one
+merge commit per reviewed deliverable, never a fast-forward and never a
+squash. `main`'s first-parent history is then the story, one entry per
+delivery, titled as such, and that is how `main` is read: `git log
+--first-parent`, `git bisect --first-parent`. The branch's own commits stay
+reachable unchanged below that line, so every SHA a record cites remains a
+real commit in every clone, and the order of decisions the small commits
+preserved survives the moment the work is shared. Pushed history is never
+rewritten: synchronize a pushed branch by merging `main` into it, and rebase
+only what has never been pushed; see *Staying Current With `main`*. A project
+that prefers squash records it in its local file under *Exceptions*, with
+the consequence stated: its records may cite pull requests and tags, never
+branch commits, because those commits stop existing when the branch does.
 
 Keep all unfinished workstream documentation beneath:
 
@@ -1343,17 +1509,18 @@ Before leaving a workstream:
    next resumable task.
 3. Write *Open Threads* — see below. This is the part that does not survive
    any other way.
-4. Send anything owed through the outbox, including the status file itself. A
-   paused workstream holding undelivered mail blocks its recipients without
-   telling them, and one whose status file on `main` predates the pause tells
-   whoever considers resuming it nothing about why it stopped. See *Publishing
-   Before Integration*.
+4. Take your mail, send anything owed, and publish. A paused workstream
+   holding unsent mail blocks its recipients without telling them, and one
+   whose published state predates the pause tells whoever considers resuming
+   it nothing about why it stopped.
 5. Record external state that will outlive the session: running containers,
    held ports, manual environment setup, anything that decays.
 6. Update the workstream-list row to `paused` or `blocked`, with a short reason. If
    blocked, name the blocker and what would clear it, and tell whoever can
    clear it — through their intake if it is another workstream. A blocked
    workstream nobody was told about is indistinguishable from an abandoned one.
+7. Release your claim, and publish once more so the state others read is the
+   state you left.
 
 #### Open Threads
 
@@ -1382,11 +1549,27 @@ construction.
 
 #### Resuming
 
-1. Take your mail from the coordination branch, then read the workstream
-   list from the mainline ref, the status file, and intake.
-2. Synchronize the branch with `main` before planning. Intake and coordination
-   arrive there while a workstream sleeps, and the longer the pause the more
-   arrived.
+1. Take your mail from the coordination branch, read the live workstream
+   list from it, then the status file and intake.
+2. **Propose the synchronization judgment.** Before planning, say whether
+   the branch should synchronize with `main` now, and why, from four facts
+   in this order, the first two of which `devcapsule workflow status` reports:
+   - the definition or the local workflow file changed on `main` since this
+     workstream last read them: **must** synchronize, and read the *Changes*
+     entries since; the rules the session is about to follow are the ones
+     that changed;
+   - files the planned task will touch changed on `main`: **should**
+     synchronize, since the cost of the conflict only grows;
+   - coordination facts changed, rows, registrations, or decisions that
+     affect the plan: **should** synchronize, though the live list already
+     shows them;
+   - none of the above and the branch is mid-slice: **may** defer, with the
+     reason recorded in the status file, never past the next stage boundary
+     or integration.
+   The judgment is proposed, not executed: the human may say wait. Tooling
+   supplies the facts, the agent weighs them, the human decides only when
+   the weighing says it matters. `devcapsule workflow brief` prints the
+   facts and a suggested verdict.
 3. Read *Open Threads* before planning the session, not after. It is the
    difference between knowing what is next and knowing why it is next.
 4. Re-verify what the status file asserts about external state. Status Files record
@@ -1396,6 +1579,8 @@ construction.
 5. Put unanswered questions from *Open Threads* to the human early, before
    doing work whose shape depends on the answers.
 6. Update the workstream-list row to `active`.
+7. Before editing, claim the slice you are about to work on, so other
+   checkouts see it; see *The Coordination Branch*.
 
 A workstream resumed without its *Open Threads* read is resumed at the level of
 tasks and not of reasoning, which is how a settled question gets reopened and a
@@ -1448,9 +1633,10 @@ integration. Do not infer permission to update `main` merely from the ability
 to do so.
 
 Before integration begins, the workstream's intake on `main` must be empty. See
-*Intake Gates Completion*. Check this first: a forwarded item has to travel the
-outbox and reach `main`, so discovering a full queue late in the sequence stalls
-the integration rather than merely adding a step.
+*Intake Gates Completion*. Check this first, including the mailbox: a
+forwarded item is sent by mail and its decision is a commit on this branch, so
+discovering a full queue late in the sequence stalls the integration rather
+than merely adding a step.
 
 Before integration begins, the selected status file records:
 
@@ -1525,9 +1711,10 @@ Never append or merge the workstream status text into that workstream list.
 3. Add the finishing commit only when the pull request is otherwise ready to
    merge, then allow any checks or approvals invalidated by that commit to run
    again.
-4. Merge through the hosting platform using the repository's configured merge,
-   squash, rebase, or merge-queue policy. The agent may perform this action
-   when authorized; otherwise ask the human or designated reviewer.
+4. Merge through the hosting platform as a merge commit, under *Development
+   And Checkpoints*; the platform's squash and rebase options are used only
+   when the local file records that exception. The agent may perform this
+   action when authorized; otherwise ask the human or designated reviewer.
 5. Verify from the updated remote ref that `main` contains the merged final
    tree and that the workstream-list entry and open-work directory are absent.
 
@@ -1545,13 +1732,14 @@ permits direct integration:
    Reset local `main` only when every local-only commit is proven already
    upstream, reporting that evidence; otherwise stop and ask the human rather
    than choosing or discarding history.
-2. Rebase the frozen integration branch onto local `main` and rerun required
+2. Bring the frozen integration branch up to local `main`: merge `main` into
+   it if it was ever pushed, rebase it only if it was not; rerun required
    validation. Resolve mechanical conflicts and ask the human when intent is
    required.
-3. Fast-forward local `main` with
-   `git merge --ff-only <integration-branch>`. If this fails because `main`
-   moved, do not create a non-fast-forward merge; repeat synchronization and
-   rebase.
+3. Merge the branch into local `main` with `git merge --no-ff
+   <integration-branch>`, titled as the delivery, so that `main`'s
+   first-parent history gains one entry. If `main` moved meanwhile, repeat
+   from step 1.
 4. Push `main` normally to its integration remote, normally with
    `git push origin main`. Never force-push `main`. If credentials, approval,
    or repository policy prevent publication, ask the human to perform it. If
@@ -1780,10 +1968,8 @@ are unaffected.
 2. **The release branch is the workstream's selection.** The workstream-list row's
    branch association names the release branch, and its state reads
    `active; releasing <version>`. The status file is edited on the release branch
-   and reaches `main` with the merges of rule 3, which satisfies *Publishing
-   Before Integration* for the status file without a separate send. The outbox
-   still carries intake items and every other message. The checkout sits on
-   the release branch from the cut to the final tag.
+   and published from there, and reaches `main` with the merges of rule 3.
+   The checkout sits on the release branch from the cut to the final tag.
 3. **Integrate by merging the release branch into `main` before each
    candidate tag.** By pull request or the repository's delivery method, never
    by cherry-pick. The candidate gate then passes by ancestry, and the
@@ -1935,6 +2121,11 @@ For each meaningful slice, the agent should report in this order:
 Keep reports concise. The user should not need to reconstruct the state from a
 long chronology.
 
+A check reported as not runnable names the step of the local workflow
+file's *Validation commands* that failed. An agent never reports a tool or
+a dependency as absent without having followed that section; the project
+wrote it so that the question has an answer.
+
 ## Decision And Escalation Rules
 
 Escalate to the human when:
@@ -1956,7 +2147,10 @@ Create or refresh durable state when any of these happen:
 - manual validation changes project state;
 - a new bug, decision, or requirement appears;
 - the session ends with unfinished but resumable work;
-- the active next step changes.
+- the active next step changes;
+- the way the software is built, tested, started or smoke-tested was
+  introduced or changed: the same commit updates the local workflow file's
+  *Validation commands*.
 
 If the user and agent are moving quickly, prefer more frequent small selected-
 status file updates over one large retrospective rewrite.
@@ -2160,6 +2354,10 @@ session on that track should actually consider doing.
 
 ## Bug Intake
 
+Before filing, apply *Bug Or Feature* in `INFORMATION-MODEL.md`: a record
+here needs a requirement it threatens or a promised behavior observed wrong;
+a wish, however large, is a backlog entry.
+
 Use the relevant scope beneath `engineering-docs/bugs/` when a bug needs
 durable evidence before it is fixed, retired, or converted into a completed
 task. Name files like:
@@ -2223,12 +2421,14 @@ selected status file should only contain the next action, such as investigating 
 bug, validating a fix, or adding a regression check.
 
 **Filing and routing.** A bug record is a durable product artifact and lives on
-`main`. In `multiple-streams` mode, filing one is sending a message: it travels
-the filer's outbox like any other, with `owner` set by the rule above. A bug
+`main`. In `multiple-streams` mode, the filer commits it on its working branch
+with `owner` set by the rule above, and it reaches `main` with the filer's
+ordinary integration; until then the owner learns of it by mail if it must act
+sooner. A bug
 record is not an intake item and is not decided; the `owner` field is
 its routing, and each owner reads its queue from the records on `main` at
 session start. Handing a bug to another workstream is changing `owner`, with
-the reason recorded in the record and sent through the outbox.
+the reason recorded in the record, on the working branch of whoever changes it.
 
 When a bug is fixed and validated, no longer reproduced, or intentionally
 retired:

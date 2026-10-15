@@ -1,3 +1,7 @@
+---
+description: "The human's account of a short website experiment in AI autonomy: what was delegated, where it went wrong, and what the A minus meant."
+draft: true
+---
 # Lessons learned in AI autonomy over a simple, straightforward task
 
 *September 19, 2026. This was written by either Costin Cozianu or by

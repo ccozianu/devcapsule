@@ -81,7 +81,7 @@ jobs:
   publish-coverage-badge:
     name: Publish coverage badge
     needs: pytest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.repository == 'ccozianu/devcapsule'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -112,17 +112,40 @@ jobs:
         run: >-
           genbadge coverage
           --input-file devcapsule-src/coverage.xml
-          --output-file docs/badges/coverage.svg
+          --output-file "$RUNNER_TEMP/coverage.svg"
           --local
 
-      - name: Commit coverage badge when changed
+      # The badge lives on the project-owned `badges` publication branch, never
+      # on `main`, so every first-parent commit on `main` stays a pull-request
+      # merge (WORKFLOW-LOCAL.md, Publication Refs). The branch is advanced by
+      # fast-forward commits built with plumbing commands; the checkout of the
+      # tested commit is never modified.
+      - name: Publish the badge on the badges branch without changing main
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/badges/coverage.svg
-          if git diff --cached --quiet; then
-            echo "Coverage badge is already current."
-            exit 0
+          blob=$(git hash-object -w "$RUNNER_TEMP/coverage.svg")
+          parent_args=()
+          if git ls-remote --exit-code origin refs/heads/badges > /dev/null; then
+            git fetch --depth=1 origin refs/heads/badges
+            parent=$(git rev-parse FETCH_HEAD)
+            if [ "$(git rev-parse --verify --quiet "$parent:coverage.svg")" = "$blob" ]; then
+              echo "Coverage badge is already current."
+              exit 0
+            fi
+            parent_args=(-p "$parent")
+          else
+            result=$?
+            if [ "$result" != 2 ]; then exit "$result"; fi
           fi
-          git commit -m "chore: update coverage badge [skip ci]"
-          git push origin HEAD:main
+          export GIT_INDEX_FILE="$RUNNER_TEMP/badges-index"
+          if [ "${#parent_args[@]}" -gt 0 ]; then
+            git read-tree "$parent"
+          else
+            git read-tree --empty
+          fi
+          git update-index --add --cacheinfo "100644,$blob,coverage.svg"
+          tree=$(git write-tree)
+          commit=$(git commit-tree "$tree" "${parent_args[@]}" -m "Coverage badge for main at ${GITHUB_SHA::12}")
+          git push origin "$commit:refs/heads/badges"

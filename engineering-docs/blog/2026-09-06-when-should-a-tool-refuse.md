@@ -1,3 +1,6 @@
+---
+description: "A conversation between DevCapsule's product owner and the agent developing it about when a tool should refuse, and how the refusal experience took its shape."
+---
 # When should a tool refuse? Taking stock of DevCapsule's refusal UX
 
 *2026-09-06. A conversation between Costin Cozianu, DevCapsule's product

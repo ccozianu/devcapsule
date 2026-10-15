@@ -31,6 +31,16 @@ effort. More activity is not evidence of better work.
   valuable evidence. Treat passing newly written tests for new end-user functionality
   with caution: they may encode the same unvalidated assumptions as the implementation,
   rather than independently establish that it meets the user's needs.
+- Hand choices with several options to the human under topic 8.8 of
+  `WORKFLOW.md`. Inside a capsule with console tools, build a decision
+  document with `devcapsule project checkout decisions from-table`.
+  Present numbered chat text with `hand-off`, ending with any supplied
+  console link. Without console tools, present the text directly. Record
+  outcomes before deleting capsule state. Keep unanswered items pending.
+  Send other environment notices with `devcapsule project checkout
+  notifications post` when available, otherwise in chat. Preserve durable
+  facts in normal records. Keep decision documents and answers out of Git.
+  Keep tokened links in chat only.
 
 ## Repository Workflow
 
@@ -60,7 +70,7 @@ Treat any other value as invalid and ask the user to correct it rather than
 guessing which status file protocol applies. The declared version governs: follow
 the `WORKFLOW.md` in this repository as it is, whatever newer text your tool or
 your training knows, and never refresh it or change the declared version
-except on the user's explicit instruction. See *Workflow Declaration* in
+except on the user's explicit instruction. See topic 4.1 in
 `WORKFLOW.md`.
 
 Work means editing files in a **checkout**: one local clone directory. A
@@ -70,23 +80,30 @@ on many workstreams over time when the human specifically directs each change,
 but never on two at once. Concurrency comes from several human/agent pairs in
 several checkouts integrating through the shared remote, not from any local
 arrangement of directories, which is an implementation detail and not workflow
-state. See *Checkouts, Branches, And Workstreams* in `WORKFLOW.md`.
+state. See topic 5 in `WORKFLOW.md`.
 
 After `WORKFLOW.md`, read `WORKFLOW-LOCAL.md`, this project's own half of the
 workflow: the version scheme, release policy, validation commands, host
 capabilities, and recorded exceptions that only this project can decide.
 `WORKFLOW.md` binds wherever it speaks; the local file governs where it is
-silent. See *The Project's Local Workflow* in `WORKFLOW.md`.
+silent. See topic 4.2 in `WORKFLOW.md`. `PREAMBLE.md` and `INFORMATION-MODEL.md`, in this repository under
+`devcapsule-src/devcapsule/assets/project_workflow/definition/`, are
+marked *for humans*: explanation, not rules. Skip them in ordinary work;
+read the preamble when you must decide something the rules do not settle,
+alone or with the human, and the model when the question is what kind a
+thing is. Its *Validation
+Commands* section is how this project is built and tested, environment
+included; follow it before reporting any check as not runnable.
 
 `WORKFLOW.md` uses the vocabulary of the Workflow Patterns initiative as its
 reference vocabulary: process, case, sub-process, task, work item, resource,
 trigger. A workstream is a case of the workstream sub-process; a release is a
-case of the release sub-process. Read *Vocabulary* at the start of
+case of the release sub-process. Read the glossary at the start of
 `WORKFLOW.md` before reading the rules, and where this repository's own term
 differs from the catalogue's, this repository's definition governs.
 
-This workflow is incomplete by admission, and `WORKFLOW.md` opens with
-*Where This Document Is Silent*. Where the protocol does not cover a
+This workflow is incomplete by admission, and `WORKFLOW.md` has
+topic 3, *Judgment Where This File Is Silent*. Where the protocol does not cover a
 situation, what it does not expressly deny is allowed: resolve it with judgment
 and keep working rather than stalling. This never overrides an instruction to
 stop, ask, refrain, or seek authority, and it does not license working around a
@@ -125,11 +142,10 @@ drives maintenance releases; it is not a catch-all for defects, not a feature
 workstream, and not a second bug tracker. Select and work in either exactly as
 you would any other workstream. If a project declares `multiple-streams` and
 lacks either, report that it is incompletely initialized rather than working
-around it. See *The Reserved `project-management` Workstream* and *The
-Reserved `maintenance` Workstream* in `WORKFLOW.md`.
+around it. See topics 7.3 and 7.4 in `WORKFLOW.md`.
 
 Bug records under `engineering-docs/bugs/` carry frontmatter with controlled
-`status`, `severity`, `target`, and `owner` fields; see *Bug Intake* in
+`status`, `severity`, `target`, and `owner` fields; see topic 12.5 in
 `WORKFLOW.md`. A bug is routed by its `owner` field, not by an intake item: at
 session start, list the open bugs whose `owner` is the selected workstream, and
 when filing one set `owner` to the open workstream whose goal covers it,
@@ -147,29 +163,47 @@ rationale, and wait for a specific instruction. Returning is another change
 and requires another instruction. Treat a branch-to-list mismatch as
 invalid routing and stop rather than guessing.
 
-Pay special attention to the selected status file's current stage, current state,
-and planned next step. Then read any target-specific documents referenced
+Run `devcapsule workflow brief` first: it prints the selected workstream's
+row and next task, who is working on what, waiting mail, the definition
+changes not yet read, and the synchronization facts. Then read the selected
+status file in full and open the documents its index lists only when the
+task needs them; see topic 7.6 in
+`WORKFLOW.md`. Pay special attention to the selected status file's current
+stage, current state, and planned next step. Then read any target-specific documents referenced
 there and any declared cross-workstream dependency needed for the selected
 slice.
 
-In `multiple-streams` mode, synchronize the selected workstream's branch with
-`main` before planning the session's work, normally by rebasing. `main` is how
-intake, registrations, and repository-wide coordination facts reach a
-workstream, and a stale branch cannot act on items it can nonetheless see. To
+In `multiple-streams` mode, before planning the session's work, propose
+whether the selected workstream's branch should synchronize with `main` now
+and say why: a changed definition or local workflow file is a must, files the
+task will touch changed on `main` is a should, otherwise it may wait until the
+next stage boundary with the reason recorded. `devcapsule workflow status`
+shows the facts: commits behind `main`, and whether the definition changed
+since the status file's `Definition read:` stamp, which `publish` writes.
+Synchronize a pushed branch by merging `main` into it; rebase only a branch
+that was never pushed, as `WORKFLOW.md` topic 5.5 rules. Before editing, `devcapsule workflow claim
+"<slice>"` so other checkouts see what you are on, and release it when you
+pause; a claim informs and never refuses. To
 send an intake item to another workstream, deliver it by mail on the
 coordination branch, `devcapsule workflow mail send <recipient> <file>`,
-never through `main` and never by editing the recipient's directory. Take
+never through `main` and never by editing the recipient's directory. Work
+you discover belongs to another workstream travels to it the same way, as a
+patch in an item, and is reverted from your checkout, never committed on
+your branch; see topic 8.7 in
+`WORKFLOW.md`. Take
 your own mail at session start and before pausing, `devcapsule workflow mail
 take`, then commit the taken items on the working branch; decide each with a
 decision-log entry and the file's deletion in one commit. Registrations, your
-own row in the workstream list, and your records still travel your
-`ws-<name>/outbox`, reset from `main` only when its previous send has landed.
-See *The Coordination Branch*, *The Outbox Branch*, and *Staying Current With
-`main`* in `WORKFLOW.md`.
+own row in the workstream list, and your records are edited on your
+working branch, and reach `main` inside your ordinary integration; publish
+them live with `devcapsule workflow publish` at each checkpoint, before
+pausing, and at finish, and read every workstream's live state with
+`devcapsule workflow status` before selecting work. No pull request ever exists
+for a record alone. See topics 8.4 to 8.6 and 5.5 in `WORKFLOW.md`.
 
 The workflow claims only the refs it names: `main`, or the integration branch
 `WORKFLOW-LOCAL.md` names instead; `ws-<name>/<sub>`
-for a workstream branch, with `ws-<name>/outbox` reserved; and
+for a workstream branch; `coordination` for mail and published state; and
 `release-<version>` for a release branch, with its `v<version>` tags. Every
 other ref is the project's: do not create, rename, delete, rebase, or select
 one unless `WORKFLOW-LOCAL.md` or the user directs it. Release refs are not
@@ -177,16 +211,15 @@ workstream branches. Never synchronize, rebase, or force-push one, and never
 cherry-pick between a release branch and a workstream branch. A workstream-list row
 whose branch association names a release branch means that workstream is
 driving a release: work on that branch, land fixes only there, and merge it to
-`main` before each candidate tag. See *Releases* in `WORKFLOW.md`.
+`main` before each candidate tag. See topic 11 in `WORKFLOW.md`.
 
-The outbox also carries the workstream's own records — its status file and its
-decision log — when something on `main` refers to them or when the workstream
-pauses, so that a rule naming a per-workstream path does not point at a file
-only a branch can see. Send the branch's current copy verbatim. The
-deliverable never travels the outbox, because merging one publishes everything
-on it without the review a deliverable is owed; a finished slice of the
-deliverable may still reach `main` early through an ordinary pull request. See
-*Publishing Before Integration* in `WORKFLOW.md`.
+Published state is the live view: `devcapsule workflow publish` pushes the
+working tree's status file and decision log to the coordination branch, and
+while a workstream is open that copy is the truth for routing and resumption;
+the copy on `main` is the record as of its last integration. The deliverable
+never travels the coordination branch, which carries records and mail only; a
+finished slice of the deliverable may still reach `main` early through an
+ordinary pull request. See topic 8.6 in `WORKFLOW.md`.
 
 In `multiple-streams` mode, also read the selected workstream's `intake/`
 directory beside its status file. It holds work other workstreams have delivered
@@ -197,16 +230,15 @@ Every item ends one of two ways. Either the workstream **acknowledges** it,
 making it a requirement or task in its own status file, or it **forwards** it to
 `project-management` with a reason. Deferral is not a third outcome; an item
 accepted for later is acknowledged with its position recorded. Either outcome
-is recorded in the workstream's `intake-dispositions.md` in the same outbox
-commit that removes the item, so that on `main` every delivered item is either
-still in `intake/` or in that log — which is how a sender learns what happened
-to what it sent. Items sent by
+is recorded in the workstream's `intake-dispositions.md` in the same commit
+that removes the item, on the working branch, so that every item ever sent is
+in exactly one of the mailbox, the intake, or the published log — which is how
+a sender learns what happened to what it sent. Items sent by
 `project-management` cannot be forwarded, because that workstream is
 authoritative for what is worked on, by whom, and in what order; raise genuine
-disagreement with the human instead. Either way, the recipient deletes the item
-from `main` through its outbox, and no workstream may be concluded while items
-remain in its intake. Follow `WORKFLOW.md` for how items are written,
-delivered, and decided.
+disagreement with the human instead. No workstream may be concluded while
+items remain in its mailbox or its intake. Follow `WORKFLOW.md` for how items
+are written, delivered, and decided.
 
 After reading the required documents, acknowledge to the user that you
 understand what the project is about, including the requirements and
@@ -223,13 +255,12 @@ If the selected status file does not define a planned next step, remind the user
 through the agent or IDE plugin to help choose the next step to work on.
 
 When leaving a workstream, pause it deliberately rather than simply stopping:
-commit everything, update the status file, send anything owed through the outbox,
+commit everything, update the status file, send anything owed by mail, publish,
 and write *Open Threads* — questions awaiting the human, options weighed but
 unresolved, and what is deliberately not preserved. Only the pair stopping work
 knows whether a thread finished or was suspended, and only while they are still
 stopping. On resuming, read *Open Threads* before planning, and re-verify what
-the status file claims about external state rather than trusting it. See *Workstream
-States, Pausing, And Resuming* in `WORKFLOW.md`.
+the status file claims about external state rather than trusting it. See topics 7.7, 9.2 and 9.3 in `WORKFLOW.md`.
 
 At an appropriate moment, such as when completing a stage, changing the project
 state materially, or ending a session, do your best to update the selected

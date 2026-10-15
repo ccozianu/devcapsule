@@ -19,6 +19,17 @@ action for a project, checkout, or platform lock created by an earlier one.
   and formation platform lock copied from the committed
   `devcapsule-sample-trading-research` artifacts, including the retired
   whole-manifest `manifest-digest` field that once gated every command.
+- `v0.2.11/` was generated on 2026-09-20 by the source at released tag
+  `v0.2.11`, revision `94e798f1d1a7aaab93ae3e47d9636471448a8e66`, exported
+  to a temporary directory and run with the existing Python 3.12 developer
+  interpreter. No current configuration implementation generated these files.
+  The commands were `project init --need python --need python-ide --creator
+  mailto:upgrade@example.test --authorize base-image default`, followed by
+  `config authorize host-browser true` and `config resolve`. All commands
+  selected the temporary `project` directory and isolated XDG roots. Only the
+  checkout path and its resulting checkout-input digest are templated, as
+  above. `test_upgrade_recovery.py` exercises unchanged-client inputs and
+  separately introduces project-side changes into copies of these artifacts.
 
 When a release changes what these artifacts would contain, add a new
 directory for that release; do not update these.

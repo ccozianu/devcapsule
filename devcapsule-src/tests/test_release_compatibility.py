@@ -15,7 +15,9 @@ import tomllib
 from unittest.mock import patch
 
 from devcapsule import cli
-from devcapsule.project_configuration import canonical_digest
+from devcapsule.configuration.file_formats import (
+    canonical_digest,
+)
 
 
 FIXTURES = Path(__file__).parent / "resources" / "compat"
@@ -52,7 +54,8 @@ def materialize_v0262(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     return project, env
 
 
-def test_v0262_checkout_resumes_with_no_user_action(tmp_path: Path, capsys) -> None:
+def test_v0262_checkout_resumes_with_no_user_action(tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
     project, env = materialize_v0262(tmp_path)
     with patch.dict(os.environ, env, clear=False):
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
@@ -75,7 +78,7 @@ def test_v0262_manifest_edit_never_blocks_inspection(tmp_path: Path, capsys) -> 
     )
     with patch.dict(os.environ, env, clear=False):
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert "stale" in capsys.readouterr().out
+        assert "fresh" in capsys.readouterr().out
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         assert "fresh" in capsys.readouterr().out

@@ -97,7 +97,7 @@ the base-selection path hands-on with the v0.2.9 CLI the same day.
 
 Symptom A — closed by the base-selection rework
 (`_base_answer_validator` / `_record_base_selection` in
-`devcapsule/project_operations.py`): `init --authorize base-image` now
+`devcapsule/configuration/operations.py`): `init --authorize base-image` now
 accepts the reserved keyword `default` (the matrix recommendation), a
 reference-shaped selection naming a **daemon-local** image (tag or image
 ID), or `no`. A local selection is inspected, its image ID, platform,

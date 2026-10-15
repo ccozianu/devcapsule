@@ -1,9 +1,10 @@
 ---
-status: confirmed
+status: closed
 severity: untriaged
 target: none
 owner: maintenance
 opened: 2026-08-03
+closed: 2026-09-25
 requirements: [R-DEV-001, R-IMAGE-BUILD-001, R-FRAMEWORK-001]
 ---
 
@@ -106,3 +107,8 @@ metadata fails safely, and the automated plus external dogfood checks pass.
 
 Reopen if a selected relocatable toolchain is installed but requires a
 tool-specific launcher edit or an undocumented manual `PATH` change to use it.
+
+## Closure, 2026-09-25
+
+Owner ruling during 0.2.14 acceptance: the condition is no longer the case.
+Base PATH export and environment inheritance are in place; the owner confirms node tooling is on the PATH in current capsules.

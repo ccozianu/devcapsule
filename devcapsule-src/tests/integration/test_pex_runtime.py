@@ -300,12 +300,40 @@ def test_clean_revision_build_and_tag_derived_version(tmp_path: Path, release: s
     )
     if release:
         assert value["version"] == release[1:].replace("-rc", "rc")
+        # From an empty directory: PEX_INTERPRETER keeps an empty sys.path
+        # entry, and from the source tree importlib.metadata would find the
+        # editable install's egg-info before the embedded wheel.
         installed_version = subprocess.check_output(
             [str(output), "-c", "from importlib.metadata import version; print(version('devcapsule'))"],
-            env={**os.environ, "PEX_INTERPRETER": "1"}, text=True,
+            env={**os.environ, "PEX_INTERPRETER": "1"}, text=True, cwd=tmp_path,
         ).strip()
         assert installed_version == release[1:].replace("-rc", "rc")
         assert subprocess.check_output(["git", "-C", str(repository), "diff", "--exit-code"], text=True) == ""
     assert value["source_revision"] == revision
     assert value["source_repository"] == "https://github.com/example/devcapsule-unpublished-test"
     assert value["source_url"].endswith(f"/commit/{revision}")
+
+
+@pytest.mark.integration
+def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
+    built_pex: Path, tmp_path: Path,
+) -> None:
+    project = tmp_path / "capability-project"
+    project.mkdir()
+    environment = {**os.environ, "XDG_CONFIG_HOME": str(tmp_path / "config")}
+    def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([str(built_pex), "project", "--path", str(project), *arguments],
+                              cwd=project, env=environment, text=True, capture_output=True, check=False)
+    created = invoke("init", "--required", "python", "--sdk-major", "python=3",
+                     "--optional", "browser-automation", "--creator", "mailto:fixture@example.test")
+    assert created.returncode == 0, created.stderr
+    directory = project / ".devcapsule"
+    shared = {path.name: path.read_bytes() for path in directory.iterdir()}
+    chosen = invoke("config", "capabilities", "--local", "python-ide", "codex-agent", "--without", "browser-automation")
+    assert chosen.returncode == 0, chosen.stderr
+    assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared
+    checked = invoke("config", "check")
+    assert checked.returncode == 0 and "contract valid" in checked.stdout, checked.stderr
+    refused = invoke("config", "capabilities", "--sdk-major", "python=4")
+    assert refused.returncode != 0 and "SDK major 4" in refused.stderr
+    assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared

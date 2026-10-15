@@ -10,7 +10,9 @@ import re
 import tomllib
 from typing import Mapping
 
-from devcapsule.project_configuration import atomic_write
+from devcapsule.configuration.storage import (
+    atomic_write,
+)
 
 
 WORKFLOW_TYPES = frozenset({"single-stream", "multiple-streams"})
@@ -18,6 +20,8 @@ ASSET_PACKAGE = "devcapsule.assets.project_workflow"
 DEFINITION_ASSETS: Mapping[Path, str] = {
     Path("AGENTS.md"): "definition/AGENTS.md",
     Path("WORKFLOW.md"): "definition/WORKFLOW.md",
+    Path("INFORMATION-MODEL.md"): "definition/INFORMATION-MODEL.md",
+    Path("PREAMBLE.md"): "definition/PREAMBLE.md",
 }
 COMMON_TEMPLATES: Mapping[Path, str] = {
     Path("README.md"): "templates/common/README.md.template",

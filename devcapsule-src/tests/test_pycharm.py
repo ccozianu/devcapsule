@@ -12,15 +12,17 @@ import pytest
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.components.codex import runtime_template as codex_runtime_template
 from devcapsule.components.codium import runtime_template as codium_runtime_template
-from devcapsule.configurations.pycharm import (
-    ContainerLifecycle,
+from devcapsule.launch.pycharm import (
     DockerMode,
     IdeConfigMode,
     PycharmRunOptions,
     build_run_config,
 )
-from devcapsule.configurations.pycharm._launcher import (
+from devcapsule.launch.pycharm._launcher import (
     display_disclosure,
+    describe_run_command,
+    console_development_source,
+    console_disclosure,
     HostUser,
     PycharmRunError,
     PycharmRunConfig,
@@ -35,7 +37,8 @@ from devcapsule.configurations.pycharm._launcher import (
     run_pycharm,
     write_user_files,
 )
-from devcapsule.container_runtime.contract import DisplayPlan, Identity, RuntimePlan
+from devcapsule.container_runtime.contract import DisplayPlan, Identity, LogsPlan, RuntimePlan
+from devcapsule.launch.session_logs import SESSION_LOG_DESTINATION
 from devcapsule.materialization import RUNTIME_PLAN_PATH
 from devcapsule.host_open import (
     HOST_OPEN_BROWSER,
@@ -45,6 +48,8 @@ from devcapsule.host_open import (
 )
 from devcapsule.project import plan_project
 
+from devcapsule.container_runtime.contract import ConsolePlan
+from devcapsule.display_client import display_url
 
 def base_env(tmp_path: Path) -> dict[str, str]:
     return {
@@ -81,15 +86,20 @@ def test_external_runtime_plan_is_readable_and_mounted_read_only(tmp_path: Path)
         env,
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
         assert files.runtime_plan_file is not None
         assert files.runtime_plan_file.stat().st_mode & 0o777 == 0o644
-        # The plan now records the transport explicitly, even for passthrough.
-        assert RuntimePlan.from_file(files.runtime_plan_file) == external_runtime_plan().with_display(DisplayPlan.host_x11())
+        # The plan now records the transport explicitly, even for passthrough,
+        # and the web console, which runs whenever the runtime runs.
+        written = RuntimePlan.from_file(files.runtime_plan_file)
+        assert written.display == DisplayPlan.host_x11()
+        assert written.console == ConsolePlan("0.0.0.0", 6081, "/run/devcapsule-console-token")
+        assert written.logs == LogsPlan(SESSION_LOG_DESTINATION, segment_bytes=8 * 1024 * 1024, rotations=4)
+        assert written == external_runtime_plan().with_display(DisplayPlan.host_x11()).with_console(written.console).with_logs(written.logs)
         args = build_docker_args(config, files, env)
         assert "JAVA_TOOL_OPTIONS=-Dide.browser.jcef.sandbox.enable=false" in args
         assert "SYS_ADMIN" not in args
@@ -151,6 +161,7 @@ def test_plan_driven_surface_mounts_declared_slots_instead_of_pycharm_paths(
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         runtime_plan_file=tmp_path / "runtime-plan",
     )
     args = build_docker_args(config, files, env)
@@ -236,6 +247,7 @@ def test_no_sudo_launches_keep_full_hardening_on_every_surface(
             xauth_file=tmp_path / "xauth",
             passwd_file=tmp_path / "passwd",
             group_file=tmp_path / "group",
+            console_token_file=tmp_path / "console-token",
             runtime_plan_file=tmp_path / "runtime-plan",
         )
 
@@ -273,6 +285,7 @@ def test_sudo_launches_grant_no_capabilities_beyond_dockers_default(
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         runtime_plan_file=tmp_path / "runtime-plan",
         shadow_file=tmp_path / "shadow",
         sudoers_file=tmp_path / "sudoers",
@@ -335,20 +348,15 @@ def test_detached_lifecycle_changes_only_the_docker_process_flags(tmp_path: Path
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         runtime_plan_file=tmp_path / "runtime-plan",
     )
 
-    foreground = build_docker_args(config, files, env)
-    detached = build_docker_args(
-        config,
-        files,
-        env,
-        lifecycle=ContainerLifecycle.detached,
-    )
+    args = build_docker_args(config, files, env)
 
-    assert foreground[:2] == ["--rm", "-i"]
-    assert detached[0] == "--detach"
-    assert foreground[2:] == detached[1:]
+    # The launcher owns exactly one lifecycle: attached, removed on exit.
+    assert args[:2] == ["--rm", "-i"]
+    assert "--detach" not in args and "-d" not in args
 
 
 def test_jcef_disclosure_is_printed_for_component_policy(
@@ -403,6 +411,7 @@ def test_host_browser_bridge_is_explicit_in_plan_mount_environment_and_summary(
             xauth_file=tmp_path / "xauth",
             passwd_file=tmp_path / "passwd",
             group_file=tmp_path / "group",
+            console_token_file=tmp_path / "console-token",
             runtime_plan_file=tmp_path / "runtime-plan",
         )
         args = build_docker_args(config, files, env)
@@ -453,8 +462,8 @@ def test_physical_host_launcher_owns_browser_broker_for_docker_lifetime(
 
     with (
         patch("devcapsule.host_open.in_container", return_value=False),
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value.returncode = 0
         assert run_pycharm(
@@ -511,8 +520,8 @@ def test_selected_codex_state_and_explicit_secret_are_delivered(tmp_path: Path) 
         env,
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -542,8 +551,8 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
     host_user = HostUser(uid=1000, gid=1000, name="developer", group_name="developer")
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.current_host_user", return_value=host_user),
-        patch("devcapsule.configurations.pycharm._launcher.is_socket", return_value=True),
+        patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=host_user),
+        patch("devcapsule.launch.pycharm._launcher.is_socket", return_value=True),
     ):
         config = build_run_config(
             PycharmRunOptions(
@@ -565,7 +574,7 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
             ),
             env,
         )
-        with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
+        with patch("devcapsule.launch.pycharm._launcher.write_xauthority"):
             files = prepare_temp_runtime_files(config, env)
         try:
             assert files.sudoers_file is not None
@@ -616,7 +625,7 @@ def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) 
     host_user = HostUser(uid=1000, gid=1000, name="developer", group_name="developer")
 
     with patch(
-        "devcapsule.configurations.pycharm._launcher.current_host_user",
+        "devcapsule.launch.pycharm._launcher.current_host_user",
         return_value=host_user,
     ):
         config = build_run_config(
@@ -630,7 +639,7 @@ def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) 
             ),
             env,
         )
-        with patch("devcapsule.configurations.pycharm._launcher.write_xauthority"):
+        with patch("devcapsule.launch.pycharm._launcher.write_xauthority"):
             files = prepare_temp_runtime_files(config, env)
         try:
             assert files.sudoers_file is None
@@ -657,6 +666,7 @@ def test_sudoers_ownership_helper_is_constrained(tmp_path: Path) -> None:
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         sudoers_file=policy,
     )
     config = cast(
@@ -665,9 +675,9 @@ def test_sudoers_ownership_helper_is_constrained(tmp_path: Path) -> None:
     )
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.os.chown", side_effect=PermissionError),
-        patch("devcapsule.configurations.pycharm._launcher.file_owner_uid", return_value=0),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.os.chown", side_effect=PermissionError),
+        patch("devcapsule.launch.pycharm._launcher.file_owner_uid", return_value=0),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value = SimpleNamespace(returncode=0, stderr="")
         ensure_sudoers_policy_ownership(config, files, {"PATH": "/usr/bin"})
@@ -690,6 +700,7 @@ def test_sudoers_ownership_helper_failure_is_actionable(tmp_path: Path) -> None:
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         sudoers_file=policy,
     )
     config = cast(
@@ -698,8 +709,8 @@ def test_sudoers_ownership_helper_failure_is_actionable(tmp_path: Path) -> None:
     )
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.os.chown", side_effect=PermissionError),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.os.chown", side_effect=PermissionError),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value = SimpleNamespace(returncode=1, stderr="daemon denied helper")
         with pytest.raises(PycharmRunError, match="daemon denied helper"):
@@ -716,11 +727,11 @@ def test_sudo_banner_is_printed_after_complete_policy_preparation(
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch(
-            "devcapsule.configurations.pycharm._launcher.ensure_sudoers_policy_ownership"
+            "devcapsule.launch.pycharm._launcher.ensure_sudoers_policy_ownership"
         ) as ensure,
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value.returncode = 0
         assert (
@@ -753,13 +764,13 @@ def test_sudo_policy_preparation_failure_cleans_files_without_enabled_banner(
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch(
-            "devcapsule.configurations.pycharm._launcher.ensure_sudoers_policy_ownership",
+            "devcapsule.launch.pycharm._launcher.ensure_sudoers_policy_ownership",
             side_effect=PycharmRunError("sudo policy failed"),
         ),
         patch(
-            "devcapsule.configurations.pycharm._launcher.cleanup_temp_runtime_files",
+            "devcapsule.launch.pycharm._launcher.cleanup_temp_runtime_files",
             wraps=cleanup_temp_runtime_files,
         ) as cleanup,
     ):
@@ -813,8 +824,8 @@ def test_image_process_uses_oci_command_and_cleans_all_temporary_files(tmp_path:
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
     image = "devcapsule-local-pycharm:canonical"
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
     ):
         run.return_value.returncode = 0
         assert (
@@ -860,9 +871,9 @@ def test_launch_preparation_failure_cleans_runtime_and_identity_files(tmp_path: 
     env = base_env(tmp_path)
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
     with (
-        patch("devcapsule.configurations.pycharm._launcher.shutil.which", return_value=None),
+        patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch(
-            "devcapsule.configurations.pycharm._launcher.cleanup_temp_runtime_files",
+            "devcapsule.launch.pycharm._launcher.cleanup_temp_runtime_files",
             wraps=cleanup_temp_runtime_files,
         ) as cleanup,
     ):
@@ -898,11 +909,12 @@ def test_runtime_plan_serialization_failure_leaves_no_temporary_files(tmp_path: 
     runtime_directory = tmp_path / "runtime"
     config = cast(
         PycharmRunConfig,
-        SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan(), display_transport="host-x11"),
+        SimpleNamespace(enable_sudo=False, runtime_plan=external_runtime_plan(), display_transport="host-x11",
+                        console_host_port=None),
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
         patch.object(RuntimePlan, "to_json", side_effect=ValueError("serialization failed")),
     ):
         with pytest.raises(ValueError, match="serialization failed"):
@@ -920,11 +932,12 @@ def test_generated_passwd_home_matches_persistent_container_home(tmp_path: Path)
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
     )
     config = cast(PycharmRunConfig, SimpleNamespace(host_docker_gid=None, enable_sudo=False))
 
     with patch(
-        "devcapsule.configurations.pycharm._launcher.current_host_user",
+        "devcapsule.launch.pycharm._launcher.current_host_user",
         return_value=HostUser(uid=1000, gid=1000, name="developer", group_name="developer"),
     ):
         write_user_files(config, files)
@@ -1089,7 +1102,7 @@ def test_launcher_owned_docker_options_are_refused_in_passthrough() -> None:
     2026-09-02: launcher-owned single-instance options are refused, repeatable
     ones pass through."""
 
-    from devcapsule.configurations.pycharm import reject_launcher_owned_docker_options
+    from devcapsule.launch.pycharm import reject_launcher_owned_docker_options
 
     for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always"):
         with pytest.raises(PycharmRunError, match="composed by the launcher"):
@@ -1135,8 +1148,8 @@ def test_contained_display_publishes_a_token_gated_port_and_shares_no_x_session(
         "0.0.0.0", 6080, "/run/devcapsule-display-token"
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority") as xauthority,
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority") as xauthority,
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -1167,8 +1180,8 @@ def test_contained_display_under_host_networking_listens_on_host_loopback_direct
         "127.0.0.1", config.display_host_port, "/run/devcapsule-display-token"  # type: ignore[arg-type]
     )
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -1216,8 +1229,8 @@ def test_host_x11_passthrough_still_needs_a_host_display_and_binds_it(tmp_path: 
     assert config.display_transport == "host-x11"
     assert config.runtime_plan is not None and config.runtime_plan.display == DisplayPlan.host_x11()
     with (
-        patch("devcapsule.configurations.pycharm._launcher.write_xauthority") as xauthority,
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority") as xauthority,
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
     ):
         files = prepare_temp_runtime_files(config, env)
     try:
@@ -1227,7 +1240,8 @@ def test_host_x11_passthrough_still_needs_a_host_display_and_binds_it(tmp_path: 
         assert "type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix,ro" in args
         assert "XAUTHORITY=/tmp/.docker.xauth" in args
         assert "DISPLAY" in args
-        assert "--publish" not in args
+        published = [args[index + 1] for index, item in enumerate(args) if item == "--publish"]
+        assert published == [f"127.0.0.1:{config.console_host_port}:6081"]  # the console only; no display port
     finally:
         cleanup_temp_runtime_files(files)
 
@@ -1274,10 +1288,10 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
         return SimpleNamespace(returncode=0)
 
     with (
-        patch("devcapsule.configurations.pycharm._launcher.allocate_loopback_port", return_value=port),
-        patch("devcapsule.configurations.pycharm._launcher.write_user_files"),
-        patch("devcapsule.configurations.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
-        patch("devcapsule.configurations.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
+        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=[port, 1]),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
+        patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
     ):
         try:
             exit_code = run_pycharm(
@@ -1300,3 +1314,557 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
     assert url.startswith(f"http://127.0.0.1:{port}/vnc.html?autoconnect=1&resize=remote&path=websockify%3Ftoken%3D")
     captured = capsys.readouterr()
     assert f"Contained display: {url}" in captured.err
+
+
+def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_only(tmp_path):
+    import json
+    from devcapsule.runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
+    project = tmp_path / "project"
+    project.mkdir()
+    records = tmp_path / "records"
+    records.mkdir()
+    document = {"format": 1, "launcher-root": str(project), "runtime-root": "/workspace/project",
+                "checkout-file": "devcapsule.checkout.toml", "running": {"identity": "captured-at-launch"}}
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = build_run_config(PycharmRunOptions(
+        project=project, project_mount="/workspace/project", docker_mode=DockerMode.none,
+        runtime_plan=external_runtime_plan(), use_image_process=True,
+        launch_configuration=LaunchConfiguration(records, document),
+    ), env)
+    with patch("devcapsule.launch.pycharm._launcher.write_xauthority"), patch("devcapsule.launch.pycharm._launcher.write_user_files"):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.launch_context_file is not None
+        assert files.launch_context_file.stat().st_mode & 0o777 == 0o600
+        assert json.loads(files.launch_context_file.read_text()) == document
+        args = build_docker_args(config, files, env)
+        assert f"type=bind,src={records},dst={CONFIGURATION_PATH},ro" in args
+        assert f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro" in args
+        assert not any("src=" + str(records / "devcapsule.checkout.toml") in arg for arg in args)
+    finally:
+        cleanup_temp_runtime_files(files)
+    assert not files.launch_context_file.exists()
+
+
+def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_path: Path) -> None:
+    """The console mirrors the display: one loopback port, one per-run token,
+    the token mounted read-only and never on the command line (R-CONSOLE-001)."""
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = contained_config(tmp_path)
+    assert config.console_host_port is not None and 1024 < config.console_host_port < 65536
+    assert config.console_host_port != config.display_host_port
+    assert len(config.console_token) == 48 and config.console_token != config.display_token
+    assert config.runtime_plan is not None
+    assert config.runtime_plan.console == ConsolePlan("0.0.0.0", 6081, "/run/devcapsule-console-token")
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.console_token_file is not None
+        assert files.console_token_file.stat().st_mode & 0o777 == 0o600
+        assert files.console_token_file.read_text(encoding="utf-8") == config.console_token + "\n"
+        args = build_docker_args(config, files, env)
+        joined = " ".join(args)
+        assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
+        published = [args[index + 1] for index, item in enumerate(args) if item == "--publish"]
+        assert published == [f"127.0.0.1:{config.display_host_port}:6080", f"127.0.0.1:{config.console_host_port}:6081"]
+        # The origin crosses into the capsule so an agent can hand the human a link; the token does not.
+        assert f"DEVCAPSULE_CONSOLE_URL=http://127.0.0.1:{config.console_host_port}" in args
+        assert config.console_token not in joined
+        assert RuntimePlan.from_file(files.runtime_plan_file).console == config.runtime_plan.console  # type: ignore[arg-type]
+        description = describe_run_command(args, config, files)
+        assert f"Temporary Console token: {files.console_token_file}" in description
+        assert "The web console needs its temporary token file" in description
+        assert config.console_token not in description
+        assert config.console_token not in config.runtime_plan.to_json()
+    finally:
+        cleanup_temp_runtime_files(files)
+    assert not files.console_token_file.exists()
+
+
+def test_web_console_under_host_networking_listens_on_host_loopback_directly(tmp_path: Path) -> None:
+    config = contained_config(tmp_path, network_mode="host")
+    assert config.runtime_plan is not None and config.runtime_plan.console == ConsolePlan(
+        "127.0.0.1", config.console_host_port, "/run/devcapsule-console-token"  # type: ignore[arg-type]
+    )
+    env = base_env(tmp_path)
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        args = build_docker_args(config, files, env)
+        assert "--publish" not in args
+        assert f"DEVCAPSULE_CONSOLE_URL=http://127.0.0.1:{config.console_host_port}" in args
+        assert f"type=bind,src={files.console_token_file},dst=/run/devcapsule-console-token,ro" in args
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+@pytest.mark.parametrize("network_mode", ["bridge", "host"])
+def test_console_retries_a_port_already_selected_for_the_display(tmp_path: Path, network_mode: str) -> None:
+    with patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=[41000, 41000, 41001]):
+        config = contained_config(tmp_path, network_mode=network_mode)
+    assert config.display_host_port == 41000
+    assert config.console_host_port == 41001
+    assert config.runtime_plan is not None and config.runtime_plan.console is not None
+    assert config.runtime_plan.console.port == (41001 if network_mode == "host" else 6081)
+
+
+def test_console_port_retries_are_bounded(tmp_path: Path) -> None:
+    with patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", return_value=41000) as allocate:
+        with pytest.raises(PycharmRunError, match="distinct display and web console ports"):
+            contained_config(tmp_path)
+    assert allocate.call_count == 11  # one display allocation, ten console attempts
+
+
+def test_console_mount_requires_its_token_file(tmp_path: Path) -> None:
+    config = contained_config(tmp_path)
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth", passwd_file=tmp_path / "passwd", group_file=tmp_path / "group",
+        display_token_file=tmp_path / "display-token", runtime_plan_file=tmp_path / "plan",
+    )
+    with pytest.raises(PycharmRunError, match="web console requires a generated token file"):
+        build_docker_args(config, files, base_env(tmp_path))
+
+
+@pytest.mark.parametrize("failure", ["write", "chmod", "later"])
+def test_console_token_is_removed_when_preparation_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+) -> None:
+    config = contained_config(tmp_path)
+    runtime = tmp_path / "runtime"
+    env = {**base_env(tmp_path), "XDG_RUNTIME_DIR": str(runtime)}
+    write_text = Path.write_text
+    chmod = Path.chmod
+
+    def fail_write(path: Path, data: str, **kwargs: object) -> int:
+        if path.name.startswith("devcapsule-console-token."):
+            raise OSError("token write failed")
+        return write_text(path, data, encoding="utf-8")
+
+    def fail_chmod(path: Path, mode: int) -> None:
+        if path.name.startswith("devcapsule-console-token."):
+            raise OSError("token chmod failed")
+        chmod(path, mode)
+
+    if failure == "write":
+        monkeypatch.setattr(Path, "write_text", fail_write)
+    elif failure == "chmod":
+        monkeypatch.setattr(Path, "chmod", fail_chmod)
+    message = "identity failed" if failure == "later" else f"token {failure} failed"
+    with patch("devcapsule.launch.pycharm._launcher.write_user_files",
+               side_effect=OSError(message) if failure == "later" else None):
+        with pytest.raises(OSError, match=message):
+            prepare_temp_runtime_files(config, env)
+    assert list(runtime.iterdir()) == []
+
+
+@pytest.mark.parametrize("report_only", [False, True])
+def test_console_launcher_cleans_up_after_command_reporting_or_docker_failure(
+    tmp_path: Path, report_only: bool,
+) -> None:
+    from unittest.mock import Mock
+
+    config = contained_config(tmp_path)
+    runtime = tmp_path / "runtime"
+    env = {**base_env(tmp_path), "XDG_RUNTIME_DIR": str(runtime)}
+    report = Mock()
+    options = PycharmRunOptions(project=config.project, command_report=report if report_only else None)
+    with (
+        patch("devcapsule.launch.pycharm._launcher.build_run_config", return_value=config),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.watch_display_ready") as watch,
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=OSError("docker failed")) as docker,
+    ):
+        if report_only:
+            assert run_pycharm(options, env) == 0
+            docker.assert_not_called()
+            watch.assert_not_called()
+            report.assert_called_once()
+            assert "Temporary Console token:" in report.call_args.args[0]
+            assert config.console_token not in report.call_args.args[0]
+        else:
+            with pytest.raises(OSError, match="docker failed"):
+                run_pycharm(options, env)
+            assert watch.call_count == 2
+            assert watch.call_args.args[3].is_set()
+    assert list(runtime.iterdir()) == []
+
+
+def test_web_console_runs_the_checkouts_source_under_the_self_hosting_exception(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    (project / "devcapsule-webconsole" / "devcapsule_webconsole").mkdir(parents=True)
+    (project / "devcapsule-webconsole" / "devcapsule_webconsole" / "__init__.py").write_text("", encoding="utf-8")
+    config = contained_config(tmp_path)
+    assert config.runtime_plan is not None and config.runtime_plan.console is not None
+    assert config.runtime_plan.console.source_path == "/workspace/project/devcapsule-webconsole"
+    assert console_development_source(tmp_path / "other", "/workspace/other") == ""
+
+
+def test_web_console_is_absent_without_a_runtime_plan(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    config = build_run_config(
+        PycharmRunOptions(project=project, project_mount="/workspace/project", docker_mode=DockerMode.none),
+        base_env(tmp_path),
+    )
+    assert config.console_host_port is None and config.console_token == ""
+    assert console_disclosure(config) == ""
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, base_env(tmp_path))
+    try:
+        assert files.console_token_file is None
+        assert "devcapsule-console-token" not in " ".join(build_docker_args(config, files, base_env(tmp_path)))
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+def test_console_disclosure_states_where_it_listens(tmp_path: Path) -> None:
+    contained = contained_config(tmp_path)
+    text = console_disclosure(contained)
+    assert "Web console:" in text and "read-only" in text
+    assert f"container port 6081, published to host loopback port {contained.console_host_port}" in text
+    direct = contained_config(tmp_path, network_mode="host")
+    assert f"host loopback port {direct.console_host_port} (host networking)" in console_disclosure(direct)
+
+
+@pytest.mark.parametrize("display_transport", ["contained", "host-x11"])
+@pytest.mark.parametrize("custom_console_opener", [False, True])
+def test_run_pycharm_announces_the_console_url_and_opens_it_only_without_a_desktop(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], display_transport: str, custom_console_opener: bool,
+) -> None:
+    from threading import Event
+    from unittest.mock import Mock
+
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    display_opener = Mock()
+    console_opener = Mock()
+    default_console_opener = Mock()
+    tokens = ["a" * 48, "b" * 48]
+    stops: list[Event] = []
+
+    def ready(port: int, url: str, opener: object, stop: Event, **kwargs: object) -> None:
+        from typing import Callable
+
+        stops.append(stop)
+        assert not stop.is_set()
+        cast(Callable[[str], None], opener)(url)
+
+    with (
+        patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=[41000, 41001]),
+        patch("devcapsule.launch.pycharm._launcher.new_run_token", side_effect=tokens),
+        patch("devcapsule.launch.pycharm._launcher.watch_display_ready", side_effect=ready) as watcher,
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run", return_value=SimpleNamespace(returncode=7)),
+        patch("devcapsule.launch.pycharm._launcher.default_opener", return_value=default_console_opener) as default,
+    ):
+        assert run_pycharm(PycharmRunOptions(
+            project=project, project_mount="/workspace/project", docker_mode=DockerMode.none,
+            network_mode="bridge", runtime_plan=external_runtime_plan(), use_image_process=True,
+            display_transport=display_transport, open_display_url=display_opener,
+            open_console_url=console_opener if custom_console_opener else None,
+        ), env) == 7
+    contained = display_transport == "contained"
+    console_port, token = (41001, tokens[1]) if contained else (41000, tokens[0])
+    url = f"http://127.0.0.1:{console_port}/?token={token}"
+    output = capsys.readouterr().err
+    assert f"Web console: {url}\n" in output
+    assert watcher.call_count == (2 if contained else 1)
+    assert watcher.call_args.args[:2] == (console_port, url)
+    assert watcher.call_args.kwargs == {"label": "Web console"}
+    assert all(stop is stops[0] and stop.is_set() for stop in stops)
+    assert list((tmp_path / "runtime").iterdir()) == []
+    if contained:
+        display_opener.assert_called_once_with(display_url(41000, tokens[0]))
+    else:
+        display_opener.assert_not_called()
+    if custom_console_opener:
+        console_opener.assert_called_once_with(url)
+        default.assert_not_called()
+    elif contained:
+        assert f"Web console is ready; open it in a browser: {url}" in output
+        default.assert_not_called()
+    else:
+        assert default.call_args.kwargs == {"label": "Web console"}
+        default_console_opener.assert_called_once_with(url)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_console_environment_contains_only_the_origin(tmp_path: Path, enabled: bool) -> None:
+    from dataclasses import replace
+    from devcapsule.display_client import console_origin, console_url
+    from devcapsule.launch.pycharm._launcher import _console_environment_args
+
+    config = replace(contained_config(tmp_path), console_host_port=41001 if enabled else None,
+                     console_token="private/token?value")
+    assert _console_environment_args(config) == (
+        ["--env", "DEVCAPSULE_CONSOLE_URL=http://127.0.0.1:41001"] if enabled else []
+    )
+    assert console_origin(41001) == "http://127.0.0.1:41001"
+    assert console_url(41001, config.console_token) == "http://127.0.0.1:41001/?token=private%2Ftoken%3Fvalue"
+
+
+def session_config(tmp_path: Path, **environment: str) -> tuple[PycharmRunConfig, dict[str, str]]:
+    project = tmp_path / "project"
+    project.mkdir(exist_ok=True)
+    env = base_env(tmp_path)
+    env["XDG_STATE_HOME"] = str(tmp_path / "state")
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    env.update(environment)
+    config = build_run_config(
+        PycharmRunOptions(
+            project=project,
+            project_mount="/workspace/project",
+            docker_mode=DockerMode.none,
+            network_mode="bridge",
+            runtime_plan=external_runtime_plan(),
+            use_image_process=True,
+        ),
+        env,
+    )
+    return config, env
+
+
+def test_every_launch_gets_a_session_log_directory_bound_into_the_capsule(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import re
+
+    from devcapsule.launch.session_logs import session_logs_root
+    from devcapsule.project import project_namespace
+
+    config, env = session_config(tmp_path)
+    directory = config.session_log_directory
+    assert directory is not None and directory.is_dir()
+    assert directory.parent == session_logs_root(config.project, env)
+    assert directory.parent == tmp_path / "state" / "devcapsule" / "projects" / "by-path" / project_namespace(config.project) / "logs"
+    assert directory.name == config.session_id and re.fullmatch(r"\d{8}-\d{6}-[0-9a-f]{4}", config.session_id)
+    # 256 MiB by default, one thirty-second of it per segment, four rotations.
+    assert config.log_budget_bytes == 256 * 1024 * 1024
+    assert config.runtime_plan is not None
+    assert config.runtime_plan.logs == LogsPlan(SESSION_LOG_DESTINATION, segment_bytes=8 * 1024 * 1024, rotations=4)
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        args = build_docker_args(config, files, env)
+        assert f"type=bind,src={directory},dst={SESSION_LOG_DESTINATION}" in args
+        assert f"DEVCAPSULE_LOG_DIR={SESSION_LOG_DESTINATION}" in args
+        assert (f"Session logs: {directory} (bound at {SESSION_LOG_DESTINATION}; checkout budget 256 MiB, DEVCAPSULE_LOG_BUDGET)"
+                in describe_run_command(args, config, files))
+    finally:
+        cleanup_temp_runtime_files(files)
+    print_storage_summary(config)
+    assert f"Session logs:           {directory} (budget 256 MiB)" in capsys.readouterr().err
+
+
+def test_begin_session_logs_writes_the_manifest_and_the_launcher_log_and_prunes_old_sessions(tmp_path: Path) -> None:
+    import json
+    import logging
+
+    from devcapsule import logs
+    from devcapsule.launch.pycharm._launcher import begin_session_logs
+
+    config, env = session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="16M")
+    directory = config.session_log_directory
+    assert directory is not None
+    for index in range(3):
+        old = directory.parent / f"20200101-0000{index:02d}-aaaa"
+        old.mkdir()
+        (old / "devcapsule-pycharm.log").write_bytes(b"x" * (6 * 1024 * 1024))
+    try:
+        begin_session_logs(config, env)
+        handler = next(h for h in logging.getLogger().handlers if isinstance(h, logs._SessionFileHandler))
+        assert handler._file is not None and handler._file.path == directory / "devcapsule-launcher.log"
+        assert (handler._file._segment, handler._file._rotations) == (1024 * 1024, 4)
+        manifest = json.loads((directory / "session.json").read_text(encoding="utf-8"))
+        assert manifest["session"] == config.session_id
+        assert manifest["container"] == config.name and manifest["image"] == config.image
+        assert manifest["component"] == "pycharm"
+        assert manifest["logs"] == {
+            "directory": SESSION_LOG_DESTINATION, "pattern": "devcapsule-<component>.log",
+            "budget-bytes": 16 * 1024 * 1024, "segment-bytes": 1024 * 1024, "rotations": 4,
+        }
+        assert manifest["launcher"]["version"]
+        record = (directory / "devcapsule-launcher.log").read_text(encoding="utf-8")
+        assert f"session {config.session_id} start: image {config.image}, container {config.name}" in record
+        # 18 MiB of old sessions against a 16 MiB budget: the oldest goes, the next fits.
+        assert "removed 1 older session log directories to fit the 16 MiB budget: 20200101-000000-aaaa" in record
+        assert sorted(entry.name for entry in directory.parent.iterdir()) == [
+            "20200101-000001-aaaa", "20200101-000002-aaaa", directory.name,
+        ]
+    finally:
+        logs.reset()
+
+
+def test_unusable_session_directory_does_not_add_a_mount_or_stop_launch(tmp_path, capsys):
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    blocked = tmp_path / "blocked-state"
+    blocked.write_text("not a directory")
+    # Existing IDE storage still has to be writable; this regression isolates
+    # the new session directory from that pre-existing launch requirement.
+    with patch.object(launcher, "session_logs_root", return_value=blocked):
+        config, env = session_config(tmp_path)
+    assert config.session_log_directory is None
+    assert config.runtime_plan is not None and config.runtime_plan.logs is None
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "run", return_value=SimpleNamespace(returncode=7)) as docker,
+        ):
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == 7
+        command = docker.call_args.args[0]
+        assert not any(SESSION_LOG_DESTINATION in arg for arg in command)
+        assert "cannot use session logs" in capsys.readouterr().err
+    finally:
+        logs.reset()
+
+
+@pytest.mark.parametrize("override,expected", [("debug", "DEBUG"), (" Info ", "INFO"), ("loud", "WARNING")])
+def test_session_log_level_reaches_the_capsule(tmp_path, override, expected):
+    config, env = session_config(tmp_path, DEVCAPSULE_LOG_LEVEL=override)
+    with patch("devcapsule.launch.pycharm._launcher.write_xauthority"), patch("devcapsule.launch.pycharm._launcher.write_user_files"):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert f"DEVCAPSULE_LOG_LEVEL={expected}" in build_docker_args(config, files, env)
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+@pytest.mark.parametrize("backed", [True, False])
+def test_session_logs_with_an_external_daemon(tmp_path, backed, capsys):
+    from devcapsule.launch.pycharm import _launcher as launcher
+    from devcapsule.recursive_dogfood import ContainerInspection, Mount
+
+    # All existing launch storage is mounted; the optional state root may be
+    # outside those mounts. Use the real translation, only fake inspection.
+    mounts = [Mount(source="/tmp/.X11-unix", destination="/tmp/.X11-unix", kind="bind", writable=True)]
+    if backed:
+        mounts.append(Mount(source="/host/checkout", destination=str(tmp_path), kind="bind", writable=True))
+    inspection = ContainerInspection(
+        identity="c" * 64, name="outer", image="sha256:" + "ab" * 32,
+        source_revision=None, network_mode="host", mounts=tuple(mounts), upper_directory=None,
+    )
+    with (
+        patch.object(launcher, "requires_translation", return_value=True),
+        patch.object(launcher, "current_container", return_value=inspection),
+    ):
+        config, env = session_config(tmp_path)
+        if backed:
+            assert config.session_log_directory is not None
+            with patch.object(launcher, "write_xauthority"), patch.object(launcher, "write_user_files"):
+                files = prepare_temp_runtime_files(config, env)
+            try:
+                args = launcher.translate_for_external_daemon(build_docker_args(config, files, env), env)
+                relative = config.session_log_directory.relative_to(tmp_path)
+                assert f"type=bind,src=/host/checkout/{relative},dst={SESSION_LOG_DESTINATION}" in args
+                assert config.session_log_directory.is_dir()  # launcher still writes through its own path
+            finally:
+                cleanup_temp_runtime_files(files)
+        else:
+            assert config.session_log_directory is None
+            assert config.runtime_plan is not None and config.runtime_plan.logs is None
+            assert "not backed by a mount" in capsys.readouterr().err
+
+
+def test_interrupted_launch_records_the_end_and_reraises(tmp_path):
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, env = session_config(tmp_path)
+    interrupted = KeyboardInterrupt()
+    stops = []
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready", side_effect=lambda port, url, opener, stop, **kw: stops.append(stop)),
+            patch.object(launcher.subprocess, "run", side_effect=interrupted),
+        ):
+            with pytest.raises(KeyboardInterrupt) as raised:
+                run_pycharm(PycharmRunOptions(project=config.project), env)
+        assert raised.value is interrupted
+        assert stops and all(stop.is_set() for stop in stops)
+        assert list((tmp_path / "runtime").iterdir()) == []
+        assert config.session_log_directory is not None
+        record = (config.session_log_directory / "devcapsule-launcher.log").read_text()
+        assert "session end: interrupted from the terminal (Ctrl+C)" in record
+    finally:
+        logs.reset()
+
+
+def test_the_log_budget_knob_sets_the_segment_and_reports_nonsense(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    config, _env = session_config(tmp_path, DEVCAPSULE_LOG_BUDGET="1G")
+    assert config.log_budget_bytes == 1024 ** 3
+    assert config.runtime_plan is not None and config.runtime_plan.logs is not None
+    assert (config.runtime_plan.logs.segment_bytes, config.runtime_plan.logs.rotations) == (10 * 1024 * 1024, 4)
+    print_storage_summary(config)
+    assert "(budget 1 GiB)" in capsys.readouterr().err
+    for value, message in (
+        ("lots", "DEVCAPSULE_LOG_BUDGET: 'lots' is not a size"),
+        ("1M", "DEVCAPSULE_LOG_BUDGET must be at least 16 MiB"),
+        ("9" * 5000, "DEVCAPSULE_LOG_BUDGET: size contains too many digits"),
+    ):
+        fallback, _ = session_config(tmp_path, DEVCAPSULE_LOG_BUDGET=value)
+        assert fallback.log_budget_bytes == 256 * 1024 ** 2
+        assert fallback.runtime_plan is not None and fallback.runtime_plan.logs is not None
+        assert fallback.runtime_plan.logs.segment_bytes == 8 * 1024 ** 2
+        warning = capsys.readouterr().err
+        assert message in warning
+        assert warning.count("using the default log budget of 256 MiB") == 1
+
+
+def test_the_launcher_records_the_sessions_end_in_its_manifest(tmp_path: Path) -> None:
+    import json
+
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, env = session_config(tmp_path)
+    assert config.session_log_directory is not None
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "run", return_value=SimpleNamespace(returncode=7)),
+        ):
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == 7
+        manifest = json.loads((config.session_log_directory / "session.json").read_text(encoding="utf-8"))
+        assert manifest["session"] == config.session_id and manifest["exit-code"] == 7
+        assert manifest["ended-at"].endswith("Z") and logs.session_ended(config.session_log_directory)
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "run", side_effect=KeyboardInterrupt()),
+        ):
+            with pytest.raises(KeyboardInterrupt):
+                run_pycharm(PycharmRunOptions(project=config.project), env)
+        manifest = json.loads((config.session_log_directory / "session.json").read_text(encoding="utf-8"))
+        assert manifest["exit-code"] is None and manifest["ended-at"]
+    finally:
+        logs.reset()

@@ -9,9 +9,8 @@ from typing import Any
 import pytest
 
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
-from devcapsule.configurations.pycharm import DockerMode, PycharmRunOptions
-from devcapsule.configurations.pycharm._launcher import (
-    ContainerLifecycle,
+from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions
+from devcapsule.launch.pycharm._launcher import (
     TempRuntimeFiles,
     build_docker_args,
     build_run_config,
@@ -215,11 +214,12 @@ def test_plan_models_every_flag_the_real_launcher_emits(tmp_path: Path, enable_s
         xauth_file=tmp_path / "xauth",
         passwd_file=tmp_path / "passwd",
         group_file=tmp_path / "group",
+        console_token_file=tmp_path / "console-token",
         shadow_file=tmp_path / "shadow",
         sudoers_file=tmp_path / "sudoers",
         runtime_plan_file=tmp_path / "runtime-plan",
     )
-    args = build_docker_args(config, files, env, lifecycle=ContainerLifecycle.detached)
+    args = build_docker_args(config, files, env)
 
     plan = ExpectedSuccessorPlan.from_docker_args(
         args,

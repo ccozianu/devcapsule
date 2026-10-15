@@ -243,3 +243,22 @@ def test_openbox_configuration_removes_the_minimize_trap() -> None:
     assert [(a.get("type"), a.findtext("ob:maximized", namespaces=ns)) for a in apps] == [("normal", "yes")]
     # No reference to the Debian menu file that is absent from the base.
     assert "debian-menu" not in openbox_configuration_text()
+
+
+def test_xvnc_logs_status_by_default_and_everything_under_a_debug_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, captured_supervisor: type[SupervisorCapture]
+) -> None:
+    from devcapsule.container_runtime.display import XVNC_LOG_SETTING, XVNC_VERBOSE_LOG_SETTING, xvnc_log_setting
+    from devcapsule.logs import LEVEL_ENV
+
+    monkeypatch.setattr("devcapsule.container_runtime.display.os.geteuid", lambda: 1000)
+    monkeypatch.setattr("devcapsule.container_runtime.display.shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("devcapsule.container_runtime.display.X_SOCKET_DIRECTORY", str(tmp_path / ".X11-unix"))
+    monkeypatch.delenv(LEVEL_ENV, raising=False)
+    assert run(RuntimePlan.from_mapping(contained_document(tmp_path))) == 42
+    (supervisor,) = captured_supervisor.instances
+    xvnc = next(child for child in supervisor.children if child.name == XVNC_CHILD)
+    assert xvnc.command[-2:] == ("-Log", XVNC_LOG_SETTING) == ("-Log", "*:stderr:10")
+    assert xvnc_log_setting({LEVEL_ENV: "debug"}) == XVNC_VERBOSE_LOG_SETTING == "*:stderr:100"
+    assert xvnc_log_setting({LEVEL_ENV: "info"}) == XVNC_LOG_SETTING
+    assert xvnc_log_setting({LEVEL_ENV: "loud"}) == XVNC_LOG_SETTING

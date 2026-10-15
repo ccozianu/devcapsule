@@ -1,0 +1,10 @@
+logrotate state -- version 2
+"/var/log/devcapsule/devcapsule-codium.log" 2026-10-11-8:0:0
+"/var/log/devcapsule/devcapsule-launcher.log" 2026-10-11-8:0:0
+"/var/log/devcapsule/devcapsule-window-manager.log" 2026-10-11-8:0:0
+"/var/log/devcapsule/devcapsule-supervisor.log" 2026-10-11-8:0:0
+"/var/log/devcapsule/devcapsule-novnc.log" 2026-10-11-8:0:0
+"/var/log/devcapsule/devcapsule-panel.log" 2026-10-11-8:56:54
+"/var/log/devcapsule/devcapsule-console.log" 2026-10-11-8:0:0
+"/var/log/devcapsule/devcapsule-logrotate.log" 2026-10-11-8:0:0
+"/var/log/devcapsule/devcapsule-xvnc.log" 2026-10-11-8:0:0

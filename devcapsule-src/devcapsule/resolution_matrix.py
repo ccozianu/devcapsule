@@ -36,8 +36,20 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
+from devcapsule.images.contract import (
+    CONTAINED_DISPLAY,
+    EMBEDDED_RUNTIME,
+    HOST_X11_ONLY_DISPLAY,
+    LAUNCHER_SUPPLIED_RUNTIME,
+    BaseContract,
+    BaseImage,
+    Provenance,
+)
 from devcapsule.platforms import Platform
-from devcapsule.project_configuration import (
+from devcapsule.components.catalog import COMPONENTS
+from devcapsule.components.playwright_pin import PIN as PLAYWRIGHT_PIN
+from devcapsule.components.eclipse_native_pin import PACKAGES as ECLIPSE_NATIVE_PACKAGES
+from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     canonical_digest,
     quote_toml,
@@ -59,7 +71,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-20"
+_MATRIX_VERSION = "embedded-26"
 
 
 # --------------------------------------------------------------------------
@@ -84,6 +96,28 @@ class _BasePin:
     base_family: str
     satisfies: frozenset[str]
     lock_table: Mapping[str, Any]
+    # The contract's compatible-evolution version and the promises the
+    # labels of that recipe carry; see base_contract. The family above is
+    # the contract's incompatible-change line.
+    recipe: int = 0
+    display: str = HOST_X11_ONLY_DISPLAY
+    runtime: str = LAUNCHER_SUPPLIED_RUNTIME
+    sdk_majors: Mapping[str, int] = field(default_factory=dict)
+
+    @property
+    def contract(self) -> BaseContract:
+        return BaseContract(
+            family=self.base_family, recipe=self.recipe, services=self.satisfies,
+            display=self.display, runtime=self.runtime,
+        )
+
+    @property
+    def image(self) -> BaseImage:
+        return BaseImage(
+            contract=self.contract,
+            reference=str(self.lock_table["reference"]),
+            built=Provenance(builder=str(self.lock_table.get("build-mnemonic", "unknown"))),
+        )
 
 
 @dataclass(frozen=True)
@@ -182,6 +216,70 @@ class ResolutionMatrix:
         self._ancillary_capabilities = dict(ancillary_capabilities)
         self._materialization = materialization
 
+    def base_family(self, lock: Mapping[str, Any]) -> str | None:
+        reference = lock.get("base", {}).get("reference")
+        return next((base.base_family for base in self._bases
+                     if base.lock_table.get("reference") == reference), None)
+
+    def base_image(self, reference: str) -> BaseImage | None:
+        """The pinned base at ``reference``, described by its contract."""
+        return next((base.image for base in self._bases
+                     if base.lock_table.get("reference") == reference), None)
+
+    def base_images(self) -> tuple[BaseImage, ...]:
+        return tuple(base.image for base in self._bases)
+
+    def compatibility_report(self, lock: Mapping[str, Any]) -> tuple[str, ...]:
+        """Say which locked components are validated for the lock's base, and why.
+
+        The rule is the contract's: a component validated on a family runs on
+        every base of that family whose recipe is at least the one it was
+        validated on, because recipes only add within a family; a new family
+        is an incompatible change and inherits nothing.
+        """
+        reference = lock.get("base", {}).get("reference")
+        image = self.base_image(str(reference)) if reference else None
+        if image is None:
+            return (f"Base {reference} is not pinned by this DevCapsule's matrix; compatibility is not tracked for it.",)
+        lines = [
+            f"Compatibility: components validated on family {image.contract.family} run on "
+            f"{image.contract.identity}, because a newer recipe of a family only adds services; "
+            "a new family would be an incompatible change and would need fresh validation.",
+        ]
+        evidence, missing = self.validation_evidence(lock)
+        lines.extend(f"  validated: {item}" for item in evidence)
+        lines.extend(f"  not validated: {item}" for item in missing)
+        return tuple(lines)
+
+    def validation_evidence(self, lock: Mapping[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """Describe accumulated evidence, without inventing whole-set testing."""
+        family = self.base_family(lock)
+        evidence, missing = [], []
+        components = lock.get("components", {})
+        for name, metadata in components.items():
+            if not isinstance(metadata, dict):
+                continue
+            version = metadata.get("version")
+            edge = self._verified.get((name, str(version), family)) if family is not None else None
+            pins = self._components.get(name, ())
+            # Version text alone cannot certify different executable bytes.
+            pin = next((pin for pin in pins if pin.version == version), None)
+            def identity(value: Mapping[str, Any]) -> dict[str, Any]:
+                return {key: identity(item) if isinstance(item, dict) else item
+                        for key, item in value.items() if key not in {"url", "integrity"}}
+            if edge is not None and pin is not None and identity(metadata) == identity(pin.lock_table):
+                evidence.append(f"{name} {version}: {edge.evidence}")
+            else:
+                missing.append(f"{name} {version} on base {lock.get('base', {}).get('reference')}")
+        for coupling in self._couplings:
+            if coupling.first_id in components and coupling.second_id in components:
+                pair = (components[coupling.first_id]["version"], components[coupling.second_id]["version"])
+                if pair in coupling.verified:
+                    evidence.append(coupling.evidence)
+                else:
+                    missing.append(f"{coupling.first_id} {pair[0]} with {coupling.second_id} {pair[1]}")
+        return tuple(evidence), tuple(missing)
+
     def capabilities(self) -> tuple[str, ...]:
         """The complete capability vocabulary this matrix can resolve."""
 
@@ -195,6 +293,49 @@ class ResolutionMatrix:
                 | set(self._ancillary_capabilities)
             )
         )
+
+    def providers(self, capability: str) -> tuple[str, ...]:
+        """Return component IDs needed by a capability, including dependencies.
+
+        For example, ``dotnet-ide`` needs both Rider and the .NET SDK. Results
+        are sorted and unique. An empty tuple denotes a base-supplied service;
+        callers must still check that their selected base supplies it.
+        Raise ResolutionError for an unknown capability name.
+        """
+        self.normalize([capability])
+        component = self._surface_capabilities.get(capability) or self._ancillary_capabilities.get(capability)
+        result = [component] if component else []
+        for name in result:
+            result.extend(item for item in COMPONENTS[name].required_components() if item not in result)
+        return tuple(sorted(result))
+
+    def local_capabilities(self) -> frozenset[str]:
+        """Return IDE and coding-agent capability names owned by developers.
+
+        Shared-policy writers use this set to reject new personal preferences
+        in project declarations. Other capabilities may also be selected locally.
+        """
+        return frozenset(self._surface_capabilities) | frozenset(
+            name for name in self._ancillary_capabilities if name.endswith("-agent")
+        )
+
+    def sdk_major(self, capability: str, lock: Mapping[str, Any]) -> int | None:
+        """Return the selected SDK's major version, or None when not established.
+
+        For base SDKs, use catalog metadata for the lock's exact base reference.
+        For ``dotnet``, read the locked ``dotnet-sdk`` component's version.
+        This examines metadata, not an installed executable. None means unknown,
+        so callers enforcing a major-version constraint must reject it.
+        """
+        reference = lock.get("base", {}).get("reference")
+        base = next((item for item in self._bases if item.lock_table.get("reference") == reference), None)
+        if base is not None and capability in base.sdk_majors:
+            return base.sdk_majors[capability]
+        if capability == "dotnet":
+            version = lock.get("components", {}).get("dotnet-sdk", {}).get("version", "")
+            major = str(version).split(".")[0]
+            return int(major) if major.isdecimal() else None
+        return None
 
     def normalize(self, need: object) -> tuple[str, ...]:
         """Normalize a manifest ``capabilities.need`` value: sorted, unique, known."""
@@ -219,7 +360,7 @@ class ResolutionMatrix:
             )
         return tuple(sorted(names))
 
-    def resolve(self, need: object, *, allow_unverified: bool = False) -> Formation:
+    def resolve(self, need: object, *, allow_unverified: bool = False, project_only: bool = False) -> Formation:
         """Derive one complete formation from a capability set, offline.
 
         Fully verified resolution is always tried first, so the escape hatch
@@ -230,12 +371,17 @@ class ResolutionMatrix:
         """
 
         capabilities = self.normalize(need)
-        surface_id = self._selected_surface(capabilities)
-        required = [surface_id]
+        surface_id = (None if project_only and not set(capabilities) & set(self._surface_capabilities)
+                      else self._selected_surface(capabilities))
+        required = [surface_id] if surface_id else []
         for capability in capabilities:
             component_id = self._ancillary_capabilities.get(capability)
             if component_id is not None:
                 required.append(component_id)
+        for component_id in required:
+            definition = COMPONENTS.get(component_id)
+            if definition is not None:
+                required.extend(item for item in definition.required_components() if item not in required)
         base_needs = {
             capability
             for capability in capabilities
@@ -380,19 +526,18 @@ class ResolutionMatrix:
     def _formation(
         self,
         capabilities: tuple[str, ...],
-        surface_id: str,
+        surface_id: str | None,
         base: _BasePin,
         chosen: Mapping[str, _ComponentPin],
         unverified: tuple[str, ...] = (),
     ) -> Formation:
-        components: dict[str, Any] = {
-            "interactive-surface": surface_id,
-            surface_id: dict(chosen[surface_id].lock_table),
-        }
-        for capability in capabilities:
-            component_id = self._ancillary_capabilities.get(capability)
-            if component_id is not None:
-                components[component_id] = dict(chosen[component_id].lock_table)
+        components: dict[str, Any] = {}
+        if surface_id is not None:
+            components.update({"interactive-surface": surface_id,
+                               surface_id: dict(chosen[surface_id].lock_table)})
+        for component_id, pin in chosen.items():
+            if component_id != surface_id:
+                components[component_id] = dict(pin.lock_table)
         document: dict[str, Any] = {
             "devcapsule-lock-format-version": 1,
             "resolution-matrix-version": self._matrix_version,
@@ -402,7 +547,7 @@ class ResolutionMatrix:
             "capabilities-digest": canonical_digest({"need": list(capabilities)}),
             "base": dict(base.lock_table),
             "components": components,
-            "materialization": dict(self._materialization[surface_id]),
+            "materialization": dict(self._materialization[surface_id]) if surface_id else {},
         }
         header = (
             "# Generated by 'devcapsule project init' from the embedded resolution "
@@ -411,7 +556,8 @@ class ResolutionMatrix:
         )
         provenance = (
             f"embedded resolution matrix {self._matrix_version}: "
-            f"{surface_id} {chosen[surface_id].version} on base {base.mnemonic}"
+            + (f"{surface_id} {chosen[surface_id].version} on base {base.mnemonic}"
+             if surface_id else f"project tools on base {base.mnemonic}")
         )
         if unverified:
             # The lock shape is scalars and tables, so the list travels as one
@@ -455,12 +601,17 @@ _V0_2_8_BASE = _BasePin(
     mnemonic="v0.2.8",
     base_family=_BASE_FAMILY_UBUNTU_24_04,
     satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    sdk_majors={"python": 3},
+    recipe=5,
+    display=HOST_X11_ONLY_DISPLAY,
+    runtime=EMBEDDED_RUNTIME,
     lock_table={
         "reference": (
             "docker.io/mycodespaceai/devcapsule-base"
             "@sha256:8be27a7773bdb58e8d4d2f05283752736d12c2062e4c566d33d7f2e71ef336db"
         ),
         "build-mnemonic": "v0.2.8",
+        "contract": "ubuntu-24.04@5",
     },
 )
 
@@ -489,12 +640,17 @@ _V0_2_10_BASE = _BasePin(
     mnemonic="v0.2.10",
     base_family=_BASE_FAMILY_UBUNTU_24_04,
     satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    sdk_majors={"python": 3},
+    recipe=6,
+    display=HOST_X11_ONLY_DISPLAY,
+    runtime=LAUNCHER_SUPPLIED_RUNTIME,
     lock_table={
         "reference": (
             "docker.io/mycodespaceai/devcapsule-base"
             "@sha256:4bb691b556a2cb9acffa4c0adddd9ada66864ee3c81f4f00ca35e9df9056bf9c"
         ),
         "build-mnemonic": "v0.2.10",
+        "contract": "ubuntu-24.04@6",
     },
 )
 
@@ -517,15 +673,67 @@ _V0_2_10_BASE = _BasePin(
 # of both recipes from the same sources, and the recursive successor run
 # on the recipe-9 twin.
 _V0_2_12_BASE = _BasePin(
+    # The 0.2.12 release base, ubuntu-24.04@9, built by the rc5 executable;
+    # the mnemonic records the builder, the contract names the base.
     mnemonic="v0.2.12-rc5",
     base_family=_BASE_FAMILY_UBUNTU_24_04,
     satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
+    sdk_majors={"python": 3},
+    recipe=9,
+    display=CONTAINED_DISPLAY,
+    runtime=LAUNCHER_SUPPLIED_RUNTIME,
     lock_table={
         "reference": (
             "docker.io/mycodespaceai/devcapsule-base"
             "@sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c"
         ),
         "build-mnemonic": "v0.2.12-rc5",
+        "contract": "ubuntu-24.04@9",
+    },
+)
+
+# Vendor release metadata and complete archive checksums verified 2026-10-04.
+_DOTNET_SDK_10_0_401 = _ComponentPin(
+    component_id="dotnet-sdk", version="10.0.401",
+    lock_table={
+        "version": "10.0.401", "platform": "linux-amd64",
+        "delivery-policy": "local-materialization", "license": "MIT",
+        "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.401/dotnet-sdk-10.0.401-linux-x64.tar.gz",
+        "sha256": "137268c8ad939c064ff1ee2a6fdf0899d8725377114ea012fbd1ad5fa2550418",
+        "upstream-sha512": "51c8b999af9e8dd9998c9edc5944e19a90788862068acd38694e098889054ce8c23d4f0c5cccfa16bf187d044562359e5ee69a9f8ad0bbe913ba90311fbce25b",
+    },
+)
+
+_RIDER_2026_2_3_1 = _ComponentPin(
+    component_id="rider", version="2026.2.3.1",
+    lock_table={
+        "version": "2026.2.3.1", "delivery-policy": "local-materialization",
+        "license": "Proprietary", "terms-url": "https://www.jetbrains.com/legal/docs/toolbox/license/",
+        "url": "https://download.jetbrains.com/rider/JetBrains.Rider-2026.2.3.1.tar.gz",
+        "sha256": "fa4b09a5f7cf4b6635b093adc7313991778a8dc74f25614a2b8976b04dee5d4e",
+    },
+)
+
+_ECLIPSE_2026_09 = _ComponentPin(
+    component_id="eclipse", version="2026-09-R",
+    lock_table={
+        "version": "2026-09-R", "variant": "java",
+        "native-packages": ECLIPSE_NATIVE_PACKAGES,
+        "delivery-policy": "local-materialization",
+        "terms-url": "https://www.eclipse.org/legal/epl-2.0/",
+        "url": "https://download.eclipse.org/technology/epp/downloads/release/2026-09/R/eclipse-java-2026-09-R-linux-gtk-x86_64.tar.gz",
+        "sha256": "1a836dcedcc353567f164964ecb251bf0477cffb26dec1cc49bcf6ec12d82eca",
+        "upstream-sha512": "483af23506520a37e96857dbafc74e36194152b10471c558b1c2a31b34053f5f20af4a5d88509acb7cfa38bd2aff3fa7e6e45159ff827260cdf8838c46bd73a4",
+    },
+)
+
+_INTELLIJ_2026_2_3 = _ComponentPin(
+    component_id="intellij", version="2026.2.3",
+    lock_table={
+        "version": "2026.2.3", "variant": "unified",
+        "delivery-policy": "local-materialization",
+        "url": "https://download.jetbrains.com/idea/idea-2026.2.3.tar.gz",
+        "sha256": "68751c8ae4d49407251cd197df795fbed91b6fdc85d10c73c4649a99e496ab37",
     },
 )
 
@@ -776,6 +984,67 @@ _ANTIGRAVITY_CLI_1_1_24 = _ComponentPin(
     },
 )
 
+# 2026-09-27 GA refresh: exact downloads verified against vendor checksums.
+_CODEX_0_157_1 = _ComponentPin(
+    component_id="codex",
+    version="0.157.1",
+    lock_table={
+        "version": "0.157.1",
+        "delivery-policy": "local-materialization",
+        "license": "Apache-2.0",
+        "npm-package": "@openai/codex",
+        "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.157.1.tgz",
+        "sha256": "813e2a944f4474b7e1826d9ce8bf696ad8d80c68f43f7a7067beec51fa8f5b73",
+        "artifacts": {
+            "linux-amd64": {
+                "npm-package": "@openai/codex-linux-x64",
+                "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.157.1-linux-x64.tgz",
+                "sha256": "7f12677740f439fe4884c7031d9d703e571cecf5ea9fa3a05abd1bbccc2162a8"
+            }
+        }
+    },
+)
+
+_CLAUDE_CODE_2_1_283 = _ComponentPin(
+    component_id="claude-code",
+    version="2.1.283",
+    lock_table={
+        "version": "2.1.283",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "claude-code-download",
+        "license": "Proprietary",
+        "terms-url": "https://www.anthropic.com/legal/commercial-terms",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://downloads.claude.ai/claude-code-releases/2.1.283/linux-x64/claude",
+                "sha256": "1859583ce32920595c61ef868bee52e1b1594f7486db209935e01f1e5e804ae2"
+            }
+        }
+    },
+)
+
+_ANTIGRAVITY_CLI_1_2_12 = _ComponentPin(
+    component_id="antigravity-cli",
+    version="1.2.12",
+    lock_table={
+        "version": "1.2.12",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "antigravity-download",
+        "license": "Proprietary",
+        "terms-url": "https://antigravity.google/terms/",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.2.12-5784551402897408/linux-x64/cli_linux_x64.tar.gz",
+                "sha256": "26c7c4c661d6c9beda734fcf305031056a6ea46e697c4533e8151179724e2950",
+                "archive-member": "antigravity",
+                "upstream-sha512": "d5f0fe7433cb7c43ea878c07627a4fdb82d218f3bef5e6436266f5d9fdd2df145523453b9be0c4250391a64a007f5f42f7faff797bc2b2d502e7efb4874e383a"
+            }
+        }
+    },
+)
+
 _POSTGRESQL_CLIENT_16 = _ComponentPin(
     component_id="postgresql-client",
     version="16",
@@ -792,17 +1061,59 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
+        "intellij": (_INTELLIJ_2026_2_3,),
+        "eclipse": (_ECLIPSE_2026_09,),
+        "rider": (_RIDER_2026_2_3_1,),
+        "dotnet-sdk": (_DOTNET_SDK_10_0_401,),
+        "playwright": (_ComponentPin("playwright", str(PLAYWRIGHT_PIN["version"]), PLAYWRIGHT_PIN),),
         "codium": (_CODIUM_1_126_04524,),
-        "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4),
+        "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1),
         "claude-code": (
             _CLAUDE_CODE_2_1_227,
             _CLAUDE_CODE_2_1_236,
             _CLAUDE_CODE_2_1_261,
+            _CLAUDE_CODE_2_1_283,
         ),
-        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24,),
+        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24, _ANTIGRAVITY_CLI_1_2_12),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
+        _VerifiedEdge("eclipse", "2026-09-R", _BASE_FAMILY_UBUNTU_24_04,
+                      "Codex/gpt-6-astra noVNC saved-edit smoke passed on v0.2.12-rc5; 2026-10-04 run 20261004T090121Z-ea0a5b; child Playwright browser, WebKitGTK and persistent home configuration verified"),
+        _VerifiedEdge("dotnet-sdk", "10.0.401", _BASE_FAMILY_UBUNTU_24_04,
+                      "SDK 10.0.401 built and ran a net10.0 console app as the capsule user on v0.2.12-rc5; 2026-10-04 run 20261004T081836Z-932fc8"),
+        _VerifiedEdge("rider", "2026.2.3.1", _BASE_FAMILY_UBUNTU_24_04,
+                      "noVNC HTTP/window/pixel startup passed on v0.2.12-rc5; 2026-10-04 run 20261004T081836Z-932fc8; editor use requires license activation"),
+        _VerifiedEdge("intellij", "2026.2.3", _BASE_FAMILY_UBUNTU_24_04,
+                      "Codex/gpt-6-astra saved-edit graphical smoke passed 2026-10-04 on "
+                      "v0.2.12-rc5 base; source ada153c; run 20261004T002435Z-d44b57"),
+        _VerifiedEdge("playwright", "1.63.0", _BASE_FAMILY_UBUNTU_24_04,
+                      "component-installed Chromium 153.0.8010.12 launched and rendered HTML "
+                      "2026-10-04 on v0.2.12-rc5 base; source ada153c; run 20261004T002435Z-d44b57"),
+        _VerifiedEdge(
+            "codex",
+            "0.157.1",
+            _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: owner-directed 0.2.15 upgrade 2026-09-27; "
+            "pinned v0.2.12-rc5 base startup/configuration smoke passed; "
+            "interactive provider acceptance awaits the downloaded candidate",
+        ),
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.283",
+            _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: owner-directed 0.2.15 upgrade 2026-09-27; "
+            "pinned v0.2.12-rc5 base startup/configuration smoke passed; "
+            "interactive provider acceptance awaits the downloaded candidate",
+        ),
+        _VerifiedEdge(
+            "antigravity-cli",
+            "1.2.12",
+            _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: owner-directed 0.2.15 upgrade 2026-09-27; "
+            "pinned v0.2.12-rc5 base startup/configuration smoke passed; "
+            "interactive provider acceptance awaits the downloaded candidate",
+        ),
         # Every entry names the concrete base its evidence came from; the
         # validation holds for the whole family. "provisional" entries were
         # added at the owner's direction ahead of a smoke and say what
@@ -899,6 +1210,9 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     # ask one lock to carry two surfaces.
     surface_capabilities={
         "python-ide": "pycharm",
+        "java-ide": "intellij",
+        "eclipse-ide": "eclipse",
+        "dotnet-ide": "rider",
         "frontend-ide": "codium",
     },
     # Ancillary capabilities select additive components; the value is the
@@ -908,10 +1222,15 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "claude-code-agent": "claude-code",
         "antigravity-agent": "antigravity-cli",
         "postgresql-client": "postgresql-client",
+        "browser-automation": "playwright",
+        "dotnet": "dotnet-sdk",
     },
     # The materialization recipe follows the selected surface: each surface
     # family unpacks and fixes up its installation differently.
     materialization={
+        "eclipse": {"recipe": "eclipse-local-materialization", "recipe-version": "3"},
+        "rider": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
+        "intellij": {"recipe": "jetbrains-local-materialization", "recipe-version": "1"},
         "pycharm": {
             "recipe": "jetbrains-local-materialization",
             "recipe-version": "1",
@@ -934,6 +1253,23 @@ MATRICES: Mapping[Platform, ResolutionMatrix] = MappingProxyType(
         Platform.LINUX_AMD64: _LINUX_AMD64_MATRIX,
     }
 )
+
+
+def known_base_image(reference: str) -> BaseImage | None:
+    """The pinned base at ``reference`` on any supported platform, or None."""
+    for matrix in MATRICES.values():
+        image = matrix.base_image(reference)
+        if image is not None:
+            return image
+    return None
+
+
+def compatibility_report(lock: Mapping[str, Any]) -> tuple[str, ...]:
+    platform = lock.get("platform")
+    for key, matrix in MATRICES.items():
+        if key.value == platform:
+            return matrix.compatibility_report(lock)
+    return (f"Platform {platform!r} has no embedded matrix; compatibility is not tracked.",)
 
 
 # --------------------------------------------------------------------------

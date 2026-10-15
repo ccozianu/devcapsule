@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from devcapsule.components.discovery import PostgresqlDiscovery
 from devcapsule.compat import CliError
 from devcapsule.components import (
     ComponentDefinition,
@@ -29,6 +30,12 @@ POSTGRESQL_CLIENT_LICENSE = "PostgreSQL"
 
 class PostgresqlClientComponent(ComponentDefinition):
     """PostgreSQL command-line client provided by the pinned DevCapsule base."""
+
+    def discovery_channel(self) -> PostgresqlDiscovery:
+        return PostgresqlDiscovery()
+
+    def channel_omission_reason(self) -> str:
+        return 'Distributed with the base; update through a reviewed base release.'
 
     @property
     def id(self) -> str:

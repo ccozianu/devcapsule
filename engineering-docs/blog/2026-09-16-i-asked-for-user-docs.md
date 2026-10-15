@@ -1,3 +1,6 @@
+---
+description: "How asking an agent for user documentation turned into a lesson about product choices, the cost of investigation, and who decides."
+---
 # I asked for user docs
 
 *September 16, 2026. In Costin Cozianu's voice, written with Codex from

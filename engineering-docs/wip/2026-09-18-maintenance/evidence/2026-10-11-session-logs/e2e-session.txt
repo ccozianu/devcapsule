@@ -1,0 +1,7 @@
+nox > E2E executable: /home/devcapsule/.local/share/devcapsule/e2e-workspaces/logs-accept/source/devcapsule-src/dist/devcapsule-public.pex; v0.2.16.dev0-local-linux-x86_64; source 174480f9ba2c99b7f0348f7da0e097db6179afd6; sha256 6047ecf0e228556514583c4fd3240a017eac5792c5c74b6a5e3d0031b055ffdb
+tests/e2e/test_built_base.py .                                           [ 11%]
+tests/e2e/test_component_cache.py .....                                  [ 66%]
+tests/e2e/test_recursive_successor_lifecycle.py .                        [ 77%]
+tests/e2e/test_runtime_image.py .                                        [ 88%]
+tests/e2e/test_self_contained_pex.py .                                   [100%]
+================= 9 passed, 9 deselected in 121.58s (0:02:01) ==================

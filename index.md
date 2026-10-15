@@ -17,20 +17,59 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Claude compatibility pointer](CLAUDE.md)
 - [Requirements overview and index](REQUIREMENTS.md)
 - [Human / agent workflow](WORKFLOW.md)
+- [Human / agent workflow: the reasons, for humans](WORKFLOW-humane.md)
 - [This project's local workflow](WORKFLOW-LOCAL.md)
-- [Product documentation](docs/README.md)
-- [Your first DevCapsule session](docs/guides/first-session.md)
-- [Use your own project and add a coding agent](docs/guides/your-project.md)
-- [Windows and WSL2 setup notes](docs/guides/windows-wsl2.md)
+- [This project's local workflow: the reasons, for humans](WORKFLOW-LOCAL-humane.md)
+- [Product documentation](docs/README.md), versioned per release under the content–website contract; pages marked *coming soon* are planned stubs
+  - Getting started: [Install](docs/getting-started/install.md), [Your first session](docs/getting-started/first-session.md), [Stop and come back](docs/getting-started/stop-and-come-back.md)
+  - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
+  - Working with AI: [Choose an agent](docs/working-with-ai/choose-an-agent.md), [Sign in and defaults](docs/working-with-ai/sign-in-and-defaults.md), [Instructions for agents](docs/working-with-ai/instructions-for-agents.md), [Hosted and local models](docs/working-with-ai/hosted-and-local-models.md) (coming soon), [Review and change agents](docs/working-with-ai/review-and-change-agents.md) (coming soon)
+  - Everyday development: [Clipboard, keys and browser](docs/everyday-development/clipboard-and-browser.md); coming soon: [IDEs and terminals](docs/everyday-development/ides-and-terminals.md), [Git](docs/everyday-development/git.md), [Run, debug, test](docs/everyday-development/run-debug-test.md), [Previews and ports](docs/everyday-development/previews-and-ports.md)
+  - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Capabilities and personal choices](docs/configuration/capabilities.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
+  - Containment: [The boundary](docs/containment/the-boundary.md), [Granting and withdrawing access](docs/containment/granting-and-withdrawing.md)
+  - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md), [The web console](docs/sessions/web-console.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
+  - Collaboration: [Work in workstreams with humans and agents](docs/collaboration/working-in-workstreams.md)
+  - Updates: [Supported versions](docs/updates/supported-versions.md), [Launcher updates](docs/updates/launcher-updates.md), [Component freshness](docs/updates/component-freshness.md), [Component upgrades](docs/updates/component-upgrades.md)
+  - Troubleshooting: [First session](docs/troubleshooting/first-session.md), [Diagnostics and logs](docs/troubleshooting/diagnostics-and-logs.md); coming soon: [Cleanup and uninstall](docs/troubleshooting/cleanup-and-uninstall.md)
+  - Platforms: [Linux](docs/platforms/linux.md), [Windows via WSL2](docs/platforms/windows-wsl2.md), [macOS](docs/platforms/macos.md)
+  - Reference: [Configuration nodes](docs/reference/configuration-nodes.md); coming soon: [Command reference](docs/reference/cli.md), [project info fields](docs/reference/project-info.md)
 - [Engineering documentation](engineering-docs/README.md)
+
+## Development
+
+- [Development: how DevCapsule is built and tested](engineering-docs/development/README.md)
+- [Developer environment](engineering-docs/development/developer-environment.md)
+- [Source layout](engineering-docs/development/source-layout.md)
+- [Unit tests](engineering-docs/development/unit-tests.md)
+- [Integration tests](engineering-docs/development/integration-tests.md)
+- [End-to-end tests](engineering-docs/development/e2e-tests.md)
+
+## Releases
+
+- [0.2.15 release notes](engineering-docs/releases/v0.2.15/notes.md)
+- [0.2.14 release notes](engineering-docs/releases/v0.2.14/notes.md)
+
+- [0.2.15 release work, scope and agent validation](engineering-docs/releases/v0.2.15/README.md)
+- [0.2.15 accepted-candidate promotion record](engineering-docs/releases/v0.2.15.json)
+- [0.2.14 release work and checklist](engineering-docs/releases/v0.2.14/README.md)
+- [0.2.14 bug triage](engineering-docs/releases/v0.2.14/bugs.md)
+- [0.2.14 RC0 smoke scripts and walkthrough](engineering-docs/releases/v0.2.14/smoke/README.md)
+- [0.2.14 RC0 validation stories and contracts](engineering-docs/releases/v0.2.14/smoke/stories.md)
+- [0.2.14 RC0 smoke results template](engineering-docs/releases/v0.2.14/smoke/results-template.md)
 
 ## Website
 
 - [Website development and preview](website/README.md)
 - [Website publication](website/PUBLISHING.md)
 - [Website-owned backlog and producer dependencies](website/BACKLOG.md)
+- [How the website is published, and what it still lacks](engineering-docs/implementation-notes/website/2026-09-22-website-publishing-contract.md)
 
 ## Root Requirement Records
+
+- [Conservative configuration writers and tolerant readers](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — R-CONFIG-001, accepted 0.3 direction.
+- [R-CONSOLE-001 Every capsule serves a web console](engineering-docs/requirements/product/r-console-001-capsule-web-console.md)
+- [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
+- [R-UPGRADE-002 Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md)
 
 - [R-PRODUCT-001 Batteries-Included IDE Environments](engineering-docs/requirements/product/r-product-001-batteries-included-ide-environments.md)
 - [R-PRODUCT-002 Explicit Host Boundaries](engineering-docs/requirements/product/r-product-002-explicit-host-boundaries.md)
@@ -40,10 +79,30 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-PRODUCT-006 Multiple Human/Agent Workstream Coordination](engineering-docs/requirements/product/r-product-006-multiple-workstream-coordination.md)
 - [R-DOCS-001 Root Documentation Stays Implementation-Agnostic](engineering-docs/requirements/product/r-docs-001-root-documentation-stays-implementation-agnostic.md)
 - [R-DOCS-002 Current User Docs Show Current Interfaces](engineering-docs/requirements/product/r-docs-002-current-user-docs-show-current-interfaces.md)
+- [R-DOCS-003 Website Content Carries Explicit Front Matter And A Versions Manifest](engineering-docs/requirements/product/r-docs-003-website-content-carries-front-matter.md)
 - [R-SETTINGS-001 Per-IDE Profile Prototype](engineering-docs/requirements/product/r-settings-001-per-ide-profile-prototype.md)
 - [R-GTM-001 Compelling V1 Announcement For Adopters](engineering-docs/requirements/product/r-gtm-001-compelling-v1-announcement-for-adopters.md)
 
+## Component Upgrades
+
+- [Component status service contract and operations](component-status/README.md)
+
+- [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
+- [Capability configuration: implementation and test correctness](engineering-docs/implementation-notes/devcapsule/2026-10-06-configuration-correctness.md)
+- [Capability configuration: persistent selection versus execution projection](engineering-docs/implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md)
+- [Eclipse Java component and recorded smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-eclipse-validation.md)
+- [Linux .NET SDK and Rider validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md)
+- [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
+- [Image layers, the local cache, and how the final image is composed](engineering-docs/implementation-notes/devcapsule/2026-10-06-image-layers-local-cache-and-composition.md)
+
+- [Distribution channel contract and implementation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-distribution-channels.md)
+
 ## Design Decisions
+
+- [D-0010 Developer-Owned Component Version Sets And Recovery](engineering-docs/decisions/product/d-0010-developer-owned-version-sets.md)
+- [D-0011 Vendor Terms And Trust Are Given Once Per Workstation, Bound To A Verified Channel](engineering-docs/decisions/product/d-0011-vendor-trust-once-per-workstation.md)
+- [D-0012 Host Access Is Asked Only When The Project Recommends The Less Secure Value](engineering-docs/decisions/product/d-0012-host-access-asked-only-when-recommended.md)
+- [D-0013 A Provenance Sidecar Beside Each Checkout Records Which Client Wrote It](engineering-docs/decisions/product/d-0013-provenance-sidecar-for-local-records.md)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)
@@ -56,30 +115,49 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Specifications
 
+- [The content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md)
 - [IDE profile prototypes](engineering-docs/specifications/product/ide-profile-prototypes.md)
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
 ## Work Orders
 
+- [The capsule web console](engineering-docs/work-orders/2026-10-09-capsule-webconsole.md)
+- [Playwright, IntelliJ IDEA and reusable agent-driven IDE smoke](engineering-docs/work-orders/2026-10-03-playwright-intellij-agent-smoke.md)
+- [The website, seen from the visitor's chair](engineering-docs/work-orders/2026-09-28-website-visitor-experience.md)
+- [The visitor content and the producer migration](engineering-docs/work-orders/2026-09-28-visitor-content-and-producer-migration.md)
+- [0.2.15 extra tools, project information and agent defaults](engineering-docs/work-orders/2026-09-27-project-environment-discovery.md)
+
+- [Workflow installation during onboarding](engineering-docs/work-orders/2026-09-24-workflow-installation-onboarding.md)
+
+- [Legacy launch capability decisions — blocks V1](engineering-docs/work-orders/2026-09-22-legacy-launch-capability-disposition.md)
+
+- [Component upgrades and recoverable version sets](engineering-docs/work-orders/2026-09-21-component-upgrades.md)
+
 - [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)
+- [Base images as a contract, design experiment](engineering-docs/work-orders/design-experiment-work-order.md)
 
 ## Workstream Status
 
 - [Multiple-stream workflow successful archive](engineering-docs/archive/2026-08-08-multi-workflow/CURRENT-STATUS.md)
 - [Recursive dogfood E2E successful archive](engineering-docs/archive/2026-08-06-recursive-e2e/CURRENT-STATUS.md)
+- [Eclipse interactive surface, concluded 2026-10-01 and folded into component-catalog](engineering-docs/archive/2026-09-09-eclipse-surface/CURRENT-STATUS.md)
 - [Project management current status](engineering-docs/wip/2026-08-09-project-management/CURRENT-STATUS.md)
 - [Workflow improvements current status](engineering-docs/wip/2026-08-09-workflow-improvements/CURRENT-STATUS.md)
+- [Component upgrades current status](engineering-docs/wip/2026-09-21-component-upgrades/CURRENT-STATUS.md)
 - [Maintenance current status](engineering-docs/wip/2026-09-18-maintenance/CURRENT-STATUS.md)
+- [Capsule web console current status](engineering-docs/wip/2026-10-09-capsule-webconsole/CURRENT-STATUS.md)
 - [Sample demo projects current status](engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md)
 - [Contained display current status](engineering-docs/wip/2026-08-19-contained-display/CURRENT-STATUS.md)
-- [Eclipse interactive surface current status](engineering-docs/wip/2026-09-09-eclipse-surface/CURRENT-STATUS.md)
 
 - [User documentation current status](engineering-docs/wip/2026-09-12-user-docs/CURRENT-STATUS.md)
 - [Website autonomy experiment current status](engineering-docs/wip/2026-09-16-website/CURRENT-STATUS.md)
 
 ## Engineering Design Notes
 
+- [Spike: driving the getting-started scenario through pixels](engineering-docs/design-notes/devcapsule/2026-09-30-pixel-driven-getting-started-acceptance.md)
+- [Base images: how one is chosen, what its name is, and how a user could move to a newer one](engineering-docs/design-notes/devcapsule/2026-09-26-base-image-naming-and-selection.md)
+- [mycodespace: a lifetime namespace and archive for one programmer's projects](engineering-docs/design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
 - [Competitive comparison: agent workflows and the DevCapsule adopter choice](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
 - [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
 - [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
@@ -114,13 +192,19 @@ status file; internal WIP/archive documents use the local index in that status.
 - [R-COMPAT-001 Client Upgrades Require No User Action For Existing Projects](engineering-docs/requirements/devcapsule/r-compat-001-client-upgrades-require-no-user-action.md)
 - [Packaged project workflow asset boundary](devcapsule-src/devcapsule/assets/project_workflow/README.md)
 - [Packaged generic agent instructions](devcapsule-src/devcapsule/assets/project_workflow/definition/AGENTS.md)
-- [Packaged generic workflow definition](devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md)
+- [Packaged generic workflow definition (the root `WORKFLOW.md` is its source)](devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md)
+- [Information model, for humans: the kinds of thing the workflow stores and how they relate](devcapsule-src/devcapsule/assets/project_workflow/definition/INFORMATION-MODEL.md)
+- [Preamble, for humans: why the workflow is opinionated, and for whom](devcapsule-src/devcapsule/assets/project_workflow/definition/PREAMBLE.md)
 - [PyCharm image vibe-coding bootstrap template](devcapsule-src/devcapsule/assets/pycharm/image-assets/vibe-coding-process.md)
 - [Legacy-compatible PyCharm bootstrap template copy](devcapsule-src/devcapsule/assets/docker4pycharm/image-assets/vibe-coding-process.md)
 - [TypeScript five-in-a-row sample project](devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow/README.md)
 
 ## Development Blog
 
+- [An AI takes our IDEs for a test drive](engineering-docs/blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md) — shared AI graphical tests across IntelliJ, Rider and Eclipse, the .NET build, and three original recordings; draft for owner review.
+- [The workflow explains itself](engineering-docs/blog/2026-10-03-the-workflow-explains-itself.md) — preamble, information model, merge rule, and a bug filed against ourselves; draft for owner review.
+- [What I have been up to lately](engineering-docs/blog/2026-09-30-what-i-have-been-up-to-lately.md)
+- [Why give DevCapsule a spin before V1?](engineering-docs/blog/2026-09-21-why-try-devcapsule-before-v1.md) — early-adopter and contributor invitation; draft for owner review.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — agent-authored retrospective; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md) — website autonomy experiment retrospective; draft for owner review.
 - [The DevCapsule development blog](engineering-docs/blog/README.md)
@@ -131,10 +215,11 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Product And Positioning
 
 - [Product documentation map](docs/README.md)
-- [Draft pitch: batteries included, boundaries explicit](docs/product/draft-pitch.md)
-- [LinkedIn announcement draft](docs/product/linkedin-announcement.md)
-- [V1 announcement draft](docs/product/v1-announcement.md)
-- [Working backwards press release](docs/product/working-backwards-press-release.md)
+- [Draft pitch: batteries included, boundaries explicit](engineering-docs/product/draft-pitch.md)
+- [Issue-tracker positioning](engineering-docs/product/issue-tracker-positioning.md)
+- [LinkedIn announcement draft](engineering-docs/product/linkedin-announcement.md)
+- [V1 announcement draft](engineering-docs/product/v1-announcement.md)
+- [Working backwards press release](engineering-docs/product/working-backwards-press-release.md)
 
 ## Docker4PyCharm Historical Reference
 
@@ -145,7 +230,7 @@ history; record current decisions in the active documents above.
 - [Docker PyCharm isolation README](docker4pycharm/README.md)
 - [Historical root project brief](engineering-docs/implementation-notes/docker4pycharm/historical-root-readme.md)
 - [Post-MVP refactoring strategy](engineering-docs/design-notes/docker4pycharm/future-agent-refactoring-brief.md)
-- [PyCharm AI plugin and ChatGPT subscription setup](docs/guides/docker4pycharm-ai-plugin-and-chatgpt-setup.md)
+- [PyCharm AI plugin and ChatGPT subscription setup](engineering-docs/archive/docker4pycharm-ai-plugin-and-chatgpt-setup.md)
 - [Debugging notes](engineering-docs/implementation-notes/docker4pycharm/debugging.md)
 - [Vibe-coding process bootstrap template, frozen copy](docker4pycharm/image-assets/vibe-coding-process.md)
 
@@ -180,6 +265,29 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Unpacked archive cache publication and recovery](engineering-docs/bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md)
+- [Optional omission loses a local version-set pin](engineering-docs/bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md)
+
+- [`project init` discards every interactive answer when a `--authorize` name is unknown — blocking 0.2.15](engineering-docs/bugs/devcapsule/2026-09-26-init-discards-answers-on-late-authorize-validation.md)
+- [Inside a capsule, `project <unknown>` is refused as launcher-only instead of as unknown](engineering-docs/bugs/devcapsule/2026-09-26-project-group-guard-hides-unknown-subcommand-in-capsule.md)
+- [Usability: `bootstrap` never asks which workflow mode the user wants; a mode without an installed workflow is void](engineering-docs/bugs/devcapsule/2026-09-26-bootstrap-cannot-choose-the-workflow-mode.md)
+- [RC1 in-capsule configuration inspection fails](engineering-docs/bugs/devcapsule/2026-09-24-runtime-configuration-inspection-fails.md)
+
+- [Installed IDE reuse before archive acquisition — design review pending](engineering-docs/bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md)
+- [`project run --authorize network host` is refused on a project that does not recommend host networking](engineering-docs/bugs/devcapsule/2026-10-05-run-once-network-authorization-needs-a-recommendation.md)
+
+- [A client upgrade turns an unanswered acquisition into a required decision — R-COMPAT-001](engineering-docs/bugs/devcapsule/2026-09-24-client-upgrade-requires-acquisition-decision.md)
+- [`config list` advises resolve on a fresh resolution](engineering-docs/bugs/devcapsule/2026-09-24-config-list-advises-resolve-on-fresh-resolution.md)
+- [Release workflow gated candidates on Docker builds on a hosted runner — blocked rc2](engineering-docs/bugs/devcapsule/2026-09-24-release-workflow-gated-on-docker-on-hosted-runner.md)
+- [Released launchers reject the repository manifest since RC1 — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md)
+- [Runtime DevCapsule command unavailable — blocks 0.2.14](engineering-docs/bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md)
+- [Website URL opening has no browser handler](engineering-docs/bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md)
+
+- [Claim lifecycle test depends on wall-clock timing](engineering-docs/bugs/devcapsule/2026-09-22-workflow-claim-test-flakiness.md)
+- [Nested-directory workflow commands lose coordination files](engineering-docs/bugs/devcapsule/2026-09-22-workflow-nested-directory-loses-coordination.md)
+- [Codex commit authorship and model attribution](engineering-docs/bugs/devcapsule/2026-09-22-codex-commit-attribution.md)
+
+- [Configuration Contract Is Not Enforced Across Boundaries](engineering-docs/bugs/devcapsule/2026-09-20-configuration-contract-not-enforced-across-boundaries.md)
 - [Website test publication accepts inconsistent settings — transferred](engineering-docs/bugs/website/2026-09-19-test-publishing-accepts-inconsistent-settings.md)
 - [Upgrade Configuration Recovery Rejects Its Own Remedy](engineering-docs/bugs/devcapsule/2026-09-19-upgrade-config-recovery-rejects-its-own-remedy.md)
 - [The Resolution Refusal Names Only The Last Base Tried And Offers No Remedy](engineering-docs/bugs/devcapsule/2026-09-03-resolution-refusal-names-only-the-last-base-and-no-remedy.md)
@@ -201,6 +309,8 @@ history; record current decisions in the active documents above.
 - [JetBrains embedded browser is suspended in the container](engineering-docs/bugs/devcapsule/2026-08-03-jcef-sandbox-container-preview.md)
 - [Fresh clones require manual ecosystem bootstrap](engineering-docs/bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md)
 - [Component tooling is not added to the runtime path](engineering-docs/bugs/devcapsule/2026-08-03-component-tooling-runtime-path.md)
+- [Unreleased Playwright breaks shared-checkout launch](engineering-docs/bugs/devcapsule/2026-10-04-unreleased-playwright-breaks-checkout-launch.md)
+- [IntelliJ relaunch stale directory lock](engineering-docs/bugs/devcapsule/2026-10-04-intellij-relaunch-stale-directory-lock.md)
 - [PyCharm run-image network and Docker-option parity](engineering-docs/bugs/devcapsule/2026-07-23-pycharm-ambient-host-network.md)
 - [Codium grants ambient passwordless sudo by default](engineering-docs/bugs/devcapsule/2026-07-16-codium-ambient-sudo-default.md)
 - [PyCharm build emits fragile multiline RUN shell quoting](engineering-docs/bugs/devcapsule/2026-07-16-pycharm-build-multiline-exec-rendering.md)

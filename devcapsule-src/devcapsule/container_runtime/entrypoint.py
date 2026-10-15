@@ -7,19 +7,25 @@ until the session ends. The session's exit code is the child's, honestly.
 
 When the plan selects the contained display, the surface is preceded by the
 display's own infrastructure children (X server, window manager, browser
-bridge); see ``display.py``. A headless job declares no display at all.
+bridge); see ``display.py``. A headless job declares no display at all. When
+the plan carries a console section, the web console runs beside either; see
+``console.py``.
 """
 
 from __future__ import annotations
 
+from contextlib import nullcontext
+from dataclasses import replace
 import os
 from pathlib import Path
 import sys
 from typing import Sequence
 
 from . import contract as rtcontract
+from .. import logs
 
-from .components import jetbrains, vscode
+from .components import eclipse, jetbrains, vscode
+from .console import console_child
 from .contract import RuntimePlan, RuntimePlanError
 from .display import prepare_contained_display
 from .filesystem import plan_filesystem, prepare_filesystem
@@ -30,7 +36,14 @@ from .supervisor import SupervisedChild, Supervisor, SupervisorError
 USAGE = "usage: devcapsule runtime RUNTIME_PLAN.json [-- COMMAND [ARGUMENT...]]"
 
 
+SUPERVISOR_LOG_COMPONENT = "supervisor"
+
+
 def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int:
+    owner = (plan.identity.uid, plan.identity.gid)
+    log_directory = None if plan.logs is None else plan.logs.directory
+    segment_bytes, rotations = log_rotation(plan)
+    logs.configure(SUPERVISOR_LOG_COMPONENT, log_directory, owner=owner, segment_bytes=segment_bytes, rotations=rotations)
     filesystem = plan_filesystem(plan)
     prepare_filesystem(filesystem, plan.identity)
     os.environ.update(filesystem.environment)
@@ -43,18 +56,23 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
         command = launch.command
     elif plan.component.adapter == "vscode":
         command = vscode.plan(plan).command
+    elif plan.component.adapter == "eclipse":
+        command = eclipse.plan(plan).command
     else:
         raise RuntimePlanError(f"unsupported component adapter: {plan.component.adapter}")
+
+    def as_capsule_user(child_command: tuple[str, ...]) -> tuple[str, ...]:
+        return foreground_command(child_command, plan.identity)
+
     infrastructure: tuple[SupervisedChild, ...] = ()
+    if job is None and plan.display is not None and plan.display.is_contained:
+        contained = prepare_contained_display(plan, filesystem.environment["XDG_RUNTIME_DIR"], as_capsule_user)
+        os.environ.update(contained.environment)
+        infrastructure = contained.children
+    console = console_child(plan, as_capsule_user)
+    if console is not None:
+        infrastructure = (*infrastructure, console)
     if job is None:
-        if plan.display is not None and plan.display.is_contained:
-            contained = prepare_contained_display(
-                plan,
-                filesystem.environment["XDG_RUNTIME_DIR"],
-                lambda child_command: foreground_command(child_command, plan.identity),
-            )
-            os.environ.update(contained.environment)
-            infrastructure = contained.children
         child = SupervisedChild(
             name=plan.component.id,
             command=foreground_command(command, plan.identity),
@@ -69,7 +87,34 @@ def run(plan: rtcontract.RuntimePlan, job: tuple[str, ...] | None = None) -> int
             foreground=True,
             working_directory=plan.project_path,
         )
-    return Supervisor((*infrastructure, child)).run()
+    guard = jetbrains.session_lock(plan) if plan.component.adapter == "jetbrains" and job is None else nullcontext()
+    with guard:
+        return Supervisor(
+            logged_children((*infrastructure, child), log_directory),
+            log_owner=owner, segment_bytes=segment_bytes, rotations=rotations,
+        ).run()
+
+
+def log_rotation(plan: rtcontract.RuntimePlan) -> tuple[int, int]:
+    """The segment and rotation count every writer of this session uses.
+
+    The plan's logs section carries them when the launcher derived them from
+    the budget; a plan from before they existed gets the defaults.
+    """
+
+    if plan.logs is not None and plan.logs.rotates:
+        return plan.logs.segment_bytes, plan.logs.rotations
+    return logs.MAXIMUM_SEGMENT_BYTES, logs.ROTATIONS
+
+
+def logged_children(
+    children: tuple[SupervisedChild, ...], log_directory: str | None
+) -> tuple[SupervisedChild, ...]:
+    """Give every child its own log file, ``devcapsule-<name>.log``, when logging is on."""
+
+    if log_directory is None:
+        return children
+    return tuple(replace(child, log_path=str(logs.log_path(log_directory, child.name))) for child in children)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

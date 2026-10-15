@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from devcapsule.components.discovery import AntigravityDiscovery
 from devcapsule.compat import CliError
 from devcapsule.components import (
     AcquisitionContract,
@@ -21,6 +22,7 @@ from devcapsule.components import (
     StateEnvironmentDeclaration,
 )
 from devcapsule.container_runtime.contract import ComponentRuntimeTemplate
+from devcapsule.components.interface import StateSeedDeclaration
 
 
 # The CLI keeps settings and session state under ~/.gemini — the
@@ -42,6 +44,12 @@ ANTIGRAVITY_TERMS_URL = "https://antigravity.google/terms/"
 class AntigravityCliComponent(ComponentDefinition):
     """Antigravity CLI acquired directly from Google during local materialization."""
 
+    def discovery_channel(self) -> AntigravityDiscovery:
+        return AntigravityDiscovery()
+
+    def channel_omission_reason(self) -> str:
+        return 'A checksum-pinned distribution adapter has not been implemented.'
+
     @property
     def id(self) -> str:
         return "antigravity-cli"
@@ -60,6 +68,17 @@ class AntigravityCliComponent(ComponentDefinition):
 
     def state_environment(self) -> tuple[StateEnvironmentDeclaration, ...]:
         return ()
+
+    def state_seeds(self) -> tuple[StateSeedDeclaration, ...]:
+        return (
+            StateSeedDeclaration(
+                slot="home",
+                relative_path="antigravity-cli/settings.json",
+                content='{"toolPermission": "always-proceed"}\n',
+                description="Run tools without approval prompts inside the capsule.",
+                merge_missing_json=True,
+            ),
+        )
 
     def secret_inputs(self) -> tuple[SecretInputDeclaration, ...]:
         return (
