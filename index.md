@@ -159,7 +159,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Spike: driving the getting-started scenario through pixels](engineering-docs/design-notes/devcapsule/2026-09-30-pixel-driven-getting-started-acceptance.md)
 - [Base images: how one is chosen, what its name is, and how a user could move to a newer one](engineering-docs/design-notes/devcapsule/2026-09-26-base-image-naming-and-selection.md)
 - [mycodespace: a lifetime namespace and archive for one programmer's projects](engineering-docs/design-notes/devcapsule/2026-09-24-mycodespace-lifetime-namespace-and-archive.md)
-- [Competitive comparison: agent workflows and the DevCapsule adopter choice](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
+- [DevCapsule: competitive landscape and critical viability analysis](engineering-docs/design-notes/devcapsule/competitive-comparison.md)
 - [Multiple-stream workflow design](engineering-docs/design-notes/multiple-stream-workflow.md)
 - [FastAPI web application configuration research](engineering-docs/design-notes/fastapi-webapp-configuration-research.md)
 - [DevCapsule V1 user experience design draft](engineering-docs/design-notes/devcapsule/v1-user-experience.md)
