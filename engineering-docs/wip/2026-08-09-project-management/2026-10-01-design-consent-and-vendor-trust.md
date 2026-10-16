@@ -8,6 +8,18 @@ decided.** This document records what the owner and the agent worked
 through in conversation on 2026-10-01 so that it is not lost before the
 owner rules. Solutions, where they appear, are candidates.
 
+## Current disposition, 2026-10-09
+
+The opening status and candidate discussion below are historical. The owner
+subsequently ruled on consent in component-upgrades:
+[D-0011](../../decisions/product/d-0011-vendor-trust-once-per-workstation.md),
+[D-0012](../../decisions/product/d-0012-host-access-asked-only-when-recommended.md)
+and [D-0013](../../decisions/product/d-0013-provenance-sidecar-for-local-records.md)
+are the decision records. The owner assigned their implementation to the next
+release on 2026-10-01, now 0.3.0. Project-management acknowledged that assignment
+on 2026-10-09. This note does not reopen those choices or claim implementation.
+Consult component-upgrades' published state for its remaining design and work.
+
 Requirements touched: R-UPGRADE-001 (its "acquisition consent ... remain
 enforced"), R-COMPAT-001 (a re-asked consent triggered by a client change is
 a defect), R-PRODUCT-001.

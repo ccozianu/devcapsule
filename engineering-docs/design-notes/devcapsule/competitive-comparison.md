@@ -1,333 +1,178 @@
-# Competitive Comparison: Agent Workflows and the DevCapsule Adopter Choice
+# DevCapsule: Competitive Landscape & Critical Viability Analysis
 
-Last verified: 2026-09-12
+*Target Version Reviewed: **v0.2.15** (current release track, with `0.2.16.dev0` in active development)*  
+*Repository: `github.com/ccozianu/devcapsule` (Apache-2.0) | Docs: `devcapsule.mycodespace.ai`*
 
-Status: research and positioning input; recommendations are not adopted product decisions.
+Last verified: 2026-10-16
 
-Original survey: dated 2026-08-15, committed 2026-08-16. Promoted from
-project-management WIP when the adopter page became the root README on
-2026-09-13. The
-[original snapshot](https://github.com/ccozianu/devcapsule/blob/12f8c930fac6fbb8f611c35d9e3035eca097cf14/engineering-docs/wip/2026-08-09-project-management/2026-08-16-workflow-prior-art-comparison.md)
-is preserved in Git. This revision supersedes its competitive conclusions.
+Status: research and positioning input; recommendations are not adopted
+product decisions.
 
-## Finding
+Provenance: the original survey of 2026-08-15 compared `WORKFLOW.md` with
+agent workflow frameworks; the
+[2026-09-13 refresh](https://github.com/ccozianu/devcapsule/blob/164d7d0/engineering-docs/design-notes/devcapsule/competitive-comparison.md)
+retracted several of its uniqueness claims against Spec Kit, OpenSpec, BMad,
+Memory Bank, Beads, GSD Core and Kiro, and that text is preserved in Git. This
+revision, produced with Gemini 4 on 2026-10-16, widens the subject to the
+whole product and does not repeat the workflow comparison; where it touches
+the same ground, the September findings still bind. It was reviewed against
+the repository's documentation the same day; the [review notes](#7-review-notes-2026-10-16)
+at the end list every correction and every challenged claim.
 
-DevCapsule cannot credibly distinguish itself by saying that other tools lack
-persistent project context, interrupted-work recovery, human review, or a
-structured delivery loop. Current upstream documentation describes all of
-these in overlapping combinations. Some of the earlier survey's exclusions
-were too categorical; the evidence below does not establish that every
-correction represents a feature introduced since August.
+Evidence standard: competitor statements rest on upstream documentation read
+on the date above, not on installation or benchmarking. DevCapsule statements
+rest on the `docs/` tree and source of the `0.2.16.dev0` checkout. Prices,
+traffic figures and other numbers without a cited source are omitted.
 
-The stronger product hypothesis is that a developer benefits from having a
-repeatable local IDE/agent environment, persistent developer state, explicit
-host-access choices, and an optional readable handoff workflow assembled and
-maintained together. That combination still has to earn its setup and learning
-cost against tools the developer already uses. A longer protocol is not proof
-of greater user value.
+---
 
-## Scope and Evidence
+## 1. Executive Thesis: The Gap in the 2026 Agentic Coding Stack
 
-The original compared **WORKFLOW.md**, not the whole DevCapsule product. This
-refresh retains its five principal comparables and ADR/MADR, adds GSD Core,
-Kiro and native agent memory, and briefly examines workspace alternatives that
-matter to the proposed adopter one-pager. It is a selected comparison, not an
-exhaustive market ranking.
+The rise of autonomous CLI coding agents (Claude Code, Codex CLI, Aider, OpenCode) broke the traditional local development model. Developers want to run agents in autonomous ("skip-permissions" / YOLO) modes to iterate rapidly, but doing so directly on a host workstation exposes `~/.ssh`, `~/.aws`, browser sessions, and the host filesystem to hallucinated commands or prompt-injected supply-chain attacks.
 
-Sources below are upstream documentation and repositories opened on
-2026-09-12. They establish documented behavior, not independently tested
-reliability, token efficiency, speed, or security. Moving documentation can
-precede a release; experimental material and development-branch sources are
-marked. No competitor was installed or benchmarked for this refresh. Prices,
-star counts, integration counts and unsupported timing comparisons are omitted.
+Existing tools force developers into an uncomfortable compromise:
+* **Run natively on the host:** Fast and ergonomic, but one bad agent loop or malicious dependency compromises the workstation.
+* **Run in an ephemeral agent sandbox:** Safe for execution, but lacks the project's full SDK toolchain, loses installed tools on restart, and forces the human and the agent to work in separate worlds.
+* **Run in enterprise DevContainers:** Heavyweight, tightly coupled to VS Code's proprietary remote server architecture, and blind to multi-agent workflows and host-trust boundaries.
 
-DevCapsule's baseline is the current source checkout, synchronized with
-`origin/main` at `493e9e5`, including the still-unintegrated project-management
-documentation. Its [README](../../../README.md),
-[workflow](../../../WORKFLOW.md), [V1 ledger](../../wip/2026-08-09-project-management/v1-scope-ledger.md), and the
-local evidence linked below distinguish shipped behavior from intent.
+**DevCapsule occupies a distinct, underserved niche:** a **local-first, stateful, capability-driven container workstation** where a real GUI IDE, interactive terminals, and multiple AI coding agents live together inside the exact same isolated environment—governed by explicit host boundaries and versioned project memory.
 
-Two release-history checks anchor the elapsed period: Spec Kit lists v1.0.6
-on September 10, including per-step workflow integration configuration; GSD
-Core lists v1.11.0 on August 19 and v1.13.0 on September 6, with the latter
-including resumable batch-work machinery. These establish ongoing development,
-not that every feature discussed here first appeared in that interval.
-[Spec Kit releases](https://github.com/github/spec-kit/releases),
-[GSD Core releases](https://github.com/open-gsd/gsd-core/releases).
+---
 
-## What the Earlier Survey Needs to Correct
+## 2. Competitive Matrix: Why Existing Efforts Fall Short
 
-| Earlier conclusion | Current assessment |
-|---|---|
-| Spec Kit is forward-only, without recovery or unsuccessful outcomes | Its workflow engine documents persisted runs, resume after interruption/failure, human gates, and failed/aborted outcomes. See Spec Kit below. |
-| OpenSpec lacks session recovery and conversation structure | Its guide demonstrates returning to an interrupted change and includes human/assistant interaction patterns. This does not establish equivalence to every DevCapsule recovery rule. |
-| BMAD is necessarily a heavyweight simulated agile team | Current guidance scales planning to the change and offers direct work on a small, clear change. The old anecdotal 12-minute/90-minute/5.5-hour comparison is removed. |
-| Memory Bank has no recovery | Its documentation explicitly describes saving context and continuing in a new conversation. It is a narrower recovery method, not absence of one. |
-| Beads is adequately described as a Git-backed single-binary issue tracker | Current Beads is Dolt-backed, with memory, coordination, synchronization and migration considerations. Its repository now redirects to `gastownhall/beads`. |
-| Our handoff, conversation and session-record mechanisms are unique | GSD Core's documented phase loop and development-branch handoff/report commands overlap directly. Exact semantics differ; uniqueness is unproven. |
-| Plain Markdown has zero dependencies and is therefore the simpler choice | The records need no dedicated database to read. Operating DevCapsule's workflow still requires Git, hosting access, participant compliance and substantial procedural knowledge. |
+| Dimension | **DevCapsule (v0.2.15)** | **Docker Sandboxes (`docker sandbox`)** | **VS Code DevContainers / DevPod** | **Cloud Agent Sandboxes (Daytona, Upstash Box, E2B)** | **Host Env Managers (Nix, Devbox, devenv)** |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Primary Design Goal** | Stateful local capsule uniting a real GUI IDE + AI agents + project memory | Quick ephemeral isolation for a single CLI agent (e.g., Claude Code) | Standardizing team/enterprise container config for VS Code / Cloud | Programmatic, headless cloud microVMs billed per second for AI execution | Reproducible package management directly on the host OS |
+| **Security & Host Boundary** | **High & Explicit:** Separates what a repo *declares* from what the developer *authorizes* on the host; nothing of the host's home, keys or display session is present by default | **Medium-High:** microVM with its own daemon, filesystem and network; declared sharing and documented credential handling, but no repository-versus-developer split | **Low-Medium:** A cloned repo's `.devcontainer.json` can execute arbitrary host/mount hooks if trusted | **High (Remote):** Runs off-device in cloud microVMs; requires network/cloud trust | **None:** Agents run with full host user privileges and can read `~/.ssh` or wipe `$HOME` |
+| **IDE Model** | **Full GUI IDE inside the capsule** (PyCharm, IntelliJ IDEA, Eclipse, Rider, VSCodium), shown as the capsule's own desktop in a browser tab over a per-run loopback port and token | **None:** Terminal-only; host IDE fights the container over mounted files | **Split Client-Server:** Proprietary VS Code server or brittle JetBrains Gateway projection | **Headless / API-first:** Built for SDK calls (`code_run`), not daily human IDE work | **Host IDE:** Plugins and language servers still collide on the host machine |
+| **Configuration Ergonomics** | **Capability-first** (`.devcapsule/devcapsule.toml`: required and optional capabilities with SDK majors owned by the project; IDE, agents and extras chosen per developer) + persistent user `/opt/xtras` | **Imperative CLI flags:** Changing env vars or tools often requires destroying/recreating the sandbox | **Committee JSON + Dockerfiles:** Heavy lifecycle hooks and complex feature registries | **SDK / Imperative Code:** Configured via Python/TS SDKs and cloud API keys | **Nix DSL / JSON:** Steep learning curve when non-standard binaries are needed |
+| **Stateful Persistence** | **Resumable `$HOME` & `/opt/xtras`:** Survives container stop, rm, and image recreation | **Fragile:** Ephemeral outside the mounted workspace; restarts wipe ad-hoc tools | **Volume-dependent:** Rebuild cycles often wipe non-Dockerized user tweaks | **Cloud Snapshots:** Paid storage ($/GB/mo) and per-second vCPU billing | **Host-bound:** Everything lives on the host disk |
+| **Agent Context & Memory** | **First-Class & Agnostic:** installs and maintains versioned `AGENTS.md`, `WORKFLOW.md`, `CURRENT-STATUS.md`; compliance by the agent is not enforced | **None:** Restarting the sandbox often loses agent session context | **None:** Pre-dates agentic coding workflows | **Proprietary Harness:** Tied to vendor SDK state | **None:** Unaware of agents |
 
-## Workflow and Memory Alternatives
+### Why DevCapsule Beats the Closest Alternatives for Individual Developers
 
-### GitHub Spec Kit
+1. **Execution Isolation != Environment Parity (Where Docker Sandboxes Break):**
+   When developers run `docker sandbox run claude`, the agent is isolated, but the moment it tries to run a test suite requiring specific JDK versions, Python C-extensions, or custom linters, it fails because the generic sandbox lacks environment parity with the host IDE. DevCapsule puts the **IDE, SDKs, terminals, and agents inside the same capsule**, so the environment the agent tests in is the one the developer debugs in.
+2. **Solving the "Team Lockfile vs. Personal Tooling" Conflict (`/opt/xtras`):**
+   In standard DevContainers, if you install a personal CLI tool, database client, or experimental agent binary inside the container, it gets wiped the next time the image is rebuilt—unless you bloat the team's shared `Dockerfile`. DevCapsule solves this cleanly with `/opt/xtras` (backed by `$HOME/xtras` in the capsule's persistent home): it requires no `sudo`, is automatically on `PATH` for the IDE and agents, survives container removal/recreation, and never pollutes the project's lockfile.
+3. **Untrusted Repo Protection ("The Boundary"):**
+   In `devcontainer.json`, opening a third-party repository can trigger lifecycle scripts or bind mounts defined by the repo author. DevCapsule strictly separates **project declarations** (checked into git in `.devcapsule/devcapsule.toml`) from **developer host authorizations** (owned locally by the user).
+4. **Vendor-Neutral Agent Memory, with a caveat:**
+   DevCapsule treats project memory (`AGENTS.md`, `WORKFLOW.md`, `CURRENT-STATUS.md`) as versioned repository artifacts and supports structured workflows like `multiple-streams` across any agent. The September refresh established that this is **not** a distinguishing claim on its own: Spec Kit, OpenSpec, GSD Core, Kiro steering, Cline's Memory Bank and the agents' own memory files all document persisted project context and resumption. What is distinctive is the bundle: the memory, the environment and the boundary maintained together, by one tool, for several agents. Argue the bundle, not the memory.
 
-Spec Kit still provides a specification/planning/task process, but its current
-scope extends to customizable workflows. The documented engine sequences
-commands, shell actions and review gates; stores run state and logs; and resumes
-paused or failed runs. It explicitly represents completed, failed and aborted
-outcomes. These facts invalidate the old forward-only characterization.
-[Workflow reference](https://github.github.com/spec-kit/reference/workflows.html).
+---
 
-Its current command reference also includes post-implementation convergence and
-cross-artifact analysis. [Agentic SDD reference](https://github.github.com/spec-kit/reference/agentic-sdd.html).
+## 3. Critical Eye: Limitations of DevCapsule Today (v0.2.15)
 
-**Adopter implication:** a developer primarily seeking disciplined feature
-execution and recovery has a substantive alternative. DevCapsule's exact
-registry, decision-authority and archival conventions are different, but that
-difference needs an outcome-based justification. Workflow run recovery is not
-proof of recovery of arbitrary dirty checkouts or external services.
+Despite a strong architectural vision, evaluating DevCapsule at **v0.2.15** (and the `0.1.x–0.2.x` lifecycle) reveals concrete product and adoption hurdles:
 
-### OpenSpec
+### 3.1 Incomplete Core Documentation ("Soon" Blockers)
+* The onboarding guides (*Start here*, *Your first session*, *Choose an agent*, *The boundary*, *Extra tools*, *Project capabilities and personal choices*) are complete. Ten pages in the `0.2.16.dev0` tree still carry `status: planned` and a *coming soon* body, among them **"What a project declares"**, **"Services and ports"**, the **command reference**, the **project info fields**, **Git** (how credentials reach a remote from inside the boundary), **Previews and ports**, **Several projects**, **Another machine**, **Cleanup and uninstall** and **Review and change agents**.
+* **Impact:** A developer can run the first session and declare an ordinary project, because the capabilities page documents `init --required`, `--optional`, `--sdk-major` and `config capabilities`. The moment they need a service beside the project, want to push from inside the capsule, or want to know what a command does without running it, they fall back to `--help` or the source. The Git page gap matters most: the boundary page promises that SSH keys and cloud credentials never enter the capsule, and the page that should say how a push then works is a stub.
 
-OpenSpec retains the distinction between current specifications and proposed
-changes. Its workflow guide demonstrates interrupting one change, completing
-another, then continuing the first from its recorded task state. It also
-covers verification and archival, including handling several completed changes.
-[Workflow guide](https://github.com/Fission-AI/OpenSpec/blob/main/docs/workflows.md).
+### 3.2 The Browser Desktop and the Missing Platforms
+* Since v0.2.12 the capsule has **its own desktop**, delivered to a browser tab on the host over a per-run loopback port with a per-run token. Nothing of the host's display session enters the capsule; the earlier X11 passthrough survives only as the `host-x11` boundary node, which no project may recommend and which the launch announces when granted. The host-display friction this section previously described does not exist in the shipped design. What does exist is the browser desktop's own cost: a VNC-style frame path, a clipboard that crosses only through the desktop tab's panel, and IDE shortcuts that compete with the browser's.
+* **Windows** runs through WSL2 and Docker Desktop's Linux integration with the project in the Linux filesystem, and the desktop opens in the Windows browser. It has its own platform page because the prerequisites differ, not because display projection is fragile.
+* **macOS is not supported.** The executable is Linux-only and the launcher assumes a Linux Docker host with the project folder on the same filesystem; the platform page says a port has not been started. The browser desktop makes a future port rendering-neutral, so the obstacle is the launcher, Docker Desktop file sharing and networking, not XQuartz. **ARM Linux** is likewise outside the release.
 
-A particularly relevant development is its **experimental** `openspec/work/`
-model: goals, roadmaps, slices, and result records containing evidence of
-success, failure or follow-up. The source explicitly says normal CLI validation
-and archival still use `changes/` and `specs/`; do not advertise the experiment
-as a released replacement.
-[Experiment and compatibility boundary](https://github.com/Fission-AI/OpenSpec/blob/main/openspec/work/README.md).
+### 3.3 The Capability Catalog Ceiling
+* A declarative, capability-first system (`init --required python --sdk-major python=3 --optional browser-automation`; the older `--need` form is legacy) is magical when your exact stack is supported. The moment a polyglot developer needs an unindexed capability (a specific `sbt` with GraalVM `native-image`, CUDA toolkits, Rust with custom system C libraries), the declarative system becomes a bottleneck.
+* The shipped escape hatch is `/opt/xtras`: personal, persistent, on `PATH`, no `sudo`. It covers tools a developer installs for themselves. It does not cover a **project-level** need that every contributor must have and that the catalog lacks; the capabilities page says plainly that naming a new provider does not install it. There is no documented way for a repository to carry its own capability definition or layer. That is the real ceiling, and it is a product decision, not a documentation gap.
 
-**Adopter implication:** it is a close comparison for maintaining intent and
-results through incremental changes. Our date/mnemonic directories and
-main-first registration are particular policy choices. Adopting OpenSpec's
-format would not automatically implement that policy; integration would need a
-prototype, ownership rules and a migration decision.
+### 3.4 Secret Injection vs. Exfiltration Prevention
+* DevCapsule's documented default is already the lower-exposure path: agents sign in interactively inside the capsule and the resulting token lives in the capsule's persistent home on the developer's computer, never in the repository. An API key enters only when the developer binds a named host environment variable explicitly (`codex/openai-api-key` from `host-environment:OPENAI_API_KEY`), and the listing warns that the value is then visible to every process in the capsule. Host SSH keys and cloud credentials are not present at all. The Git page that would explain how a push authenticates from inside the boundary is still a stub.
+* What remains exposed is therefore the sign-in token in the capsule home and any explicitly bound key. A malicious test script in an untrusted repository can read either and send it out over the capsule's ordinary outbound network. Cloud sandboxes have moved on this: Upstash Box's *attach headers* and Modal's sandbox secret injection put a TLS-intercepting proxy on the host that adds the credential to matching outbound requests, so it never exists in the container's environment, files or memory; Docker Sandboxes documents its own credential handling. DevCapsule has no outbound egress control and no host-side injection; the boundary is strong inward and open outward.
 
-### BMad Method
+### 3.5 Search Engine Visibility (unverified)
+* The Gemini draft asserted that search engines had indexed a single subpage of `devcapsule.mycodespace.ai` as of October 2026. The review could not reproduce or source that measurement, so it is recorded here as an unverified assertion rather than a finding. The actionable part stands on its own: until a sitemap is submitted and the site has inbound links, developers searching for *"run Claude Code in Docker with PyCharm"* or *"isolated container for AI coding agents"* are unlikely to find it. The `website` workstream owns the check.
 
-Current BMad guidance asks how much planning the intent needs. Small, clear
-changes can go directly to Build; larger work acquires a specification and,
-when needed, story breakdown. Its documentation even says an obvious low-risk
-edit does not need BMad. Describing all use as maximalist would mislead.
-[Planning-path guidance](https://docs.bmad-method.org/plan/choose-a-planning-path/).
+---
 
-The current project-context skill produces a compact verified block in
-`AGENTS.md`, supports adoption and refresh of existing instructions, and asks
-for approval before changing them. The page says it replaces earlier
-project-context/document-project skills and can absorb their prior context file.
-This is a concrete documented evolution in its context-management approach.
-[Project-context lifecycle](https://docs.bmad-method.org/existing-codebases/set-and-maintain-project-context/).
+## 4. Challenging Core Assumptions: What Might Change in the Future?
 
-**Adopter implication:** compare the amount of process demanded by the chosen
-path, not the total size of either framework. Human control and persistent
-project instructions are shared concerns. We have no controlled evidence for a
-speed or token-cost advantage over BMad.
+Any infrastructure tool built during a platform shift carries architectural bets that could be invalidated as the ecosystem matures:
 
-### Cline Memory Bank
+### Assumption 1: "Developers Still Need a Full Heavyweight IDE" (The Vibecoding Debate)
+* **The Contention:** A vocal movement in software engineering argues that traditional IDEs (JetBrains, VS Code) are legacy artifacts. If 80–95% of code is "vibecoded" or generated by autonomous multi-agent loops (Claude Code, Codex, Devin-style background workers), the human only needs a terminal orchestration dashboard and a lightweight diff viewer. If true, optimizing DevCapsule to run a heavy GUI IDE inside a container solves yesterday's problem.
+* **The Counter-Reality (Why DevCapsule's Bet Still Holds—With a Catch):**
+  * Pure "vibecoding" works for greenfield prototypes and disposable scripts, but breaks down in complex production systems where subtle concurrency bugs, architectural drift, and type-system constraints require deep static analysis, interactive debuggers, and refactoring engines (precisely where JetBrains IDEs shine).
+  * In fact, as agents write *more* code, the human role shifts from **typist** to **high-leverage auditor and debugger**. Auditing a 2,000-line multi-file agent change is vastly safer inside a full IDE with semantic call-hierarchy navigation and integrated test runners than inside a terminal scrollback.
+  * **The Pivot Risk:** Even if IDEs remain essential, developers may increasingly use **AI-first fork editors** (Cursor, Windsurf, Zed) running natively on their host OS rather than classic Linux GUI IDEs running inside X11/Wayland containers. If DevCapsule remains strictly wedded to running the GUI IDE *inside* the container rather than also supporting seamless host-editor attachment when desired, it narrows its addressable market.
 
-The documented method uses project Markdown for goals, architecture, active
-context, progress and next steps. It explicitly instructs users to update the
-memory, start a fresh conversation and continue from the saved files. It also
-points to Cline's context-management commands.
-[Memory Bank method](https://docs.cline.bot/best-practices/memory-bank).
+### Assumption 2: Local Workstation Containers vs. Instant Cloud MicroVMs
+* **The Contention:** With Docker Cloud Sandboxes, Daytona, and GitHub Codespaces offering suspendable cloud microVMs, why run heavy containers and LLMs on a laptop battery?
+* **The Counter-Reality:** Cloud sandboxes bill for active compute and stored snapshots, introduce network latency on every keystroke, complicate local hardware and LAN testing, and raise corporate IP concerns. Power developers with 32GB–128GB RAM workstations strongly prefer free, zero-latency local compute that works offline and keeps proprietary code on-device.
 
-**Adopter implication:** this is a serious lower-ceremony alternative when the
-pain is simply forgetting where work stopped. DevCapsule supplies more
-lifecycle, authority and delivery conventions, but each convention must repay
-its maintenance cost. Neither method guarantees that an agent saves accurate
-state or follows what it reads.
+### Assumption 3: OS-Native Sandboxing Could Replace Docker for Agents
+* **The Contention:** Agent CLI makers are beginning to integrate OS-native sandboxing (Apple's `sandbox-exec`/Seatbelt on macOS, `landlock`/`bubblewrap` on Linux) directly into the agent binary so it cannot touch files outside the project directory without needing Docker at all.
+* **The Counter-Reality:** OS-native process sandboxes only restrict file/network access for the agent binary; they **do not solve workstation hygiene**. They cannot isolate conflicting Java/Python/Scala toolchains, nor can they prevent IDE plugins and global packages from polluting the host OS. DevCapsule's dual value (Security Sandbox + Workstation Hygiene) protects it from being obsoleted by lightweight process wrappers.
 
-### Beads
+---
 
-The former `steveyegge/beads` URL now redirects to `gastownhall/beads`. The
-current README describes a Dolt-backed dependency graph, claimable tasks,
-agent setup hooks, persistent memories (`bd remember`/`bd prime`) and messaging.
-Embedded storage is the default single-writer mode; server mode permits
-concurrent writers. Cross-machine synchronization uses Dolt push/pull; JSONL is
-an interchange export, not the authoritative database.
-[Current Beads repository and storage modes](https://github.com/gastownhall/beads).
+## 5. The "Lone Wolf" Risk: Extinction vs. Maintainability
 
-**Adopter implication:** Beads directly competes with parts of our task,
-coordination and memory machinery. Queryable state may reduce the amount an
-agent must read; that is a hypothesis to measure. The tradeoff includes database
-operations and upgrades. Markdown's human readability is a benefit, not proof
-that prose is better at dependencies, claiming work or delivering messages.
+Adopting a developer tool maintained primarily by a single author (`ccozianu/devcapsule`) carries an inherent **"Bus Factor = 1"** risk. In June 2026 the VC-backed Daytona archived its open-source repository and moved development private, leaving the last AGPL release at v0.190.0; a community fork, Nightona, continues from that tag ([fork README](https://cdn.jsdelivr.net/gh/nightona-co/nightona@main/README.md)). The episode cuts both ways: a well-funded project can close overnight, and a permissive, standard-primitives codebase gets forked the same month. If the primary author of DevCapsule loses interest or moves on, does the project die, or can an adopter/small team take it over with minimal effort?
 
-### GSD Core: an Omission from the Original Set
+### Why DevCapsule Is Uniquely Survivable (Low Takeover Friction)
+1. **Permissive Licensing:** Licensed under **Apache-2.0**, giving users and enterprises explicit patent and copyright clearance to fork, modify, and maintain internally without legal ambiguity.
+2. **Thin Orchestration Layer Over Standard Primitives:** DevCapsule does not invent a custom hypervisor, proprietary container daemon, or closed-source remote server binary. It orchestrates standard OCI/Docker containers, standard Linux filesystem conventions (`/opt/xtras`, persistent `$HOME`), and human-readable `.devcapsule/devcapsule.toml` manifests.
+3. **Self-Documenting "Project Memory" (Dogfooding):** Ironically, one of DevCapsule's greatest defenses against lone-wolf extinction is its own core feature. The repository uses its own structured, versioned project memory (`AGENTS.md`, `WORKFLOW.md`, `CURRENT-STATUS.md`, and a documented Development Journal). Any competent developer—or an AI coding agent pointed at the repo—can read the architectural intent, active workstreams, and current status immediately without reverse-engineering tribal knowledge.
+4. **No Cloud Control Plane to Keep Alive:** Because DevCapsule runs 100% locally on the developer's machine, if upstream development stops tomorrow, existing installations will continue working indefinitely. There is no SaaS coordinator that can be shut down.
 
-The old `gsd-build/get-shit-done` repository is archived and points to
-`open-gsd/gsd-core`; the old URL should not be used as the active installation
-home. [Migration notice](https://github.com/gsd-build/get-shit-done).
+### Where the Hidden Maintenance Burden Lies
+While the core CLI orchestrator is straightforward to maintain, a new maintainer would face two recurring maintenance taxes:
+1. **Base Image & Capability Matrix Rot:** Developer toolchains move fast. Maintaining curated capability definitions and base images across rolling releases of JetBrains IDEs, Python, JDKs, Node, and rapidly changing AI agent CLIs is recurring work. Part of it is already automated and should be named: a daily GitHub Action publishes a component compatibility feed and status page on the `component-status` branch, version sets record the exact platform, base, components and recipe of a working environment, and `project versions rollback` returns to the last successful set. What is not automated is base-image rebuilding against vendor releases. If that stays manual, the tool will feel outdated within months of inactivity.
+2. **Cross-OS Display/Mount Edge Cases:** Debugging WSLg regressions after Windows updates or X11/Wayland permission quirks across Linux distros is tedious support work.
 
-GSD Core documents a discuss/plan/execute/verify/ship loop and durable state and
-context artifacts, with fresh agent contexts used for execution.
-[Current project overview](https://github.com/open-gsd/gsd-core).
+**Maintainability Verdict:** If the solo maintainer stepped away, an individual power user or small engineering team could fork and maintain DevCapsule for their own stacks, *provided* the capability definitions and Dockerfile composition templates are modular and data-driven rather than hardcoded in imperative logic. The effort has not been measured; the Gemini draft's "a few hours a month" is withdrawn as an estimate without evidence. The honest statement is that the Python-only toolchain, the Apache-2.0 licence and the absence of a cloud control plane keep the takeover cost low, and that a reviewer can read the maintenance workstream's own records to see how much base-image and vendor-adapter work one release actually took.
 
-Its linked **`next` branch command reference** documents pause/resume,
-`continue-here.md`, optional session reports and named workstreams. This is
-strong evidence of overlapping design, but those exact commands must be checked
-against an installable release before a hands-on comparison.
-[Development command reference](https://github.com/open-gsd/gsd-core/blob/next/docs/COMMANDS.md).
+---
 
-**Adopter implication:** GSD belongs in any follow-up evaluation of our session
-and delivery protocol. The earlier claim that no comparable structures the
-conversation or preserves session reports is not supportable.
+## 6. Consolidated Strategic Recommendations Ledger
 
-### Kiro: a Broader Product Alternative
+To maximize adoption and insulate DevCapsule against both competitive pressure and solo-maintainer burnout, here is the updated product recommendation ledger:
 
-Kiro's documentation covers feature and bugfix specs, requirements/design/task
-artifacts, task progress, and dependency-aware parallel execution. Its specs
-page is explicitly updated 2026-08-27.
-[Specs](https://kiro.dev/docs/specs/).
+### **Pillar 1: Onboarding & Capability Ergonomics**
+* **Rec 1.1 — Finish the Planned Pages, Git and Services First:** Of the ten `status: planned` pages, *Git*, *Services and ports* and *What a project declares* block real work; the command reference and project-info fields block agents that read documentation. Publish them with copy-pasteable `.devcapsule/devcapsule.toml` recipes for polyglot stacks (Python + Java/Scala, Node + Postgres).
+* **Rec 1.2 — A Project-Level Custom Capability:** `/opt/xtras` already solves the personal case. The open question is whether a repository may carry its own capability definition or layer under `.devcapsule/` so that a team is never blocked waiting for the catalog. This is a boundary question as much as a convenience: a repository-supplied layer is code the developer runs on trust, exactly what the project-versus-developer split exists to govern.
 
-Steering provides persistent project guidance, including `AGENTS.md` support
-and selective inclusion of steering files.
-[Steering](https://kiro.dev/docs/steering/).
+### **Pillar 2: Cross-Platform Performance & GUI Flexibility**
+* **Rec 2.1 — Decide the Host-Editor Question Explicitly:** The browser desktop is the containment design, not a stopgap: it is why nothing of the host display session enters the capsule. A "host IDE, capsule runtime" mode would reopen that boundary for the editor process and would need its own boundary node, like `host-x11`, with the same warning. The recommendation is to decide and document the position, not to assume the mode is wanted. The macOS motivation given in the draft does not apply, because macOS is unsupported for other reasons.
+* **Rec 2.2 — Keep the Project on the Linux Filesystem, and Say Why:** The Windows page already follows Microsoft's guidance to keep the project in the WSL2 filesystem, which is the whole of the bind-mount performance problem. State the reason on that page and make the launcher refuse or warn on a `/mnt/c` project path, rather than engineering volume shadowing for a platform that does not exist yet.
 
-**Adopter implication:** an integrated coding product can meet these needs
-without the adopter installing a separate workflow framework. Assess the value
-of DevCapsule's choice of IDE/agent and local environment management against
-that integrated experience. This survey does not classify Kiro's whole product
-as open source or evaluate its commercial terms.
+### **Pillar 3: Hardening "The Boundary" for Autonomous Agents**
+* **Rec 3.1 — Outbound Credential Injection and an SSH Agent Socket:** Host keys already stay out. The gap is outbound: an agent's sign-in token or bound API key can be read and sent anywhere. A host-side proxy that attaches credentials to matching outbound requests, as Upstash Box and Modal document, and an SSH agent socket forwarded as a boundary node would let agents authenticate to Git and LLM APIs without any secret existing in the capsule. This is the one place the matrix's "High & Explicit" boundary is weaker than the cloud alternatives, and it should be said so in the comparison.
+* **Rec 3.2 — Name Git as the Undo, Then Ask What It Misses:** The boundary page already says "Git is your undo" for the project folder, and `project versions rollback` already restores the environment. A `devcapsule checkpoint` would add value only for what neither covers: the capsule's persistent home, where an agent's own configuration and installed extras live. Scope the recommendation to that, or drop it.
 
-### Native Agent Memory: the Existing-Tool Baseline
+---
 
-Claude Code documents both authored `CLAUDE.md` instructions and automatic
-memory loaded across sessions. Its documentation explicitly distinguishes
-context from enforced configuration.
-[Memory model](https://code.claude.com/docs/en/memory).
+## 7. Review Notes (2026-10-16)
 
-**Adopter implication:** the baseline is no longer an agent with no memory.
-Ask what a maintained, human-readable, cross-agent handoff adds beyond the
-reader's existing setup. Repository records can make decisions reviewable by
-people and other agents, but their freshness still takes work. One vendor's
-memory behavior is not evidence about every agent.
+Reviewed by Claude Fable 5.1 against the `0.2.16.dev0` checkout's `docs/`
+tree and the sources linked below, at the product owner's request, as a pull
+request against the project-management branch. Each item says what the Gemini
+4 draft stated, what the evidence says, and what was done.
 
-### ADR / MADR
-
-MADR remains established prior art for recording decision context, considered
-options, outcomes and consequences in Markdown. Its templates are customizable;
-DevCapsule's exact adoption ceremony is a local rule, not something proven to
-be an almost verbatim universal ADR standard.
-[MADR documentation and templates](https://adr.github.io/madr/).
-
-**Adopter implication:** reuse familiar decision-record concepts and evaluate
-compatibility. Neither adoption of MADR nor a workflow migration is authorized
-by this comparison.
-
-## Compare Mechanisms, Not a Feature-Count Score
-
-These are documented approaches, not ratings of implementation quality. A cell
-names the inspected mechanism; it does not claim all unmentioned capabilities
-are absent. Sources are in the corresponding entries above.
-
-| Option | Keeping context | Continuing work | Main adoption tradeoff to investigate |
+| # | Draft statement | Evidence | Action |
 |---|---|---|---|
-| DevCapsule WORKFLOW.md | Requirements, decisions, handoff and Open Threads | Git/workstream and external-state verification prescribed by protocol | Broad conventions and coordination overhead; compliance is not automatic |
-| Spec Kit | Feature artifacts and persisted workflow state | Resume a paused/failed workflow step | Install and maintain its workflow machinery |
-| OpenSpec | Current specs plus per-change artifacts | Continue an interrupted change from task state | Define how change artifacts fit project-level ownership |
-| BMad | Maintained project instructions and planning artifacts | Work sized to intent; this review does not establish general crash recovery | Choose the appropriate planning path |
-| Memory Bank | Small set of project Markdown files | Update, start a new conversation, reload | Keep the files accurate |
-| Beads | Structured tasks, dependencies and memories | Query ready work and restore agent context | Operate and synchronize the data store |
-| GSD Core | State/context and milestone artifacts | Pause/resume and reports documented on `next` | Verify release availability and execution-model fit |
-| Kiro | Specs, task state and steering | Continue tracked task execution | Adopt its product experience |
-| Existing agent memory | Vendor-specific instructions and saved learning | Reload across sessions | Assess portability and human review needs |
+| 1 | The IDE window is projected to the host over X11/Wayland; macOS suffers XQuartz/VNC quirks | `docs/containment/the-boundary.md`: the capsule's desktop is a browser tab over a per-run loopback port and token; `host-x11` is an opt-in node no project may recommend. `docs/platforms/macos.md`: not supported, port not started | Section 3.2 rewritten; Rec 2.1 and 2.2 refocused |
+| 2 | Two sidebar pages are placeholders | Ten pages carry `status: planned`, including the command reference, project-info fields and Git | Section 3.1 corrected; Rec 1.1 reprioritized |
+| 3 | Capability syntax `--need python-ide --need java-sdk:21` | `docs/configuration/capabilities.md`: `init --required`, `--optional`, `--sdk-major`, `config capabilities`; `--need` is the legacy form | Section 3.3 and the matrix corrected |
+| 4 | No escape hatch for unindexed capabilities | `/opt/xtras` is the documented personal escape hatch; no project-level one exists | Section 3.3 split into the solved and the open case |
+| 5 | Agents hold raw API keys in environment variables | `docs/working-with-ai/sign-in-and-defaults.md`: interactive sign-in is the default; a key enters only by explicit `host-environment` binding, with a warning | Section 3.4 rewritten around the real exposure, outbound egress |
+| 6 | Vendor-neutral agent memory is a differentiator | The 2026-09-13 refresh retracted this claim with sources | Claim 4 qualified; provenance paragraph added |
+| 7 | "Enforces" versioned project memory | Bootstrap installs the files; `WORKFLOW.md` itself says compliance is not automatic | Matrix wording softened |
+| 8 | Cloud sandboxes cost $0.14 to $1.12 per hour; one subpage indexed; a few hours a month to maintain | No source for any of the three; the September evidence standard omits unsourced numbers | Price range removed, SEO claim marked unverified, effort estimate withdrawn |
+| 9 | Daytona closed its open source in mid-2026 | Confirmed: archived June 2026, last AGPL release v0.190.0, community fork Nightona ([README](https://cdn.jsdelivr.net/gh/nightona-co/nightona@main/README.md)) | Sourced and the fork added as the counterpoint |
+| 10 | Capability matrix rot is an unaddressed maintenance tax | `docs/updates/component-freshness.md` and `component-upgrades.md`: daily compatibility feed, version sets, `project versions rollback` | Section 5 names the shipped machinery and the remaining manual part |
+| 11 | A checkpoint/rollback command is missing | "Git is your undo" for the project; `project versions rollback` for the environment; nothing for the capsule home | Rec 3.2 scoped to the uncovered part |
+| 12 | `docker sandbox run claude` | Docker's reference documents it; the Docker Desktop integration is deprecated in favour of the standalone `sbx` CLI ([reference](https://docs.docker.com/reference/cli/docker/sandbox/run.md)) | Left as written; note the CLI is moving |
+| 13 | Secret-injecting proxies at Upstash Box and Arcade | Upstash Box *attach headers* confirmed ([security docs](https://upstash.com/docs/box/overall/security)); Modal documents the same ([guide](https://modal.com/docs/guide/sandbox-secret-injection)); Arcade not verified | Upstash and Modal cited; Arcade dropped |
 
-## The Workspace Half of the Adopter's Choice
-
-A workflow-only comparison cannot justify adopting all of DevCapsule. Three
-existing alternatives challenge the broader pitch:
-
-- **VS Code Dev Containers** already provides a configured development
-  environment, editor settings and extensions. Calling it merely an application
-  runtime undercounts what developers get. DevCapsule should demonstrate why
-  its full IDE component model and state/permission choices help a particular
-  user. [Dev Containers guide](https://code.visualstudio.com/docs/devcontainers/containers).
-- **GitHub Codespaces** offers repository-configured cloud environments that
-  users can reopen, with browser and VS Code access. A developer who wants
-  hosted compute and little workstation setup has a different reason to choose
-  it. DevCapsule's current workstation-based product should make that choice
-  clear. [Codespaces overview](https://docs.github.com/en/codespaces/about-codespaces/what-are-codespaces).
-- **Docker Sandboxes** explicitly targets coding agents in microVMs with their
-  own Docker daemon, filesystem and network, plus declared sharing and editor
-  connections. Agent containment is therefore a direct competitive category,
-  not a unique DevCapsule idea. [Sandboxes overview](https://docs.docker.com/ai/sandboxes/).
-  Its current installation guide includes macOS, Windows and Ubuntu; Linux
-  requires KVM, and Ubuntu derivatives are explicitly unsupported. Match the
-  reader's actual host before comparing convenience.
-  [Installation requirements](https://docs.docker.com/ai/sandboxes/install/).
-
-These alternatives can also be combined with memory/spec tools. The relevant
-comparison is the useful setup an adopter can assemble or already has, not
-whether one competitor copies our exact bundle. This review does not survey
-Coder, Ona, DevPod, Daytona or every cloud agent service; claims of market-wide
-uniqueness would require substantially broader evidence.
-
-## What DevCapsule Can Claim, and What It Must Prove
-
-The current [CLI guide](../../../devcapsule-src/README.md) describes released
-executable distribution, capability/lock configuration, component acquisition
-and reuse, IDE/agent components and persistent state. The project also ships
-workflow definitions and bootstrap behavior. These are concrete things to
-show, although this refresh is not a new runtime acceptance test.
-
-Our exact workstream routing, decision rights, disposition records and
-explicit failure closure remain recognizable design choices. They are not
-established competitive advantages. The
-[One Workflow, Many Projects assignment](../../wip/2026-08-09-workflow-improvements/intake/2026-09-11-project-management-one-workflow-many-projects.md)
-already asks whether the inherited process is proportionate and discoverable.
-Our own [handoff](../../wip/2026-08-09-project-management/CURRENT-STATUS.md) records repeated outbox delivery failures.
-It would be particularly weak to advertise a uniquely reliable recovery system
-without acknowledging that evidence.
-
-Also distinguish **explicit access** from **strong containment**. The
-[X11 session-credential defect](../../bugs/devcapsule/2026-08-16-x11-passthrough-grants-full-session-credential.md)
-is still open, and the checked-out launcher still binds the host X11 socket
-and copies its authority. A new contained-display branch is not release
-acceptance evidence. The V1 aspiration of safe full agent autonomy must not be
-presented as a current proven property. A diagram or checklist of features
-cannot establish a security advantage over microVM-based alternatives.
-
-The likely adopter worth addressing first is a developer who uses agents in
-several local projects, values a full IDE, and repeatedly pays to reconstruct
-either the environment or the work's intent. This is a positioning hypothesis
-for owner review, not a measured market segment.
-
-## Consequences for the One-Pager
-
-The owner selected a page that earns the reader's interest **before** an
-installation tutorial. The comparison supports this approach:
-
-1. Lead with a recognizable interruption or return-to-project problem, then
-   show what the assembled environment and maintained handoff change.
-2. Explain why this helps someone who already has an IDE, agent memory and
-   perhaps a dev container. Do not assume a blank starting point.
-3. Offer one checkable demonstration: make a change, record what remains,
-   exit, and return with another session or agent. Show the environment,
-   settings, decisions and next step that survive, including required user
-   actions. Do not imply automatic reconstruction of unrecorded conversations.
-4. State current platform/setup needs and make the permissions understandable.
-   Avoid unsupported setup-time, productivity or safety promises.
-5. Judge the prototype by the reader's willingness to try it and the observed
-   cost of the trial. Do not ask the reader to learn our internal process in
-   order to discover the benefit.
-
-**Recommended next evidence:** compare that same small return-to-work scenario
-using DevCapsule, the reader's existing agent setup, and a relevant established
-workspace plus memory method. Record setup effort, manual briefing, missed
-context, recovery steps and maintenance effort. No such comparison has been
-run here; the one-pager can propose a trial but cannot quote invented savings.
-
-## Maintenance
-
-Recheck these sources before publishing competitor claims or selecting a
-third-party dependency. For a hands-on evaluation, pin actual release versions,
-record host prerequisites and distinguish released commands from branch docs.
-Preserve the difference between documented support, observed behavior and our
-inference. Future changes to WORKFLOW.md or a tool-adoption decision belong to
-their normal workstream and decision process.
+Not changed, for the owner's judgment: the matrix's characterizations of
+DevPod, Nix, Devbox and devenv rest on general knowledge rather than
+documentation read for this revision; the September note's workflow-framework
+comparison is referenced rather than restored; and the web console shipping in
+`0.2.16` (the capsule as a token-gated page) is not yet in the matrix because
+it is unreleased.
