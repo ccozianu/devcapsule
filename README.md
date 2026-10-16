@@ -3,6 +3,8 @@
 [![Tests](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
 [![Coverage](https://raw.githubusercontent.com/ccozianu/devcapsule/badges/coverage.svg)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
 
+<!-- website:social title="DevCapsule: a real IDE and a coding agent in a capsule" description="Start work on any project in minutes: a real IDE and your coding agent at full speed, inside a capsule that shares only your project folder. Linux and Windows via WSL2, open source." -->
+
 <!-- website:hero -->
 ## Start working on a project right away!
 
