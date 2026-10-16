@@ -179,10 +179,11 @@ priority among the items and no implementation owner until pickup:
    contract's design, so a supported version page and its `current` copy
    compete for the same query. Decide whether a supported version page
    canonicalizes to `current`; a contract amendment if so.
-3. The producer's companion to W09: the `website:social` marker in
-   DevCapsule's `README.md` and the amendment to R-DOCS-003, written after
-   the website's slice 3 ships; with it, a pass over every page's
-   description for the search result it should earn.
+3. The producer's companion to W09: delivered 2026-10-16 in PR #219, the
+   `website:social` marker in `README.md`, the amendment to R-DOCS-003 and
+   the pin at the website's `5dbfe49`, once the website shipped slices 1 to
+   4 together. What remains here is the pass over every page's
+   `description` for the search result it should earn.
 4. Search intent per entry page: which queries each entry page should win,
    and the landing page's links into the documentation chosen for that.
    Content work on the producer side, owned by user-docs at pickup.

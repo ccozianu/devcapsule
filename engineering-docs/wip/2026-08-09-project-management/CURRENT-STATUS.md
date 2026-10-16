@@ -313,6 +313,17 @@ entry page, measurement and off-site presence, are item 13 of the
 tentatively 0.9, with no implementation owner until pickup. The
 competitive comparison review landed as PR #218 on 2026-10-16.
 
+Later the same day the website delivered the whole social-metadata work
+order, slices 1 to 4, at its commit `5dbfe49`. The producer's half is
+[PR #219](https://github.com/ccozianu/devcapsule/pull/219) from
+`ws-project-management/social-identity`: the `website:social` marker in
+`README.md`, the additive amendment to R-DOCS-003, and the website pin
+moved to the delivering commit. `nox -s docs-contract` passed and the local
+render shows the landing page with the marker's title, the description,
+the default card and the structured data. Item 13.3 of the pre-V1 backlog
+is therefore done ahead of 0.9; the rest of item 13 stands. The live site
+shows the change after the owner's next publication.
+
 ## Open Threads
 
 - Awaiting the human: bounded RC scope for remaining diagnostics and image
