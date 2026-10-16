@@ -160,6 +160,43 @@ The four original messages are recoverable in Git at
 `2026-08-17-workflow-improvements-obsolete-intake-readmes.md`, and
 `2026-09-28-user-docs-contract-version-check-and-docs-0215.md`.
 
+### Item 13: Search Discoverability, The Rest Of The SEO Objective
+
+Owner decision, 2026-10-16: the SEO objective set for V1 on 2026-10-16 is
+worked in the 0.9.x timeframe, not now. One part is already issued and runs
+on the website's own clock: the website repository's work order
+[social metadata and page identity](https://github.com/ccozianu/devcapsule-website/blob/main/engineering-docs/work-orders/2026-10-16-social-metadata-and-page-identity.md)
+(W09 there: derived Open Graph and X tags, the `social` field, the landing
+marker, optional JSON-LD). Everything else is postponed here, with no
+priority among the items and no implementation owner until pickup:
+
+1. The unindexed pages. The Search Console review of 2026-10-16 found 25
+   pages indexed and 35 not, several with "temporary processing error" on
+   ordinary pages such as `/docs/current/sessions/what-persists/`. Diagnose,
+   re-request indexing, and set a re-check date; separate the versioned
+   twins and the redirects that correctly point elsewhere from real errors.
+2. The versioned twins. Older version pages are self-canonical by the
+   contract's design, so a supported version page and its `current` copy
+   compete for the same query. Decide whether a supported version page
+   canonicalizes to `current`; a contract amendment if so.
+3. The producer's companion to W09: the `website:social` marker in
+   DevCapsule's `README.md` and the amendment to R-DOCS-003, written after
+   the website's slice 3 ships; with it, a pass over every page's
+   description for the search result it should earn.
+4. Search intent per entry page: which queries each entry page should win,
+   and the landing page's links into the documentation chosen for that.
+   Content work on the producer side, owned by user-docs at pickup.
+5. Measurement: a recurring Search Console reading, the Bing Webmaster
+   submission the records never confirm, and a page-performance check,
+   under or beside the website's W13 analytics item. The pages are light
+   today: the landing page is 16 KB and answers in about 0.3 s.
+6. Off-site presence: the repository's GitHub description and topics,
+   listings, and where journal entries are posted. The owner's, outside
+   both repositories' files.
+
+Correct today and not items: language, viewport, one heading per page,
+image alternative text, a 50-entry sitemap and a robots file naming it.
+
 ## Notification When A Host Bridge Is Not Granted
 
 Opened: 2026-10-03, from the closure of the

@@ -302,6 +302,17 @@ RC bound for the diagnostics remainder and image reuse and cleanup. The
 launcher-recovery reconciliation with R-CONFIG-001 is agent work and is
 offered, not asked.
 
+## 2026-10-16: The SEO Objective Packaged For 0.9.x
+
+Owner decision of 2026-10-16: the SEO items are not worked now. The website
+repository's social-metadata work order stays open on the site's own clock;
+the remaining items, the unindexed pages, the versioned twins' canonical
+policy, the producer's marker and R-DOCS-003 amendment, search intent per
+entry page, measurement and off-site presence, are item 13 of the
+[pre-V1 backlog](coordination-backlog.md#item-13-search-discoverability-the-rest-of-the-seo-objective),
+tentatively 0.9, with no implementation owner until pickup. The
+competitive comparison review landed as PR #218 on 2026-10-16.
+
 ## Open Threads
 
 - Awaiting the human: bounded RC scope for remaining diagnostics and image
