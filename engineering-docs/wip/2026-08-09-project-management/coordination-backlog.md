@@ -198,6 +198,39 @@ priority among the items and no implementation owner until pickup:
 Correct today and not items: language, viewport, one heading per page,
 image alternative text, a 50-entry sitemap and a robots file naming it.
 
+### Item 14: Desktop-Platform Friction, Alternative Designs For V1
+
+Owner decision, 2026-10-16, while reviewing the competitive comparison.
+Linux is the platform of choice for development; the project does not
+compete with that conviction. The capsule's own desktop in a browser tab,
+over noVNC, served the owner's own Windows usage well enough to ship with.
+What remains is the unavoidable friction with opinionated desktop
+platforms: browser shortcuts that compete with the IDE's, a clipboard that
+crosses only through the desktop tab, a frame path that is not native.
+
+The item, for V1: explore alternative designs that remove that friction
+without reopening the boundary. The leading candidate is the remoting
+built into the VS Code family: VSCodium or VS Code running natively on the
+host operating system, with its editor process on the host and its
+workspace, terminal, language servers and agents inside the capsule,
+connected over SSH into the capsule or directly through Docker tooling to
+a shell inside the container. The IDE then renders natively on Windows or
+macOS and nothing of the capsule's desktop is needed. JetBrains Gateway
+is the same shape for the JetBrains IDEs and is to be assessed alongside.
+
+What the exploration must settle before any implementation: which side
+holds the credentials the editor process carries, since the host editor
+runs with the host user's keys and sessions while the capsule's rule is
+that none of them enter; whether the attach path becomes a boundary node
+the developer grants, like `host-x11`, with the same announcement at
+launch; how the capsule's session logs, console and workflow tooling
+reach an editor that is not inside it; and what persists across sessions
+for an editor whose configuration lives on the host. The browser desktop
+stays the default and the containment design; the alternative is an
+addition for the platforms where the desktop's friction is felt, not a
+replacement. Priority: `later`, decided at V1 planning; no implementation
+is authorized by this item.
+
 ## Notification When A Host Bridge Is Not Granted
 
 Opened: 2026-10-03, from the closure of the
