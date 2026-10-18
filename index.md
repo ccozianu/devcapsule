@@ -270,6 +270,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [No test proves old projects launch with new releases](engineering-docs/bugs/devcapsule/2026-10-18-no-test-proves-old-projects-launch-with-new-releases.md)
 - [Unpacked archive cache publication and recovery](engineering-docs/bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md)
 - [Optional omission loses a local version-set pin](engineering-docs/bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md)
 
