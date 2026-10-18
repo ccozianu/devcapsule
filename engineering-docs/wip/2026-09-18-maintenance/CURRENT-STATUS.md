@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
-Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@28234e24364b
+Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@fdf682151bd8
 
 Integration target: `main`
 
@@ -28,8 +28,10 @@ Its 2026-09-18 start is the recorded adoption exception.
 throwaway copy, PR #231.** PR #229 and PR #230 are merged. The owner
 keeps delete-on-merge on and rules the workaround for the one ref that
 must survive its merges: each merge of the release branch into `main` is
-a pull request from `release-X.Y.Z-4PR-NNN`, a copy created at the
-release branch's tip for that pull request alone, deleted on merge;
+a pull request from `4PR-NNN-release-X.Y.Z`, the owner's spelling of the
+same night so that no copy starts with the `release-` prefix, a copy
+created at the release branch's tip for that pull request alone, deleted
+on merge;
 *Release Policy* 8 in `WORKFLOW-LOCAL.md` and the runbook's step 2 say
 so, with the copy named a throwaway integration ref, never a release ref,
 since the definition wants release refs told by name alone.
