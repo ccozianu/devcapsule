@@ -1,0 +1,63 @@
+---
+status: confirmed
+severity: minor
+target: none
+owner: maintenance
+opened: 2026-10-18
+requirements: [R-COMPAT-001, R-CONFIG-001]
+---
+
+# No test proves that projects initialized by an earlier release keep launching with a new one
+
+## Symptom
+
+The unit suite had one test that read this repository's own lock,
+`test_resolution_reconstitutes_the_dogfood_environment`, and it asserted the
+wrong thing: that the committed lock equals the matrix's newest selection.
+That is repository housekeeping, not a behaviour of the code, and since the
+2026-10-05 rule only a launcher command on the host may do that housekeeping.
+The test went red on `main` and on `release-0.3.0` on 2026-10-18 when the
+agent pins advanced (PR #224, PR #228), blocked the candidate workflow, and
+told nobody anything about whether an older project still launches. Deleted
+on 2026-10-18 and replaced by
+`test_repository_lock_is_launchable_by_this_launcher`, which reads the
+committed lock the way `project run` does and asserts it parses into a
+launchable environment.
+
+That replacement proves one lock, ours, written one matrix generation ago.
+The contract the owner wants enforced is wider: every project that an
+earlier release initialized, its manifest, its platform lock and its
+checkout record, must keep launching with a new release. *Keep The
+Development Checkout Launchable* in `WORKFLOW-LOCAL.md` and R-CONFIG-001
+state the rule, be liberal in what we accept; nothing exercises it across
+releases. The 2026-09-24 incident, released launchers rejecting the
+repository manifest, and the 2026-10-04 incident, an unreleased Playwright
+entry breaking the checkout launch, were both of this class and were both
+found by people.
+
+## Expected behaviour
+
+A test, in the unit suite or the integration gate, that holds a
+configuration captured from each released client still in support, today
+v0.2.14 and v0.2.15: the manifest, the platform lock and the checkout record
+a `project init` of that release wrote for a representative need. For each
+captured configuration, the development code must: read the manifest and
+validate it; parse the lock into a launchable environment, every artifact
+declaration validated and every runtime template found; read the checkout
+record and the authorizations; and resolve the manifest's need against the
+development matrix without `--unverified`. A capture is added when a final
+release ships and retired when the version leaves support.
+
+## Close criteria
+
+- The captured configurations live under `tests/resources/` with the
+  release and the commit they came from in a README.
+- The test fails when a reader, a vocabulary or a validator stops accepting
+  one of them, naming the release and the file.
+- The release runbook names the capture as a step after the final tag.
+
+## Disposition
+
+Opened 2026-10-18 by `maintenance` at the owner's direction, during the
+0.3.0 cycle. No target: it is validation work for the next planning, not a
+0.3.0 gate.

@@ -130,28 +130,6 @@ def test_resolution_matches_the_captured_golden_lock(name: str) -> None:
     assert rendered(GOLDEN_NEEDS[name]) == golden
 
 
-def test_resolution_reconstitutes_the_dogfood_environment() -> None:
-    """Resolving the dogfood checkout's own need reproduces its formation.
-
-    The committed dogfood lock is an earlier, hand-authored generation
-    (``dogfood-v1``), so header metadata legitimately differs; the formation
-    — base, components, materialization — must match exactly.
-    """
-
-    manifest_path = REPO_ROOT / ".devcapsule" / "devcapsule.toml"
-    lock_path = REPO_ROOT / ".devcapsule" / "devcapsule.linux-amd64.lock"
-    if not manifest_path.is_file() or not lock_path.is_file():
-        pytest.skip("the dogfood checkout's .devcapsule is not present")
-    need = tomllib.loads(manifest_path.read_text(encoding="utf-8"))["capabilities"]["need"]
-    dogfood = tomllib.loads(lock_path.read_text(encoding="utf-8"))
-
-    generated = parse(rendered(need))
-
-    assert generated["base"] == dogfood["base"]
-    assert generated["components"] == dogfood["components"]
-    assert generated["materialization"] == dogfood["materialization"]
-
-
 def test_minimal_need_generates_a_complete_pycharm_lock() -> None:
     lock = parse(rendered(["python", "python-ide"]))
 
