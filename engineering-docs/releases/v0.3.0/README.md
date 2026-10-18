@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-18. Stage: **cut; candidate 0 in preparation**.
+Updated: 2026-10-18. Stage: **candidate 0 tagged; publication and download verification in progress**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Bug table](bugs.md) ·
@@ -178,10 +178,26 @@ replacement.
 
 ## Candidates
 
-### RC0 — in preparation
+### RC0 — tagged 2026-10-18
 
-Not yet tagged. The gate on the release branch and the freshness attempt
-precede the pull request to `main`; the tag waits for the owner.
+- Tag `v0.3.0-rc0` on `53ebc17705bf99461bbbbf3c4a128228a14c0d51`, the
+  release branch's tip at the pre-candidate merge (PR #231 from the
+  throwaway copy); the two record commits after it on the branch carry no
+  source. The source is byte-identical to the tree the full gate passed on
+  2026-10-18 (PR #230's branch: 1584 unit tests, packaging, documentation
+  contract, web console), and the hosted unit run passed on PR #231.
+- Candidate gate, run locally from a detached checkout of the tag before
+  the push: method `mainline`, no unintegrated commits, version
+  `0.3.0rc0`.
+- Pushed atomically with the branch; backend run
+  [39175482525](https://github.com/ccozianu/devcapsule/actions/runs/39175482525).
+  Publication, the three downloaded assets and their verification follow
+  below when the run ends.
+- What it carries, beyond 0.2.15: everything `main` had at the cut (see
+  above), the agent pins Codex 0.163.0, Claude Code 2.1.302 and
+  Antigravity CLI 1.4.2, and the launchable-lock test. The owner tests it
+  first against the other DevCapsule checkout; the local Docker proofs
+  against the download are scheduled after that.
 
 ## Release Notes Preparation
 

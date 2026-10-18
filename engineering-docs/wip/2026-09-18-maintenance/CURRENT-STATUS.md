@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
-Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@fdf682151bd8
+Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@29f7c940a8a2
 
 Integration target: `main`
 
@@ -23,6 +23,17 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-18, rc0 tagged.** PR #231 merged; the owner said go. The tag
+`v0.3.0-rc0` is on `53ebc17`, the release branch's tip at the merge, whose
+source is byte-identical to the fully gated PR #230 tree; the two record
+commits after it carry no source. The candidate gate script, run from a
+detached checkout of the tag before the push, reported `mainline` and no
+unintegrated commits. Pushed atomically with the branch; backend run
+39175482525. Next: the three assets downloaded and verified, the version
+smoke, then the owner's test on the other checkout; the local Docker
+proofs follow that. The owner keeps this capsule, the old workhorse,
+running meanwhile.
 
 **2026-10-18, night, second: the pre-candidate merge goes through a
 throwaway copy, PR #231.** PR #229 and PR #230 are merged. The owner
@@ -557,7 +568,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc0 | not yet tagged | `main` disposition: ancestry, release branch merged by PR #228 and, before the tag, by PR #231 from the throwaway copy; the owner's word |
+| rc0 | `53ebc17` | tagged 2026-10-18 on the owner's word after PR #231; gate `mainline`, no unintegrated commits; backend run 39175482525; outcome pending the download |
 
 ## Release 0.2.15
 
@@ -696,11 +707,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner merges PR #231, the pre-candidate merge from the throwaway
-   copy. Then, on the owner's word, `v0.3.0-rc0` on the release branch's
-   tip: annotated tag, atomic push with the branch, the backend run, the
-   three assets downloaded and verified, the local proofs. The lock
-   command on the host is dogfooding at the owner's convenience.
+1. rc0: wait for the backend run, download the three assets, verify the
+   checksum and the version, record them in the overview. The owner tests
+   on the other checkout; then the local Docker proofs against the
+   download. The lock command on the host is dogfooding at the owner's
+   convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
