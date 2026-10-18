@@ -26,6 +26,16 @@ A user who opens the link gets nothing, and the two lines contradict each
 other. The third line is JVM noise from IntelliJ's launch, unrelated, and
 belongs to the first-session summary work, C10.
 
+Three minutes later, the launcher, still waiting for the console it was
+told does not exist, adds:
+
+```text
+Web console did not answer on port 50153 within 180s; if the capsule is still starting, open it yourself: http://127.0.0.1:50153/?token=3d5c…
+```
+
+The user has by then read that the base has no console; the advice to open
+it is wrong, and the wait was for nothing.
+
 ## Cause, from the code
 
 The launcher allocates the console port for every run and prints the
@@ -42,6 +52,13 @@ for exactly this reason; until it exists, every candidate shows the
 contradiction, and after it exists older checkouts pinned to a recipe-9
 base still would.
 
+After printing the link, the launcher hands the console's port to the
+readiness watcher it shares with the contained display
+(`devcapsule/display_client.py`), which polls the port for 180 s and then
+prints the "did not answer" line with the same link. The watcher has no
+way to learn what the runtime found; the runtime's notice goes to the
+capsule's output, not back to the launcher.
+
 The launcher can know before it prints: the base's recipe version is the
 image label `devcapsule.base.recipe-version`, read by
 `devcapsule/images/contract.py` and shown by `images list`, and the lock
@@ -53,9 +70,14 @@ One true statement, before the capsule starts. On a base of recipe 10 or
 later, the console link as today. On an earlier base, no link, and one
 line in its place: that this base has no web console, which recipe adds
 it, and how to get one, the published base when it exists or
-`images build`. No port is bound and no token is minted for a console that
-cannot answer. The runtime's notice stays as the backstop for a base the
-launcher could not inspect.
+`images build`. No port is bound, no token is minted and no readiness
+watcher is started for a console that cannot answer, so the three-minute
+wait and its "open it yourself" advice do not happen either. The runtime's
+notice stays as the backstop for a base the launcher could not inspect,
+and when that backstop fires the watcher's timeout line must not
+contradict it: if the launcher cannot decide beforehand, the runtime's
+finding has to reach it, or the timeout line has to say that the base may
+lack the console.
 
 ## Verification target
 
@@ -67,7 +89,8 @@ require.
 ## Close criteria
 
 - The launcher prints the link only when the base's recipe carries the
-  console, and the substitute line otherwise, with a unit test for each.
+  console, and the substitute line otherwise, with a unit test for each;
+  no readiness wait and no timeout line on a base without the console.
 - The owner's transcript above no longer reproduces on a downloaded
   candidate.
 - The web console page in `docs/sessions/` describes the substitute line.
