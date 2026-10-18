@@ -89,19 +89,64 @@ vendor pointers were read on 2026-10-18 at 12:59 UTC, with the sources the
 
 | Agent | Current pin | Vendor current | Source consulted | Disposition |
 |---|---|---|---|---|
-| Codex | 0.157.1 | 0.163.0 | [OpenAI npm latest](https://registry.npmjs.org/@openai/codex/latest) | candidate; upgrade attempt is the next step |
-| Claude Code | 2.1.283 | 2.1.302 | [Vendor latest channel](https://downloads.claude.ai/claude-code-releases/latest) | candidate; upgrade attempt is the next step |
-| Antigravity CLI | 1.2.12 | 1.4.2 | [Vendor Linux amd64 manifest](https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json) | candidate; upgrade attempt is the next step |
+| Codex | 0.157.1 | 0.163.0 | [OpenAI npm latest](https://registry.npmjs.org/@openai/codex/latest) | adopted provisionally, matrix embedded-27 on the slice branch; provider acceptance on the downloaded candidate |
+| Claude Code | 2.1.283 | 2.1.302 | [Vendor latest channel](https://downloads.claude.ai/claude-code-releases/latest) | adopted provisionally, matrix embedded-27 on the slice branch; provider acceptance on the downloaded candidate |
+| Antigravity CLI | 1.2.12 | 1.4.2 | [Vendor Linux amd64 manifest](https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json) | adopted provisionally, matrix embedded-27 on the slice branch; provider acceptance on the downloaded candidate |
 
-Every vendor is ahead of the pin. The attempt follows the 0.2.15 practice:
-acquire the exact artifacts through the trusted component mechanisms,
-verify checksums and platform compatibility, regenerate the golden locks,
-and validate configuration defaults, an ordinary tool action and state
-persistence on the selected versions before accepting new pins; record a
-reason and a follow-up for every holdback. Whether rc0 ships the new pins
-or the current ones is the owner's word before the tag; the pointers are
-rechecked before final acceptance, and a version that appears meanwhile
-gets an adopt-or-hold decision here, never a silent replacement.
+Every vendor was ahead of the pin. The attempt, the same day, on the
+slice branch `ws-maintenance/0.3.0-agent-freshness` for a pull request
+into the release branch:
+
+- **Artifacts.** The four downloads were checked against the vendors' own
+  integrity values before their SHA-256 was recorded in the matrix: npm's
+  SHA-512 for `codex-0.163.0.tgz` and `codex-0.163.0-linux-x64.tgz`, the
+  Claude manifest's SHA-256 for the 2.1.302 binary, the Antigravity
+  manifest's SHA-512 for the 1.4.2 archive, whose member is still
+  `antigravity`. Codex still requires Node 16 or newer; the base carries
+  22. No layout change was found in any of the three.
+- **Startup on the base.** A disposable container on the local recipe-11
+  base `devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151`
+  (Ubuntu 24.04.5, Node 22.23.1, npm 10.9.8), host networking, fetched
+  the artifacts again and verified them, laid Codex out with the same
+  offline `npm install` the image build emits, and started each CLI as a
+  fresh uid-1000 user with DevCapsule's seeds in place: `codex --version`
+  reported `codex-cli 0.163.0`, `codex features list` printed its 175
+  flags over the seeded `config.toml` and `codex exec --help` answered;
+  `claude --version` reported `2.1.302 (Claude Code)`, and a headless
+  prompt answered with a JSON result record and stopped at the missing
+  account while its debug log recorded `mode=bypassPermissions
+  flag=false(fallback)`, the seeded default taken without a command-line
+  override; `antigravity --version` reported `1.4.2`, its help and
+  `changelog` printed. The three seed files were byte-identical after the
+  starts. Not shown without an account: an actual tool action, model
+  entitlement, the first-use notices; those are the owner's acceptance
+  on the downloaded candidate, as in 0.2.15.
+- **Matrix.** `embedded-27`: the three pins, provisional verified edges on
+  the Ubuntu 24.04 family, the golden locks regenerated, the init tests
+  naming Antigravity 1.4.2. The earlier pins stay, so locks that select
+  them keep resolving.
+- **The repository's own lock is the owner's step.** The gate test that
+  resolves this checkout's need against the matrix fails until
+  `.devcapsule/devcapsule.linux-amd64.lock` carries the new pins, and the
+  local rule lets only a DevCapsule command write it, outside the capsule.
+  One command on the host, with a build of the slice branch's source
+  (`devcapsule-src/dist/devcapsule-local.pex` in the shared checkout):
+
+  ```text
+  cd /home/costin/work.provisional/costin3/myProjects/devcapsule
+  devcapsule-src/dist/devcapsule-local.pex project config capabilities \
+    --required antigravity-agent claude-code-agent codex-agent docker-cli python python-ide
+  devcapsule0 project config check
+  ```
+
+  The first regenerates the lock from the matrix; the second validates the
+  written result with the known baseline. Until it runs, the slice is not
+  gated and rc0 cannot carry the new pins; the alternative is rc0 on the
+  current pins and the upgrade in rc1, the owner's word either way.
+
+The pointers are rechecked before final acceptance, and a version that
+appears meanwhile gets an adopt-or-hold decision here, never a silent
+replacement.
 
 ## Preparation And Publication
 
@@ -119,7 +164,8 @@ gets an adopt-or-hold decision here, never a silent replacement.
   (`source-version: "0.3.0"` on the `devel` entry, a judgment recorded in
   the status file and mailed to project-management as a contract gap); the
   web console session mypy clean over 8 files, 293 tests.
-- [ ] Agent freshness upgrade attempt; dispositions in the table above.
+- [x] Agent freshness upgrade attempt; dispositions in the table above.
+- [ ] The owner regenerates the shared lock on the host; the slice's gate passes; the slice merges into the release branch.
 - [ ] Push the release branch; pull request to `main`; the owner merges;
   ancestry verified on remote `main`.
 - [ ] On the owner's word, tag `v0.3.0-rc0` on the release branch's tip;
