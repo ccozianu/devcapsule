@@ -205,9 +205,16 @@ replacement.
   source revision; its help answers.
 - What it carries, beyond 0.2.15: everything `main` had at the cut (see
   above), the agent pins Codex 0.163.0, Claude Code 2.1.302 and
-  Antigravity CLI 1.4.2, and the launchable-lock test. The owner tests it
-  first against the other DevCapsule checkout; the local Docker proofs
-  against the download are scheduled after that.
+  Antigravity CLI 1.4.2, and the launchable-lock test.
+- Owner-reported, 2026-10-18: the downloaded candidate, installed as
+  `devcapsule-local` on the host and reporting `v0.3.0-rc0`, package
+  `0.3.0rc0`, source `53ebc17…`, ran `project run` on the second
+  DevCapsule checkout and the capsule launched the first time. This is
+  the owner's evidence, distinct from the agent's machine proofs; the
+  interactive agent and console checks continue there. The local Docker
+  proofs against the download, clean machine, component cache, runtime
+  session on the pinned base, follow once the owner's session on that
+  daemon is done.
 
 ## Release Notes Preparation
 
