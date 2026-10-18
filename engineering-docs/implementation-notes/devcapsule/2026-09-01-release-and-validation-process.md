@@ -55,8 +55,11 @@ the checkout-local environment described in the [developer environment](../../de
    its former working branch closes for modification. Update its registry row
    to `active; releasing X.Y.Z` with the release branch association. Set or
    confirm the source version no later than the first release-branch commit,
-   and run `.venv/bin/python -m nox -s build` from `devcapsule-src`. Run the
-   *Agent Freshness Review* below and record its table in the release overview.
+   and run `.venv/bin/python -m nox -s build` from `devcapsule-src`. Then
+   reopen `main` with the next development version by a pull request, so
+   `main` is ahead of every candidate (`WORKFLOW-LOCAL.md`, *Version
+   Scheme*; owner decision of 2026-10-18). Run the *Agent Freshness Review*
+   below and record its table in the release overview.
 2. **Account for main and publish the first candidate.** Follow *Release Fixes
    And Main* and the current candidate gate below. Push the release branch for
    review; verify the applicable main disposition before creating an immutable
@@ -104,8 +107,8 @@ the checkout-local environment described in the [developer environment](../../de
    release URL, successful Actions run, and verification result in the owning
    workstream's handoff. Retain the release branch and candidate tags. After
    final publication the release branch closes; resume ordinary work on a fresh
-   `ws-<name>/...` branch from main or conclude the driving workstream. Reopen
-   main with the next development version as `WORKFLOW-LOCAL.md` specifies.
+   `ws-<name>/...` branch from main or conclude the driving workstream; `main`
+   has carried the next development version since the cut.
    Then promote the version in `docs/versions.yaml` on main, demote the
    previous ones, and publish the website, per *Documentation Is Part Of The
    Release*.
