@@ -324,6 +324,21 @@ the default card and the structured data. Item 13.3 of the pre-V1 backlog
 is therefore done ahead of 0.9; the rest of item 13 stands. The live site
 shows the change after the owner's next publication.
 
+## 2026-10-18: The Competitive Comparison For Publication
+
+Reviewed section by section with the owner from 2026-10-16 to 2026-10-18,
+in the agreed tone: honest, not self-flagellating, each shortcoming linked
+to its roadmap item. Five pre-V1 items were opened along the way, 14 to 18:
+desktop-platform friction, the catalog ceiling with contributed and
+federated components and the components position, the workflow toward
+state-of-the-art practice, review and approve the software entering the
+capsule, and credentials on the host behind an authenticating proxy, with
+open-source candidates named for evaluation. The comparison and a journal
+copy with a foreword and the owner's TL;DR are PR #221 against `main`; the
+entry carries no draft flag and publishes with the next website
+publication. The matrix's memory row and the host-environment column were
+left as they are, by the owner's word that the document is good as is.
+
 ## Open Threads
 
 - Awaiting the human: bounded RC scope for remaining diagnostics and image

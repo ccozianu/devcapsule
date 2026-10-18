@@ -198,6 +198,178 @@ priority among the items and no implementation owner until pickup:
 Correct today and not items: language, viewport, one heading per page,
 image alternative text, a 50-entry sitemap and a robots file naming it.
 
+### Item 14: Desktop-Platform Friction, Alternative Designs For V1
+
+Owner decision, 2026-10-16, while reviewing the competitive comparison.
+Linux is the platform of choice for development; the project does not
+compete with that conviction. The capsule's own desktop in a browser tab,
+over noVNC, served the owner's own Windows usage well enough to ship with.
+What remains is the unavoidable friction with opinionated desktop
+platforms: browser shortcuts that compete with the IDE's, a clipboard that
+crosses only through the desktop tab, a frame path that is not native.
+
+The item, for V1: explore alternative designs that remove that friction
+without reopening the boundary. The leading candidate is the remoting
+built into the VS Code family: VSCodium or VS Code running natively on the
+host operating system, with its editor process on the host and its
+workspace, terminal, language servers and agents inside the capsule,
+connected over SSH into the capsule or directly through Docker tooling to
+a shell inside the container. The IDE then renders natively on Windows or
+macOS and nothing of the capsule's desktop is needed. JetBrains Gateway
+is the same shape for the JetBrains IDEs and is to be assessed alongside.
+
+What the exploration must settle before any implementation: which side
+holds the credentials the editor process carries, since the host editor
+runs with the host user's keys and sessions while the capsule's rule is
+that none of them enter; whether the attach path becomes a boundary node
+the developer grants, like `host-x11`, with the same announcement at
+launch; how the capsule's session logs, console and workflow tooling
+reach an editor that is not inside it; and what persists across sessions
+for an editor whose configuration lives on the host. The browser desktop
+stays the default and the containment design; the alternative is an
+addition for the platforms where the desktop's friction is felt, not a
+replacement. Priority: `later`, decided at V1 planning; no implementation
+is authorized by this item.
+
+### Item 15: The Capability Catalog Ceiling, Contributed And Federated Components For V1
+
+Owner decision, 2026-10-18, while reviewing the competitive comparison. The
+catalog ceiling is a serious limitation today: a project can declare only
+the capabilities the catalog knows, and a tool the catalog lacks is a
+personal install under `/opt/xtras`, not something a project can require of
+every contributor. Improving this is on the roadmap, tentatively for V1,
+with two mechanisms, from the same starting point: a developer has tested a
+component privately by unpacking it under `/opt/xtras/<name>` and running
+it from there.
+
+1. **Contribute it.** The developer submits a pull request to the DevCapsule
+   repository that adds `<name>` to the list of components DevCapsule
+   monitors for freshness and installs on request: the artifact, its
+   version source, its checksum, where it unpacks and what it puts on
+   `PATH`. The catalog grows by contribution, reviewed like any change.
+2. **Federate it.** The more expedient path: the developer publishes a
+   separate feed of components in a repository of their own, in the same
+   form the catalog uses, and a project references that feed beside the
+   built-in one. A team is then never blocked waiting for the catalog, and
+   the trust decision is explicit: a referenced feed is code the developer
+   runs on trust, which the project-versus-developer boundary already
+   governs for every other declaration.
+
+With the mechanism, the project undertakes to publish an analysis and
+justification of its approach to components. DevCapsule does not want to be
+yet another `.deb`, `.rpm`, PyPI or Maven repository. Its opinionated view
+is that in this day and age software is better delivered as an archive that
+is unpacked into one directory and run from there: that is how the catalog
+installs every IDE, SDK and agent today, by digest, into a directory of its
+own, and it is what makes a component relocatable, removable, cacheable and
+auditable. The precedent is old: software as complex as the Oracle database
+ran from one directory long before modern tooling made that easy. In the
+age of AI there is no reason for software to arrive as an archive plus an
+installation script that spreads its files across disconnected places in
+the filesystem hierarchy. The analysis is to say where that view holds, what
+it costs for software that resists it, and how the two mechanisms above
+keep it.
+
+Priority: `later`, decided at V1 planning. No format, schema or command is
+decided by this item; the existing freshness feed on the `component-status`
+branch and the version-set records are the starting material.
+
+### Item 16: The Workflow, From Workable To State Of The Art, For V1
+
+Owner direction, 2026-10-18, while reviewing the competitive comparison. The
+workflow a capsule installs is workable today: status, decisions and next
+steps in files, workstreams, mail between them, a decision log, release
+refs, and the project uses it to build itself. The comparison says it is
+growing toward state-of-the-art engineering practice, and this item is
+that growth, for V1: what a human and agent pair gets by default that a
+well-run engineering team would recognize. Candidates, not decisions: a
+second agent pair's review as the ordinary path for a change, the scheme
+recorded in the process item of 2026-10-12; validation kinds declared per
+project and printed by the brief, already in the definition; decision
+records and design issues as first-class files, already there; the humane
+companions and the web console's materialized views, so that the records
+are read without being maintained by hand; a release discipline with
+candidate gates and acceptance evidence, as this project practices it. The
+`workflow-improvements` workstream owns the definition; this item asks it to
+state, before V1, which of these are in the installed default and which
+stay this project's own practice. Priority: `later`, decided at V1 planning.
+
+### Item 17: Review And Approve The Software You Bring Onto Your Box, For V1
+
+Owner direction, 2026-10-18, while reviewing the competitive comparison.
+Today the project declares what it needs and the developer authorizes what
+the host gives; the catalog's components are pinned by digest and watched
+by the freshness feed; the consent design, D-0011 to D-0013, governs the
+base image and vendor trust. What a developer cannot do yet is see and
+decide, in one place, what third-party software enters the capsule and why:
+the components a project declares, the extras under `/opt/xtras`, and the
+dependencies that `npm`, `mvn`, `pip` or `dotnet` pull recursively on the
+project's behalf. The capsule is why those can run at all; the item is the
+experience of reviewing and approving them. For V1: show provenance for
+what the catalog installs, make the consent decisions legible after the
+fact, and give the dependency trees the package managers pull a place
+where they can be seen and, where it is worth it, pinned or refused. It
+touches item 15, contributed and federated components, and the outbound
+side of the boundary, which has its own item once 3.4 of the comparison
+is settled. Priority: `later`, decided at V1 planning; no command or
+format is decided here.
+
+### Item 18: Credentials Stay On The Host, An Authenticating Proxy Outside The Capsule, For V1
+
+Owner decision, 2026-10-18, while reviewing the competitive comparison. The
+biggest missing feature of `0.2.16.dev0` is a nice way to handle Git and
+GitHub credentials from inside the capsule. Today host SSH keys and cloud
+credentials never enter, which is right, and the page that would say how a
+push then works is a stub, because there is no good answer yet: an agent's
+sign-in token lives in the capsule home, an API key enters only by an
+explicit binding, and either can be read by anything in the capsule and sent
+anywhere, since the boundary is strong inward and open outward.
+
+The V1 direction: an authenticating proxy outside the capsule. The capsule
+holds no credential; an outbound request to a known service leaves through
+a host-side proxy that attaches the real credential, and the process inside
+sees at most a sentinel value where a tool insists on a non-empty variable.
+Git over HTTPS to GitHub is the first case; GitLab is the second, to prove
+the generalization; the agents' own API endpoints are the third. Git over
+SSH is covered separately by an SSH agent socket forwarded as a boundary
+node, so a key can sign without being present. The proxy is started by the
+launcher for the session, like the host-open bridge, and announced like
+every other host grant.
+
+The owner's condition was that such proxies exist as open source, ready to
+configure rather than build. A search on 2026-10-18 found several; none is
+evaluated yet, and evaluating licence, maintenance and fit is the item's
+first step:
+
+- Docker Sandboxes document the reference behaviour: the credential in the
+  host keychain, GitHub's token read from `gh auth token` and cached for 55
+  minutes, a `proxy-managed` sentinel in the sandbox's environment, the
+  header injected by the host-side proxy
+  ([credentials](https://docs.docker.com/ai/sandboxes/security/credentials.md),
+  [authentication](https://docs.docker.com/ai/sandboxes/workflows/authentication.md)).
+  That is a product, not a component, but it is the behaviour to match.
+- [Infisical Agent Vault](https://github.com/Infisical/agent-vault): a vault
+  and credential proxy for agents in one binary, open source.
+- `sandbox-proxy`, a stdlib-only Go forward proxy that injects credentials
+  on the wire with a default-deny mode, and `iron-proxy`, an egress firewall
+  that swaps proxy tokens for real credentials at egress, both listed in
+  [awesome-agent-runtime-security](https://github.com/bureado/awesome-agent-runtime-security).
+- [agent-sandbox](https://github.com/mattolson/agent-sandbox/): secret
+  injection in a proxy container with the secret directory mounted into the
+  proxy only; `gh api` works with the token on the host.
+- [mitmproxy](https://docs.mitmproxy.org/stable/addons/overview): the
+  open-source scriptable building block if a purpose-built proxy is the
+  better fit; Git over HTTPS to a forge is a narrow protocol.
+
+To settle in the item: which services first and how a project names them;
+whether a credential is scoped per repository; whether egress is
+default-deny once the proxy exists; how the capsule trusts the proxy's
+certificate when interception is needed, which the base image can carry;
+and what `project info` and the session logs show about it. Priority:
+`later`, decided at V1 planning; no component or design is chosen by this
+item. It closes the gap named in section 3.4 of the competitive comparison
+and in its recommendation 3.1.
+
 ## Notification When A Host Bridge Is Not Granted
 
 Opened: 2026-10-03, from the closure of the
