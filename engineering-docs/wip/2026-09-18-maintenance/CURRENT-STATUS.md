@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183` by the owner's decision of the same day, version 0.3.0 at `6965c5e`, the work order and the two waiting items acknowledged, the release overview written; next the agent freshness upgrade attempt, then the pull request to `main` and `v0.3.0-rc0` on the owner's word; the six dogfooding slices follow during the cycle
+State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`, gate passed, records and overview published; the agent freshness slice is PR #224 into the release branch and waits for the owner's host lock command; rc0 waits for the owner's word on the pins and on the merge to `main`; the six dogfooding slices follow during the cycle
 
 Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@28234e24364b
 
@@ -23,6 +23,31 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-18, later: the agent freshness slice is PR #224, gated on one
+owner step.** The upgrade attempt the runbook asks of every release is on
+`ws-maintenance/0.3.0-agent-freshness`, forked from the release branch's
+tip, as [PR #224](https://github.com/ccozianu/devcapsule/pull/224) into
+`release-0.3.0`: the matrix at `embedded-27` with Codex 0.163.0, Claude
+Code 2.1.302 and Antigravity CLI 1.4.2, every artifact checked against its
+vendor's own integrity value, the golden locks regenerated, provisional
+verified edges, and a two-pass startup smoke in a disposable container on
+the local recipe-11 base, where the three CLIs reported their versions as
+a fresh uid-1000 user, Codex listed its 175 feature flags over the seeded
+`config.toml`, Claude's debug log took `mode=bypassPermissions` from the
+seeded settings without a flag, and the seed files stayed byte-identical.
+The evidence is in the [overview](../../releases/v0.3.0/README.md). The
+branch is not gated: the test that resolves this checkout's own need
+against the matrix fails until `.devcapsule/devcapsule.linux-amd64.lock`
+carries the new pins, and the local rule lets only a DevCapsule command
+write it, outside the capsule, where `config capabilities` and `config
+check` both refuse as launcher-only. The command for the owner, with the
+PEX built from the slice in the shared checkout, is in the PR and the
+overview. Judgment recorded: the slice went on its own branch for the
+implementor-and-reviewer loop the owner directed for the cycle, which
+reads against topic 11.3's "open no new working branch under the name";
+the decision record already hands the standing rule to
+`workflow-improvements`.
 
 **2026-10-18: release 0.3.0 is cut; maintenance drives it.** The owner
 decided the scope, the driver and the cut in the project-management session
@@ -311,9 +336,10 @@ the next candidate tag.
 1. The cut and candidate 0: cut, version and records done 2026-10-18; the
    pull request to `main`, the tag and the downloaded-asset proofs follow
    on the owner's word.
-2. The agent freshness review's upgrade attempt: the three current vendor
-   versions acquired through the trusted mechanisms, verified, started on
-   the pinned base; adopt or hold, recorded in the overview.
+2. The agent freshness review's upgrade attempt: done as PR #224 into the
+   release branch; merges once the owner regenerates the shared lock on
+   the host and the gate passes, or waits for rc1 if rc0 ships the
+   current pins.
 3. The universal `network` authorization node: run-once and saved
    `network host` on a project without a recommendation, bridge the
    default; closes the [bug of 2026-10-05](../../bugs/devcapsule/2026-10-05-run-once-network-authorization-needs-a-recommendation.md)
@@ -572,13 +598,13 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The agent freshness upgrade attempt: pin Codex 0.163.0, Claude Code
-   2.1.302 and Antigravity 1.4.2 with vendor-verified artifacts, regenerate
-   the golden locks, start each on the pinned base; adopt or hold with the
-   reason, in the overview. The owner may instead say rc0 ships the current
-   pins.
-2. Push `release-0.3.0`; open the pull request to `main`, with the version
-   question below settled by the owner; after the merge, verify ancestry.
+1. The owner runs the lock command from PR #224 on the host and says
+   whether rc0 carries the new pins; then commit the written lock on the
+   slice branch, rerun the full gate, and the owner merges #224 into
+   `release-0.3.0`. Or rc0 ships the current pins and #224 waits for rc1.
+2. The prepared merge branch to `main` (`ws-maintenance/030-rc0-main`, as
+   0.2.15 did), keeping `main`'s version and manifest; the owner merges;
+   verify ancestry on remote `main`.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
    for the backend, download and verify the three assets, run the local
    proofs against the download, and record rc0 in the overview.
@@ -801,6 +827,18 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Slice gate (2026-10-18, `ws-maintenance/0.3.0-agent-freshness` at
+`de9537a`): `nox -s build` passes the distribution version, the syntax
+checks and mypy over 214 files and stops at the unit tests: 1583 passed,
+1 failed, the dogfood-reconstitution test that needs the owner's lock
+step. The suite with that test deselected: 1582 passed; one host-open
+broker test failed in that run only and passed alone and in the gate's
+run. The local PEX of the slice, `devcapsule-src/dist/devcapsule-local.pex`,
+reports 0.3.0 and is the owner's writer for the lock. Logs
+`/opt/devcapsule-gate/2026-10-18-agent-freshness-*`. Smoke output under
+the session scratchpad, summarized in the overview; the two containers
+were removed on exit.
 
 Gate at the cut (2026-10-18, `release-0.3.0` at the version commit
 `6965c5e` with the records in the working tree): `nox -s build` passed
@@ -1379,9 +1417,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release-branch line (`source-version` on `devel`) is acceptable until the
   contract or its check gains a release-branch rule, mailed to
   project-management on 2026-10-18.
-- Awaiting the human: the freshness disposition, adopt the three current
-  vendor versions before rc0 as 0.2.15 did, or ship rc0 on the current pins
-  and upgrade in rc1. The attempt starts unless the owner says otherwise.
+- Awaiting the human: the one host command in PR #224 that regenerates
+  the shared lock, and the word on whether rc0 carries the new pins or
+  ships the current ones with #224 in rc1.
 - The local branch `ws-maintenance/release-0.3.0`, the previous session's
   parking spot at the merge of PR #222, has no commits of its own and is
   not on the remote; left for the owner to delete.
