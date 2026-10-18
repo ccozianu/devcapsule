@@ -274,6 +274,46 @@ Priority: `later`, decided at V1 planning. No format, schema or command is
 decided by this item; the existing freshness feed on the `component-status`
 branch and the version-set records are the starting material.
 
+### Item 16: The Workflow, From Workable To State Of The Art, For V1
+
+Owner direction, 2026-10-18, while reviewing the competitive comparison. The
+workflow a capsule installs is workable today: status, decisions and next
+steps in files, workstreams, mail between them, a decision log, release
+refs, and the project uses it to build itself. The comparison says it is
+growing toward state-of-the-art engineering practice, and this item is
+that growth, for V1: what a human and agent pair gets by default that a
+well-run engineering team would recognize. Candidates, not decisions: a
+second agent pair's review as the ordinary path for a change, the scheme
+recorded in the process item of 2026-10-12; validation kinds declared per
+project and printed by the brief, already in the definition; decision
+records and design issues as first-class files, already there; the humane
+companions and the web console's materialized views, so that the records
+are read without being maintained by hand; a release discipline with
+candidate gates and acceptance evidence, as this project practices it. The
+`workflow-improvements` workstream owns the definition; this item asks it to
+state, before V1, which of these are in the installed default and which
+stay this project's own practice. Priority: `later`, decided at V1 planning.
+
+### Item 17: Review And Approve The Software You Bring Onto Your Box, For V1
+
+Owner direction, 2026-10-18, while reviewing the competitive comparison.
+Today the project declares what it needs and the developer authorizes what
+the host gives; the catalog's components are pinned by digest and watched
+by the freshness feed; the consent design, D-0011 to D-0013, governs the
+base image and vendor trust. What a developer cannot do yet is see and
+decide, in one place, what third-party software enters the capsule and why:
+the components a project declares, the extras under `/opt/xtras`, and the
+dependencies that `npm`, `mvn`, `pip` or `dotnet` pull recursively on the
+project's behalf. The capsule is why those can run at all; the item is the
+experience of reviewing and approving them. For V1: show provenance for
+what the catalog installs, make the consent decisions legible after the
+fact, and give the dependency trees the package managers pull a place
+where they can be seen and, where it is worth it, pinned or refused. It
+touches item 15, contributed and federated components, and the outbound
+side of the boundary, which has its own item once 3.4 of the comparison
+is settled. Priority: `later`, decided at V1 planning; no command or
+format is decided here.
+
 ## Notification When A Host Bridge Is Not Granted
 
 Opened: 2026-10-03, from the closure of the
