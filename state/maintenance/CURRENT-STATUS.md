@@ -571,7 +571,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified: checksum, manifest, version `0.3.0rc0`; the owner's test on the other checkout next, then the local Docker proofs |
+| rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
 ## Release 0.2.15
 
@@ -710,8 +710,9 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. rc0 is published and verified as downloaded. The owner tests it on
-   the other checkout; then the local Docker proofs against the download:
+1. rc0 is published, verified as downloaded, and launched the second
+   checkout at the owner's first try. When the owner's session on the
+   host daemon is done: the local Docker proofs against the download,
    clean machine, component cache, runtime session on the pinned base.
    The lock command on the host is dogfooding at the owner's convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
