@@ -30,9 +30,12 @@ run, and the runtime then says the base has no console, which is true of
 the published `ubuntu-24.04@9`. Filed as a bug by the owner's word, target
 0.3.0, a release fix in this cycle:
 [the record](../../bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md).
-The launcher can read the base's recipe label before it prints; the fix
-is one statement that is true, link or substitute line, and no port or
-token for a console that cannot answer. It sits beside C10, the
+Then, the owner reports, the launcher waits 180 s for that console and
+advises opening the link; the readiness watcher shared with the display
+cannot hear the runtime's notice. The launcher can read the base's
+recipe label before it prints; the fix is one statement that is true,
+link or substitute line, and no port, token or wait for a console that
+cannot answer. It sits beside C10, the
 first-session summary, and goes in the same slice or just before it. The
 changelog's *Known in candidate 0* and the bug table carry it.
 
