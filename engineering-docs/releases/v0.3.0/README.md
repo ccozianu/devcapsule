@@ -110,10 +110,13 @@ into the release branch:
   the artifacts again and verified them, laid Codex out with the same
   offline `npm install` the image build emits, and started each CLI as a
   fresh uid-1000 user with DevCapsule's seeds in place: `codex --version`
-  reported `codex-cli 0.163.0` and `codex features list` read the seeded
-  `config.toml`; `claude --version` reported `2.1.302 (Claude Code)`, and
-  a headless prompt answered with a JSON result record and stopped at the
-  missing account; `antigravity --version` reported `1.4.2`, its help and
+  reported `codex-cli 0.163.0`, `codex features list` printed its 175
+  flags over the seeded `config.toml` and `codex exec --help` answered;
+  `claude --version` reported `2.1.302 (Claude Code)`, and a headless
+  prompt answered with a JSON result record and stopped at the missing
+  account while its debug log recorded `mode=bypassPermissions
+  flag=false(fallback)`, the seeded default taken without a command-line
+  override; `antigravity --version` reported `1.4.2`, its help and
   `changelog` printed. The three seed files were byte-identical after the
   starts. Not shown without an account: an actual tool action, model
   entitlement, the first-use notices; those are the owner's acceptance
