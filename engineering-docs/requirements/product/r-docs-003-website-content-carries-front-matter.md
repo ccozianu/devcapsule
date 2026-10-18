@@ -37,6 +37,11 @@ answered: documentation-only fixes to a released version go on a
 `docs-<version>` ref declared in `WORKFLOW-LOCAL.md`, and `current` is
 0.2.15.
 
+Amended 2026-10-16, additively, for page identity: see *Amendment: Page
+Identity* below. The website delivered its side at commit `5dbfe49`
+(contract sections 3.3, 3.7 and 5.7); this repository's pin moved to it in
+the same change that added the landing marker to `README.md`.
+
 ## Statement
 
 1. Every Markdown file the website publishes from `docs/` and
@@ -132,6 +137,53 @@ Routing:
   each other version where it exists, otherwise to that version's index.
 - Links inside a version resolve inside that version; links to files outside
   `docs/` resolve to GitHub permalinks at that version's source revision.
+
+## Amendment: Page Identity
+
+Issued by the website repository's
+[social metadata and page identity work order](https://github.com/ccozianu/devcapsule-website/blob/main/engineering-docs/work-orders/2026-10-16-social-metadata-and-page-identity.md)
+of 2026-10-16, after the owner's Search Console review. The contract's
+authoritative text is `CONTRACT.md` in the website repository; the three
+additions below are recorded here as the producer's commitments.
+
+**Part 1 gains one optional field.**
+
+| Field | Required | Values | Meaning |
+|---|---|---|---|
+| `social` | no | a mapping with any of `title`, `description`, `image` | What the page says about itself to card renderers and crawlers when that differs from its title, description and the default image. `title`: at most 70 characters. `description`: at most 200 characters. `image`: a path under `docs/` to a PNG or JPEG, resolved like every other content asset; a missing file fails the build by name. Unknown keys fail the build. |
+
+The field applies to pages under `docs/`, to journal entries and to release
+notes alike. No existing page needs it: every tag is derived from the title
+and `description` a page already carries.
+
+**The landing page keeps its exemption and gets a marker.** `README.md`
+carries no front matter. Its identity comes from one self-closing marker
+placed before the first section marker, which GitHub does not render:
+
+```markdown
+<!-- website:social title="..." description="..." image="docs/images/..." -->
+```
+
+The attributes are the three keys of `social` with the same limits. The
+marker appears at most once; its `title` becomes the landing page's
+`<title>`, `og:title` and `twitter:title`, and the README's first heading is
+unchanged on the page. A duplicate marker or an unknown attribute fails the
+build naming the file.
+
+**What the website emits for every page**, from those facts and nothing
+else: `<title>` and `og:title` (the social title, else the page title,
+suffixed ` · DevCapsule` except on the landing page), `og:description`,
+`og:url` (the canonical URL), `og:type` (`article` for journal entries and
+release notes, `website` otherwise), `og:image` (the page's image, else the
+website's default card), `og:site_name`, and the X card tags; plus JSON-LD
+`WebSite` and `SoftwareApplication` on the landing page and `Article` on
+journal entries. Pages marked `noindex` receive the tags too.
+
+The producer commits to keep the marker in `README.md` current when the
+product's one-line statement changes, and to keep every `description` fit
+for a search result, since it is now what a shared link shows. Verification
+gains one condition: the production build passes with the marker present,
+and every rendered page carries the tag set above with the derived values.
 
 ## Why This Exists
 

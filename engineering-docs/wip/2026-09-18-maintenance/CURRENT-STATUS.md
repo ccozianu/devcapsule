@@ -24,6 +24,17 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-12: the process record was mailed to the trading-research sample
+project.** At the owner's request, an intake item describing the
+implementor, reviewer and owner loop with pull requests, what it produced,
+what we learned, and how it may inform that project's LLM debates, was
+delivered to `project-management` of
+`ccozianu/devcapsule-sample-trading-research` with `devcapsule workflow
+mail send`, run in the submodule checkout. That repository had no
+coordination branch; the tool created it, commit `9d26eed`. A sender from
+another repository is outside the definition; the item says so and the
+owner directed it. The submodule pointer is untouched.
+
 **2026-10-11, after the owner's report: the stack's conflict resolved.**
 PR1's branch was rebased on GitHub onto the newer `main`; its commits kept
 their content and changed their hashes, so PR2, which carried the old
@@ -1253,7 +1264,20 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting the human: review and merge of PR #207 and PR #209.
+- Undecided at the pause: two items from project-management taken on
+  2026-10-12, `2026-10-11-project-management-bootstrap-target-09.md` and
+  `2026-10-11-project-management-pre-rc-sequence.md`, in the intake; decide
+  them first on resumption, they are not forwardable.
+- Awaiting the human: review and merge of PR #207 and PR #209, merge
+  commits so the stack stays consistent. Paused 2026-10-12 at the owner's
+  word.
+- External state that outlives the session: review worktrees
+  `~/worktrees/maintenance-review` and `~/worktrees/maintenance-review-pr2`;
+  the acceptance clone and venv under
+  `~/.local/share/devcapsule/e2e-workspaces/logs-accept`; local images
+  `devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151` and
+  `devcapsule-local-codium:60ed46caf1a3e8897e5d`. All removable once the
+  PRs are merged.
 - Weighed and unresolved, from PR1.1: the supervisor's `preexec_fn` runs
   with tee threads alive, which Python documents as unsafe; a helper that
   sets the mask and execs would remove it. Not changed, no failure seen.

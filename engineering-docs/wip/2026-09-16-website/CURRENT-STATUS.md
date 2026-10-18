@@ -552,20 +552,18 @@ W00 remains the highest website priority; this split does not reprioritize it.
 
 ## Open Threads
 
-- Owner has accepted the autonomy experiment: successful, A−. No further verdict
-  request is pending. Workstream closure is deferred at his request for this task
-  inventory; his additional shortcomings and priority corrections remain welcome.
-- Website-owned W00–W13 have moved to the submodule backlog. DevCapsule keeps
-  producer tasks and parent integration, plus the blog draft awaiting review.
-  Cross-repository delivery is via the paired reviewable commits described above.
-  This migration authorizes no implementation or deployment.
-- Existing release/publication decisions stand: authoritative content here,
-  presentation in the website repository, public release candidates, no personal
-  deployment token, manual production approval.
-- No allowance/reset telemetry exists; exact experiment expenditure is unknown.
-  No paid purchase or anticipated budget overrun was identified.
-- Full transcript, duplicate content and speculative implementation plans are not
-  preserved. This is a task inventory and acceptance record, not a session export.
+- Awaiting the owner: reader-test feedback and selection of the next bounded
+  content/parent-integration task. The experiment's A− verdict is settled.
+- Awaiting delivery: merge the website pause/routing outbox, then remove the
+  legacy remote branch alias. The new working branch is `ws-website/initial-cut`.
+- Unresolved: producer-side W12-C and the website contract before content
+  structure changes; closure remains deferred. Website-owned W00–W13 stay in
+  the submodule backlog, with producer obligations retained here.
+- Existing publication decisions stand: content here, presentation in the
+  website repository, public candidates, no personal deployment token, manual
+  production approval. Exact experiment expenditure is unknown.
+- Deliberately not preserved: speculative reader verdicts, a chat transcript,
+  duplicate backlog copies, or an assumption that the old preview still runs.
 
 ## Documents
 

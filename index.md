@@ -209,6 +209,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Lessons learned in AI autonomy — Part 2: the AI perspective](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy-part-2.md) — agent-authored retrospective; draft for owner review.
 - [Lessons learned in AI autonomy over a simple, straightforward task](engineering-docs/blog/2026-09-19-lessons-learned-in-ai-autonomy.md) — website autonomy experiment retrospective; draft for owner review.
 - [The DevCapsule development blog](engineering-docs/blog/README.md)
+- [Where DevCapsule sits: a competitive comparison, October 2026](engineering-docs/blog/2026-10-18-where-devcapsule-sits.md) — the published competitive comparison, with roadmap links.
 - [When should a tool refuse? Taking stock of DevCapsule's refusal UX](engineering-docs/blog/2026-09-06-when-should-a-tool-refuse.md)
 - [I asked for user docs](engineering-docs/blog/2026-09-16-i-asked-for-user-docs.md) — second development-blog entry.
 - [Does the subscription include Navier–Stokes?](engineering-docs/blog/2026-09-16-does-the-subscription-include-navier-stokes.md) — alternative second entry in dialogue form.
