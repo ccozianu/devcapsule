@@ -5,44 +5,11 @@ description: "Our time-boxed, best-effort competitive comparison as of October 2
 
 *October 18, 2026.* This is our time-boxed, best-effort competitive
 comparison as of today. We undertake it regularly, to keep us honest with
-ourselves and with our users, and to inform what we build next. It was
-drafted with one AI, reviewed against our own documentation and the
-competitors' by another, and edited by the product owner; every correction
-the review made is listed at the end, and every number without a source
-was removed. Where it names a shortcoming of ours, it links to the work
-item on our roadmap, so a reader can see what we intend and hold us to it.
+ourselves and with our users, and to inform what we build next.
 
 **TL;DR.** As of today we are confident that DevCapsule is useful, needed,
 and able to provide real value to our early adopters and to our V1
 adopters. The rest of this page is the evidence and the caveats.
-
----
-
-*Target Version Reviewed: **v0.2.15** (current release track, with `0.2.16.dev0` in active development)*  
-*Repository: `github.com/ccozianu/devcapsule` (Apache-2.0) | Docs: `devcapsule.mycodespace.ai`*
-
-Last verified: 2026-10-16
-
-Status: research and positioning input; recommendations are not adopted
-product decisions.
-
-Provenance: the original survey of 2026-08-15 compared `WORKFLOW.md` with
-agent workflow frameworks; the
-[2026-09-13 refresh](https://github.com/ccozianu/devcapsule/blob/164d7d0/engineering-docs/design-notes/devcapsule/competitive-comparison.md)
-retracted several of its uniqueness claims against Spec Kit, OpenSpec, BMad,
-Memory Bank, Beads, GSD Core, and Kiro, and that text is preserved in Git. This
-revision, produced with Gemini 4 on 2026-10-16, widens the subject to the
-whole product and does not repeat the workflow comparison; where it touches
-the same ground, the September findings still bind. It was reviewed against
-the repository's documentation the same day; the [review notes](#7-review-notes-2026-10-16)
-at the end list every correction and every challenged claim.
-
-Evidence standard: competitor statements rest on upstream documentation read
-on the date above, not on installation or benchmarking. DevCapsule statements
-rest on the `docs/` tree and source of the `0.2.16.dev0` checkout. Prices,
-traffic figures, and other numbers without a cited source are omitted.
-
----
 
 ## 1. Executive Thesis: The Gap in the 2026 Agentic Coding Stack
 
@@ -55,7 +22,6 @@ Existing tools force developers into an uncomfortable compromise:
 
 **DevCapsule occupies a distinct, underserved niche:** a **local-first, stateful, capability-driven container workstation** where a real GUI IDE, interactive terminals, and multiple AI coding agents live together inside the exact same isolated environment—governed by explicit host boundaries and versioned project memory.
 
----
 
 ## 2. Competitive Matrix: Why Existing Efforts Fall Short
 
@@ -83,7 +49,6 @@ Four consequences follow, and they are where the comparison is decided:
 3. **Security best practices by default.** What runs in your development environment runs inside the capsule. Most of it is software you can trust, vetted and run by others: DevCapsule itself, the SDKs, the agents. Some of it you cannot review package by package, the hundreds of dependencies that `npm`, `mvn` or `dotnet` pull recursively on your behalf, and that is exactly why they run in a capsule. The project declares what it needs, checked into Git; the developer authorizes what the host gives, owned locally; an untrusted repository cannot reach past that line. The experience of reviewing and approving the software you bring onto your box is one we will improve ([V1 Roadmap](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/wip/2026-08-09-project-management/coordination-backlog.md#item-17-review-and-approve-the-software-you-bring-onto-your-box-for-v1)).
 4. **No vendor lock-in.** Your project does not become the prisoner of one agentic tooling. The proof is our own dogfood: DevCapsule is developed interchangeably and cooperatively with the big three, Claude Code, Codex, and Gemini's Antigravity, each reading the same project memory, starting from the standard `AGENTS.md`, and going into very detailed project management, with many episodes of separate LLMs reviewing the others' work. The memory files alone are not the differentiator, every agent vendor documents something similar; the bundle is: the memory, the environment, and the boundary maintained together, by one tool, for any agent. More are coming: open-source agents and open-weights models ([V1 Roadmap](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/wip/2026-08-09-project-management/coordination-backlog.md#item-8-opencode-evaluation)).
 
----
 
 ## 3. Critical Eye: Limitations of DevCapsule Today (v0.2.15)
 
@@ -113,7 +78,6 @@ Despite a strong architectural vision, evaluating DevCapsule at **v0.2.15** (and
 ### 3.5 Search Visibility (work in progress)
 * Search visibility is a barrier to adoption today: a developer searching for *"run Claude Code in Docker with PyCharm"* or *"isolated container for AI coding agents"* is unlikely to find this site yet. The sitemap is submitted and accepted and every page carries share metadata since October 2026; indexing and the rest of the search work are in progress, and a full accounting is planned for the V1 release: see [the search discoverability item](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/wip/2026-08-09-project-management/coordination-backlog.md#item-13-search-discoverability-the-rest-of-the-seo-objective) in the project's pre-V1 backlog.
 
----
 
 ## 4. Challenging Core Assumptions: What Might Change in the Future?
 
@@ -134,7 +98,6 @@ Any infrastructure tool built during a platform shift carries architectural bets
 * **The Contention:** Agent CLI makers are beginning to integrate OS-native sandboxing (Apple's `sandbox-exec`/Seatbelt on macOS, `landlock`/`bubblewrap` on Linux) directly into the agent binary so it cannot touch files outside the project directory without needing Docker at all.
 * **The Counter-Reality:** OS-native process sandboxes only restrict file/network access for the agent binary; they **do not solve workstation hygiene**. They cannot isolate conflicting Java/Python/Scala toolchains, nor can they prevent IDE plugins and global packages from polluting the host OS. DevCapsule's dual value (Security Sandbox + Workstation Hygiene) protects it from being obsoleted by lightweight process wrappers.
 
----
 
 ## 5. The "Lone Wolf" Risk: Extinction vs. Maintainability
 
@@ -153,7 +116,6 @@ While the core CLI orchestrator is straightforward to maintain, a new maintainer
 
 **Maintainability Verdict:** If the solo maintainer stepped away, an individual power user or small engineering team could fork and maintain DevCapsule for their own stacks, *provided* the capability definitions and Dockerfile composition templates are modular and data-driven rather than hardcoded in imperative logic. The effort has not been measured; the Gemini draft's "a few hours a month" is withdrawn as an estimate without evidence. The honest statement is that the Python-only toolchain, the Apache-2.0 licence, and the absence of a cloud control plane keep the takeover cost low, and that a reviewer can read the maintenance workstream's own records to see how much base-image and vendor-adapter work one release actually took.
 
----
 
 ## 6. Consolidated Strategic Recommendations Ledger
 
@@ -171,7 +133,6 @@ To maximize adoption and insulate DevCapsule against both competitive pressure a
 * **Rec 3.1 — Outbound Credential Injection and an SSH Agent Socket:** Host keys already stay out. The gap is outbound: an agent's sign-in token or bound API key can be read and sent anywhere. A host-side proxy that attaches credentials to matching outbound requests, as Upstash Box and Modal document, and an SSH agent socket forwarded as a boundary node would let agents authenticate to Git and LLM APIs without any secret existing in the capsule. This is the one place the matrix's "High & Explicit" boundary is weaker than the cloud alternatives, and it should be said so in the comparison.
 * **Rec 3.2 — Name Git as the Undo, Then Ask What It Misses:** The boundary page already says "Git is your undo" for the project folder, and `project versions rollback` already restores the environment. A `devcapsule checkpoint` would add value only for what neither covers: the capsule's persistent home, where an agent's own configuration and installed extras live. Scope the recommendation to that, or drop it.
 
----
 
 ## 7. Review Notes (2026-10-16)
 
@@ -202,3 +163,16 @@ documentation read for this revision; the September note's workflow-framework
 comparison is referenced rather than restored; and the web console shipping in
 `0.2.16` (the capsule as a token-gated page) is not yet in the matrix because
 it is unreleased.
+
+## About this comparison
+
+Version reviewed: v0.2.15, with `0.2.16.dev0` in development, checked
+against our own documentation on 2026-10-16. Drafted with Gemini 4 on
+2026-10-16, reviewed the same day against our docs and the competitors'
+documentation by Claude, edited by the product owner; the review notes
+above list every correction. Competitor statements rest on upstream
+documentation read on that date, not on installation or benchmarking;
+numbers without a cited source were left out. The
+[September 2026 revision](https://github.com/ccozianu/devcapsule/blob/164d7d0/engineering-docs/design-notes/devcapsule/competitive-comparison.md),
+which retracted several claims about the workflow, is preserved in Git.
+Recommendations here are research input, not adopted product decisions.
