@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183` by the owner's decision of the same day, version 0.3.0 at `6965c5e`, the work order and the two waiting items acknowledged, the release overview written; next the agent freshness upgrade attempt, then the pull request to `main` and `v0.3.0-rc0` on the owner's word; the six dogfooding slices follow during the cycle
 
-Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@28234e24364b
 
 Integration target: `main`
 
