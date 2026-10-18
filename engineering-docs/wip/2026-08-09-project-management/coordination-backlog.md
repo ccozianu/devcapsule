@@ -231,6 +231,49 @@ addition for the platforms where the desktop's friction is felt, not a
 replacement. Priority: `later`, decided at V1 planning; no implementation
 is authorized by this item.
 
+### Item 15: The Capability Catalog Ceiling, Contributed And Federated Components For V1
+
+Owner decision, 2026-10-18, while reviewing the competitive comparison. The
+catalog ceiling is a serious limitation today: a project can declare only
+the capabilities the catalog knows, and a tool the catalog lacks is a
+personal install under `/opt/xtras`, not something a project can require of
+every contributor. Improving this is on the roadmap, tentatively for V1,
+with two mechanisms, from the same starting point: a developer has tested a
+component privately by unpacking it under `/opt/xtras/<name>` and running
+it from there.
+
+1. **Contribute it.** The developer submits a pull request to the DevCapsule
+   repository that adds `<name>` to the list of components DevCapsule
+   monitors for freshness and installs on request: the artifact, its
+   version source, its checksum, where it unpacks and what it puts on
+   `PATH`. The catalog grows by contribution, reviewed like any change.
+2. **Federate it.** The more expedient path: the developer publishes a
+   separate feed of components in a repository of their own, in the same
+   form the catalog uses, and a project references that feed beside the
+   built-in one. A team is then never blocked waiting for the catalog, and
+   the trust decision is explicit: a referenced feed is code the developer
+   runs on trust, which the project-versus-developer boundary already
+   governs for every other declaration.
+
+With the mechanism, the project undertakes to publish an analysis and
+justification of its approach to components. DevCapsule does not want to be
+yet another `.deb`, `.rpm`, PyPI or Maven repository. Its opinionated view
+is that in this day and age software is better delivered as an archive that
+is unpacked into one directory and run from there: that is how the catalog
+installs every IDE, SDK and agent today, by digest, into a directory of its
+own, and it is what makes a component relocatable, removable, cacheable and
+auditable. The precedent is old: software as complex as the Oracle database
+ran from one directory long before modern tooling made that easy. In the
+age of AI there is no reason for software to arrive as an archive plus an
+installation script that spreads its files across disconnected places in
+the filesystem hierarchy. The analysis is to say where that view holds, what
+it costs for software that resists it, and how the two mechanisms above
+keep it.
+
+Priority: `later`, decided at V1 planning. No format, schema or command is
+decided by this item; the existing freshness feed on the `component-status`
+branch and the version-set records are the starting material.
+
 ## Notification When A Host Bridge Is Not Granted
 
 Opened: 2026-10-03, from the closure of the
