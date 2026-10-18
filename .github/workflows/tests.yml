@@ -1,9 +1,10 @@
 name: Tests and coverage
 
 # The unit suite with coverage runs on every push to main and on every pull
-# request against it, so a contributor sees the result and the coverage
-# summary before the merge; the badge is published from main alone. The
-# owner may make the "Python 3.12" check required in the repository rules.
+# request against main or a release branch, so a contributor sees the result
+# and the coverage summary before the merge; the badge is published from main
+# alone. The owner may make the "Python 3.12" check required in the
+# repository rules.
 on:
   push:
     branches:
@@ -11,6 +12,7 @@ on:
   pull_request:
     branches:
       - main
+      - release-*
   workflow_dispatch:
     inputs:
       checkout_ref:

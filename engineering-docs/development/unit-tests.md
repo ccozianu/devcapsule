@@ -21,8 +21,9 @@ result; the other markers belong to the heavier suites.
 The hosted runner runs exactly this: the GitHub Actions workflow
 `tests.yml` installs the locked environment, runs `pytest tests/` with
 coverage and publishes the summary, on every push to `main` and on every
-pull request against it, so the result and the coverage are there before
-the merge; the badge is published from `main` alone. It runs no Docker, by
+pull request against `main` or a `release-*` branch, so the result and the
+coverage are there before the merge; the badge is published from `main`
+alone. It runs no Docker, by
 the owner's standing rule, so everything the unit suite proves it proves
 with fakes and files.
 
