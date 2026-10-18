@@ -4,15 +4,15 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-11; PR #172 merged to `main`; persistent session diagnostics started by the owner's word, slice 1 (the logging framework) is PR #207 against `main` with its review PR #208 merged, slice 2 (logrotate and the log budget) is PR #209 stacked on it, rotation moved into the writers by the owner's clarification, all three Codex rounds merged (#210, #211, #212); PR #207 and PR #209 await the owner; then the universal network authorization node, the installed-IDE reuse and reaping design, the first-session UX bugs, ecosystem bootstrap last, release notes and gate tooling; the fresh-workspace recursive test, the in-capsule project-command fix and named build contexts are done on this branch
+State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183` by the owner's decision of the same day, version 0.3.0 at `6965c5e`, the work order and the two waiting items acknowledged, the release overview written; next the agent freshness upgrade attempt, then the pull request to `main` and `v0.3.0-rc0` on the owner's word; the six dogfooding slices follow during the cycle
 
 Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
 
 Integration target: `main`
 
-Delivery method: stacked pull request against `ws-maintenance/post-0.2.15`; owner authorized authenticated `gh` to create/update/consult PRs on 2026-10-08; merging remains with the owner
+Delivery method: pull request from `release-0.3.0` to `main` before each candidate tag, as the runbook rules; the owner merges; `gh` authorized to create, update and consult pull requests since 2026-10-08
 
-Branch association: `ws-maintenance/session-logs` (PR #207, from `main`; PR1.1 #208 merged in); `ws-maintenance/log-rotation` (PR #209, stacked on PR1); `ws-maintenance/log-rotation-review` (PR2.1 #210, merged) and `ws-maintenance/log-rotation-review-2` (the pair's second round); `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
+Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
@@ -23,6 +23,42 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-18: release 0.3.0 is cut; maintenance drives it.** The owner
+decided the scope, the driver and the cut in the project-management session
+of the same day: [the decision](../2026-08-09-project-management/2026-10-18-decision-release-0-3-0-scope-and-cut.md)
+and [the work order](../../work-orders/2026-10-18-release-0-3-0.md). The
+order was taken from the mail and acknowledged, together with the two items
+of 2026-10-11 that were waiting in the intake: the bootstrap retargeting is
+applied, the [record](../../bugs/devcapsule/2026-08-03-ecosystem-aware-project-bootstrap.md)
+now says 0.9 with the dated ruling; the pre-candidate sequence is superseded
+by the cut decision, which moves consent out of 0.3.0 and forced
+configuration into the candidate cycle. The cut commit is
+`3c91183ffd2130f6c7b40d2f9e3fd41588f977eb`, `main` at the merge of PR #223,
+chosen because nothing of maintenance was unmerged, PR #207 and PR #209
+having reached `main` on 2026-10-11 and through #216 on 2026-10-15, and
+because that commit carries the decision and the order themselves.
+`release-0.3.0` starts there; its first commit, `6965c5e`, sets the version
+to 0.3.0 in the three authored copies, by `nox -s bump`. `main` stays at
+0.2.16.dev0 until the final tag. The release overview, the bug table and
+the checklist are under [releases/v0.3.0](../../releases/v0.3.0/README.md).
+The agent freshness review of this date found every vendor ahead of the
+pins: Codex 0.163.0 against 0.157.1, Claude Code 2.1.302 against 2.1.283,
+Antigravity 1.4.2 against 1.2.12; the table is in the overview, and the
+upgrade attempt is the next step, before rc0 as 0.2.15 did it, unless the
+owner says rc0 ships the current pins. The gate on the branch is under
+*Validation*.
+
+Judgment where the contract is silent, recorded as topic 3 asks: the
+website's content check, which the gate runs, reads the checkout as `main`
+and requires the `devel` entry's source to declare a development version;
+on the release branch the source declares 0.3.0, so the check failed. The
+manifest on the release branch now carries `source-version: "0.3.0"` on
+the `devel` entry, the form the check itself names, with a comment that the
+line is release-branch metadata, not carried to `main`, where the source
+declares a development version. The durable rule, a check that knows a
+release branch, or a manifest form for it, is project-management's, as the
+contract's owner; mailed on 2026-10-18.
 
 **2026-10-12: the process record was mailed to the trading-research sample
 project.** At the owner's request, an intake item describing the
@@ -261,30 +297,51 @@ change; the owner pushes and opens the PR.
 
 ### The 0.3.0 maintenance plate
 
-In the owner's order so far (the bigger items first, ecosystem bootstrap
-last; the middle is the agent's suggested order until the owner sets it):
+The [work order of 2026-10-18](../../work-orders/2026-10-18-release-0-3-0.md)
+fixes the deliverables; the order of the slices within the cycle is the
+driver's, the network node and C10 first being the recommendation. Done
+before the cut and on `main`: the fresh-workspace recursive test
+(2026-10-05), the in-capsule project-command fix (2026-10-05), named build
+contexts (2026-10-06), the session logs with in-process rotation and a
+budget (#207, #209, #216). Each slice below is a maintenance slice with the
+implementor-and-reviewer loop as practiced on the diagnostics slices, lands
+on the release branch by the owner's direction, and merges to `main` before
+the next candidate tag.
 
-1. The recursive-successor test on a fresh workspace, option D of its
-   record, and the fresh-workspace rule for every end-to-end test: done
-   2026-10-05, proven in this capsule, closing on a candidate.
-2. The in-capsule project-command fix (project group guard, inspection
-   record): fixed 2026-10-05 on this branch, awaiting the gate and the
-   owner's confirmation on a candidate. The requirement below extends the
-   same command group and is not started.
-3. Named build contexts: done 2026-10-06, measured. Then the installed-IDE
-   reuse and reaping design review with the owner.
-4. Persistent session diagnostics: the owner's assignment of 2026-10-11,
-   urgent and foundational, target ready for 0.3.0; started first by the
-   owner's word. Slice 1, the logging framework: PR #207, review merged.
-   Slice 2, logrotate and the budget: PR #209, review running. Next: the
-   recipe-12 base build and the fresh-workspace end-to-end proof; the live
-   snapshot and export command; browser evidence. Default persistent component
-   logs, bounded rotation with compression and the WARNING baseline are
-   owner direction; the numeric limits, the snapshot and export design and
-   the browser-evidence slice are engineering choices for review.
-5. The universal `network` authorization node.
-6. The first-session UX bugs (C10), release notes and gate tooling.
-7. Ecosystem-aware project bootstrap.
+1. The cut and candidate 0: cut, version and records done 2026-10-18; the
+   pull request to `main`, the tag and the downloaded-asset proofs follow
+   on the owner's word.
+2. The agent freshness review's upgrade attempt: the three current vendor
+   versions acquired through the trusted mechanisms, verified, started on
+   the pinned base; adopt or hold, recorded in the overview.
+3. The universal `network` authorization node: run-once and saved
+   `network host` on a project without a recommendation, bridge the
+   default; closes the [bug of 2026-10-05](../../bugs/devcapsule/2026-10-05-run-once-network-authorization-needs-a-recommendation.md)
+   on a candidate.
+4. C10: a ready, stopped or error summary instead of streamed desktop
+   diagnostics, and Ctrl+C ending with a result, not a traceback; the two
+   bug records filed first; closes both on a candidate.
+5. Forced configuration: `project config resolve --force` and `project run
+   --force-config`, mandatory needs split from optional ones; the
+   requirement below; the capabilities page documents both and a
+   fresh-workspace launch proves them.
+6. The diagnostics snapshot and export command, requirement 4 of the
+   [diagnostics work order](../../work-orders/2026-10-08-persistent-session-diagnostics.md);
+   runs from another terminal against a broken session, export reviewed.
+7. Cleanup of obsolete images and cached files, the second half of the
+   installed-IDE record; design agreed with the owner first.
+8. C20, release notes and documentation automation, last: the notes block
+   and the manifest promotion need no operator step.
+
+Gates before the final tag: the owner's eleven user-docs decisions; the
+documentation describing the accepted candidate; a published base for the
+candidate; the fixed bug records verified against a downloaded candidate;
+the release notes under `releases/v0.3.0/notes.md`. Out of 0.3.0, named in
+the overview: consent and vendor trust, installed-IDE reuse with an empty
+launcher cache, browser evidence for diagnostics, the console's deliverable
+6, and ecosystem bootstrap, at 0.9. The owner is consulted before each
+candidate tag, before the image-cleanup implementation, when a slice proves
+larger than the cycle tolerates, and before the final tag.
 
 ### Requirement: configuration validated and changed by commands only
 
@@ -362,6 +419,21 @@ containers are absent; private fixture storage remains. Mail take was empty.
 The init bug remains fixed: machine init acceptance does not establish a
 separate owner-performed init walk. Broader project-command guard repair and
 other deferred work remain outside this completed release.
+
+## Release 0.3.0
+
+Cut 2026-10-18 from `main` at `3c91183ffd2130f6c7b40d2f9e3fd41588f977eb`,
+the merge of PR #223, by the owner's decision of the same day; the commit
+selected by the driver because every maintenance branch was merged and the
+commit carries the decision and the work order. `release-0.3.0`: version
+0.3.0 at `6965c5e`, the cut's records after it. The checkout sits on the
+release branch from the cut to the final tag; the status file and the
+registry row are edited and published from it. Running detail, the
+checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
+
+| Candidate | Source | Outcome |
+|---|---|---|
+| rc0 | not yet tagged | awaits the pull request to `main` and the owner's word |
 
 ## Release 0.2.15
 
@@ -499,6 +571,23 @@ launch was taken into intake and committed. No source was changed.
   the version under the local scheme; the owner names it then.
 
 ## Planned Next Step
+
+1. The agent freshness upgrade attempt: pin Codex 0.163.0, Claude Code
+   2.1.302 and Antigravity 1.4.2 with vendor-verified artifacts, regenerate
+   the golden locks, start each on the pinned base; adopt or hold with the
+   reason, in the overview. The owner may instead say rc0 ships the current
+   pins.
+2. Push `release-0.3.0`; open the pull request to `main`, with the version
+   question below settled by the owner; after the merge, verify ancestry.
+3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
+   for the backend, download and verify the three assets, run the local
+   proofs against the download, and record rc0 in the overview.
+4. Then the slices in the recommended order: the network node, C10 with its
+   two records filed first, forced configuration, the diagnostics snapshot,
+   image cleanup after the owner's design review, C20 last.
+
+Superseded 2026-10-18 by the cut (PR #207 and PR #209 are merged; the
+recipe-12 base is history since rotation moved into the writers):
 
 1. The owner reviews and merges PR #207, then PR #209. The three review
    rounds on PR2 are used; a further change needs the owner's word.
@@ -712,6 +801,19 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate at the cut (2026-10-18, `release-0.3.0` at the version commit
+`6965c5e` with the records in the working tree): `nox -s build` passed
+every step to the documentation contract: the distribution version agrees
+in its three copies; mypy clean over 214 files; 1584 unit tests passed, 35
+deselected, 1 xfailed, 1 xpassed; the CLI smoke; the test PEX built and
+smoked; packaging integration 17 passed. The documentation contract failed
+once on the `devel` entry and passed after the manifest line described
+under *Current State*: 186 pages, 17 aliases, devel rendered at 0.3.0,
+the three released versions reused. The web console session, which the
+gate queues after the contract, ran on its own afterwards and passed:
+mypy clean over 8 files, 293 tests. Logs `/opt/devcapsule-gate/2026-10-18-release-0.3.0-build-1.log`
+and `-webconsole-1.log`.
 
 Gate after round three (2026-10-11, PR #209 at `c3dd82a`): full `nox -s
 build` passed, exit 0: mypy clean over 214 files; 1584 unit tests passed,
@@ -1264,13 +1366,42 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Undecided at the pause: two items from project-management taken on
+- Awaiting the human, before the rc0 tag: how the pull request from
+  `release-0.3.0` reaches `main` without moving `main` off 0.2.16.dev0. A
+  clean merge carries the 0.3.0 version commit into `main`; the decision
+  keeps `main` at 0.2.16.dev0 until the final tag. 0.2.15 solved it with a
+  prepared merge branch per candidate (`ws-maintenance/0215-rc0-main`, PR
+  #144), whose merge commit kept `main`'s version; 0.2.14 let `main` carry
+  the release version until the reopening. Recommendation: the prepared
+  merge branch, as 0.2.15 did; the candidate gate reads ancestry through
+  merge commits, so the release commits stay reachable.
+- Awaiting the human, with the version question: whether the manifest's
+  release-branch line (`source-version` on `devel`) is acceptable until the
+  contract or its check gains a release-branch rule, mailed to
+  project-management on 2026-10-18.
+- Awaiting the human: the freshness disposition, adopt the three current
+  vendor versions before rc0 as 0.2.15 did, or ship rc0 on the current pins
+  and upgrade in rc1. The attempt starts unless the owner says otherwise.
+- The local branch `ws-maintenance/release-0.3.0`, the previous session's
+  parking spot at the merge of PR #222, has no commits of its own and is
+  not on the remote; left for the owner to delete.
+- Weighed: the C10 bug records are not filed; the C10 slice files them
+  first, as the work order says.
+- External state that outlives the session, all removable now that the
+  PRs are merged: review worktrees `~/worktrees/maintenance-review` and
+  `~/worktrees/maintenance-review-pr2`; the acceptance clone and venv under
+  `~/.local/share/devcapsule/e2e-workspaces/logs-accept`; local images
+  `devcapsule-base-e2e:v0.2.16.dev0-local-linux-x86_64-36bef9f1e151` and
+  `devcapsule-local-codium:60ed46caf1a3e8897e5d`.
+
+Threads of the 2026-10-12 pause, decided or overtaken on 2026-10-18 where
+marked:
+
+- Decided 2026-10-18: two items from project-management taken on
   2026-10-12, `2026-10-11-project-management-bootstrap-target-09.md` and
   `2026-10-11-project-management-pre-rc-sequence.md`, in the intake; decide
   them first on resumption, they are not forwardable.
-- Awaiting the human: review and merge of PR #207 and PR #209, merge
-  commits so the stack stays consistent. Paused 2026-10-12 at the owner's
-  word.
+- Done: PR #207 and PR #209 are merged (2026-10-11, and #216 on 2026-10-15).
 - External state that outlives the session: review worktrees
   `~/worktrees/maintenance-review` and `~/worktrees/maintenance-review-pr2`;
   the acceptance clone and venv under
@@ -1470,6 +1601,8 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
+- [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
 - [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
 - [Session logs acceptance](evidence/2026-10-11-session-logs/README.md): the recipe-12 base, the real session, the rotation; open when a reviewer asks what was proven on a capsule.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
