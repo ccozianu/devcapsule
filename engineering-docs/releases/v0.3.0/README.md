@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-18. Stage: **candidate 0 tagged; publication and download verification in progress**.
+Updated: 2026-10-18. Stage: **candidate 0 published and verified as downloaded; the owner's test on the other checkout next**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Bug table](bugs.md) ·
@@ -167,8 +167,8 @@ replacement.
 - [x] Agent freshness upgrade attempt; dispositions in the table above.
 - [x] PR #224 merged into the release branch at `6b97657`; the release branch merged into `main` by PR #228 at `7c20292`, ancestry holds; `main` carries 0.3.0 during the cycle by the owner's merge. The branch, deleted by `delete_branch_on_merge`, restored at the same tip.
 - [ ] The owner regenerates the shared lock on the host; the written lock committed on the release branch, gated, merged to `main`.
-- [ ] On the owner's word, tag `v0.3.0-rc0` on the release branch's tip;
-  backend run; the three assets downloaded, checksum and version verified.
+- [x] `v0.3.0-rc0` tagged on the release branch at `53ebc17`; backend run
+  passed; the three assets downloaded, checksum and version verified.
 - [ ] Local proofs against the download: clean machine, component cache,
   runtime session on the pinned base.
 - [ ] The dogfooding slices, each merged to `main` before the next
@@ -191,8 +191,17 @@ replacement.
   `0.3.0rc0`.
 - Pushed atomically with the branch; backend run
   [39175482525](https://github.com/ccozianu/devcapsule/actions/runs/39175482525).
-  Publication, the three downloaded assets and their verification follow
-  below when the run ends.
+  The run passed (`Build, publish, and prove`), and the
+  [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc0)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into a fresh directory,
+  `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc0`: the checksum
+  file verifies the executable, SHA-256
+  `5d0f0e6c60e72eb291ce5de18036b10c5496b71cfce4e5c7076fe60cd195a6b1`, and
+  the manifest records the same value, the tag, the release branch, the
+  source revision `53ebc17…` and the gate's `mainline` disposition. The
+  executable reports version `0.3.0rc0`, mnemonic `v0.3.0-rc0` and that
+  source revision; its help answers.
 - What it carries, beyond 0.2.15: everything `main` had at the cut (see
   above), the agent pins Codex 0.163.0, Claude Code 2.1.302 and
   Antigravity CLI 1.4.2, and the launchable-lock test. The owner tests it
