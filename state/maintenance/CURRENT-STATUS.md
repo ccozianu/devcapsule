@@ -25,7 +25,7 @@ Its 2026-09-18 start is the recorded adoption exception.
 ## Current State
 
 **2026-10-18, evening: the unit gate with coverage runs on pull requests
-against `main`, PR #225.** The owner's request of the day, as part of this
+against `main` and `release-*`; PRs #225 to #227 merged.** The owner's request of the day, as part of this
 release: `tests.yml` now triggers on pull requests against `main` and
 against `release-*` branches, the owner's addition of the same evening,
 as well as on pushes to `main`: the same job, the summary and the report
@@ -374,8 +374,8 @@ the next candidate tag.
 8. C20, release notes and documentation automation, last: the notes block
    and the manifest promotion need no operator step.
 9. Added by the owner on 2026-10-18: the unit gate with coverage on pull
-   requests against `main` and `release-*`; PR #225, awaiting the owner's merge into the
-   release branch.
+   requests against `main` and `release-*`; done, PRs #225, #226 and #227
+   merged into the release branch, the trigger proven on #226 and #227.
 
 Gates before the final tag: the owner's eleven user-docs decisions; the
 documentation describing the accepted candidate; a published base for the
