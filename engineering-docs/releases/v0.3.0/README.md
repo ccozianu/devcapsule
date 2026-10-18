@@ -3,6 +3,7 @@
 Updated: 2026-10-18. Stage: **candidate 0 published and verified as downloaded; the owner's test on the other checkout next**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
+[Changelog since 0.2.15](changelog.md) ·
 [Bug table](bugs.md) ·
 [Work order](../../work-orders/2026-10-18-release-0-3-0.md) ·
 [Scope and cut decision](../../wip/2026-08-09-project-management/2026-10-18-decision-release-0-3-0-scope-and-cut.md) ·
