@@ -58,9 +58,12 @@ the checkout-local environment described in the [developer environment](../../de
    and run `.venv/bin/python -m nox -s build` from `devcapsule-src`. Run the
    *Agent Freshness Review* below and record its table in the release overview.
 2. **Account for main and publish the first candidate.** Follow *Release Fixes
-   And Main* and the current candidate gate below. Push the release branch for
-   review; verify the applicable main disposition before creating an immutable
-   `vX.Y.Z-rc0` tag. Wait for **Publish DevCapsule PEX** to pass
+   And Main* and the current candidate gate below. Push the release branch;
+   merge it into `main` by a pull request from a throwaway copy,
+   `release-X.Y.Z-4PR-NNN` created at the release branch's tip, since the
+   repository deletes a pull request's branch on merge (`WORKFLOW-LOCAL.md`,
+   *Release Policy* 8); verify the applicable main disposition before creating
+   an immutable `vX.Y.Z-rc0` tag. Wait for **Publish DevCapsule PEX** to pass
    and publish a non-draft GitHub prerelease with all three assets: the PEX,
    its checksum file, and `release-manifest.json`.
 3. **Validate the published candidate.** Download and checksum-check its PEX;
