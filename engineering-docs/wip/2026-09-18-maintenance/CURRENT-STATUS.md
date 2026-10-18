@@ -24,6 +24,26 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-18, late: `main` reopens at the cut, PR #229.** After PR #228
+carried 0.3.0 onto `main`, the owner weighed cherry-pick stacking and
+chose, on the agent's analysis, a protocol change instead: a development
+version orders before the release it names under PEP 440, so `main` on
+the old development version sits behind the release branch for the whole
+cycle. From now on `main` reopens with the next development version at
+the cut, by pull request, and the merges of the release branch into `main`
+before each candidate tag carry no version conflict after the first.
+[PR #229](https://github.com/ccozianu/devcapsule/pull/229) is the rule
+and its first application: `main` to 0.3.1.dev0, the manifest's
+release-branch line removed from `main`, *Version Scheme* rule 4 and an
+*Exceptions* entry in `WORKFLOW-LOCAL.md` against topic 11.2.7, the
+runbook's steps 1 and 7 following; the definition change is mailed to
+`workflow-improvements`. Its gate fails only the lock test, as `main` does
+since PR #228; the documentation contract passes with `devel` at
+0.3.1.dev0. The release branch keeps its own `source-version` line, since
+its source declares 0.3.0. Cherry-pick stacking was set aside: it would
+need every non-merge release commit cherry-picked or excepted at each
+candidate, and the version commit never can be.
+
 **2026-10-18, night: everything merged, the release branch merged into
 `main`, the branch restored, the lock still the owner's.** The owner
 merged PR #224 into the release branch at `6b97657` and then the release
@@ -635,10 +655,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner runs the lock command from PR #224 on the host; the written
-   lock is committed on the release branch, the full gate rerun, and the
-   commit merged to `main` by pull request before the tag. Then, on the
-   owner's word, `v0.3.0-rc0` on the release branch's tip.
+1. The owner merges PR #229, reopening `main` at 0.3.1.dev0, and runs the
+   lock command from PR #224 on the host; the written lock is committed on
+   the release branch, the full gate rerun, and the commit merged to `main`
+   by pull request before the tag. Then, on the owner's word, `v0.3.0-rc0`
+   on the release branch's tip.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
@@ -1440,9 +1461,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Closed 2026-10-18 by the owner's merge of PR #228: `main` carries the
-  release version during the cycle, as 0.2.14 did; the reopening after
-  the final tag sets the next development version.
+- Closed 2026-10-18, twice: PR #228 carried the release version onto
+  `main`; the owner then changed the protocol, and PR #229 reopens `main`
+  at 0.3.1.dev0 at the cut, ahead of every candidate.
 - Awaiting the human: `delete_branch_on_merge` is on and deleted
   `release-0.3.0` after PR #228; restored at `6b97657`. Turn it off, or
   expect the restore after every pre-candidate merge.
