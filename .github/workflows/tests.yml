@@ -4,7 +4,8 @@ name: Tests and coverage
 # request against main or a release branch, so a contributor sees the result
 # and the coverage summary before the merge; the badge is published from main
 # alone. The owner may make the "Python 3.12" check required in the
-# repository rules.
+# repository rules. First run under the release-branch trigger: pull request
+# #226, 2026-10-18, run 39146118222.
 on:
   push:
     branches:
