@@ -314,6 +314,62 @@ side of the boundary, which has its own item once 3.4 of the comparison
 is settled. Priority: `later`, decided at V1 planning; no command or
 format is decided here.
 
+### Item 18: Credentials Stay On The Host, An Authenticating Proxy Outside The Capsule, For V1
+
+Owner decision, 2026-10-18, while reviewing the competitive comparison. The
+biggest missing feature of `0.2.16.dev0` is a nice way to handle Git and
+GitHub credentials from inside the capsule. Today host SSH keys and cloud
+credentials never enter, which is right, and the page that would say how a
+push then works is a stub, because there is no good answer yet: an agent's
+sign-in token lives in the capsule home, an API key enters only by an
+explicit binding, and either can be read by anything in the capsule and sent
+anywhere, since the boundary is strong inward and open outward.
+
+The V1 direction: an authenticating proxy outside the capsule. The capsule
+holds no credential; an outbound request to a known service leaves through
+a host-side proxy that attaches the real credential, and the process inside
+sees at most a sentinel value where a tool insists on a non-empty variable.
+Git over HTTPS to GitHub is the first case; GitLab is the second, to prove
+the generalization; the agents' own API endpoints are the third. Git over
+SSH is covered separately by an SSH agent socket forwarded as a boundary
+node, so a key can sign without being present. The proxy is started by the
+launcher for the session, like the host-open bridge, and announced like
+every other host grant.
+
+The owner's condition was that such proxies exist as open source, ready to
+configure rather than build. A search on 2026-10-18 found several; none is
+evaluated yet, and evaluating licence, maintenance and fit is the item's
+first step:
+
+- Docker Sandboxes document the reference behaviour: the credential in the
+  host keychain, GitHub's token read from `gh auth token` and cached for 55
+  minutes, a `proxy-managed` sentinel in the sandbox's environment, the
+  header injected by the host-side proxy
+  ([credentials](https://docs.docker.com/ai/sandboxes/security/credentials.md),
+  [authentication](https://docs.docker.com/ai/sandboxes/workflows/authentication.md)).
+  That is a product, not a component, but it is the behaviour to match.
+- [Infisical Agent Vault](https://github.com/Infisical/agent-vault): a vault
+  and credential proxy for agents in one binary, open source.
+- `sandbox-proxy`, a stdlib-only Go forward proxy that injects credentials
+  on the wire with a default-deny mode, and `iron-proxy`, an egress firewall
+  that swaps proxy tokens for real credentials at egress, both listed in
+  [awesome-agent-runtime-security](https://github.com/bureado/awesome-agent-runtime-security).
+- [agent-sandbox](https://github.com/mattolson/agent-sandbox/): secret
+  injection in a proxy container with the secret directory mounted into the
+  proxy only; `gh api` works with the token on the host.
+- [mitmproxy](https://docs.mitmproxy.org/stable/addons/overview): the
+  open-source scriptable building block if a purpose-built proxy is the
+  better fit; Git over HTTPS to a forge is a narrow protocol.
+
+To settle in the item: which services first and how a project names them;
+whether a credential is scoped per repository; whether egress is
+default-deny once the proxy exists; how the capsule trusts the proxy's
+certificate when interception is needed, which the base image can carry;
+and what `project info` and the session logs show about it. Priority:
+`later`, decided at V1 planning; no component or design is chosen by this
+item. It closes the gap named in section 3.4 of the competitive comparison
+and in its recommendation 3.1.
+
 ## Notification When A Host Bridge Is Not Granted
 
 Opened: 2026-10-03, from the closure of the
