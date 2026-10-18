@@ -1,6 +1,6 @@
 ---
 definition: devcapsule
-version: 0.2.16.dev0
+version: 0.3.0
 ---
 
 # Human / Agent Iteration Workflow
@@ -235,7 +235,7 @@ One entry per DevCapsule release that changed a rule, newest first, each with
 the step a project takes to adopt it where one exists. The `version` in this
 file's frontmatter names the release this text ships in; see topic 4.1.
 
-#### Unreleased
+#### 0.3.0
 
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
