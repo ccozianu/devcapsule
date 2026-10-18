@@ -26,16 +26,18 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 **2026-10-18, evening: the unit gate with coverage runs on pull requests
 against `main`, PR #225.** The owner's request of the day, as part of this
-release: `tests.yml` now triggers on pull requests against `main` as well
-as pushes to it, the same job, the summary and the report before the
-merge, rapid pushes to one pull request cancelling the older run; the
-badge still comes from `main` alone. [PR #225](https://github.com/ccozianu/devcapsule/pull/225)
+release: `tests.yml` now triggers on pull requests against `main` and
+against `release-*` branches, the owner's addition of the same evening,
+as well as on pushes to `main`: the same job, the summary and the report
+before the merge, rapid pushes to one pull request cancelling the older
+run; the badge still comes from `main` alone. [PR #225](https://github.com/ccozianu/devcapsule/pull/225)
 into `release-0.3.0`, with the unit-tests document updated. Left to the
 owner: making the `Python 3.12` check required in the repository rules,
-a coverage threshold if one is wanted, and whether pull requests against
-`release-*` branches should run it too, one line more. No gate input
-changed; the first real run is the first pull request against `main`
-that carries the change.
+and a coverage threshold if one is wanted. The owner merged PR #225 with
+the `main` trigger while the `release-*` addition was still in flight;
+that commit follows as PR #226 from the same branch, and since GitHub
+reads a pull request's workflow from its merge commit, PR #226 is the
+first real run of the `release-*` trigger.
 
 **2026-10-18, later: the agent freshness slice is PR #224, gated on one
 owner step.** The upgrade attempt the runbook asks of every release is on
@@ -372,7 +374,7 @@ the next candidate tag.
 8. C20, release notes and documentation automation, last: the notes block
    and the manifest promotion need no operator step.
 9. Added by the owner on 2026-10-18: the unit gate with coverage on pull
-   requests against `main`; PR #225, awaiting the owner's merge into the
+   requests against `main` and `release-*`; PR #225, awaiting the owner's merge into the
    release branch.
 
 Gates before the final tag: the owner's eleven user-docs decisions; the
