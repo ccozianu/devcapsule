@@ -24,6 +24,22 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-18, night, second: the pre-candidate merge goes through a
+throwaway copy, PR #231.** PR #229 and PR #230 are merged. The owner
+keeps delete-on-merge on and rules the workaround for the one ref that
+must survive its merges: each merge of the release branch into `main` is
+a pull request from `release-X.Y.Z-4PR-NNN`, a copy created at the
+release branch's tip for that pull request alone, deleted on merge;
+*Release Policy* 8 in `WORKFLOW-LOCAL.md` and the runbook's step 2 say
+so, with the copy named a throwaway integration ref, never a release ref,
+since the definition wants release refs told by name alone.
+[PR #231](https://github.com/ccozianu/devcapsule/pull/231) from
+`release-0.3.0-4PR-1` is the first: the pre-candidate merge, carrying
+PR #230, the policy rule and this file's record; `main` keeps 0.3.1.dev0.
+After it merges, every commit of the release branch is reachable from
+`main`, the main disposition for rc0 is ancestry, and the tag waits for
+the owner's word.
+
 **2026-10-18, last: the red test was wrong, not the lock; PR #230.** The
 owner read `test_resolution_reconstitutes_the_dogfood_environment` and
 ruled it unacceptable: it asserted that the repository's committed lock
@@ -539,7 +555,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc0 | not yet tagged | `main` disposition: ancestry, release branch merged by PR #228 at `7c20292`; blocked on the shared lock, then the owner's word |
+| rc0 | not yet tagged | `main` disposition: ancestry, release branch merged by PR #228 and, before the tag, by PR #231 from the throwaway copy; the owner's word |
 
 ## Release 0.2.15
 
@@ -678,11 +694,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner merges PR #230 into the release branch and PR #229 into
-   `main`; then the release branch merges into `main` by pull request, which
-   turns the hosted run green there. Then, on the owner's word,
-   `v0.3.0-rc0` on the release branch's tip. The lock command on the host
-   is dogfooding at the owner's convenience, no longer a gate.
+1. The owner merges PR #231, the pre-candidate merge from the throwaway
+   copy. Then, on the owner's word, `v0.3.0-rc0` on the release branch's
+   tip: annotated tag, atomic push with the branch, the backend run, the
+   three assets downloaded and verified, the local proofs. The lock
+   command on the host is dogfooding at the owner's convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
@@ -1495,9 +1511,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - Closed 2026-10-18, twice: PR #228 carried the release version onto
   `main`; the owner then changed the protocol, and PR #229 reopens `main`
   at 0.3.1.dev0 at the cut, ahead of every candidate.
-- Awaiting the human: `delete_branch_on_merge` is on and deleted
-  `release-0.3.0` after PR #228; restored at `6b97657`. Turn it off, or
-  expect the restore after every pre-candidate merge.
+- Closed 2026-10-18 by the owner: delete-on-merge stays; the release
+  branch merges into `main` through a throwaway copy, *Release Policy* 8.
 - Awaiting the human, with the version question: whether the manifest's
   release-branch line (`source-version` on `devel`) is acceptable until the
   contract or its check gains a release-branch rule, mailed to
