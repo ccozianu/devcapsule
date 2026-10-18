@@ -16,6 +16,23 @@ a draft is excluded from production builds and shown labelled in preview.
 Nothing else framework-specific belongs in an entry. The block is authored
 here, per [R-DOCS-003](../requirements/product/r-docs-003-website-content-carries-front-matter.md).
 
+## House style
+
+An entry is written for a reader, not for the record. Five rules, from the
+competitive comparison of 2026-10-18, whose first copy opened with twenty
+lines of provenance:
+
+1. The first screen says what the reader gets: a lede of at most two
+   sentences, and a **TL;DR** when the entry is long.
+2. Provenance, method, versions and status go at the end, in a closing
+   *About this entry* section. Nothing of that kind sits above the fold.
+3. The entry is written in a person's voice. The controlled-language rule
+   of the workflow applies to records, not here.
+4. The agent drafts and the owner edits. An entry is not released until
+   the owner has made that pass; `draft: true` until then.
+5. A copy of an engineering record is a draft, not an entry. Restructure it
+   for the reader first, and offer the cuts rather than copying the whole.
+
 ## Entries
 
 - [Where DevCapsule sits: a competitive comparison, October 2026](2026-10-18-where-devcapsule-sits.md) — the time-boxed, best-effort comparison with agent sandboxes, dev containers and cloud agents, each shortcoming linked to its roadmap item.
