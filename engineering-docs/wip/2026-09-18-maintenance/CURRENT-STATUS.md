@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`, gate passed, records and overview published; the agent freshness slice is PR #224 into the release branch and waits for the owner's host lock command; rc0 waits for the owner's word on the pins and on the merge to `main`; the six dogfooding slices follow during the cycle
+State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
 Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@28234e24364b
 
@@ -23,6 +23,25 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-18, night: everything merged, the release branch merged into
+`main`, the branch restored, the lock still the owner's.** The owner
+merged PR #224 into the release branch at `6b97657` and then the release
+branch into `main` by [PR #228](https://github.com/ccozianu/devcapsule/pull/228)
+at `7c20292`. `main` therefore carries the release version 0.3.0, the
+matrix at embedded-27 and the manifest's release-branch line; the
+decision's "`main` stays at 0.2.16.dev0" gave way to the owner's merge,
+as in 0.2.14, and the prepared-merge-branch thread below is closed by it.
+`main` reopens with the next development version after the final tag, as
+the version scheme says. GitHub deleted `release-0.3.0` on that merge: the
+repository has `delete_branch_on_merge` on, which deletes every branch a
+merged pull request came from, release branches included. The ref is
+restored at `6b97657`, the exact tip it had, nothing lost; the setting is
+the owner's to turn off, or every pre-candidate merge will delete the
+release branch again. The shared lock is still at embedded-23 on both
+branches, so the dogfood-reconstitution test fails on `main` and on the
+release branch until the owner's host command runs; the candidate
+workflow runs the unit suite, so rc0 cannot be tagged before it.
 
 **2026-10-18, evening: the unit gate with coverage runs on pull requests
 against `main` and `release-*`; PRs #225 to #227 merged.** The owner's request of the day, as part of this
@@ -477,7 +496,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc0 | not yet tagged | awaits the pull request to `main` and the owner's word |
+| rc0 | not yet tagged | `main` disposition: ancestry, release branch merged by PR #228 at `7c20292`; blocked on the shared lock, then the owner's word |
 
 ## Release 0.2.15
 
@@ -616,13 +635,12 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner runs the lock command from PR #224 on the host and says
-   whether rc0 carries the new pins; then commit the written lock on the
-   slice branch, rerun the full gate, and the owner merges #224 into
-   `release-0.3.0`. Or rc0 ships the current pins and #224 waits for rc1.
-2. The prepared merge branch to `main` (`ws-maintenance/030-rc0-main`, as
-   0.2.15 did), keeping `main`'s version and manifest; the owner merges;
-   verify ancestry on remote `main`.
+1. The owner runs the lock command from PR #224 on the host; the written
+   lock is committed on the release branch, the full gate rerun, and the
+   commit merged to `main` by pull request before the tag. Then, on the
+   owner's word, `v0.3.0-rc0` on the release branch's tip.
+2. Done: the release branch is merged into `main` by PR #228; ancestry
+   holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
    for the backend, download and verify the three assets, run the local
    proofs against the download, and record rc0 in the overview.
@@ -1422,22 +1440,19 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting the human, before the rc0 tag: how the pull request from
-  `release-0.3.0` reaches `main` without moving `main` off 0.2.16.dev0. A
-  clean merge carries the 0.3.0 version commit into `main`; the decision
-  keeps `main` at 0.2.16.dev0 until the final tag. 0.2.15 solved it with a
-  prepared merge branch per candidate (`ws-maintenance/0215-rc0-main`, PR
-  #144), whose merge commit kept `main`'s version; 0.2.14 let `main` carry
-  the release version until the reopening. Recommendation: the prepared
-  merge branch, as 0.2.15 did; the candidate gate reads ancestry through
-  merge commits, so the release commits stay reachable.
+- Closed 2026-10-18 by the owner's merge of PR #228: `main` carries the
+  release version during the cycle, as 0.2.14 did; the reopening after
+  the final tag sets the next development version.
+- Awaiting the human: `delete_branch_on_merge` is on and deleted
+  `release-0.3.0` after PR #228; restored at `6b97657`. Turn it off, or
+  expect the restore after every pre-candidate merge.
 - Awaiting the human, with the version question: whether the manifest's
   release-branch line (`source-version` on `devel`) is acceptable until the
   contract or its check gains a release-branch rule, mailed to
   project-management on 2026-10-18.
 - Awaiting the human: the one host command in PR #224 that regenerates
-  the shared lock, and the word on whether rc0 carries the new pins or
-  ships the current ones with #224 in rc1.
+  the shared lock; #224 is merged, so rc0 carries the new pins and the
+  hosted unit run is red until the lock follows.
 - The local branch `ws-maintenance/release-0.3.0`, the previous session's
   parking spot at the merge of PR #222, has no commits of its own and is
   not on the remote; left for the owner to delete.
