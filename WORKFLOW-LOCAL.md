@@ -19,8 +19,12 @@ source of the packaged one, not an installed copy. See *Exceptions*.
    the release it works toward. The suffix stays `dev0`.
 3. The release branch's first commit sets the release version `X.Y.Z`, or
    confirms it when the product owner has already set it.
-4. After the final tag, `main` reopens with the next development version: the
-   next patch, unless the owner names another.
+4. At the cut, `main` reopens with the next development version: the next
+   patch, unless the owner names another, set by a pull request to `main`
+   as soon as the release branch exists. `main` is then ahead of every
+   candidate and of the final release for the whole cycle, and the merges
+   of the release branch into `main` before each candidate tag carry no
+   version conflict after the first. Owner decision, 2026-10-18.
 5. Candidate builds are stamped `X.Y.ZrcN` from their tags. Local builds carry
    a local marker. Never author either in the source.
 6. The single authored copy is `[project] version` in
@@ -352,6 +356,15 @@ Owner direction, 2026-10-09, after the controlled-language edition merged.
 
 ## Exceptions
 
+- **`main` reopens at the cut, not after the final tag.** Owner decision,
+  2026-10-18, during the 0.3.0 cycle, after the merge of the release
+  branch carried the release version onto `main`: a development version
+  orders before the release it names under PEP 440, so `main` on the old
+  development version sits behind the release branch for the whole cycle.
+  *Version Scheme* rule 4 now reopens `main` with the next development
+  version at the cut. Topic 11.2.7 of the generic definition says after the
+  final tag; its revision is routed to workflow-improvements. Ends when the
+  definition incorporates it.
 - **Release-fix propagation uses engineering judgment.** Owner direction,
   2026-09-22. It supersedes the generic release rule's blanket merge-only and
   no-cherry-pick restrictions. `main` stays open to other workstreams. Merge a
