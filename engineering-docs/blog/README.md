@@ -18,6 +18,7 @@ here, per [R-DOCS-003](../requirements/product/r-docs-003-website-content-carrie
 
 ## Entries
 
+- [Where DevCapsule sits: a competitive comparison, October 2026](2026-10-18-where-devcapsule-sits.md) — the time-boxed, best-effort comparison with agent sandboxes, dev containers and cloud agents, each shortcoming linked to its roadmap item.
 - [An AI takes our IDEs for a test drive](2026-10-04-an-ai-takes-intellij-for-a-test-drive.md) — IntelliJ, .NET/Rider and Eclipse, two desktop fixes caught in screenshots, and three original test movies; draft for owner review.
 - [The workflow explains itself](2026-10-03-the-workflow-explains-itself.md) — a preamble for adopters, an information model for people, a merge rule, and a bug filed against ourselves; draft for owner review.
 - [What I have been up to lately](2026-09-30-what-i-have-been-up-to-lately.md) — the LinkedIn announcement of 2026-09-28, reproduced for linking from shorter-limit channels.
