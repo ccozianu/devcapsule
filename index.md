@@ -135,6 +135,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 - [Component upgrades and recoverable version sets](engineering-docs/work-orders/2026-09-21-component-upgrades.md)
 
+- [Release 0.3.0](engineering-docs/work-orders/2026-10-18-release-0-3-0.md) — the cut, the dogfooding slices of the candidate cycle, and the gates before the final tag.
 - [DevCapsule website autonomy experiment](engineering-docs/work-orders/2026-09-16-website-autonomy.md)
 - [Base images as a contract, design experiment](engineering-docs/work-orders/design-experiment-work-order.md)
 
