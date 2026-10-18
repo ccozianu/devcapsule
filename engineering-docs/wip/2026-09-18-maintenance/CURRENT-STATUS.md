@@ -24,6 +24,18 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-18, the owner's first finding on rc0: a console link on a base
+without the console.** The launcher prints the web console link for every
+run, and the runtime then says the base has no console, which is true of
+the published `ubuntu-24.04@9`. Filed as a bug by the owner's word, target
+0.3.0, a release fix in this cycle:
+[the record](../../bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md).
+The launcher can read the base's recipe label before it prints; the fix
+is one statement that is true, link or substitute line, and no port or
+token for a console that cannot answer. It sits beside C10, the
+first-session summary, and goes in the same slice or just before it. The
+changelog's *Known in candidate 0* and the bug table carry it.
+
 **2026-10-18, rc0 tagged.** PR #231 merged; the owner said go. The tag
 `v0.3.0-rc0` is on `53ebc17`, the release branch's tip at the merge, whose
 source is byte-identical to the fully gated PR #230 tree; the two record
@@ -455,7 +467,9 @@ the next candidate tag.
    on a candidate.
 4. C10: a ready, stopped or error summary instead of streamed desktop
    diagnostics, and Ctrl+C ending with a result, not a traceback; the two
-   bug records filed first; closes both on a candidate.
+   bug records filed first; closes both on a candidate. Beside it, the
+   owner's rc0 finding of 2026-10-18: the console link printed on a base
+   without the console, a release fix in this cycle.
 5. Forced configuration: `project config resolve --force` and `project run
    --force-config`, mandatory needs split from optional ones; the
    requirement below; the capabilities page documents both and a

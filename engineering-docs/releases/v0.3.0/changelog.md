@@ -97,6 +97,15 @@ console, diagnostics and logs, capabilities, the IDE surfaces, component
 upgrades and freshness, and the developer documents on the unit,
 integration and end-to-end suites.
 
+## Known in candidate 0
+
+- On the published base, `ubuntu-24.04@9`, the launcher prints a web
+  console link and the capsule then says this base has no web console.
+  The link leads nowhere; the capsule is fine. The console needs a base of
+  recipe 10 or later, and a published one is a gate before the final
+  release. The launcher's output is a bug fixed in this cycle
+  (2026-10-18).
+
 ## Not in candidate 0
 
 Planned for later candidates of this cycle: the universal `network`
