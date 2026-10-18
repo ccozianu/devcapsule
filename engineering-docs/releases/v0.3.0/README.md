@@ -165,9 +165,8 @@ replacement.
   the status file and mailed to project-management as a contract gap); the
   web console session mypy clean over 8 files, 293 tests.
 - [x] Agent freshness upgrade attempt; dispositions in the table above.
-- [ ] The owner regenerates the shared lock on the host; the slice's gate passes; the slice merges into the release branch.
-- [ ] Push the release branch; pull request to `main`; the owner merges;
-  ancestry verified on remote `main`.
+- [x] PR #224 merged into the release branch at `6b97657`; the release branch merged into `main` by PR #228 at `7c20292`, ancestry holds; `main` carries 0.3.0 during the cycle by the owner's merge. The branch, deleted by `delete_branch_on_merge`, restored at the same tip.
+- [ ] The owner regenerates the shared lock on the host; the written lock committed on the release branch, gated, merged to `main`.
 - [ ] On the owner's word, tag `v0.3.0-rc0` on the release branch's tip;
   backend run; the three assets downloaded, checksum and version verified.
 - [ ] Local proofs against the download: clean machine, component cache,

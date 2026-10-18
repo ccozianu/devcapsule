@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`, gate passed, records and overview published; the agent freshness slice is PR #224 into the release branch and waits for the owner's host lock command; rc0 waits for the owner's word on the pins and on the merge to `main`; the six dogfooding slices follow during the cycle
+State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
 Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@28234e24364b
 
@@ -23,6 +23,68 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-18, last: the red test was wrong, not the lock; PR #230.** The
+owner read `test_resolution_reconstitutes_the_dogfood_environment` and
+ruled it unacceptable: it asserted that the repository's committed lock
+equals the matrix's newest selection, repository housekeeping rather than
+a behaviour of the code, unsatisfiable from inside a capsule since only a
+host launcher command writes the lock, and silent about whether an older
+project still launches. The analysis went through three candidate
+triples; the owner kept one. [PR #230](https://github.com/ccozianu/devcapsule/pull/230)
+into the release branch deletes the test and adds
+`test_repository_lock_is_launchable_by_this_launcher`: precondition the
+committed lock as written by an earlier matrix; action
+`parse_locked_environment`, the reader `project run` uses; postcondition
+a launchable environment, the surface, the base, one validated artifact
+set per materialized component. Its TODO names the wider contract as a
+new work item, [the bug record](../../bugs/devcapsule/2026-10-18-no-test-proves-old-projects-launch-with-new-releases.md):
+every project initialized by an earlier release keeps launching with a
+new one, to be enforced over configurations captured from each released
+client; no target, next planning. The hosted unit run on the pull request
+passed; the full local gate passed end to end, so the lock command on the
+host is no longer a gate for rc0, only the dogfooding it always was. After
+the merge, the pre-candidate merge of the release branch into `main`
+carries the fix there; PR #229 stays separate.
+
+**2026-10-18, late: `main` reopens at the cut, PR #229.** After PR #228
+carried 0.3.0 onto `main`, the owner weighed cherry-pick stacking and
+chose, on the agent's analysis, a protocol change instead: a development
+version orders before the release it names under PEP 440, so `main` on
+the old development version sits behind the release branch for the whole
+cycle. From now on `main` reopens with the next development version at
+the cut, by pull request, and the merges of the release branch into `main`
+before each candidate tag carry no version conflict after the first.
+[PR #229](https://github.com/ccozianu/devcapsule/pull/229) is the rule
+and its first application: `main` to 0.3.1.dev0, the manifest's
+release-branch line removed from `main`, *Version Scheme* rule 4 and an
+*Exceptions* entry in `WORKFLOW-LOCAL.md` against topic 11.2.7, the
+runbook's steps 1 and 7 following; the definition change is mailed to
+`workflow-improvements`. Its gate fails only the lock test, as `main` does
+since PR #228; the documentation contract passes with `devel` at
+0.3.1.dev0. The release branch keeps its own `source-version` line, since
+its source declares 0.3.0. Cherry-pick stacking was set aside: it would
+need every non-merge release commit cherry-picked or excepted at each
+candidate, and the version commit never can be.
+
+**2026-10-18, night: everything merged, the release branch merged into
+`main`, the branch restored, the lock still the owner's.** The owner
+merged PR #224 into the release branch at `6b97657` and then the release
+branch into `main` by [PR #228](https://github.com/ccozianu/devcapsule/pull/228)
+at `7c20292`. `main` therefore carries the release version 0.3.0, the
+matrix at embedded-27 and the manifest's release-branch line; the
+decision's "`main` stays at 0.2.16.dev0" gave way to the owner's merge,
+as in 0.2.14, and the prepared-merge-branch thread below is closed by it.
+`main` reopens with the next development version after the final tag, as
+the version scheme says. GitHub deleted `release-0.3.0` on that merge: the
+repository has `delete_branch_on_merge` on, which deletes every branch a
+merged pull request came from, release branches included. The ref is
+restored at `6b97657`, the exact tip it had, nothing lost; the setting is
+the owner's to turn off, or every pre-candidate merge will delete the
+release branch again. The shared lock is still at embedded-23 on both
+branches, so the dogfood-reconstitution test fails on `main` and on the
+release branch until the owner's host command runs; the candidate
+workflow runs the unit suite, so rc0 cannot be tagged before it.
 
 **2026-10-18, evening: the unit gate with coverage runs on pull requests
 against `main` and `release-*`; PRs #225 to #227 merged.** The owner's request of the day, as part of this
@@ -477,7 +539,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc0 | not yet tagged | awaits the pull request to `main` and the owner's word |
+| rc0 | not yet tagged | `main` disposition: ancestry, release branch merged by PR #228 at `7c20292`; blocked on the shared lock, then the owner's word |
 
 ## Release 0.2.15
 
@@ -616,13 +678,13 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner runs the lock command from PR #224 on the host and says
-   whether rc0 carries the new pins; then commit the written lock on the
-   slice branch, rerun the full gate, and the owner merges #224 into
-   `release-0.3.0`. Or rc0 ships the current pins and #224 waits for rc1.
-2. The prepared merge branch to `main` (`ws-maintenance/030-rc0-main`, as
-   0.2.15 did), keeping `main`'s version and manifest; the owner merges;
-   verify ancestry on remote `main`.
+1. The owner merges PR #230 into the release branch and PR #229 into
+   `main`; then the release branch merges into `main` by pull request, which
+   turns the hosted run green there. Then, on the owner's word,
+   `v0.3.0-rc0` on the release branch's tip. The lock command on the host
+   is dogfooding at the owner's convenience, no longer a gate.
+2. Done: the release branch is merged into `main` by PR #228; ancestry
+   holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
    for the backend, download and verify the three assets, run the local
    proofs against the download, and record rc0 in the overview.
@@ -845,6 +907,14 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate on `ws-maintenance/0.3.0-launchable-lock-test` (2026-10-18, PR #230):
+`nox -s build` passed end to end: version copies agree; syntax; mypy clean
+over 214 files; 1584 unit tests passed, 35 deselected, 1 xfailed, 1
+xpassed; CLI smoke; test PEX built and smoked; packaging integration 17
+passed; documentation contract 186 pages; web console mypy clean, 293
+tests. Hosted run on the pull request: `Python 3.12` passed. Log
+`/opt/devcapsule-gate/2026-10-18-locktest-build-2.log`.
 
 Slice gate (2026-10-18, `ws-maintenance/0.3.0-agent-freshness` at
 `de9537a`): `nox -s build` passes the distribution version, the syntax
@@ -1422,22 +1492,19 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Awaiting the human, before the rc0 tag: how the pull request from
-  `release-0.3.0` reaches `main` without moving `main` off 0.2.16.dev0. A
-  clean merge carries the 0.3.0 version commit into `main`; the decision
-  keeps `main` at 0.2.16.dev0 until the final tag. 0.2.15 solved it with a
-  prepared merge branch per candidate (`ws-maintenance/0215-rc0-main`, PR
-  #144), whose merge commit kept `main`'s version; 0.2.14 let `main` carry
-  the release version until the reopening. Recommendation: the prepared
-  merge branch, as 0.2.15 did; the candidate gate reads ancestry through
-  merge commits, so the release commits stay reachable.
+- Closed 2026-10-18, twice: PR #228 carried the release version onto
+  `main`; the owner then changed the protocol, and PR #229 reopens `main`
+  at 0.3.1.dev0 at the cut, ahead of every candidate.
+- Awaiting the human: `delete_branch_on_merge` is on and deleted
+  `release-0.3.0` after PR #228; restored at `6b97657`. Turn it off, or
+  expect the restore after every pre-candidate merge.
 - Awaiting the human, with the version question: whether the manifest's
   release-branch line (`source-version` on `devel`) is acceptable until the
   contract or its check gains a release-branch rule, mailed to
   project-management on 2026-10-18.
-- Awaiting the human: the one host command in PR #224 that regenerates
-  the shared lock, and the word on whether rc0 carries the new pins or
-  ships the current ones with #224 in rc1.
+- At the owner's convenience: the one host command in PR #224 that
+  regenerates the shared lock, so this checkout runs the new agents; it no
+  longer gates anything.
 - The local branch `ws-maintenance/release-0.3.0`, the previous session's
   parking spot at the merge of PR #222, has no commits of its own and is
   not on the remote; left for the owner to delete.

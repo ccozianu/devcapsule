@@ -53,6 +53,17 @@ source of the packaged one, not an installed copy. See *Exceptions*.
    is published per [the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md).
    `docs/versions.yaml` on `main` is the authored list of documented versions.
    Promote it after every final tag.
+8. The release branch merges into `main` through a throwaway copy. The
+   repository deletes a pull request's branch on merge, and the active release
+   branch is the one ref that must survive its merges. So each merge of
+   `release-X.Y.Z` into `main` is a pull request from `release-X.Y.Z-4PR-NNN`,
+   a branch created at the release branch's tip for that pull request alone,
+   NNN counting from 1 within the release. Its merge commit's second parent is
+   the release branch's tip, so ancestry holds for the candidate gate; GitHub
+   deletes the copy on merge, and nobody cares. The copy is a throwaway
+   integration ref, never a release ref: nothing is committed to it, no tag
+   points into it, and the candidate workflow checks tags against
+   `release-X.Y.Z` alone. Owner decision, 2026-10-18.
 
 ## Documentation Refs
 
