@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-18; release 0.3.0 scoped and cut by the owner's decision, the work order mailed to maintenance as driver; the remaining decisions, the eleven docs proposals among them, are gates of the cycle; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
+State: paused 2026-10-18, the pair moves to maintenance to drive release 0.3.0; the work order is mailed; the remaining decisions, the eleven docs proposals among them, are gates of the cycle; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
 
-Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@28234e24364b
 
 Branch association: `ws-project-management/coordination`
 
