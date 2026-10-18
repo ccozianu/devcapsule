@@ -24,6 +24,29 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-18, last: the red test was wrong, not the lock; PR #230.** The
+owner read `test_resolution_reconstitutes_the_dogfood_environment` and
+ruled it unacceptable: it asserted that the repository's committed lock
+equals the matrix's newest selection, repository housekeeping rather than
+a behaviour of the code, unsatisfiable from inside a capsule since only a
+host launcher command writes the lock, and silent about whether an older
+project still launches. The analysis went through three candidate
+triples; the owner kept one. [PR #230](https://github.com/ccozianu/devcapsule/pull/230)
+into the release branch deletes the test and adds
+`test_repository_lock_is_launchable_by_this_launcher`: precondition the
+committed lock as written by an earlier matrix; action
+`parse_locked_environment`, the reader `project run` uses; postcondition
+a launchable environment, the surface, the base, one validated artifact
+set per materialized component. Its TODO names the wider contract as a
+new work item, [the bug record](../../bugs/devcapsule/2026-10-18-no-test-proves-old-projects-launch-with-new-releases.md):
+every project initialized by an earlier release keeps launching with a
+new one, to be enforced over configurations captured from each released
+client; no target, next planning. The hosted unit run on the pull request
+passed; the full local gate passed end to end, so the lock command on the
+host is no longer a gate for rc0, only the dogfooding it always was. After
+the merge, the pre-candidate merge of the release branch into `main`
+carries the fix there; PR #229 stays separate.
+
 **2026-10-18, late: `main` reopens at the cut, PR #229.** After PR #228
 carried 0.3.0 onto `main`, the owner weighed cherry-pick stacking and
 chose, on the agent's analysis, a protocol change instead: a development
@@ -655,11 +678,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner merges PR #229, reopening `main` at 0.3.1.dev0, and runs the
-   lock command from PR #224 on the host; the written lock is committed on
-   the release branch, the full gate rerun, and the commit merged to `main`
-   by pull request before the tag. Then, on the owner's word, `v0.3.0-rc0`
-   on the release branch's tip.
+1. The owner merges PR #230 into the release branch and PR #229 into
+   `main`; then the release branch merges into `main` by pull request, which
+   turns the hosted run green there. Then, on the owner's word,
+   `v0.3.0-rc0` on the release branch's tip. The lock command on the host
+   is dogfooding at the owner's convenience, no longer a gate.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
@@ -884,6 +907,14 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate on `ws-maintenance/0.3.0-launchable-lock-test` (2026-10-18, PR #230):
+`nox -s build` passed end to end: version copies agree; syntax; mypy clean
+over 214 files; 1584 unit tests passed, 35 deselected, 1 xfailed, 1
+xpassed; CLI smoke; test PEX built and smoked; packaging integration 17
+passed; documentation contract 186 pages; web console mypy clean, 293
+tests. Hosted run on the pull request: `Python 3.12` passed. Log
+`/opt/devcapsule-gate/2026-10-18-locktest-build-2.log`.
 
 Slice gate (2026-10-18, `ws-maintenance/0.3.0-agent-freshness` at
 `de9537a`): `nox -s build` passes the distribution version, the syntax
@@ -1471,9 +1502,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   release-branch line (`source-version` on `devel`) is acceptable until the
   contract or its check gains a release-branch rule, mailed to
   project-management on 2026-10-18.
-- Awaiting the human: the one host command in PR #224 that regenerates
-  the shared lock; #224 is merged, so rc0 carries the new pins and the
-  hosted unit run is red until the lock follows.
+- At the owner's convenience: the one host command in PR #224 that
+  regenerates the shared lock, so this checkout runs the new agents; it no
+  longer gates anything.
 - The local branch `ws-maintenance/release-0.3.0`, the previous session's
   parking spot at the merge of PR #222, has no commits of its own and is
   not on the remote; left for the owner to delete.
