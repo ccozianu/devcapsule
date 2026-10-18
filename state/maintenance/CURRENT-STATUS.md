@@ -30,9 +30,12 @@ source is byte-identical to the fully gated PR #230 tree; the two record
 commits after it carry no source. The candidate gate script, run from a
 detached checkout of the tag before the push, reported `mainline` and no
 unintegrated commits. Pushed atomically with the branch; backend run
-39175482525. Next: the three assets downloaded and verified, the version
-smoke, then the owner's test on the other checkout; the local Docker
-proofs follow that. The owner keeps this capsule, the old workhorse,
+39175482525 passed, the prerelease is public with its three assets, and
+the download under `~/.cache/devcapsule-releases/v0.3.0-rc0` verifies:
+checksum file and manifest agree on the executable, which reports
+`0.3.0rc0` at `53ebc17`. Deliverable 1 of the work order is done to its
+letter. Next the owner's test on the other checkout; the local Docker
+proofs against this download follow that. The owner keeps this capsule, the old workhorse,
 running meanwhile.
 
 **2026-10-18, night, second: the pre-candidate merge goes through a
@@ -568,7 +571,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc0 | `53ebc17` | tagged 2026-10-18 on the owner's word after PR #231; gate `mainline`, no unintegrated commits; backend run 39175482525; outcome pending the download |
+| rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified: checksum, manifest, version `0.3.0rc0`; the owner's test on the other checkout next, then the local Docker proofs |
 
 ## Release 0.2.15
 
@@ -707,11 +710,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. rc0: wait for the backend run, download the three assets, verify the
-   checksum and the version, record them in the overview. The owner tests
-   on the other checkout; then the local Docker proofs against the
-   download. The lock command on the host is dogfooding at the owner's
-   convenience.
+1. rc0 is published and verified as downloaded. The owner tests it on
+   the other checkout; then the local Docker proofs against the download:
+   clean machine, component cache, runtime session on the pinned base.
+   The lock command on the host is dogfooding at the owner's convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
