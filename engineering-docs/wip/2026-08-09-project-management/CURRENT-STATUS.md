@@ -334,7 +334,7 @@ federated components and the components position, the workflow toward
 state-of-the-art practice, review and approve the software entering the
 capsule, and credentials on the host behind an authenticating proxy, with
 open-source candidates named for evaluation. The comparison and a journal
-copy with a foreword and the owner's TL;DR are PR #220 against `main`; the
+copy with a foreword and the owner's TL;DR are PR #221 against `main`; the
 entry carries no draft flag and publishes with the next website
 publication. The matrix's memory row and the host-environment column were
 left as they are, by the owner's word that the document is good as is.
