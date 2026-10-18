@@ -71,7 +71,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-26"
+_MATRIX_VERSION = "embedded-27"
 
 
 # --------------------------------------------------------------------------
@@ -1045,6 +1045,69 @@ _ANTIGRAVITY_CLI_1_2_12 = _ComponentPin(
     },
 )
 
+# 2026-10-18 GA refresh for 0.3.0: exact downloads verified against vendor
+# checksums (npm SHA-512 integrity, the Claude manifest SHA-256, the
+# Antigravity manifest SHA-512) before the SHA-256 values below were recorded.
+_CODEX_0_163_0 = _ComponentPin(
+    component_id="codex",
+    version="0.163.0",
+    lock_table={
+        "version": "0.163.0",
+        "delivery-policy": "local-materialization",
+        "license": "Apache-2.0",
+        "npm-package": "@openai/codex",
+        "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.163.0.tgz",
+        "sha256": "1a71db36560bb446d2c2e63ae675c4a3018c38ace38ca533f8d1b25d3e6555b4",
+        "artifacts": {
+            "linux-amd64": {
+                "npm-package": "@openai/codex-linux-x64",
+                "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.163.0-linux-x64.tgz",
+                "sha256": "30efc97738b975940d78b59a9bea115fa34040b732807d54ec35ae6b7528de94"
+            }
+        }
+    },
+)
+
+_CLAUDE_CODE_2_1_302 = _ComponentPin(
+    component_id="claude-code",
+    version="2.1.302",
+    lock_table={
+        "version": "2.1.302",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "claude-code-download",
+        "license": "Proprietary",
+        "terms-url": "https://www.anthropic.com/legal/commercial-terms",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://downloads.claude.ai/claude-code-releases/2.1.302/linux-x64/claude",
+                "sha256": "60d7eb7f12fbb28a52533fe8be5884097403562aa02dc73991a021c7067e29a5"
+            }
+        }
+    },
+)
+
+_ANTIGRAVITY_CLI_1_4_2 = _ComponentPin(
+    component_id="antigravity-cli",
+    version="1.4.2",
+    lock_table={
+        "version": "1.4.2",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "antigravity-download",
+        "license": "Proprietary",
+        "terms-url": "https://antigravity.google/terms/",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.2-4835981233356800/linux-x64/cli_linux_x64.tar.gz",
+                "sha256": "6395837ac0e193dd3fe50f1228e1c4aea345ca99636d54404ab7e74397d4091c",
+                "archive-member": "antigravity",
+                "upstream-sha512": "4a393afc1369cee94e817c1b430c9128d02b12ebd4d5703ace5cd47b2333e216d673fb0097cbf7195f757b110163ba9850e9eea3fdbbaddd4b25668b82c03f05"
+            }
+        }
+    },
+)
+
 _POSTGRESQL_CLIENT_16 = _ComponentPin(
     component_id="postgresql-client",
     version="16",
@@ -1067,14 +1130,15 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "dotnet-sdk": (_DOTNET_SDK_10_0_401,),
         "playwright": (_ComponentPin("playwright", str(PLAYWRIGHT_PIN["version"]), PLAYWRIGHT_PIN),),
         "codium": (_CODIUM_1_126_04524,),
-        "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1),
+        "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1, _CODEX_0_163_0),
         "claude-code": (
             _CLAUDE_CODE_2_1_227,
             _CLAUDE_CODE_2_1_236,
             _CLAUDE_CODE_2_1_261,
             _CLAUDE_CODE_2_1_283,
+            _CLAUDE_CODE_2_1_302,
         ),
-        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24, _ANTIGRAVITY_CLI_1_2_12),
+        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24, _ANTIGRAVITY_CLI_1_2_12, _ANTIGRAVITY_CLI_1_4_2),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
@@ -1113,6 +1177,33 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             "provisional: owner-directed 0.2.15 upgrade 2026-09-27; "
             "pinned v0.2.12-rc5 base startup/configuration smoke passed; "
             "interactive provider acceptance awaits the downloaded candidate",
+        ),
+        _VerifiedEdge(
+            "codex",
+            "0.163.0",
+            _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: 0.3.0 agent freshness upgrade 2026-10-18; vendor "
+            "checksums verified; startup and seeded-configuration smoke passed "
+            "on the local recipe-11 base; interactive provider acceptance "
+            "awaits the downloaded candidate",
+        ),
+        _VerifiedEdge(
+            "claude-code",
+            "2.1.302",
+            _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: 0.3.0 agent freshness upgrade 2026-10-18; vendor "
+            "checksums verified; startup and seeded-configuration smoke passed "
+            "on the local recipe-11 base; interactive provider acceptance "
+            "awaits the downloaded candidate",
+        ),
+        _VerifiedEdge(
+            "antigravity-cli",
+            "1.4.2",
+            _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: 0.3.0 agent freshness upgrade 2026-10-18; vendor "
+            "checksums verified; startup and seeded-configuration smoke passed "
+            "on the local recipe-11 base; interactive provider acceptance "
+            "awaits the downloaded candidate",
         ),
         # Every entry names the concrete base its evidence came from; the
         # validation holds for the whole family. "provisional" entries were
