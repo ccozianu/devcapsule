@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
-Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@29f7c940a8a2
+Definition read: WORKFLOW.md@b13783c6080d, WORKFLOW-LOCAL.md@7c55e5a4bf92
 
 Integration target: `main`
 
@@ -56,8 +56,31 @@ stretch-goal inspection completed.**
   agent credentials into child IDE capsules, and (2) no graphical profiler UI
   (`JDK Mission Control` / `org.openjdk.jmc.*` / `VisualVM`) is bundled in
   `eclipse-ide` (`--network none` prevents runtime Marketplace installs). Per
-  the work order's stop condition, stopped the stretch pass and retained the
-  verified baseline recording.
+  the work order's stop condition, stopped the stretch pass, retained the
+  verified baseline recording, and recorded the follow-up stretch-goal work
+  order at
+  `engineering-docs/work-orders/2026-10-19-eclipse-java-1brc-hero-video.md`
+  (indexed in `index.md`) with a preamble of reusable work and unblocking
+  options.
+
+**2026-10-19: the console-link fix is PR #232, along the owner's lines.**
+The launcher reads the base's promise from its labels before the launch,
+`web_console_availability` in the images contract: the
+`devcapsule.base.webconsole` label and recipe 11 or later, the recipe
+that gives the console its process monitor. `project run` reads it beside
+the display transport and hands it to the launcher, which on a base
+without the console plans nothing, no port, no token, no console section,
+no published port, no origin, no readiness watcher, and prints one
+statement in place of the link: the base, the recipe the console needs,
+the one `images build` command with the launcher's own source revision,
+and the guide. The guide is new, `docs/configuration/local-base.md`, the
+page the C16 gate was missing: build a base, list it, select it with
+`config authorize base-image`, what the selection is and is not, the way
+back. [PR #232](https://github.com/ccozianu/devcapsule/pull/232) into the
+release branch; the full gate passed end to end and the hosted run passed;
+the bug record says fixed, verification on a downloaded candidate against
+the recipe-9 and a recipe-11 base closes it. The implementor-and-reviewer
+loop's review round is the owner's to run.
 
 **2026-10-19: the console works on a recipe-11 base built from rc0.** The
 owner built the base on the host with the candidate's own `images build`,
@@ -517,7 +540,7 @@ the next candidate tag.
    diagnostics, and Ctrl+C ending with a result, not a traceback; the two
    bug records filed first; closes both on a candidate. Beside it, the
    owner's rc0 finding of 2026-10-18: the console link printed on a base
-   without the console, a release fix in this cycle.
+   without the console, fixed as PR #232, verified on the next candidate.
 5. Forced configuration: `project config resolve --force` and `project run
    --force-config`, mandatory needs split from optional ones; the
    requirement below; the capabilities page documents both and a
@@ -534,8 +557,9 @@ the next candidate tag.
    merged into the release branch, the trigger proven on #226 and #227.
 
 Gates before the final tag: the owner's eleven user-docs decisions; the
-documentation describing the accepted candidate, a page on building and
-selecting a local base among it; a published base for the candidate; the fixed bug records verified against a downloaded candidate;
+documentation describing the accepted candidate, the page on building and
+selecting a local base now written with PR #232; a published base for the
+candidate; the fixed bug records verified against a downloaded candidate;
 the release notes under `releases/v0.3.0/notes.md`. Out of 0.3.0, named in
 the overview: consent and vendor trust, installed-IDE reuse with an empty
 launcher cache, browser evidence for diagnostics, the console's deliverable
@@ -772,11 +796,13 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. rc0 is published, verified as downloaded, and launched the second
-   checkout at the owner's first try. When the owner's session on the
-   host daemon is done: the local Docker proofs against the download,
-   clean machine, component cache, runtime session on the pinned base.
-   The lock command on the host is dogfooding at the owner's convenience.
+1. PR #232 is merged into the release branch (2026-10-19). Next, on the
+   owner's word: the throwaway copy `4PR-2-release-0.3.0` to `main`, then
+   `v0.3.0-rc1` on the release branch's tip, which verifies the fix against
+   the published recipe-9 base and a recipe-11 one and closes the record.
+   The local Docker proofs against the download when the host daemon is
+   free. The lock command on the host is dogfooding at the owner's
+   convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
@@ -1817,6 +1843,8 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
+- [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
 - [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
 - [0.3.0 changelog](../../releases/v0.3.0/changelog.md): what is new and fixed since 0.2.15, maintained at every candidate; the prerelease body.
