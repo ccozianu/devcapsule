@@ -618,7 +618,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; carries the console-link fix and the local-base guide; publication and download verification pending |
+| rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
 ## Release 0.2.15
@@ -758,13 +758,12 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. PR #232 is merged into the release branch (2026-10-19). Next, on the
-   owner's word: the throwaway copy `4PR-2-release-0.3.0` to `main`, then
-   `v0.3.0-rc1` on the release branch's tip, which verifies the fix against
-   the published recipe-9 base and a recipe-11 one and closes the record.
-   The local Docker proofs against the download when the host daemon is
-   free. The lock command on the host is dogfooding at the owner's
-   convenience.
+1. rc1 is published and verified as downloaded. The owner verifies the
+   console-link fix with it on the published recipe-9 base and the local
+   recipe-11 base; the record closes on that. The local Docker proofs
+   against the download when the host daemon is free. The lock command
+   on the host is dogfooding at the owner's convenience. Then the cycle's
+   slices in the recommended order, the network node first.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
