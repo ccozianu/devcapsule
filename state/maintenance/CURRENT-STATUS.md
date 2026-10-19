@@ -757,11 +757,13 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner merges PR #232 into the release branch, after the review
-   round if one is run; it rides the next throwaway copy to `main` and the
-   next candidate verifies it. The local Docker proofs against the rc0
-   download when the host daemon is free. The lock command on the host is
-   dogfooding at the owner's convenience.
+1. PR #232 is merged into the release branch (2026-10-19). Next, on the
+   owner's word: the throwaway copy `4PR-2-release-0.3.0` to `main`, then
+   `v0.3.0-rc1` on the release branch's tip, which verifies the fix against
+   the published recipe-9 base and a recipe-11 one and closes the record.
+   The local Docker proofs against the download when the host daemon is
+   free. The lock command on the host is dogfooding at the owner's
+   convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
