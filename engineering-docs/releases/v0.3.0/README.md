@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-18. Stage: **candidate 0 published and verified as downloaded; the owner's test on the other checkout next**.
+Updated: 2026-10-18. Stage: **candidate 1 tagged; publication and download verification in progress**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -223,6 +223,20 @@ replacement.
   The first finding of the day, the console link on the recipe-9 base,
   is the bug record below; the console itself works on the base the
   release will publish.
+
+### RC1 — tagged 2026-10-19
+
+- Tag `v0.3.0-rc1` on `7016cdd7cbd373204c4ae0b9fcb01cede3433d94`, the
+  release branch's tip after the merge of PR #232 and the pre-candidate
+  merge into `main` by PR #233 from the throwaway copy `4PR-2-release-0.3.0`.
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc1`.
+- What it adds to rc0: the console-link fix, the launcher announcing the
+  web console only on a base that has one, and the local-base guide. The
+  candidate verifies the fix against the published recipe-9 base and a
+  recipe-11 base and closes the bug record.
+- Publication, the three downloaded assets and their verification follow
+  when the backend run ends.
 
 ## Release Notes Preparation
 

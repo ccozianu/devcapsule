@@ -618,6 +618,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
+| rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; carries the console-link fix and the local-base guide; publication and download verification pending |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
 ## Release 0.2.15
