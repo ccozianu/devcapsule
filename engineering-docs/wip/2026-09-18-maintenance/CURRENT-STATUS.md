@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
-Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@29f7c940a8a2
+Definition read: WORKFLOW.md@b13783c6080d, WORKFLOW-LOCAL.md@7c55e5a4bf92
 
 Integration target: `main`
 
@@ -56,8 +56,12 @@ stretch-goal inspection completed.**
   agent credentials into child IDE capsules, and (2) no graphical profiler UI
   (`JDK Mission Control` / `org.openjdk.jmc.*` / `VisualVM`) is bundled in
   `eclipse-ide` (`--network none` prevents runtime Marketplace installs). Per
-  the work order's stop condition, stopped the stretch pass and retained the
-  verified baseline recording.
+  the work order's stop condition, stopped the stretch pass, retained the
+  verified baseline recording, and recorded the follow-up stretch-goal work
+  order at
+  `engineering-docs/work-orders/2026-10-19-eclipse-java-1brc-hero-video.md`
+  (indexed in `index.md`) with a preamble of reusable work and unblocking
+  options.
 
 **2026-10-19: the console-link fix is PR #232, along the owner's lines.**
 The launcher reads the base's promise from its labels before the launch,
@@ -1839,6 +1843,8 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
+- [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
 - [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
 - [0.3.0 changelog](../../releases/v0.3.0/changelog.md): what is new and fixed since 0.2.15, maintained at every candidate; the prerelease body.
