@@ -1,8 +1,9 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-18. Stage: **cut; candidate 0 in preparation**.
+Updated: 2026-10-18. Stage: **candidate 0 published and verified as downloaded; the owner's test on the other checkout next**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
+[Changelog since 0.2.15](changelog.md) ·
 [Bug table](bugs.md) ·
 [Work order](../../work-orders/2026-10-18-release-0-3-0.md) ·
 [Scope and cut decision](../../wip/2026-08-09-project-management/2026-10-18-decision-release-0-3-0-scope-and-cut.md) ·
@@ -167,8 +168,8 @@ replacement.
 - [x] Agent freshness upgrade attempt; dispositions in the table above.
 - [x] PR #224 merged into the release branch at `6b97657`; the release branch merged into `main` by PR #228 at `7c20292`, ancestry holds; `main` carries 0.3.0 during the cycle by the owner's merge. The branch, deleted by `delete_branch_on_merge`, restored at the same tip.
 - [ ] The owner regenerates the shared lock on the host; the written lock committed on the release branch, gated, merged to `main`.
-- [ ] On the owner's word, tag `v0.3.0-rc0` on the release branch's tip;
-  backend run; the three assets downloaded, checksum and version verified.
+- [x] `v0.3.0-rc0` tagged on the release branch at `53ebc17`; backend run
+  passed; the three assets downloaded, checksum and version verified.
 - [ ] Local proofs against the download: clean machine, component cache,
   runtime session on the pinned base.
 - [ ] The dogfooding slices, each merged to `main` before the next
@@ -178,10 +179,50 @@ replacement.
 
 ## Candidates
 
-### RC0 — in preparation
+### RC0 — tagged 2026-10-18
 
-Not yet tagged. The gate on the release branch and the freshness attempt
-precede the pull request to `main`; the tag waits for the owner.
+- Tag `v0.3.0-rc0` on `53ebc17705bf99461bbbbf3c4a128228a14c0d51`, the
+  release branch's tip at the pre-candidate merge (PR #231 from the
+  throwaway copy); the two record commits after it on the branch carry no
+  source. The source is byte-identical to the tree the full gate passed on
+  2026-10-18 (PR #230's branch: 1584 unit tests, packaging, documentation
+  contract, web console), and the hosted unit run passed on PR #231.
+- Candidate gate, run locally from a detached checkout of the tag before
+  the push: method `mainline`, no unintegrated commits, version
+  `0.3.0rc0`.
+- Pushed atomically with the branch; backend run
+  [39175482525](https://github.com/ccozianu/devcapsule/actions/runs/39175482525).
+  The run passed (`Build, publish, and prove`), and the
+  [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc0)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into a fresh directory,
+  `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc0`: the checksum
+  file verifies the executable, SHA-256
+  `5d0f0e6c60e72eb291ce5de18036b10c5496b71cfce4e5c7076fe60cd195a6b1`, and
+  the manifest records the same value, the tag, the release branch, the
+  source revision `53ebc17…` and the gate's `mainline` disposition. The
+  executable reports version `0.3.0rc0`, mnemonic `v0.3.0-rc0` and that
+  source revision; its help answers.
+- What it carries, beyond 0.2.15: everything `main` had at the cut (see
+  above), the agent pins Codex 0.163.0, Claude Code 2.1.302 and
+  Antigravity CLI 1.4.2, and the launchable-lock test.
+- Owner-reported, 2026-10-18: the downloaded candidate, installed as
+  `devcapsule-local` on the host and reporting `v0.3.0-rc0`, package
+  `0.3.0rc0`, source `53ebc17…`, ran `project run` on the second
+  DevCapsule checkout and the capsule launched the first time. This is
+  the owner's evidence, distinct from the agent's machine proofs; the
+  interactive agent and console checks continue there. The local Docker
+  proofs against the download, clean machine, component cache, runtime
+  session on the pinned base, follow once the owner's session on that
+  daemon is done.
+- Owner-reported, 2026-10-19: with the candidate's own builder, the owner
+  built a recipe-11 base on the host (`images build --type base
+  --recipe ubuntu-24.04 --network host --source-revision 53ebc17…`),
+  selected it for the second checkout with `config authorize base-image`,
+  resolved and launched: the web console answered on the printed link.
+  The first finding of the day, the console link on the recipe-9 base,
+  is the bug record below; the console itself works on the base the
+  release will publish.
 
 ## Release Notes Preparation
 

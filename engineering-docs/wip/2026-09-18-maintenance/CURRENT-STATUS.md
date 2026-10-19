@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
-Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@28234e24364b
+Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@29f7c940a8a2
 
 Integration target: `main`
 
@@ -23,6 +23,82 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-19: the console-link fix is PR #232, along the owner's lines.**
+The launcher reads the base's promise from its labels before the launch,
+`web_console_availability` in the images contract: the
+`devcapsule.base.webconsole` label and recipe 11 or later, the recipe
+that gives the console its process monitor. `project run` reads it beside
+the display transport and hands it to the launcher, which on a base
+without the console plans nothing, no port, no token, no console section,
+no published port, no origin, no readiness watcher, and prints one
+statement in place of the link: the base, the recipe the console needs,
+the one `images build` command with the launcher's own source revision,
+and the guide. The guide is new, `docs/configuration/local-base.md`, the
+page the C16 gate was missing: build a base, list it, select it with
+`config authorize base-image`, what the selection is and is not, the way
+back. [PR #232](https://github.com/ccozianu/devcapsule/pull/232) into the
+release branch; the full gate passed end to end and the hosted run passed;
+the bug record says fixed, verification on a downloaded candidate against
+the recipe-9 and a recipe-11 base closes it. The implementor-and-reviewer
+loop's review round is the owner's to run.
+
+**2026-10-19: the console works on a recipe-11 base built from rc0.** The
+owner built the base on the host with the candidate's own `images build`,
+provenance `53ebc17`, selected it for the second checkout with `config
+authorize base-image`, the developer-owned selection the product
+provides, resolved and launched: the console answered on the printed
+link. Two things follow for the cycle. The published recipe-11 base, a
+gate before the final tag, is what makes this the default for everyone;
+and the user documentation has no page that walks through building and
+selecting a base, which belongs to the C16 documentation gate.
+
+**2026-10-18, the owner's first finding on rc0: a console link on a base
+without the console.** The launcher prints the web console link for every
+run, and the runtime then says the base has no console, which is true of
+the published `ubuntu-24.04@9`. Filed as a bug by the owner's word, target
+0.3.0, a release fix in this cycle:
+[the record](../../bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md).
+Then, the owner reports, the launcher waits 180 s for that console and
+advises opening the link; the readiness watcher shared with the display
+cannot hear the runtime's notice. The launcher can read the base's
+recipe label before it prints; the fix is one statement that is true,
+link or substitute line, and no port, token or wait for a console that
+cannot answer. It sits beside C10, the
+first-session summary, and goes in the same slice or just before it. The
+changelog's *Known in candidate 0* and the bug table carry it.
+
+**2026-10-18, rc0 tagged.** PR #231 merged; the owner said go. The tag
+`v0.3.0-rc0` is on `53ebc17`, the release branch's tip at the merge, whose
+source is byte-identical to the fully gated PR #230 tree; the two record
+commits after it carry no source. The candidate gate script, run from a
+detached checkout of the tag before the push, reported `mainline` and no
+unintegrated commits. Pushed atomically with the branch; backend run
+39175482525 passed, the prerelease is public with its three assets, and
+the download under `~/.cache/devcapsule-releases/v0.3.0-rc0` verifies:
+checksum file and manifest agree on the executable, which reports
+`0.3.0rc0` at `53ebc17`. Deliverable 1 of the work order is done to its
+letter. Next the owner's test on the other checkout; the local Docker
+proofs against this download follow that. The owner keeps this capsule, the old workhorse,
+running meanwhile.
+
+**2026-10-18, night, second: the pre-candidate merge goes through a
+throwaway copy, PR #231.** PR #229 and PR #230 are merged. The owner
+keeps delete-on-merge on and rules the workaround for the one ref that
+must survive its merges: each merge of the release branch into `main` is
+a pull request from `4PR-NNN-release-X.Y.Z`, the owner's spelling of the
+same night so that no copy starts with the `release-` prefix, a copy
+created at the release branch's tip for that pull request alone, deleted
+on merge;
+*Release Policy* 8 in `WORKFLOW-LOCAL.md` and the runbook's step 2 say
+so, with the copy named a throwaway integration ref, never a release ref,
+since the definition wants release refs told by name alone.
+[PR #231](https://github.com/ccozianu/devcapsule/pull/231) from
+`release-0.3.0-4PR-1` is the first: the pre-candidate merge, carrying
+PR #230, the policy rule and this file's record; `main` keeps 0.3.1.dev0.
+After it merges, every commit of the release branch is reachable from
+`main`, the main disposition for rc0 is ancestry, and the tag waits for
+the owner's word.
 
 **2026-10-18, last: the red test was wrong, not the lock; PR #230.** The
 owner read `test_resolution_reconstitutes_the_dogfood_environment` and
@@ -423,7 +499,9 @@ the next candidate tag.
    on a candidate.
 4. C10: a ready, stopped or error summary instead of streamed desktop
    diagnostics, and Ctrl+C ending with a result, not a traceback; the two
-   bug records filed first; closes both on a candidate.
+   bug records filed first; closes both on a candidate. Beside it, the
+   owner's rc0 finding of 2026-10-18: the console link printed on a base
+   without the console, fixed as PR #232, verified on the next candidate.
 5. Forced configuration: `project config resolve --force` and `project run
    --force-config`, mandatory needs split from optional ones; the
    requirement below; the capabilities page documents both and a
@@ -440,7 +518,8 @@ the next candidate tag.
    merged into the release branch, the trigger proven on #226 and #227.
 
 Gates before the final tag: the owner's eleven user-docs decisions; the
-documentation describing the accepted candidate; a published base for the
+documentation describing the accepted candidate, the page on building and
+selecting a local base now written with PR #232; a published base for the
 candidate; the fixed bug records verified against a downloaded candidate;
 the release notes under `releases/v0.3.0/notes.md`. Out of 0.3.0, named in
 the overview: consent and vendor trust, installed-IDE reuse with an empty
@@ -539,7 +618,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc0 | not yet tagged | `main` disposition: ancestry, release branch merged by PR #228 at `7c20292`; blocked on the shared lock, then the owner's word |
+| rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
 ## Release 0.2.15
 
@@ -678,11 +757,13 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. The owner merges PR #230 into the release branch and PR #229 into
-   `main`; then the release branch merges into `main` by pull request, which
-   turns the hosted run green there. Then, on the owner's word,
-   `v0.3.0-rc0` on the release branch's tip. The lock command on the host
-   is dogfooding at the owner's convenience, no longer a gate.
+1. PR #232 is merged into the release branch (2026-10-19). Next, on the
+   owner's word: the throwaway copy `4PR-2-release-0.3.0` to `main`, then
+   `v0.3.0-rc1` on the release branch's tip, which verifies the fix against
+   the published recipe-9 base and a recipe-11 one and closes the record.
+   The local Docker proofs against the download when the host daemon is
+   free. The lock command on the host is dogfooding at the owner's
+   convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
@@ -1495,9 +1576,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - Closed 2026-10-18, twice: PR #228 carried the release version onto
   `main`; the owner then changed the protocol, and PR #229 reopens `main`
   at 0.3.1.dev0 at the cut, ahead of every candidate.
-- Awaiting the human: `delete_branch_on_merge` is on and deleted
-  `release-0.3.0` after PR #228; restored at `6b97657`. Turn it off, or
-  expect the restore after every pre-candidate merge.
+- Closed 2026-10-18 by the owner: delete-on-merge stays; the release
+  branch merges into `main` through a throwaway copy, *Release Policy* 8.
 - Awaiting the human, with the version question: whether the manifest's
   release-branch line (`source-version` on `devel`) is acceptable until the
   contract or its check gains a release-branch rule, mailed to
@@ -1726,6 +1806,7 @@ Earlier open-thread history (read against the current scope above):
 
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
 - [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
+- [0.3.0 changelog](../../releases/v0.3.0/changelog.md): what is new and fixed since 0.2.15, maintained at every candidate; the prerelease body.
 - [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
 - [Session logs acceptance](evidence/2026-10-11-session-logs/README.md): the recipe-12 base, the real session, the rotation; open when a reviewer asks what was proven on a capsule.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.

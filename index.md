@@ -50,6 +50,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [0.2.14 release notes](engineering-docs/releases/v0.2.14/notes.md)
 
 - [0.3.0 release work, scope and candidates](engineering-docs/releases/v0.3.0/README.md)
+- [0.3.0 changelog since 0.2.15](engineering-docs/releases/v0.3.0/changelog.md)
 - [0.3.0 bug table](engineering-docs/releases/v0.3.0/bugs.md)
 - [0.2.15 release work, scope and agent validation](engineering-docs/releases/v0.2.15/README.md)
 - [0.2.15 accepted-candidate promotion record](engineering-docs/releases/v0.2.15.json)
@@ -270,6 +271,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Console link printed on a base without the console](engineering-docs/bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md)
 - [No test proves old projects launch with new releases](engineering-docs/bugs/devcapsule/2026-10-18-no-test-proves-old-projects-launch-with-new-releases.md)
 - [Unpacked archive cache publication and recovery](engineering-docs/bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md)
 - [Optional omission loses a local version-set pin](engineering-docs/bugs/devcapsule/2026-10-06-optional-omission-loses-local-version-pin.md)

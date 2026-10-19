@@ -71,6 +71,8 @@ from ...host_open import (
     host_open_bridge,
 )
 from ..command_output import render_command
+from ...build_info import BuildInfoError, current_build_info
+from ...images.contract import WEBCONSOLE_RECIPE, WebConsoleAvailability
 from ...materialization import RUNTIME_PLAN_PATH
 from ...runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
 from ...project import ProjectMountError
@@ -122,6 +124,37 @@ class TempRuntimeFiles:
 
 SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
 SUDOERS_POLICY = "%ide-sudo ALL=(ALL:ALL) NOPASSWD: ALL\n"
+
+
+
+LOCAL_BASE_GUIDE_URL = "https://devcapsule.mycodespace.ai/docs/current/configuration/local-base/"
+
+
+def web_console_notice(availability: WebConsoleAvailability) -> str:
+    """One true statement in place of the console link on a base without one.
+
+    Names the base, the recipe the console needs, the one command that builds
+    a base with it from this launcher's own source, and the guide that says
+    how to select the built base for a checkout.
+    """
+
+    base = availability.base or "an image without DevCapsule recipe labels"
+    try:
+        revision = current_build_info().source_revision
+    except BuildInfoError:
+        revision = "unknown"
+    provenance = (
+        f"--source-revision {revision}"
+        if re.fullmatch(r"[0-9a-f]{40,64}", revision)
+        else "--allow-local-source"
+    )
+    return (
+        f"Web console: none on this base ({base}; the console needs base recipe "
+        f"{WEBCONSOLE_RECIPE} or later); the capsule runs without it.\n"
+        f"  To build a base that has it:  devcapsule images build --type base "
+        f"--recipe ubuntu-24.04 {provenance}\n"
+        f"  Then select it for this checkout; the steps: {LOCAL_BASE_GUIDE_URL}"
+    )
 
 
 @dataclass
@@ -184,6 +217,10 @@ class PycharmRunOptions:
     # Test seam: how the contained display's URL is opened once ready.
     open_display_url: Callable[[str], None] | None = None
     open_console_url: Callable[[str], None] | None = None
+    # Whether the base promises a web console, read from its labels by the
+    # caller (commands/project.py); without it the launcher announces the
+    # absence once and plans no console: no port, no token, no wait.
+    web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
 
 
 @dataclass
@@ -235,6 +272,7 @@ class PycharmRunConfig:
     console_host_port: int | None = None
     console_token: str = ""
     open_console_url: Callable[[str], None] | None = None
+    web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
     # This session's log directory on the host, bound into the capsule at
     # SESSION_LOG_DESTINATION: the launcher's own log, the supervisor's, and
     # one file per supervised child (see devcapsule.logs).
@@ -301,6 +339,8 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                         config.open_display_url or default_opener(runtime_env),
                         stop_watching,
                     )
+                if config.runtime_plan is not None and not config.web_console.available:
+                    print(web_console_notice(config.web_console), file=sys.stderr, flush=True)
                 if config.console_host_port is not None:
                     console = console_url(config.console_host_port, config.console_token)
                     print(
@@ -761,23 +801,26 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             )
         else:
             selected_runtime_plan = selected_runtime_plan.with_display(DisplayPlan.host_x11())
-        # The web console runs whenever the runtime runs, with or without a
-        # display, reached like the display: one loopback port, one token.
+        # The web console runs whenever the runtime runs on a base that has
+        # one, with or without a display, reached like the display: one
+        # loopback port, one token. On a base without it nothing is planned,
+        # and the launch announces the absence once beside the links.
         # Allocation releases its socket. The OS can return the display's
         # port again before either listener starts.
-        for _ in range(10):
-            console_host_port = allocate_loopback_port()
-            if console_host_port != display_host_port:
-                break
-        else:
-            raise PycharmRunError("Could not allocate distinct display and web console ports; retry the launch.")
-        console_token = new_run_token()
-        console_listen = "127.0.0.1" if options.network_mode == "host" else "0.0.0.0"
-        console_port = console_host_port if options.network_mode == "host" else CONTAINER_CONSOLE_PORT
-        selected_runtime_plan = selected_runtime_plan.with_console(ConsolePlan(
-            console_listen, console_port, CONSOLE_TOKEN_DESTINATION,
-            source_path=console_development_source(project, runtime_plan.project_mount),
-        ))
+        if options.web_console.available:
+            for _ in range(10):
+                console_host_port = allocate_loopback_port()
+                if console_host_port != display_host_port:
+                    break
+            else:
+                raise PycharmRunError("Could not allocate distinct display and web console ports; retry the launch.")
+            console_token = new_run_token()
+            console_listen = "127.0.0.1" if options.network_mode == "host" else "0.0.0.0"
+            console_port = console_host_port if options.network_mode == "host" else CONTAINER_CONSOLE_PORT
+            selected_runtime_plan = selected_runtime_plan.with_console(ConsolePlan(
+                console_listen, console_port, CONSOLE_TOKEN_DESTINATION,
+                source_path=console_development_source(project, runtime_plan.project_mount),
+            ))
     session_id = logs.new_session_id()
     session_log_path = session_logs_root(project, env) / session_id
     session_log_directory: Path | None
@@ -886,6 +929,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         log_budget_bytes=log_budget_bytes,
         console_token=console_token,
         open_console_url=options.open_console_url,
+        web_console=options.web_console,
         interactive_state_mounts=tuple(interactive_state_mounts),
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),

@@ -63,7 +63,7 @@ the checkout-local environment described in the [developer environment](../../de
 2. **Account for main and publish the first candidate.** Follow *Release Fixes
    And Main* and the current candidate gate below. Push the release branch;
    merge it into `main` by a pull request from a throwaway copy,
-   `release-X.Y.Z-4PR-NNN` created at the release branch's tip, since the
+   `4PR-NNN-release-X.Y.Z` created at the release branch's tip, since the
    repository deletes a pull request's branch on merge (`WORKFLOW-LOCAL.md`,
    *Release Policy* 8); verify the applicable main disposition before creating
    an immutable `vX.Y.Z-rc0` tag. Wait for **Publish DevCapsule PEX** to pass
