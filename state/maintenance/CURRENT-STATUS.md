@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-10-19 for the capsule's restart under rc1; releasing 0.3.0: rc0 and rc1 published and verified as downloaded, rc1 carrying the console-link fix and the local-base guide; the owner verifies that fix on both bases; then the Docker proofs and the cycle's slices, the network node first
+State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
 Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@29f7c940a8a2
 
@@ -24,24 +24,40 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-**2026-10-19: the console-link fix is PR #232, along the owner's lines.**
-The launcher reads the base's promise from its labels before the launch,
-`web_console_availability` in the images contract: the
-`devcapsule.base.webconsole` label and recipe 11 or later, the recipe
-that gives the console its process monitor. `project run` reads it beside
-the display transport and hands it to the launcher, which on a base
-without the console plans nothing, no port, no token, no console section,
-no published port, no origin, no readiness watcher, and prints one
-statement in place of the link: the base, the recipe the console needs,
-the one `images build` command with the launcher's own source revision,
-and the guide. The guide is new, `docs/configuration/local-base.md`, the
-page the C16 gate was missing: build a base, list it, select it with
-`config authorize base-image`, what the selection is and is not, the way
-back. [PR #232](https://github.com/ccozianu/devcapsule/pull/232) into the
-release branch; the full gate passed end to end and the hosted run passed;
-the bug record says fixed, verification on a downloaded candidate against
-the recipe-9 and a recipe-11 base closes it. The implementor-and-reviewer
-loop's review round is the owner's to run.
+**2026-10-19 (`ws-maintenance/e2e_videos`): landing-page work order
+(`2026-10-18-landing-page-why-devcapsule.md`) baseline verified; bounded
+stretch-goal inspection completed.**
+- **Baseline (Deliverables 1–4):** Recorded the work order at
+  `engineering-docs/work-orders/2026-10-18-landing-page-why-devcapsule.md` and
+  indexed it in `index.md`. Extended Contract v1 (`website/CONTRACT.md` and
+  `engineering-docs/specifications/product/content-website-contract.md`) with
+  `website:demo`, `website:continuity`, multi-paragraph `website:hero`, and
+  self-hosted `.webm`/`.mp4` assets. Replaced the invented right-hand hero
+  schematic with a framed `1152×720` (`16:10`) 26-second (`2.6×`) WebM excerpt
+  (`after-restart-hero-excerpt.webm`) and poster (`after-restart-hero-poster.png`)
+  from the verified 2026-10-04 IntelliJ persistence session, with WebVTT captions,
+  step summary, modal `<dialog>` expansion, and direct links to both full
+  recordings (`after-restart.webm`, `first-session.webm`) and the validation
+  note (`2026-10-04-intellij-playwright-validation.md`). Reorganized
+  `website:benefits` into three outcome-led cards, added the four-fact
+  `website:continuity` handoff excerpt, and aligned `/why/`. Verified with
+  `npm test` (`23 passed`), `npm run check:content`, `npm run build`,
+  `npm run check`, `nox -s docs-contract`, 50 documentation unit tests,
+  `scripts/browser-check.mjs` (59 viewport/palette/WCAG A/AA audits), and
+  Playwright layout/playback checks at `1366×768` and `390×844`.
+- **Stretch-goal inspection (15-minute budget):** Inspected the cached
+  `devcapsule-local-eclipse:59ccaf413ce00f743fbc` image. It includes Eclipse
+  2026-09 R (`/opt/eclipse`), OpenJDK `25.0.4+7` (`/opt/java/jdk-25.0.4+7`),
+  Apache Maven `3.9.16`, JUnit 5/6, EclEmma `3.1.12` (`org.eclipse.eclemma.ui`
+  + JaCoCo `0.8.15` for source coverage highlighting), and CLI `jfr`. Two
+  prerequisites for the 6-step 1BRC stretch scenario are absent without
+  component/harness changes: (1) no coding agent (`claude`, `codex`, `agy`) is
+  installed in the cached Eclipse image and the E2E harness does not copy parent
+  agent credentials into child IDE capsules, and (2) no graphical profiler UI
+  (`JDK Mission Control` / `org.openjdk.jmc.*` / `VisualVM`) is bundled in
+  `eclipse-ide` (`--network none` prevents runtime Marketplace installs). Per
+  the work order's stop condition, stopped the stretch pass and retained the
+  verified baseline recording.
 
 **2026-10-19: the console works on a recipe-11 base built from rc0.** The
 owner built the base on the host with the candidate's own `images build`,
@@ -501,7 +517,7 @@ the next candidate tag.
    diagnostics, and Ctrl+C ending with a result, not a traceback; the two
    bug records filed first; closes both on a candidate. Beside it, the
    owner's rc0 finding of 2026-10-18: the console link printed on a base
-   without the console, fixed as PR #232, verified on the next candidate.
+   without the console, a release fix in this cycle.
 5. Forced configuration: `project config resolve --force` and `project run
    --force-config`, mandatory needs split from optional ones; the
    requirement below; the capabilities page documents both and a
@@ -518,9 +534,8 @@ the next candidate tag.
    merged into the release branch, the trigger proven on #226 and #227.
 
 Gates before the final tag: the owner's eleven user-docs decisions; the
-documentation describing the accepted candidate, the page on building and
-selecting a local base now written with PR #232; a published base for the
-candidate; the fixed bug records verified against a downloaded candidate;
+documentation describing the accepted candidate, a page on building and
+selecting a local base among it; a published base for the candidate; the fixed bug records verified against a downloaded candidate;
 the release notes under `releases/v0.3.0/notes.md`. Out of 0.3.0, named in
 the overview: consent and vendor trust, installed-IDE reuse with an empty
 launcher cache, browser evidence for diagnostics, the console's deliverable
@@ -618,7 +633,6 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
 ## Release 0.2.15
@@ -758,12 +772,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. rc1 is published and verified as downloaded. The owner verifies the
-   console-link fix with it on the published recipe-9 base and the local
-   recipe-11 base; the record closes on that. The local Docker proofs
-   against the download when the host daemon is free. The lock command
-   on the host is dogfooding at the owner's convenience. Then the cycle's
-   slices in the recommended order, the network node first.
+1. rc0 is published, verified as downloaded, and launched the second
+   checkout at the owner's first try. When the owner's session on the
+   host daemon is done: the local Docker proofs against the download,
+   clean machine, component cache, runtime session on the pinned base.
+   The lock command on the host is dogfooding at the owner's convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
@@ -1573,27 +1586,6 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Paused 2026-10-19 so the owner restarts this capsule, the old workhorse,
-  under the downloaded rc1; the second checkout runs under rc0 with another
-  agent. Nothing is uncommitted; the checkout sits on `release-0.3.0` at
-  the published tip; the claim is released.
-- Awaiting the human: the verification of the console-link fix on rc1,
-  the published recipe-9 base and the local recipe-11 base, which closes
-  [the record](../../bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md).
-- On resumption, re-verify before trusting: which launcher started the
-  capsule (`devcapsule0 version`), whether the shared lock changed on disk
-  (the owner may run the lock command on the host before relaunching; if
-  so, commit the written lock on the release branch and rerun the gate),
-  and whether this checkout was given the local recipe-11 base.
-- Next slices in the recommended order: the universal `network` node,
-  then C10 with its two records filed first, forced configuration, the
-  diagnostics snapshot, image cleanup after the design review, C20 last.
-  The local Docker proofs against the rc1 download when the host daemon
-  is free.
-- Deliberately not preserved: the rc0 and rc1 downloads under
-  `~/.cache/devcapsule-releases/`, regenerable from the public releases;
-  the gate logs under `/opt/devcapsule-gate/`; the smoke scratch of the
-  agent freshness attempt in the session scratchpad.
 - Closed 2026-10-18, twice: PR #228 carried the release version onto
   `main`; the owner then changed the protocol, and PR #229 reopens `main`
   at 0.3.1.dev0 at the cut, ahead of every candidate.
