@@ -1,14 +1,17 @@
 ---
 description: "The web console: your capsule as a page, with what the devcapsule commands report, reached through one link behind the run's token."
 weight: 5
-updated: 2026-10-09
+updated: 2026-10-19
 ---
 # The web console
 
-Base recipe 10 adds a small read-only website about the capsule. Older bases
-print a notice and run without the console. When you run a project, the
-launcher prints two links: the desktop, when the capsule has
-one, and the web console.
+Base recipe 11 adds a small read-only website about the capsule. On an older
+base the launcher says so in place of the link, with the one command that
+builds a base that has it and a pointer to
+[building and selecting a local base](../configuration/local-base.md); the
+capsule runs without the console. When you run a project on a base that has
+it, the launcher prints two links: the desktop, when the capsule has one, and
+the web console.
 
 ```text
 Web console: http://127.0.0.1:41273/?token=…

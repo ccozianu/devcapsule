@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: minor
 target: 0.3.0
 owner: maintenance
@@ -94,3 +94,23 @@ require.
 - The owner's transcript above no longer reproduces on a downloaded
   candidate.
 - The web console page in `docs/sessions/` describes the substitute line.
+
+## Fix, 2026-10-19
+
+On `ws-maintenance/0.3.0-console-link`, a release fix into
+`release-0.3.0`. The base's promise is read from its labels before the
+launch: `web_console_availability` in `devcapsule/images/contract.py`
+requires the `devcapsule.base.webconsole` label and a recipe of 11 or
+later, and names the base as `family@recipe`. `project run` reads it where
+it chooses the display transport and hands it to the launcher, which on a
+base without the console plans nothing, no port, no token, no console
+section, no published port, no origin in the capsule, no readiness watcher,
+and prints one statement in place of the link: the base, the recipe the
+console needs, the one `images build` command with the launcher's own
+source revision, and the guide, `docs/configuration/local-base.md`, new
+with this fix, on building and selecting a local base. The runtime's notice
+stays as the backstop for a base the launcher could not inspect; with no
+console section in the plan it stays silent. Unit tests pin the label rule,
+the empty plan and the notice's three lines. Verification on a downloaded
+candidate against the recipe-9 published base and a recipe-11 base closes
+the record.

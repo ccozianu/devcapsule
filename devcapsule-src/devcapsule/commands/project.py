@@ -65,6 +65,7 @@ from devcapsule.configuration.nodes import (
 from devcapsule.environment_realization import realize_environment, required_local_image, omit_unavailable_optional
 from devcapsule.materialization import ArtifactUnavailable
 from devcapsule.display_client import select_display_transport
+from devcapsule.images.contract import WebConsoleAvailability, web_console_availability
 from devcapsule.materialization import ImageDetails, validate_base_image
 from devcapsule.project import project_namespace
 from devcapsule.configuration.operations import (
@@ -1376,12 +1377,14 @@ class ProjectRunCommand(Command):
         host_access = review.effective_host(overrides)
         host_x11_answer = host_access.host_x11
         display_transport: str | None = None
+        web_console: WebConsoleAvailability | None = None
 
         def prepare_display(base: ImageDetails) -> None:
-            nonlocal display_transport
+            nonlocal display_transport, web_console
             display_transport = _select_display_transport(
                 base.labels, host_x11_answer=host_x11_answer
             )
+            web_console = web_console_availability(base.labels)
             if host_x11_answer is None:
                 allow = AuthorizationChoice("host-x11", "true", "").command(root)
                 deny = AuthorizationChoice("host-x11", "false", "").command(root)
@@ -1446,6 +1449,8 @@ class ProjectRunCommand(Command):
             display_transport = _select_display_transport(
                 image_labels, host_x11_answer=host_x11_answer
             )
+        if web_console is None:
+            web_console = web_console_availability(image_labels)
         recursive_environment = recursive_e2e_launch_environment(
             root,
             docker_daemon=str(selected_docker_daemon),
@@ -1534,6 +1539,7 @@ class ProjectRunCommand(Command):
                 project_state=None,
                 enable_host_browser=selected_host_browser,
                 display_transport=display_transport,
+                web_console=web_console,
             )
         )
         if command_report is not None:

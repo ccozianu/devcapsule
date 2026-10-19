@@ -37,6 +37,43 @@ RUNTIME_LABEL = "devcapsule.base.runtime"
 BUILDER_LABEL = "org.opencontainers.image.version"
 SOURCE_REVISION_LABEL = "devcapsule.source.revision"
 RECIPE_SOURCE_LABEL = "devcapsule.base.recipe-source"
+WEBCONSOLE_LABEL = "devcapsule.base.webconsole"
+# Recipe 10 installs the console and labels its root; recipe 11 gives it the
+# process monitor its pages need. A base before 11 has no console the launcher
+# should announce, label or not.
+WEBCONSOLE_RECIPE = 11
+
+
+@dataclass(frozen=True)
+class WebConsoleAvailability:
+    """Whether a base promises a working web console, and which base it is.
+
+    ``available`` is read from the base's labels before the launch, so the
+    launcher announces the console, binds its port and waits for it only
+    when the base can answer. ``base`` is the identity ``family@recipe`` for
+    the message when it cannot, or ``None`` for an image without recipe
+    labels.
+    """
+
+    available: bool
+    base: str | None
+
+
+def web_console_availability(labels: Mapping[str, str]) -> WebConsoleAvailability:
+    """Read the console's promise from a base image's labels.
+
+    Available when the base labels the console's root and its recipe is
+    ``WEBCONSOLE_RECIPE`` or later. A missing label, a recipe below it, or no
+    recipe labels at all mean no console; the runtime's own check at start
+    remains the backstop for a base the launcher could not inspect.
+    """
+
+    family = labels.get(FAMILY_LABEL)
+    version = labels.get(RECIPE_VERSION_LABEL)
+    base = f"{family}@{version}" if family and version else None
+    recipe = int(version) if version and version.isdigit() else None
+    available = bool(labels.get(WEBCONSOLE_LABEL)) and recipe is not None and recipe >= WEBCONSOLE_RECIPE
+    return WebConsoleAvailability(available=available, base=base)
 
 CONTAINED_DISPLAY = "contained"
 HOST_X11_ONLY_DISPLAY = "host-x11-only"

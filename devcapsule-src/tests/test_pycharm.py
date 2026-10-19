@@ -1386,6 +1386,72 @@ def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_pat
     assert not files.console_token_file.exists()
 
 
+def test_no_web_console_is_planned_on_a_base_without_one(tmp_path: Path) -> None:
+    """On a base before recipe 11 the launcher plans no console at all: no
+    port, no token, no console section in the runtime plan, no published
+    port and no origin in the capsule, so nothing waits for a console that
+    cannot answer (bug of 2026-10-18)."""
+    from devcapsule.images.contract import WebConsoleAvailability
+
+    env = base_env(tmp_path)
+    env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
+    config = contained_config(tmp_path, web_console=WebConsoleAvailability(False, "ubuntu-24.04@9"))
+    assert config.console_host_port is None and config.console_token == ""
+    assert config.runtime_plan is not None and config.runtime_plan.console is None
+    assert config.display_host_port is not None  # the display is untouched
+    with (
+        patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
+        patch("devcapsule.launch.pycharm._launcher.write_user_files"),
+    ):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.console_token_file is None
+        args = build_docker_args(config, files, env)
+        published = [args[index + 1] for index, item in enumerate(args) if item == "--publish"]
+        assert published == [f"127.0.0.1:{config.display_host_port}:6080"]
+        assert not any(item.startswith("DEVCAPSULE_CONSOLE_URL=") for item in args)
+        assert "devcapsule-console-token" not in " ".join(args)
+    finally:
+        cleanup_temp_runtime_files(files)
+
+
+def test_web_console_notice_names_the_base_the_command_and_the_guide() -> None:
+    """The line printed in place of the link: the base, the recipe the console
+    needs, the one build command with this launcher's own source revision, and
+    the guide for selecting the built base; a source-form launcher offers
+    --allow-local-source instead."""
+    from devcapsule.build_info import BuildInfo
+    from devcapsule.images.contract import WebConsoleAvailability
+    from devcapsule.launch.pycharm._launcher import LOCAL_BASE_GUIDE_URL, web_console_notice
+
+    revision = "53ebc17705bf99461bbbbf3c4a128228a14c0d51"
+    released = BuildInfo(
+        schema_version=2, version="0.3.0rc0", source_repository="https://github.com/ccozianu/devcapsule",
+        source_revision=revision, source_url=f"https://github.com/ccozianu/devcapsule/commit/{revision}",
+        build_mnemonic="v0.3.0-rc0",
+    )
+    with patch("devcapsule.launch.pycharm._launcher.current_build_info", return_value=released):
+        notice = web_console_notice(WebConsoleAvailability(False, "ubuntu-24.04@9"))
+    lines = notice.splitlines()
+    assert lines[0] == (
+        "Web console: none on this base (ubuntu-24.04@9; the console needs base recipe 11 or later); "
+        "the capsule runs without it."
+    )
+    assert lines[1].strip() == (
+        f"To build a base that has it:  devcapsule images build --type base --recipe ubuntu-24.04 --source-revision {revision}"
+    )
+    assert lines[2].strip().endswith(LOCAL_BASE_GUIDE_URL)
+    assert LOCAL_BASE_GUIDE_URL.startswith("https://devcapsule.mycodespace.ai/docs/current/")
+    source_form = BuildInfo(
+        schema_version=2, version="0.3.1.dev0", source_repository="https://github.com/ccozianu/devcapsule",
+        source_revision="unknown", source_url="unknown", build_mnemonic="v0.3.1.dev0-local-linux-x86_64",
+    )
+    with patch("devcapsule.launch.pycharm._launcher.current_build_info", return_value=source_form):
+        notice = web_console_notice(WebConsoleAvailability(False, None))
+    assert "--allow-local-source" in notice and "--source-revision" not in notice
+    assert "an image without DevCapsule recipe labels" in notice
+
+
 def test_web_console_under_host_networking_listens_on_host_loopback_directly(tmp_path: Path) -> None:
     config = contained_config(tmp_path, network_mode="host")
     assert config.runtime_plan is not None and config.runtime_plan.console == ConsolePlan(

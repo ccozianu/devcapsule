@@ -109,3 +109,22 @@ def test_compatibility_report_names_the_rule_and_the_evidence() -> None:
     report = compatibility_report(lock)
     assert report[0].startswith("Compatibility: components validated on family ubuntu-24.04 run on ubuntu-24.04@9")
     assert any(line.startswith("  validated:") or line.startswith("  not validated:") for line in report[1:])
+
+
+def test_web_console_availability_needs_the_label_and_recipe_11() -> None:
+    """The launcher announces the console only when the base promises one:
+    the console's root labelled and a recipe of 11 or later (recipe 10 has the
+    console without the process monitor its pages need)."""
+
+    from devcapsule.images.contract import WEBCONSOLE_LABEL, web_console_availability
+
+    labels = {"devcapsule.base.recipe": "ubuntu-24.04", "devcapsule.base.recipe-version": "11",
+              WEBCONSOLE_LABEL: "/opt/devcapsule-webconsole"}
+    assert web_console_availability(labels).available
+    assert web_console_availability(labels).base == "ubuntu-24.04@11"
+    assert not web_console_availability({**labels, "devcapsule.base.recipe-version": "10"}).available
+    assert not web_console_availability({k: v for k, v in labels.items() if k != WEBCONSOLE_LABEL}).available
+    published = web_console_availability({"devcapsule.base.recipe": "ubuntu-24.04", "devcapsule.base.recipe-version": "9"})
+    assert (published.available, published.base) == (False, "ubuntu-24.04@9")
+    unlabelled = web_console_availability({})
+    assert (unlabelled.available, unlabelled.base) == (False, None)
