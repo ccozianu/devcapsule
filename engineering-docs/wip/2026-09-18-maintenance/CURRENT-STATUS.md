@@ -24,6 +24,41 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-19 (`ws-maintenance/e2e_videos`): landing-page work order
+(`2026-10-18-landing-page-why-devcapsule.md`) baseline verified; bounded
+stretch-goal inspection completed.**
+- **Baseline (Deliverables 1–4):** Recorded the work order at
+  `engineering-docs/work-orders/2026-10-18-landing-page-why-devcapsule.md` and
+  indexed it in `index.md`. Extended Contract v1 (`website/CONTRACT.md` and
+  `engineering-docs/specifications/product/content-website-contract.md`) with
+  `website:demo`, `website:continuity`, multi-paragraph `website:hero`, and
+  self-hosted `.webm`/`.mp4` assets. Replaced the invented right-hand hero
+  schematic with a framed `1152×720` (`16:10`) 26-second (`2.6×`) WebM excerpt
+  (`after-restart-hero-excerpt.webm`) and poster (`after-restart-hero-poster.png`)
+  from the verified 2026-10-04 IntelliJ persistence session, with WebVTT captions,
+  step summary, modal `<dialog>` expansion, and direct links to both full
+  recordings (`after-restart.webm`, `first-session.webm`) and the validation
+  note (`2026-10-04-intellij-playwright-validation.md`). Reorganized
+  `website:benefits` into three outcome-led cards, added the four-fact
+  `website:continuity` handoff excerpt, and aligned `/why/`. Verified with
+  `npm test` (`23 passed`), `npm run check:content`, `npm run build`,
+  `npm run check`, `nox -s docs-contract`, 50 documentation unit tests,
+  `scripts/browser-check.mjs` (59 viewport/palette/WCAG A/AA audits), and
+  Playwright layout/playback checks at `1366×768` and `390×844`.
+- **Stretch-goal inspection (15-minute budget):** Inspected the cached
+  `devcapsule-local-eclipse:59ccaf413ce00f743fbc` image. It includes Eclipse
+  2026-09 R (`/opt/eclipse`), OpenJDK `25.0.4+7` (`/opt/java/jdk-25.0.4+7`),
+  Apache Maven `3.9.16`, JUnit 5/6, EclEmma `3.1.12` (`org.eclipse.eclemma.ui`
+  + JaCoCo `0.8.15` for source coverage highlighting), and CLI `jfr`. Two
+  prerequisites for the 6-step 1BRC stretch scenario are absent without
+  component/harness changes: (1) no coding agent (`claude`, `codex`, `agy`) is
+  installed in the cached Eclipse image and the E2E harness does not copy parent
+  agent credentials into child IDE capsules, and (2) no graphical profiler UI
+  (`JDK Mission Control` / `org.openjdk.jmc.*` / `VisualVM`) is bundled in
+  `eclipse-ide` (`--network none` prevents runtime Marketplace installs). Per
+  the work order's stop condition, stopped the stretch pass and retained the
+  verified baseline recording.
+
 **2026-10-19: the console-link fix is PR #232, along the owner's lines.**
 The launcher reads the base's promise from its labels before the launch,
 `web_console_availability` in the images contract: the
