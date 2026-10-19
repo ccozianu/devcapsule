@@ -105,7 +105,10 @@ integration and end-to-end suites.
   answer and suggests opening the link. The link leads nowhere; the
   capsule is fine and needs no wait. The console needs a base of recipe
   10 or later, and a published one is a gate before the final release.
-  The launcher's output is a bug fixed in this cycle (2026-10-18).
+  The launcher's output is a bug (2026-10-18), fixed on the release branch
+  for the next candidate: the launcher reads the base's labels first and,
+  on a base without the console, prints what is missing, the one command
+  that builds a base with it and the guide, and plans no console at all.
 
 ## Not in candidate 0
 

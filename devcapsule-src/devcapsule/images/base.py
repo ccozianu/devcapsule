@@ -10,6 +10,7 @@ import urllib.error
 import urllib.request
 
 from devcapsule.images.contract import (
+    WEBCONSOLE_LABEL,
     CONTAINED_DISPLAY,
     HOST_X11_ONLY_DISPLAY,
     LAUNCHER_SUPPLIED_RUNTIME,
@@ -65,7 +66,6 @@ PEX_DESTINATION = "/opt/devcapsule/bin/devcapsule.pex"
 # from the same public revision as the runtime (R-CONSOLE-001); recipe 11
 # gives the console its process and resource monitor (psutil).
 BASE_RECIPE_VERSION = "11"
-WEBCONSOLE_LABEL = "devcapsule.base.webconsole"
 # The capabilities a base satisfies by itself; components fill the rest.
 # Adding to this set keeps the family; removing from it opens a new one.
 BASE_SERVICES = frozenset({"python", "docker-cli", "node", "java", "maven", "postgresql-client"})
