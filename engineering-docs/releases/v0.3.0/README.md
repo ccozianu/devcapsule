@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-18. Stage: **candidate 1 tagged; publication and download verification in progress**.
+Updated: 2026-10-18. Stage: **candidate 1 published and verified as downloaded; the owner's verification of the console-link fix next**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -235,8 +235,18 @@ replacement.
   web console only on a base that has one, and the local-base guide. The
   candidate verifies the fix against the published recipe-9 base and a
   recipe-11 base and closes the bug record.
-- Publication, the three downloaded assets and their verification follow
-  when the backend run ends.
+- Backend run [39265210147](https://github.com/ccozianu/devcapsule/actions/runs/39265210147)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc1)
+  is public, non-draft, with the three assets, and the changelog is its
+  body.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc1`:
+  the checksum file verifies the executable, SHA-256
+  `4022a1828575eb24ac029d8915e5fb3a29f191aed4e9aab2ca9b2d1f6452cfc0`, the
+  manifest records the same value, the tag, the branch, the source
+  revision and the `mainline` disposition; the executable reports
+  `0.3.0rc1`, `v0.3.0-rc1` and `7016cdd…`, and its help answers.
+- Verification of the console-link fix on this download is the owner's,
+  against the published recipe-9 base and the local recipe-11 base.
 
 ## Release Notes Preparation
 
