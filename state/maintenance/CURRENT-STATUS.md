@@ -24,6 +24,25 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-19: the console-link fix is PR #232, along the owner's lines.**
+The launcher reads the base's promise from its labels before the launch,
+`web_console_availability` in the images contract: the
+`devcapsule.base.webconsole` label and recipe 11 or later, the recipe
+that gives the console its process monitor. `project run` reads it beside
+the display transport and hands it to the launcher, which on a base
+without the console plans nothing, no port, no token, no console section,
+no published port, no origin, no readiness watcher, and prints one
+statement in place of the link: the base, the recipe the console needs,
+the one `images build` command with the launcher's own source revision,
+and the guide. The guide is new, `docs/configuration/local-base.md`, the
+page the C16 gate was missing: build a base, list it, select it with
+`config authorize base-image`, what the selection is and is not, the way
+back. [PR #232](https://github.com/ccozianu/devcapsule/pull/232) into the
+release branch; the full gate passed end to end and the hosted run passed;
+the bug record says fixed, verification on a downloaded candidate against
+the recipe-9 and a recipe-11 base closes it. The implementor-and-reviewer
+loop's review round is the owner's to run.
+
 **2026-10-19: the console works on a recipe-11 base built from rc0.** The
 owner built the base on the host with the candidate's own `images build`,
 provenance `53ebc17`, selected it for the second checkout with `config
@@ -482,7 +501,7 @@ the next candidate tag.
    diagnostics, and Ctrl+C ending with a result, not a traceback; the two
    bug records filed first; closes both on a candidate. Beside it, the
    owner's rc0 finding of 2026-10-18: the console link printed on a base
-   without the console, a release fix in this cycle.
+   without the console, fixed as PR #232, verified on the next candidate.
 5. Forced configuration: `project config resolve --force` and `project run
    --force-config`, mandatory needs split from optional ones; the
    requirement below; the capabilities page documents both and a
@@ -499,8 +518,9 @@ the next candidate tag.
    merged into the release branch, the trigger proven on #226 and #227.
 
 Gates before the final tag: the owner's eleven user-docs decisions; the
-documentation describing the accepted candidate, a page on building and
-selecting a local base among it; a published base for the candidate; the fixed bug records verified against a downloaded candidate;
+documentation describing the accepted candidate, the page on building and
+selecting a local base now written with PR #232; a published base for the
+candidate; the fixed bug records verified against a downloaded candidate;
 the release notes under `releases/v0.3.0/notes.md`. Out of 0.3.0, named in
 the overview: consent and vendor trust, installed-IDE reuse with an empty
 launcher cache, browser evidence for diagnostics, the console's deliverable
@@ -737,11 +757,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. rc0 is published, verified as downloaded, and launched the second
-   checkout at the owner's first try. When the owner's session on the
-   host daemon is done: the local Docker proofs against the download,
-   clean machine, component cache, runtime session on the pinned base.
-   The lock command on the host is dogfooding at the owner's convenience.
+1. The owner merges PR #232 into the release branch, after the review
+   round if one is run; it rides the next throwaway copy to `main` and the
+   next candidate verifies it. The local Docker proofs against the rc0
+   download when the host daemon is free. The lock command on the host is
+   dogfooding at the owner's convenience.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
