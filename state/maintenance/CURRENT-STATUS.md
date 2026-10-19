@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
+State: paused 2026-10-19 for the capsule's restart under rc1; releasing 0.3.0: rc0 and rc1 published and verified as downloaded, rc1 carrying the console-link fix and the local-base guide; the owner verifies that fix on both bases; then the Docker proofs and the cycle's slices, the network node first
 
 Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@29f7c940a8a2
 
@@ -1573,6 +1573,27 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Paused 2026-10-19 so the owner restarts this capsule, the old workhorse,
+  under the downloaded rc1; the second checkout runs under rc0 with another
+  agent. Nothing is uncommitted; the checkout sits on `release-0.3.0` at
+  the published tip; the claim is released.
+- Awaiting the human: the verification of the console-link fix on rc1,
+  the published recipe-9 base and the local recipe-11 base, which closes
+  [the record](../../bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md).
+- On resumption, re-verify before trusting: which launcher started the
+  capsule (`devcapsule0 version`), whether the shared lock changed on disk
+  (the owner may run the lock command on the host before relaunching; if
+  so, commit the written lock on the release branch and rerun the gate),
+  and whether this checkout was given the local recipe-11 base.
+- Next slices in the recommended order: the universal `network` node,
+  then C10 with its two records filed first, forced configuration, the
+  diagnostics snapshot, image cleanup after the design review, C20 last.
+  The local Docker proofs against the rc1 download when the host daemon
+  is free.
+- Deliberately not preserved: the rc0 and rc1 downloads under
+  `~/.cache/devcapsule-releases/`, regenerable from the public releases;
+  the gate logs under `/opt/devcapsule-gate/`; the smoke scratch of the
+  agent freshness attempt in the session scratchpad.
 - Closed 2026-10-18, twice: PR #228 carried the release version onto
   `main`; the owner then changed the protocol, and PR #229 reopens `main`
   at 0.3.1.dev0 at the cut, ahead of every candidate.
