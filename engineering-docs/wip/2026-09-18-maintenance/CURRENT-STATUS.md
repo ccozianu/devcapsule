@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
 
-Definition read: WORKFLOW.md@3e87fcf58b8a, WORKFLOW-LOCAL.md@29f7c940a8a2
+Definition read: WORKFLOW.md@b13783c6080d, WORKFLOW-LOCAL.md@7c55e5a4bf92
 
 Integration target: `main`
 
@@ -23,6 +23,45 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-19 (`ws-maintenance/e2e_videos`): landing-page work order
+(`2026-10-18-landing-page-why-devcapsule.md`) baseline verified; bounded
+stretch-goal inspection completed.**
+- **Baseline (Deliverables 1–4):** Recorded the work order at
+  `engineering-docs/work-orders/2026-10-18-landing-page-why-devcapsule.md` and
+  indexed it in `index.md`. Extended Contract v1 (`website/CONTRACT.md` and
+  `engineering-docs/specifications/product/content-website-contract.md`) with
+  `website:demo`, `website:continuity`, multi-paragraph `website:hero`, and
+  self-hosted `.webm`/`.mp4` assets. Replaced the invented right-hand hero
+  schematic with a framed `1152×720` (`16:10`) 26-second (`2.6×`) WebM excerpt
+  (`after-restart-hero-excerpt.webm`) and poster (`after-restart-hero-poster.png`)
+  from the verified 2026-10-04 IntelliJ persistence session, with WebVTT captions,
+  step summary, modal `<dialog>` expansion, and direct links to both full
+  recordings (`after-restart.webm`, `first-session.webm`) and the validation
+  note (`2026-10-04-intellij-playwright-validation.md`). Reorganized
+  `website:benefits` into three outcome-led cards, added the four-fact
+  `website:continuity` handoff excerpt, and aligned `/why/`. Verified with
+  `npm test` (`23 passed`), `npm run check:content`, `npm run build`,
+  `npm run check`, `nox -s docs-contract`, 50 documentation unit tests,
+  `scripts/browser-check.mjs` (59 viewport/palette/WCAG A/AA audits), and
+  Playwright layout/playback checks at `1366×768` and `390×844`.
+- **Stretch-goal inspection (15-minute budget):** Inspected the cached
+  `devcapsule-local-eclipse:59ccaf413ce00f743fbc` image. It includes Eclipse
+  2026-09 R (`/opt/eclipse`), OpenJDK `25.0.4+7` (`/opt/java/jdk-25.0.4+7`),
+  Apache Maven `3.9.16`, JUnit 5/6, EclEmma `3.1.12` (`org.eclipse.eclemma.ui`
+  + JaCoCo `0.8.15` for source coverage highlighting), and CLI `jfr`. Two
+  prerequisites for the 6-step 1BRC stretch scenario are absent without
+  component/harness changes: (1) no coding agent (`claude`, `codex`, `agy`) is
+  installed in the cached Eclipse image and the E2E harness does not copy parent
+  agent credentials into child IDE capsules, and (2) no graphical profiler UI
+  (`JDK Mission Control` / `org.openjdk.jmc.*` / `VisualVM`) is bundled in
+  `eclipse-ide` (`--network none` prevents runtime Marketplace installs). Per
+  the work order's stop condition, stopped the stretch pass, retained the
+  verified baseline recording, and recorded the follow-up stretch-goal work
+  order at
+  `engineering-docs/work-orders/2026-10-19-eclipse-java-1brc-hero-video.md`
+  (indexed in `index.md`) with a preamble of reusable work and unblocking
+  options.
 
 **2026-10-19: the console-link fix is PR #232, along the owner's lines.**
 The launcher reads the base's promise from its labels before the launch,
@@ -1804,6 +1843,8 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
+- [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
 - [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
 - [0.3.0 changelog](../../releases/v0.3.0/changelog.md): what is new and fixed since 0.2.15, maintained at every candidate; the prerelease body.
