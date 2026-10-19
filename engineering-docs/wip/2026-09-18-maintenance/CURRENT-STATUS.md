@@ -24,6 +24,16 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-19: the console works on a recipe-11 base built from rc0.** The
+owner built the base on the host with the candidate's own `images build`,
+provenance `53ebc17`, selected it for the second checkout with `config
+authorize base-image`, the developer-owned selection the product
+provides, resolved and launched: the console answered on the printed
+link. Two things follow for the cycle. The published recipe-11 base, a
+gate before the final tag, is what makes this the default for everyone;
+and the user documentation has no page that walks through building and
+selecting a base, which belongs to the C16 documentation gate.
+
 **2026-10-18, the owner's first finding on rc0: a console link on a base
 without the console.** The launcher prints the web console link for every
 run, and the runtime then says the base has no console, which is true of
@@ -489,8 +499,8 @@ the next candidate tag.
    merged into the release branch, the trigger proven on #226 and #227.
 
 Gates before the final tag: the owner's eleven user-docs decisions; the
-documentation describing the accepted candidate; a published base for the
-candidate; the fixed bug records verified against a downloaded candidate;
+documentation describing the accepted candidate, a page on building and
+selecting a local base among it; a published base for the candidate; the fixed bug records verified against a downloaded candidate;
 the release notes under `releases/v0.3.0/notes.md`. Out of 0.3.0, named in
 the overview: consent and vendor trust, installed-IDE reuse with an empty
 launcher cache, browser evidence for diagnostics, the console's deliverable

@@ -215,6 +215,14 @@ replacement.
   proofs against the download, clean machine, component cache, runtime
   session on the pinned base, follow once the owner's session on that
   daemon is done.
+- Owner-reported, 2026-10-19: with the candidate's own builder, the owner
+  built a recipe-11 base on the host (`images build --type base
+  --recipe ubuntu-24.04 --network host --source-revision 53ebc17…`),
+  selected it for the second checkout with `config authorize base-image`,
+  resolved and launched: the web console answered on the printed link.
+  The first finding of the day, the console link on the recipe-9 base,
+  is the bug record below; the console itself works on the base the
+  release will publish.
 
 ## Release Notes Preparation
 
