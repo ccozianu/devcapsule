@@ -1,6 +1,6 @@
 # End-To-End Tests
 
-[Development](README.md) · [Developer environment](developer-environment.md) · [Source layout](source-layout.md) · [Unit tests](unit-tests.md) · [Integration tests](integration-tests.md)
+[Development](README.md) · [Developer environment](developer-environment.md) · [Source layout](source-layout.md) · [Unit tests](unit-tests.md) · [Integration tests](integration-tests.md) · [Running scenario recordings](running-e2e-scenario-recordings.md)
 
 The end-to-end suites run real Docker: they build images, start containers,
 launch capsules and look at what happens. They are opt-in, they run on a
