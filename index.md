@@ -93,6 +93,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Component upgrade and recovery validation](engineering-docs/implementation-notes/devcapsule/2026-09-21-component-upgrades-validation.md)
 - [Capability configuration: implementation and test correctness](engineering-docs/implementation-notes/devcapsule/2026-10-06-configuration-correctness.md)
 - [Capability configuration: persistent selection versus execution projection](engineering-docs/implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md)
+- [Scenario-driven E2E IDE controller and pause-free WebM video recorder](engineering-docs/implementation-notes/devcapsule/2026-10-21-e2e-scenario-video-recorder.md)
 - [Eclipse Java component and recorded smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-eclipse-validation.md)
 - [Linux .NET SDK and Rider validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md)
 - [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)

@@ -42,7 +42,7 @@ packages, for hosts whose bridge network has no DNS.
 
 ## Drivers and helpers
 
-Three modules under `tests/e2e/` are not tests; they are what the tests run:
+Four modules under `tests/e2e/` are not tests; they are what the tests run:
 
 - `contributor_bootstrap_driver.py` runs the isolated contributor bootstrap
   inside a disposable base container.
@@ -52,6 +52,12 @@ Three modules under `tests/e2e/` are not tests; they are what the tests run:
   client that reads top-level windows through the display socket so the
   image needs no X tools, and the optional Playwright capture. A new IDE
   surface is one row in its table.
+- `scenario_recorder.py` drives richer multi-step IDE workflows (such as
+  importing a project, setting breakpoints, launching the debugger, and
+  stepping through code) and encodes pause-free WebM videos (`scenario-video.webm`)
+  from active transition frames. It supports both deterministic replay of JSON
+  scenarios under `tests/e2e/scenarios/` and interactive HTTP takeover
+  (`serve` / `ctl`) by any coding agent (`codex`, `claude`, `antigravity`).
 - `tests/resources/supervisor_driver.py` runs the supervisor over a JSON
   child-set specification, shared with the unit tests.
 
@@ -69,6 +75,7 @@ to installing `xprop` in every image.
 | `DEVCAPSULE_E2E_BASE_IMAGE`, `DEVCAPSULE_E2E_BUILT_BASE`, `DEVCAPSULE_EXPECTED_BASE_SOURCE` | `-- --build-base` | The base the session built and its provenance |
 | `DEVCAPSULE_EARLY_EXIT_E2E_IMAGE`, `DEVCAPSULE_CONTRIBUTOR_E2E_IMAGE`, `DEVCAPSULE_PEX_CLEAN_MACHINE_IMAGE` | the sessions | Disposable images the tests build or reuse |
 | `DEVCAPSULE_E2E_BUILD_NETWORK` | `-- --build-network` | The network mode of image builds |
+| `DEVCAPSULE_SMOKE_SCENARIO` | `-- --scenario` | Catalog ID or JSON path of a recorded IDE scenario to replay |
 | `PLAYWRIGHT_BROWSERS_PATH` | you, optionally | Where `ide-smoke -- --display` finds or installs Chromium |
 
 ## Evidence
@@ -81,6 +88,71 @@ to installing `xprop` in every image.
   removed, and with `--display` the screenshot and the WebM recording of
   the browser session.
 - The release runbook says which of these the acceptance record cites.
+
+## Scenario-driven IDE video recording (`--scenario` and `scenario_recorder`)
+
+To record pause-free product and documentation videos of real IDE workflows
+(debugger sessions, multi-step navigation, terminal-to-IDE handoffs), use
+`tests/e2e/scenario_recorder.py` and the catalog under
+`tests/e2e/scenarios/*.json`.
+
+### 1. Deterministic scenario replay
+
+Run a catalog scenario through `ide-smoke`:
+
+```sh
+.venv/bin/python -m nox -s ide-smoke -- --surface eclipse --scenario eclipse-hello-time-debug --component-browser
+```
+
+Or invoke the recorder module directly against an existing PEX executable:
+
+```sh
+PYTHONPATH=src:. .nox/ide-smoke/bin/python -m tests.e2e.scenario_recorder replay \
+  --scenario eclipse-hello-time-debug \
+  --evidence dist/e2e-evidence/eclipse-debug \
+  --pex dist/devcapsule-local.pex
+```
+
+The replay seeds `seed_files` into the disposable project workspace, executes
+each `ActionStep` (`click`, `double_click`, `right_click`, `type`, `press`,
+`wait`) with `${PROJECT_PATH}` and `${WORKSPACE}` substitution, and writes:
+
+- `scenario-video.webm`: pause-free 12 fps VP8 WebM encoded by `BurstFrameRecorder`
+  using `ffmpeg` (`image2pipe` `mjpeg` $\rightarrow$ `libvpx`) from either the host or
+  the child capsule's `/opt/playwright/browsers/ffmpeg-*/ffmpeg-linux`.
+- `agent-desktop-raw.webm`: continuous raw Playwright context recording.
+- `step-NNN.png` and `poster.png`: full-resolution `1600×1000` step screenshots.
+- `action-log.json` and `scenario-result.json`.
+
+### 2. Interactive agent takeover (`serve` / `ctl`)
+
+When authoring a new scenario from a plain-English script, an agent (`codex`,
+`claude`, or `antigravity`) can launch the interactive controller and drive the
+inner capsule's desktop turn by turn without recording LLM thinking pauses:
+
+```sh
+# Start the child IDE capsule and local HTTP controller:
+PYTHONPATH=src:. .nox/ide-smoke/bin/python -m tests.e2e.scenario_recorder serve \
+  --scenario eclipse-hello-time-debug \
+  --evidence /tmp/scenario-run \
+  --pex dist/devcapsule-local.pex
+
+# Inspect the current screen and X11 window list:
+PYTHONPATH=src:. .nox/ide-smoke/bin/python -m tests.e2e.scenario_recorder ctl \
+  --evidence /tmp/scenario-run '{"cmd":"screenshot"}'
+
+# Execute a batch of keyboard/mouse steps (frames are recorded only during active steps):
+PYTHONPATH=src:. .nox/ide-smoke/bin/python -m tests.e2e.scenario_recorder ctl \
+  --evidence /tmp/scenario-run \
+  '{"cmd":"act","actions":[{"action":"press","text":"F11"},{"action":"wait","ms":3000}]}'
+
+# Finalize and encode scenario-video.webm:
+PYTHONPATH=src:. .nox/ide-smoke/bin/python -m tests.e2e.scenario_recorder ctl \
+  --evidence /tmp/scenario-run '{"cmd":"stop"}'
+```
+
+ When the interactive session finishes, `action-log.json` holds the exact
+verified action sequence ready to save into `tests/e2e/scenarios/<name>.json`.
 
 ## Eclipse Java smoke
 

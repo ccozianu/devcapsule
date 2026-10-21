@@ -24,6 +24,30 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-21 (`ws-maintenance/e2e_videos-2`): reusable scenario-driven E2E IDE
+controller and pause-free WebM recorder packaged; Proof of Concept #1 Eclipse
+Java debugger video (`eclipse-hello-time-debug.webm`) recorded, saved, and
+wired into `README.md` (`website:demo`).**
+- Merged PR #234 (`ccozianu/devcapsule`), PR #9 (`ccozianu/devcapsule-website`),
+  and PR #235 (submodule bump to `f4d35d2`), then opened continuation branch
+  `ws-maintenance/e2e_videos-2`.
+- Packaged `devcapsule-src/tests/e2e/scenario_recorder.py` (`ActionStep`,
+  `ScenarioSpec`, `BurstFrameRecorder`, `run_scenario_replay`,
+  `serve_interactive_controller`, `send_controller_command`) and wired
+  `--scenario` (`DEVCAPSULE_SMOKE_SCENARIO`) into `devcapsule-src/noxfile.py`
+  (`ide-smoke`) and `devcapsule-src/tests/e2e/test_ide_comes_alive.py`, with
+  unit tests in `devcapsule-src/tests/test_scenario_recorder.py`.
+- Packaged the Proof of Concept #1 scenario definition at
+  `devcapsule-src/tests/e2e/scenarios/eclipse-hello-time-debug.json` and saved
+  the recorded 27.4 s (`1600×1000`, `1.35 MB`, 12 fps pause-free) WebM video
+  and key screenshots under
+  `engineering-docs/blog/assets/2026-10-21-eclipse-debug/`.
+- Updated `engineering-docs/development/e2e-tests.md`, added
+  `engineering-docs/implementation-notes/devcapsule/2026-10-21-e2e-scenario-video-recorder.md`
+  (indexed in `index.md`), and updated `README.md` (`website:demo`) to display
+  `eclipse-hello-time-debug.webm` + `eclipse-hello-time-debug-poster.png` with
+  a concise visitor-facing caption and no QA/audit boilerplate.
+
 **2026-10-19 (`ws-maintenance/e2e_videos`): landing-page work order
 (`2026-10-18-landing-page-why-devcapsule.md`) baseline verified; bounded
 stretch-goal inspection completed.**
