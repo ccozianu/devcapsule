@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-maintenance/e2e_videos-2
+slice: Add shell guide for running nox E2E scenario recordings and create throwaway PR branch
+since: 2026-10-21T23:27:24+00:00
+expires: 2026-10-22T11:27:24+00:00
