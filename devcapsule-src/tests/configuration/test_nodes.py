@@ -109,11 +109,13 @@ def test_registry_names_are_sorted_and_family_filtered() -> None:
     names = registry.names()
     assert names == tuple(sorted(names))
     authorize = registry.family(CARRIER_FAMILY_AUTHORIZE)
-    # docker-daemon comes from the manifest recommendation; development-sudo,
-    # host-browser and host-x11 exist as workstation-capability defaults.
+    # docker-daemon comes from the manifest recommendation; network,
+    # development-sudo, host-browser and host-x11 exist as
+    # workstation-capability defaults, network since 2026-10-22.
     assert {node.name for node in authorize} == {
         "base-image",
         "docker-daemon",
+        "network",
         "development-sudo",
         "host-browser",
         "host-x11",

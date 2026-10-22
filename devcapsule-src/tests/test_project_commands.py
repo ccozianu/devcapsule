@@ -1037,6 +1037,7 @@ def test_run_once_authorization_rejects_unknown_and_persistent_nodes(
     message = capsys.readouterr().err
     assert "cannot be answered run-once" in message
     assert "docker-daemon" in message
+    assert "network" in message  # on every project since 2026-10-22, recommended or not
 
 
 def test_project_run_does_not_launch_when_environment_realization_fails(
@@ -2130,6 +2131,57 @@ def test_run_passes_the_selected_transport_and_accepts_host_x11_run_once(
     err = capsys.readouterr().err
     assert "Run-once authorization: host-x11 = false" in err
     assert "Run-once authorization: host-x11 = true" in err
+
+
+def test_network_is_a_node_on_every_project(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The bug of 2026-10-05: a project without a network recommendation refused
+    the documented run-once command. The node exists on every project with
+    bridge as the deny value; a recommendation only attaches a justification."""
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+    }
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        manifest_text = (project / ".devcapsule" / "devcapsule.toml").read_text(encoding="utf-8")
+        assert "[host.network" not in manifest_text  # the precondition: no recommendation
+        lock_path = write_formation_lock(project)
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "base-image", LOCKED_BASE]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+        realized = SimpleNamespace(
+            image=SimpleNamespace(labels={"devcapsule.base.display": "contained"}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
+            created=False,
+            locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
+        )
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch,
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+            assert launch.call_args.args[0].network_mode == "bridge"  # unanswered: the deny value
+            assert cli.main(["project", "--path", str(project), "run", "--authorize", "network", "host"]) == 0
+            assert launch.call_args.args[0].network_mode == "host"
+        err = capsys.readouterr().err
+        assert "Run-once authorization: network = host" in err
+        # The persistent form writes the checkout's answer; nothing is recorded by the run-once form.
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "host"]) == 0
+        assert "Authorized network for this checkout" in capsys.readouterr().out
+        record = registered_checkouts()[0].record_path
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["authorization"]["network"]["value"] == "host"
+        # Only the node's grammar is accepted; the refusal names the deny value.
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "vpn0"]) == 2
+        assert "deny value 'bridge'" in capsys.readouterr().err
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
+    assert (rows["network"][2], rows["network"][-1]) == ("authorized", "host")
 
 
 def test_config_list_shows_the_recorded_answer_and_names_a_denial(
