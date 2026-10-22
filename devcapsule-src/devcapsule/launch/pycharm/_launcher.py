@@ -23,6 +23,7 @@ from typing import Callable, Mapping, Sequence
 
 from ...container_runtime.contract import (
     CONTAINED_DISPLAY_TRANSPORT,
+    INFRASTRUCTURE_FAILURE_EXIT_CODE,
     DISPLAY_TRANSPORTS,
     HOST_X11_DISPLAY_TRANSPORT,
     ConsolePlan,
@@ -361,16 +362,19 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     )
                 _session_events.info("docker run: %s", shlex.join(command))
                 try:
-                    completed = subprocess.run(command, check=False, env=runtime_env)
-                except KeyboardInterrupt:
-                    _session_events.info("session end: interrupted from the terminal (Ctrl+C)")
-                    end_session_logs(config, None)
-                    raise
+                    result = run_attached(command, runtime_env, container_name=config.name)
                 finally:
                     stop_watching.set()
-                _session_events.info("session end: docker run exit code %d", completed.returncode)
-                end_session_logs(config, completed.returncode)
-                return completed.returncode
+                if result.interrupted:
+                    _session_events.info(
+                        "session end: interrupted from the terminal (Ctrl+C); docker run exit code %d", result.exit_code,
+                    )
+                else:
+                    _session_events.info("session end: docker run exit code %d", result.exit_code)
+                exit_code = INTERRUPTED_EXIT_CODE if result.interrupted else result.exit_code
+                end_session_logs(config, exit_code)
+                print(session_result_text(config, result), file=sys.stderr, flush=True)
+                return exit_code
             finally:
                 cleanup_temp_runtime_files(files)
     except HostOpenError as exc:
@@ -378,6 +382,106 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
 
 
 _session_events = logs.events_logger(LAUNCHER_LOG_COMPONENT)
+
+INTERRUPTED_EXIT_CODE = 130
+"""What the launcher returns after Ctrl+C: 128 + SIGINT, as shells report it."""
+
+INTERRUPT_STOP_SECONDS = 60.0
+"""How long the launcher waits for the capsule to stop after Ctrl+C before it
+asks the daemon; the supervisor's own grace is seconds, so this is generous."""
+
+DAEMON_STOP_SECONDS = 30.0
+"""How long the launcher waits after asking the daemon to stop the capsule."""
+
+
+@dataclass(frozen=True)
+class AttachedResult:
+    """How the attached ``docker run`` ended."""
+
+    exit_code: int
+    """The client's exit code: the capsule's own, or INTERRUPTED_EXIT_CODE when
+    the launcher stopped waiting for it."""
+    interrupted: bool
+    """The terminal interrupted the session with Ctrl+C."""
+    stopped: bool
+    """The client returned, so the capsule has stopped. False only when the
+    launcher stopped waiting for it, in which case the capsule may still run."""
+
+
+def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_name: str) -> AttachedResult:
+    """Run the capsule in the foreground and wait through Ctrl+C for its end.
+
+    The terminal delivers SIGINT to the whole foreground group: the docker
+    client gets it and forwards it into the capsule, whose supervisor stops
+    its children within its grace period and exits; then the client returns
+    the capsule's exit code. ``subprocess.run`` would instead kill the client
+    a quarter of a second after the interrupt and raise, which is how Ctrl+C
+    used to end in a traceback with the capsule's end unknown. So the client
+    is waited for explicitly: the first Ctrl+C is announced and waited
+    through; a capsule that has not stopped within INTERRUPT_STOP_SECONDS is
+    stopped through the daemon; a second Ctrl+C stops the waiting and says
+    what may still be running.
+    """
+
+    process = subprocess.Popen(command, env=env)
+    try:
+        return AttachedResult(process.wait(), interrupted=False, stopped=True)
+    except KeyboardInterrupt:
+        pass
+    print(
+        "Interrupted from the terminal (Ctrl+C); the capsule is stopping. "
+        "Press Ctrl+C again to stop waiting for it.",
+        file=sys.stderr, flush=True,
+    )
+    try:
+        try:
+            return AttachedResult(process.wait(timeout=INTERRUPT_STOP_SECONDS), interrupted=True, stopped=True)
+        except subprocess.TimeoutExpired:
+            print(
+                f"The capsule has not stopped after {INTERRUPT_STOP_SECONDS:g}s; asking the daemon to stop it.",
+                file=sys.stderr, flush=True,
+            )
+            subprocess.run(
+                ["docker", "stop", "--time", "10", container_name],
+                check=False, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            return AttachedResult(process.wait(timeout=DAEMON_STOP_SECONDS), interrupted=True, stopped=True)
+    except (KeyboardInterrupt, subprocess.TimeoutExpired):
+        process.kill()
+        process.wait()
+        return AttachedResult(INTERRUPTED_EXIT_CODE, interrupted=True, stopped=False)
+
+
+def session_result_text(config: PycharmRunConfig, result: AttachedResult) -> str:
+    """The one statement that ends a session on the terminal, and where its logs are.
+
+    The terminal no longer carries the components' output, so this is what a
+    user reads at the end: what happened, and the files on this computer
+    that hold the detail.
+    """
+
+    if result.interrupted and not result.stopped:
+        head = (
+            "Session interrupted from the terminal; the capsule may still be running. "
+            f"Stop it with: docker stop {config.name}"
+        )
+    elif result.interrupted:
+        head = "Session interrupted from the terminal (Ctrl+C); the capsule stopped."
+    elif result.exit_code == 0:
+        head = "Session ended: the IDE exited and the capsule stopped."
+    elif result.exit_code == INFRASTRUCTURE_FAILURE_EXIT_CODE:
+        head = "Session failed: a capsule component died; the supervisor's log names it."
+    else:
+        head = f"Session ended with exit code {result.exit_code}."
+    lines = [head]
+    directory = config.session_log_directory
+    if directory is None:
+        lines.append("Session logs: none; this session logged to the console only.")
+        return "\n".join(lines)
+    files = sorted(path for path in directory.iterdir() if path.is_file()) if directory.is_dir() else []
+    lines.append("Session logs on this computer:")
+    lines.extend(f"  {path}" for path in files or [directory])
+    return "\n".join(lines)
 
 
 def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None:

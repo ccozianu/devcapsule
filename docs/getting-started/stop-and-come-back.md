@@ -16,9 +16,11 @@ returns to its prompt, and the container is removed. Your project folder and
 your persistent state are untouched: they never lived in the container.
 
 Pressing Ctrl+C in the launcher terminal also stops the capsule, after a
-short shutdown interval. The launcher may then print a Python traceback
-ending in `KeyboardInterrupt`; that is noise, not damage. Prefer the IDE's
-exit for an ordinary stop.
+short shutdown interval. The launcher waits for it, then prints the result,
+`Session interrupted from the terminal (Ctrl+C); the capsule stopped.`, and
+the paths of this session's log files on your computer. A second Ctrl+C
+stops the waiting and tells you how to stop the capsule yourself. Prefer the
+IDE's exit for an ordinary stop.
 
 ## Closing the tab
 

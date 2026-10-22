@@ -165,9 +165,11 @@ def run_tee(tmp_path: Path, payload: bytes, **options: object) -> tuple[bytes, P
     return passthrough.getvalue(), path
 
 
-def test_tee_copies_every_line_to_the_console_unchanged_and_stamps_the_file(tmp_path: Path) -> None:
+def test_tee_stamps_every_line_into_the_file_and_copies_nothing_to_the_console(tmp_path: Path) -> None:
+    # The file is the record (C10, 2026-10-22): a healthy launch no longer
+    # looks unhealthy under the display stack's ERROR-labelled chatter.
     passthrough, path = run_tee(tmp_path, b"first line\nsecond\nno newline at the end")
-    assert passthrough == b"first line\nsecond\nno newline at the end"
+    assert passthrough == b""
     assert path.read_bytes() == (
         b"1970-01-01T00:00:00Z first line\n1970-01-01T00:00:00Z second\n1970-01-01T00:00:00Z no newline at the end"
     )
@@ -194,8 +196,9 @@ def test_tee_follows_a_real_child_process(tmp_path: Path) -> None:
     tee = logs.Tee(process.stdout, path, passthrough).start()
     assert process.wait(timeout=10) == 0
     tee.join(5.0)
-    assert sorted(passthrough.getvalue().split()) == [b"err", b"out"]
-    assert path.read_text(encoding="utf-8").count("Z ") == 2
+    assert passthrough.getvalue() == b""
+    text = path.read_text(encoding="utf-8")
+    assert sorted(line.split("Z ")[1] for line in text.splitlines()) == ["err", "out"]
 
 
 def test_reconfigure_closes_old_file_and_keeps_unrelated_handlers(tmp_path: Path) -> None:
@@ -276,7 +279,7 @@ def test_tee_bounds_reads_without_repeating_timestamps_within_a_line(tmp_path: P
     passthrough = io.BytesIO()
     tee = logs.Tee(BoundedSource(payload), path, passthrough, clock=lambda: 0.0).start()
     tee.join(5)
-    assert passthrough.getvalue() == payload
+    assert passthrough.getvalue() == b""
     assert path.read_bytes() == b"1970-01-01T00:00:00Z " + payload.replace(b"\nlast", b"\n1970-01-01T00:00:00Z last")
 
 
@@ -542,7 +545,7 @@ def test_tee_line_split_across_reads_can_continue_in_the_next_segment(tmp_path: 
     tee._forward(b"continued\n")
     tee.start()
     tee.join(5)
-    assert passthrough.getvalue() == b"a" * 10 + b"continued\n"
+    assert passthrough.getvalue() == b""
     assert segments(path) == {".1.gz": b"1970-01-01T00:00:00Z " + b"a" * 10}
     assert path.read_bytes() == b"continued\n"
 
@@ -591,7 +594,7 @@ def test_tee_rotates_a_real_child_output_at_the_segment(tmp_path: Path) -> None:
     assert process.wait(timeout=20) == 0
     tee.join(10.0)
     payload = b"".join(f"line {index:05d} ".encode("ascii") + b"x" * 60 + b"\n" for index in range(4000))
-    assert passthrough.getvalue() == payload
+    assert passthrough.getvalue() == b""
     assert path.stat().st_size <= 100_000
     rotated = segments(path)
     assert set(rotated) == {".1.gz", ".2.gz", ".3.gz"} and all(len(data) <= 100_000 for data in rotated.values())

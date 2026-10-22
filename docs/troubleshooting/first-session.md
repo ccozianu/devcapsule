@@ -14,7 +14,8 @@ updated: 2026-09-28
 | Download or build failure | Check the reported URL, your connection and free disk space, then retry `project run`. Keep the exact error if you ask for help. |
 | No browser tab | Open the full printed URL yourself, on the computer running Docker. |
 | Escape leaves fullscreen instead of reaching the editor | You used the desktop sidebar's fullscreen button. Use the browser's own fullscreen; see [Clipboard, keys and browser](../everyday-development/clipboard-and-browser.md). |
-| A traceback ending in `KeyboardInterrupt` after Ctrl+C | The capsule did stop. Prefer **File → Exit** in the IDE for an ordinary stop. |
+| `Session failed: a capsule component died` | Open the supervisor's log among the paths the launcher printed; it names the component and the files beside it hold its output. |
+| `the capsule may still be running` after a second Ctrl+C | Run the `docker stop` command the launcher printed. |
 | A shortcut closed the tab | The browser owns some shortcuts. Reopen the printed URL; use the IDE menus. |
 
 Still stuck? [Open an issue](https://github.com/ccozianu/devcapsule/issues/new)

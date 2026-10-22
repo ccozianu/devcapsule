@@ -22,7 +22,7 @@ class SupervisorError(ValueError):
 # Session exit code when a non-foreground child dies. The foreground child's
 # own codes travel through unchanged, so the supervisor's one verdict of its
 # own uses a value ordinary tools rarely produce (BSD sysexits EX_SOFTWARE).
-INFRASTRUCTURE_FAILURE_EXIT_CODE = 70
+from .contract import INFRASTRUCTURE_FAILURE_EXIT_CODE
 
 # How long children get between SIGTERM and SIGKILL. Kept below Docker's
 # default ten-second `docker stop` timeout so the supervisor finishes its own

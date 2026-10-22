@@ -477,14 +477,17 @@ class SegmentedFile:
 
 
 class Tee:
-    """Copy a child's output to its log file and onward to the console.
+    """Copy a child's output into its log file; to the console only without one.
 
     Reads ``source`` (the child's combined stdout and stderr) in bounded chunks
-    on a daemon thread, so partial lines reach the console promptly. Output
-    goes unchanged to ``passthrough`` and, with a UTC timestamp in front of
-    each line, into a :class:`SegmentedFile` rotated at ``segment_bytes``. A
-    file that cannot be opened or written is reported once and the tee
-    degrades to a plain copy to the console.
+    on a daemon thread. Output goes, with a UTC timestamp in front of each
+    line, into a :class:`SegmentedFile` rotated at ``segment_bytes``, and
+    nowhere else: the attached terminal shows the launcher's own lines and the
+    supervisor's warnings, not the IDE's and the display stack's chatter,
+    which the files keep in full (the first-session report of 2026-09-15). A
+    file that cannot be opened or written is reported once, and from then on
+    the output goes unchanged to ``passthrough``, the console, so that nothing
+    is lost.
     A line split across reads may span segments. While this thread compresses
     a segment it does not drain the pipe; a child can block on a full pipe.
     """
@@ -534,15 +537,12 @@ class Tee:
             self._quiet()
 
     def _forward(self, chunk: bytes) -> None:
-        try:
-            self._passthrough.write(chunk)
-            self._passthrough.flush()
-        except (OSError, ValueError):
-            pass  # the console is gone; the file is still worth keeping
         if self._file is None:
+            self._console_copy(chunk)
             return
         # Split only on LF: binary output may contain other control bytes.
         pieces = chunk.split(b"\n")
+        consumed = 0
         for index, piece in enumerate(pieces):
             if index < len(pieces) - 1:
                 piece += b"\n"
@@ -554,8 +554,19 @@ class Tee:
             )
             self._write(prefix + piece)
             if self._file is None:
+                # The file refused this piece; it and the rest of the chunk go
+                # to the console, where everything goes from now on.
+                self._console_copy(chunk[consumed:])
                 return
+            consumed += len(piece)
             self._line_start = piece.endswith(b"\n")
+
+    def _console_copy(self, data: bytes) -> None:
+        try:
+            self._passthrough.write(data)
+            self._passthrough.flush()
+        except (OSError, ValueError):
+            pass  # the console is gone; nothing else is left to keep it
 
     def _write(self, data: bytes) -> None:
         assert self._file is not None

@@ -1,7 +1,7 @@
 ---
 description: Where every component of a session writes its log, what the files are called, how to raise the verbosity, and what to include when asking for help.
 weight: 2
-updated: 2026-10-11
+updated: 2026-10-22
 ---
 # Diagnostics and logs
 
@@ -21,6 +21,14 @@ The launcher prints the directory at every start, on the line `Session logs:`
 of the storage summary. Inside the capsule the same directory is mounted at
 `/var/log/devcapsule`, and the environment variable `DEVCAPSULE_LOG_DIR`
 names it, so a tool or an agent in the capsule finds it without guessing.
+
+The launcher terminal is not where the components write. It carries the
+launcher's own lines, the desktop and console links and the ready line, the
+supervisor's warnings when a component dies or the stop runs out of time,
+and at the end one result line, `Session ended`, `Session failed` or
+`Session interrupted`, followed by the path of every log file of the
+session on your computer. The IDE's and the display stack's own output,
+with its harmless ERROR labels, is in the files only.
 
 On your computer the directory lives in your DevCapsule state storage, per
 checkout, one directory per session:
