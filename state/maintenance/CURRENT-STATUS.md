@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
 
-Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@d8e6d5c9cf74
+Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
 Integration target: `main`
 
@@ -23,6 +23,82 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-22, later: PR #244's review loop is settled; the slice awaits the
+owner.** PR244.1, [PR #246](https://github.com/ccozianu/devcapsule/pull/246)
+by the Antigravity and Gemini 4 Argon (High) pair, the first review by that
+engine in this workstream, is merged after one round: it hardened the
+attached run, the bounded daemon stop, the kill race, the notice inside
+the guarded block, an unreadable log directory, and proved the mid-chunk
+tee fallback; the round took three of its own proposals as defects, the
+readiness watcher stopped on the first Ctrl+C, a session the launcher gave
+up on left open in its manifest so the pruner's abandonment rule governs
+it, and the manifest docstring. Full gate on the merged branch, 1610 unit
+tests; the interrupted-launch end-to-end test passed again against that
+build. Both briefs and the transcripts are under `evidence/2026-10-22-c10/`.
+Open threads from the review: the supervisor blocks SIGINT during a
+child's readiness wait, so an interrupt before the desktop is ready waits
+for the readiness check; a second Ctrl+C within 250 ms of the first is
+absorbed by Python's own wait. Neither changes this slice. Next: the owner
+merges PR #244, then rc2 on the owner's word, carrying the network node
+and C10; the C17 local half and forced configuration follow.
+
+**2026-10-22, morning: C10 is PR #244; its review partner is the
+Antigravity and Gemini 4 Argon (High) pair, by the owner's word.** The two
+records are filed, [the terminal](../../bugs/devcapsule/2026-10-22-healthy-launch-looks-unhealthy-in-the-terminal.md)
+and [Ctrl+C](../../bugs/devcapsule/2026-10-22-ctrl-c-ends-the-launcher-with-a-traceback.md),
+with their rows in the release bug table. On
+`ws-maintenance/0.3.0-first-session-summary` off the release branch: the
+tee writes a child's output to its file only, the console the fallback
+when the file fails; the launcher runs `docker run` under `Popen` and
+waits through Ctrl+C, asks the daemon after sixty seconds, stops waiting
+on a second Ctrl+C naming the container, records 130 and returns it; every
+session ends with one result line and the path of every log file of the
+session, the owner's addition; the infrastructure exit code moved into the
+runtime contract; four user pages say the result in place of the
+traceback. No knob keeps the old streaming, as ruled. The full gate
+passed. The end-to-end proof, `tests/e2e/test_interrupted_launch.py`,
+launched a fresh VSCodium project in its own process group, sent SIGINT to
+the group and read the result: the lines, exit 130, the files, the
+container gone, the IDE's output in its file; the transcript is under
+`evidence/2026-10-22-c10/`. [PR #244](https://github.com/ccozianu/devcapsule/pull/244)
+into `release-0.3.0`. The review partner runs detached in the review
+worktree with the brief on standard input; Antigravity's print mode takes
+the model flag before the prompt, `antigravity --model <model>
+--dangerously-skip-permissions -p '<instruction>' < <brief>`, proven on
+2026-10-22 and to be recorded in the developer document. The scratch
+directory under `/opt/devcapsule-gate` was recreated after the restart;
+the gap is with `project-management`.
+
+**2026-10-22, night: the network-node slice is PR #240, reviewed by
+PR240.1; the first loop under topic 9.11.** On
+`ws-maintenance/0.3.0-network-node` off the release branch: `network`
+joins the host capabilities every project has, with `bridge` as the deny
+value already recorded; a unit test on a manifest without the
+recommendation proves the run-once command, the bridge default, the
+persistent form, the refusal and the listing; the node-registry test's
+pinned set gains the node, found by the full gate's first run; two
+documentation rows and the README say the node is on every project. The
+full gate passed on the branch. [PR #240](https://github.com/ccozianu/devcapsule/pull/240)
+into `release-0.3.0`. The review partner, the Codex and gpt-6-astra pair,
+answered with [PR #242](https://github.com/ccozianu/devcapsule/pull/242),
+PR240.1: the listing attributed an unanswered workstation default to the
+manifest, a real defect that predates the slice; a sharper description;
+lifecycle tests for the stale transitions when a recommendation appears
+and disappears, the unset path, the bulk exclusion and the init
+postconditions; the run-once test now proves nothing is written. One
+round: the fix was keyed on the node's name where the declaration already
+carries `project_recommended`; the general condition went in, correcting
+one assertion for `development-sudo`. Accepted at `494e7b0` and merged
+into the slice branch; the gate on the merged branch is under
+*Validation*. The briefs are committed under
+`evidence/2026-10-22-network-node/`, the first under the new rule. The
+scratch-mount gap went to `project-management` by mail at `cf12c9eb0393`.
+Learned: this Codex version resumes a session with the prompt on standard
+input and the sandbox as a config override; the developer document's
+recipe says otherwise and is corrected by a small pull request to `main`.
+The bug record says fixed; the IDE smoke on a fresh project closes it on
+rc2. Next: C10, its two records filed first; then rc2.
 
 **2026-10-22 (`ws-maintenance/e2e_videos-2`): updated landing-page hero eyebrow
 and demo video caption in `README.md`, and fixed leftover IntelliJ WebVTT
@@ -1814,9 +1890,18 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   status file while both are on maintenance; this one, the release
   checkout, is the recommendation.
 - Closed 2026-10-21: the console-link record, on the owner's verification.
-- Awaiting the human: PR #237 and PR #238 to `main`, stacked; the word to
-  file the scratch-mount intake item with `project-management`; the word
-  to start the network-node slice, detailed in chat on 2026-10-21.
+- Done 2026-10-22: PR #240 merged into `release-0.3.0` at `6ebadf2`, PR #243
+  into `main`; the network node is on the release branch for rc2. Next:
+  C10, its details to the owner first.
+- Awaiting the human: PR #244 into `release-0.3.0`, C10, with its review
+  merged after one round; then the word for rc2.
+- Weighed and unresolved, from PR244.1: the supervisor's blocked SIGINT
+  during a readiness wait; the 250 ms absorption of a second Ctrl+C.
+- To record on `main`: the Antigravity invocation form proven on
+  2026-10-22, the model flag before `-p` and the brief on standard input
+  behind a one-line instruction, in the developer document.
+- Done 2026-10-22: PR #237, #238 and #239 merged to `main`; the
+  scratch-mount item mailed to `project-management`.
 - Weighed: Version Scheme rule 4, `main` reopening at the cut, has no
   companion paragraph in the humane file; left out of PR #237 unless the
   owner adds it.
