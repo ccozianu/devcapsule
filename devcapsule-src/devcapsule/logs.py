@@ -7,8 +7,8 @@ session that the launcher creates on the host and binds into the capsule
 The launcher and the supervisor are Python and log through :mod:`logging`.
 A child process without a severity interface of its own (a window manager, a
 panel, a bridge, an IDE's standard streams) is *teed*: the supervisor copies
-its output line by line into the child's file while the console keeps seeing
-it unchanged.
+its output line by line into the child's file, and to the console only if the
+file cannot be opened or written.
 
 Two levels are in play:
 

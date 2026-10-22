@@ -253,6 +253,31 @@ def test_tee_write_failure_reports_once_and_keeps_forwarding(tmp_path: Path, mon
     real.close()
 
 
+def test_tee_write_failure_mid_chunk_and_mid_line_copies_only_unwritten_bytes(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "log"
+    passthrough = io.BytesIO()
+    reports: list[str] = []
+    tee = logs.Tee(io.BytesIO(), path, passthrough, clock=lambda: 0.0, console=reports.append)
+    assert tee._file is not None
+    real_write = tee._file.write
+    writes = 0
+
+    def fail_on_third(data: bytes) -> None:
+        nonlocal writes
+        writes += 1
+        if writes >= 3:
+            raise OSError("disk full")
+        real_write(data)
+
+    monkeypatch.setattr(tee._file, "write", fail_on_third)
+    tee._forward(b"split ")
+    tee._forward(b"first\nsecond\nthird\n")
+    tee._forward(b"fourth\n")
+    assert path.read_bytes() == b"1970-01-01T00:00:00Z split first\n"
+    assert passthrough.getvalue() == b"second\nthird\nfourth\n"
+    assert tee._file is None and len(reports) == 1 and "disk full" in reports[0]
+
+
 def test_tee_ownership_failure_closes_file_and_keeps_console(tmp_path: Path, monkeypatch) -> None:
     file = io.BytesIO()
     monkeypatch.setattr("builtins.open", lambda *args, **kwargs: file)
