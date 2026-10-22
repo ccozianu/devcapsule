@@ -10,6 +10,7 @@ approves later and the guide's address. Nothing is written on a refusal.
 
 from __future__ import annotations
 
+import math
 import shlex
 import sys
 import termios
@@ -19,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from devcapsule import version_sets
+from devcapsule.compat import CliError
 from devcapsule.configuration.approvals import (
     SoftwareApproval,
     pending_software_approvals,
@@ -28,6 +30,7 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.configuration.operations import CheckoutRecord, resolve_checkout
 from devcapsule.configuration.storage import (
     checkout_record_paths,
+    interrupted_activation,
     load_checkout,
     lock_for,
     manifest_for,
@@ -51,40 +54,47 @@ def previous_versions(root: Path) -> dict[str, str]:
     shown, never a refusal.
     """
 
-    directory = version_sets.state_directory(root) / "known-good"
-    newest: tuple[float, dict[str, Any]] | None = None
+    newest: tuple[float, dict[str, str]] | None = None
     try:
+        directory = version_sets.state_directory(root) / "known-good"
         candidates = list(directory.glob("*.toml"))
-    except OSError:
+    except (OSError, RuntimeError):
         return {}
     for path in candidates:
         try:
             record = tomllib.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(record.get("lock"), str):
+                continue
             lock = tomllib.loads(record["lock"])
             moment = float(record["last-success"])
-        except (OSError, KeyError, TypeError, ValueError, tomllib.TOMLDecodeError):
+        except (OSError, KeyError, TypeError, ValueError, OverflowError):
+            continue
+        components = lock.get("components", {})
+        if not math.isfinite(moment) or not isinstance(components, dict):
             continue
         if newest is None or moment > newest[0]:
-            newest = (moment, lock)
-    if newest is None:
-        return {}
-    components = newest[1].get("components", {})
-    if not isinstance(components, dict):
-        return {}
-    return {
-        component_id: str(metadata["version"])
-        for component_id, metadata in components.items()
-        if isinstance(metadata, dict) and isinstance(metadata.get("version"), str)
-    }
+            newest = (moment, {
+                component_id: metadata["version"]
+                for component_id, metadata in components.items()
+                if isinstance(metadata, dict) and isinstance(metadata.get("version"), str)
+            })
+    return newest[1] if newest is not None else {}
 
 
 def pending_for(root: Path, manifest: dict[str, Any]) -> tuple[SoftwareApproval, ...] | None:
     """The approvals pending on a resolved checkout; () with none, None when other decisions pend."""
 
-    _lock_path, lock = lock_for(root, manifest)
     input_path, _output_path = checkout_record_paths(manifest, root)
     if not input_path.is_file():
         return ()  # Not yet resolved: the launch reports what is missing.
+    # Both lock_for and load_checkout can recover an activation by writing
+    # the resolution. Inspection and refusal must leave these files alone.
+    if interrupted_activation(input_path):
+        command = shlex.join(["devcapsule", "project", "--path", str(root), "config", "resolve"])
+        raise ProjectConfigurationError(
+            f"Interrupted activation; finish recovery before reviewing software approvals: {command}"
+        )
+    _lock_path, lock = lock_for(root, manifest)
     checkout = load_checkout(input_path, manifest, root)
     return pending_software_approvals(manifest, lock, checkout, previous_versions=previous_versions(root))
 
@@ -97,12 +107,19 @@ def approve(root: Path, manifest: dict[str, Any], approvals: tuple[SoftwareAppro
         record.authorize(approval.declaration, True)
     record.write()
     print(f"Approved {len(approvals)} software {'update' if len(approvals) == 1 else 'updates'} for this checkout.")
-    remaining = pending_for(root, manifest)
-    if remaining:
-        names = ", ".join(approval.name for approval in remaining)
-        print(f"Still pending: {names}. The resolution is regenerated once every decision is settled.")
-        return
-    print(resolve_checkout(root).render())
+    try:
+        remaining = pending_for(root, manifest)
+        if remaining:
+            names = ", ".join(approval.name for approval in remaining)
+            print(f"Still pending: {names}. The resolution is unchanged; approve the remaining updates to regenerate it.")
+            return
+        print(resolve_checkout(root).render())
+    except (CliError, OSError) as exc:
+        command = shlex.join(["devcapsule", "project", "--path", str(root), "config", "resolve"])
+        raise ProjectConfigurationError(
+            f"Approvals were saved, but resolution failed: {exc}\n"
+            f"Resolve the reported problem, then run: {command}"
+        ) from exc
 
 
 def offer_software_approvals(start: Path) -> bool:
@@ -114,6 +131,11 @@ def offer_software_approvals(start: Path) -> bool:
     """
 
     root, manifest = manifest_for(start)
+    input_path, _output_path = checkout_record_paths(manifest, root)
+    if interrupted_activation(input_path):
+        # The ordinary launch loader owns recovery. Do not offer approvals
+        # against an unsettled activation, or recover it while inspecting.
+        return True
     approvals = pending_for(root, manifest)
     if not approvals:
         return True
@@ -129,7 +151,9 @@ def offer_software_approvals(start: Path) -> bool:
     print("Approve all of them? Press y; any other key cancels: ", end="", flush=True)
     try:
         accepted = confirmation_key() == "y"
-    except (EOFError, OSError, termios.error) as exc:
+    except EOFError:
+        accepted = False
+    except (OSError, termios.error) as exc:
         print("")
         raise ProjectConfigurationError(f"Cannot read the approval key: {exc}") from exc
     print("")
