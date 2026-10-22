@@ -335,7 +335,9 @@ of `WORKFLOW.md`, in this checkout.
    prompt, its output in a log under the session scratchpad that ends with
    an exit line, and wait for that line. The recorded forms are:
    - Codex: `codex exec -m <model> -s danger-full-access -c 'projects."<worktree>".trust_level="trusted"' - < <brief>`.
-     A round continues the same session: `codex exec resume <session-id> "<round text>"`, the id read from the log.
+     A round continues the same session with the round brief on standard input:
+     `codex exec resume <session-id> -c 'sandbox_mode="danger-full-access"' - < <round brief>`,
+     the id read from the `session id:` line of the first log; `resume` takes no `-s`.
    - Claude Code: `claude -p --dangerously-skip-permissions < <brief>`.
    - Antigravity: `antigravity -p --dangerously-skip-permissions < <brief>`, from its help; not yet run in a loop.
    Establish any other form with the human and record it here before use.

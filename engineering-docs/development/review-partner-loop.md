@@ -220,10 +220,13 @@ cd ~/worktrees/<workstream>-review && nohup setsid bash -c "codex exec -m <model
 ```
 
 A round continues the same Codex session; the session id is on the
-`session id:` line of the first log:
+`session id:` line of the first log. `resume` takes no `-s`; the sandbox
+goes in as a config override, and `-` reads the round brief from standard
+input. Proven on PR240.1, 2026-10-22, after the quoted-prompt form from
+the October transcripts failed on Codex 0.157.1:
 
 ```text
-codex exec resume <session-id> -s danger-full-access "$(cat $S/<round brief>.md)"
+cd ~/worktrees/<workstream>-review && nohup setsid bash -c "codex exec resume <session-id> -c 'sandbox_mode=\"danger-full-access\"' -c 'projects.\"$HOME/worktrees/<workstream>-review\".trust_level=\"trusted\"' - < $S/<round brief>.md > $S/<log> 2>&1; echo CODEX_EXIT=\$? >> $S/<log>" > /dev/null 2>&1 &
 ```
 
 Claude Code, the brief on standard input, smoke-tested and run in a full loop 2026-10-22:
@@ -261,6 +264,7 @@ when the workstream pauses, and say so in its open threads.
 | 2026-10-11 | maintenance, session diagnostics | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #207/#208; #209/#210, #211, #212 | #208 merged without a round with five real gaps; #210's proposals became a design change; #212 used the third round; the owner changed the design once between rounds and the loop absorbed it |
 | 2026-10-12 | maintenance | | | | the process record sent to the trading-research sample project's `project-management` as an intake item; it is the source of the lessons below |
 | 2026-10-22 | maintenance, e2e scenario video recorder | Antigravity, Gemini 4 Argon (High) pair | Claude Code, Claude Fable 5.1 pair | #236/#241 | #241 (PR236.1) merged without a round: ten concrete fixes (`ActionStep` and `seed_files` path/symlink validation, `ffmpeg` stderr log file and pipe/process reaping, extracted `start_controller_server` with HTTP 400/504 and atomic `controller.json`, `ide-smoke --scenario` CLI flag guards) and 50 new unit tests with a 17-point mutation check; three unimplemented proposals recorded in `maintenance` status |
+| 2026-10-22 | maintenance, release 0.3.0 | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #240/#242 | the first loop under topic 9.11; one round, on a name special-case where the declaration carried the fact; the briefs committed under the workstream's evidence; the resume form corrected |
 
 The reviews' briefs of these loops lived in the implementors' session
 scratchpads and are gone; their structure is the template above. From
