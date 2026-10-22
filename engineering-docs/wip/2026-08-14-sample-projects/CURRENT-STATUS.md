@@ -4,7 +4,7 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: integrating 2026-10-22; AI Learning published and submodule registered; parent review/PR delivery in progress
+State: integrating 2026-10-22; AI Learning published; PR #252 reviewed and ready for the human to merge
 
 Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -37,6 +37,21 @@ name, not a typo in this record.
 
 ## Current State
 
+- Parent [PR #252](https://github.com/ccozianu/devcapsule/pull/252) targets main.
+  Claude Fable 5.1 accepted the integration at `49ab6e7`, no review changes,
+  no PRn.1 and no additional round. Its fresh checkout initialized the child
+  from the published remote and independently passed npm ci, npm run check
+  (20 tests), and the rc2 offline configuration check. The brief and assessment
+  are indexed below. The human merges; remote main has not yet integrated it.
+- Full parent gate passed again after registering the gitlink: 1672 tests,
+  17 packaging integrations, 293 webconsole tests. GitHub CI passed on `49ab6e7`.
+  Subsequent parent edits contain only this handoff and review evidence.
+- Local Git detail: absorbgitdirs could not rename the original child's .git
+  directory across the home/workspace filesystem boundary. It remains in Git's
+  supported old-form submodule layout. Registration, status and commands work;
+  a fresh review checkout cloned and initialized the normal layout successfully.
+  No ad-hoc Git-directory move or source deletion was used.
+
 - Checkpoint 2026-10-22: child source is published at `64c11f2198499281071c3f6f22472e4b64ddd8d6`
   on `main` at `git@github.com:ccozianu/ai-learning-bootstrap.git`. The owner
   supplied that remote; inspection found it empty, and the first push was
@@ -58,7 +73,7 @@ name, not a typo in this record.
   handling, key separation and the schema-apply confirmation message. Added
   credential versions to reject stale in-flight login proofs after revocation.
   Review and disposition are in the evidence files below. This preliminary
-  local review is not a completed PR review-partner loop; parent integration review follows the published child and registered pointer.
+  local review is not a completed PR review-partner loop; the subsequent parent integration review accepted the final child and registered pointer.
 - Sent project-management `2026-10-22-sample-projects-ai-learning-adopter-gaps.md`
   on coordination at `7e810aea9020`: nonblocking Node-major capability and
   project-specific secret-input questions. No parent product code was changed.
@@ -267,7 +282,7 @@ foreground/detached lifecycle evidence is recorded in the
 
 ## Next Resumable Task
 
-Complete parent review/PR delivery for the published AI Learning submodule. The human merges into main. Enter the child DevCapsule and perform owner-driven SQL/Google/SMTP acceptance. Prior trading-research work remains deferred below.
+Await the human merge of PR #252, then fetch and verify main contains the gitlink. Do not merge it autonomously. Enter the child DevCapsule and perform owner-driven SQL/Google/SMTP acceptance. Prior trading-research work remains deferred below.
 
 In the `trading-research` DevCapsule, define and load the first small,
 human-reviewed labeled fixture set. Record source/license metadata, gold atomic
@@ -282,6 +297,12 @@ branch's container-path translation and host-backed staging changes; a live
 foreground run against the sample is recorded in the detached-container bug.
 
 ## Open Threads
+
+- Integration review left two nonblocking child notes: a concurrent credential
+  reset during password setup returns a scrubbed 503 (P2025) instead of 401;
+  early rejection of locked usernames has a timing distinction, bounded by
+  rate limits. Neither grants access or leaks a secret. Consider during live
+  acceptance/security refinement; no further changes were made in this slice.
 
 - Remote resolved: the owner supplied `git@github.com:ccozianu/ai-learning-bootstrap.git`; its main now contains the child. No repository was created by the agent.
 - Email was chosen for codes but no provider/settings were supplied. Generic
@@ -332,3 +353,6 @@ human's specific instruction.
 - [Intake dispositions](intake-dispositions.md)
 - [Local review brief](evidence/2026-10-22-ai-learning-review-brief.txt)
 - [Local review and disposition](evidence/2026-10-22-ai-learning-review.txt)
+
+- [Integration review brief](evidence/2026-10-22-ai-learning-integration-review.txt)
+- [Integration review assessment](evidence/2026-10-22-ai-learning-integration-assessment.txt)

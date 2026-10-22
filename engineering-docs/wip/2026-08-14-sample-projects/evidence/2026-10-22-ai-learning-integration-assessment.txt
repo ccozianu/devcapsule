@@ -1,0 +1,46 @@
+Review complete. No parent change was needed, so I opened no PR.
+
+**Acceptance: accepted.** Parent PR #252 safely registers the AI Learning sample. I am Claude Fable 5.1, model ID claude-fable-5-1.
+
+**Integration findings**
+
+- `.gitmodules` adds exactly one entry, path and URL match the owner-supplied remote, and the style matches the four existing entries.
+- The gitlink in the parent tree is 64c11f2198499281071c3f6f22472e4b64ddd8d6. The child remote's main resolves to the same commit by ls-remote, so the pointer is reachable.
+- My branch tip equals the PR branch tip 49ab6e7. The PR targets main, and the four commits listed on GitHub match the local history.
+- The parent gate excludes `sample_projects` from pytest recursion and mypy, so the child cannot change parent test counts. The rerun is a formality on the gitlink.
+- Status-file claims I could verify offline all hold: the definition-read blob stamps, the project-management mail at 7e810ae on coordination, the 98-line SQL, the 20 tests, and the child workflow version 0.3.0 in both toml and WORKFLOW.md frontmatter. The PR body honestly scopes out live database, OAuth, SMTP and capsule launch.
+
+**Child fixes from the prior review, re-checked in source and tests**
+
+- Google-auth window: setup now passes the verified session's original createdAt into the replacement session. The test asserts it.
+- Lockout: the lock is checked before Argon2, an expired lock resets the counter, and a correct password resets it before the email step. Tested.
+- Username collision: P2002 becomes a 409 with a fixed message, and the body is checked for leaked detail. Tested.
+- Key reuse: HKDF derives distinct `oauth-cookie` and `email-code` subkeys. Correct.
+- Schema-apply flag: the specific message prints before any connection attempt. Correct.
+- authVersion: sessions, challenges and trusted devices carry a version, every issue path uses compare-and-update, and forget-browsers and setup both increment. The migration SQL carries the column on all four tables. Tested for stale session, stale challenge and failed compare-and-update.
+
+**Non-blocking child observations, left for the implementor**
+
+- A credential reset that lands between the session check and the setup transaction makes the update throw P2025, which surfaces as 503 rather than 401. Harmless, but the status is misleading.
+- Checking the lock before hashing gives a fast response for a locked real username. That is a small existence oracle, only after five failures and inside the 10-per-15-minute limit.
+
+**Validation I ran**
+
+| Command | Result |
+| --- | --- |
+| git diff --check origin/main...HEAD | clean |
+| git submodule status | 64c11f2, heads/main |
+| ls-remote --heads origin main | 64c11f2 |
+| npm ci | 0 vulnerabilities |
+| npm run check | Prisma generate, tsc, vite build, 20 of 20 tests pass |
+| devcapsule0 project config check | contract valid, offline |
+
+**Left alone**: all status, intake, evidence and child source files. The parent gate was not rerun here per the brief. No GitHub comments were posted.
+
+**Limits**: mocked persistence only. No live PostgreSQL, Google OAuth, SMTP, browser suite or capsule launch was exercised. The SMTP provider remains pending.
+
+NO PR
+
+REVIEW COMPLETE: accepted, claude-fable-5-1 (Claude Fable 5.1), 20/20 child tests, 6 parent-side checks clean, 0 parent changes, 2 non-blocking child notes; limits: mocked persistence, no live DB/OAuth/SMTP/capsule acceptance, parent gate not rerun here.
+
+Implementor assessment (GPT-6 Codex): accepted at 49ab6e7. No changed review files and no PRn.1. Two nonblocking child observations retained in Open Threads, not silently discarded. Full parent gate and hosted CI passed on the registered submodule tree. The human merges PR #252.
