@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-22 under rc1; releasing 0.3.0: rc2 in preparation with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-22; releasing 0.3.0: rc2 tagged, published and verified as downloaded, the shared lock regenerated on the new pins and proven by a recursive launch, the owner's dogfooding of rc2 next; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
 
-Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@31819cc43359
+Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
 Integration target: `main`
 
@@ -23,6 +23,32 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-22, afternoon: rc2 tagged and verified; the shared lock
+regenerated and proven.** PR #249 merged at `e998dc0`; `v0.3.0-rc2` on
+`e5b5a8b`, the candidate gate `mainline` from a detached checkout, pushed
+atomically; backend run 39803285881 passed; the prerelease is public with
+its three assets; the download under `~/.cache/devcapsule-releases/v0.3.0-rc2`
+verifies, SHA-256 `abb9a8e1…`, version `0.3.0rc2` at `e5b5a8b`. Then the
+lock, on the owner's word, the way the owner suggested: `project config
+capabilities --required …` ran on a fresh clone of the release branch
+inside this capsule, which the capsule rule allows for any project but its
+own; it wrote the lock on matrix embedded-27, Codex 0.163.0, Claude Code
+2.1.302, Antigravity CLI 1.4.2, the capabilities digest unchanged;
+`config check` on the clone, the running rc1 launcher's `config check` on
+this checkout and the full gate, 1672 unit tests, all passed; committed at
+`0c1a555`. The recursive attached launch from a fresh clone of that commit
+built the formation on the new pins and ran a successor through its eleven
+inspection checks, 170 s, nothing left behind. The rc1 launcher's `versions
+show` lists the running capsule on the old pins and the shared lock on the
+new. Findings: the command also rewrote the manifest in canonical TOML,
+dropping its comments and turning `need` into `required` and `optional`;
+only the lock was taken, since the vocabulary would shut the released
+0.2.15 client out of the shared checkout and the comments carry the
+devcapsule0 rationale; the rewrite of an unchanged manifest is a defect
+against the conservative-writers ruling, for the owner's word. The gate
+scratch under `/opt/devcapsule-gate` vanished again mid-session and `/opt`
+is root-owned; recreated with sudo; the filed gap stands.
 
 **2026-10-22, evening: rc2 is go; the second synchronization.** The owner
 answered yes to candidate 2 and to merging `main` into the release branch
@@ -902,7 +928,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc2 | the tip after the pre-candidate merge | in preparation 2026-10-22: the network node (#240, #242) and C10 (#244, #246); the three fixed records verify on it |
+| rc2 | `e5b5a8b` | tagged 2026-10-22 after PR #249; gate `mainline`; backend run 39803285881 passed; published, downloaded and verified; carries the network node (#240, #242) and C10 (#244, #246); the three fixed records verify on it; the owner dogfoods the terminal and Ctrl+C |
 | rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
@@ -1878,6 +1904,45 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Paused 2026-10-22 evening by the owner. Nothing is uncommitted; the
+  checkout sits on `release-0.3.0` at the published tip; the claim is
+  released. The other checkout's sessions write their entries on `main`;
+  this one's on the release branch; both met in the second synchronization.
+- Done 2026-10-22: PR #249 merged; rc2 tagged, published, verified; the
+  lock regenerated and proven by the recursive launch.
+- Awaiting the human: the dogfooding of rc2 on the host, the terminal and
+  Ctrl+C; the wording of Release Policy 8 for the one version commit on
+  the throwaway copy; the eleven user-docs decisions; the word on the
+  manifest-rewrite finding; provider acceptance of the new agent pins on a
+  downloaded candidate, which needs the lock in a candidate, rc3.
+- On resumption, after the merge: fetch and confirm the release tip
+  `e5b5a8b` is an ancestor of `main`; `git tag -a v0.3.0-rc2 e5b5a8b -m
+  'DevCapsule 0.3.0 candidate 2'`; from a detached checkout of the tag,
+  `scripts/release-protocol.py v0.3.0-rc2 --output
+  /opt/devcapsule-gate/rc2-release-protocol.json`, expecting `mainline`;
+  `git push --atomic origin release-0.3.0 v0.3.0-rc2`; the backend run;
+  download the three assets into `~/.cache/devcapsule-releases/v0.3.0-rc2`,
+  verify the checksum and the version; record rc2 in the overview and the
+  table above, and the changelog's candidate-2 date. Then the owner's
+  dogfooding of the terminal and Ctrl+C on the download, and the three
+  records' verification on it.
+- Then the slices: C17's local half, this project's operating instructions
+  in `WORKFLOW-LOCAL.md`; forced configuration and the diagnostics snapshot
+  for rc3; image cleanup after the owner's design review, and C20, for rc4.
+- Weighed and unresolved, from PR244.1: the supervisor's blocked SIGINT
+  during a readiness wait; the 250 ms absorption of a second Ctrl+C.
+- Filed for V1 at the owner's direction: the session logs' Python data
+  path, [the record](../../bugs/devcapsule/2026-10-22-child-output-is-processed-in-python-on-the-data-path.md).
+- External state that outlives the session: the review worktree
+  `~/worktrees/maintenance-review` on
+  `ws-maintenance/0.3.0-first-session-summary-review`, reusable for the
+  next loop by a reset; the gate scratch under `/opt/devcapsule-gate`, on
+  the overlay, gone at the next restart; the e2e evidence under
+  `devcapsule-src/dist/e2e-evidence/ide-smoke/`; the local branch
+  `4PR-3-release-0.3.0`, deleted by the merge on the remote and to be
+  deleted locally.
+- Deliberately not preserved: the session scratchpad with the Codex and
+  Antigravity logs; the briefs are committed under `evidence/`.
 - Paused 2026-10-22 on `ws-maintenance/e2e_videos-2` after completing the
   Claude Fable 5.1 review-partner loop ([PR #241](https://github.com/ccozianu/devcapsule/pull/241))
   for [PR #236](https://github.com/ccozianu/devcapsule/pull/236).
