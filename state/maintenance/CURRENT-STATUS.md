@@ -24,6 +24,31 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22: two workflow pull requests to `main`, at the owner's
+direction, before the network-node slice.**
+[PR #237](https://github.com/ccozianu/devcapsule/pull/237), from
+`ws-maintenance/gh-cli-rule` off `main`: the local file's *GitHub
+Integration* section replaced by the conditional rule of 2026-10-21, the
+GitHub CLI used when the human provides it under `/opt/xtras`, detected by
+its file, activated per shell call, its login checked once per session,
+the compare link handed over when it is absent; and Release Policy rule 8,
+the throwaway copy, rewritten in the controlled style with the companion
+paragraph it lacked. [PR #238](https://github.com/ccozianu/devcapsule/pull/238),
+stacked on it: the review-partner loop, the mechanism of the webconsole
+and diagnostics slices extracted from the transcripts of 2026-10-09 to
+2026-10-12 as topic 9.11 of `WORKFLOW.md` with its Changes bullet and
+companion, the local section *Review Partners In This Checkout*, and the
+developer document with the brief template, the assessment forms, the
+recipes per engine and the record of the loops run. The definition change
+is noticed to `workflow-improvements` by mail at `574b6bc68268`. Both go
+to `main` directly because a workflow rule binds every workstream now;
+the release branch's copies lag as they already do for the main-reopens
+rule. A finding on the way: the gate's scratch under `/opt/devcapsule-gate`
+is on the container's overlay and died with the restart; the owner sees a
+product gap, a host-backed scratch mount in the capsule contract, to be
+filed with `project-management` on the owner's word. The network-node
+branch created for the rule was deleted unused; the slice starts clean.
+
 **2026-10-21: resumed under rc1; the owner's rulings.** This capsule runs
 under the downloaded rc1 (`devcapsule0 version`: `v0.3.0-rc1`, source
 `7016cdd`), on the local recipe-11 base; the console answers. The shared
@@ -1613,6 +1638,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   status file while both are on maintenance; this one, the release
   checkout, is the recommendation.
 - Closed 2026-10-21: the console-link record, on the owner's verification.
+- Awaiting the human: PR #237 and PR #238 to `main`, stacked; the word to
+  file the scratch-mount intake item with `project-management`; the word
+  to start the network-node slice, detailed in chat on 2026-10-21.
+- Weighed: Version Scheme rule 4, `main` reopening at the cut, has no
+  companion paragraph in the humane file; left out of PR #237 unless the
+  owner adds it.
 - On resumption, re-verify before trusting: which launcher started the
   capsule (`devcapsule0 version`), whether the shared lock changed on disk
   (the owner may run the lock command on the host before relaunching; if
