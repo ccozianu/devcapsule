@@ -32,7 +32,7 @@ captions on the landing-page Eclipse Java debugger video
   still showed the 4 cues from the earlier IntelliJ IDEA persistence session
   (`"Contained Linux desktop opens after container stop and relaunch; IntelliJ IDEA 2026.2.3 starts in the workspace."`).
 - Updated `website/src/assets/session-demo.vtt` ([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10),
-  commit `c904475`) and saved a matching copy at
+  merged to `website` `main` at `2bcfe6e`) and saved a matching copy at
   `engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug.vtt`
   with 5 timed cues (`00:00.000` to `00:27.420`) mapped from the 329 recorded
   frames of `eclipse-hello-time-debug.webm`.
