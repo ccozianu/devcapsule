@@ -14,7 +14,7 @@ record them. All are yours, per checkout, outside the repository.
 | Node | Values | Effect |
 |---|---|---|
 | `base-image` | an exact `docker.io/…@sha256:` digest, or `default` for the project's current recommendation | Consent to run that image; binds to the image, so a lock change around an unchanged base keeps it |
-| `network` | `host`; omitted means Docker's bridge | The capsule shares the host network namespace instead of Docker's bridge; on every project, whether or not it recommends it |
+| `network` | `host`, `bridge`; unanswered defaults to `bridge` | `host` shares the host network namespace; `bridge` denies that access; available on every project |
 | `docker-daemon` | `host-socket` | The host Docker control socket is mounted; the capsule can control the host daemon |
 | `development-sudo` | `true`, `false` | The capsule user may elevate inside the container through a temporary, launcher-owned sudoers policy |
 | `host-browser` | `true`, `false` | `xdg-open` in the capsule may ask the host browser to open a URL |

@@ -59,8 +59,8 @@ WORKSTATION_CAPABILITY_DEFAULTS: dict[str, tuple[AuthorizationScalar, str]] = {
     "network": (
         "host",
         "Share the host network namespace with the capsule instead of Docker's "
-        "bridge; services on the host become the capsule's localhost and its "
-        "ports become the host's.",
+        "bridge. Host and capsule services share localhost and ports. "
+        "This removes network namespace isolation. Deny with 'bridge' (the default).",
     ),
     "development-sudo": (
         True,
