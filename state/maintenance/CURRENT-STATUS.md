@@ -24,6 +24,40 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22, evening: software approvals at launch, PR #250, the first
+slice of rc3.** The owner's finding on the host after merging the
+regenerated lock: `config resolve` asked for the Antigravity and Claude Code
+consents again, one per component, nothing new to decide. The diagnosis:
+the acquisition consent's digest covers the component's whole lock entry,
+version included, so a pin bump re-asks; D-0011 of 2026-10-01 rules that
+out, once per vendor product per user, and its slice is out of 0.3.0 with
+the consent work. The owner's direction instead: when the only pending
+decisions are new versions of vendor software approved before, from the
+same vendors under the same terms, `project run` offers the whole list
+with one y/n; on no, it names `project config approve` and a page,
+*software approvals*. Three design points settled with the owner: this
+replaces the digest change, the strict definition of "only component
+upgrades", the command and the page. On
+`ws-maintenance/0.3.0-software-approvals` off the release branch:
+`devcapsule/configuration/approvals.py`, the qualification and the list;
+`devcapsule/commands/_software_approvals.py`, the launch-time offer, the
+last launched version from the newest known-good record, approve and
+resolve, the quoted command, the page's address, the keypress helper
+moved beside it; the `config approve` command, mutating, refused inside a
+capsule for its own project; the hook before the launch's loading, never
+in `--print-command`; the page under `docs/configuration/`. Fifteen tests
+through the real command line; the documentation contract passed with the
+page; the full gate, 1686 unit tests.
+[PR #250](https://github.com/ccozianu/devcapsule/pull/250) into
+`release-0.3.0`; the review partner is the Codex and gpt-6-astra pair, by
+the owner's word, running detached. Also this evening: the owner's
+requirement that configuration files declare their format and the minimum
+DevCapsule that reads them went to `project-management` by mail at
+`ced0ed1aab9a`; the manifest rewrite by `config capabilities` is filed as a
+bug; the owner's ruling that a writer emitting the `required`/`optional`
+vocabulary bumps the manifest's schema version to 2 is the next slice,
+beside this one, for rc3.
+
 **2026-10-22, afternoon: rc2 tagged and verified; the shared lock
 regenerated and proven.** PR #249 merged at `e998dc0`; `v0.3.0-rc2` on
 `e5b5a8b`, the candidate gate `mainline` from a detached checkout, pushed
