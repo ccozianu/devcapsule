@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
 
-Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@f269267d1941
+Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@d8e6d5c9cf74
 
 Integration target: `main`
 
@@ -24,15 +24,23 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-**2026-10-22 (`ws-maintenance/e2e_videos-2`): fixed leftover IntelliJ WebVTT
-captions on the landing-page Eclipse Java debugger video
-([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10)).**
+**2026-10-22 (`ws-maintenance/e2e_videos-2`): updated landing-page hero eyebrow
+and demo video caption in `README.md`, and fixed leftover IntelliJ WebVTT
+captions ([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10),
+[PR #245](https://github.com/ccozianu/devcapsule/pull/245)).**
+- Handed the two `README.md` landing-page wording choices to the owner via the
+  capsule web console (`2026-10-22-hero-eyebrow-and-caption`) and recorded the
+  owner's selections (`answered-at: 2026-10-22T09:35:04+00:00`):
+  - `hero-eyebrow`: `ide-list-only` (`PyCharm · IntelliJ IDEA · Eclipse · Rider · VSCodium`),
+    replacing `Linux x86-64 · Windows via WSL2 · Apache-2.0 · Pre-V1`.
+  - `video-caption`: `polished-close` (`"See a sample of a full graphical IDE running inside DevCapsule's isolated Docker container. More scenario illustrations coming soon."`).
 - After PR #236 merged (`423819f`), the owner spotted that the `<track
   kind="captions" src="/assets/session-demo.vtt">` on the landing-page video
   still showed the 4 cues from the earlier IntelliJ IDEA persistence session
   (`"Contained Linux desktop opens after container stop and relaunch; IntelliJ IDEA 2026.2.3 starts in the workspace."`).
 - Updated `website/src/assets/session-demo.vtt` ([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10),
-  merged to `website` `main` at `2bcfe6e`) and saved a matching copy at
+  merged to `website` `main` at `2bcfe6e` and integrated via [PR #245](https://github.com/ccozianu/devcapsule/pull/245)
+  at `e91b965`) and saved a matching copy at
   `engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug.vtt`
   with 5 timed cues (`00:00.000` to `00:27.420`) mapped from the 329 recorded
   frames of `eclipse-hello-time-debug.webm`.

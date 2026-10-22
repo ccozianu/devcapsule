@@ -19,17 +19,18 @@ default. You decide what additional access to grant.
 
 **The environment your agent tests in is the one you debug in.**
 
-- Linux x86-64
-- Windows via WSL2
-- Apache-2.0
-- Pre-V1
+- PyCharm
+- IntelliJ IDEA
+- Eclipse
+- Rider
+- VSCodium
 
 <!-- website:demo -->
 ### Watch a real session inside a capsule
 
 [![Eclipse IDE in the Debug perspective inside a DevCapsule container, paused at a breakpoint in HelloTime.java with live Variables and Console output](engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug-poster.png)](engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug.webm)
 
-Step-by-step Java debugging inside an Eclipse DevCapsule: set a breakpoint on `LocalDateTime.now()`, launch the debugger (`F11`), and step line by line (`F6`) while inspecting live variables and console output.
+See a sample of a full graphical IDE running inside DevCapsule's isolated Docker container. More scenario illustrations coming soon.
 
 <!-- website:benefits -->
 ## Why switch to DevCapsule?
