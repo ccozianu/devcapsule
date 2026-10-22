@@ -56,12 +56,11 @@ with the exact path for your checkout.
 | `devcapsule-<ide>.log`, for example `devcapsule-pycharm.log` | the IDE's standard output and error | What the IDE prints when it starts and fails; its own log stays in its log directory, see below |
 | `devcapsule-job.log` | a headless job | The job's output |
 
-Every file of the capsule side is also what you see on the launcher's
-terminal: the supervisor copies each child's output to its file and to the
-console, with a UTC timestamp in front of each line in the file. Partial
-lines reach the console without waiting for a newline.
-The launcher's and the supervisor's own records carry the level and the
-process id as well.
+Each child's file carries a UTC timestamp in front of every line. If a file
+cannot be opened or a write fails, the supervisor reports that once and
+copies the remaining output to the terminal so nothing is lost. The
+launcher's and the supervisor's own records carry the level and the process
+id as well.
 
 The IDE keeps its own log where it always did, in its persistent log
 directory: `idea.log` for the JetBrains IDEs, under the log slot listed by

@@ -362,17 +362,26 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     )
                 _session_events.info("docker run: %s", shlex.join(command))
                 try:
-                    result = run_attached(command, runtime_env, container_name=config.name)
+                    result = run_attached(
+                        command, runtime_env, container_name=config.name, on_interrupt=stop_watching.set,
+                    )
                 finally:
                     stop_watching.set()
-                if result.interrupted:
+                exit_code = INTERRUPTED_EXIT_CODE if result.interrupted else result.exit_code
+                if not result.stopped:
                     _session_events.info(
-                        "session end: interrupted from the terminal (Ctrl+C); docker run exit code %d", result.exit_code,
+                        "session end unknown: interrupted from the terminal (Ctrl+C); container %s may still be running",
+                        config.name,
                     )
                 else:
-                    _session_events.info("session end: docker run exit code %d", result.exit_code)
-                exit_code = INTERRUPTED_EXIT_CODE if result.interrupted else result.exit_code
-                end_session_logs(config, exit_code)
+                    if result.interrupted:
+                        _session_events.info(
+                            "session end: interrupted from the terminal (Ctrl+C); docker run exit code %d",
+                            result.exit_code,
+                        )
+                    else:
+                        _session_events.info("session end: docker run exit code %d", result.exit_code)
+                    end_session_logs(config, exit_code)
                 print(session_result_text(config, result), file=sys.stderr, flush=True)
                 return exit_code
             finally:
@@ -408,7 +417,13 @@ class AttachedResult:
     launcher stopped waiting for it, in which case the capsule may still run."""
 
 
-def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_name: str) -> AttachedResult:
+def run_attached(
+    command: Sequence[str],
+    env: Mapping[str, str],
+    *,
+    container_name: str,
+    on_interrupt: Callable[[], None] = lambda: None,
+) -> AttachedResult:
     """Run the capsule in the foreground and wait through Ctrl+C for its end.
 
     The terminal delivers SIGINT to the whole foreground group: the docker
@@ -428,12 +443,13 @@ def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_na
         return AttachedResult(process.wait(), interrupted=False, stopped=True)
     except KeyboardInterrupt:
         pass
-    print(
-        "Interrupted from the terminal (Ctrl+C); the capsule is stopping. "
-        "Press Ctrl+C again to stop waiting for it.",
-        file=sys.stderr, flush=True,
-    )
     try:
+        on_interrupt()
+        print(
+            "Interrupted from the terminal (Ctrl+C); the capsule is stopping. "
+            "Press Ctrl+C again to stop waiting for it.",
+            file=sys.stderr, flush=True,
+        )
         try:
             return AttachedResult(process.wait(timeout=INTERRUPT_STOP_SECONDS), interrupted=True, stopped=True)
         except subprocess.TimeoutExpired:
@@ -444,11 +460,14 @@ def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_na
             subprocess.run(
                 ["docker", "stop", "--time", "10", container_name],
                 check=False, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=DAEMON_STOP_SECONDS,
             )
             return AttachedResult(process.wait(timeout=DAEMON_STOP_SECONDS), interrupted=True, stopped=True)
-    except (KeyboardInterrupt, subprocess.TimeoutExpired):
+    except (KeyboardInterrupt, subprocess.TimeoutExpired, OSError):
         process.kill()
-        process.wait()
+        exit_code = process.wait()
+        if exit_code >= 0:
+            return AttachedResult(exit_code, interrupted=True, stopped=True)
         return AttachedResult(INTERRUPTED_EXIT_CODE, interrupted=True, stopped=False)
 
 
@@ -478,7 +497,10 @@ def session_result_text(config: PycharmRunConfig, result: AttachedResult) -> str
     if directory is None:
         lines.append("Session logs: none; this session logged to the console only.")
         return "\n".join(lines)
-    files = sorted(path for path in directory.iterdir() if path.is_file()) if directory.is_dir() else []
+    try:
+        files = sorted(path for path in directory.iterdir() if path.is_file()) if directory.is_dir() else []
+    except OSError:
+        files = []
     lines.append("Session logs on this computer:")
     lines.extend(f"  {path}" for path in files or [directory])
     return "\n".join(lines)
