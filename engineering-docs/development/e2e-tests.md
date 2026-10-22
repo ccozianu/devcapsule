@@ -98,7 +98,8 @@ To record pause-free product and documentation videos of real IDE workflows
 
 ### 1. Deterministic scenario replay
 
-Run a catalog scenario through `ide-smoke`:
+Run a catalog scenario through `ide-smoke`; `--scenario` needs exactly one
+`--surface`, the scenario's own, and cannot be combined with `--agent`:
 
 ```sh
 .venv/bin/python -m nox -s ide-smoke -- --surface eclipse --scenario eclipse-hello-time-debug --component-browser
@@ -120,6 +121,8 @@ each `ActionStep` (`click`, `double_click`, `right_click`, `type`, `press`,
 - `scenario-video.webm`: pause-free 12 fps VP8 WebM encoded by `BurstFrameRecorder`
   using `ffmpeg` (`image2pipe` `mjpeg` $\rightarrow$ `libvpx`) from either the host or
   the child capsule's `/opt/playwright/browsers/ffmpeg-*/ffmpeg-linux`.
+- `scenario-video.webm.ffmpeg.log`: `ffmpeg`'s output, and the failure reason
+  when `scenario-video.webm` is missing.
 - `agent-desktop-raw.webm`: continuous raw Playwright context recording.
 - `step-NNN.png` and `poster.png`: full-resolution `1600×1000` step screenshots.
 - `action-log.json` and `scenario-result.json`.

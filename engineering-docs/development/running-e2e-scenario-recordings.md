@@ -25,7 +25,9 @@ Make sure:
 
 ## 2. Replay a packaged scenario and record video with `nox`
 
-Run the `ide-smoke` session with `--surface` and `--scenario`:
+Run the `ide-smoke` session with `--surface` and `--scenario`. A scenario targets
+one IDE surface, so `--scenario` needs exactly one `--surface` and cannot be
+combined with `--agent`:
 
 ```sh
 nox -s ide-smoke -- \
@@ -88,6 +90,7 @@ For example, an Eclipse run writes into
 | File | Contents |
 |---|---|
 | `scenario-video.webm` | Pause-free `1600×1000` 12 fps VP8 WebM video encoded from active UI transition frames |
+| `scenario-video.webm.ffmpeg.log` | `ffmpeg`'s own output, and the reason when no `scenario-video.webm` was produced |
 | `poster.png` | Final `1600×1000` frame suitable for a `<video poster="...">` thumbnail |
 | `step-001.png` … `step-NNN.png` | Full-resolution screenshot captured after each action step |
 | `agent-desktop-raw.webm` | Uncut Playwright browser-context video of the entire session |
@@ -109,7 +112,8 @@ PYTHONPATH=src:. .nox/ide-smoke/bin/python -m tests.e2e.scenario_recorder serve 
 ```
 
 Once `controller.json` appears in `--evidence`, the agent drives the IDE with
-`ctl` commands:
+`ctl` commands. `ctl` prints the controller's JSON answer and exits `0` when
+`ok` is true, else `1`:
 
 ```sh
 # 2. Capture the current screen and X11 window list:

@@ -238,6 +238,7 @@ def test_ide_smoke_forwards_scenario_flag_to_environment(monkeypatch: pytest.Mon
     monkeypatch.delenv(noxfile.PEX_UNDER_TEST_ENV, raising=False)
     monkeypatch.setattr(noxfile, "build_test_pex", Mock())
     noxfile.ide_smoke(session)
+    session.error.assert_not_called()
     assert session.env["DEVCAPSULE_SMOKE_SCENARIO"] == "eclipse-hello-time-debug"
     assert session.env["DEVCAPSULE_SMOKE_DISPLAY"] == "1"
     assert "-k" in session.run.call_args.args
@@ -501,3 +502,24 @@ def test_ctl_exit_status_follows_the_answer(tmp_path: Path, monkeypatch: pytest.
     assert sent == [{"cmd": "screenshot"}, {"cmd": "dance"}]
     assert "Unknown cmd: dance" in capsys.readouterr().out
 
+
+@pytest.mark.parametrize(
+    "posargs, message",
+    [
+        (["--scenario", "eclipse-hello-time-debug"], "exactly one --surface"),
+        (["--scenario", "eclipse-hello-time-debug", "--surface", "eclipse", "--surface", "intellij"], "exactly one --surface"),
+        (["--scenario", "eclipse-hello-time-debug", "--surface", "eclipse", "--agent"], "cannot be combined with --agent"),
+        (["--scenario", "eclipse-hello-time-debug", "--surface", "intellij", "--agent", "--relaunch"], "cannot be combined with --agent"),
+    ],
+)
+def test_ide_smoke_refuses_scenario_option_combinations(monkeypatch: pytest.MonkeyPatch, posargs: list[str], message: str) -> None:
+    session = Mock()
+    session.env = {}
+    session.posargs = posargs
+    session.error = Mock(side_effect=RuntimeError("nox stopped"))
+    monkeypatch.delenv(noxfile.PEX_UNDER_TEST_ENV, raising=False)
+    monkeypatch.setattr(noxfile, "build_test_pex", Mock())
+    with pytest.raises(RuntimeError, match="nox stopped"):
+        noxfile.ide_smoke(session)
+    assert message in session.error.call_args.args[0]
+    session.run.assert_not_called()
