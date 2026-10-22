@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
 
-Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@073824225b0b
+Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@f269267d1941
 
 Integration target: `main`
 
@@ -24,10 +24,25 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22 (`ws-maintenance/e2e_videos-2`): fixed leftover IntelliJ WebVTT
+captions on the landing-page Eclipse Java debugger video
+([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10)).**
+- After PR #236 merged (`423819f`), the owner spotted that the `<track
+  kind="captions" src="/assets/session-demo.vtt">` on the landing-page video
+  still showed the 4 cues from the earlier IntelliJ IDEA persistence session
+  (`"Contained Linux desktop opens after container stop and relaunch; IntelliJ IDEA 2026.2.3 starts in the workspace."`).
+- Updated `website/src/assets/session-demo.vtt` ([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10),
+  merged to `website` `main` at `2bcfe6e`) and saved a matching copy at
+  `engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug.vtt`
+  with 5 timed cues (`00:00.000` to `00:27.420`) mapped from the 329 recorded
+  frames of `eclipse-hello-time-debug.webm`.
+- Verified with `npm test` (`23 passed`), `npm run check:content` (`187 pages`),
+  `npm run build`, and `npm run check` (`191 HTML pages, 13876 local links/assets/anchors`).
+
 **2026-10-22 (`ws-maintenance/e2e_videos-2` / `ws-maintenance/4PR-e2e_videos-2`):
 review-partner loop on [PR #236](https://github.com/ccozianu/devcapsule/pull/236)
 completed with Claude Fable 5.1; [PR #241](https://github.com/ccozianu/devcapsule/pull/241)
-(PR236.1) accepted and merged without a round; PR #236 ready for owner merge.**
+(PR236.1) accepted and merged without a round; PR #236 merged at `423819f`.**
 - Synchronized `ws-maintenance/e2e_videos-2` with `origin/release-0.3.0` (`106f8b3`)
   to bring in the review-partner loop rules (`WORKFLOW.md` topic 9.11,
   `WORKFLOW-LOCAL.md` *Review Partners In This Checkout*, and
