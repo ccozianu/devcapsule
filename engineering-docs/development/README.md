@@ -11,6 +11,7 @@ entry point; the documents here carry the detail, one subject each.
 | [Unit tests](unit-tests.md) | What `nox -s tests` runs, how the suite is organized, its fixtures and resources, and what the hosted runner does |
 | [Integration tests](integration-tests.md) | The checks that cross a packaging or process boundary without Docker: the built executable, the CLI smoke, the type check, the documentation contract |
 | [End-to-end tests](e2e-tests.md) | The Docker-backed suites, each with its entry point, what it proves, what it needs, and the evidence it leaves |
+| [Running E2E scenario recordings](running-e2e-scenario-recordings.md) | How to replay or author a recorded IDE scenario from a shell with `nox -s ide-smoke -- --scenario` |
 | [The review-partner loop](review-partner-loop.md) | How a slice is built by two agent pairs of different engines: the brief template, the round brief, the assessment comment, the invocation recipes per engine, and the record of the loops run |
 
 Placement rule: a document here describes how the project is developed and

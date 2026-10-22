@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-18. Stage: **candidate 0 published and verified as downloaded; the owner's test on the other checkout next**.
+Updated: 2026-10-21. Stage: **candidate 1 accepted by the owner for the console-link fix; the cycle's slices next, the network node first**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -52,6 +52,14 @@ that is honest about what it skips.
   downloaded candidate; the release notes as `notes.md` beside this file.
   Project-operation instructions, C17, stay assigned to
   `workflow-improvements` for 0.3.0 and gate the final tag.
+- **Rulings of 2026-10-21.** The base publication happens later, in the
+  promotion of the accepted candidate, not before the next one. The
+  candidates are grouped: rc2 carries the network node and C10; rc3 forced
+  configuration and the diagnostics snapshot; rc4 image cleanup and C20.
+  C17 stays a gate in both halves, the generic rule in `WORKFLOW.md` with
+  `workflow-improvements` and this project's own operating instructions in
+  `WORKFLOW-LOCAL.md`, the concrete case against which the abstract rule is
+  debugged.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -223,6 +231,33 @@ replacement.
   The first finding of the day, the console link on the recipe-9 base,
   is the bug record below; the console itself works on the base the
   release will publish.
+
+### RC1 — tagged 2026-10-19
+
+- Tag `v0.3.0-rc1` on `7016cdd7cbd373204c4ae0b9fcb01cede3433d94`, the
+  release branch's tip after the merge of PR #232 and the pre-candidate
+  merge into `main` by PR #233 from the throwaway copy `4PR-2-release-0.3.0`.
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc1`.
+- What it adds to rc0: the console-link fix, the launcher announcing the
+  web console only on a base that has one, and the local-base guide. The
+  candidate verifies the fix against the published recipe-9 base and a
+  recipe-11 base and closes the bug record.
+- Backend run [39265210147](https://github.com/ccozianu/devcapsule/actions/runs/39265210147)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc1)
+  is public, non-draft, with the three assets, and the changelog is its
+  body.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc1`:
+  the checksum file verifies the executable, SHA-256
+  `4022a1828575eb24ac029d8915e5fb3a29f191aed4e9aab2ca9b2d1f6452cfc0`, the
+  manifest records the same value, the tag, the branch, the source
+  revision and the `mainline` disposition; the executable reports
+  `0.3.0rc1`, `v0.3.0-rc1` and `7016cdd…`, and its help answers.
+- Verified by the owner, 2026-10-21: on the published recipe-9 base the
+  launcher prints the substitute line and no link; on the local recipe-11
+  base the link works and the console answers. The bug record is closed.
+  The owner's judgment of the console: it works nicely, to the extent
+  required for 0.3.0.
 
 ## Release Notes Preparation
 

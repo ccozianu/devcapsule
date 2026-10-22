@@ -229,11 +229,13 @@ the October transcripts failed on Codex 0.157.1:
 cd ~/worktrees/<workstream>-review && nohup setsid bash -c "codex exec resume <session-id> -c 'sandbox_mode=\"danger-full-access\"' -c 'projects.\"$HOME/worktrees/<workstream>-review\".trust_level=\"trusted\"' - < $S/<round brief>.md > $S/<log> 2>&1; echo CODEX_EXIT=\$? >> $S/<log>" > /dev/null 2>&1 &
 ```
 
-Claude Code, the brief on standard input, smoke-tested 2026-10-22:
+Claude Code, the brief on standard input, smoke-tested and run in a full loop 2026-10-22:
 
 ```text
-cd ~/worktrees/<workstream>-review && nohup setsid bash -c "claude -p --dangerously-skip-permissions < $S/<brief>.md > $S/<log> 2>&1; echo CLAUDE_EXIT=\$? >> $S/<log>" > /dev/null 2>&1 &
+cd ~/worktrees/<workstream>-review && nohup setsid bash -c "claude -p --model <model> --dangerously-skip-permissions < $S/<brief>.md > $S/<log> 2>&1; echo CLAUDE_EXIT=\$? >> $S/<log>" > /dev/null 2>&1 &
 ```
+
+Note on `claude -p`: in single-turn print mode (`-p`), a Bash tool call launched with `run_in_background: true` is killed as soon as the turn finishes waiting. Instruct the review partner in the brief (or pre-warm `.nox/build` and `.nox/webconsole`) to run `nox -s build` synchronously in the foreground; if a `-p` run exits early after starting a background command, resume the same session in the worktree with `claude -c -p --model <model> --dangerously-skip-permissions "<prompt>"`.
 
 Antigravity, from its help, not yet run in a loop; the first pair that
 runs it verifies the form and records the result here:
@@ -261,6 +263,7 @@ when the workstream pauses, and say so in its open threads.
 | 2026-10-09 to 2026-10-10 | capsule-webconsole | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #184/#185, #186/#187, #188/#189, #190/#191, #192/#193, #194/#195, #196/#197, #199/#200, #201/#202, #203/#204, #205/#206 | every review merged; one round on #185 and one on #200; stacked branches kept consistent by merging, after a GitHub rebase of a base had broken the stack once |
 | 2026-10-11 | maintenance, session diagnostics | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #207/#208; #209/#210, #211, #212 | #208 merged without a round with five real gaps; #210's proposals became a design change; #212 used the third round; the owner changed the design once between rounds and the loop absorbed it |
 | 2026-10-12 | maintenance | | | | the process record sent to the trading-research sample project's `project-management` as an intake item; it is the source of the lessons below |
+| 2026-10-22 | maintenance, e2e scenario video recorder | Antigravity, Gemini 4 Argon (High) pair | Claude Code, Claude Fable 5.1 pair | #236/#241 | #241 (PR236.1) merged without a round: ten concrete fixes (`ActionStep` and `seed_files` path/symlink validation, `ffmpeg` stderr log file and pipe/process reaping, extracted `start_controller_server` with HTTP 400/504 and atomic `controller.json`, `ide-smoke --scenario` CLI flag guards) and 50 new unit tests with a 17-point mutation check; three unimplemented proposals recorded in `maintenance` status |
 | 2026-10-22 | maintenance, release 0.3.0 | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #240/#242 | the first loop under topic 9.11; one round, on a name special-case where the declaration carried the fact; the briefs committed under the workstream's evidence; the resume form corrected |
 
 The reviews' briefs of these loops lived in the implementors' session

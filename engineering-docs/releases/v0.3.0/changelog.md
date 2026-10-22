@@ -6,7 +6,8 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 0, tagged 2026-10-18 at `53ebc17`.
+Candidate 1, tagged 2026-10-19 at `7016cdd`; candidate 0 was tagged
+2026-10-18 at `53ebc17`.
 
 ## New
 
@@ -97,20 +98,21 @@ console, diagnostics and logs, capabilities, the IDE surfaces, component
 upgrades and freshness, and the developer documents on the unit,
 integration and end-to-end suites.
 
-## Known in candidate 0
+## Fixed in candidate 1
 
-- On the published base, `ubuntu-24.04@9`, the launcher prints a web
-  console link, the capsule then says this base has no web console, and
-  three minutes later the launcher reports that the console did not
-  answer and suggests opening the link. The link leads nowhere; the
-  capsule is fine and needs no wait. The console needs a base of recipe
-  10 or later, and a published one is a gate before the final release.
-  The launcher's output is a bug (2026-10-18), fixed on the release branch
-  for the next candidate: the launcher reads the base's labels first and,
-  on a base without the console, prints what is missing, the one command
-  that builds a base with it and the guide, and plans no console at all.
+- On the published base, `ubuntu-24.04@9`, candidate 0 printed a web
+  console link, the capsule then said this base has no web console, and
+  three minutes later the launcher reported that the console did not
+  answer and suggested opening the link (2026-10-18). The launcher now
+  reads the base's labels first; on a base without the console it prints
+  what is missing, the one command that builds a base with it and the
+  guide, and plans no console at all: no port, no token, no wait. The
+  console needs a base of recipe 11 or later; a published one is a gate
+  before the final release, and
+  [building and selecting a local base](https://devcapsule.mycodespace.ai/docs/current/configuration/local-base/)
+  is the way to have it before then.
 
-## Not in candidate 0
+## Not in candidate 1
 
 Planned for later candidates of this cycle: the universal `network`
 authorization node; the first-session terminal summary and Ctrl+C ending

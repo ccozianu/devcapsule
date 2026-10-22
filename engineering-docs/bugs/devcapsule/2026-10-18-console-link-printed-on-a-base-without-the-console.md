@@ -1,5 +1,5 @@
 ---
-status: fixed
+status: closed
 severity: minor
 target: 0.3.0
 owner: maintenance
@@ -114,3 +114,11 @@ console section in the plan it stays silent. Unit tests pin the label rule,
 the empty plan and the notice's three lines. Verification on a downloaded
 candidate against the recipe-9 published base and a recipe-11 base closes
 the record.
+
+## Closed, 2026-10-21
+
+Verified by the owner on the downloaded `v0.3.0-rc1`: on the published
+recipe-9 base the launcher prints the substitute line and no link, and
+on a local recipe-11 base the link works and the console answers. The
+owner's word of 2026-10-21 closes the record; the console, as required
+for 0.3.0, works.

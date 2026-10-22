@@ -311,14 +311,19 @@ next definition change rather than after it.
 ## Integration Method And Exceptions
 
 **Rule.** Merge commits since 2026-10-03, enforced by the hosting platform
-since 2026-10-15 together with head-branch deletion on merge; four recorded exceptions:
+since 2026-10-15 together with head-branch deletion on merge; the recorded exceptions:
 release-fix propagation by judgment, the root definition as source, two
 adoption exceptions, and pre-`ws-` branch names.
 
 **Intended effect.** Every departure from the generic rules is visible, dated,
 reasoned, and has an end condition.
 
-**Motivation.** The release-fix exception exists because the generic rule's
+**Motivation.** The one-time synchronization of `release-0.3.0` with `main`
+on 2026-10-22 exists because the cycle produced workflow rules on `main`,
+the GitHub CLI rule and the review-partner loop, that the release checkout
+must follow too, and `main` had received nothing else outside the
+candidate process; the merge kept the release version where `main` carries
+the next development version. The release-fix exception exists because the generic rule's
 blanket merge-only policy would hold unrelated work back or leave `main`
 without a fix; the owner ruled on 2026-09-22 that engineering judgment chooses
 merge, cherry-pick, or evidence that `main` lacks the bug, with the disposition
