@@ -1720,8 +1720,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   status file while both are on maintenance; this one, the release
   checkout, is the recommendation.
 - Closed 2026-10-21: the console-link record, on the owner's verification.
-- Awaiting the human: PR #240 into `release-0.3.0`, the network node,
-  with its review merged after one round.
+- Done 2026-10-22: PR #240 merged into `release-0.3.0` at `6ebadf2`, PR #243
+  into `main`; the network node is on the release branch for rc2. Next:
+  C10, its details to the owner first.
 - Done 2026-10-22: PR #237, #238 and #239 merged to `main`; the
   scratch-mount item mailed to `project-management`.
 - Weighed: Version Scheme rule 4, `main` reopening at the cut, has no
