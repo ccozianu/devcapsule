@@ -318,8 +318,8 @@ adoption exceptions, and pre-`ws-` branch names.
 **Intended effect.** Every departure from the generic rules is visible, dated,
 reasoned, and has an end condition.
 
-**Motivation.** The one-time synchronization of `release-0.3.0` with `main`
-on 2026-10-22 exists because the cycle produced workflow rules on `main`,
+**Motivation.** The synchronization of `release-0.3.0` with `main` during
+the cycle, on 2026-10-22 twice, each on the owner's word, exists because the cycle produced workflow rules on `main`,
 the GitHub CLI rule and the review-partner loop, that the release checkout
 must follow too, and `main` had received nothing else outside the
 candidate process; the merge kept the release version where `main` carries

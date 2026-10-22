@@ -19,21 +19,18 @@ default. You decide what additional access to grant.
 
 **The environment your agent tests in is the one you debug in.**
 
-- Linux x86-64
-- Windows via WSL2
-- Apache-2.0
-- Pre-V1
+- PyCharm
+- IntelliJ IDEA
+- Eclipse
+- Rider
+- VSCodium
 
 <!-- website:demo -->
 ### Watch a real session inside a capsule
 
-[![IntelliJ IDEA Community inside a DevCapsule Fluxbox desktop after stopping and restarting the capsule, showing smoke.txt with both the first-session and after-restart lines](engineering-docs/blog/assets/2026-10-04-intellij/after-restart-hero-poster.png)](engineering-docs/blog/assets/2026-10-04-intellij/after-restart-hero-excerpt.webm)
+[![Eclipse IDE in the Debug perspective inside a DevCapsule container, paused at a breakpoint in HelloTime.java with live Variables and Console output](engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug-poster.png)](engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug.webm)
 
-Recorded inside a real DevCapsule container (`0.2.15` development build, 2026-10-04): IntelliJ IDEA Community reopens the `smoke` workspace after `devcapsule stop` and `devcapsule start`, preserves `smoke.txt` from the first session, and appends the second session marker (`2.6×` excerpt, 26 s; [full 68 s restart WebM](engineering-docs/blog/assets/2026-10-04-intellij/after-restart.webm) · [first-session 74 s WebM](engineering-docs/blog/assets/2026-10-04-intellij/first-session.webm) · [validation note](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)).
-
-1. **0:00–0:06 — Reconnect to the restarted capsule desktop.** The Fluxbox desktop and IntelliJ IDEA Community reopen over noVNC after `devcapsule stop` and `devcapsule start`.
-2. **0:06–0:15 — Verify preserved project state.** IntelliJ finishes indexing `smoke` and reopens `smoke.txt` with `first-session-ok` intact in the persistent container home.
-3. **0:15–0:26 — Continue editing in the same environment.** The developer appends `after-restart-ok` in the editor and saves to the shared `/workspace` mount.
+See a sample of a full graphical IDE running inside DevCapsule's isolated Docker container. More scenario illustrations coming soon.
 
 <!-- website:benefits -->
 ## Why switch to DevCapsule?

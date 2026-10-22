@@ -335,9 +335,13 @@ of `WORKFLOW.md`, in this checkout.
    prompt, its output in a log under the session scratchpad that ends with
    an exit line, and wait for that line. The recorded forms are:
    - Codex: `codex exec -m <model> -s danger-full-access -c 'projects."<worktree>".trust_level="trusted"' - < <brief>`.
-     A round continues the same session: `codex exec resume <session-id> "<round text>"`, the id read from the log.
+     A round continues the same session with the round brief on standard input:
+     `codex exec resume <session-id> -c 'sandbox_mode="danger-full-access"' - < <round brief>`,
+     the id read from the `session id:` line of the first log; `resume` takes no `-s`.
    - Claude Code: `claude -p --dangerously-skip-permissions < <brief>`.
-   - Antigravity: `antigravity -p --dangerously-skip-permissions < <brief>`, from its help; not yet run in a loop.
+   - Antigravity: `antigravity --model <model> --dangerously-skip-permissions -p '<one-line instruction to follow the brief on standard input>' < <brief>`;
+     the model flag goes before `-p`, which takes the prompt as its own argument. A round continues the
+     same conversation with `-c` before `-p`.
    Establish any other form with the human and record it here before use.
 5. The review partner uses the GitHub CLI as *GitHub Integration* says; the
    brief repeats the activation line. Label the assessment comment
@@ -422,13 +426,14 @@ Owner direction, 2026-10-09, after the controlled-language edition merged.
 
 ## Exceptions
 
-- **The 0.3.0 release branch synchronized with `main` once.** Owner
-  direction, 2026-10-22: `main` at `c779dc2` is merged into `release-0.3.0`,
-  because nothing was developed on `main` outside the candidate process and
-  the workflow rules written during the cycle must bind the release
-  checkout. The version-bearing files keep the release side. Topic 11 of
-  the generic definition forbids synchronizing a release ref. Ends with the
-  final tag of 0.3.0.
+- **The 0.3.0 release branch synchronizes with `main` during the cycle, on
+  the owner's word each time.** Owner direction, 2026-10-22: `main` is
+  merged into `release-0.3.0`, at `c779dc2` and again at `e03b060` before
+  candidate 2, because nothing was developed on `main` outside the
+  candidate process and the workflow rules and records written during the
+  cycle must bind the release checkout. The version-bearing files keep the
+  release side. Topic 11 of the generic definition forbids synchronizing a
+  release ref. Ends with the final tag of 0.3.0.
 - **`main` reopens at the cut, not after the final tag.** Owner decision,
   2026-10-18, during the 0.3.0 cycle, after the merge of the release
   branch carried the release version onto `main`: a development version

@@ -1,0 +1,309 @@
+{
+  "id": "eclipse-hello-time-debug",
+  "surface": "eclipse",
+  "title": "Eclipse IDE for Java Developers: Step-by-Step Debugging of a System-Time Greeting",
+  "description": "Run an Eclipse/Java DevCapsule, open a Java application that formats the current system time into 'Hello world, time is now ${TIME}', set a line breakpoint where the system time is retrieved (LocalDateTime.now()), launch the debugger, and step line-by-line while inspecting Variables and Console output.",
+  "seed_files": {
+    ".project": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<projectDescription>\n\t<name>HelloTime</name>\n\t<comment></comment>\n\t<projects>\n\t</projects>\n\t<buildSpec>\n\t\t<buildCommand>\n\t\t\t<name>org.eclipse.jdt.core.javabuilder</name>\n\t\t\t<arguments>\n\t\t\t</arguments>\n\t\t</buildCommand>\n\t</buildSpec>\n\t<natures>\n\t\t<nature>org.eclipse.jdt.core.javanature</nature>\n\t</natures>\n</projectDescription>\n",
+    ".classpath": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<classpath>\n\t<classpathentry kind=\"con\" path=\"org.eclipse.jdt.launching.JRE_CONTAINER\"/>\n\t<classpathentry kind=\"src\" path=\"src\"/>\n\t<classpathentry kind=\"output\" path=\"bin\"/>\n</classpath>\n",
+    "src/HelloTime.java": "import java.time.LocalDateTime;\nimport java.time.format.DateTimeFormatter;\n\npublic class HelloTime {\n    public static void main(String[] args) {\n        LocalDateTime now = LocalDateTime.now();\n        String timestamp = now.format(DateTimeFormatter.ofPattern(\"yyyy-MM-dd HH:mm:ss\"));\n        String message = \"Hello world, time is now \" + timestamp;\n        System.out.println(message);\n    }\n}\n"
+  },
+  "actions": [
+    {
+      "action": "click",
+      "x": 532,
+      "y": 744,
+      "text": "",
+      "ms": 0,
+      "reason": "Close welcome browser tab in bottom pane"
+    },
+    {
+      "action": "click",
+      "x": 60,
+      "y": 254,
+      "text": "",
+      "ms": 0,
+      "reason": "Click Import projects... in Package Explorer"
+    },
+    {
+      "action": "click",
+      "x": 200,
+      "y": 140,
+      "text": "",
+      "ms": 0,
+      "reason": "Focus import wizard filter box"
+    },
+    {
+      "action": "type",
+      "x": 0,
+      "y": 0,
+      "text": "Existing Projects into Workspace",
+      "ms": 0,
+      "reason": "Filter to Existing Projects into Workspace wizard"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 600,
+      "reason": "Wait for tree filter to match"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "Enter",
+      "ms": 0,
+      "reason": "Open Existing Projects into Workspace page"
+    },
+    {
+      "action": "type",
+      "x": 0,
+      "y": 0,
+      "text": "${PROJECT_PATH}",
+      "ms": 0,
+      "reason": "Enter container project directory path"
+    },
+    {
+      "action": "click",
+      "x": 1555,
+      "y": 308,
+      "text": "",
+      "ms": 0,
+      "reason": "Click Refresh to scan for HelloTime project"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 600,
+      "reason": "Wait for HelloTime project checkbox"
+    },
+    {
+      "action": "click",
+      "x": 1555,
+      "y": 938,
+      "text": "",
+      "ms": 0,
+      "reason": "Click Finish to import HelloTime"
+    },
+    {
+      "action": "click",
+      "x": 150,
+      "y": 99,
+      "text": "",
+      "ms": 0,
+      "reason": "Enable Link with Editor in Package Explorer"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "Control+Shift+r",
+      "ms": 0,
+      "reason": "Open Resource dialog"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 400,
+      "reason": "Wait for Open Resource dialog"
+    },
+    {
+      "action": "type",
+      "x": 0,
+      "y": 0,
+      "text": "HelloTime.java",
+      "ms": 0,
+      "reason": "Type HelloTime.java in Open Resource"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 400,
+      "reason": "Wait for resource match"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "Enter",
+      "ms": 0,
+      "reason": "Open HelloTime.java in editor"
+    },
+    {
+      "action": "click",
+      "x": 200,
+      "y": 191,
+      "text": "",
+      "ms": 0,
+      "reason": "Place cursor on Line 6 (LocalDateTime.now())"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "Control+Shift+b",
+      "ms": 0,
+      "reason": "Toggle line breakpoint on Line 6"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 600,
+      "reason": "Show breakpoint dot on Line 6"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "F11",
+      "ms": 0,
+      "reason": "Start debugging HelloTime.java"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 1500,
+      "reason": "Wait for breakpoint hit and perspective switch prompt"
+    },
+    {
+      "action": "click",
+      "x": 1015,
+      "y": 538,
+      "text": "",
+      "ms": 0,
+      "reason": "Click Switch button in Confirm Perspective Switch dialog"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 1200,
+      "reason": "Allow Debug perspective views to render at Line 6"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "F6",
+      "ms": 0,
+      "reason": "Step Over Line 6 (LocalDateTime.now())"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 900,
+      "reason": "Show now variable in Variables view and execution at Line 7"
+    },
+    {
+      "action": "click",
+      "x": 775,
+      "y": 236,
+      "text": "",
+      "ms": 0,
+      "reason": "Select now in Variables view"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 750,
+      "reason": "Display now variable in Variables view"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "F6",
+      "ms": 0,
+      "reason": "Step Over Line 7 (format timestamp)"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 900,
+      "reason": "Show timestamp variable in Variables view"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "F6",
+      "ms": 0,
+      "reason": "Step Over Line 8 (construct Hello world + timestamp message)"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 900,
+      "reason": "Show message variable in Variables view and execution at Line 9"
+    },
+    {
+      "action": "click",
+      "x": 775,
+      "y": 281,
+      "text": "",
+      "ms": 0,
+      "reason": "Select message variable in Variables view"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 900,
+      "reason": "Hold on Line 9 before printing"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "F6",
+      "ms": 0,
+      "reason": "Step Over Line 9 (System.out.println(message))"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 1200,
+      "reason": "Show printed Hello world + timestamp output in Console view"
+    },
+    {
+      "action": "press",
+      "x": 0,
+      "y": 0,
+      "text": "F8",
+      "ms": 0,
+      "reason": "Resume execution to complete main(String[])"
+    },
+    {
+      "action": "wait",
+      "x": 0,
+      "y": 0,
+      "text": "",
+      "ms": 1200,
+      "reason": "Show terminated launch with Console output"
+    }
+  ]
+}

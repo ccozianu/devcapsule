@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00.000 --> 00:09.250
+Eclipse IDE for Java Developers opens inside the capsule desktop and imports the HelloTime project from /workspace.
+
+00:09.250 --> 00:13.500
+Open HelloTime.java (Ctrl+Shift+R) and toggle a line breakpoint on LocalDateTime.now() at line 6 (Ctrl+Shift+B).
+
+00:13.500 --> 00:17.670
+Launch the debugger (F11); execution pauses at line 6 and Eclipse switches into the Debug perspective.
+
+00:17.670 --> 00:22.750
+Step over lines 6 to 8 (F6), inspecting live now, timestamp, and message values in the Variables view.
+
+00:22.750 --> 00:27.420
+Step over System.out.println(message) to print the timestamped greeting in the Console view, then resume (F8) to finish.
