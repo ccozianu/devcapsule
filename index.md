@@ -44,6 +44,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Integration tests](engineering-docs/development/integration-tests.md)
 - [End-to-end tests](engineering-docs/development/e2e-tests.md)
 - [Running E2E scenario recordings from a shell with nox](engineering-docs/development/running-e2e-scenario-recordings.md)
+- [The review-partner loop](engineering-docs/development/review-partner-loop.md)
 
 ## Releases
 

@@ -756,6 +756,42 @@ transcript would be a false record. Decisions, requirements, bugs, and next
 work propagate to their normal files so that no future agent must read a
 session record to find the next task.
 
+### 9.11 The review-partner loop
+
+**Rule.** One slice, two agent pairs of different engines: the implementor
+opens PRn, writes a brief that is the review partner's only context, and the
+partner answers with PRn.1 from its own checkout, a pull request against
+PRn's branch with findings, evidence and unimplemented proposals; the
+implementor reads the diff, posts a labelled assessment, merges or pushes
+back, at most three rounds; the full gate runs on the merged branch; the
+human merges PRn.
+
+**Intended effect.** Every slice is read closely by a second mind before the
+human sees it, the second mind's work is a diff rather than an opinion, and
+the whole exchange is on the pull requests where anyone can audit it. A
+different engine is chosen on purpose: two models of the same family share
+blind spots.
+
+**Motivation.** The owner ran the pattern by hand on pull requests #170 and
+#171 in October 2026 and on 2026-10-09 directed the agent to orchestrate it
+for the capsule web console. Eleven slices (#184 to #205) each received a
+review pull request from a Codex pair, ten merged without a round and one
+after a round. On 2026-10-11 the persistent session diagnostics ran the same
+loop (#207 to #212); the reviewer's "proposals not implemented" twice named a
+defect in the design, a thread outside the supervisor's signal mask and an
+exit the supervisor reaped first. The process record of 2026-10-12, sent to
+the trading-research sample project, drew the lessons the rules encode: the
+brief is the only context, so it lists files in reading order and asks
+concrete questions; a reviewer that runs its own gate and reports counts and
+limits is trustworthy, one that only summarizes is not; the implementor must
+read the diff, because twice the summary was right and the diff needed a
+decision the summary did not state; accepting without a round and pushing
+back are both decisions with reasons and both go into the record; a round
+took twenty to forty minutes of wall time, most of it the reviewer's gate,
+and three rounds were always enough. The loop sits in topic 9 because it is
+a way of running the work cycle, not a new record or a new ref; the local
+file names the engines, the checkouts and the commands.
+
 ## 10. Completing A Workstream
 
 **Rule.** Empty the intake and mailbox first; record the delivery facts in the

@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-18; releasing 0.3.0: `release-0.3.0` cut from `main` at `3c91183`, version 0.3.0 at `6965c5e`; the agent freshness slice (#224) and the coverage gate (#225 to #227) are merged into the release branch, and the release branch is merged into `main` by PR #228 at `7c20292`, so `main` now carries 0.3.0 and matrix embedded-27; the branch, deleted by the repository's delete-on-merge setting, is restored at `6b97657`; rc0 waits for the owner's host lock command, which the hosted unit run needs, and the owner's word
+State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
 
-Definition read: WORKFLOW.md@b13783c6080d, WORKFLOW-LOCAL.md@7c55e5a4bf92
+Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@073824225b0b
 
 Integration target: `main`
 
@@ -23,6 +23,44 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-22, later: PR #237 and PR #239 merged; `main` merged into the
+release branch.** PR #238, stacked on #237's branch, merged into that
+branch instead of `main` because the branch survived #237's merge while
+#238 was open against it; PR #239 carried its content and the rule-8
+rewrite to `main`. Then, by the owner's direction, `main` at `c779dc2` is
+merged into `release-0.3.0`, a one-time synchronization recorded under
+*Exceptions* in `WORKFLOW-LOCAL.md`: nothing was developed on `main`
+outside the candidate process, and the cycle's workflow rules must bind
+this checkout. The version-bearing files keep the release side. The
+website submodule's working tree was brought to the committed pointer so
+the documentation contract could run; it passed, as did the version and
+workflow suites.
+
+**2026-10-22: two workflow pull requests to `main`, at the owner's
+direction, before the network-node slice.**
+[PR #237](https://github.com/ccozianu/devcapsule/pull/237), from
+`ws-maintenance/gh-cli-rule` off `main`: the local file's *GitHub
+Integration* section replaced by the conditional rule of 2026-10-21, the
+GitHub CLI used when the human provides it under `/opt/xtras`, detected by
+its file, activated per shell call, its login checked once per session,
+the compare link handed over when it is absent; and Release Policy rule 8,
+the throwaway copy, rewritten in the controlled style with the companion
+paragraph it lacked. [PR #238](https://github.com/ccozianu/devcapsule/pull/238),
+stacked on it: the review-partner loop, the mechanism of the webconsole
+and diagnostics slices extracted from the transcripts of 2026-10-09 to
+2026-10-12 as topic 9.11 of `WORKFLOW.md` with its Changes bullet and
+companion, the local section *Review Partners In This Checkout*, and the
+developer document with the brief template, the assessment forms, the
+recipes per engine and the record of the loops run. The definition change
+is noticed to `workflow-improvements` by mail at `574b6bc68268`. Both go
+to `main` directly because a workflow rule binds every workstream now;
+the release branch's copies lag as they already do for the main-reopens
+rule. A finding on the way: the gate's scratch under `/opt/devcapsule-gate`
+is on the container's overlay and died with the restart; the owner sees a
+product gap, a host-backed scratch mount in the capsule contract, to be
+filed with `project-management` on the owner's word. The network-node
+branch created for the rule was deleted unused; the slice starts clean.
 
 **2026-10-21 (`ws-maintenance/e2e_videos-2`): reusable scenario-driven E2E IDE
 controller and pause-free WebM recorder packaged; Proof of Concept #1 Eclipse
@@ -43,10 +81,37 @@ wired into `README.md` (`website:demo`).**
   and key screenshots under
   `engineering-docs/blog/assets/2026-10-21-eclipse-debug/`.
 - Updated `engineering-docs/development/e2e-tests.md`, added
+  `engineering-docs/development/running-e2e-scenario-recordings.md` and
   `engineering-docs/implementation-notes/devcapsule/2026-10-21-e2e-scenario-video-recorder.md`
   (indexed in `index.md`), and updated `README.md` (`website:demo`) to display
   `eclipse-hello-time-debug.webm` + `eclipse-hello-time-debug-poster.png` with
   a concise visitor-facing caption and no QA/audit boilerplate.
+
+**2026-10-21: resumed under rc1; the owner's rulings.** This capsule runs
+under the downloaded rc1 (`devcapsule0 version`: `v0.3.0-rc1`, source
+`7016cdd`), on the local recipe-11 base; the console answers. The shared
+lock is unchanged since 2026-10-04, so the agents in this capsule are the
+old pins, Codex 0.157.1, Claude Code 2.1.283, Antigravity 1.2.12; the rc1
+pins have run nowhere yet, and the freshness table's provider acceptance
+stays open until the owner's lock command. `main` moved past the release
+branch with PR #234 and PR #235 from the second checkout, the landing-page
+work and the hero-video work order on `ws-maintenance/e2e_videos`; a test
+merge of the release branch into `main` is clean. That session published
+this file with the rc0 state line; this publish restores the live copy.
+The owner's rulings of 2026-10-21: the console-link fix is verified on
+rc1 against both bases and
+[the record](../../bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md)
+is closed, the console working as 0.3.0 requires it; the base is published
+later, in the promotion of the accepted candidate; the candidates are
+grouped, rc2 the network node and C10, rc3 forced configuration and the
+diagnostics snapshot, rc4 image cleanup and C20; C17 stays a gate in both
+halves, the generic rule in `WORKFLOW.md` with `workflow-improvements` and
+this project's own operating instructions in `WORKFLOW-LOCAL.md`, since a
+concrete, complex case is how the abstract rule gets debugged. The local
+half, build, the three test tiers separately, selective tests, the main
+program and the debugger with its attachment, is a maintenance slice of
+this cycle; the generic half waits in `workflow-improvements`' mailbox
+since 2026-10-11, which the owner knows.
 
 **2026-10-19 (`ws-maintenance/e2e_videos`): landing-page work order
 (`2026-10-18-landing-page-why-devcapsule.md`) baseline verified; bounded
@@ -681,6 +746,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
+| rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
 ## Release 0.2.15
@@ -820,13 +886,19 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-1. PR #232 is merged into the release branch (2026-10-19). Next, on the
-   owner's word: the throwaway copy `4PR-2-release-0.3.0` to `main`, then
-   `v0.3.0-rc1` on the release branch's tip, which verifies the fix against
-   the published recipe-9 base and a recipe-11 one and closes the record.
-   The local Docker proofs against the download when the host daemon is
-   free. The lock command on the host is dogfooding at the owner's
-   convenience.
+1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
+   the release branch, a pull request into it with the reviewer loop;
+   then C10 with its two records filed first; rc2 carries both. Then rc3:
+   forced configuration and the diagnostics snapshot; rc4: image cleanup
+   after the owner's design review, and C20. C17's local half, this
+   project's operating instructions in `WORKFLOW-LOCAL.md`, is a slice
+   of the cycle too, placed by the owner. The base is published in the
+   promotion of the accepted candidate and pinned there. Before the
+   final tag: the five fixed records verified on a downloaded candidate,
+   two of them from inside a capsule, three with Docker; the eleven
+   user-docs decisions; C17's generic half; `notes.md`.
+   The lock command on the host is dogfooding at the owner's convenience;
+   until it runs, no capsule has exercised the rc1 agent pins.
 2. Done: the release branch is merged into `main` by PR #228; ancestry
    holds. The owner may turn `delete_branch_on_merge` off.
 3. On the owner's word, tag `v0.3.0-rc0` on the release branch's tip, wait
@@ -1636,6 +1708,33 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Resumed 2026-10-21 under rc1; the re-verification of the 2026-10-19
+  threads is in Current State. Two checkouts work this workstream; the
+  second one's session published this file from `main`'s copy with the
+  rc0 state line. Open with the owner: which checkout publishes the
+  status file while both are on maintenance; this one, the release
+  checkout, is the recommendation.
+- Closed 2026-10-21: the console-link record, on the owner's verification.
+- Awaiting the human: PR #237 and PR #238 to `main`, stacked; the word to
+  file the scratch-mount intake item with `project-management`; the word
+  to start the network-node slice, detailed in chat on 2026-10-21.
+- Weighed: Version Scheme rule 4, `main` reopening at the cut, has no
+  companion paragraph in the humane file; left out of PR #237 unless the
+  owner adds it.
+- On resumption, re-verify before trusting: which launcher started the
+  capsule (`devcapsule0 version`), whether the shared lock changed on disk
+  (the owner may run the lock command on the host before relaunching; if
+  so, commit the written lock on the release branch and rerun the gate),
+  and whether this checkout was given the local recipe-11 base.
+- Next slices in the recommended order: the universal `network` node,
+  then C10 with its two records filed first, forced configuration, the
+  diagnostics snapshot, image cleanup after the design review, C20 last.
+  The local Docker proofs against the rc1 download when the host daemon
+  is free.
+- Deliberately not preserved: the rc0 and rc1 downloads under
+  `~/.cache/devcapsule-releases/`, regenerable from the public releases;
+  the gate logs under `/opt/devcapsule-gate/`; the smoke scratch of the
+  agent freshness attempt in the session scratchpad.
 - Closed 2026-10-18, twice: PR #228 carried the release version onto
   `main`; the owner then changed the protocol, and PR #229 reopens `main`
   at 0.3.1.dev0 at the cut, ahead of every candidate.
