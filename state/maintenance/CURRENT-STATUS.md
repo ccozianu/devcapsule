@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
 
-Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@f269267d1941
+Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@073824225b0b
 
 Integration target: `main`
 
@@ -24,66 +24,81 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
-**2026-10-22 (`ws-maintenance/e2e_videos-2`): fixed leftover IntelliJ WebVTT
-captions on the landing-page Eclipse Java debugger video
-([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10)).**
-- After PR #236 merged (`423819f`), the owner spotted that the `<track
-  kind="captions" src="/assets/session-demo.vtt">` on the landing-page video
-  still showed the 4 cues from the earlier IntelliJ IDEA persistence session
-  (`"Contained Linux desktop opens after container stop and relaunch; IntelliJ IDEA 2026.2.3 starts in the workspace."`).
-- Updated `website/src/assets/session-demo.vtt` ([ccozianu/devcapsule-website#10](https://github.com/ccozianu/devcapsule-website/pull/10),
-  merged to `website` `main` at `2bcfe6e`) and saved a matching copy at
-  `engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug.vtt`
-  with 5 timed cues (`00:00.000` to `00:27.420`) mapped from the 329 recorded
-  frames of `eclipse-hello-time-debug.webm`.
-- Verified with `npm test` (`23 passed`), `npm run check:content` (`187 pages`),
-  `npm run build`, and `npm run check` (`191 HTML pages, 13876 local links/assets/anchors`).
+**2026-10-22, later: PR #244's review loop is settled; the slice awaits the
+owner.** PR244.1, [PR #246](https://github.com/ccozianu/devcapsule/pull/246)
+by the Antigravity and Gemini 4 Argon (High) pair, the first review by that
+engine in this workstream, is merged after one round: it hardened the
+attached run, the bounded daemon stop, the kill race, the notice inside
+the guarded block, an unreadable log directory, and proved the mid-chunk
+tee fallback; the round took three of its own proposals as defects, the
+readiness watcher stopped on the first Ctrl+C, a session the launcher gave
+up on left open in its manifest so the pruner's abandonment rule governs
+it, and the manifest docstring. Full gate on the merged branch, 1610 unit
+tests; the interrupted-launch end-to-end test passed again against that
+build. Both briefs and the transcripts are under `evidence/2026-10-22-c10/`.
+Open threads from the review: the supervisor blocks SIGINT during a
+child's readiness wait, so an interrupt before the desktop is ready waits
+for the readiness check; a second Ctrl+C within 250 ms of the first is
+absorbed by Python's own wait. Neither changes this slice. Next: the owner
+merges PR #244, then rc2 on the owner's word, carrying the network node
+and C10; the C17 local half and forced configuration follow.
 
-**2026-10-22 (`ws-maintenance/e2e_videos-2` / `ws-maintenance/4PR-e2e_videos-2`):
-review-partner loop on [PR #236](https://github.com/ccozianu/devcapsule/pull/236)
-completed with Claude Fable 5.1; [PR #241](https://github.com/ccozianu/devcapsule/pull/241)
-(PR236.1) accepted and merged without a round; PR #236 merged at `423819f`.**
-- Synchronized `ws-maintenance/e2e_videos-2` with `origin/release-0.3.0` (`106f8b3`)
-  to bring in the review-partner loop rules (`WORKFLOW.md` topic 9.11,
-  `WORKFLOW-LOCAL.md` *Review Partners In This Checkout*, and
-  `engineering-docs/development/review-partner-loop.md`), preserving `main`'s
-  `0.3.1.dev0` version on the four version-bearing files.
-- Committed the review brief at
-  [evidence/2026-10-22-pr236-review-brief.md](evidence/2026-10-22-pr236-review-brief.md)
-  (`e2f41cd`) and ran the review partner (`claude -p --model claude-fable-5-1 --dangerously-skip-permissions`)
-  in an isolated worktree (`/home/devcapsule/worktrees/maintenance-review` on
-  `ws-maintenance/4PR-e2e_videos-2-review`).
-- Operational finding recorded in `engineering-docs/development/review-partner-loop.md`:
-  in `claude -p` (single-turn print mode), a Bash tool call started with
-  `run_in_background: true` is killed when the turn exits; running `nox -s build`
-  synchronously in the foreground (and resuming with `claude -c -p` when needed)
-  completed the full gate in 2 minutes.
-- Claude Fable 5.1 opened [PR #241](https://github.com/ccozianu/devcapsule/pull/241)
-  (`a33338a`, `a9eb87b`) with ten concrete improvements and 50 new unit tests
-  (96 total across the 4 touched test modules, verified with a 17-point mutation
-  check):
-  1. `ActionStep.parse` validates `seconds` with `_require_int` (rejecting booleans),
-     refuses steps setting both `ms` and `seconds`, and requires non-empty `text`
-     for `press` and `type`.
-  2. `ScenarioSpec.from_dict` and `seed_scenario_workspace` reject empty,
-     whitespace-padded, directory-only, absolute, and `..` paths in `seed_files`,
-     and verify `target.resolve()` stays inside `workspace.resolve()` before writing.
-  3. `BurstFrameRecorder.encode_webm` writes `ffmpeg` stderr to
-     `scenario-video.webm.ffmpeg.log` instead of an unread pipe, reaps `proc`,
-     joins `reader`, and closes pipes on every exit path; `_resolve_ffmpeg_cmd`
-     catches `(OSError, subprocess.SubprocessError)` and returns `None`.
-  4. `start_controller_server` and `ControllerQueue` extract the loopback HTTP
-     controller so it is unit-testable without a container, returning `400` on
-     malformed JSON/UTF-8 or non-dict payloads without queueing and `504` on
-     command timeout; `write_json_atomically` writes `controller.json` via temp
-     file + `os.replace` after unlinking stale copies; `ctl` exits `2` on
-     non-object JSON and `1` when `ok` is false.
-  5. `noxfile.py` (`ide_smoke`) requires a single `--surface` and refuses
-     `--agent` when `--scenario` is passed.
-- Accepted PR #241 without a round, merged it into `ws-maintenance/4PR-e2e_videos-2`
-  and `ws-maintenance/e2e_videos-2` (`e17065e`), removed the review worktree,
-  and reran `nox -s build` (`1649 passed`, `mypy` clean over 216 files,
-  `17 passed` packaging, `187 pages` docs-contract, `293 passed` webconsole).
+**2026-10-22, morning: C10 is PR #244; its review partner is the
+Antigravity and Gemini 4 Argon (High) pair, by the owner's word.** The two
+records are filed, [the terminal](../../bugs/devcapsule/2026-10-22-healthy-launch-looks-unhealthy-in-the-terminal.md)
+and [Ctrl+C](../../bugs/devcapsule/2026-10-22-ctrl-c-ends-the-launcher-with-a-traceback.md),
+with their rows in the release bug table. On
+`ws-maintenance/0.3.0-first-session-summary` off the release branch: the
+tee writes a child's output to its file only, the console the fallback
+when the file fails; the launcher runs `docker run` under `Popen` and
+waits through Ctrl+C, asks the daemon after sixty seconds, stops waiting
+on a second Ctrl+C naming the container, records 130 and returns it; every
+session ends with one result line and the path of every log file of the
+session, the owner's addition; the infrastructure exit code moved into the
+runtime contract; four user pages say the result in place of the
+traceback. No knob keeps the old streaming, as ruled. The full gate
+passed. The end-to-end proof, `tests/e2e/test_interrupted_launch.py`,
+launched a fresh VSCodium project in its own process group, sent SIGINT to
+the group and read the result: the lines, exit 130, the files, the
+container gone, the IDE's output in its file; the transcript is under
+`evidence/2026-10-22-c10/`. [PR #244](https://github.com/ccozianu/devcapsule/pull/244)
+into `release-0.3.0`. The review partner runs detached in the review
+worktree with the brief on standard input; Antigravity's print mode takes
+the model flag before the prompt, `antigravity --model <model>
+--dangerously-skip-permissions -p '<instruction>' < <brief>`, proven on
+2026-10-22 and to be recorded in the developer document. The scratch
+directory under `/opt/devcapsule-gate` was recreated after the restart;
+the gap is with `project-management`.
+
+**2026-10-22, night: the network-node slice is PR #240, reviewed by
+PR240.1; the first loop under topic 9.11.** On
+`ws-maintenance/0.3.0-network-node` off the release branch: `network`
+joins the host capabilities every project has, with `bridge` as the deny
+value already recorded; a unit test on a manifest without the
+recommendation proves the run-once command, the bridge default, the
+persistent form, the refusal and the listing; the node-registry test's
+pinned set gains the node, found by the full gate's first run; two
+documentation rows and the README say the node is on every project. The
+full gate passed on the branch. [PR #240](https://github.com/ccozianu/devcapsule/pull/240)
+into `release-0.3.0`. The review partner, the Codex and gpt-6-astra pair,
+answered with [PR #242](https://github.com/ccozianu/devcapsule/pull/242),
+PR240.1: the listing attributed an unanswered workstation default to the
+manifest, a real defect that predates the slice; a sharper description;
+lifecycle tests for the stale transitions when a recommendation appears
+and disappears, the unset path, the bulk exclusion and the init
+postconditions; the run-once test now proves nothing is written. One
+round: the fix was keyed on the node's name where the declaration already
+carries `project_recommended`; the general condition went in, correcting
+one assertion for `development-sudo`. Accepted at `494e7b0` and merged
+into the slice branch; the gate on the merged branch is under
+*Validation*. The briefs are committed under
+`evidence/2026-10-22-network-node/`, the first under the new rule. The
+scratch-mount gap went to `project-management` by mail at `cf12c9eb0393`.
+Learned: this Codex version resumes a session with the prompt on standard
+input and the sandbox as a config override; the developer document's
+recipe says otherwise and is corrected by a small pull request to `main`.
+The bug record says fixed; the IDE smoke on a fresh project closes it on
+rc2. Next: C10, its two records filed first; then rc2.
 
 **2026-10-22, later: PR #237 and PR #239 merged; `main` merged into the
 release branch.** PR #238, stacked on #237's branch, merged into that
@@ -122,31 +137,6 @@ is on the container's overlay and died with the restart; the owner sees a
 product gap, a host-backed scratch mount in the capsule contract, to be
 filed with `project-management` on the owner's word. The network-node
 branch created for the rule was deleted unused; the slice starts clean.
-
-**2026-10-21 (`ws-maintenance/e2e_videos-2`): reusable scenario-driven E2E IDE
-controller and pause-free WebM recorder packaged; Proof of Concept #1 Eclipse
-Java debugger video (`eclipse-hello-time-debug.webm`) recorded, saved, and
-wired into `README.md` (`website:demo`).**
-- Merged PR #234 (`ccozianu/devcapsule`), PR #9 (`ccozianu/devcapsule-website`),
-  and PR #235 (submodule bump to `f4d35d2`), then opened continuation branch
-  `ws-maintenance/e2e_videos-2`.
-- Packaged `devcapsule-src/tests/e2e/scenario_recorder.py` (`ActionStep`,
-  `ScenarioSpec`, `BurstFrameRecorder`, `run_scenario_replay`,
-  `serve_interactive_controller`, `send_controller_command`) and wired
-  `--scenario` (`DEVCAPSULE_SMOKE_SCENARIO`) into `devcapsule-src/noxfile.py`
-  (`ide-smoke`) and `devcapsule-src/tests/e2e/test_ide_comes_alive.py`, with
-  unit tests in `devcapsule-src/tests/test_scenario_recorder.py`.
-- Packaged the Proof of Concept #1 scenario definition at
-  `devcapsule-src/tests/e2e/scenarios/eclipse-hello-time-debug.json` and saved
-  the recorded 27.4 s (`1600×1000`, `1.35 MB`, 12 fps pause-free) WebM video
-  and key screenshots under
-  `engineering-docs/blog/assets/2026-10-21-eclipse-debug/`.
-- Updated `engineering-docs/development/e2e-tests.md`, added
-  `engineering-docs/development/running-e2e-scenario-recordings.md` and
-  `engineering-docs/implementation-notes/devcapsule/2026-10-21-e2e-scenario-video-recorder.md`
-  (indexed in `index.md`), and updated `README.md` (`website:demo`) to display
-  `eclipse-hello-time-debug.webm` + `eclipse-hello-time-debug-poster.png` with
-  a concise visitor-facing caption and no QA/audit boilerplate.
 
 **2026-10-21: resumed under rc1; the owner's rulings.** This capsule runs
 under the downloaded rc1 (`devcapsule0 version`: `v0.3.0-rc1`, source
@@ -1185,19 +1175,6 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
-Gate on `ws-maintenance/e2e_videos-2` after merging review PR #241 (`e17065e`,
-2026-10-22, PR #236): `nox -s build` passed end to end: version copies agree at
-`0.3.1.dev0`; syntax; `mypy` clean over 216 source files; `1649 passed, 35
-deselected, 1 xfailed, 1 xpassed` in the unit suite (`96 passed` across the four
-touched test modules, `50` added in PR #241 with a 17-point mutation check); CLI
-smoke; local PEX built and smoked (`dist/devcapsule-local.pex`); packaging
-integration `17 passed`; documentation contract `187 pages including 17 aliases`
-(`devel (0.3.1.dev0)` rendered); web console `mypy` clean over 8 source files
-and `293 passed`. Log `/opt/devcapsule-gate/2026-10-22-pr236-merged-build.log`.
-The review worktree `/home/devcapsule/worktrees/maintenance-review` and its
-branch `ws-maintenance/4PR-e2e_videos-2-review` were removed after merging PR
-#241.
-
 Gate on `ws-maintenance/0.3.0-launchable-lock-test` (2026-10-18, PR #230):
 `nox -s build` passed end to end: version copies agree; syntax; mypy clean
 over 214 files; 1584 unit tests passed, 35 deselected, 1 xfailed, 1
@@ -1782,23 +1759,6 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Paused 2026-10-22 on `ws-maintenance/e2e_videos-2` after completing the
-  Claude Fable 5.1 review-partner loop ([PR #241](https://github.com/ccozianu/devcapsule/pull/241))
-  for [PR #236](https://github.com/ccozianu/devcapsule/pull/236).
-- Awaiting the human: review and merge [PR #236](https://github.com/ccozianu/devcapsule/pull/236)
-  (`ws-maintenance/4PR-e2e_videos-2` into `main`).
-- Weighed and unresolved, from PR #241 (PR236.1):
-  1. Transcoding PNG frames to JPEG with Pillow in the parent process instead of
-     an in-page `<canvas>`, reducing browser round-trips and decoupling WebM
-     encoding from a live Playwright page.
-  2. Passing `-framerate` instead of `-r` before `-i pipe:0` for `ffmpeg`'s
-     `image2pipe` input.
-  3. Adding a dedicated `nox` session wrapper for `tests.e2e.scenario_recorder`
-     (`serve`, `ctl`, `replay`) so operators do not need `PYTHONPATH=src:.`.
-- Deliberately not preserved: the review worktree
-  `/home/devcapsule/worktrees/maintenance-review` and its branch
-  `ws-maintenance/4PR-e2e_videos-2-review` (removed after merging PR #241);
-  gate and review logs under `/opt/devcapsule-gate/` and the session scratchpad.
 - Resumed 2026-10-21 under rc1; the re-verification of the 2026-10-19
   threads is in Current State. Two checkouts work this workstream; the
   second one's session published this file from `main`'s copy with the
@@ -1806,9 +1766,18 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   status file while both are on maintenance; this one, the release
   checkout, is the recommendation.
 - Closed 2026-10-21: the console-link record, on the owner's verification.
-- Awaiting the human: PR #237 and PR #238 to `main`, stacked; the word to
-  file the scratch-mount intake item with `project-management`; the word
-  to start the network-node slice, detailed in chat on 2026-10-21.
+- Done 2026-10-22: PR #240 merged into `release-0.3.0` at `6ebadf2`, PR #243
+  into `main`; the network node is on the release branch for rc2. Next:
+  C10, its details to the owner first.
+- Awaiting the human: PR #244 into `release-0.3.0`, C10, with its review
+  merged after one round; then the word for rc2.
+- Weighed and unresolved, from PR244.1: the supervisor's blocked SIGINT
+  during a readiness wait; the 250 ms absorption of a second Ctrl+C.
+- To record on `main`: the Antigravity invocation form proven on
+  2026-10-22, the model flag before `-p` and the brief on standard input
+  behind a one-line instruction, in the developer document.
+- Done 2026-10-22: PR #237, #238 and #239 merged to `main`; the
+  scratch-mount item mailed to `project-management`.
 - Weighed: Version Scheme rule 4, `main` reopening at the cut, has no
   companion paragraph in the humane file; left out of PR #237 unless the
   owner adds it.
@@ -2057,7 +2026,6 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
-- [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
 - [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
 - [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
