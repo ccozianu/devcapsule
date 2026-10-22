@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
 
-Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@073824225b0b
+Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@073824225b0b
 
 Integration target: `main`
 
@@ -61,6 +61,31 @@ is on the container's overlay and died with the restart; the owner sees a
 product gap, a host-backed scratch mount in the capsule contract, to be
 filed with `project-management` on the owner's word. The network-node
 branch created for the rule was deleted unused; the slice starts clean.
+
+**2026-10-21 (`ws-maintenance/e2e_videos-2`): reusable scenario-driven E2E IDE
+controller and pause-free WebM recorder packaged; Proof of Concept #1 Eclipse
+Java debugger video (`eclipse-hello-time-debug.webm`) recorded, saved, and
+wired into `README.md` (`website:demo`).**
+- Merged PR #234 (`ccozianu/devcapsule`), PR #9 (`ccozianu/devcapsule-website`),
+  and PR #235 (submodule bump to `f4d35d2`), then opened continuation branch
+  `ws-maintenance/e2e_videos-2`.
+- Packaged `devcapsule-src/tests/e2e/scenario_recorder.py` (`ActionStep`,
+  `ScenarioSpec`, `BurstFrameRecorder`, `run_scenario_replay`,
+  `serve_interactive_controller`, `send_controller_command`) and wired
+  `--scenario` (`DEVCAPSULE_SMOKE_SCENARIO`) into `devcapsule-src/noxfile.py`
+  (`ide-smoke`) and `devcapsule-src/tests/e2e/test_ide_comes_alive.py`, with
+  unit tests in `devcapsule-src/tests/test_scenario_recorder.py`.
+- Packaged the Proof of Concept #1 scenario definition at
+  `devcapsule-src/tests/e2e/scenarios/eclipse-hello-time-debug.json` and saved
+  the recorded 27.4 s (`1600×1000`, `1.35 MB`, 12 fps pause-free) WebM video
+  and key screenshots under
+  `engineering-docs/blog/assets/2026-10-21-eclipse-debug/`.
+- Updated `engineering-docs/development/e2e-tests.md`, added
+  `engineering-docs/development/running-e2e-scenario-recordings.md` and
+  `engineering-docs/implementation-notes/devcapsule/2026-10-21-e2e-scenario-video-recorder.md`
+  (indexed in `index.md`), and updated `README.md` (`website:demo`) to display
+  `eclipse-hello-time-debug.webm` + `eclipse-hello-time-debug-poster.png` with
+  a concise visitor-facing caption and no QA/audit boilerplate.
 
 **2026-10-21: resumed under rc1; the owner's rulings.** This capsule runs
 under the downloaded rc1 (`devcapsule0 version`: `v0.3.0-rc1`, source
