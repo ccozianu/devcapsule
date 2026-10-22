@@ -53,21 +53,11 @@ source of the packaged one, not an installed copy. See *Exceptions*.
    is published per [the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md).
    `docs/versions.yaml` on `main` is the authored list of documented versions.
    Promote it after every final tag.
-8. The release branch merges into `main` through a throwaway copy. The
-   repository deletes a pull request's branch on merge, and the active release
-   branch is the one ref that must survive its merges. So each merge of
-   `release-X.Y.Z` into `main` is a pull request from `4PR-NNN-release-X.Y.Z`,
-   a branch created at the release branch's tip for that pull request alone:
-   throwaway, for one pull request, made off that release branch, which the
-   name says in that order so that nothing of the kind starts with the
-   `release-` prefix. NNN counts from 1 within the release; the pull request's
-   own number exists only once the branch does. Its merge commit's second
-   parent is the release branch's tip, so ancestry holds for the candidate
-   gate; GitHub deletes the copy on merge, and nobody cares. The copy is a
-   throwaway integration ref, never a release ref: nothing is committed to it,
-   no tag points into it, and the candidate workflow checks tags against
-   `release-X.Y.Z` alone. Owner decision, 2026-10-18; the first copy of the
-   0.3.0 cycle was spelled `release-0.3.0-4PR-1` before the order was fixed.
+8. Merge the release branch into `main` through a throwaway copy. Create
+   the copy at the release branch's tip, named `4PR-NNN-release-X.Y.Z`, for
+   one pull request. NNN counts from 1 within the release. Commit nothing to
+   the copy. Point no tag into it. The candidate workflow checks tags against
+   `release-X.Y.Z` alone. Owner decision, 2026-10-18.
 
 ## Documentation Refs
 
