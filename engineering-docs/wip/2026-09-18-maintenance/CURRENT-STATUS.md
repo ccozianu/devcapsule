@@ -24,6 +24,52 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22 (`ws-maintenance/e2e_videos-2` / `ws-maintenance/4PR-e2e_videos-2`):
+review-partner loop on [PR #236](https://github.com/ccozianu/devcapsule/pull/236)
+completed with Claude Fable 5.1; [PR #241](https://github.com/ccozianu/devcapsule/pull/241)
+(PR236.1) accepted and merged without a round; PR #236 ready for owner merge.**
+- Synchronized `ws-maintenance/e2e_videos-2` with `origin/release-0.3.0` (`106f8b3`)
+  to bring in the review-partner loop rules (`WORKFLOW.md` topic 9.11,
+  `WORKFLOW-LOCAL.md` *Review Partners In This Checkout*, and
+  `engineering-docs/development/review-partner-loop.md`), preserving `main`'s
+  `0.3.1.dev0` version on the four version-bearing files.
+- Committed the review brief at
+  [evidence/2026-10-22-pr236-review-brief.md](evidence/2026-10-22-pr236-review-brief.md)
+  (`e2f41cd`) and ran the review partner (`claude -p --model claude-fable-5-1 --dangerously-skip-permissions`)
+  in an isolated worktree (`/home/devcapsule/worktrees/maintenance-review` on
+  `ws-maintenance/4PR-e2e_videos-2-review`).
+- Operational finding recorded in `engineering-docs/development/review-partner-loop.md`:
+  in `claude -p` (single-turn print mode), a Bash tool call started with
+  `run_in_background: true` is killed when the turn exits; running `nox -s build`
+  synchronously in the foreground (and resuming with `claude -c -p` when needed)
+  completed the full gate in 2 minutes.
+- Claude Fable 5.1 opened [PR #241](https://github.com/ccozianu/devcapsule/pull/241)
+  (`a33338a`, `a9eb87b`) with ten concrete improvements and 50 new unit tests
+  (96 total across the 4 touched test modules, verified with a 17-point mutation
+  check):
+  1. `ActionStep.parse` validates `seconds` with `_require_int` (rejecting booleans),
+     refuses steps setting both `ms` and `seconds`, and requires non-empty `text`
+     for `press` and `type`.
+  2. `ScenarioSpec.from_dict` and `seed_scenario_workspace` reject empty,
+     whitespace-padded, directory-only, absolute, and `..` paths in `seed_files`,
+     and verify `target.resolve()` stays inside `workspace.resolve()` before writing.
+  3. `BurstFrameRecorder.encode_webm` writes `ffmpeg` stderr to
+     `scenario-video.webm.ffmpeg.log` instead of an unread pipe, reaps `proc`,
+     joins `reader`, and closes pipes on every exit path; `_resolve_ffmpeg_cmd`
+     catches `(OSError, subprocess.SubprocessError)` and returns `None`.
+  4. `start_controller_server` and `ControllerQueue` extract the loopback HTTP
+     controller so it is unit-testable without a container, returning `400` on
+     malformed JSON/UTF-8 or non-dict payloads without queueing and `504` on
+     command timeout; `write_json_atomically` writes `controller.json` via temp
+     file + `os.replace` after unlinking stale copies; `ctl` exits `2` on
+     non-object JSON and `1` when `ok` is false.
+  5. `noxfile.py` (`ide_smoke`) requires a single `--surface` and refuses
+     `--agent` when `--scenario` is passed.
+- Accepted PR #241 without a round, merged it into `ws-maintenance/4PR-e2e_videos-2`
+  and `ws-maintenance/e2e_videos-2` (`e17065e`), removed the review worktree,
+  and reran `nox -s build` (`1649 passed`, `mypy` clean over 216 files,
+  `17 passed` packaging, `187 pages` docs-contract, `293 passed` webconsole).
+
 **2026-10-22, later: PR #237 and PR #239 merged; `main` merged into the
 release branch.** PR #238, stacked on #237's branch, merged into that
 branch instead of `main` because the branch survived #237's merge while
@@ -1124,6 +1170,19 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Gate on `ws-maintenance/e2e_videos-2` after merging review PR #241 (`e17065e`,
+2026-10-22, PR #236): `nox -s build` passed end to end: version copies agree at
+`0.3.1.dev0`; syntax; `mypy` clean over 216 source files; `1649 passed, 35
+deselected, 1 xfailed, 1 xpassed` in the unit suite (`96 passed` across the four
+touched test modules, `50` added in PR #241 with a 17-point mutation check); CLI
+smoke; local PEX built and smoked (`dist/devcapsule-local.pex`); packaging
+integration `17 passed`; documentation contract `187 pages including 17 aliases`
+(`devel (0.3.1.dev0)` rendered); web console `mypy` clean over 8 source files
+and `293 passed`. Log `/opt/devcapsule-gate/2026-10-22-pr236-merged-build.log`.
+The review worktree `/home/devcapsule/worktrees/maintenance-review` and its
+branch `ws-maintenance/4PR-e2e_videos-2-review` were removed after merging PR
+#241.
+
 Gate on `ws-maintenance/0.3.0-launchable-lock-test` (2026-10-18, PR #230):
 `nox -s build` passed end to end: version copies agree; syntax; mypy clean
 over 214 files; 1584 unit tests passed, 35 deselected, 1 xfailed, 1
@@ -1708,6 +1767,23 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Paused 2026-10-22 on `ws-maintenance/e2e_videos-2` after completing the
+  Claude Fable 5.1 review-partner loop ([PR #241](https://github.com/ccozianu/devcapsule/pull/241))
+  for [PR #236](https://github.com/ccozianu/devcapsule/pull/236).
+- Awaiting the human: review and merge [PR #236](https://github.com/ccozianu/devcapsule/pull/236)
+  (`ws-maintenance/4PR-e2e_videos-2` into `main`).
+- Weighed and unresolved, from PR #241 (PR236.1):
+  1. Transcoding PNG frames to JPEG with Pillow in the parent process instead of
+     an in-page `<canvas>`, reducing browser round-trips and decoupling WebM
+     encoding from a live Playwright page.
+  2. Passing `-framerate` instead of `-r` before `-i pipe:0` for `ffmpeg`'s
+     `image2pipe` input.
+  3. Adding a dedicated `nox` session wrapper for `tests.e2e.scenario_recorder`
+     (`serve`, `ctl`, `replay`) so operators do not need `PYTHONPATH=src:.`.
+- Deliberately not preserved: the review worktree
+  `/home/devcapsule/worktrees/maintenance-review` and its branch
+  `ws-maintenance/4PR-e2e_videos-2-review` (removed after merging PR #241);
+  gate and review logs under `/opt/devcapsule-gate/` and the session scratchpad.
 - Resumed 2026-10-21 under rc1; the re-verification of the 2026-10-19
   threads is in Current State. Two checkouts work this workstream; the
   second one's session published this file from `main`'s copy with the
