@@ -281,24 +281,50 @@ Owner direction, 2026-09-24.
 6. This is a local operating rule, not a change to product defaults or to
    other projects' permissions.
 
-## GitHub Integration: Owner Through The UI
+## GitHub Integration: The CLI When The Human Provides It
 
-Owner direction, 2026-09-21.
+Owner direction, 2026-10-21. It replaces the direction of 2026-09-21. It
+stands until the GitHub CLI is a DevCapsule component.
 
-1. Agents use ordinary Git operations with the configured SSH remote for fetch
-   and workstream-branch delivery.
-2. The `gh` CLI is not an available integration tool. The owner performs all
-   other GitHub integration through the GitHub UI: opening, updating, and
+1. The human may install GitHub's CLI as the conda environment `gh` under
+   `/opt/xtras/miniconda3`. Detect it by the file
+   `/opt/xtras/miniconda3/envs/gh/bin/gh`. Do not search the `PATH` for it.
+2. Activate it in every shell call that uses it:
+
+   ```text
+   source /opt/xtras/miniconda3/etc/profile.d/conda.sh && conda activate gh
+   ```
+
+   Do not edit the shell profile. Do not run `conda init`.
+3. Before the first use in a session, check the login:
+
+   ```text
+   source /opt/xtras/miniconda3/etc/profile.d/conda.sh && conda activate gh \
+     && gh auth status -h github.com
+   ```
+
+   Run the check once per session. If it fails, stop and ask the human to
+   run `gh auth login -h github.com`. Do not retry. Do not use another
+   credential. Treat a later failure in the session the same way.
+4. After the check passes, the agent may create, update and consult pull
+   requests and post reviews on this repository with the CLI. Post a review
+   as a comment, `gh pr review --comment`. The human merges into `main` and
+   into a release branch.
+5. When the file is absent, the human does GitHub: opening, updating and
    merging pull requests; dispatching workflows; changing repository or
-   publication settings.
-3. Do not probe `gh` availability or connector credentials. Do not attempt
-   API-based integration as part of delivery, even if a connector or API
-   appears available.
-4. Prepare and validate the change. Commit and push the workstream branch over
-   SSH. Give the owner a concise UI handoff.
-5. Do not substitute a direct push to `main` for owner PR integration.
-6. Re-verify `main` through an SSH fetch after the owner reports the merge.
-7. Keep this rule until the owner explicitly changes it.
+   publication settings. Prepare and validate the change, commit and push
+   the branch over SSH, and give the human the compare link:
+
+   ```text
+   https://github.com/ccozianu/devcapsule/compare/<base>...<head>?expand=1
+   ```
+
+   `<base>` is the branch the pull request targets. `<head>` is the pushed
+   branch.
+6. In both cases, use ordinary Git over the SSH remote for fetch and branch
+   delivery. Do not push to `main` in place of pull request integration.
+   After the human reports a merge, re-verify `main` through an SSH fetch.
+7. Keep this rule until the owner changes it or the component replaces it.
 
 ## Commit Authorship
 
