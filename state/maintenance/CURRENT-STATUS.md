@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-22 under rc1; releasing 0.3.0: rc2 in preparation with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
+State: paused 2026-10-22 evening, resuming on PR #249's merge; releasing 0.3.0: rc2 in preparation with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -1878,6 +1878,43 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Paused 2026-10-22 evening by the owner. Nothing is uncommitted; the
+  checkout sits on `release-0.3.0` at the published tip; the claim is
+  released. The other checkout's sessions write their entries on `main`;
+  this one's on the release branch; both met in the second synchronization.
+- Awaiting the human: the merge of [PR #249](https://github.com/ccozianu/devcapsule/pull/249),
+  the pre-candidate merge from `4PR-3-release-0.3.0`, which carries one
+  commit keeping `main`'s version files; the wording of Release Policy 8
+  for that one commit; the eleven user-docs decisions; the lock command on
+  the host, still unrun, so no capsule has exercised the rc1 agent pins.
+- On resumption, after the merge: fetch and confirm the release tip
+  `e5b5a8b` is an ancestor of `main`; `git tag -a v0.3.0-rc2 e5b5a8b -m
+  'DevCapsule 0.3.0 candidate 2'`; from a detached checkout of the tag,
+  `scripts/release-protocol.py v0.3.0-rc2 --output
+  /opt/devcapsule-gate/rc2-release-protocol.json`, expecting `mainline`;
+  `git push --atomic origin release-0.3.0 v0.3.0-rc2`; the backend run;
+  download the three assets into `~/.cache/devcapsule-releases/v0.3.0-rc2`,
+  verify the checksum and the version; record rc2 in the overview and the
+  table above, and the changelog's candidate-2 date. Then the owner's
+  dogfooding of the terminal and Ctrl+C on the download, and the three
+  records' verification on it.
+- Then the slices: C17's local half, this project's operating instructions
+  in `WORKFLOW-LOCAL.md`; forced configuration and the diagnostics snapshot
+  for rc3; image cleanup after the owner's design review, and C20, for rc4.
+- Weighed and unresolved, from PR244.1: the supervisor's blocked SIGINT
+  during a readiness wait; the 250 ms absorption of a second Ctrl+C.
+- Filed for V1 at the owner's direction: the session logs' Python data
+  path, [the record](../../bugs/devcapsule/2026-10-22-child-output-is-processed-in-python-on-the-data-path.md).
+- External state that outlives the session: the review worktree
+  `~/worktrees/maintenance-review` on
+  `ws-maintenance/0.3.0-first-session-summary-review`, reusable for the
+  next loop by a reset; the gate scratch under `/opt/devcapsule-gate`, on
+  the overlay, gone at the next restart; the e2e evidence under
+  `devcapsule-src/dist/e2e-evidence/ide-smoke/`; the local branch
+  `4PR-3-release-0.3.0`, deleted by the merge on the remote and to be
+  deleted locally.
+- Deliberately not preserved: the session scratchpad with the Codex and
+  Antigravity logs; the briefs are committed under `evidence/`.
 - Paused 2026-10-22 on `ws-maintenance/e2e_videos-2` after completing the
   Claude Fable 5.1 review-partner loop ([PR #241](https://github.com/ccozianu/devcapsule/pull/241))
   for [PR #236](https://github.com/ccozianu/devcapsule/pull/236).
