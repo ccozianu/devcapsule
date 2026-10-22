@@ -203,7 +203,7 @@ def test_supervisor_rejects_non_positive_readiness_timeout() -> None:
         )
 
 
-def test_logged_child_output_reaches_its_file_and_the_console_and_the_supervisor_keeps_a_record(tmp_path: Path) -> None:
+def test_logged_child_output_reaches_its_file_not_the_console_and_the_supervisor_keeps_a_record(tmp_path: Path) -> None:
     log = tmp_path / "devcapsule-job.log"
     process = start_supervisor(
         [{"name": "job", "command": ["sh", "-c", "echo hello-out; echo hello-err >&2; exit 3"],
@@ -212,7 +212,9 @@ def test_logged_child_output_reaches_its_file_and_the_console_and_the_supervisor
     )
     assert process.wait(timeout=10) == 3
     stderr = process.stderr.read() if process.stderr else ""
-    assert "hello-out" in stderr and "hello-err" in stderr
+    # The attached terminal carries the supervisor's own statements only; the
+    # child's output is in its file (C10, 2026-10-22).
+    assert "hello-out" not in stderr and "hello-err" not in stderr
     text = log.read_text(encoding="utf-8")
     assert re.search(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ hello-out$", text, re.MULTILINE)
     assert "hello-err" in text
@@ -254,7 +256,7 @@ def test_logged_children_receive_signals_and_exit_status_is_reaped(tmp_path: Pat
         process.send_signal(signal.SIGTERM)
         _, stderr = process.communicate(timeout=10)
         assert process.returncode == 23
-        assert "ready" in stderr and "ready" in output.read_text()
+        assert "ready" not in stderr and "ready" in output.read_text()
         record = (tmp_path / "devcapsule-supervisor.log").read_text()
         assert "child 'background' exited: killed by SIGTERM" in record
         assert "child 'ide' exited: exit code 23" in record
@@ -280,7 +282,7 @@ def test_grandchild_holding_output_pipe_does_not_delay_supervisor_exit(tmp_path:
         # Output without LF must still be saved before the supervisor returns.
         _, stderr = process.communicate(timeout=5)
         assert process.returncode == 7
-        assert "partial line" in stderr and "partial line" in log.read_text()
+        assert "partial line" not in stderr and "partial line" in log.read_text()
     finally:
         if grandchild_pid.exists():
             try:

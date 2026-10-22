@@ -22,7 +22,7 @@ class SupervisorError(ValueError):
 # Session exit code when a non-foreground child dies. The foreground child's
 # own codes travel through unchanged, so the supervisor's one verdict of its
 # own uses a value ordinary tools rarely produce (BSD sysexits EX_SOFTWARE).
-INFRASTRUCTURE_FAILURE_EXIT_CODE = 70
+from .contract import INFRASTRUCTURE_FAILURE_EXIT_CODE
 
 # How long children get between SIGTERM and SIGKILL. Kept below Docker's
 # default ten-second `docker stop` timeout so the supervisor finishes its own
@@ -55,8 +55,8 @@ class SupervisedChild:
     socket or file. A child that exits, or whose probe stays false for
     ``ready_timeout_seconds``, before becoming ready fails the start.
 
-    ``log_path`` names the file that receives a copy of the child's standard
-    output and error, both; the console keeps receiving them unchanged (see
+    ``log_path`` names the file that receives the child's standard output and
+    error, both, with the console as a fallback only if the file fails (see
     ``devcapsule.logs.Tee``). Without it the child inherits the supervisor's
     streams as before.
     """

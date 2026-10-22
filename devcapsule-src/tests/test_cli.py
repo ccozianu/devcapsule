@@ -10,6 +10,7 @@ import zipfile
 import pytest
 
 from devcapsule import cli, compat
+from devcapsule.launch.pycharm._launcher import AttachedResult
 from devcapsule.launch.pycharm._image_build import PycharmImageBuildOptions
 from devcapsule.environment_realization import RealizedEnvironment
 from devcapsule.images.metadata import LocalImageRecord
@@ -266,9 +267,9 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
 
         with (
             patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
-            patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
+            patch("devcapsule.launch.pycharm._launcher.run_attached") as run,
         ):
-            run.return_value.returncode = 0
+            run.return_value = AttachedResult(0, interrupted=False, stopped=True)
             assert cli.main(
                 [
                     "project", "--path", str(project), "run",
