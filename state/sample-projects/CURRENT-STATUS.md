@@ -4,7 +4,7 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: blocked 2026-10-22 on the AI Learning existing remote URL; local bootstrap committed and validated; SMTP provider also pending
+State: integrating 2026-10-22; AI Learning published; PR #252 reviewed and ready for the human to merge
 
 Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -37,12 +37,26 @@ name, not a typo in this record.
 
 ## Current State
 
-- Checkpoint 2026-10-22: child source is committed at `9ac7e29` on its local
-  `main`, under `devcapsule-src/tests/resources/sample_projects/ai-learning/`.
-  It is an independent nested Git repository, not yet a registered submodule:
-  the owner selected an existing remote but supplied no URL. `.gitmodules`
-  and parent gitlinks are untouched. Preserve the nested repository until its
-  remote is known; its untracked parent status is intentional, not loose source.
+- Parent [PR #252](https://github.com/ccozianu/devcapsule/pull/252) targets main.
+  Claude Fable 5.1 accepted the integration at `49ab6e7`, no review changes,
+  no PRn.1 and no additional round. Its fresh checkout initialized the child
+  from the published remote and independently passed npm ci, npm run check
+  (20 tests), and the rc2 offline configuration check. The brief and assessment
+  are indexed below. The human merges; remote main has not yet integrated it.
+- Full parent gate passed again after registering the gitlink: 1672 tests,
+  17 packaging integrations, 293 webconsole tests. GitHub CI passed on `49ab6e7`.
+  Subsequent parent edits contain only this handoff and review evidence.
+- Local Git detail: absorbgitdirs could not rename the original child's .git
+  directory across the home/workspace filesystem boundary. It remains in Git's
+  supported old-form submodule layout. Registration, status and commands work;
+  a fresh review checkout cloned and initialized the normal layout successfully.
+  No ad-hoc Git-directory move or source deletion was used.
+
+- Checkpoint 2026-10-22: child source is published at `64c11f2198499281071c3f6f22472e4b64ddd8d6`
+  on `main` at `git@github.com:ccozianu/ai-learning-bootstrap.git`. The owner
+  supplied that remote; inspection found it empty, and the first push was
+  verified with ls-remote. The parent now registers the reachable gitlink at
+  `devcapsule-src/tests/resources/sample_projects/ai-learning/`.
 - Child checks: TypeScript and Vite production build, 20 auth tests (mocked
   persistence/providers), and four desktop/mobile browser checks passed.
   Ignored child test-results retains screenshots and WebM recordings. SQL is
@@ -59,15 +73,14 @@ name, not a typo in this record.
   handling, key separation and the schema-apply confirmation message. Added
   credential versions to reject stale in-flight login proofs after revocation.
   Review and disposition are in the evidence files below. This preliminary
-  local review is not a completed PR review-partner loop; no deliverable PR
-  can be created until the child is published and its pointer registered.
+  local review is not a completed PR review-partner loop; the subsequent parent integration review accepted the final child and registered pointer.
 - Sent project-management `2026-10-22-sample-projects-ai-learning-adopter-gaps.md`
   on coordination at `7e810aea9020`: nonblocking Node-major capability and
   project-specific secret-input questions. No parent product code was changed.
 - Mail taken before checkpoint: none pending. The old workflow notice was
   acknowledged in intake-dispositions.md.
 
-- 2026-10-22: AI Learning takes priority on owner direction. Bootstrap a TypeScript frontend/backend with Prisma, PostgreSQL, REST and GraphQL, Google-first allowlisted Gmail signup, optional local password, email challenge and 30-day remembered browser. Standard POSTGRES_* spelling confirmed. Remote URL and email service remain pending.
+- 2026-10-22: AI Learning takes priority on owner direction. Bootstrap a TypeScript frontend/backend with Prisma, PostgreSQL, REST and GraphQL, Google-first allowlisted Gmail signup, optional local password, email challenge and 30-day remembered browser. Standard POSTGRES_* spelling confirmed. The remote is supplied and published; email service remains pending.
 - Synchronization: fresh branch from current fetched main; no merge needed. Required workflow documents read. Open bug scan found no records owned by sample-projects.
 - Owner approved Google-first registration over independent password registration, email over authenticator codes, and sample-projects routing. Answers read from capsule state; no token or answer file enters Git.
 - Judgment: child bootstrap is authorized as this sample deliverable; child source history stays independent. No deployment or database connection is authorized by this bootstrap.
@@ -269,7 +282,7 @@ foreground/detached lifecycle evidence is recorded in the
 
 ## Next Resumable Task
 
-Obtain the existing AI Learning remote URL, inspect its history before adding/pushing, publish the child commit, and only then register the reachable submodule gitlink. Complete the parent review/PR delivery. Enter the child DevCapsule and perform owner-driven SQL/Google/SMTP acceptance. Prior trading-research work remains deferred below.
+Await the human merge of PR #252, then fetch and verify main contains the gitlink. Do not merge it autonomously. Enter the child DevCapsule and perform owner-driven SQL/Google/SMTP acceptance. Prior trading-research work remains deferred below.
 
 In the `trading-research` DevCapsule, define and load the first small,
 human-reviewed labeled fixture set. Record source/license metadata, gold atomic
@@ -285,9 +298,13 @@ foreground run against the sample is recorded in the detached-container bug.
 
 ## Open Threads
 
-- Owner selected an existing child remote without a URL. A filtered read of
-  ccozianu's visible GitHub repositories found no AI Learning match; do not
-  create or guess a repository. Await the requested URL.
+- Integration review left two nonblocking child notes: a concurrent credential
+  reset during password setup returns a scrubbed 503 (P2025) instead of 401;
+  early rejection of locked usernames has a timing distinction, bounded by
+  rate limits. Neither grants access or leaks a secret. Consider during live
+  acceptance/security refinement; no further changes were made in this slice.
+
+- Remote resolved: the owner supplied `git@github.com:ccozianu/ai-learning-bootstrap.git`; its main now contains the child. No repository was created by the agent.
 - Email was chosen for codes but no provider/settings were supplied. Generic
   authenticated SMTP adapter is implemented; adapt only after the provider is
   identified. Real secrets, Google setup and allowlist stay in the human's
@@ -297,8 +314,7 @@ foreground run against the sample is recorded in the detached-container bug.
   enforced OS-level isolation barrier from an unrestricted agent.
 - The original maintenance checkout, its five unpushed commits and IDE changes
   were preserved. The authorized sample checkout is a separate worktree.
-- Capsule decision JSON/answers remain pending outside Git because the remote
-  and email-service details have not been resolved. The chosen options are
+- Capsule decision JSON/answers remain pending outside Git because email-service details have not been resolved. The remote decision is now recorded in the child and here. The chosen options are
   recorded in the child decision record. Never copy the console token to Git.
 
 - Fixture scope, source licensing, and the explicit grading rule remain for
@@ -337,3 +353,6 @@ human's specific instruction.
 - [Intake dispositions](intake-dispositions.md)
 - [Local review brief](evidence/2026-10-22-ai-learning-review-brief.txt)
 - [Local review and disposition](evidence/2026-10-22-ai-learning-review.txt)
+
+- [Integration review brief](evidence/2026-10-22-ai-learning-integration-review.txt)
+- [Integration review assessment](evidence/2026-10-22-ai-learning-integration-assessment.txt)
