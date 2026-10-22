@@ -1827,7 +1827,16 @@ def _configuration_authorization_rows(
         # The base selection and vendor acquisitions are recommended by the
         # lock; host access is recommended by the manifest's host tables.
         recommender = "lock" if declaration is None or declaration.required else "manifest"
-        if item.recorded == "unanswered":
+        if item.name == "network" and declaration is not None and not declaration.project_recommended:
+            # Network is available without project advice. Do not attribute
+            # that default, or a return to it, to the manifest.
+            if item.recorded == "unanswered":
+                origin = "workstation default (unanswered)"
+            elif item.status == "stale":
+                origin = "checkout (answer predates the workstation default)"
+            else:
+                origin = "checkout"
+        elif item.recorded == "unanswered":
             origin = f"{recommender} (recommendation, unanswered)"
         else:
             origin = "checkout" if item.status != "stale" else f"checkout (answer predates the {recommender} recommendation)"

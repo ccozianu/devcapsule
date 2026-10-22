@@ -72,7 +72,7 @@ without the access.
 
 | Authorization | Values |
 |---|---|
-| `network` | `host`; omitted means the ordinary bridge; on every project, whether or not it recommends it |
+| `network` | `host`, `bridge`; `bridge` denies host networking and is the default when unanswered; available on every project |
 | `docker-daemon` | `host-socket`; omitted means no daemon |
 | `development-sudo` | `true`, `false` |
 | `host-browser` | `true`, `false` |
