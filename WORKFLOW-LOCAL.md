@@ -422,6 +422,13 @@ Owner direction, 2026-10-09, after the controlled-language edition merged.
 
 ## Exceptions
 
+- **The 0.3.0 release branch synchronized with `main` once.** Owner
+  direction, 2026-10-22: `main` at `c779dc2` is merged into `release-0.3.0`,
+  because nothing was developed on `main` outside the candidate process and
+  the workflow rules written during the cycle must bind the release
+  checkout. The version-bearing files keep the release side. Topic 11 of
+  the generic definition forbids synchronizing a release ref. Ends with the
+  final tag of 0.3.0.
 - **`main` reopens at the cut, not after the final tag.** Owner decision,
   2026-10-18, during the 0.3.0 cycle, after the merge of the release
   branch carried the release version onto `main`: a development version
