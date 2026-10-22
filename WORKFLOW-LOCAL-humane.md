@@ -183,21 +183,38 @@ because asking for it on every launch is ceremony without information; it is
 local because the product's defaults for other projects are a separate
 decision.
 
-## GitHub Integration: Owner Through The UI
+## GitHub Integration: The CLI When The Human Provides It
 
-**Rule.** Agents fetch and push over SSH; the owner operates GitHub through the
-UI; `gh` is not an integration tool; no probing of connectors; concise UI
-handoffs.
+**Rule.** If the human has put GitHub's CLI at
+`/opt/xtras/miniconda3/envs/gh/bin/gh`, the agent activates it through
+conda's bootstrap script in each shell call, checks once per session that it
+is logged in, and then opens, updates and consults pull requests and posts
+reviews as comments; a failed login check stops the agent and asks the human
+to log in. If the CLI is absent, the human does GitHub, and the agent hands
+over the compare link from which one click opens the pull request. Merging
+stays the human's either way.
 
-**Intended effect.** Pull-request integration stays an explicit owner act, and
-agents never discover a credential and use it.
+**Intended effect.** Pull-request work happens from the capsule when the
+tool is there, without the agent probing for credentials, and degrades to
+a one-click handoff when it is not. An expired token is reported, never
+worked around.
 
-**Motivation.** Owner direction of 2026-09-21, when no `gh` installation
-existed and probing for one wasted sessions. Note for the owner: on 2026-10-08
-the owner installed `gh` in this environment and directed agents to use it to
-open pull requests and comment on reviews. The rule text above is kept as
-written because this edition changes no rule's meaning; the section is due for
-an owner update, and project-management has recorded that.
+The details have reasons. Activation is repeated in every shell call because
+shell state does not persist between an agent's calls, and the owner forbids
+the usual `conda init` edit of the shell profile. Detection is a file test
+because the earlier rule was made to stop agents probing for tools. Reviews
+are comments because GitHub refuses the approval of a pull request opened
+under the same account, which every pull request here is. The compare link
+is the one-click path GitHub offers to open a pull request between two
+branches.
+
+**Motivation.** Owner direction of 2026-10-21, replacing the direction of
+2026-09-21 made when no `gh` installation existed and probing for one wasted
+sessions. Since 2026-10-08 the owner had been installing `gh` in the
+checkout's extra tools and directing agents in chat, session after session,
+to use it; the rule makes that standing. It names the exact path so that
+detection is a file test, not a search. It is a local arrangement, a hack of
+this project's own, until the GitHub CLI is a proper DevCapsule component.
 
 ## Commit Authorship
 
