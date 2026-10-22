@@ -316,6 +316,41 @@ stands until the GitHub CLI is a DevCapsule component.
    After the human reports a merge, re-verify `main` through an SSH fetch.
 7. Keep this rule until the owner changes it or the component replaces it.
 
+## Review Partners In This Checkout
+
+Owner direction, 2026-10-22. It applies the review-partner loop, topic 9.11
+of `WORKFLOW.md`, in this checkout.
+
+1. The engines are the agent command lines on the capsule's `PATH`, signed
+   in once by the human: `claude` (Anthropic), `codex` (OpenAI) and
+   `antigravity` (Google). Use no API key.
+2. Name a pair by its engine and the model that ran, in the brief, the pull
+   request bodies and the assessment comments, as *Commit Authorship* names
+   it in the trailer.
+3. Give the review partner a git worktree under `~/worktrees/<workstream>-review`
+   on the review branch, with its own `devcapsule-src/.venv` built as
+   *Validation Commands* say, and its scratch at
+   `/opt/devcapsule-gate/pytest-<engine>`.
+4. Run the review partner detached in that worktree, the brief as its
+   prompt, its output in a log under the session scratchpad that ends with
+   an exit line, and wait for that line. The recorded forms are:
+   - Codex: `codex exec -m <model> -s danger-full-access -c 'projects."<worktree>".trust_level="trusted"' - < <brief>`.
+     A round continues the same session: `codex exec resume <session-id> "<round text>"`, the id read from the log.
+   - Claude Code: `claude -p --dangerously-skip-permissions < <brief>`.
+   - Antigravity: `antigravity -p --dangerously-skip-permissions < <brief>`, from its help; not yet run in a loop.
+   Establish any other form with the human and record it here before use.
+5. The review partner uses the GitHub CLI as *GitHub Integration* says; the
+   brief repeats the activation line. Label the assessment comment
+   `**Accepted at <sha> (<pair>, no round needed).**` or `**Round N (<pair>).**`.
+   Merge PRn.1 with `gh pr merge --merge`.
+6. Commit each brief and each round brief under the workstream's
+   `evidence/` directory beside the slice's records. The session scratchpad
+   is not kept.
+7. The brief template, the assessment forms, the recipes and the record of
+   the loops run are in
+   [the development document](engineering-docs/development/review-partner-loop.md).
+   Keep it current with every loop.
+
 ## Commit Authorship
 
 Owner direction, 2026-09-22.
