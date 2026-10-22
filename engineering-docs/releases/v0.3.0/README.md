@@ -259,6 +259,24 @@ replacement.
   The owner's judgment of the console: it works nicely, to the extent
   required for 0.3.0.
 
+### RC2 — in preparation, 2026-10-22
+
+- Carries, beyond rc1: the universal `network` authorization node (PR #240,
+  review #242 by the Codex pair); the first-session summary and Ctrl+C
+  ending with a result (PR #244, review #246 by the Antigravity pair), the
+  session's log paths printed at its end; the listing's source label for
+  workstation defaults. Each slice gated in full on its merged branch; the
+  interrupted-launch end-to-end test passed on a real fresh VSCodium
+  launch.
+- The release branch synchronized with `main` twice on 2026-10-22, on the
+  owner's word, so the cycle's workflow rules and both checkouts' records
+  bind it; the version files kept the release side.
+- Next: the pre-candidate merge from `4PR-3-release-0.3.0`, the tag on the
+  release branch's tip, the backend, the download and its verification;
+  then the owner's dogfooding of the terminal and of Ctrl+C, and the three
+  records' verification: the IDE smoke on a fresh project, the interrupted
+  launch, the quiet terminal.
+
 ## Release Notes Preparation
 
 Write `notes.md` beside this file before the final tag: plain Markdown for
