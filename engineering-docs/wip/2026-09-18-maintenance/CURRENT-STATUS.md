@@ -24,6 +24,36 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22, night: the network-node slice is PR #240, reviewed by
+PR240.1; the first loop under topic 9.11.** On
+`ws-maintenance/0.3.0-network-node` off the release branch: `network`
+joins the host capabilities every project has, with `bridge` as the deny
+value already recorded; a unit test on a manifest without the
+recommendation proves the run-once command, the bridge default, the
+persistent form, the refusal and the listing; the node-registry test's
+pinned set gains the node, found by the full gate's first run; two
+documentation rows and the README say the node is on every project. The
+full gate passed on the branch. [PR #240](https://github.com/ccozianu/devcapsule/pull/240)
+into `release-0.3.0`. The review partner, the Codex and gpt-6-astra pair,
+answered with [PR #242](https://github.com/ccozianu/devcapsule/pull/242),
+PR240.1: the listing attributed an unanswered workstation default to the
+manifest, a real defect that predates the slice; a sharper description;
+lifecycle tests for the stale transitions when a recommendation appears
+and disappears, the unset path, the bulk exclusion and the init
+postconditions; the run-once test now proves nothing is written. One
+round: the fix was keyed on the node's name where the declaration already
+carries `project_recommended`; the general condition went in, correcting
+one assertion for `development-sudo`. Accepted at `494e7b0` and merged
+into the slice branch; the gate on the merged branch is under
+*Validation*. The briefs are committed under
+`evidence/2026-10-22-network-node/`, the first under the new rule. The
+scratch-mount gap went to `project-management` by mail at `cf12c9eb0393`.
+Learned: this Codex version resumes a session with the prompt on standard
+input and the sandbox as a config override; the developer document's
+recipe says otherwise and is corrected by a small pull request to `main`.
+The bug record says fixed; the IDE smoke on a fresh project closes it on
+rc2. Next: C10, its two records filed first; then rc2.
+
 **2026-10-22, later: PR #237 and PR #239 merged; `main` merged into the
 release branch.** PR #238, stacked on #237's branch, merged into that
 branch instead of `main` because the branch survived #237's merge while
@@ -1690,9 +1720,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   status file while both are on maintenance; this one, the release
   checkout, is the recommendation.
 - Closed 2026-10-21: the console-link record, on the owner's verification.
-- Awaiting the human: PR #237 and PR #238 to `main`, stacked; the word to
-  file the scratch-mount intake item with `project-management`; the word
-  to start the network-node slice, detailed in chat on 2026-10-21.
+- Awaiting the human: PR #240 into `release-0.3.0`, the network node,
+  with its review merged after one round.
+- Done 2026-10-22: PR #237, #238 and #239 merged to `main`; the
+  scratch-mount item mailed to `project-management`.
 - Weighed: Version Scheme rule 4, `main` reopening at the cut, has no
   companion paragraph in the humane file; left out of PR #237 unless the
   owner adds it.

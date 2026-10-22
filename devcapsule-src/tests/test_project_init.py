@@ -114,6 +114,7 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
             "mount": "/workspace/fresh-project",
         }
         assert manifest["capabilities"]["need"] == ["python", "python-ide"]
+        assert "host" not in manifest
 
         lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
         assert lock["resolution-matrix-version"] == (
@@ -126,6 +127,7 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
         assert len(records) == 1
         checkout = read_toml(records[0])
         assert checkout["authorization"]["base-image"]["reference"] == matrix_base_reference()
+        assert "network" not in checkout["authorization"]
         resolution = read_toml(records[0].with_name("devcapsule.resolved.toml"))
         assert resolution["devcapsule-resolved-schema-version"] == 1
         assert resolution["runtime"]["component"] == "pycharm"
@@ -633,6 +635,9 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
     assert "default agent component (antigravity-agent)" in transcript
     assert "[none]" in transcript
     assert "[default]" in transcript
+    assert transcript.count("Recommend ") == 4
+    assert "Recommend network = host" in transcript
+    assert "Recommend host-x11" not in transcript
     manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
     assert "host" not in manifest
     assert report.answered == ("base-image",)
@@ -1357,8 +1362,8 @@ def test_wrong_family_answer_fails_before_any_prompt_or_write(tmp_path: Path) ->
 def test_curated_host_authorization_is_admitted_before_the_recommendation_exists(
     tmp_path: Path,
 ) -> None:
-    """``network`` has no workstation default; it is declared by the recommendation
-    the same invocation records, so the early name check must admit it."""
+    """The curated network recommendation takes precedence over its workstation
+    default, and the same invocation records consent to that recommendation."""
     project = tmp_path / "project"
     project.mkdir()
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
