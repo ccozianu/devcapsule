@@ -6,8 +6,8 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 1, tagged 2026-10-19 at `7016cdd`; candidate 0 was tagged
-2026-10-18 at `53ebc17`.
+Candidate 2, tagged 2026-10-22; candidate 1 was tagged 2026-10-19 at
+`7016cdd` and candidate 0 on 2026-10-18 at `53ebc17`.
 
 ## New
 
@@ -112,11 +112,31 @@ integration and end-to-end suites.
   [building and selecting a local base](https://devcapsule.mycodespace.ai/docs/current/configuration/local-base/)
   is the way to have it before then.
 
-## Not in candidate 1
+## Fixed in candidate 2
 
-Planned for later candidates of this cycle: the universal `network`
-authorization node; the first-session terminal summary and Ctrl+C ending
-with a result; forced configuration, `project config resolve --force` and
+- **The terminal during a session is quiet, and the session ends with a
+  result.** The IDE's and the display stack's own output, with its
+  harmless ERROR labels, goes to the session's log files only; the
+  terminal carries the launcher's lines, the desktop and console links and
+  the ready line, the supervisor's warnings when a component dies, and at
+  the end one result line, `Session ended`, `Session failed` or `Session
+  interrupted`, followed by the path of every log file of the session on
+  your computer (2026-09-15, C10).
+- **Ctrl+C ends the session with that result, not a traceback.** The
+  launcher waits for the capsule to stop, asks Docker after a minute, and
+  on a second Ctrl+C stops waiting and names the container to stop; it
+  returns 130 as shells report an interrupted command (2026-09-15, C10).
+- **`project run --authorize network host` works on every project.** The
+  `network` authorization is a node on every project, with Docker's
+  bridge as the default, whether or not the project recommends host
+  networking; a recommendation attaches the project's justification
+  (2026-10-05).
+- The configuration listing attributed an unanswered workstation default
+  to the manifest; it names the workstation default now.
+
+## Not in candidate 2
+
+Planned for later candidates of this cycle: forced configuration, `project config resolve --force` and
 `project run --force-config`; the diagnostics snapshot and export command;
 cleanup of obsolete images and cached files; release-notes automation.
 Out of 0.3.0: consent and vendor trust, installed-IDE reuse with an empty

@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-21. Stage: **candidate 1 accepted by the owner for the console-link fix; the cycle's slices next, the network node first**.
+Updated: 2026-10-22. Stage: **candidate 2 in preparation: the network node and C10 merged, the pre-candidate merge next, then the tag on the owner's word**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
