@@ -428,12 +428,12 @@ def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_na
         return AttachedResult(process.wait(), interrupted=False, stopped=True)
     except KeyboardInterrupt:
         pass
-    print(
-        "Interrupted from the terminal (Ctrl+C); the capsule is stopping. "
-        "Press Ctrl+C again to stop waiting for it.",
-        file=sys.stderr, flush=True,
-    )
     try:
+        print(
+            "Interrupted from the terminal (Ctrl+C); the capsule is stopping. "
+            "Press Ctrl+C again to stop waiting for it.",
+            file=sys.stderr, flush=True,
+        )
         try:
             return AttachedResult(process.wait(timeout=INTERRUPT_STOP_SECONDS), interrupted=True, stopped=True)
         except subprocess.TimeoutExpired:
@@ -444,11 +444,14 @@ def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_na
             subprocess.run(
                 ["docker", "stop", "--time", "10", container_name],
                 check=False, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=DAEMON_STOP_SECONDS,
             )
             return AttachedResult(process.wait(timeout=DAEMON_STOP_SECONDS), interrupted=True, stopped=True)
-    except (KeyboardInterrupt, subprocess.TimeoutExpired):
+    except (KeyboardInterrupt, subprocess.TimeoutExpired, OSError):
         process.kill()
-        process.wait()
+        exit_code = process.wait()
+        if exit_code >= 0:
+            return AttachedResult(exit_code, interrupted=True, stopped=True)
         return AttachedResult(INTERRUPTED_EXIT_CODE, interrupted=True, stopped=False)
 
 
@@ -478,7 +481,10 @@ def session_result_text(config: PycharmRunConfig, result: AttachedResult) -> str
     if directory is None:
         lines.append("Session logs: none; this session logged to the console only.")
         return "\n".join(lines)
-    files = sorted(path for path in directory.iterdir() if path.is_file()) if directory.is_dir() else []
+    try:
+        files = sorted(path for path in directory.iterdir() if path.is_file()) if directory.is_dir() else []
+    except OSError:
+        files = []
     lines.append("Session logs on this computer:")
     lines.extend(f"  {path}" for path in files or [directory])
     return "\n".join(lines)
