@@ -24,6 +24,19 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22, later: PR #237 and PR #239 merged; `main` merged into the
+release branch.** PR #238, stacked on #237's branch, merged into that
+branch instead of `main` because the branch survived #237's merge while
+#238 was open against it; PR #239 carried its content and the rule-8
+rewrite to `main`. Then, by the owner's direction, `main` at `c779dc2` is
+merged into `release-0.3.0`, a one-time synchronization recorded under
+*Exceptions* in `WORKFLOW-LOCAL.md`: nothing was developed on `main`
+outside the candidate process, and the cycle's workflow rules must bind
+this checkout. The version-bearing files keep the release side. The
+website submodule's working tree was brought to the committed pointer so
+the documentation contract could run; it passed, as did the version and
+workflow suites.
+
 **2026-10-22: two workflow pull requests to `main`, at the owner's
 direction, before the network-node slice.**
 [PR #237](https://github.com/ccozianu/devcapsule/pull/237), from
