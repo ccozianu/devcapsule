@@ -4,7 +4,7 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: paused 2026-08-21 after adding human-authorized workstream-change rules; labeled fixtures remain next
+State: active 2026-10-22; AI Learning bootstrap, authorized by the owner through the console
 
 Integration target: `main`
 
@@ -20,8 +20,7 @@ self-test, and to surface missing product features from real use.
 
 ## Branch Association
 
-The active branch is `sample-projects/fastapi-webapp`, forked from the `main`
-registration commit for this workstream.
+The active branch is `ws-sample-projects/ai-learning`, forked from fetched `origin/main` at `e998dc0`. The owner authorized a clean checkout; the maintenance checkout is preserved.
 
 ## Delivery Method
 
@@ -35,6 +34,11 @@ product owner. Note the doubled `b` in `webbapp`; it is the actual repository
 name, not a typo in this record.
 
 ## Current State
+
+- 2026-10-22: AI Learning takes priority on owner direction. Bootstrap a TypeScript frontend/backend with Prisma, PostgreSQL, REST and GraphQL, Google-first allowlisted Gmail signup, optional local password, email challenge and 30-day remembered browser. Standard POSTGRES_* spelling confirmed. Remote URL and email service remain pending.
+- Synchronization: fresh branch from current fetched main; no merge needed. Required workflow documents read. Open bug scan found no records owned by sample-projects.
+- Owner approved Google-first registration over independent password registration, email over authenticator codes, and sample-projects routing. Answers read from capsule state; no token or answer file enters Git.
+- Judgment: child bootstrap is authorized as this sample deliverable; child source history stays independent. No deployment or database connection is authorized by this bootstrap.
 
 - The workstream is registered and its first branch is associated.
 - The `fastapi-webapp` sample is complete, published, and wired in as a
@@ -232,6 +236,8 @@ foreground/detached lifecycle evidence is recorded in the
 [detached-container bug](../../bugs/devcapsule/2026-08-15-detached-successors-not-cleaned-up.md).
 
 ## Next Resumable Task
+
+Bootstrap AI Learning, validate without live credentials, publish its independent repository once the owner supplies the remote, then add the reachable gitlink. Record DevCapsule gaps. Prior trading-research work remains below as deferred context.
 
 In the `trading-research` DevCapsule, define and load the first small,
 human-reviewed labeled fixture set. Record source/license metadata, gold atomic
