@@ -1,5 +1,5 @@
 ---
-status: confirmed
+status: fixed
 severity: minor
 target: 0.3.0
 owner: maintenance
@@ -88,3 +88,25 @@ The unit test passes on a 0.3.0 candidate, and component-catalog's IDE
 smoke launches a fresh project with the documented run-once command.
 Reopen if a fresh project refuses the command again, or if the run help
 again advertises a raw `--network` option.
+
+## Fix, 2026-10-22
+
+On `ws-maintenance/0.3.0-network-node`, a slice of the 0.3.0 cycle into
+`release-0.3.0`. `network` joins `WORKSTATION_CAPABILITY_DEFAULTS` in
+`devcapsule/configuration/authorization.py`, the table of host
+capabilities that exist as nodes on every project, with `host` as its
+supported value and `bridge` as its deny value, which
+`AUTHORIZATION_DENY_VALUES` already held. The table's comment, which had
+kept networking out while its run-once form was the raw `--network`
+passthrough, now says why it is in. A recommendation still takes precedence
+and attaches the project's justification, as for the other three; the
+run-once list, the review overlay and the launch already handled the node.
+A unit test on a manifest with no network recommendation proves the
+run-once command accepted and echoed and the launch planned with host
+networking, the unanswered launch on bridge, the persistent form written,
+a value outside the grammar refused with the deny value named, and the
+listing; the run-once refusal test now expects `network` among the names
+on a fresh project. The documentation rows that said the node is declared
+only by projects that need it say instead that it is on every project.
+Verification on a candidate: the unit test and component-catalog's IDE
+smoke launching a fresh project with the documented command.

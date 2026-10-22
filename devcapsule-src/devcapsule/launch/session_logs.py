@@ -79,7 +79,7 @@ def write_session_manifest(directory: Path, manifest: Mapping[str, Any]) -> Path
 
 
 def mark_session_ended(directory: Path, exit_code: int | None, *, ended_at: float | None = None) -> Path:
-    """Record the session's end in its manifest: when, and the exit code, or ``None`` when interrupted.
+    """Record the session's end in its manifest: when, and the launcher's exit code (130 after an interrupt).
 
     The end record is what lets a later launch prune the session; see
     ``devcapsule.logs.session_ended``. A manifest that is missing or

@@ -817,9 +817,12 @@ digest so the developer can recognize the release being reviewed. The
 authorization record still binds the exact digest and complete lock; the
 mnemonic is never accepted as an artifact identity.
 
-`config authorize NAME VALUE` accepts only the lock-selected base and curated
-host recommendations declared by the project. It writes the exact value and a
-digest of the relevant recommendation to this checkout's input file. A changed
+`config authorize NAME VALUE` accepts the lock-selected base, the host
+capability nodes every project has (`network`, `docker-daemon`,
+`development-sudo`, `host-browser`, `host-x11`) and the vendor acquisitions;
+a project's recommendation attaches its justification to a node, it does not
+create it. The command writes the exact value and a digest of the relevant
+recommendation to this checkout's input file. A changed
 base lock or host recommendation is stale and requires deliberate review and
 reauthorization; a committed project change never grants access by itself.
 

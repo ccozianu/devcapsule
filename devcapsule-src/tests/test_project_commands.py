@@ -21,6 +21,7 @@ from devcapsule.configuration.file_formats import (
 from devcapsule.configuration.authorization import (
     immutable_registry_reference,
 )
+from devcapsule.configuration.resolution import Resolution
 from devcapsule.configuration.storage import (
     registered_checkouts,
 )
@@ -1037,6 +1038,7 @@ def test_run_once_authorization_rejects_unknown_and_persistent_nodes(
     message = capsys.readouterr().err
     assert "cannot be answered run-once" in message
     assert "docker-daemon" in message
+    assert "network" in message  # on every project since 2026-10-22, recommended or not
 
 
 def test_project_run_does_not_launch_when_environment_realization_fails(
@@ -2132,6 +2134,179 @@ def test_run_passes_the_selected_transport_and_accepts_host_x11_run_once(
     assert "Run-once authorization: host-x11 = true" in err
 
 
+def test_network_is_a_node_on_every_project(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The bug of 2026-10-05: a project without a network recommendation refused
+    the documented run-once command. The node exists on every project with
+    bridge as the deny value; a recommendation only attaches a justification."""
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        "XDG_DATA_HOME": str(tmp_path / "data"),
+    }
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        manifest_text = (project / ".devcapsule" / "devcapsule.toml").read_text(encoding="utf-8")
+        assert "[host.network" not in manifest_text  # the precondition: no recommendation
+        lock_path = write_formation_lock(project)
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "base-image", LOCKED_BASE]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        capsys.readouterr()
+        record = registered_checkouts()[0].record_path
+        original_input = record.read_bytes()
+        resolution = record.with_name("devcapsule.resolved.toml")
+        original_resolution = resolution.read_bytes()
+        realized = SimpleNamespace(
+            image=SimpleNamespace(labels={"devcapsule.base.display": "contained"}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
+            created=False,
+            locked=parse_locked_environment(tomllib.loads(lock_path.read_text(encoding="utf-8"))),
+        )
+        with (
+            patch("devcapsule.commands.project.realize_environment", return_value=realized),
+            patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch,
+        ):
+            assert cli.main(["project", "--path", str(project), "run"]) == 0
+            assert launch.call_args.args[0].network_mode == "bridge"  # unanswered: the deny value
+            assert cli.main(["project", "--path", str(project), "run", "--authorize", "network", "host"]) == 0
+            assert launch.call_args.args[0].network_mode == "host"
+        err = capsys.readouterr().err
+        assert "Run-once authorization: network = host" in err
+        assert record.read_bytes() == original_input
+        assert resolution.read_bytes() == original_resolution
+        # The persistent form writes the checkout's answer; nothing is recorded by the run-once form.
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "host"]) == 0
+        output = capsys.readouterr().out
+        assert "Authorized network for this checkout" in output
+        assert "This removes network namespace isolation." in output
+        assert "Deny with 'bridge' (the default)." in output
+        record = registered_checkouts()[0].record_path
+        with record.open("rb") as stream:
+            checkout = tomllib.load(stream)
+        assert checkout["authorization"]["network"]["value"] == "host"
+        # Only the node's grammar is accepted; the refusal names the deny value.
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "vpn0"]) == 2
+        assert "deny value 'bridge'" in capsys.readouterr().err
+        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
+    assert (rows["network"][2], rows["network"][-1]) == ("authorized", "host")
+
+
+def test_unanswered_network_lists_its_source_and_is_not_bulk_authorized(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        document, _ = _listing_document(project, capsys)
+        network = next(row for row in document["rows"] if row["name"] == "network")
+        assert network == {
+            "kind": "authorization", "name": "network", "status": "available",
+            "source": "workstation default (unanswered)", "value": "host",
+        }
+        with (
+            patch("devcapsule.commands.project.sys.stdin") as terminal,
+            patch("devcapsule.commands.project._confirmation_key", return_value="y"),
+        ):
+            terminal.isatty.return_value = True
+            assert cli.main([
+                "project", "--path", str(project), "config", "authorize", "--all-recommended",
+            ]) == 0
+        assert "- network:" not in capsys.readouterr().out
+        record = registered_checkouts()[0].record_path
+        assert set(tomllib.loads(record.read_text())["authorization"]) == {"base-image"}
+
+
+@pytest.mark.parametrize("value", ["host", "bridge"])
+def test_network_answer_stales_when_recommendation_appears_and_disappears(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], value: str,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+    command = ["project", "--path", str(project), "config"]
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        manifest_path = project / ".devcapsule" / "devcapsule.toml"
+        original_manifest = manifest_path.read_text()
+        assert cli.main([*command, "authorize", "base-image", "default"]) == 0
+        assert cli.main([*command, "authorize", "network", value]) == 0
+        assert cli.main([*command, "resolve"]) == 0
+        record = registered_checkouts()[0].record_path
+        default_digest = tomllib.loads(record.read_text())["authorization"]["network"]["recommendation-digest"]
+        recommendation = (
+            '\n[host.network.mode.recommended]\nvalue = "host"\n'
+            'justification = "Reach host-bound development services."\n'
+        )
+        for text, source, description in (
+            (original_manifest + recommendation, "manifest", "Reach host-bound development services."),
+            (original_manifest, "workstation default", "Share the host network namespace"),
+        ):
+            manifest_path.write_text(text)
+            write_formation_lock(project)
+            before = record.read_bytes()
+            capsys.readouterr()
+            assert cli.main([*command, "resolve"]) == 2
+            error = capsys.readouterr().err
+            assert f"network: stale; recorded: {value}; recommended: host" in error
+            assert description in error
+            assert "authorize network bridge" in error
+            assert record.read_bytes() == before
+            document, _ = _listing_document(project, capsys)
+            network = next(row for row in document["rows"] if row["name"] == "network")
+            assert network["status"] == "stale"
+            basis = "manifest recommendation" if source == "manifest" else "workstation default"
+            assert network["source"] == f"checkout (answer predates the {basis})"
+            assert cli.main([*command, "authorize", "network", value]) == 0
+            digest = tomllib.loads(record.read_text())["authorization"]["network"]["recommendation-digest"]
+            assert (digest == default_digest) == (source == "workstation default")
+            assert cli.main([*command, "resolve"]) == 0
+            resolved = tomllib.loads(record.with_name("devcapsule.resolved.toml").read_text())
+            assert resolved["authorization"]["network"] == value
+            assert Resolution(resolved).host_access.network == value
+
+
+@pytest.mark.parametrize("value", ["host", "bridge"])
+def test_unset_network_removes_the_answer_and_resolves_to_bridge(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], value: str,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
+    command = ["project", "--path", str(project), "config"]
+    with patch.dict(os.environ, env, clear=False):
+        initialize_project(project)
+        write_formation_lock(project)
+        assert cli.main([*command, "authorize", "base-image", "default"]) == 0
+        assert cli.main([*command, "authorize", "network", value]) == 0
+        assert cli.main([*command, "resolve"]) == 0
+        record = registered_checkouts()[0].record_path
+        resolution = record.with_name("devcapsule.resolved.toml")
+        original = resolution.read_bytes()
+        capsys.readouterr()
+        assert cli.main([*command, "unset", "network"]) == 0
+        assert "Unset network for this checkout." in capsys.readouterr().out
+        assert "network" not in tomllib.loads(record.read_text())["authorization"]
+        assert resolution.read_bytes() == original
+        assert cli.main([*command, "resolve"]) == 0
+        resolved = tomllib.loads(resolution.read_text())
+        assert "network" not in resolved["authorization"]
+        assert Resolution(resolved).host_access.network == "bridge"
+        capsys.readouterr()
+        document, _ = _listing_document(project, capsys)
+        network = next(row for row in document["rows"] if row["name"] == "network")
+        assert network["status"] == "available"
+        assert network["source"] == "workstation default (unanswered)"
+        assert cli.main([*command, "unset", "network"]) == 2
+        assert "has no recorded answer" in capsys.readouterr().err
+
+
 def test_config_list_shows_the_recorded_answer_and_names_a_denial(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -2150,7 +2325,8 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
     assert (rows["host-x11"][2], rows["host-x11"][-1]) == ("denied", "false")
     assert (rows["host-browser"][2], rows["host-browser"][-1]) == ("authorized", "true")
     assert (rows["development-sudo"][2], rows["development-sudo"][-1]) == ("available", "true")
-    assert rows["host-x11"][3] == "checkout" and rows["development-sudo"][3] == "manifest"
+    assert rows["host-x11"][3] == "checkout"
+    assert " ".join(rows["development-sudo"][3:-1]) == "workstation default (unanswered)"
 
 
 @pytest.mark.parametrize('surface,needs', [('pycharm', ['python', 'python-ide']), ('codium', ['node', 'frontend-ide'])])

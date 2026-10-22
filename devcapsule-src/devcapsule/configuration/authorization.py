@@ -45,14 +45,22 @@ CURATED_HOST_RECOMMENDATIONS: dict[str, tuple[tuple[str, ...], AuthorizationScal
 # "Denial is the default. The developer may deny it, allow it once, allow it
 # for this checkout" — so their availability cannot depend on the project's
 # advice; a recommendation merely attaches the project's justification and
-# rebinds the answer to it. Host networking is deliberately absent: its
-# run-once form is the raw docker passthrough, and its persistent relaxation
-# remains a project-recommended decision.
+# rebinds the answer to it. Host networking joined the table on 2026-10-22 by
+# the owner's ruling of 2026-10-05: it had been left out while its run-once
+# form was the raw ``--network`` passthrough, and once ``--authorize network
+# host`` replaced that passthrough the omission only made a fresh project
+# refuse the documented command.
 WORKSTATION_CAPABILITY_DEFAULTS: dict[str, tuple[AuthorizationScalar, str]] = {
     "docker-daemon": (
         "host-socket",
         "Expose the host Docker daemon socket to the capsule; this permits broad "
         "control of the host.",
+    ),
+    "network": (
+        "host",
+        "Share the host network namespace with the capsule instead of Docker's "
+        "bridge. Host and capsule services share localhost and ports. "
+        "This removes network namespace isolation. Deny with 'bridge' (the default).",
     ),
     "development-sudo": (
         True,

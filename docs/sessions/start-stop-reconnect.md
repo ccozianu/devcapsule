@@ -21,9 +21,10 @@ cannot recover a running session's URL, so keep the launcher terminal open
 or its output saved.
 
 **Stop.** **File → Exit** in the IDE ends the session cleanly; the
-container is removed. Ctrl+C in the launcher terminal also stops it, less
-gracefully. `docker stop` on the container name that `project info` shows
-does the same from outside.
+container is removed. Ctrl+C in the launcher terminal also stops it; the
+launcher waits for the stop and ends with the result and the paths of the
+session's log files. `docker stop` on the container name that `project
+info` shows does the same from outside.
 
 What survives a stop is on [What persists](what-persists.md). Running two
 projects, or the same project twice, is on [Several projects](several-projects.md).

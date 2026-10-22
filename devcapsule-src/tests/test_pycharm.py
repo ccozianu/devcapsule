@@ -18,7 +18,9 @@ from devcapsule.launch.pycharm import (
     PycharmRunOptions,
     build_run_config,
 )
+from devcapsule.container_runtime.contract import INFRASTRUCTURE_FAILURE_EXIT_CODE
 from devcapsule.launch.pycharm._launcher import (
+    AttachedResult,
     display_disclosure,
     describe_run_command,
     console_development_source,
@@ -463,9 +465,9 @@ def test_physical_host_launcher_owns_browser_broker_for_docker_lifetime(
     with (
         patch("devcapsule.host_open.in_container", return_value=False),
         patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.run_attached") as run,
     ):
-        run.return_value.returncode = 0
+        run.return_value = AttachedResult(0, interrupted=False, stopped=True)
         assert run_pycharm(
             PycharmRunOptions(
                 project=project,
@@ -731,9 +733,9 @@ def test_sudo_banner_is_printed_after_complete_policy_preparation(
         patch(
             "devcapsule.launch.pycharm._launcher.ensure_sudoers_policy_ownership"
         ) as ensure,
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.run_attached") as run,
     ):
-        run.return_value.returncode = 0
+        run.return_value = AttachedResult(0, interrupted=False, stopped=True)
         assert (
             run_pycharm(
                 PycharmRunOptions(
@@ -825,9 +827,9 @@ def test_image_process_uses_oci_command_and_cleans_all_temporary_files(tmp_path:
     image = "devcapsule-local-pycharm:canonical"
     with (
         patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
+        patch("devcapsule.launch.pycharm._launcher.run_attached") as run,
     ):
-        run.return_value.returncode = 0
+        run.return_value = AttachedResult(0, interrupted=False, stopped=True)
         assert (
             run_pycharm(
                 PycharmRunOptions(
@@ -1279,18 +1281,18 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
     listener.listen(1)
     port = listener.getsockname()[1]
 
-    def fake_docker_run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+    def fake_docker_run(command: list[str], env: dict[str, str], **_kwargs: object) -> AttachedResult:
         # "The capsule is up": the published port answers, so the watcher opens
         # the URL; then docker run returns as the session ends.
         deadline = time.monotonic() + 10
         while not opened and time.monotonic() < deadline:
             time.sleep(0.05)
-        return SimpleNamespace(returncode=0)
+        return AttachedResult(0, interrupted=False, stopped=True)
 
     with (
         patch("devcapsule.launch.pycharm._launcher.allocate_loopback_port", side_effect=[port, 1]),
         patch("devcapsule.launch.pycharm._launcher.write_user_files"),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=fake_docker_run),
+        patch("devcapsule.launch.pycharm._launcher.run_attached", side_effect=fake_docker_run),
         patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=HostUser(1000, 1000, "dev", "dev")),
     ):
         try:
@@ -1546,7 +1548,7 @@ def test_console_launcher_cleans_up_after_command_reporting_or_docker_failure(
         patch("devcapsule.launch.pycharm._launcher.build_run_config", return_value=config),
         patch("devcapsule.launch.pycharm._launcher.write_user_files"),
         patch("devcapsule.launch.pycharm._launcher.watch_display_ready") as watch,
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run", side_effect=OSError("docker failed")) as docker,
+        patch("devcapsule.launch.pycharm._launcher.run_attached", side_effect=OSError("docker failed")) as docker,
     ):
         if report_only:
             assert run_pycharm(options, env) == 0
@@ -1634,7 +1636,7 @@ def test_run_pycharm_announces_the_console_url_and_opens_it_only_without_a_deskt
         patch("devcapsule.launch.pycharm._launcher.watch_display_ready", side_effect=ready) as watcher,
         patch("devcapsule.launch.pycharm._launcher.write_user_files"),
         patch("devcapsule.launch.pycharm._launcher.write_xauthority"),
-        patch("devcapsule.launch.pycharm._launcher.subprocess.run", return_value=SimpleNamespace(returncode=7)),
+        patch("devcapsule.launch.pycharm._launcher.run_attached", return_value=AttachedResult(7, interrupted=False, stopped=True)),
         patch("devcapsule.launch.pycharm._launcher.default_opener", return_value=default_console_opener) as default,
     ):
         assert run_pycharm(PycharmRunOptions(
@@ -1796,7 +1798,7 @@ def test_unusable_session_directory_does_not_add_a_mount_or_stop_launch(tmp_path
             patch.object(launcher, "write_xauthority"),
             patch.object(launcher, "write_user_files"),
             patch.object(launcher, "watch_display_ready"),
-            patch.object(launcher.subprocess, "run", return_value=SimpleNamespace(returncode=7)) as docker,
+            patch.object(launcher, "run_attached", return_value=AttachedResult(7, interrupted=False, stopped=True)) as docker,
         ):
             assert run_pycharm(PycharmRunOptions(project=config.project), env) == 7
         command = docker.call_args.args[0]
@@ -1853,31 +1855,278 @@ def test_session_logs_with_an_external_daemon(tmp_path, backed, capsys):
             assert "not backed by a mount" in capsys.readouterr().err
 
 
-def test_interrupted_launch_records_the_end_and_reraises(tmp_path):
+def test_interrupted_launch_ends_with_a_result_and_the_log_paths(tmp_path, capsys):
+    """Ctrl+C ends with a result, not a traceback (the first-session report of 2026-09-15, C10)."""
     from devcapsule import logs
     from devcapsule.launch.pycharm import _launcher as launcher
 
     config, env = session_config(tmp_path)
-    interrupted = KeyboardInterrupt()
     stops = []
+    stopped_before_return = False
+
+    class Client:
+        waits = 0
+
+        def wait(self, timeout=None):
+            nonlocal stopped_before_return
+            self.waits += 1
+            if self.waits == 1:
+                assert stops and not any(stop.is_set() for stop in stops)
+                raise KeyboardInterrupt
+            stopped_before_return = bool(stops) and all(stop.is_set() for stop in stops)
+            return 143
+
     try:
         with (
             patch.object(launcher, "build_run_config", return_value=config),
             patch.object(launcher, "write_xauthority"),
             patch.object(launcher, "write_user_files"),
             patch.object(launcher, "watch_display_ready", side_effect=lambda port, url, opener, stop, **kw: stops.append(stop)),
-            patch.object(launcher.subprocess, "run", side_effect=interrupted),
+            patch.object(launcher.subprocess, "Popen", return_value=Client()),
         ):
-            with pytest.raises(KeyboardInterrupt) as raised:
-                run_pycharm(PycharmRunOptions(project=config.project), env)
-        assert raised.value is interrupted
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == launcher.INTERRUPTED_EXIT_CODE
+        assert stopped_before_return
         assert stops and all(stop.is_set() for stop in stops)
         assert list((tmp_path / "runtime").iterdir()) == []
         assert config.session_log_directory is not None
         record = (config.session_log_directory / "devcapsule-launcher.log").read_text()
-        assert "session end: interrupted from the terminal (Ctrl+C)" in record
+        assert "session end: interrupted from the terminal (Ctrl+C); docker run exit code 143" in record
+        err = capsys.readouterr().err
+        assert "Session interrupted from the terminal (Ctrl+C); the capsule stopped." in err
+        assert "Session logs on this computer:" in err
+        assert f"  {config.session_log_directory / 'devcapsule-launcher.log'}" in err
+        assert f"  {config.session_log_directory / 'session.json'}" in err
     finally:
         logs.reset()
+
+
+def test_run_attached_waits_through_ctrl_c_for_the_capsules_end(capsys) -> None:
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    events: list[str] = []
+
+    class Client:
+        """A docker client whose first wait is interrupted and whose second returns."""
+        waits = 0
+        killed = False
+
+        def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits == 1:
+                raise KeyboardInterrupt
+            events.append(f"wait:{capsys.readouterr().err.strip()}")
+            assert timeout == launcher.INTERRUPT_STOP_SECONDS
+            return 143
+
+        def kill(self):
+            self.killed = True
+
+    client = Client()
+    with patch.object(launcher.subprocess, "Popen", return_value=client) as popen:
+        result = launcher.run_attached(
+            ["docker", "run", "image"],
+            {"PATH": "/usr/bin"},
+            container_name="capsule",
+            on_interrupt=lambda: events.append(f"interrupt:{capsys.readouterr().err}"),
+        )
+    assert popen.call_args.kwargs["env"] == {"PATH": "/usr/bin"}
+    assert result == AttachedResult(143, interrupted=True, stopped=True)
+    assert not client.killed
+    assert events[0] == "interrupt:"
+    assert events[1].startswith("wait:Interrupted from the terminal (Ctrl+C); the capsule is stopping.")
+
+
+def test_run_attached_asks_the_daemon_when_the_capsule_lingers(capsys) -> None:
+    import subprocess as sp
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    class Client:
+        waits = 0
+
+        def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits == 1:
+                raise KeyboardInterrupt
+            if self.waits == 2:
+                raise sp.TimeoutExpired("docker", timeout)
+            assert timeout == launcher.DAEMON_STOP_SECONDS
+            return 143
+
+    with (
+        patch.object(launcher.subprocess, "Popen", return_value=Client()),
+        patch.object(launcher.subprocess, "run") as stop,
+    ):
+        result = launcher.run_attached(["docker", "run", "image"], {}, container_name="capsule")
+    assert result == AttachedResult(143, interrupted=True, stopped=True)
+    assert stop.call_args.args[0] == ["docker", "stop", "--time", "10", "capsule"]
+    assert "asking the daemon to stop it" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("during_print", [False, True])
+def test_run_attached_stops_waiting_on_a_second_ctrl_c(capsys, during_print: bool) -> None:
+    from contextlib import nullcontext
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    class Client:
+        waits = 0
+        killed = False
+
+        def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits == 1 or (not during_print and self.waits == 2):
+                raise KeyboardInterrupt
+            return -9
+
+        def kill(self):
+            self.killed = True
+
+    client = Client()
+    interrupts = 0
+
+    def record_interrupt() -> None:
+        nonlocal interrupts
+        interrupts += 1
+
+    print_patch = patch("builtins.print", side_effect=KeyboardInterrupt) if during_print else nullcontext()
+    with patch.object(launcher.subprocess, "Popen", return_value=client), print_patch:
+        result = launcher.run_attached(
+            ["docker", "run", "image"], {}, container_name="capsule", on_interrupt=record_interrupt,
+        )
+    assert result == AttachedResult(launcher.INTERRUPTED_EXIT_CODE, interrupted=True, stopped=False)
+    assert client.killed
+    assert interrupts == 1
+
+
+@pytest.mark.parametrize("daemon_wait_outcome", ["timeout", "interrupt", "stop_oserror"])
+def test_run_attached_stops_waiting_when_daemon_stop_fails_or_is_interrupted(
+    daemon_wait_outcome: str,
+) -> None:
+    import subprocess as sp
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    class Client:
+        waits = 0
+        killed = False
+
+        def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits == 1:
+                raise KeyboardInterrupt
+            if self.waits == 2:
+                raise sp.TimeoutExpired("docker", timeout)
+            if self.waits == 3 and not self.killed:
+                assert timeout == launcher.DAEMON_STOP_SECONDS
+                if daemon_wait_outcome == "timeout":
+                    raise sp.TimeoutExpired("docker", timeout)
+                raise KeyboardInterrupt
+            return -9
+
+        def kill(self):
+            self.killed = True
+
+    client = Client()
+    stop_effect = OSError("daemon unavailable") if daemon_wait_outcome == "stop_oserror" else SimpleNamespace(returncode=1)
+    with (
+        patch.object(launcher.subprocess, "Popen", return_value=client),
+        patch.object(launcher.subprocess, "run", side_effect=stop_effect if isinstance(stop_effect, Exception) else None, return_value=stop_effect) as stop,
+    ):
+        result = launcher.run_attached(["docker", "run", "image"], {}, container_name="capsule")
+    assert result == AttachedResult(launcher.INTERRUPTED_EXIT_CODE, interrupted=True, stopped=False)
+    assert client.killed
+    assert stop.call_args.kwargs["timeout"] == launcher.DAEMON_STOP_SECONDS
+
+
+def test_run_attached_reports_stopped_when_kill_races_the_clients_own_exit() -> None:
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    class Client:
+        waits = 0
+        killed = False
+
+        def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits <= 2:
+                raise KeyboardInterrupt
+            return 143
+
+        def kill(self):
+            self.killed = True
+
+    client = Client()
+    with patch.object(launcher.subprocess, "Popen", return_value=client):
+        result = launcher.run_attached(["docker", "run", "image"], {}, container_name="capsule")
+    assert result == AttachedResult(143, interrupted=True, stopped=True)
+    assert client.killed
+
+
+def test_run_attached_returns_the_capsules_exit_code_when_nothing_interrupts() -> None:
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    interrupts = 0
+
+    def record_interrupt() -> None:
+        nonlocal interrupts
+        interrupts += 1
+
+    client = SimpleNamespace(wait=lambda timeout=None: 7)
+    with patch.object(launcher.subprocess, "Popen", return_value=client):
+        assert launcher.run_attached(
+            ["docker"], {}, container_name="c", on_interrupt=record_interrupt,
+        ) == AttachedResult(7, interrupted=False, stopped=True)
+    assert interrupts == 0
+
+
+@pytest.mark.parametrize("result,head", [
+    (AttachedResult(0, interrupted=False, stopped=True), "Session ended: the IDE exited and the capsule stopped."),
+    (AttachedResult(INFRASTRUCTURE_FAILURE_EXIT_CODE, interrupted=False, stopped=True),
+     "Session failed: a capsule component died; the supervisor's log names it."),
+    (AttachedResult(7, interrupted=False, stopped=True), "Session ended with exit code 7."),
+    (AttachedResult(143, interrupted=True, stopped=True), "Session interrupted from the terminal (Ctrl+C); the capsule stopped."),
+    (AttachedResult(130, interrupted=True, stopped=False),
+     "Session interrupted from the terminal; the capsule may still be running. Stop it with: docker stop "),
+])
+def test_session_result_names_the_outcome_and_every_log_file(tmp_path: Path, result, head) -> None:
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, _env = session_config(tmp_path)
+    assert config.session_log_directory is not None
+    config.session_log_directory.mkdir(parents=True, exist_ok=True)
+    for name in ("devcapsule-launcher.log", "devcapsule-supervisor.log", "devcapsule-pycharm.log", "session.json"):
+        (config.session_log_directory / name).write_text("", encoding="utf-8")
+    (config.session_log_directory / "second-session").mkdir()
+    text = launcher.session_result_text(config, result)
+    lines = text.splitlines()
+    assert lines[0].startswith(head)
+    if not result.stopped:
+        assert lines[0].endswith(config.name)
+    assert lines[1] == "Session logs on this computer:"
+    assert lines[2:] == [
+        f"  {config.session_log_directory / name}"
+        for name in ("devcapsule-launcher.log", "devcapsule-pycharm.log", "devcapsule-supervisor.log", "session.json")
+    ]
+
+
+def test_session_result_without_a_log_directory_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, _env = session_config(tmp_path)
+    text = launcher.session_result_text(replace(config, session_log_directory=None), AttachedResult(0, False, True))
+    assert text.splitlines() == [
+        "Session ended: the IDE exited and the capsule stopped.",
+        "Session logs: none; this session logged to the console only.",
+    ]
+    assert config.session_log_directory is not None
+    config.session_log_directory.mkdir(parents=True, exist_ok=True)
+    empty_lines = [
+        "Session ended: the IDE exited and the capsule stopped.",
+        "Session logs on this computer:",
+        f"  {config.session_log_directory}",
+    ]
+    assert launcher.session_result_text(config, AttachedResult(0, False, True)).splitlines() == empty_lines
+    (config.session_log_directory / "devcapsule-launcher.log").write_text("", encoding="utf-8")
+    monkeypatch.setattr(Path, "iterdir", lambda self: (_ for _ in ()).throw(PermissionError("unreadable")))
+    assert launcher.session_result_text(config, AttachedResult(0, False, True)).splitlines() == empty_lines
 
 
 def test_the_log_budget_knob_sets_the_segment_and_reports_nonsense(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -1906,7 +2155,9 @@ def test_the_launcher_records_the_sessions_end_in_its_manifest(tmp_path: Path) -
 
     from devcapsule import logs
     from devcapsule.launch.pycharm import _launcher as launcher
+    from devcapsule.launch.session_logs import mark_session_ended
 
+    assert "130" in (mark_session_ended.__doc__ or "") and "None" not in (mark_session_ended.__doc__ or "")
     config, env = session_config(tmp_path)
     assert config.session_log_directory is not None
     try:
@@ -1915,7 +2166,7 @@ def test_the_launcher_records_the_sessions_end_in_its_manifest(tmp_path: Path) -
             patch.object(launcher, "write_xauthority"),
             patch.object(launcher, "write_user_files"),
             patch.object(launcher, "watch_display_ready"),
-            patch.object(launcher.subprocess, "run", return_value=SimpleNamespace(returncode=7)),
+            patch.object(launcher, "run_attached", return_value=AttachedResult(7, interrupted=False, stopped=True)),
         ):
             assert run_pycharm(PycharmRunOptions(project=config.project), env) == 7
         manifest = json.loads((config.session_log_directory / "session.json").read_text(encoding="utf-8"))
@@ -1926,11 +2177,40 @@ def test_the_launcher_records_the_sessions_end_in_its_manifest(tmp_path: Path) -
             patch.object(launcher, "write_xauthority"),
             patch.object(launcher, "write_user_files"),
             patch.object(launcher, "watch_display_ready"),
-            patch.object(launcher.subprocess, "run", side_effect=KeyboardInterrupt()),
+            patch.object(launcher, "run_attached", return_value=AttachedResult(143, interrupted=True, stopped=True)),
         ):
-            with pytest.raises(KeyboardInterrupt):
-                run_pycharm(PycharmRunOptions(project=config.project), env)
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == launcher.INTERRUPTED_EXIT_CODE
         manifest = json.loads((config.session_log_directory / "session.json").read_text(encoding="utf-8"))
-        assert manifest["exit-code"] is None and manifest["ended-at"]
+        assert manifest["exit-code"] == launcher.INTERRUPTED_EXIT_CODE and manifest["ended-at"]
+    finally:
+        logs.reset()
+
+
+def test_interrupted_launch_with_unstopped_capsule_leaves_session_manifest_unended(tmp_path: Path) -> None:
+    import json
+
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, env = session_config(tmp_path)
+    assert config.session_log_directory is not None
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(
+                launcher,
+                "run_attached",
+                return_value=AttachedResult(launcher.INTERRUPTED_EXIT_CODE, interrupted=True, stopped=False),
+            ),
+        ):
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == launcher.INTERRUPTED_EXIT_CODE
+        manifest = json.loads((config.session_log_directory / "session.json").read_text(encoding="utf-8"))
+        assert "ended-at" not in manifest and "exit-code" not in manifest
+        assert not logs.session_ended(config.session_log_directory)
+        record = (config.session_log_directory / "devcapsule-launcher.log").read_text(encoding="utf-8")
+        assert f"session end unknown: interrupted from the terminal (Ctrl+C); container {config.name} may still be running" in record
     finally:
         logs.reset()
