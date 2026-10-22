@@ -825,7 +825,8 @@ class ConfigApproveCommand(Command):
     help = (
         "Approve new versions of vendor software you approved before, after the project's "
         "lock changed; the vendors and their terms are unchanged. Lists what is pending; "
-        "NAME... or --all records the approvals and regenerates the resolution."
+        "NAME... or --all records the approvals. The resolution is regenerated "
+        "when no software approvals remain."
     )
 
     @classmethod

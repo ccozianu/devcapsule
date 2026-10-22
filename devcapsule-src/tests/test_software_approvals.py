@@ -7,16 +7,17 @@ real command line.
 
 from __future__ import annotations
 
-import time
+import json
 import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from devcapsule import version_sets
+from devcapsule import runtime_configuration, version_sets
 from devcapsule.commands import _software_approvals as offer
 from devcapsule.configuration.approvals import pending_software_approvals, render_software_approvals
+from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
 from devcapsule.configuration.storage import load_toml, manifest_for
 from tests.test_upgrade_recovery import checkout, install_external_fakes, invoke, review  # noqa: F401
 
@@ -79,7 +80,7 @@ def test_nothing_pending_is_an_empty_list(checkout) -> None:
     assert pending(project, record) == ()
 
 
-@pytest.mark.parametrize("other", ["missing-consent", "denied-then-bumped", "stale-host-access"])
+@pytest.mark.parametrize("other", ["missing-consent", "denied-then-bumped", "stale-host-access", "missing-base"])
 def test_any_other_pending_decision_disqualifies_the_list(checkout, other: str) -> None:
     """A missing consent, a denial, or a host-access decision in the list is decided one by one."""
     project, record, _ = checkout
@@ -90,9 +91,11 @@ def test_any_other_pending_decision_disqualifies_the_list(checkout, other: str) 
         pin(project, "antigravity-cli", "antigravity-download", ANTIGRAVITY_TERMS, "2.0.0")
         assert invoke(project, "config", "authorize", "antigravity-download", "false") == 0
         pin(project, "antigravity-cli", "antigravity-download", ANTIGRAVITY_TERMS, "2.1.0")
+    elif other == "missing-base":
+        document = load_toml(record)
+        del document["authorization"]["base-image"]
+        record.write_text(render_toml(document))
     else:
-        text = record.read_text()
-        record.write_text(text.replace('"recommendation-digest"', '"recommendation-digest-x"', 1) if '"recommendation-digest"' in text else text)
         manifest_path = project / ".devcapsule/devcapsule.toml"
         manifest_path.write_text(manifest_path.read_text() + '\n[host.browser.host-open.recommended]\nvalue = true\njustification = "Open links on the host."\n')
         assert invoke(project, "config", "authorize", "host-browser", "true") == 0
@@ -108,23 +111,43 @@ def test_the_previous_version_comes_from_the_newest_known_good_record(checkout) 
     known_good.mkdir(parents=True, exist_ok=True)
     older = {"components": {"claude-code": {"version": "0.9.0"}}}
     newer = {"components": {"claude-code": {"version": "1.0.0"}}}
-    (known_good / "older.toml").write_text(render_toml({"lock": render_toml(older), "last-success": time.time() - 100}))
-    (known_good / "newer.toml").write_text(render_toml({"lock": render_toml(newer), "last-success": time.time()}))
+    (known_good / "newer.toml").write_text(render_toml({"lock": render_toml(newer), "last-success": 20}))
+    (known_good / "older.toml").write_text(render_toml({"lock": render_toml(older), "last-success": 10}))
     (known_good / "broken.toml").write_text("not = [toml")
-    assert offer.previous_versions(project) == {"claude-code": "1.0.0"}
+    # Neither file order nor modification time determines the last launch.
+    with patch.object(Path, "glob", return_value=iter([
+        known_good / "newer.toml", known_good / "older.toml", known_good / "broken.toml",
+    ])):
+        assert offer.previous_versions(project) == {"claude-code": "1.0.0"}
     _root, manifest = manifest_for(project)
     approvals = offer.pending_for(project, manifest)
     assert approvals is not None and approvals[0].change == "1.0.0 to 1.1.0"
 
 
 def test_run_asks_once_and_launches_on_y(checkout, monkeypatch, capsys) -> None:
-    project, record, _ = checkout
+    project, record, resolution = checkout
     approved_then_bumped(project, record)
     events: list = []
     launch = install_external_fakes(monkeypatch, events)
     monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(offer, "confirmation_key", lambda: "y")
-    assert invoke(project, "run", "--no-update-check") == 0
+    replacements: list[Path] = []
+    original_replace = Path.replace
+
+    def replace(source: Path, destination: Path) -> Path:
+        result = original_replace(source, destination)
+        if destination in (record, resolution):
+            replacements.append(destination)
+        return result
+
+    def accept() -> str:
+        assert events == [] and replacements == []
+        return "y"
+
+    monkeypatch.setattr(Path, "replace", replace)
+    with patch.object(offer, "confirmation_key", side_effect=accept) as read_key:
+        assert invoke(project, "run", "--no-update-check") == 0
+    read_key.assert_called_once_with()
+    assert replacements == [record, resolution]  # atomic record replacement precedes resolution
     out = capsys.readouterr().out
     assert "Claude Code 1.1.0, downloaded from Anthropic" in out
     assert "Approve all of them? Press y" in out
@@ -135,34 +158,43 @@ def test_run_asks_once_and_launches_on_y(checkout, monkeypatch, capsys) -> None:
     assert review(project, record).ready is True  # the digest is current and the resolution regenerated
 
 
-def test_run_stops_on_any_other_key_and_names_the_command_and_the_guide(checkout, monkeypatch, capsys) -> None:
-    project, record, _ = checkout
+@pytest.mark.parametrize("key", ["n", "", EOFError()])
+def test_run_stops_on_any_other_key_and_names_the_command_and_the_guide(checkout, monkeypatch, capsys, key) -> None:
+    project, record, resolution = checkout
     approved_then_bumped(project, record)
-    before = record.read_bytes()
+    before = record.read_bytes(), resolution.read_bytes()
     events: list = []
     launch = install_external_fakes(monkeypatch, events)
     monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(offer, "confirmation_key", lambda: "n")
+    def read_key():
+        if isinstance(key, EOFError):
+            raise key
+        return key
+    monkeypatch.setattr(offer, "confirmation_key", read_key)
     assert invoke(project, "run", "--no-update-check") == 1
     out = capsys.readouterr().out
     assert "Not approved; nothing written." in out
     assert f"devcapsule project --path {project}" not in out  # the path has spaces: it is quoted
     assert "config approve --all" in out and GUIDE in out
     assert "Launch cancelled; no session was started." in out
-    assert record.read_bytes() == before and launch.call_count == 0
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+    assert events == [] and launch.call_count == 0
 
 
 def test_run_without_a_terminal_stops_with_the_same_instruction(checkout, monkeypatch, capsys) -> None:
-    project, record, _ = checkout
+    project, record, resolution = checkout
     approved_then_bumped(project, record)
-    before = record.read_bytes()
-    launch = install_external_fakes(monkeypatch, [])
+    before = record.read_bytes(), resolution.read_bytes()
+    events: list = []
+    launch = install_external_fakes(monkeypatch, events)
     monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("read non-terminal stdin"))
     assert invoke(project, "run", "--no-update-check") == 1
     out = capsys.readouterr().out
     assert "No terminal to ask; the launch stops here." in out
     assert "config approve --all" in out and GUIDE in out
-    assert record.read_bytes() == before and launch.call_count == 0
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+    assert events == [] and launch.call_count == 0
 
 
 def test_run_with_other_pending_decisions_refuses_as_before(checkout, monkeypatch, capsys) -> None:
@@ -195,13 +227,14 @@ def test_print_command_never_asks_or_writes(checkout, monkeypatch, capsys) -> No
 
 
 def test_config_approve_lists_then_records_all_or_by_name(checkout, capsys) -> None:
-    project, record, _ = checkout
+    project, record, resolution = checkout
     approved_then_bumped(project, record)
     pin(project, "antigravity-cli", "antigravity-download", ANTIGRAVITY_TERMS, "2.0.0")
     assert invoke(project, "config", "authorize", "antigravity-download", "true") == 0
     pin(project, "antigravity-cli", "antigravity-download", ANTIGRAVITY_TERMS, "2.1.0")
     # Listing only: nothing written, the command and the guide named.
     before = record.read_bytes()
+    before_resolution = resolution.read_bytes()
     assert invoke(project, "config", "approve") == 1
     out = capsys.readouterr().out
     assert "- Antigravity CLI 2.1.0" in out and "- Claude Code 1.1.0" in out
@@ -211,6 +244,8 @@ def test_config_approve_lists_then_records_all_or_by_name(checkout, capsys) -> N
     assert invoke(project, "config", "approve", "claude-code-download") == 0
     out = capsys.readouterr().out
     assert "Approved 1 software update" in out and "Still pending: antigravity-download" in out
+    assert "The resolution is unchanged" in out
+    assert resolution.read_bytes() == before_resolution
     approvals = pending(project, record)
     assert approvals is not None and [a.name for a in approvals] == ["antigravity-download"]
     # The rest with --all; the resolution is regenerated and the review is ready.
@@ -237,3 +272,168 @@ def test_the_approve_command_is_quoted_for_a_path_with_spaces(tmp_path: Path) ->
     root = tmp_path / "a checkout"
     assert offer.approve_command(root) == f"devcapsule project --path '{root}' config approve --all"
     assert offer.approve_command(root, ("claude-code-download",)).endswith("config approve claude-code-download")
+
+
+@pytest.mark.parametrize("value", [False, "true", "default", 1, None])
+def test_only_a_literal_true_answer_qualifies(checkout, value) -> None:
+    project, record, _ = checkout
+    approved_then_bumped(project, record)
+    document = load_toml(record)
+    document["authorization"]["claude-code-download"]["value"] = value
+    _, manifest = manifest_for(project)
+    assert pending_software_approvals(manifest, load_toml(lock_path(project)), document) is None
+
+
+def test_a_malformed_individual_answer_does_not_qualify(checkout) -> None:
+    project, record, _ = checkout
+    approved_then_bumped(project, record)
+    document = load_toml(record)
+    document["authorization"]["claude-code-download"] = True
+    _, manifest = manifest_for(project)
+    assert pending_software_approvals(manifest, load_toml(lock_path(project)), document) is None
+
+
+@pytest.mark.parametrize("field,value", [("terms-url", "https://example.test/new-terms"),
+                                         ("acquisition-authorization", "another-download")])
+def test_a_changed_acquisition_contract_refuses_before_approval(checkout, field, value) -> None:
+    project, record, _ = checkout
+    approved_then_bumped(project, record)
+    lock = load_toml(lock_path(project))
+    lock["components"]["claude-code"][field] = value
+    _, manifest = manifest_for(project)
+    with pytest.raises(ProjectConfigurationError, match=field):
+        pending_software_approvals(manifest, lock, load_toml(record))
+
+
+@pytest.mark.parametrize("operation", [("run",), ("config", "approve", "--all")])
+def test_malformed_authorization_table_is_a_controlled_refusal(checkout, capsys, operation) -> None:
+    project, record, resolution = checkout
+    approved_then_bumped(project, record)
+    document = load_toml(record)
+    document["authorization"] = "not a table"
+    record.write_text(render_toml(document))
+    before = record.read_bytes(), resolution.read_bytes()
+    with pytest.raises(ProjectConfigurationError, match="authorization must be a table"):
+        pending(project, record)
+    assert invoke(project, *operation) == 2
+    assert "authorization must be a table" in capsys.readouterr().err
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+
+
+@pytest.mark.parametrize("operation", [("run",), ("config", "approve", "--all")])
+@pytest.mark.parametrize("error", [ProjectConfigurationError("fixture resolution failure"),
+                                  OSError("fixture resolution failure")])
+def test_resolution_failure_keeps_approvals_and_names_recovery(checkout, monkeypatch, capsys, operation, error) -> None:
+    project, record, resolution = checkout
+    approved_then_bumped(project, record)
+    before_resolution = resolution.read_bytes()
+    capsys.readouterr()
+    events: list = []
+    install_external_fakes(monkeypatch, events)
+    monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(offer, "confirmation_key", lambda: "y")
+    with patch.object(offer, "resolve_checkout", side_effect=error) as resolve:
+        assert invoke(project, *operation) == 2
+    resolve.assert_called_once_with(project)
+    assert pending(project, record) == ()  # approvals survived, with current digests
+    assert resolution.read_bytes() == before_resolution
+    assert events == []
+    err = capsys.readouterr().err
+    assert "Approvals were saved, but resolution failed" in err
+    assert "fixture resolution failure" in err
+    assert f"devcapsule project --path '{project}' config resolve" in err
+    assert invoke(project, "config", "resolve") == 0  # the printed recovery is sufficient
+
+
+def test_config_approve_refuses_inside_its_own_capsule(checkout, monkeypatch, tmp_path, capsys) -> None:
+    project, record, resolution = checkout
+    approved_then_bumped(project, record)
+    _, manifest = manifest_for(project)
+    context = tmp_path / "launch-context.json"
+    context.write_text(json.dumps({
+        "format": 1, "launcher-root": "/host/project with spaces", "runtime-root": str(project),
+        "checkout-file": record.name, "project": manifest["project"],
+        "running": {"base": {}, "identity": "fixture", "origin": "project recommendation",
+                    "lock": load_toml(lock_path(project))},
+    }))
+    monkeypatch.setattr(runtime_configuration, "CONTEXT_PATH", context)
+    before = record.read_bytes(), resolution.read_bytes()
+    assert invoke(project, "config", "approve", "--all") == 2
+    err = capsys.readouterr().err
+    assert "configuration is read-only" in err
+    assert "devcapsule project --path '/host/project with spaces' config approve --all" in err
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+
+
+@pytest.mark.parametrize("operation", [("run",), ("config", "approve")])
+def test_inspecting_approvals_does_not_recover_an_activation(checkout, monkeypatch, capsys, operation) -> None:
+    project, record, resolution = checkout
+    approved_then_bumped(project, record)
+    journal = record.with_suffix(".activation.toml")
+    journal.write_text(render_toml({
+        "before-checkout": record.read_text(), "after-checkout": "not committed",
+        "before-resolution": "would overwrite the resolution", "after-resolution": "unused",
+    }))
+    before = {p: p.read_bytes() for p in (record, resolution, journal)}
+    monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("asked before recovery"))
+    assert invoke(project, *operation) == 2
+    err = capsys.readouterr().err
+    assert "Interrupted activation" in err and "config resolve" in err
+    assert {p: p.read_bytes() for p in before} == before
+    assert invoke(project, "config", "resolve") == 2  # recovers, then reports the stale consent
+    assert "claude-code-download: stale" in capsys.readouterr().err
+    assert not journal.exists()
+    assert invoke(project, "config", "approve", "--all") == 0
+
+
+@pytest.mark.parametrize("failure", [OSError("unreadable history"), RuntimeError("cannot expand home")])
+def test_previous_versions_is_best_effort_during_path_discovery(tmp_path, failure) -> None:
+    with patch.object(version_sets, "state_directory", side_effect=failure):
+        assert offer.previous_versions(tmp_path) == {}
+
+
+def test_previous_versions_is_best_effort_when_listing_fails(tmp_path) -> None:
+    with patch.object(Path, "glob", side_effect=OSError("unreadable directory")):
+        assert offer.previous_versions(tmp_path) == {}
+
+
+@pytest.mark.parametrize("content", [b"\xff", b"not = [toml", b"lock = 1", b"last-success = 20"])
+def test_unreadable_history_does_not_block_approvals(tmp_path, content) -> None:
+    directory = version_sets.state_directory(tmp_path) / "known-good"
+    directory.mkdir(parents=True)
+    (directory / "broken.toml").write_bytes(content)
+    assert offer.previous_versions(tmp_path) == {}
+
+
+def test_confirmation_key_restores_the_terminal_on_eof() -> None:
+    with (
+        patch.object(offer.sys, "stdin") as stdin,
+        patch.object(offer.termios, "tcgetattr", return_value=["saved"]) as get,
+        patch.object(offer.tty, "setraw") as raw,
+        patch.object(offer.termios, "tcsetattr") as restore,
+    ):
+        stdin.fileno.return_value = 7
+        stdin.read.return_value = ""
+        assert offer.confirmation_key() == ""
+        get.assert_called_once_with(7)
+        raw.assert_called_once_with(7)
+        stdin.read.assert_called_once_with(1)
+        restore.assert_called_once_with(7, offer.termios.TCSADRAIN, ["saved"])
+
+
+@pytest.mark.parametrize("record", [
+    {"lock": "components = 1", "last-success": 30},
+    {"lock": "components = {}", "last-success": float("nan")},
+    {"lock": "components = {}", "last-success": float("inf")},
+    {"lock": "components = {}", "last-success": 10 ** 400},
+    {"lock": "bad = [toml", "last-success": 30},
+])
+def test_broken_newest_history_does_not_hide_a_valid_record(tmp_path, record) -> None:
+    directory = version_sets.state_directory(tmp_path) / "known-good"
+    directory.mkdir(parents=True)
+    bad = directory / "bad.toml"
+    good = directory / "good.toml"
+    bad.write_text(render_toml(record))
+    good.write_text(render_toml({"lock": '[components.claude-code]\nversion = "1.0.0"', "last-success": 20}))
+    with patch.object(Path, "glob", return_value=iter([bad, good])):
+        assert offer.previous_versions(tmp_path) == {"claude-code": "1.0.0"}

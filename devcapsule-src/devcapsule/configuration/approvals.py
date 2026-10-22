@@ -76,9 +76,8 @@ def pending_software_approvals(
     if not pending:
         return ()
     declarations = authorization_declarations(manifest, lock)
+    # review_authorizations has already validated this table.
     records = checkout.get("authorization", {})
-    if not isinstance(records, dict):
-        return None
     components = lock.get("components", {})
     approvals: list[SoftwareApproval] = []
     for item in pending:

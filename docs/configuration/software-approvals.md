@@ -31,10 +31,10 @@ Approve all of them? Press y; any other key cancels:
 The version you last launched is shown when a record of a successful launch
 exists; the version the lock pins now is always shown.
 
-- **y** records every approval in your checkout, regenerates the resolution
-  and goes on with the launch. The next launch asks nothing.
-- **Any other key** stops the launch, writes nothing, and prints the command
-  that approves later, below.
+- **y** records every approval in your checkout and regenerates the resolution.
+  If resolution succeeds, the launch continues. It does not ask for those approvals again.
+- **Any other key, or end of input** stops the launch, writes nothing, and
+  prints the command that approves later, below.
 
 Without a terminal, in a script or an agent's session, the launcher prints
 the list and the command and stops; it never approves on your behalf.
@@ -55,8 +55,20 @@ describes, and `project config resolve` lists them with their commands.
 
 The first lists what is pending and changes nothing. The second approves
 every pending software update; the third approves the named ones only, by
-the authorization name shown in the list. Both record the approvals and
-regenerate the resolution, so `project run` follows directly.
+the authorization name shown in the list. If other software approvals remain,
+the command names them and leaves the resolution unchanged. Approve the
+remaining updates to regenerate it.
+
+If resolution fails after you approve, your approvals remain saved. The
+error names the problem and the `project config resolve` command to retry.
+Resolve the problem and run that command before you launch again.
+
+An interrupted activation must finish recovery before software approvals
+can be inspected. The error names `project config resolve` for recovery.
+The approval check leaves the checkout, resolution, and recovery journal unchanged.
+
+Run `config approve` with the launcher outside the project's capsule.
+Inside that capsule, the command refuses and prints the launcher command.
 
 ## What an approval is, and is not
 
