@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
+State: active 2026-10-22 under rc1; releasing 0.3.0: rc2 in preparation with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -23,6 +23,17 @@ reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
+
+**2026-10-22, evening: rc2 is go; the second synchronization.** The owner
+answered yes to candidate 2 and to merging `main` into the release branch
+again: PR #244 merged at `a809970`, PR #247 on `main`; `main` at `e03b060`
+is merged into `release-0.3.0` at `245f067`, the status file keeping both
+checkouts' entries, the version files the release side, the exception now
+worded for the cycle. The changelog has its candidate-2 section and the
+overview its rc2 entry. Next: the pre-candidate merge from
+`4PR-3-release-0.3.0`, the tag on the tip after it, the backend, the
+download, the records. The design-review record of the session logs'
+Python data path is filed for V1 at the owner's direction.
 
 **2026-10-22, later: PR #244's review loop is settled; the slice awaits the
 owner.** PR244.1, [PR #246](https://github.com/ccozianu/devcapsule/pull/246)
@@ -891,6 +902,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
+| rc2 | the tip after the pre-candidate merge | in preparation 2026-10-22: the network node (#240, #242) and C10 (#244, #246); the three fixed records verify on it |
 | rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
