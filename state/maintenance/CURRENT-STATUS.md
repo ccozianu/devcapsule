@@ -24,6 +24,33 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22, morning: C10 is PR #244; its review partner is the
+Antigravity and Gemini 4 Argon (High) pair, by the owner's word.** The two
+records are filed, [the terminal](../../bugs/devcapsule/2026-10-22-healthy-launch-looks-unhealthy-in-the-terminal.md)
+and [Ctrl+C](../../bugs/devcapsule/2026-10-22-ctrl-c-ends-the-launcher-with-a-traceback.md),
+with their rows in the release bug table. On
+`ws-maintenance/0.3.0-first-session-summary` off the release branch: the
+tee writes a child's output to its file only, the console the fallback
+when the file fails; the launcher runs `docker run` under `Popen` and
+waits through Ctrl+C, asks the daemon after sixty seconds, stops waiting
+on a second Ctrl+C naming the container, records 130 and returns it; every
+session ends with one result line and the path of every log file of the
+session, the owner's addition; the infrastructure exit code moved into the
+runtime contract; four user pages say the result in place of the
+traceback. No knob keeps the old streaming, as ruled. The full gate
+passed. The end-to-end proof, `tests/e2e/test_interrupted_launch.py`,
+launched a fresh VSCodium project in its own process group, sent SIGINT to
+the group and read the result: the lines, exit 130, the files, the
+container gone, the IDE's output in its file; the transcript is under
+`evidence/2026-10-22-c10/`. [PR #244](https://github.com/ccozianu/devcapsule/pull/244)
+into `release-0.3.0`. The review partner runs detached in the review
+worktree with the brief on standard input; Antigravity's print mode takes
+the model flag before the prompt, `antigravity --model <model>
+--dangerously-skip-permissions -p '<instruction>' < <brief>`, proven on
+2026-10-22 and to be recorded in the developer document. The scratch
+directory under `/opt/devcapsule-gate` was recreated after the restart;
+the gap is with `project-management`.
+
 **2026-10-22, night: the network-node slice is PR #240, reviewed by
 PR240.1; the first loop under topic 9.11.** On
 `ws-maintenance/0.3.0-network-node` off the release branch: `network`
