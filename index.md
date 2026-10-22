@@ -43,6 +43,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Unit tests](engineering-docs/development/unit-tests.md)
 - [Integration tests](engineering-docs/development/integration-tests.md)
 - [End-to-end tests](engineering-docs/development/e2e-tests.md)
+- [The review-partner loop](engineering-docs/development/review-partner-loop.md)
 
 ## Releases
 
@@ -125,6 +126,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Capture the Eclipse/Java “WOW factor” 1BRC hero demonstration video](engineering-docs/work-orders/2026-10-19-eclipse-java-1brc-hero-video.md)
+- [Make “Why DevCapsule?” clear on arrival](engineering-docs/work-orders/2026-10-18-landing-page-why-devcapsule.md)
 - [The capsule web console](engineering-docs/work-orders/2026-10-09-capsule-webconsole.md)
 - [Persistent session diagnostics — maintenance work order for 0.3.0](engineering-docs/work-orders/2026-10-08-persistent-session-diagnostics.md)
 - [Playwright, IntelliJ IDEA and reusable agent-driven IDE smoke](engineering-docs/work-orders/2026-10-03-playwright-intellij-agent-smoke.md)

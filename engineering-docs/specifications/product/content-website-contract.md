@@ -166,9 +166,20 @@ versions because they are about them.
 
 ### 4.5 Unversioned content
 
-As the consumer reads it today, plus R-DOCS-003 front matter on every page.
-The landing page's stable section identities are W07 and are not changed by
-this contract.
+As the consumer reads it today, plus R-DOCS-003 front matter on every page
+except `README.md`. The landing page's stable section identities (W07) are
+HTML comment markers (`<!-- website:hero -->`, `<!-- website:demo -->`,
+`<!-- website:benefits -->`, `<!-- website:continuity -->`,
+`<!-- website:fit -->`, `<!-- website:dogfood -->`, `<!-- website:why -->`,
+`<!-- website:comparison -->`, `<!-- website:contribute -->`, and the
+self-closing `<!-- website:social ... -->` marker before the first section).
+Images and self-hosted videos (`.webm`, `.mp4`) referenced by `README.md` or
+other content pages are copied into `/content-assets/<key>/…`; `website:demo`
+replaces the hero's right-hand schematic figure with an inline, expandable
+product recording, poster image, provenance caption and step summary, and
+`website:continuity` renders the engineering-continuity handoff section after
+`benefits`. See `CONTRACT.md` sections 3.7, 5.1 and 5.5 in the consumer
+repository.
 
 ## 5. Outputs The Consumer Produces
 
