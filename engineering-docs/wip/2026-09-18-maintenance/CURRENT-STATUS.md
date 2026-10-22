@@ -24,6 +24,26 @@ Its 2026-09-18 start is the recorded adoption exception.
 
 ## Current State
 
+**2026-10-22, night: PR #250's review loop is settled; the slice awaits the
+owner.** PR250.1, [PR #251](https://github.com/ccozianu/devcapsule/pull/251)
+by the Codex and gpt-6-astra pair, is merged after one round: inspecting
+the approvals could recover an interrupted activation, a write, so the
+launch defers to its loader and the command refuses with the resolve
+command; EOF on the keypress is a refusal; saved approvals are named when
+the resolution fails after them; the history lookup is best effort on
+every error; the page and the help say what a by-name approval leaves
+alone; the index lists the page; regression cases for the strict
+qualification, the in-capsule refusal through a real runtime context and
+the replacement order. The round: the activation journal's suffix spelled
+once in `storage.py` with a predicate both sites call. Full gate on the
+merged branch, 1719 unit tests, the documentation contract with 47 pages.
+Both briefs are under `evidence/2026-10-22-software-approvals/`. Open
+thread from the review, for the consent slice of D-0011: a stored consent
+holds only its value and digest, so it cannot prove yesterday's terms,
+only that the lock matches today's contract. Next: the owner merges
+PR #250; the schema-version slice on the owner's go; then rc3 with the
+regenerated lock.
+
 **2026-10-22, evening: software approvals at launch, PR #250, the first
 slice of rc3.** The owner's finding on the host after merging the
 regenerated lock: `config resolve` asked for the Antigravity and Claude Code
@@ -1944,7 +1964,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   this one's on the release branch; both met in the second synchronization.
 - Done 2026-10-22: PR #249 merged; rc2 tagged, published, verified; the
   lock regenerated and proven by the recursive launch.
-- Awaiting the human: the dogfooding of rc2 on the host, the terminal and
+- Awaiting the human: PR #250 into `release-0.3.0`, software approvals,
+  with its review merged after one round; the go for the schema-version
+  slice; the dogfooding of rc2 on the host, the terminal and
   Ctrl+C; the wording of Release Policy 8 for the one version commit on
   the throwaway copy; the eleven user-docs decisions; the word on the
   manifest-rewrite finding; provider acceptance of the new agent pins on a
@@ -1965,6 +1987,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   for rc3; image cleanup after the owner's design review, and C20, for rc4.
 - Weighed and unresolved, from PR244.1: the supervisor's blocked SIGINT
   during a readiness wait; the 250 ms absorption of a second Ctrl+C.
+- Weighed and unresolved, from PR250.1: a stored consent cannot prove the
+  terms it was given for; for the consent slice of D-0011.
 - Filed for V1 at the owner's direction: the session logs' Python data
   path, [the record](../../bugs/devcapsule/2026-10-22-child-output-is-processed-in-python-on-the-data-path.md).
 - External state that outlives the session: the review worktree
