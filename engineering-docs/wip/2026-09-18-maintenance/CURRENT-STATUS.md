@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-21 under rc1; releasing 0.3.0: rc1 is accepted by the owner for the console-link fix, the record closed; the candidates are grouped rc2 network node and C10, rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves; the network-node slice is next
 
-Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@d8e6d5c9cf74
+Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
 Integration target: `main`
 
