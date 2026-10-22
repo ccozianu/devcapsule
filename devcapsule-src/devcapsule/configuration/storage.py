@@ -358,6 +358,14 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
     return path, value
 
 
+_ACTIVATION_JOURNAL_SUFFIX = ".activation.toml"
+
+
+def interrupted_activation(input_path: Path) -> bool:
+    """Whether this checkout has an activation journal awaiting recovery."""
+    return input_path.with_suffix(_ACTIVATION_JOURNAL_SUFFIX).exists()
+
+
 def recover_activation(input_path: Path) -> None:
     """Finish or undo an interrupted two-file activation under serialized access.
 
@@ -365,7 +373,7 @@ def recover_activation(input_path: Path) -> None:
     used after the transaction: a later edit that differs from both endpoints
     causes refusal, never resurrection of a historical permission.
     """
-    journal = input_path.with_suffix(".activation.toml")
+    journal = input_path.with_suffix(_ACTIVATION_JOURNAL_SUFFIX)
     if not journal.exists():
         return
     transaction = load_toml(journal)
@@ -384,7 +392,7 @@ def activate_configuration(input_path: Path, checkout: Mapping[str, Any], resolu
     """Publish a prepared choice and its derived plan recoverably."""
     recover_activation(input_path)
     output = resolved_record_path(input_path)
-    journal = input_path.with_suffix(".activation.toml")
+    journal = input_path.with_suffix(_ACTIVATION_JOURNAL_SUFFIX)
     transaction = {
         "before-checkout": input_path.read_text(),
         "before-resolution": output.read_text() if output.exists() else "",
