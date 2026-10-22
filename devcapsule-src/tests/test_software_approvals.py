@@ -365,8 +365,7 @@ def test_config_approve_refuses_inside_its_own_capsule(checkout, monkeypatch, tm
     assert (record.read_bytes(), resolution.read_bytes()) == before
 
 
-@pytest.mark.parametrize("operation", [("run",), ("config", "approve")])
-def test_inspecting_approvals_does_not_recover_an_activation(checkout, monkeypatch, capsys, operation) -> None:
+def test_inspecting_approvals_defers_activation_recovery(checkout, monkeypatch, capsys) -> None:
     project, record, resolution = checkout
     approved_then_bumped(project, record)
     journal = record.with_suffix(".activation.toml")
@@ -376,7 +375,9 @@ def test_inspecting_approvals_does_not_recover_an_activation(checkout, monkeypat
     }))
     before = {p: p.read_bytes() for p in (record, resolution, journal)}
     monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("asked before recovery"))
-    assert invoke(project, *operation) == 2
+    assert offer.offer_software_approvals(project) is True  # the ordinary launch loader owns recovery
+    assert {p: p.read_bytes() for p in before} == before
+    assert invoke(project, "config", "approve") == 2
     err = capsys.readouterr().err
     assert "Interrupted activation" in err and "config resolve" in err
     assert {p: p.read_bytes() for p in before} == before

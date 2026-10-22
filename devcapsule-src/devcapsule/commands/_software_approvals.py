@@ -130,6 +130,11 @@ def offer_software_approvals(start: Path) -> bool:
     """
 
     root, manifest = manifest_for(start)
+    input_path, _output_path = checkout_record_paths(manifest, root)
+    if input_path.with_suffix(".activation.toml").exists():
+        # The ordinary launch loader owns recovery. Do not offer approvals
+        # against an unsettled activation, or recover it while inspecting.
+        return True
     approvals = pending_for(root, manifest)
     if not approvals:
         return True

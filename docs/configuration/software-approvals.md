@@ -64,8 +64,8 @@ error names the problem and the `project config resolve` command to retry.
 Resolve the problem and run that command before you launch again.
 
 An interrupted activation must finish recovery before software approvals
-can be inspected. The error names `project config resolve` for recovery.
-The approval check leaves the checkout, resolution, and recovery journal unchanged.
+can be inspected. `config approve` names `project config resolve` for recovery.
+At launch, the approval check defers to the launcher's existing recovery path.
 
 Run `config approve` with the launcher outside the project's capsule.
 Inside that capsule, the command refuses and prints the launcher command.
