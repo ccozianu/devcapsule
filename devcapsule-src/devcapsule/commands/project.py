@@ -21,7 +21,7 @@ import os
 import subprocess
 import sys
 import termios
-import tty
+import shlex
 from typing import Any, Callable, ClassVar, Mapping
 
 from devcapsule.launch.command_output import preparation_diagnostics
@@ -35,6 +35,15 @@ from devcapsule.commands.framework import (
 from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
 from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
+from devcapsule.commands._software_approvals import (
+    SOFTWARE_APPROVALS_GUIDE_URL,
+    approve as approve_software,
+    approve_command as software_approve_command,
+    confirmation_key as _confirmation_key,
+    offer_software_approvals,
+    pending_for as pending_software_approvals_for,
+)
+from devcapsule.configuration.approvals import render_software_approvals, select_software_approvals
 from devcapsule import notifications
 from devcapsule import version_sets
 from devcapsule import runtime_configuration
@@ -810,6 +819,45 @@ class ConfigBindCommand(Command):
         return 0
 
 
+class ConfigApproveCommand(Command):
+    name = "approve"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = (
+        "Approve new versions of vendor software you approved before, after the project's "
+        "lock changed; the vendors and their terms are unchanged. Lists what is pending; "
+        "NAME... or --all records the approvals and regenerates the resolution."
+    )
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("names", metavar="NAME", nargs="*", help="an authorization name from the list")
+        parser.add_argument("--all", action="store_true", help="approve every pending software update")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest = manifest_for(_project_context(context).start_path())
+        if arguments.all and arguments.names:
+            raise ProjectConfigurationError("--all cannot be combined with NAME.")
+        approvals = pending_software_approvals_for(root, manifest)
+        if approvals is None:
+            raise ProjectConfigurationError(
+                "The pending decisions are not all software approvals; review them one by one: "
+                + shlex.join(["devcapsule", "project", "--path", str(root), "config", "resolve"])
+            )
+        if not approvals:
+            print("No software approvals are pending for this checkout.")
+            return 0
+        for line in render_software_approvals(approvals):
+            print(line)
+        if not arguments.all and not arguments.names:
+            print(f"Approve with: {software_approve_command(root)}, or name the ones to approve.")
+            print(f"Software approvals: {SOFTWARE_APPROVALS_GUIDE_URL}")
+            return 1
+        selected = approvals if arguments.all else select_software_approvals(approvals, tuple(arguments.names))
+        approve_software(root, manifest, selected)
+        return 0
+
+
 class ConfigUnsetCommand(Command):
     name = "unset"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
@@ -1092,6 +1140,7 @@ class ConfigGroup(Group):
             ConfigSetCommand.name: ConfigSetCommand,
             ConfigBindCommand.name: ConfigBindCommand,
             ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
+            ConfigApproveCommand.name: ConfigApproveCommand,
             ConfigUnsetCommand.name: ConfigUnsetCommand,
         }
 
@@ -1343,7 +1392,15 @@ class ProjectRunCommand(Command):
     @classmethod
     def _run(cls, arguments: argparse.Namespace, context: object | None,
              command_report: Callable[[str], None] | None = None) -> int:
-        admitted = ExecutionConfiguration.load(_project_context(context).start_path(), force=arguments.force)
+        start = _project_context(context).start_path()
+        # Software approvals first: new versions of vendor software approved
+        # before are one question at launch, by the owner's direction of
+        # 2026-10-22. Any other pending decision is reported by the loading
+        # below, as before. Printing the command never asks or writes.
+        if command_report is None and not offer_software_approvals(start):
+            print("Launch cancelled; no session was started.")
+            return 1
+        admitted = ExecutionConfiguration.load(start, force=arguments.force)
         # Reject invalid launch overrides before an optional upgrade can change
         # selection. Reload afterward so this launch and its success record use
         # exactly the version set the developer has just chosen.
@@ -1927,23 +1984,6 @@ def _authorize_all_recommended(
     print(f"Checkout input: {input_path}")
     print("Run 'devcapsule project config resolve' before materialization or launch.")
     return 0
-
-
-def _confirmation_key() -> str:
-    """Read one raw keypress without echo or a newline.
-
-    The bulk-authorization confirmation is deliberately a single keypress so
-    a stray Enter in a paste cannot accept it; the interactive-terminal guard
-    above runs first, so stdin is a tty here.
-    """
-
-    descriptor = sys.stdin.fileno()
-    saved = termios.tcgetattr(descriptor)
-    try:
-        tty.setraw(descriptor)
-        return sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(descriptor, termios.TCSADRAIN, saved)
 
 
 def _authorization_display_value(declaration: AuthorizationDeclaration) -> str:

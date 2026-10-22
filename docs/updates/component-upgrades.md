@@ -213,7 +213,7 @@ devcapsule project versions follow-project --apply
 ```
 
 The first command shows the diff against today's recommendation. The second
-prepares it and removes your local selection. Changed vendor acquisition questions still need explicit consent. The failure
+prepares it and removes your local selection. Changed vendor acquisition questions still need explicit consent; when they are new versions of software you approved before, `project run` asks once for the whole list, see [software approvals](../configuration/software-approvals.md). The failure
 names the target terms and the `--authorize NAME true` option to append to this
 command. The same option is supported by `select` and `rollback` for target
 acquisitions. It never grants Docker or other host access; denial leaves the
