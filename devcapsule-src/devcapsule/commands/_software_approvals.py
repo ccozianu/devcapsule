@@ -30,6 +30,7 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.configuration.operations import CheckoutRecord, resolve_checkout
 from devcapsule.configuration.storage import (
     checkout_record_paths,
+    interrupted_activation,
     load_checkout,
     lock_for,
     manifest_for,
@@ -88,7 +89,7 @@ def pending_for(root: Path, manifest: dict[str, Any]) -> tuple[SoftwareApproval,
         return ()  # Not yet resolved: the launch reports what is missing.
     # Both lock_for and load_checkout can recover an activation by writing
     # the resolution. Inspection and refusal must leave these files alone.
-    if input_path.with_suffix(".activation.toml").exists():
+    if interrupted_activation(input_path):
         command = shlex.join(["devcapsule", "project", "--path", str(root), "config", "resolve"])
         raise ProjectConfigurationError(
             f"Interrupted activation; finish recovery before reviewing software approvals: {command}"
@@ -131,7 +132,7 @@ def offer_software_approvals(start: Path) -> bool:
 
     root, manifest = manifest_for(start)
     input_path, _output_path = checkout_record_paths(manifest, root)
-    if input_path.with_suffix(".activation.toml").exists():
+    if interrupted_activation(input_path):
         # The ordinary launch loader owns recovery. Do not offer approvals
         # against an unsettled activation, or recover it while inspecting.
         return True

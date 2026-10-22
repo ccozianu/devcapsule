@@ -18,7 +18,7 @@ from devcapsule import runtime_configuration, version_sets
 from devcapsule.commands import _software_approvals as offer
 from devcapsule.configuration.approvals import pending_software_approvals, render_software_approvals
 from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
-from devcapsule.configuration.storage import load_toml, manifest_for
+from devcapsule.configuration.storage import interrupted_activation, load_toml, manifest_for
 from tests.test_upgrade_recovery import checkout, install_external_fakes, invoke, review  # noqa: F401
 
 CLAUDE_TERMS = "https://www.anthropic.com/legal/commercial-terms"
@@ -363,6 +363,21 @@ def test_config_approve_refuses_inside_its_own_capsule(checkout, monkeypatch, tm
     assert "configuration is read-only" in err
     assert "devcapsule project --path '/host/project with spaces' config approve --all" in err
     assert (record.read_bytes(), resolution.read_bytes()) == before
+
+
+def test_interrupted_activation_checks_only_the_checkout_journal(tmp_path: Path) -> None:
+    record = tmp_path / "named.checkout.toml"
+    record.write_text("checkout contents")
+    unrelated = tmp_path / "other.checkout.activation.toml"
+    unrelated.write_text("another checkout's journal")
+    assert interrupted_activation(record) is False
+    journal = tmp_path / "named.checkout.activation.toml"
+    journal.write_text("unfinished activation")
+    before = {path: path.read_bytes() for path in (record, unrelated, journal)}
+    assert interrupted_activation(record) is True
+    assert {path: path.read_bytes() for path in before} == before
+    journal.unlink()
+    assert interrupted_activation(record) is False
 
 
 def test_inspecting_approvals_defers_activation_recovery(checkout, monkeypatch, capsys) -> None:
