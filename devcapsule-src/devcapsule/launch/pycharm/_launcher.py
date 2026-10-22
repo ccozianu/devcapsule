@@ -362,17 +362,26 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     )
                 _session_events.info("docker run: %s", shlex.join(command))
                 try:
-                    result = run_attached(command, runtime_env, container_name=config.name)
+                    result = run_attached(
+                        command, runtime_env, container_name=config.name, on_interrupt=stop_watching.set,
+                    )
                 finally:
                     stop_watching.set()
-                if result.interrupted:
+                exit_code = INTERRUPTED_EXIT_CODE if result.interrupted else result.exit_code
+                if not result.stopped:
                     _session_events.info(
-                        "session end: interrupted from the terminal (Ctrl+C); docker run exit code %d", result.exit_code,
+                        "session end unknown: interrupted from the terminal (Ctrl+C); container %s may still be running",
+                        config.name,
                     )
                 else:
-                    _session_events.info("session end: docker run exit code %d", result.exit_code)
-                exit_code = INTERRUPTED_EXIT_CODE if result.interrupted else result.exit_code
-                end_session_logs(config, exit_code)
+                    if result.interrupted:
+                        _session_events.info(
+                            "session end: interrupted from the terminal (Ctrl+C); docker run exit code %d",
+                            result.exit_code,
+                        )
+                    else:
+                        _session_events.info("session end: docker run exit code %d", result.exit_code)
+                    end_session_logs(config, exit_code)
                 print(session_result_text(config, result), file=sys.stderr, flush=True)
                 return exit_code
             finally:
@@ -408,7 +417,13 @@ class AttachedResult:
     launcher stopped waiting for it, in which case the capsule may still run."""
 
 
-def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_name: str) -> AttachedResult:
+def run_attached(
+    command: Sequence[str],
+    env: Mapping[str, str],
+    *,
+    container_name: str,
+    on_interrupt: Callable[[], None] = lambda: None,
+) -> AttachedResult:
     """Run the capsule in the foreground and wait through Ctrl+C for its end.
 
     The terminal delivers SIGINT to the whole foreground group: the docker
@@ -429,6 +444,7 @@ def run_attached(command: Sequence[str], env: Mapping[str, str], *, container_na
     except KeyboardInterrupt:
         pass
     try:
+        on_interrupt()
         print(
             "Interrupted from the terminal (Ctrl+C); the capsule is stopping. "
             "Press Ctrl+C again to stop waiting for it.",
