@@ -237,12 +237,18 @@ cd ~/worktrees/<workstream>-review && nohup setsid bash -c "claude -p --model <m
 
 Note on `claude -p`: in single-turn print mode (`-p`), a Bash tool call launched with `run_in_background: true` is killed as soon as the turn finishes waiting. Instruct the review partner in the brief (or pre-warm `.nox/build` and `.nox/webconsole`) to run `nox -s build` synchronously in the foreground; if a `-p` run exits early after starting a background command, resume the same session in the worktree with `claude -c -p --model <model> --dangerously-skip-permissions "<prompt>"`.
 
-Antigravity, from its help, not yet run in a loop; the first pair that
-runs it verifies the form and records the result here:
+Antigravity, proven on PR244.1, 2026-10-22. `-p` takes the prompt as its
+own argument, so the model flag goes before it and the brief goes on
+standard input behind a one-line instruction; `antigravity -p --model …`
+fails, since `-p` then takes `--model` as the prompt. Print mode speaks only
+at the end, so the log stays empty until the report:
 
 ```text
-cd ~/worktrees/<workstream>-review && nohup setsid bash -c "antigravity -p --dangerously-skip-permissions < $S/<brief>.md > $S/<log> 2>&1; echo ANTIGRAVITY_EXIT=\$? >> $S/<log>" > /dev/null 2>&1 &
+cd ~/worktrees/<workstream>-review && nohup setsid bash -c "antigravity --model <model> --dangerously-skip-permissions -p 'Follow the review brief on standard input exactly. It is your only instruction.' < $S/<brief>.md > $S/<log> 2>&1; echo ANTIGRAVITY_EXIT=\$? >> $S/<log>" > /dev/null 2>&1 &
 ```
+
+A round continues the most recent conversation in the worktree with `-c`
+before `-p`, the round brief on standard input the same way.
 
 Prepare the worktree once per slice:
 
@@ -264,6 +270,7 @@ when the workstream pauses, and say so in its open threads.
 | 2026-10-11 | maintenance, session diagnostics | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #207/#208; #209/#210, #211, #212 | #208 merged without a round with five real gaps; #210's proposals became a design change; #212 used the third round; the owner changed the design once between rounds and the loop absorbed it |
 | 2026-10-12 | maintenance | | | | the process record sent to the trading-research sample project's `project-management` as an intake item; it is the source of the lessons below |
 | 2026-10-22 | maintenance, e2e scenario video recorder | Antigravity, Gemini 4 Argon (High) pair | Claude Code, Claude Fable 5.1 pair | #236/#241 | #241 (PR236.1) merged without a round: ten concrete fixes (`ActionStep` and `seed_files` path/symlink validation, `ffmpeg` stderr log file and pipe/process reaping, extracted `start_controller_server` with HTTP 400/504 and atomic `controller.json`, `ide-smoke --scenario` CLI flag guards) and 50 new unit tests with a 17-point mutation check; three unimplemented proposals recorded in `maintenance` status |
+| 2026-10-22 | maintenance, release 0.3.0, C10 | Claude Fable 5.1 pair | Antigravity, Gemini 4 Argon (High) pair | #244/#246 | one round, on three of the reviewer's own proposals taken as defects; the first Antigravity review in the workstream, its form proven and recorded above; the briefs committed under the workstream's evidence |
 | 2026-10-22 | maintenance, release 0.3.0 | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #240/#242 | the first loop under topic 9.11; one round, on a name special-case where the declaration carried the fact; the briefs committed under the workstream's evidence; the resume form corrected |
 
 The reviews' briefs of these loops lived in the implementors' session
