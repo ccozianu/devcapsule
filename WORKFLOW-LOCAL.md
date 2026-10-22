@@ -339,7 +339,9 @@ of `WORKFLOW.md`, in this checkout.
      `codex exec resume <session-id> -c 'sandbox_mode="danger-full-access"' - < <round brief>`,
      the id read from the `session id:` line of the first log; `resume` takes no `-s`.
    - Claude Code: `claude -p --dangerously-skip-permissions < <brief>`.
-   - Antigravity: `antigravity -p --dangerously-skip-permissions < <brief>`, from its help; not yet run in a loop.
+   - Antigravity: `antigravity --model <model> --dangerously-skip-permissions -p '<one-line instruction to follow the brief on standard input>' < <brief>`;
+     the model flag goes before `-p`, which takes the prompt as its own argument. A round continues the
+     same conversation with `-c` before `-p`.
    Establish any other form with the human and record it here before use.
 5. The review partner uses the GitHub CLI as *GitHub Integration* says; the
    brief repeats the activation line. Label the assessment comment
