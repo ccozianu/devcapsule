@@ -4,7 +4,9 @@ Mnemonic: `sample-projects`
 
 Start date: 2026-08-14
 
-State: active 2026-10-22; AI Learning bootstrap, authorized by the owner through the console
+State: blocked 2026-10-22 on the AI Learning existing remote URL; local bootstrap committed and validated; SMTP provider also pending
+
+Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@31819cc43359
 
 Integration target: `main`
 
@@ -34,6 +36,36 @@ product owner. Note the doubled `b` in `webbapp`; it is the actual repository
 name, not a typo in this record.
 
 ## Current State
+
+- Checkpoint 2026-10-22: child source is committed at `9ac7e29` on its local
+  `main`, under `devcapsule-src/tests/resources/sample_projects/ai-learning/`.
+  It is an independent nested Git repository, not yet a registered submodule:
+  the owner selected an existing remote but supplied no URL. `.gitmodules`
+  and parent gitlinks are untouched. Preserve the nested repository until its
+  remote is known; its untracked parent status is intentional, not loose source.
+- Child checks: TypeScript and Vite production build, 20 auth tests (mocked
+  persistence/providers), and four desktop/mobile browser checks passed.
+  Ignored child test-results retains screenshots and WebM recordings. SQL is
+  98 lines, generated offline and reviewed; it has never been executed against
+  a live database. No real credential was read or used.
+- Parent full gate passed with scratch at `/opt/devcapsule-gate/pytest-ai-learning`:
+  1672 tests passed (36 deselected, one xfail and one xpass), 17 packaging
+  integrations and 293 webconsole tests. Earlier setup attempts failed because
+  the scratch parent did not exist, then because a home-directory scratch path
+  conflicted with an existing mount-translation test's fixture. Creating the
+  documented /opt scratch directory resolved both without source changes.
+- Local static review by Claude Fable 5.1 was completed. The implementor fixed
+  the recent-Google-auth renewal bug, lockout recovery, username conflict
+  handling, key separation and the schema-apply confirmation message. Added
+  credential versions to reject stale in-flight login proofs after revocation.
+  Review and disposition are in the evidence files below. This preliminary
+  local review is not a completed PR review-partner loop; no deliverable PR
+  can be created until the child is published and its pointer registered.
+- Sent project-management `2026-10-22-sample-projects-ai-learning-adopter-gaps.md`
+  on coordination at `7e810aea9020`: nonblocking Node-major capability and
+  project-specific secret-input questions. No parent product code was changed.
+- Mail taken before checkpoint: none pending. The old workflow notice was
+  acknowledged in intake-dispositions.md.
 
 - 2026-10-22: AI Learning takes priority on owner direction. Bootstrap a TypeScript frontend/backend with Prisma, PostgreSQL, REST and GraphQL, Google-first allowlisted Gmail signup, optional local password, email challenge and 30-day remembered browser. Standard POSTGRES_* spelling confirmed. Remote URL and email service remain pending.
 - Synchronization: fresh branch from current fetched main; no merge needed. Required workflow documents read. Open bug scan found no records owned by sample-projects.
@@ -237,7 +269,7 @@ foreground/detached lifecycle evidence is recorded in the
 
 ## Next Resumable Task
 
-Bootstrap AI Learning, validate without live credentials, publish its independent repository once the owner supplies the remote, then add the reachable gitlink. Record DevCapsule gaps. Prior trading-research work remains below as deferred context.
+Obtain the existing AI Learning remote URL, inspect its history before adding/pushing, publish the child commit, and only then register the reachable submodule gitlink. Complete the parent review/PR delivery. Enter the child DevCapsule and perform owner-driven SQL/Google/SMTP acceptance. Prior trading-research work remains deferred below.
 
 In the `trading-research` DevCapsule, define and load the first small,
 human-reviewed labeled fixture set. Record source/license metadata, gold atomic
@@ -252,6 +284,22 @@ branch's container-path translation and host-backed staging changes; a live
 foreground run against the sample is recorded in the detached-container bug.
 
 ## Open Threads
+
+- Owner selected an existing child remote without a URL. A filtered read of
+  ccozianu's visible GitHub repositories found no AI Learning match; do not
+  create or guess a repository. Await the requested URL.
+- Email was chosen for codes but no provider/settings were supplied. Generic
+  authenticated SMTP adapter is implemented; adapt only after the provider is
+  identified. Real secrets, Google setup and allowlist stay in the human's
+  capsule terminal, never in chat or Git.
+- No live PostgreSQL/OAuth/SMTP acceptance or child capsule launch occurred.
+  Credential suppression is implemented in project scripts; it is not an
+  enforced OS-level isolation barrier from an unrestricted agent.
+- The original maintenance checkout, its five unpushed commits and IDE changes
+  were preserved. The authorized sample checkout is a separate worktree.
+- Capsule decision JSON/answers remain pending outside Git because the remote
+  and email-service details have not been resolved. The chosen options are
+  recorded in the child decision record. Never copy the console token to Git.
 
 - Fixture scope, source licensing, and the explicit grading rule remain for
   the next interactive trading-research session.
@@ -285,4 +333,7 @@ human's specific instruction.
 
 ## Workstream Document Index
 
-This workstream currently owns only this WIP status file.
+- [Current status](CURRENT-STATUS.md)
+- [Intake dispositions](intake-dispositions.md)
+- [Local review brief](evidence/2026-10-22-ai-learning-review-brief.txt)
+- [Local review and disposition](evidence/2026-10-22-ai-learning-review.txt)
