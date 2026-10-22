@@ -423,6 +423,8 @@ def ide_smoke(session: nox.Session) -> None:
     Uses DEVCAPSULE_PEX_UNDER_TEST when set, else the local build. Pass
     ``--display`` to install Playwright and Chromium into the session and keep a
     screenshot of each desktop as evidence; without it the X11 facts alone decide.
+    ``--scenario`` replays one recorded scenario on its own surface and keeps the
+    video; it needs exactly one ``--surface`` and excludes ``--agent``.
     """
     install_locked(session)
     parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
@@ -443,6 +445,11 @@ def ide_smoke(session: nox.Session) -> None:
         session.error("--component-browser requires --display, --agent, or --scenario")
     if options.component_browser:
         session.env["DEVCAPSULE_SMOKE_COMPONENT_BROWSER"] = "1"
+    if options.scenario:
+        if options.agent:
+            session.error("--scenario cannot be combined with --agent: the scenario leaves the IDE in its final state")
+        if len(options.surface) != 1:
+            session.error("--scenario requires exactly one --surface, the scenario's own")
     if options.relaunch:
         if not options.agent or options.surface not in (["intellij"], ["rider"]):
             session.error("--relaunch requires --agent --surface intellij or rider")

@@ -31,6 +31,7 @@ import tempfile
 import threading
 import time
 from typing import Any
+import urllib.error
 import urllib.request
 
 from tests.e2e.ai_driver import DriverError
@@ -47,6 +48,10 @@ from tests.e2e.ide_session import (
 
 SCENARIOS_DIR = Path(__file__).resolve().parent / "scenarios"
 VALID_STEP_ACTIONS = ("click", "double_click", "right_click", "type", "press", "wait")
+MAX_WAIT_MS = 30_000
+"""Longest ``wait`` step; ``seconds`` is accepted up to the same bound."""
+CONTROLLER_COMMAND_TIMEOUT = 120.0
+"""Seconds one controller command may take before the HTTP server answers with an error."""
 
 SURFACE_SHORTCUTS: dict[str, dict[str, str]] = {
     "eclipse": {
@@ -111,6 +116,38 @@ SURFACE_SHORTCUTS: dict[str, dict[str, str]] = {
 }
 
 
+def _wait_milliseconds(value: dict[Any, Any]) -> object:
+    """Return the step's wait from ``ms``, or from ``seconds`` when only ``seconds`` is given.
+
+    The caller range-checks the result; this only refuses an ambiguous or non-integer source.
+    """
+    if "ms" in value and "seconds" in value:
+        raise DriverError("ActionStep takes either ms or seconds, not both")
+    if "seconds" not in value:
+        return value.get("ms", 0)
+    seconds = value["seconds"]
+    if type(seconds) is not int:
+        raise DriverError(f"Invalid wait seconds: {seconds!r}")
+    return seconds * 1000
+
+
+def _checked_seed_path(rel: str) -> str:
+    """Return ``rel`` when it names a file by a plain relative path; raise otherwise.
+
+    Rejected: empty or padded strings, a trailing slash (a directory, not a file), an
+    absolute path, and any ``..`` component. ``seed_scenario_workspace`` re-checks the
+    resolved target, so a symbolic link cannot carry a write outside the workspace.
+    """
+    if not rel.strip() or rel != rel.strip():
+        raise DriverError(f"Scenario seed_files path must not be empty or padded: {rel!r}")
+    if rel.endswith("/"):
+        raise DriverError(f"Scenario seed_files path must name a file, not a directory: {rel!r}")
+    path = Path(rel)
+    if path.is_absolute() or not path.parts or ".." in path.parts:
+        raise DriverError(f"Scenario seed_files path must be relative: {rel!r}")
+    return rel
+
+
 @dataclass(frozen=True)
 class ActionStep:
     """One mouse, keyboard, or bounded wait step in a scenario."""
@@ -131,17 +168,19 @@ class ActionStep:
             raise DriverError(f"Unsupported scenario action: {action!r}")
         x = value.get("x", 0)
         y = value.get("y", 0)
-        ms = value.get("ms", int(value.get("seconds", 0)) * 1000 if "seconds" in value else 0)
+        ms = _wait_milliseconds(value)
         text = value.get("text", "")
         reason = value.get("reason", "")
         if type(x) is not int or not (0 <= x <= 1599):
             raise DriverError(f"Invalid x coordinate: {x!r}")
         if type(y) is not int or not (0 <= y <= 999):
             raise DriverError(f"Invalid y coordinate: {y!r}")
-        if type(ms) is not int or not (0 <= ms <= 30_000):
+        if type(ms) is not int or not (0 <= ms <= MAX_WAIT_MS):
             raise DriverError(f"Invalid wait ms: {ms!r}")
         if not isinstance(text, str) or not isinstance(reason, str):
             raise DriverError("ActionStep text and reason must be strings")
+        if action in ("type", "press") and not text:
+            raise DriverError(f"Scenario action {action!r} requires non-empty text")
         return cls(action=action, x=x, y=y, text=text, ms=ms, reason=reason)
 
     def substitute(self, variables: dict[str, str]) -> ActionStep:
@@ -185,9 +224,7 @@ class ScenarioSpec:
         ):
             raise DriverError("Scenario seed_files must be a string-to-string mapping")
         for rel in raw_seeds:
-            path = Path(rel)
-            if path.is_absolute() or ".." in path.parts:
-                raise DriverError(f"Scenario seed_files path must be relative: {rel!r}")
+            _checked_seed_path(rel)
         raw_actions = data.get("actions") or []
         if not isinstance(raw_actions, list):
             raise DriverError("Scenario actions must be a list")
@@ -223,10 +260,21 @@ def load_scenario(name_or_path: str | Path) -> ScenarioSpec:
 
 
 def seed_scenario_workspace(workspace: Path, spec: ScenarioSpec) -> list[Path]:
-    """Write ``spec.seed_files`` into ``workspace`` and return written paths."""
-    written: list[Path] = []
+    """Write ``spec.seed_files`` into ``workspace`` and return the written paths.
+
+    Every target is resolved first and must lie strictly inside ``workspace``; a path
+    that escapes it, through ``..`` or a symbolic link, raises ``DriverError`` before
+    any file is written.
+    """
+    root = workspace.resolve()
+    targets: list[tuple[Path, str]] = []
     for rel_path, content in spec.seed_files.items():
-        target = workspace / rel_path
+        target = (root / rel_path).resolve()
+        if root not in target.parents:
+            raise DriverError(f"Scenario seed_files path escapes the workspace: {rel_path!r}")
+        targets.append((target, content))
+    written: list[Path] = []
+    for target, content in targets:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         written.append(target)
@@ -291,8 +339,19 @@ class BurstFrameRecorder:
         output_webm: Path,
         container: str | None = None,
         fps: int = 12,
+        timeout: float = 60.0,
     ) -> bool:
-        """Encode recorded PNG frames into a pause-free VP8 WebM via ffmpeg image2pipe."""
+        """Encode the recorded PNG frames into a pause-free VP8 WebM through ``ffmpeg``.
+
+        Each frame is transcoded to JPEG in the page's canvas and piped to ``ffmpeg``,
+        which writes the WebM to its stdout, because a container-side ``ffmpeg`` cannot
+        write a parent-side file. ``ffmpeg``'s stderr goes to ``<output>.ffmpeg.log``, so
+        a full stderr pipe can never stall it. Returns False when there are no frames or
+        no ``ffmpeg``, when a frame cannot be transcoded, when ``ffmpeg`` fails or exits
+        early, or when it has not finished ``timeout`` seconds after the last frame; the
+        failure is appended to the log. On every path the child is reaped, the reader
+        thread joined, and the pipes closed before this returns.
+        """
         frames = sorted(self.frames_dir.glob("frame-*.png"))
         if not frames:
             return False
@@ -301,69 +360,89 @@ class BurstFrameRecorder:
         if ffmpeg_cmd is None:
             return False
 
-        proc = subprocess.Popen(
-            [*ffmpeg_cmd, "-y", "-f", "image2pipe", "-vcodec", "mjpeg", "-r", str(fps),
-             "-i", "pipe:0", "-c:v", "libvpx", "-b:v", "3M", "-crf", "10", "-f", "webm", "pipe:1"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        log_path = output_webm.with_name(output_webm.name + ".ffmpeg.log")
+        with log_path.open("wb") as log:
+            proc = subprocess.Popen(
+                [*ffmpeg_cmd, "-y", "-f", "image2pipe", "-vcodec", "mjpeg", "-r", str(fps),
+                 "-i", "pipe:0", "-c:v", "libvpx", "-b:v", "3M", "-crf", "10", "-f", "webm", "pipe:1"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=log,
+            )
         assert proc.stdin is not None
         assert proc.stdout is not None
+        stdin, stdout = proc.stdin, proc.stdout
         chunks: list[bytes] = []
 
         def reader() -> None:
-            assert proc.stdout is not None
-            while True:
-                data = proc.stdout.read(65536)
-                if not data:
-                    break
+            while data := stdout.read(65536):
                 chunks.append(data)
 
         read_thread = threading.Thread(target=reader, daemon=True)
         read_thread.start()
 
+        encoded = False
         try:
             for frame_path in frames:
-                b64 = base64.b64encode(frame_path.read_bytes()).decode("ascii")
-                jpeg_b64 = page.evaluate(
-                    """async (b64) => {
-                        const img = new Image();
-                        img.src = "data:image/png;base64," + b64;
-                        await img.decode();
-                        const c = document.createElement("canvas");
-                        c.width = img.width;
-                        c.height = img.height;
-                        c.getContext("2d").drawImage(img, 0, 0);
-                        return c.toDataURL("image/jpeg", 0.95).split(",")[1];
-                    }""",
-                    b64,
-                )
-                proc.stdin.write(base64.b64decode(jpeg_b64))
-            proc.stdin.close()
-            read_thread.join(timeout=60)
-            if proc.wait(timeout=60) != 0 or not chunks:
-                return False
+                stdin.write(self._transcode_to_jpeg(page, frame_path))
+            stdin.close()
+            returncode = proc.wait(timeout=timeout)
+            read_thread.join(timeout=timeout)
+            encoded = returncode == 0 and not read_thread.is_alive() and bool(chunks)
+        except Exception as exc:  # a broken pipe, the wait timeout, or a page failure
+            with log_path.open("ab") as log:
+                log.write(f"\nencode_webm: {exc!r}\n".encode("utf-8"))
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+            proc.wait()
+            read_thread.join(timeout=5)
+            for stream in (stdin, stdout):
+                try:
+                    stream.close()
+                except OSError:
+                    pass
+        if encoded:
             output_webm.write_bytes(b"".join(chunks))
-            return True
-        except Exception:
-            proc.kill()
-            return False
+        return encoded
+
+    @staticmethod
+    def _transcode_to_jpeg(page: Any, frame_path: Path) -> bytes:
+        """Return ``frame_path`` as JPEG bytes, converted by a canvas in ``page``."""
+        b64 = base64.b64encode(frame_path.read_bytes()).decode("ascii")
+        jpeg_b64 = page.evaluate(
+            """async (b64) => {
+                const img = new Image();
+                img.src = "data:image/png;base64," + b64;
+                await img.decode();
+                const c = document.createElement("canvas");
+                c.width = img.width;
+                c.height = img.height;
+                c.getContext("2d").drawImage(img, 0, 0);
+                return c.toDataURL("image/jpeg", 0.95).split(",")[1];
+            }""",
+            b64,
+        )
+        return base64.b64decode(jpeg_b64)
 
     @staticmethod
     def _resolve_ffmpeg_cmd(container: str | None) -> list[str] | None:
+        """Return the ``ffmpeg`` command: the host's, else the child container's, else None."""
         local = shutil.which("ffmpeg")
         if local:
             return [local]
         if container:
-            probe = subprocess.run(
-                ["docker", "exec", container, "sh", "-c",
-                 "ls /opt/playwright/browsers/ffmpeg-*/ffmpeg-linux 2>/dev/null | head -n 1"],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=15,
-            )
+            try:
+                probe = subprocess.run(
+                    ["docker", "exec", container, "sh", "-c",
+                     "ls /opt/playwright/browsers/ffmpeg-*/ffmpeg-linux 2>/dev/null | head -n 1"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=15,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                return None
             child_ffmpeg = probe.stdout.strip()
             if probe.returncode == 0 and child_ffmpeg:
                 return ["docker", "exec", "-i", container, child_ffmpeg]
@@ -443,15 +522,93 @@ def run_scenario_replay(
     return result
 
 
+ControllerCommand = tuple[dict[str, Any], threading.Event, dict[str, Any]]
+"""A posted payload, the event its HTTP handler waits on, and the answer the loop fills in."""
+
+
+class ControllerQueue:
+    """Commands posted over HTTP, taken one at a time by the Playwright loop."""
+
+    def __init__(self) -> None:
+        self._items: list[ControllerCommand] = []
+        self._lock = threading.Lock()
+
+    def put(self, payload: dict[str, Any]) -> tuple[threading.Event, dict[str, Any]]:
+        done = threading.Event()
+        response: dict[str, Any] = {}
+        with self._lock:
+            self._items.append((payload, done, response))
+        return done, response
+
+    def take(self) -> ControllerCommand | None:
+        with self._lock:
+            return self._items.pop(0) if self._items else None
+
+
+def start_controller_server(queue: ControllerQueue, timeout: float = CONTROLLER_COMMAND_TIMEOUT) -> HTTPServer:
+    """Serve POST commands on a loopback port, in a daemon thread, until ``shutdown``.
+
+    A body that is not a JSON object gets ``400`` and never reaches the queue. A
+    queued command that the loop has not answered after ``timeout`` seconds gets
+    ``504``; the loop still runs it. Every answer is a JSON object.
+    """
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, format: str, *args: Any) -> None:
+            pass
+
+        def do_POST(self) -> None:
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                if not isinstance(payload, dict):
+                    raise ValueError("the command must be a JSON object")
+            except ValueError as exc:
+                self._reply(400, {"ok": False, "error": f"malformed command: {exc}"})
+                return
+            done, response = queue.put(payload)
+            if not done.wait(timeout=timeout):
+                self._reply(504, {"ok": False, "error": f"the controller did not answer within {timeout:g} s"})
+                return
+            self._reply(200, response)
+
+        def _reply(self, status: int, body: dict[str, Any]) -> None:
+            encoded = json.dumps(body).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+def write_json_atomically(path: Path, data: Any) -> None:
+    """Write ``data`` as JSON so a concurrent reader sees the old file or the whole new one."""
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def serve_interactive_controller(
     executable: Path,
     spec: ScenarioSpec,
     evidence: Path,
 ) -> None:
-    """Start an interactive E2E IDE session and HTTP controller for live agent takeover."""
+    """Start an interactive E2E IDE session and HTTP controller for live agent takeover.
+
+    ``controller.json`` under ``evidence`` names the port once the IDE is ready; a stale
+    copy from an earlier run is removed first, so a waiting ``ctl`` never dials a dead port.
+    """
     from playwright.sync_api import sync_playwright  # type: ignore[import-not-found,unused-ignore]
 
     evidence.mkdir(parents=True, exist_ok=True)
+    (evidence / "controller.json").unlink(missing_ok=True)
     os.environ["DEVCAPSULE_SMOKE_COMPONENT_BROWSER"] = "1"
     surface: IdeSurface = next(s for s in SURFACES if s.name == spec.surface)
     recorder = BurstFrameRecorder(evidence / "video-frames")
@@ -482,32 +639,9 @@ def serve_interactive_controller(
                 page.wait_for_timeout(3000)
                 recorder.record_frames(page, count=8, interval_ms=120)
 
-                stop_event = threading.Event()
-                command_queue: list[tuple[dict[str, Any], threading.Event, dict[str, Any]]] = []
-                queue_lock = threading.Lock()
-
-                class Handler(BaseHTTPRequestHandler):
-                    def log_message(self, format: str, *args: Any) -> None:
-                        pass
-
-                    def do_POST(self) -> None:
-                        length = int(self.headers.get("Content-Length", "0"))
-                        payload = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
-                        done = threading.Event()
-                        response: dict[str, Any] = {}
-                        with queue_lock:
-                            command_queue.append((payload, done, response))
-                        done.wait(timeout=120)
-                        body = json.dumps(response).encode("utf-8")
-                        self.send_response(200)
-                        self.send_header("Content-Type", "application/json")
-                        self.send_header("Content-Length", str(len(body)))
-                        self.end_headers()
-                        self.wfile.write(body)
-
-                server = HTTPServer(("127.0.0.1", 0), Handler)
+                queue = ControllerQueue()
+                server = start_controller_server(queue)
                 port = server.server_address[1]
-                threading.Thread(target=server.serve_forever, daemon=True).start()
 
                 info = {
                     "port": port,
@@ -519,15 +653,13 @@ def serve_interactive_controller(
                     "project_path": session.project_path,
                     "initial_window": window,
                 }
-                (evidence / "controller.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
+                write_json_atomically(evidence / "controller.json", info)
                 print(f"CONTROLLER_READY port={port} project_path={session.project_path}", flush=True)
 
+                stopped = False
                 try:
-                    while not stop_event.is_set():
-                        item = None
-                        with queue_lock:
-                            if command_queue:
-                                item = command_queue.pop(0)
+                    while not stopped:
+                        item = queue.take()
                         if item is None:
                             time.sleep(0.05)
                             continue
@@ -572,7 +704,7 @@ def serve_interactive_controller(
                                     frames_recorded=recorder.frame_count,
                                     pause_free_webm=encoded,
                                 )
-                                stop_event.set()
+                                stopped = True
                             else:
                                 response.update(ok=False, error=f"Unknown cmd: {cmd}")
                         except Exception as exc:
@@ -581,6 +713,7 @@ def serve_interactive_controller(
                             done.set()
                 finally:
                     server.shutdown()
+                    server.server_close()
                     (evidence / "action-log.json").write_text(
                         json.dumps(action_log, indent=2) + "\n", encoding="utf-8"
                     )
@@ -591,7 +724,12 @@ def serve_interactive_controller(
 
 
 def send_controller_command(evidence: Path, payload: dict[str, Any], timeout: float = 180.0) -> dict[str, Any]:
-    """Send a JSON command to a running ``serve_interactive_controller`` instance."""
+    """Send one JSON command to a running ``serve_interactive_controller`` and return its answer.
+
+    Waits up to ``timeout`` seconds for ``controller.json`` to appear. An error answer from
+    the server (``400`` or ``504``) is returned as its JSON body, with ``ok`` false, so the
+    caller sees the reason instead of an exception.
+    """
     ctrl_file = evidence / "controller.json"
     deadline = time.monotonic() + timeout
     while not ctrl_file.is_file():
@@ -606,10 +744,14 @@ def send_controller_command(evidence: Path, payload: dict[str, Any], timeout: fl
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        result = json.loads(resp.read().decode("utf-8"))
-        assert isinstance(result, dict)
-        return result
+    try:
+        with urllib.request.urlopen(req, timeout=CONTROLLER_COMMAND_TIMEOUT + 5) as resp:
+            body = resp.read()
+    except urllib.error.HTTPError as error:
+        body = error.read()
+    result = json.loads(body.decode("utf-8"))
+    assert isinstance(result, dict)
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -642,9 +784,15 @@ def main(argv: list[str] | None = None) -> int:
         serve_interactive_controller(args.pex, spec, args.evidence)
         return 0
     if args.subcommand == "ctl":
-        res = send_controller_command(args.evidence, json.loads(args.payload))
+        try:
+            payload = json.loads(args.payload)
+        except ValueError as exc:
+            parser.error(f"payload is not JSON: {exc}")
+        if not isinstance(payload, dict):
+            parser.error("payload must be a JSON object")
+        res = send_controller_command(args.evidence, payload)
         print(json.dumps(res, indent=2))
-        return 0
+        return 0 if res.get("ok") else 1
     if args.subcommand == "replay":
         os.environ["DEVCAPSULE_SMOKE_COMPONENT_BROWSER"] = "1"
         spec = load_scenario(args.scenario)
