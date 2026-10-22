@@ -2325,7 +2325,8 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
     assert (rows["host-x11"][2], rows["host-x11"][-1]) == ("denied", "false")
     assert (rows["host-browser"][2], rows["host-browser"][-1]) == ("authorized", "true")
     assert (rows["development-sudo"][2], rows["development-sudo"][-1]) == ("available", "true")
-    assert rows["host-x11"][3] == "checkout" and rows["development-sudo"][3] == "manifest"
+    assert rows["host-x11"][3] == "checkout"
+    assert " ".join(rows["development-sudo"][3:-1]) == "workstation default (unanswered)"
 
 
 @pytest.mark.parametrize('surface,needs', [('pycharm', ['python', 'python-ide']), ('codium', ['node', 'frontend-ide'])])
