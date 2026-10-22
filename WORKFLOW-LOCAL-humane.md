@@ -59,6 +59,27 @@ and never rebased because the website reads it. The candidate gate does not
 apply because nothing executable changes; the website's build check does
 because that is what the branch feeds.
 
+**Rule, the throwaway copy.** Each merge of `release-X.Y.Z` into `main` is a
+pull request from `4PR-NNN-release-X.Y.Z`, a branch created at the release
+branch's tip for that pull request alone; nothing is committed to it and no
+tag points into it.
+
+**Intended effect.** The active release branch survives every merge into
+`main`, the candidate gate's ancestry check holds because the merge commit's
+second parent is the release branch's tip, and nothing that could be
+deleted or mistaken for a release ref starts with `release-`.
+
+**Motivation.** Owner decision of 2026-10-18. Since 2026-10-15 the repository
+deletes a pull request's head branch on merge, and the release branch is the
+one ref that must survive its merges, since it carries the cycle from the cut
+to the final tag. The name reads in the order it means: a throwaway, for one
+pull request, made off that release branch; the order matters so that no
+branch of the kind begins with the `release-` prefix the definition reserves.
+The first copy of the 0.3.0 cycle was spelled `release-0.3.0-4PR-1` before
+the order was fixed. The copy is an integration ref, never a release ref,
+which is why nothing is committed to it and why the candidate workflow looks
+only at `release-X.Y.Z` when it checks a tag.
+
 ## Blog Entries
 
 **Rule.** On request, write a dated entry under `engineering-docs/blog/` with
@@ -215,6 +236,35 @@ checkout's extra tools and directing agents in chat, session after session,
 to use it; the rule makes that standing. It names the exact path so that
 detection is a file test, not a search. It is a local arrangement, a hack of
 this project's own, until the GitHub CLI is a proper DevCapsule component.
+
+## Review Partners In This Checkout
+
+**Rule.** The engines are the three agent command lines signed in once in the
+capsule; a pair is named by engine and model; the review partner gets a
+worktree under `~/worktrees`, its own venv and its own gate scratch; it runs
+detached with the brief as its prompt, in the recorded form for its engine;
+the GitHub CLI rule applies to it; assessment comments carry one of two
+labels; briefs are committed under the workstream's evidence; the developer
+document holds the template, the recipes and the record.
+
+**Intended effect.** A human can say "implement this with the review-partner
+loop, with that engine as the review partner" and any of the three agents
+can run it from the files alone, with the same artifacts as the loops that
+came before.
+
+**Motivation.** Owner direction of 2026-10-22, after the agent was asked to
+extract the mechanism from the sessions of 2026-10-09 to 2026-10-12. No API
+key is used because the capsule's agents are signed in once by the human and
+read the repository as their context; the process record of 2026-10-12 lists
+the trade-offs against API clients. The worktree exists because the reviewer
+must not disturb the implementor's checkout, and the separate scratch because
+two gates in one scratch corrupt each other. The Codex form is the one every
+loop so far ran; the Claude form was smoke-tested on 2026-10-22; the
+Antigravity form is read from its help and is recorded as unproven so that
+the first pair to run it knows to verify and record it. The briefs are
+committed from now on because the earlier ones lived in a session scratchpad
+and died with the capsule, which is why the template had to be rebuilt from
+transcripts.
 
 ## Commit Authorship
 
