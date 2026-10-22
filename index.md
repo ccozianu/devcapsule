@@ -43,6 +43,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Unit tests](engineering-docs/development/unit-tests.md)
 - [Integration tests](engineering-docs/development/integration-tests.md)
 - [End-to-end tests](engineering-docs/development/e2e-tests.md)
+- [The review-partner loop](engineering-docs/development/review-partner-loop.md)
 
 ## Releases
 
