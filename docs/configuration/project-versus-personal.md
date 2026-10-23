@@ -62,44 +62,74 @@ future versions. Editing several choices is a sequence of edits and one
 a newer DevCapsule does not change any of this: your lock and your choices
 stay until you change them.
 
-## Application environment and credentials
+## Saved Docker arguments
 
-Save application variables on the launcher host, from your registered checkout:
+Save the extra Docker options you need once, from your registered checkout
+on the launcher host:
 
 ```bash
-devcapsule project config set-env POSTGRES_DB ai_learning
-devcapsule project config set-env POSTGRES_PASSWORD
-devcapsule project config list-env
+devcapsule project config set-extra-docker-args -- \
+  --gpus all \
+  --volume "$HOME/.ssh/my_special_key:/home/devcapsule/.ssh/my_special_key:ro" \
+  --env POSTGRES_DB=ai_learning
+devcapsule project config list-extra-docker-args
 devcapsule project run
 ```
 
-Omit the value to enter it at a hidden terminal prompt. This keeps a password
-out of shell history and command arguments. Supplying a value is supported
-for scripts and ordinary settings. `list-env` shows names and the managed
-file's path, never values; `list-env --json` provides the same data as JSON.
-Use `config unset-env POSTGRES_PASSWORD` to remove a saved variable.
+`set-extra-docker-args` **replaces the complete saved list**. Quote each value
+as you would in `docker run`; DevCapsule preserves the resulting argument tokens
+and does not evaluate shell syntax. Your shell expands `$HOME` when you save
+the command. Use absolute host and container mount paths; Docker does not
+expand `~` in a container destination. GPU access still requires a suitable
+GPU runtime and drivers on the host; this option does not install them.
 
-The file lives under `$XDG_CONFIG_HOME/devcapsule/environments/` (normally
-`~/.config/devcapsule/environments/`), with the same project and checkout
-identity as its record. It has owner-only permissions and is outside Git.
-Each registered checkout has its own file. DevCapsule passes it to Docker
-automatically; you do not need to remember its location or run `config resolve`.
-The Docker client reads it locally, including with a remote daemon. The
-file itself is not mounted into the capsule.
+`project run` puts saved arguments after its own options and before arguments
+you supply after `run --`. Docker decides how repeated options combine: an
+explicit `--env NAME=value` after a saved assignment replaces it, while
+conflicting mount destinations can fail. DevCapsule refuses launcher-owned
+options such as `--network` and `--memory`; use its configuration commands for
+those. It delegates validation of other Docker options to Docker.
 
-Values are literal single-line text: spaces, quotes, dollar signs and equals
-signs are preserved, and an empty value is allowed. There is no shell expansion.
-Docker's explicit `--env` options, including variables set by DevCapsule,
-take precedence over this file. A raw `--env-file` supplied after `run --`
-is applied after the managed file. Existing component secret bindings still
-require their declared variables to be exported on the launcher host.
+```bash
+devcapsule project config remove-extra-docker-args
+```
 
-Changes apply to new containers created by `project run`. Restarting an
-existing container retains its original environment. Removing a container
-keeps the saved file; changing or rolling back a version set does not change
-its values. New checkout registrations do not copy credentials automatically.
+This clears the entire saved list, including environment variables added by
+the convenience commands below. `list-extra-docker-args --json` reports the
+path and argument array, with inline environment values masked in both formats.
+There is no unmasked listing option.
 
-Storage is plaintext with restricted permissions. The application and agents
-inside the capsule are trusted with the environment. DevCapsule keeps these
-saved values out of configuration reports, snapshots and launch arguments.
-Raw inline Docker arguments are still printed: do not put secrets there.
+### Credentials and environment conveniences
+
+To keep a password out of shell history, omit VALUE for a hidden terminal prompt:
+
+```bash
+devcapsule project config set-env POSTGRES_PASSWORD
+devcapsule project config list-env
+devcapsule project config unset-env POSTGRES_PASSWORD
+```
+
+These commands edit or inspect environment options in the **same saved list**.
+`set-env KEY [VALUE]` replaces that variable's saved env options and preserves
+the other arguments. `unset-env KEY` removes them. `list-env [--json]` shows
+names only. The convenience input accepts literal single-line UTF-8 values,
+including empty values. Use the prompt for values beginning with a dash.
+The general Docker argument list can also include `--env NAME` to inherit an
+exported variable on each launch, or `--env-file /private/path/file` to let
+the Docker client read your own file.
+
+The private JSON store is under `$XDG_CONFIG_HOME/devcapsule/docker-arguments/`
+(normally `~/.config/devcapsule/docker-arguments/`), keyed by project and
+checkout. `list-extra-docker-args` shows its exact path. It has owner-only
+permissions, is outside Git and the mounted configuration directory, and is
+not copied into configuration snapshots or resolutions. Each checkout has its
+own list. No `config resolve` is needed after changing it. New containers use
+the current list; restarting an existing container retains its old settings.
+Removing a container or rolling back a version set does not clear the list.
+
+DevCapsule masks inline environment values in launch narration and printed
+commands too. A `--print-command` result containing `<redacted>` is a preview;
+use `project run` to launch with the actual saved arguments. Docker receives
+the original arguments, so their values remain visible to Docker and the
+trusted processes that can inspect it. Other option types, such as labels,
+are shown as supplied; do not put credentials in them.

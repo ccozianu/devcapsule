@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import grp
+from devcapsule.docker_arguments import inline_environment_names, redact_environment
 import json
 import logging
 import os
@@ -587,7 +588,10 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
     if config.secret_environment:
         comments.append("Required environment variables (values omitted): " + ", ".join(config.secret_environment))
     comments.append("No successful-use history was recorded. Manual execution and any edits are your responsibility.")
-    return render_command(command, comments)
+    names = inline_environment_names(config.extra_docker_args)
+    if names:
+        comments.append("Inline environment values are redacted; use project run to launch the saved arguments.")
+    return render_command(redact_environment(command, names), comments)
 
 
 def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:

@@ -1213,6 +1213,16 @@ explicit location, then `project config resolve`. Separate concurrent PyCharm
 sessions must use separate IDE configuration directories. Legacy profile and
 state-root flags are no longer a public launch interface.
 
+### Persist extra Docker options
+
+Use `project config set-extra-docker-args -- OPTIONS...` to replace the saved
+argument list for this checkout. For example, `--gpus all` grants GPU access
+when the host has the necessary GPU runtime. `list-extra-docker-args [--json]`
+shows the saved tokens with inline environment values masked;
+`remove-extra-docker-args` clears the list. The hidden-input `set-env KEY`
+convenience edits that same list. See [saved Docker arguments](../docs/configuration/project-versus-personal.md#saved-docker-arguments)
+for storage, precedence, mounts and credential handling.
+
 ### Inspect the Docker launch command
 
 ```bash
@@ -1220,7 +1230,9 @@ devcapsule project --path /path/to/project run --print-command > launch.sh
 ```
 
 This prepares the currently selected environment through ordinary configuration
-and authorization checks, then prints the actual shell-quoted Docker command.
+and authorization checks, then prints the shell-quoted Docker command, masking
+inline environment values from saved or one-off extra options. A redacted
+command is a preview; use `project run` to supply the actual saved values.
 It may acquire/build the image and prepare state; it does not launch the project
 container, open a desktop, check/select component updates or record successful use.
 Preparation messages go to stderr, keeping stdout suitable for a file or editor.
