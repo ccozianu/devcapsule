@@ -22,6 +22,26 @@ Own defects no open workstream covers and drive maintenance releases. This
 reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
+## General saved Docker arguments — 2026-10-23
+
+The owner broadened PR #253 before merge, then requested the same reviewer
+for the implementation. Accepted the superseding
+[work order](../../work-orders/2026-10-23-saved-docker-arguments.md).
+One private JSON argument list replaces the experimental env-file store;
+set-env remains a hidden-input convenience over that list. GPU options,
+mounts and other raw options persist with token order intact. One-off options
+follow saved options; Docker owns duplicate semantics. Inline env values are
+masked in listings and printed previews; actual Docker arguments are unchanged.
+The generalization gate passed: 1756 unit tests, 36 deselected, one xfail and
+one xpass; 17 packaging tests; 293 webconsole tests; docs contract passed.
+Focused tests passed (31 storage/argument checks and 15 renderer/argument checks).
+A fake-value Docker probe proved literal tokens, empty values and one-off env
+precedence on the existing recipe-11 base. No GPU execution was tested.
+Second [review brief](evidence/2026-10-23-checkout-env/general-review-brief.md).
+Next: second Claude Fable 5.1 review and final gate on PR #253. Release tip and workflow are unchanged; no main merge is needed.
+The previous env-file validation record below is historical, superseded by this
+slice's work order and final evidence.
+
 ## Checkout environment slice — 2026-10-23
 
 Owner-directed work on `ws-maintenance/0.3.0-checkout-env`, from release tip
