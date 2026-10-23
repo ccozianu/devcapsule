@@ -1,5 +1,5 @@
 who: Costin Cozianu
-branch: ws-maintenance/0.3.0-software-approvals
-slice: software approvals at launch: project run's y/n on component upgrades, config approve, the page; PR into release-0.3.0
-since: 2026-10-22T18:02:39+00:00
-expires: 2026-10-23T06:02:39+00:00
+branch: ws-maintenance/0.3.0-checkout-env
+slice: Implement checkout-local managed environment for 0.3.0; owner-directed work order and Claude Fable 5.1 PR review
+since: 2026-10-23T00:31:48+00:00
+expires: 2026-10-23T12:31:48+00:00
