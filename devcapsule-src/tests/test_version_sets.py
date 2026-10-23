@@ -1054,6 +1054,7 @@ def test_runtime_init_acts_where_it_is_invoked(journey, monkeypatch, tmp_path):
     ("versions", "select", "a" * 64), ("versions", "rollback"),
     ("config", "resolve"), ("config", "authorize", "host-x11", "true"),
     ("config", "set", "anything", "value"), ("init", "--regenerate"), ("run",),
+    ("config", "set-env", "APP_SECRET", "value"), ("config", "unset-env", "APP_SECRET"), ("config", "list-env"),
 ])
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)
 def test_runtime_commands_requiring_launcher_are_refused_before_effects(journey, monkeypatch, capsys, tmp_path, operation):

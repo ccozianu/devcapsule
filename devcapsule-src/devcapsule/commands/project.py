@@ -772,11 +772,16 @@ class ConfigSetCommand(Command):
 
 
 def _managed_environment_path(context: object | None) -> Path:
+    """The managed env-file of the registered checkout record for this project.
+
+    The record is located, never loaded: the env-file commands edit no
+    checkout record, so they must not recover an interrupted activation either.
+    """
     root, manifest = manifest_for(_project_context(context).start_path())
-    record = CheckoutRecord(manifest, root)
-    if not record.input_path.is_file():
+    input_path, _resolution_path = checkout_record_paths(manifest, root)
+    if not input_path.is_file():
         raise ProjectConfigurationError("Initialize or register this checkout before setting its environment.")
-    return environment_path(record.input_path)
+    return environment_path(input_path)
 
 
 class ConfigSetEnvCommand(Command):
@@ -1489,6 +1494,9 @@ class ProjectRunCommand(Command):
         # selection. Reload afterward so this launch and its success record use
         # exactly the version set the developer has just chosen.
         overrides, memory_override = _run_once_answers(arguments, admitted.project.manifest, admitted.project.lock)
+        # The managed env-file is validated here too: a bad file refuses the
+        # launch before the upgrade offer asks anything or changes the selection.
+        managed_environment_args = environment_docker_args(admitted.project.checkout_path)
         docker_options = list(arguments.docker_options)
         if docker_options:
             try:
@@ -1503,7 +1511,6 @@ class ProjectRunCommand(Command):
         root, manifest, lock = selected.root, selected.manifest, selected.lock
         input_path, output_path = selected.checkout_path, selected.resolution_path
         checkout, resolved = selected.checkout, selected.resolution
-        managed_environment_args = environment_docker_args(input_path)
         # Capture before launching: a later session completion cannot certify
         # edits or a successor selection made while this session was running.
         captured_files = {input_path.name: input_path.read_bytes(), output_path.name: output_path.read_bytes()}
