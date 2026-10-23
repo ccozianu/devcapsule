@@ -120,6 +120,32 @@ present. The release branch is not synchronized or rewritten.
 
 ## Current State
 
+**2026-10-23: the repository's `.idea` rule reversed and executed,
+[PR #256](https://github.com/ccozianu/devcapsule/pull/256) into `main`.**
+The owner sorted the directory with this session: the hand-written,
+portable part is three small files; the churn is the module files PyCharm
+generates from every `pyproject.toml` it finds, the website test fixtures
+and the sample projects included. The owner's rule, replacing the
+unexecuted ruling of 2026-10-01: track what PyCharm itself does not ignore,
+JetBrains' own `.idea/.gitignore` being the contract; `misc.xml` stays out;
+DevCapsule writes nothing into `.idea` and relies on the IDE cooperating
+with Git, taking no responsibility for IDE settings across ecosystems.
+Research before the go, from PyCharm 2026.2's *Share project settings*
+and this capsule's IDE state: a run configuration stored as a project file
+is portable in the module-SDK form, empty `SDK_HOME`, `$PROJECT_DIR$`
+paths, the interpreter by the module's name; the one per-machine step is
+registering the venv, which PyCharm names by its path and the module file
+carries as a `$MODULE_DIR$` macro, the same on the host and in this
+capsule; `SDK_HOME` is machine-bound and the uv-managed name is the
+documented exception. On `ws-maintenance/idea-tracking` off `main`, in a
+worktree: the ignore rule, the generated modules as the IDE wrote them, two
+shared run configurations (the unit tests, the `devcapsule` CLI), the rule
+in `DEVELOPING.md` under *IDE project files*, the backlog's reversal. The
+run configurations are hand-written from the form the IDE produced here;
+the owner's next IDE open verifies them. Next: the owner reviews and
+merges PR #256; the generated module for the AI Learning sample arrives
+with the next IDE open on `main`.
+
 **2026-10-23: the two C10 records are closed on rc2.** The owner verified
 the downloaded `v0.3.0-rc2` on the host: Ctrl+C ends the launcher with a
 result, and the terminal summary, the links, the ready line and the result
