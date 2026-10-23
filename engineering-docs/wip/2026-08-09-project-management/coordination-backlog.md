@@ -50,13 +50,26 @@ Do not repeat whether to adopt the already accepted requirement.
 ### Repository IDE Files
 
 Owner: `project-management`. Priority: `wanted`. Target: 0.3.0, no gate.
-Revisit at the next repository-hygiene slice before release preparation.
+Resolved 2026-10-23 by the owner's reversal below; executed by `maintenance`.
 
 Owner ruling of 2026-10-01: ignore this repository's .idea files. Untrack them
 without deleting local files, add a root ignore entry, and document the rule
 in the developer brief or local workflow. Other projects may track their own.
 Keep current IDE edits out of the intake-disposition commit. No tooling feature
 is requested, and this reconciliation does not execute the untracking.
+
+Owner reversal of 2026-10-23, after the sort of the directory: the ruling of
+2026-10-01 was never executed, and the churn came from the module files
+PyCharm generates from every `pyproject.toml`, not from hand-written
+settings. The rule now: track what PyCharm itself does not ignore, so other
+checkouts run and debug without friction; JetBrains' `.idea/.gitignore` is
+the contract; `misc.xml` stays ignored, since it names the workstation's
+SDK and a tracked copy makes the IDE add files to VCS on its own; shared run
+configurations live under `.idea/runConfigurations/` in the module-SDK form,
+which JetBrains documents as the portable one. DevCapsule takes no
+responsibility for IDE settings across ecosystems and relies on the IDE
+cooperating with Git. The rule is in `DEVELOPING.md`, *IDE project files*.
+Executed by `maintenance` on `ws-maintenance/idea-tracking`.
 
 ### Release And V1 Obligations
 
