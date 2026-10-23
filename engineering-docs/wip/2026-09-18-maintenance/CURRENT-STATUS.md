@@ -36,7 +36,36 @@ A Docker probe against the existing recipe-11 base passed literal values,
 empty values and explicit --env precedence, using fake credentials only.
 No full IDE launch or real service credentials were used.
 Review brief: [implementation review](evidence/2026-10-23-checkout-env/review-brief.md).
-Next: open the PR, run the reviewer, assess its diff and repeat the gate. No merge from main is planned: this is a release slice based on
+[PR #253](https://github.com/ccozianu/devcapsule/pull/253) is the implementation.
+Claude Code / Claude Fable 5.1 delivered
+[PR #254](https://github.com/ccozianu/devcapsule/pull/254), accepted at `65bed97`
+without a round and merged into the implementation branch. The review fixed
+record lookup triggering unrelated recovery, validation after the optional
+upgrade offer, corruption/OS error messages and absent-key rewrites. It added
+lock-contention, registration, runtime-routing and broader no-disclosure tests.
+Its full gate passed: 1745 unit tests, 36 deselected, one xfail and one xpass;
+17 packaging; 188 docs pages; 293 webconsole. The implementor independently
+ran 98 focused tests, all passed. The final full gate on the combined tree
+passed too: 1745 unit tests, 36 deselected, one xfail and one xpass; 17 packaging
+tests; docs contract 188 pages; 293 webconsole tests. The clean review checkout
+and its merged local branch were removed. Slice state: integrating, ready for
+the human to merge PR #253. Next: merge into release-0.3.0, then exercise the
+commands on the host with real application settings during candidate dogfood.
+No tag, candidate publication or mainline integration is implied by this PR.
+
+Review limitations retained: env-file validation follows the earlier software
+approval offer; list-env uses the existing host-only MUTATES guard, whose
+message calls configuration read-only; use the hidden prompt for values that
+begin with a dash because the shared CLI handles `--` as passthrough. The
+managed format intentionally rejects comments and bare names rather than
+silently importing host environment values. No wider parsing/guard change is
+part of this slice. A cosmetic index spacing suggestion needs no follow-up.
+
+Review environment finding: placing pytest scratch under the mounted home
+makes `test_unmountable_staging_fails_loudly` see a mountable path. The reviewer
+passed the gate with `/tmp/checkout-env-review-scratch`. Its first gate log
+was inside the pytest scratch and was removed by pytest; gate logs must be
+outside basetemp. Final validation uses tmpfs scratch and an external log. No merge from main is planned: this is a release slice based on
 the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
 
@@ -1975,6 +2004,15 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Checkout environment slice, 2026-10-23: PR #253 targets `release-0.3.0`;
+  only the human merges it. PR #254 is accepted and merged into the slice.
+  No real credentials or full IDE launch were used. The host-only guard
+  wording, leading-dash inline values and earlier software-approval prompt
+  remain as documented limitations; no unanswered product choice blocks this
+  PR. Original e2e_videos checkout IDE changes were deliberately left alone.
+  The implementation checkout remains at /home/devcapsule/worktrees/checkout-env;
+  the review checkout was removed after its clean state was verified.
 
 - Paused 2026-10-22 evening by the owner. Nothing is uncommitted; the
   checkout sits on `release-0.3.0` at the published tip; the claim is
