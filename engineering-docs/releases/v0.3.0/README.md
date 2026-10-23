@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-22. Stage: **candidate 2 published and verified as downloaded; the shared lock regenerated on the new agent pins and proven by a recursive launch; the owner's dogfooding of rc2 next**.
+Updated: 2026-10-23. Stage: **candidate 2 published and verified as downloaded; the two C10 records closed on the owner's verification of rc2; the shared lock regenerated on the new agent pins and proven by a recursive launch; the network node's check on rc2 and the rc3 slices next**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·

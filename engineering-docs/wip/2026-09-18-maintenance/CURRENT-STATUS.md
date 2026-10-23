@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-22; releasing 0.3.0: rc2 tagged, published and verified as downloaded, the shared lock regenerated on the new pins and proven by a recursive launch, the owner's dogfooding of rc2 next; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-23; releasing 0.3.0: rc2 tagged, published and verified as downloaded, the two C10 records closed on the owner's verification of rc2, the shared lock regenerated on the new pins and proven by a recursive launch, the network node's check on rc2 and the rc3 slices next; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -119,6 +119,20 @@ the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
 
 ## Current State
+
+**2026-10-23: the two C10 records are closed on rc2.** The owner verified
+the downloaded `v0.3.0-rc2` on the host: Ctrl+C ends the launcher with a
+result, and the terminal summary, the links, the ready line and the result
+with the log paths without the IDE's output, worked as expected. Both
+records, [the terminal](../../bugs/devcapsule/2026-10-22-healthy-launch-looks-unhealthy-in-the-terminal.md)
+and [Ctrl+C](../../bugs/devcapsule/2026-10-22-ctrl-c-ends-the-launcher-with-a-traceback.md),
+are closed and the bug table's rows with them. Since the pause, PR #250,
+software approvals at launch, and PR #253, general saved Docker arguments
+with its review PR #255, are merged into the release branch by the owner;
+neither is in a candidate yet, and `main` has taken PR #252, the AI
+Learning sample, so the next pre-candidate merge reconciles both sides.
+Still open on rc2: the network node's check on a fresh project. Next: the
+go for the schema-version slice; the rc3 slices.
 
 **2026-10-22, night: PR #250's review loop is settled; the slice awaits the
 owner.** PR250.1, [PR #251](https://github.com/ccozianu/devcapsule/pull/251)
@@ -1078,7 +1092,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc2 | `e5b5a8b` | tagged 2026-10-22 after PR #249; gate `mainline`; backend run 39803285881 passed; published, downloaded and verified; carries the network node (#240, #242) and C10 (#244, #246); the three fixed records verify on it; the owner dogfoods the terminal and Ctrl+C |
+| rc2 | `e5b5a8b` | tagged 2026-10-22 after PR #249; gate `mainline`; backend run 39803285881 passed; published, downloaded and verified; carries the network node (#240, #242) and C10 (#244, #246); the two C10 records closed 2026-10-23 on the owner's verification; the network node's record verifies on it |
 | rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
 
@@ -2071,13 +2085,14 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   this one's on the release branch; both met in the second synchronization.
 - Done 2026-10-22: PR #249 merged; rc2 tagged, published, verified; the
   lock regenerated and proven by the recursive launch.
-- Awaiting the human: PR #250 into `release-0.3.0`, software approvals,
-  with its review merged after one round; the go for the schema-version
-  slice; the dogfooding of rc2 on the host, the terminal and
-  Ctrl+C; the wording of Release Policy 8 for the one version commit on
-  the throwaway copy; the eleven user-docs decisions; the word on the
-  manifest-rewrite finding; provider acceptance of the new agent pins on a
-  downloaded candidate, which needs the lock in a candidate, rc3.
+- Done 2026-10-23: the owner verified the terminal summary and Ctrl+C on
+  rc2; both C10 records closed. PR #250 and PR #253 merged by the owner.
+- Awaiting the human: the go for the schema-version slice; the network
+  node's check on rc2 on a fresh project; the wording of Release Policy 8
+  for the one version commit on the throwaway copy; the eleven user-docs
+  decisions; the word on the manifest-rewrite finding; provider acceptance
+  of the new agent pins on a downloaded candidate, which needs the lock in
+  a candidate, rc3.
 - On resumption, after the merge: fetch and confirm the release tip
   `e5b5a8b` is an ancestor of `main`; `git tag -a v0.3.0-rc2 e5b5a8b -m
   'DevCapsule 0.3.0 candidate 2'`; from a detached checkout of the tag,
