@@ -128,6 +128,10 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Saved Docker arguments for each checkout](engineering-docs/work-orders/2026-10-23-saved-docker-arguments.md)
+
+- [Persistent checkout environment for 0.3.0](engineering-docs/work-orders/2026-10-23-checkout-environment.md)
+
 - [Capture the Eclipse/Java “WOW factor” 1BRC hero demonstration video](engineering-docs/work-orders/2026-10-19-eclipse-java-1brc-hero-video.md)
 - [Make “Why DevCapsule?” clear on arrival](engineering-docs/work-orders/2026-10-18-landing-page-why-devcapsule.md)
 - [The capsule web console](engineering-docs/work-orders/2026-10-09-capsule-webconsole.md)

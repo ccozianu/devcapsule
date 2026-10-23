@@ -22,6 +22,102 @@ Own defects no open workstream covers and drive maintenance releases. This
 reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
+## General saved Docker arguments — 2026-10-23
+
+The owner broadened PR #253 before merge, then requested the same reviewer
+for the implementation. Accepted the superseding
+[work order](../../work-orders/2026-10-23-saved-docker-arguments.md).
+One private JSON argument list replaces the experimental env-file store;
+set-env remains a hidden-input convenience over that list. GPU options,
+mounts and other raw options persist with token order intact. One-off options
+follow saved options; Docker owns duplicate semantics. Inline env values are
+masked in listings and printed previews; actual Docker arguments are unchanged.
+The generalization gate passed: 1756 unit tests, 36 deselected, one xfail and
+one xpass; 17 packaging tests; 293 webconsole tests; docs contract passed.
+Focused tests passed (31 storage/argument checks and 15 renderer/argument checks).
+A fake-value Docker probe proved literal tokens, empty values and one-off env
+precedence on the existing recipe-11 base. No GPU execution was tested.
+Claude Code / Claude Fable 5.1 delivered
+[PR #255](https://github.com/ccozianu/devcapsule/pull/255), accepted at
+`af39c59` after two revision rounds and merged into this branch. The review
+masked the persistent launch session log, refused ambiguous environment
+convenience operations before writes, handled overlapping split-token
+candidates in redaction, and closed attached launcher-owned short spellings.
+The implementor independently ran the six affected test modules: 319 passed.
+The reviewer's final gate passed: 1769 unit tests, 36 deselected, two xfails;
+17 packaging tests; docs contract 188 pages; 293 webconsole tests. The second
+xfail is the known non-strict clock-dependent workflow claim test, which
+xpassed in earlier runs.
+
+Review evidence: [initial brief](evidence/2026-10-23-checkout-env/general-review-brief.md),
+[round 1](evidence/2026-10-23-checkout-env/general-round-1.md),
+[round 2](evidence/2026-10-23-checkout-env/general-round-2.md).
+The final combined `nox -s build` gate passed: 1769 unit tests, 36 deselected,
+one xfail and one xpass; 17 packaging tests; docs contract 188 pages;
+293 webconsole tests. Log: `/tmp/checkout-args-final-gate.log` (temporary).
+Slice state: integrating, ready for the human merge. The review checkout
+was clean and has been removed with its merged local branch. No maintenance
+mail was pending at handoff; publish and claim release follow this record.
+
+Retained limits: the existing raw-option warning stays; ambiguous saved
+lists still launch literally, but environment convenience commands refuse
+rather than guess Docker's option schema. The helpers recognize the five
+documented separate environment spellings, not environment letters inside
+short-option clusters; such clusters pass through without masking. The user
+page now states this boundary. No actual GPU execution, full IDE launch or
+real credentials were used. No unanswered product choice blocks delivery.
+Next: the human merges PR #253 into release-0.3.0, then host dogfooding with
+application settings. Release tip and workflow are unchanged; no main merge
+is needed. The previous env-file validation record below is historical,
+superseded by this slice's work order and final evidence.
+
+## Checkout environment slice — 2026-10-23
+
+Owner-directed work on `ws-maintenance/0.3.0-checkout-env`, from release tip
+`fb1970e`, targeting `release-0.3.0`. The owner explicitly authorized leaving
+the completed e2e_videos branch. The original checkout's IDE changes remain
+untouched. Accepted [work order](../../work-orders/2026-10-23-checkout-environment.md).
+Implementation ready for the Claude Fable 5.1 PR review loop. The full gate
+passed: 1732 unit tests, 36 deselected, one xfail and one xpass; 17 packaging
+tests; docs contract 188 pages; 293 webconsole tests. Follow-up focused checks
+passed (14 environment tests; 20 combined checks before the added CR case).
+A Docker probe against the existing recipe-11 base passed literal values,
+empty values and explicit --env precedence, using fake credentials only.
+No full IDE launch or real service credentials were used.
+Review brief: [implementation review](evidence/2026-10-23-checkout-env/review-brief.md).
+[PR #253](https://github.com/ccozianu/devcapsule/pull/253) is the implementation.
+Claude Code / Claude Fable 5.1 delivered
+[PR #254](https://github.com/ccozianu/devcapsule/pull/254), accepted at `65bed97`
+without a round and merged into the implementation branch. The review fixed
+record lookup triggering unrelated recovery, validation after the optional
+upgrade offer, corruption/OS error messages and absent-key rewrites. It added
+lock-contention, registration, runtime-routing and broader no-disclosure tests.
+Its full gate passed: 1745 unit tests, 36 deselected, one xfail and one xpass;
+17 packaging; 188 docs pages; 293 webconsole. The implementor independently
+ran 98 focused tests, all passed. The final full gate on the combined tree
+passed too: 1745 unit tests, 36 deselected, one xfail and one xpass; 17 packaging
+tests; docs contract 188 pages; 293 webconsole tests. The clean review checkout
+and its merged local branch were removed. Slice state: integrating, ready for
+the human to merge PR #253. Next: merge into release-0.3.0, then exercise the
+commands on the host with real application settings during candidate dogfood.
+No tag, candidate publication or mainline integration is implied by this PR.
+
+Review limitations retained: env-file validation follows the earlier software
+approval offer; list-env uses the existing host-only MUTATES guard, whose
+message calls configuration read-only; use the hidden prompt for values that
+begin with a dash because the shared CLI handles `--` as passthrough. The
+managed format intentionally rejects comments and bare names rather than
+silently importing host environment values. No wider parsing/guard change is
+part of this slice. A cosmetic index spacing suggestion needs no follow-up.
+
+Review environment finding: placing pytest scratch under the mounted home
+makes `test_unmountable_staging_fails_loudly` see a mountable path. The reviewer
+passed the gate with `/tmp/checkout-env-review-scratch`. Its first gate log
+was inside the pytest scratch and was removed by pytest; gate logs must be
+outside basetemp. Final validation uses tmpfs scratch and an external log. No merge from main is planned: this is a release slice based on
+the current release tip, whose workflow and approval changes are already
+present. The release branch is not synchronized or rewritten.
+
 ## Current State
 
 **2026-10-22, night: PR #250's review loop is settled; the slice awaits the
@@ -1957,6 +2053,17 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Saved Docker arguments slice, 2026-10-23: PR #253 targets `release-0.3.0`;
+  only the human merges it. Reviews #254 and #255 are accepted and merged
+  into the slice; #255 took two revision rounds. No real credentials, full
+  IDE launch or GPU execution were used. General options persist literally;
+  env conveniences and masking have the documented supported-spelling and
+  ambiguity boundaries. No unanswered product choice blocks this PR.
+  Original e2e_videos checkout IDE changes were deliberately left alone.
+  The implementation checkout remains at /home/devcapsule/worktrees/checkout-env;
+  the clean review checkout and merged local review branch were removed.
+  Resume by verifying PR #253 and the release tip before further work.
 
 - Paused 2026-10-22 evening by the owner. Nothing is uncommitted; the
   checkout sits on `release-0.3.0` at the published tip; the claim is

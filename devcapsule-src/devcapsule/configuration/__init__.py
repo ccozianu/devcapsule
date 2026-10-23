@@ -6,7 +6,7 @@ and document codecs. Core modules never import execution, storage, operations,
 CLI commands or launch adapters.
 
 File adapters live in storage/execution, lifecycle orchestration in operations,
-and successful-run snapshots in history. These are separate from the value API.
+successful-run snapshots in history, and saved Docker options in docker_arguments. These are separate from the value API.
 """
 from .file_formats import ProjectConfigurationError
 from .model import Configuration

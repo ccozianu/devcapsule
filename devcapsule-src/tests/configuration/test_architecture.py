@@ -6,7 +6,7 @@ from devcapsule import configuration
 
 
 PACKAGE = "devcapsule.configuration"
-ADAPTERS = {"storage", "execution", "operations", "history", "capability_commands", "capability_selection"}
+ADAPTERS = {"storage", "execution", "operations", "history", "capability_commands", "capability_selection", "docker_arguments"}
 CORE = {"file_formats", "manifest", "values", "bindings", "authorization", "nodes",
         "review", "fingerprints", "resolution", "freshness", "model", "capabilities"}
 

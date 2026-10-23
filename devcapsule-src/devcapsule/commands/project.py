@@ -14,6 +14,8 @@ embedded resolution matrix.
 from __future__ import annotations
 
 import argparse
+import getpass
+import warnings
 from dataclasses import dataclass, replace
 import json
 from pathlib import Path
@@ -49,6 +51,10 @@ from devcapsule import version_sets
 from devcapsule import runtime_configuration
 from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError
+from devcapsule.configuration.docker_arguments import (
+    arguments_path, read_arguments, replace_arguments, read_environment, update_environment, validate_name,
+)
+from devcapsule.docker_arguments import redact_environment
 from devcapsule.configuration.history import (
     record_known_good_configuration,
 )
@@ -766,6 +772,144 @@ class ConfigSetCommand(Command):
         return 0
 
 
+def _managed_arguments_path(context: object | None) -> Path:
+    """The saved arguments of the registered checkout record for this project.
+
+    The record is located, never loaded: the saved-argument commands edit no
+    checkout record, so they must not recover an interrupted activation either.
+    """
+    root, manifest = manifest_for(_project_context(context).start_path())
+    input_path, _resolution_path = checkout_record_paths(manifest, root)
+    if not input_path.is_file():
+        raise ProjectConfigurationError("Initialize or register this checkout before setting its environment.")
+    return arguments_path(input_path)
+
+
+class ConfigSetEnvCommand(Command):
+    name = "set-env"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Save a checkout environment variable; omit VALUE for a hidden terminal prompt."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("key", metavar="KEY")
+        parser.add_argument("value", metavar="VALUE", nargs="?")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        path = _managed_arguments_path(context)
+        validate_name(arguments.key)
+        value = arguments.value
+        if value is None:
+            if not sys.stdin.isatty():
+                raise ProjectConfigurationError("A terminal is required for the hidden value prompt.")
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error", getpass.GetPassWarning)
+                    value = getpass.getpass("Value: ")
+            except (getpass.GetPassWarning, EOFError):
+                raise ProjectConfigurationError("Cannot read a hidden value from this terminal.") from None
+        update_environment(path, arguments.key, value)
+        print(f"Saved {arguments.key}. Run 'devcapsule project run' to use it in a new container.")
+        return 0
+
+
+class ConfigUnsetEnvCommand(Command):
+    name = "unset-env"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Remove a saved checkout environment variable."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("key", metavar="KEY")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        update_environment(_managed_arguments_path(context), arguments.key, None)
+        print(f"Removed {arguments.key} from the saved environment. Existing containers are unchanged.")
+        return 0
+
+
+class ConfigListEnvCommand(Command):
+    name = "list-env"
+    # Host-owned file is deliberately not mounted into the running capsule.
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "List saved environment names on the launcher host, never their values."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        path = _managed_arguments_path(context)
+        names = sorted(read_environment(path))
+        if arguments.as_json:
+            print(json.dumps({"path": str(path), "names": names}, sort_keys=True))
+        else:
+            print(f"Docker arguments file: {path}")
+            print("\n".join(names) if names else "No saved environment variables.")
+        return 0
+
+
+class ConfigSetExtraDockerArgsCommand(Command):
+    name = "set-extra-docker-args"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Replace the saved Docker argument list with the tokens after '--'."
+    passthrough_dest = "docker_options"
+    passthrough_metavar = "DOCKER-RUN-OPTIONS"
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        options = list(arguments.docker_options)
+        if not options:
+            raise ProjectConfigurationError("Supply Docker arguments after '--', or use remove-extra-docker-args.")
+        _validate_extra_docker_args(options)
+        replace_arguments(_managed_arguments_path(context), options)
+        print("Saved extra Docker arguments. They apply to new containers started by 'project run'.")
+        return 0
+
+
+class ConfigListExtraDockerArgsCommand(Command):
+    name = "list-extra-docker-args"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "List saved Docker arguments with inline environment values masked."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        path = _managed_arguments_path(context)
+        options = redact_environment(read_arguments(path))
+        if arguments.as_json:
+            print(json.dumps({"path": str(path), "arguments": options}, sort_keys=True))
+        else:
+            print(f"Docker arguments file: {path}")
+            print(shlex.join(options) if options else "No saved extra Docker arguments.")
+        return 0
+
+
+class ConfigRemoveExtraDockerArgsCommand(Command):
+    name = "remove-extra-docker-args"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Clear the complete saved Docker argument list, including saved environment options."
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        replace_arguments(_managed_arguments_path(context), [])
+        print("Removed saved extra Docker arguments. Existing containers are unchanged.")
+        return 0
+
+
+def _validate_extra_docker_args(options: list[str]) -> None:
+    try:
+        reject_launcher_owned_docker_options(options)
+    except PycharmRunError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
+
+
 class ConfigBindCommand(Command):
     name = "bind"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
@@ -1139,6 +1283,12 @@ class ConfigGroup(Group):
             ConfigResolveCommand.name: ConfigResolveCommand,
             ConfigNeedCommand.name: ConfigNeedCommand,
             ConfigSetCommand.name: ConfigSetCommand,
+            ConfigSetExtraDockerArgsCommand.name: ConfigSetExtraDockerArgsCommand,
+            ConfigListExtraDockerArgsCommand.name: ConfigListExtraDockerArgsCommand,
+            ConfigRemoveExtraDockerArgsCommand.name: ConfigRemoveExtraDockerArgsCommand,
+            ConfigSetEnvCommand.name: ConfigSetEnvCommand,
+            ConfigUnsetEnvCommand.name: ConfigUnsetEnvCommand,
+            ConfigListEnvCommand.name: ConfigListEnvCommand,
             ConfigBindCommand.name: ConfigBindCommand,
             ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
             ConfigApproveCommand.name: ConfigApproveCommand,
@@ -1373,7 +1523,7 @@ class ProjectRunCommand(Command):
         parser.add_argument("--no-update-check", action="store_true",
                             help="Skip the daily interactive distribution refresh; cached critical notices still allow a decision.")
         parser.add_argument("--print-command", action="store_true",
-                            help="Prepare the selected environment and print the Docker command instead of launching; comments identify transient dependencies.")
+                            help="Prepare and print the Docker command without launching; inline extra environment values are redacted and comments identify transient dependencies.")
         add_carrier_options(parser, families=("set", "authorize"))
 
     @classmethod
@@ -1406,6 +1556,10 @@ class ProjectRunCommand(Command):
         # selection. Reload afterward so this launch and its success record use
         # exactly the version set the developer has just chosen.
         overrides, memory_override = _run_once_answers(arguments, admitted.project.manifest, admitted.project.lock)
+        # The saved Docker arguments are validated here too: a bad file refuses the
+        # launch before the upgrade offer asks anything or changes the selection.
+        saved_docker_args = read_arguments(arguments_path(admitted.project.checkout_path))
+        _validate_extra_docker_args(saved_docker_args)
         docker_options = list(arguments.docker_options)
         if docker_options:
             try:
@@ -1527,15 +1681,15 @@ class ProjectRunCommand(Command):
                 print(
                     "Recursive E2E readiness: unavailable because host Docker access is not authorized."
                 )
-        if docker_options:
+        if saved_docker_args or docker_options:
             # Single-instance options the launcher composes are refused —
             # docker would keep the passthrough occurrence and silently
             # override the resolved plan. Everything else is deliberate
-            # stepping outside the plan; show exactly what is being handed
-            # to docker, once, conspicuously.
+            # stepping outside the plan; show what is being handed to Docker,
+            # masking inline environment values.
             print(
                 "WARNING: passing raw docker run options outside the resolved plan: "
-                + " ".join(docker_options),
+                + " ".join(redact_environment([*saved_docker_args, *docker_options])),
                 file=sys.stderr,
             )
         # PyCharm still travels through the launcher's named state fields;
@@ -1593,7 +1747,7 @@ class ProjectRunCommand(Command):
                 ),
                 additional_environment=recursive_environment,
                 secret_environment=tuple(sorted(secret_environment.values())),
-                extra_docker_args=["--pull=never", *docker_options],
+                extra_docker_args=["--pull=never", *saved_docker_args, *docker_options],
                 project_state=None,
                 enable_host_browser=selected_host_browser,
                 display_transport=display_transport,
