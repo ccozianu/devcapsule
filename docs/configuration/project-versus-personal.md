@@ -115,11 +115,13 @@ These commands edit or inspect environment options in the **same saved list**.
 adds it at the front of the list, and preserves the other arguments.
 `unset-env KEY` removes them. `list-env [--json]` shows names only.
 DevCapsule does not carry Docker's option table, so an env-looking token
-right after a bare option (`--label -eNAME=value`) may be that option's
-value: the convenience commands refuse to edit that name or to list the
-variables, naming the argument's position, never its text. Replace the
-complete list with `set-extra-docker-args`, placing environment options
-first or after a value; the list itself launches unchanged. The convenience input accepts literal single-line UTF-8 values,
+right after a bare option (`--label -eNAME=value`, `--label --env ...`)
+may be that option's value, and the token after it is unsettled too.
+Any such ambiguity in the saved list makes every convenience command
+refuse, edits and listing alike, naming the argument's position, never
+its text. Replace the complete list with `set-extra-docker-args`, placing
+environment options first or after a value; the list itself launches
+unchanged, and reports mask every value that might be one. The convenience input accepts literal single-line UTF-8 values,
 including empty values. Use the prompt for values beginning with a dash.
 The general Docker argument list can also include `--env NAME` to inherit an
 exported variable on each launch, or `--env-file /private/path/file` to let

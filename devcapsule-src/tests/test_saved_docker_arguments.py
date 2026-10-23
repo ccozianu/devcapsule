@@ -113,11 +113,11 @@ def test_env_conveniences_refuse_an_ambiguous_operand_before_writing(project, ca
         assert 'argument 2 may be' in output.err and 'set-extra-docker-args' in output.err
         assert 'label-only' not in output.err + output.out and 'before' not in output.err + output.out
         assert path.read_bytes() == before
-    # Another name has nothing to do with the ambiguous token: edits go first, where nothing precedes them.
-    assert config(project, 'set-env', 'OTHER', 'value') == 0
-    assert read_arguments(path) == ['--env', 'OTHER=value', *LABEL_OPERAND]
-    assert config(project, 'unset-env', 'OTHER') == 0
-    assert read_arguments(path) == LABEL_OPERAND
+    # An unresolved span can hide the next real option's identity, so another name is refused too.
+    for operation in (('set-env', 'OTHER', 'value'), ('unset-env', 'OTHER')):
+        assert config(project, *operation) == 2
+        assert 'argument 2 may be' in capsys.readouterr().err
+        assert path.read_bytes() == before
     # The list itself stays literal and is still reported, masked conservatively.
     capsys.readouterr()
     assert config(project, 'list-extra-docker-args', '--json') == 0
@@ -156,3 +156,54 @@ def test_attached_launcher_owned_short_options_are_refused_when_launching_saved_
         assert cli.main(['project', '--path', str(root), 'run']) == 2
     assert "Raw docker option '-m' is composed by the launcher" in capsys.readouterr().err
     assert not upgrades.called and not realize.called and not launch.called
+
+
+OVERLAPPING = {
+    'long': ['--label', '--env', '--env', 'TOKEN=hidden-real-sentinel'],
+    'short': ['--label', '-e', '-e', 'TOKEN=hidden-real-sentinel'],
+    'mixed': ['--label', '-e', '--env', 'TOKEN=hidden-real-sentinel'],
+}
+"""Valid lists whose first env token is the label's operand and whose second is the real option Docker applies."""
+
+
+@pytest.mark.parametrize('args', OVERLAPPING.values(), ids=OVERLAPPING.keys())
+def test_overlapping_ambiguous_split_tokens_are_masked_and_named(args):
+    from devcapsule.docker_arguments import ambiguous_environment_options, environment_options, inline_environment_names
+    assert 'hidden-real-sentinel' not in str(redact_environment(args))
+    assert redact_environment(args) == [*args[:3], 'TOKEN=<redacted>']
+    assert 'hidden-real-sentinel' not in str(redact_environment(args, {'TOKEN'}))
+    assert inline_environment_names(args) == {'TOKEN'}
+    assert list(environment_options(args)) == []  # nothing is settled: neither candidate is edited
+    assert [start for start, _, _ in ambiguous_environment_options(args)] == [1, 2]
+
+
+@pytest.mark.parametrize('args', OVERLAPPING.values(), ids=OVERLAPPING.keys())
+def test_overlapping_ambiguous_split_tokens_refuse_conveniences_and_launch_literally(project, args, capsys, tmp_path):
+    path = arguments_path(registered_checkouts()[0].record_path)
+    assert config(project, 'set-extra-docker-args', '--', *args) == 0
+    assert read_arguments(path) == args
+    before = path.read_bytes()
+    for operation in (('set-env', 'TOKEN', 'after'), ('unset-env', 'TOKEN'), ('set-env', 'OTHER', 'x'), ('list-env',), ('list-env', '--json')):
+        capsys.readouterr()
+        assert config(project, *operation) == 2
+        output = capsys.readouterr()
+        assert 'argument 2 may be' in output.err and 'set-extra-docker-args' in output.err
+        assert 'hidden-real-sentinel' not in output.out + output.err
+        assert path.read_bytes() == before
+    capsys.readouterr()
+    assert config(project, 'list-extra-docker-args') == 0
+    text = capsys.readouterr().out
+    assert 'hidden-real-sentinel' not in text and 'TOKEN=<redacted>' in text
+    # The same tokens reach the launcher untouched, and the narration masks the value.
+    root = tmp_path / 'codium'
+    initialize_codium_project(root)
+    assert config(root, 'authorize', 'base-image', LOCKED_BASE) == 0
+    assert config(root, 'resolve') == 0
+    assert config(root, 'set-extra-docker-args', '--', *args) == 0
+    selected = ExecutionConfiguration.load(root).project
+    realized = SimpleNamespace(image=SimpleNamespace(labels={}, reference='devcapsule-local-codium:fixture'), created=False, locked=parse_locked_environment(selected.lock))
+    with patch('devcapsule.commands.project.realize_environment', return_value=realized), patch('devcapsule.commands.project.run_pycharm', return_value=0) as launch:
+        assert cli.main(['project', '--path', str(root), 'run']) == 0
+    assert launch.call_args.args[0].extra_docker_args == ['--pull=never', *args]
+    output = str(capsys.readouterr())
+    assert 'hidden-real-sentinel' not in output and 'TOKEN=<redacted>' in output

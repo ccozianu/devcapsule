@@ -107,16 +107,14 @@ def replace_arguments(path: Path, arguments: list[str]) -> None:
     change_arguments(path, lambda _: arguments, replace=True)
 
 
-def _refuse_ambiguous(arguments: list[str], name: str | None = None) -> None:
+def _refuse_ambiguous(arguments: list[str]) -> None:
     """Refuse before any write when the saved list has a token the bounded
     environment helper cannot place: the value of the bare option before it,
-    or an environment option. Positions only; never the tokens themselves."""
-    for start, _end, value in ambiguous_environment_options(arguments):
-        if name is not None and value.partition("=")[0] != name:
-            continue
-        subject = f"environment variable {name}" if name is not None else "an environment option"
+    or an environment option. An unresolved span can also hide the next real
+    option, so any ambiguity refuses. Positions only; never the tokens."""
+    for start, _end, _value in ambiguous_environment_options(arguments)[:1]:
         raise ProjectConfigurationError(
-            f"Saved Docker argument {start + 1} may be {subject} or the value of argument {start}; "
+            f"Saved Docker argument {start + 1} may be an environment option or the value of argument {start}; "
             "the environment commands cannot tell which. Replace the complete list with "
             "'devcapsule project config set-extra-docker-args -- ...', placing environment options "
             "first or after a value; 'list-extra-docker-args' shows the saved tokens with values masked."
@@ -136,7 +134,7 @@ def update_environment(path: Path, name: str, value: str | None) -> None:
         validate_value(value)
 
     def update(arguments: list[str]) -> list[str]:
-        _refuse_ambiguous(arguments, name)
+        _refuse_ambiguous(arguments)
         matching = [(start, end) for start, end, item in environment_options(arguments)
                     if item.partition("=")[0] == name]
         replacement = [] if value is None else ["--env", f"{name}={value}"]
