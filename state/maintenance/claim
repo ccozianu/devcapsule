@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-maintenance/0.3.0-checkout-env
+slice: Generalize PR253 to saved extra Docker arguments; Claude Fable 5.1 second implementation review
+since: 2026-10-23T01:09:21+00:00
+expires: 2026-10-23T13:09:21+00:00
