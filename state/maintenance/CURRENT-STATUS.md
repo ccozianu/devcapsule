@@ -37,10 +37,39 @@ one xpass; 17 packaging tests; 293 webconsole tests; docs contract passed.
 Focused tests passed (31 storage/argument checks and 15 renderer/argument checks).
 A fake-value Docker probe proved literal tokens, empty values and one-off env
 precedence on the existing recipe-11 base. No GPU execution was tested.
-Second [review brief](evidence/2026-10-23-checkout-env/general-review-brief.md).
-Next: second Claude Fable 5.1 review and final gate on PR #253. Release tip and workflow are unchanged; no main merge is needed.
-The previous env-file validation record below is historical, superseded by this
-slice's work order and final evidence.
+Claude Code / Claude Fable 5.1 delivered
+[PR #255](https://github.com/ccozianu/devcapsule/pull/255), accepted at
+`af39c59` after two revision rounds and merged into this branch. The review
+masked the persistent launch session log, refused ambiguous environment
+convenience operations before writes, handled overlapping split-token
+candidates in redaction, and closed attached launcher-owned short spellings.
+The implementor independently ran the six affected test modules: 319 passed.
+The reviewer's final gate passed: 1769 unit tests, 36 deselected, two xfails;
+17 packaging tests; docs contract 188 pages; 293 webconsole tests. The second
+xfail is the known non-strict clock-dependent workflow claim test, which
+xpassed in earlier runs.
+
+Review evidence: [initial brief](evidence/2026-10-23-checkout-env/general-review-brief.md),
+[round 1](evidence/2026-10-23-checkout-env/general-round-1.md),
+[round 2](evidence/2026-10-23-checkout-env/general-round-2.md).
+The final combined `nox -s build` gate passed: 1769 unit tests, 36 deselected,
+one xfail and one xpass; 17 packaging tests; docs contract 188 pages;
+293 webconsole tests. Log: `/tmp/checkout-args-final-gate.log` (temporary).
+Slice state: integrating, ready for the human merge. The review checkout
+was clean and has been removed with its merged local branch. No maintenance
+mail was pending at handoff; publish and claim release follow this record.
+
+Retained limits: the existing raw-option warning stays; ambiguous saved
+lists still launch literally, but environment convenience commands refuse
+rather than guess Docker's option schema. The helpers recognize the five
+documented separate environment spellings, not environment letters inside
+short-option clusters; such clusters pass through without masking. The user
+page now states this boundary. No actual GPU execution, full IDE launch or
+real credentials were used. No unanswered product choice blocks delivery.
+Next: the human merges PR #253 into release-0.3.0, then host dogfooding with
+application settings. Release tip and workflow are unchanged; no main merge
+is needed. The previous env-file validation record below is historical,
+superseded by this slice's work order and final evidence.
 
 ## Checkout environment slice — 2026-10-23
 
@@ -2025,14 +2054,16 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Checkout environment slice, 2026-10-23: PR #253 targets `release-0.3.0`;
-  only the human merges it. PR #254 is accepted and merged into the slice.
-  No real credentials or full IDE launch were used. The host-only guard
-  wording, leading-dash inline values and earlier software-approval prompt
-  remain as documented limitations; no unanswered product choice blocks this
-  PR. Original e2e_videos checkout IDE changes were deliberately left alone.
+- Saved Docker arguments slice, 2026-10-23: PR #253 targets `release-0.3.0`;
+  only the human merges it. Reviews #254 and #255 are accepted and merged
+  into the slice; #255 took two revision rounds. No real credentials, full
+  IDE launch or GPU execution were used. General options persist literally;
+  env conveniences and masking have the documented supported-spelling and
+  ambiguity boundaries. No unanswered product choice blocks this PR.
+  Original e2e_videos checkout IDE changes were deliberately left alone.
   The implementation checkout remains at /home/devcapsule/worktrees/checkout-env;
-  the review checkout was removed after its clean state was verified.
+  the clean review checkout and merged local review branch were removed.
+  Resume by verifying PR #253 and the release tip before further work.
 
 - Paused 2026-10-22 evening by the owner. Nothing is uncommitted; the
   checkout sits on `release-0.3.0` at the published tip; the claim is
