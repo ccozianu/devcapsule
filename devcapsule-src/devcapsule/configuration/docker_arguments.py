@@ -13,7 +13,7 @@ import re
 import tempfile
 from typing import Callable
 
-from devcapsule.docker_arguments import environment_options
+from devcapsule.docker_arguments import ambiguous_environment_options, environment_options
 
 from .file_formats import ProjectConfigurationError
 from .storage import config_root
@@ -107,9 +107,27 @@ def replace_arguments(path: Path, arguments: list[str]) -> None:
     change_arguments(path, lambda _: arguments, replace=True)
 
 
+def _refuse_ambiguous(arguments: list[str], name: str | None = None) -> None:
+    """Refuse before any write when the saved list has a token the bounded
+    environment helper cannot place: the value of the bare option before it,
+    or an environment option. Positions only; never the tokens themselves."""
+    for start, _end, value in ambiguous_environment_options(arguments):
+        if name is not None and value.partition("=")[0] != name:
+            continue
+        subject = f"environment variable {name}" if name is not None else "an environment option"
+        raise ProjectConfigurationError(
+            f"Saved Docker argument {start + 1} may be {subject} or the value of argument {start}; "
+            "the environment commands cannot tell which. Replace the complete list with "
+            "'devcapsule project config set-extra-docker-args -- ...', placing environment options "
+            "first or after a value; 'list-extra-docker-args' shows the saved tokens with values masked."
+        )
+
+
 def read_environment(path: Path) -> dict[str, str]:
+    arguments = read_arguments(path)
+    _refuse_ambiguous(arguments)
     return {value.partition("=")[0]: value.partition("=")[2]
-            for _, _, value in environment_options(read_arguments(path))}
+            for _, _, value in environment_options(arguments)}
 
 
 def update_environment(path: Path, name: str, value: str | None) -> None:
@@ -118,11 +136,22 @@ def update_environment(path: Path, name: str, value: str | None) -> None:
         validate_value(value)
 
     def update(arguments: list[str]) -> list[str]:
-        removed = {index for start, end, item in environment_options(arguments)
-                   if item.partition("=")[0] == name for index in range(start, end)}
-        result = [item for index, item in enumerate(arguments) if index not in removed]
-        if value is not None:
-            result.extend(["--env", f"{name}={value}"])
+        _refuse_ambiguous(arguments, name)
+        matching = [(start, end) for start, end, item in environment_options(arguments)
+                    if item.partition("=")[0] == name]
+        replacement = [] if value is None else ["--env", f"{name}={value}"]
+        if not matching:
+            # The front of the list is never an operand, so a later edit can
+            # still recognize what this one saved.
+            return [*replacement, *arguments]
+        result: list[str] = []
+        index = 0
+        for start, end in matching:
+            result.extend(arguments[index:start])
+            if start == matching[0][0]:
+                result.extend(replacement)  # the first occurrence keeps its place
+            index = end
+        result.extend(arguments[index:])
         return result
 
     change_arguments(path, update)

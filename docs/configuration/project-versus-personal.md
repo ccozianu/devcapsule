@@ -87,8 +87,9 @@ GPU runtime and drivers on the host; this option does not install them.
 you supply after `run --`. Docker decides how repeated options combine: an
 explicit `--env NAME=value` after a saved assignment replaces it, while
 conflicting mount destinations can fail. DevCapsule refuses launcher-owned
-options such as `--network` and `--memory`; use its configuration commands for
-those. It delegates validation of other Docker options to Docker.
+options such as `--network` and `--memory`, in their attached and short
+spellings too (`-m2g`, `-u1000`); use its configuration commands for those.
+It delegates validation of other Docker options to Docker.
 
 ```bash
 devcapsule project config remove-extra-docker-args
@@ -110,9 +111,15 @@ devcapsule project config unset-env POSTGRES_PASSWORD
 ```
 
 These commands edit or inspect environment options in the **same saved list**.
-`set-env KEY [VALUE]` replaces that variable's saved env options and preserves
-the other arguments. `unset-env KEY` removes them. `list-env [--json]` shows
-names only. The convenience input accepts literal single-line UTF-8 values,
+`set-env KEY [VALUE]` replaces that variable's saved env options in place, or
+adds it at the front of the list, and preserves the other arguments.
+`unset-env KEY` removes them. `list-env [--json]` shows names only.
+DevCapsule does not carry Docker's option table, so an env-looking token
+right after a bare option (`--label -eNAME=value`) may be that option's
+value: the convenience commands refuse to edit that name or to list the
+variables, naming the argument's position, never its text. Replace the
+complete list with `set-extra-docker-args`, placing environment options
+first or after a value; the list itself launches unchanged. The convenience input accepts literal single-line UTF-8 values,
 including empty values. Use the prompt for values beginning with a dash.
 The general Docker argument list can also include `--env NAME` to inherit an
 exported variable on each launch, or `--env-file /private/path/file` to let

@@ -1106,15 +1106,21 @@ def test_launcher_owned_docker_options_are_refused_in_passthrough() -> None:
 
     from devcapsule.launch.pycharm import reject_launcher_owned_docker_options
 
-    for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always"):
+    for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always",
+                   "-m2g", "-u1000", "-dit", "-ti"):  # attached and clustered short spellings included
         with pytest.raises(PycharmRunError, match="composed by the launcher"):
             reject_launcher_owned_docker_options(["-v", "/x:/y", option])
+    with pytest.raises(PycharmRunError, match="Raw docker option '-m'"):
+        reject_launcher_owned_docker_options(["-m2g"])
+    with pytest.raises(PycharmRunError, match="Raw docker option '-i'"):
+        reject_launcher_owned_docker_options(["-ti"])
 
     with pytest.raises(PycharmRunError, match="shared-memory-size in its runtime template"):
         reject_launcher_owned_docker_options(["--shm-size", "1g"])
 
     reject_launcher_owned_docker_options(
-        ["-v", "/x:/y", "--volume", "/a:/b", "--env", "FOO=bar", "--mount", "type=tmpfs,dst=/z", "--cap-add", "NET_ADMIN"]
+        ["-v", "/x:/y", "--volume", "/a:/b", "--env", "FOO=bar", "--mount", "type=tmpfs,dst=/z", "--cap-add", "NET_ADMIN",
+         "-eNAME=value", "-e=NAME=value", "-v/src:/dst:ro", "-eit=m", "-t", "-P", "-"]  # values after -e/-v are never read as flags
     )
 
 
