@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import grp
-from devcapsule.docker_arguments import inline_environment_names, redact_environment
 import json
 import logging
 import os
@@ -22,6 +21,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+from ...docker_arguments import inline_environment_names, redact_environment
 from ...container_runtime.contract import (
     CONTAINED_DISPLAY_TRANSPORT,
     INFRASTRUCTURE_FAILURE_EXIT_CODE,
@@ -361,7 +361,11 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     watch_display_ready(
                         config.console_host_port, console, opener, stop_watching, label=CONSOLE_LABEL_TEXT,
                     )
-                _session_events.info("docker run: %s", shlex.join(command))
+                # The session log outlives the session on the host: mask the
+                # inline environment values of the extra arguments, as the
+                # printed command does; Docker receives the command unchanged.
+                _session_events.info("docker run: %s", shlex.join(
+                    redact_environment(command, inline_environment_names(config.extra_docker_args))))
                 try:
                     result = run_attached(
                         command, runtime_env, container_name=config.name, on_interrupt=stop_watching.set,

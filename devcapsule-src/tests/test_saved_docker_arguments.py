@@ -27,6 +27,9 @@ def test_saved_args_replace_list_clear_and_share_hidden_env(project, tmp_path, c
     report = capsys.readouterr().out
     assert 'sensitive' not in report
     assert json.loads(report) == {'path': str(path), 'arguments': redact_environment(args)}
+    assert config(project, 'list-extra-docker-args') == 0
+    text = capsys.readouterr().out
+    assert 'sensitive' not in text and 'TOKEN=<redacted>' in text and f'{tmp_path}/space dir:/data:ro' in text
     monkeypatch.setattr('sys.stdin.isatty', lambda: True)
     with patch('getpass.getpass', return_value='hidden replacement'):
         assert config(project, 'set-env', 'TOKEN') == 0

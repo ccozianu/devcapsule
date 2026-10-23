@@ -1855,6 +1855,49 @@ def test_session_logs_with_an_external_daemon(tmp_path, backed, capsys):
             assert "not backed by a mount" in capsys.readouterr().err
 
 
+def test_session_log_masks_inline_environment_values_of_extra_arguments(tmp_path, capsys):
+    """The launcher log keeps the docker run line but never a saved or one-off inline env value."""
+    from dataclasses import replace
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, env = session_config(tmp_path)
+    config = replace(config, extra_docker_args=[
+        "--gpus", "all", "--env", "APP_SECRET=saved-sentinel-value", "-eOTHER=one-off-sentinel", "--env", "PLAIN",
+    ])
+    commands: list[list[str]] = []
+
+    class Client:
+        def __init__(self, command, env):
+            commands.append(list(command))
+
+        def wait(self, timeout=None):
+            return 0
+
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "Popen", Client),
+        ):
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == 0
+        # Docker receives the literal arguments, in order, before the image.
+        [command] = commands
+        image = command.index(config.image)
+        assert command[image - len(config.extra_docker_args):image] == config.extra_docker_args
+        assert config.session_log_directory is not None
+        record = (config.session_log_directory / "devcapsule-launcher.log").read_text()
+        assert "docker run: " in record
+        assert "--gpus all" in record and "APP_SECRET=<redacted>" in record and "-eOTHER=<redacted>" in record
+        assert "--env PLAIN" in record
+        assert "saved-sentinel-value" not in record and "one-off-sentinel" not in record
+        assert "saved-sentinel-value" not in capsys.readouterr().err
+    finally:
+        logs.reset()
+
+
 def test_interrupted_launch_ends_with_a_result_and_the_log_paths(tmp_path, capsys):
     """Ctrl+C ends with a result, not a traceback (the first-session report of 2026-09-15, C10)."""
     from devcapsule import logs
