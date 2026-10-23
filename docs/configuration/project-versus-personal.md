@@ -136,7 +136,13 @@ own list. No `config resolve` is needed after changing it. New containers use
 the current list; restarting an existing container retains its old settings.
 Removing a container or rolling back a version set does not clear the list.
 
-DevCapsule masks inline environment values in launch narration, in the
+Environment conveniences and masking recognize `--env NAME=value`,
+`--env=NAME=value`, `-e NAME=value`, `-eNAME=value` and `-e=NAME=value`.
+Keep environment options separate from short-option clusters: a combined
+form such as `-te NAME=value` passes to Docker literally but is not recognized
+by these helpers or masked.
+
+DevCapsule masks those inline environment values in launch narration, in the
 launcher's session log and in printed commands too. A `--print-command` result containing `<redacted>` is a preview;
 use `project run` to launch with the actual saved arguments. Docker receives
 the original arguments, so their values remain visible to Docker and the
