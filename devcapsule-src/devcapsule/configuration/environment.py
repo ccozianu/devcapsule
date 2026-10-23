@@ -45,17 +45,19 @@ def read_environment(path: Path) -> dict[str, str]:
             text = stream.read()
     except FileNotFoundError:
         return {}
-    except (OSError, UnicodeError):
-        raise ProjectConfigurationError(f"Cannot read managed environment file: {path}") from None
+    except UnicodeError:
+        raise ProjectConfigurationError(f"Invalid managed environment file: {path}") from None
+    except OSError as exc:
+        raise ProjectConfigurationError(f"Cannot read managed environment file {path}: {exc.strerror or exc}") from None
     result: dict[str, str] = {}
     # Split only on LF; other Unicode separators are literal Docker values.
     for line in text.split("\n"):
         if not line:
             continue
         name, separator, value = line.partition("=")
-        if not separator or not _NAME.fullmatch(name) or name in result:
+        # A bad line is reported by its file, never by its content.
+        if not separator or not _NAME.fullmatch(name) or name in result or "\r" in value or "\x00" in value:
             raise ProjectConfigurationError(f"Invalid managed environment file: {path}")
-        validate_value(value)
         result[name] = value
     return result
 
@@ -73,7 +75,9 @@ def update_environment(path: Path, name: str, value: str | None) -> None:
             fcntl.flock(lock, fcntl.LOCK_EX)
             values = read_environment(path)
             if value is None:
-                values.pop(name, None)
+                if name not in values:
+                    return  # Removing an absent name is complete; nothing to rewrite.
+                del values[name]
             else:
                 values[name] = value
             temporary: Path | None = None
@@ -90,8 +94,9 @@ def update_environment(path: Path, name: str, value: str | None) -> None:
             finally:
                 if temporary is not None:
                     temporary.unlink(missing_ok=True)
-    except OSError:
-        raise ProjectConfigurationError(f"Cannot update managed environment file: {path}") from None
+    except OSError as exc:
+        # Paths and errno text carry no values; the reason helps with permissions.
+        raise ProjectConfigurationError(f"Cannot update managed environment file {path}: {exc.strerror or exc}") from None
 
 
 def environment_docker_args(checkout_record: Path) -> list[str]:
