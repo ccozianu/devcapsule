@@ -1,0 +1,58 @@
+Review partner brief: AI Learning parent integration, PR #252
+Implementor: GPT-6 Codex. Partner: Claude; report the exact model that runs.
+
+Goal: verify that parent PR #252 safely registers the independent AI Learning
+sample, with a reachable child commit and an honest handoff. The human supplied
+an empty remote git@github.com:ccozianu/ai-learning-bootstrap.git. Child main is
+published at 64c11f2198499281071c3f6f22472e4b64ddd8d6. Parent PR:
+https://github.com/ccozianu/devcapsule/pull/252
+Your branch ws-sample-projects/ai-learning-review is off that PR branch.
+
+Read first, in order:
+1. .gitmodules and git diff origin/main...HEAD -- .gitmodules
+2. The child README.md, CURRENT-STATUS.md and WORKFLOW-LOCAL.md under
+   devcapsule-src/tests/resources/sample_projects/ai-learning/.
+3. The parent's engineering-docs/wip/2026-08-14-sample-projects/CURRENT-STATUS.md
+   new current-state facts, and its two 2026-10-22 local review evidence files.
+4. Child src/app.ts, src/security.ts, prisma/schema.prisma, tests/auth.test.ts
+   as needed to check the fixes cited in that prior review. Focus correctness,
+   then clarity, then coverage. The previous reviewer found the refreshed
+   Google-auth time, lockout recovery, username collisions, key reuse and
+   schema-apply flag message; implementor fixed these and added authVersion
+   invalidation for concurrent credential resets. Twenty tests pass with mocks.
+
+Scope: integration and material regressions in those fixes. Do not widen into
+new product features, deployment, framework refactoring or old parent history.
+No live database, OAuth, SMTP or capsule-launch acceptance is claimed. SMTP
+provider is pending. The parent full gate previously passed (1672 unit tests,
+17 packaging integrations, 293 webconsole tests) and is being rerun on the
+implementor's registration tree. Do not repeat that whole gate in your checkout.
+
+Your own parent devcapsule-src/.venv was prepared as WORKFLOW-LOCAL.md specifies.
+Validation commands, from your own checkout:
+  git diff --check origin/main...HEAD
+  git submodule status devcapsule-src/tests/resources/sample_projects/ai-learning
+  git -C devcapsule-src/tests/resources/sample_projects/ai-learning ls-remote --heads origin main
+  cd devcapsule-src/tests/resources/sample_projects/ai-learning
+  npm ci
+  npm run check
+  devcapsule0 project config check
+
+You may repair parent .gitmodules or integration-only documentation in your
+review branch if necessary, never status files, intake, published state or the
+child source. Report material child defects rather than editing a detached
+submodule. If you change parent files, commit with Costin Cozianu
+<ccozianu@gmail.com> as author and a Co-authored-by trailer for your exact Claude
+model, push ws-sample-projects/ai-learning-review, and open PR252.1 targeting
+ws-sample-projects/ai-learning. List findings, changes, tests, things left alone
+and limits. If no changes are needed, open no empty PR. Report acceptance and
+validation with your exact model identity. Do not post GitHub comments; the
+implementor will record your report as the assessment.
+
+GitHub CLI if needed: source /opt/xtras/miniconda3/etc/profile.d/conda.sh && conda activate gh
+Check gh auth status -h github.com once first. If auth fails, stop; do not use
+other credentials. Do not merge, rebase, force-push, edit other checkouts, access
+secret values, send email, start containers, deploy or apply SQL. No background
+services. Use the signed-in Claude CLI only; no API key.
+
+Final line: REVIEW COMPLETE: accepted or blocked, exact model, counts and limits.
