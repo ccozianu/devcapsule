@@ -87,8 +87,9 @@ GPU runtime and drivers on the host; this option does not install them.
 you supply after `run --`. Docker decides how repeated options combine: an
 explicit `--env NAME=value` after a saved assignment replaces it, while
 conflicting mount destinations can fail. DevCapsule refuses launcher-owned
-options such as `--network` and `--memory`; use its configuration commands for
-those. It delegates validation of other Docker options to Docker.
+options such as `--network` and `--memory`, in their attached and short
+spellings too (`-m2g`, `-u1000`); use its configuration commands for those.
+It delegates validation of other Docker options to Docker.
 
 ```bash
 devcapsule project config remove-extra-docker-args
@@ -110,9 +111,17 @@ devcapsule project config unset-env POSTGRES_PASSWORD
 ```
 
 These commands edit or inspect environment options in the **same saved list**.
-`set-env KEY [VALUE]` replaces that variable's saved env options and preserves
-the other arguments. `unset-env KEY` removes them. `list-env [--json]` shows
-names only. The convenience input accepts literal single-line UTF-8 values,
+`set-env KEY [VALUE]` replaces that variable's saved env options in place, or
+adds it at the front of the list, and preserves the other arguments.
+`unset-env KEY` removes them. `list-env [--json]` shows names only.
+DevCapsule does not carry Docker's option table, so an env-looking token
+right after a bare option (`--label -eNAME=value`, `--label --env ...`)
+may be that option's value, and the token after it is unsettled too.
+Any such ambiguity in the saved list makes every convenience command
+refuse, edits and listing alike, naming the argument's position, never
+its text. Replace the complete list with `set-extra-docker-args`, placing
+environment options first or after a value; the list itself launches
+unchanged, and reports mask every value that might be one. The convenience input accepts literal single-line UTF-8 values,
 including empty values. Use the prompt for values beginning with a dash.
 The general Docker argument list can also include `--env NAME` to inherit an
 exported variable on each launch, or `--env-file /private/path/file` to let
@@ -127,8 +136,8 @@ own list. No `config resolve` is needed after changing it. New containers use
 the current list; restarting an existing container retains its old settings.
 Removing a container or rolling back a version set does not clear the list.
 
-DevCapsule masks inline environment values in launch narration and printed
-commands too. A `--print-command` result containing `<redacted>` is a preview;
+DevCapsule masks inline environment values in launch narration, in the
+launcher's session log and in printed commands too. A `--print-command` result containing `<redacted>` is a preview;
 use `project run` to launch with the actual saved arguments. Docker receives
 the original arguments, so their values remain visible to Docker and the
 trusted processes that can inspect it. Other option types, such as labels,

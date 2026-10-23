@@ -881,7 +881,6 @@ class ConfigListExtraDockerArgsCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        import shlex
         path = _managed_arguments_path(context)
         options = redact_environment(read_arguments(path))
         if arguments.as_json:
