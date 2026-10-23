@@ -2353,6 +2353,7 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
                      '--unverified', '--authorize', 'base-image', 'default']) == 0
     assert cli.main(['project', 'config', 'authorize', 'host-x11', str(display == 'host-x11').lower()]) == 0
     assert cli.main(['project', 'config', 'resolve']) == 0
+    assert cli.main(['project', 'config', 'set-env', 'APP_PASSWORD', 'managed-secret-sentinel']) == 0
     selected = ExecutionConfiguration.load(project).project
     locked = parse_locked_environment(selected.lock)
     realized = SimpleNamespace(image=SimpleNamespace(labels={'devcapsule.base.display': 'contained'},
@@ -2398,6 +2399,8 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
     assert 'Child-style preparation progress' in output.err
     assert 'preparation progress' not in output.out
     assert 'do-not-render-this-value' not in output.out
+    assert 'managed-secret-sentinel' not in output.out + output.err
+    assert '--env-file' in output.out
     assert 'Required environment variables' in output.out
     assert 'Temporary Runtime plan:' in output.out
     assert ('Temporary Display token:' in output.out) == (display == 'contained')

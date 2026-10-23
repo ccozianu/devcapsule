@@ -61,3 +61,45 @@ future versions. Editing several choices is a sequence of edits and one
 `resolve`; a refused resolution leaves the previous plan intact. Installing
 a newer DevCapsule does not change any of this: your lock and your choices
 stay until you change them.
+
+## Application environment and credentials
+
+Save application variables on the launcher host, from your registered checkout:
+
+```bash
+devcapsule project config set-env POSTGRES_DB ai_learning
+devcapsule project config set-env POSTGRES_PASSWORD
+devcapsule project config list-env
+devcapsule project run
+```
+
+Omit the value to enter it at a hidden terminal prompt. This keeps a password
+out of shell history and command arguments. Supplying a value is supported
+for scripts and ordinary settings. `list-env` shows names and the managed
+file's path, never values; `list-env --json` provides the same data as JSON.
+Use `config unset-env POSTGRES_PASSWORD` to remove a saved variable.
+
+The file lives under `$XDG_CONFIG_HOME/devcapsule/environments/` (normally
+`~/.config/devcapsule/environments/`), with the same project and checkout
+identity as its record. It has owner-only permissions and is outside Git.
+Each registered checkout has its own file. DevCapsule passes it to Docker
+automatically; you do not need to remember its location or run `config resolve`.
+The Docker client reads it locally, including with a remote daemon. The
+file itself is not mounted into the capsule.
+
+Values are literal single-line text: spaces, quotes, dollar signs and equals
+signs are preserved, and an empty value is allowed. There is no shell expansion.
+Docker's explicit `--env` options, including variables set by DevCapsule,
+take precedence over this file. A raw `--env-file` supplied after `run --`
+is applied after the managed file. Existing component secret bindings still
+require their declared variables to be exported on the launcher host.
+
+Changes apply to new containers created by `project run`. Restarting an
+existing container retains its original environment. Removing a container
+keeps the saved file; changing or rolling back a version set does not change
+its values. New checkout registrations do not copy credentials automatically.
+
+Storage is plaintext with restricted permissions. The application and agents
+inside the capsule are trusted with the environment. DevCapsule keeps these
+saved values out of configuration reports, snapshots and launch arguments.
+Raw inline Docker arguments are still printed: do not put secrets there.

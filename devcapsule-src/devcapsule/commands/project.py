@@ -14,6 +14,8 @@ embedded resolution matrix.
 from __future__ import annotations
 
 import argparse
+import getpass
+import warnings
 from dataclasses import dataclass, replace
 import json
 from pathlib import Path
@@ -49,6 +51,9 @@ from devcapsule import version_sets
 from devcapsule import runtime_configuration
 from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError
+from devcapsule.configuration.environment import (
+    environment_path, environment_docker_args, read_environment, update_environment, validate_name,
+)
 from devcapsule.configuration.history import (
     record_known_good_configuration,
 )
@@ -766,6 +771,81 @@ class ConfigSetCommand(Command):
         return 0
 
 
+def _managed_environment_path(context: object | None) -> Path:
+    root, manifest = manifest_for(_project_context(context).start_path())
+    record = CheckoutRecord(manifest, root)
+    if not record.input_path.is_file():
+        raise ProjectConfigurationError("Initialize or register this checkout before setting its environment.")
+    return environment_path(record.input_path)
+
+
+class ConfigSetEnvCommand(Command):
+    name = "set-env"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Save a checkout environment variable; omit VALUE for a hidden terminal prompt."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("key", metavar="KEY")
+        parser.add_argument("value", metavar="VALUE", nargs="?")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        path = _managed_environment_path(context)
+        validate_name(arguments.key)
+        value = arguments.value
+        if value is None:
+            if not sys.stdin.isatty():
+                raise ProjectConfigurationError("A terminal is required for the hidden value prompt.")
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error", getpass.GetPassWarning)
+                    value = getpass.getpass("Value: ")
+            except (getpass.GetPassWarning, EOFError):
+                raise ProjectConfigurationError("Cannot read a hidden value from this terminal.") from None
+        update_environment(path, arguments.key, value)
+        print(f"Saved {arguments.key}. Run 'devcapsule project run' to use it in a new container.")
+        return 0
+
+
+class ConfigUnsetEnvCommand(Command):
+    name = "unset-env"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Remove a saved checkout environment variable."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("key", metavar="KEY")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        update_environment(_managed_environment_path(context), arguments.key, None)
+        print(f"Removed {arguments.key} from the saved environment. Existing containers are unchanged.")
+        return 0
+
+
+class ConfigListEnvCommand(Command):
+    name = "list-env"
+    # Host-owned file is deliberately not mounted into the running capsule.
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "List saved environment names on the launcher host, never their values."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        path = _managed_environment_path(context)
+        names = sorted(read_environment(path))
+        if arguments.as_json:
+            print(json.dumps({"path": str(path), "names": names}, sort_keys=True))
+        else:
+            print(f"Environment file: {path}")
+            print("\n".join(names) if names else "No saved environment variables.")
+        return 0
+
+
 class ConfigBindCommand(Command):
     name = "bind"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
@@ -1139,6 +1219,9 @@ class ConfigGroup(Group):
             ConfigResolveCommand.name: ConfigResolveCommand,
             ConfigNeedCommand.name: ConfigNeedCommand,
             ConfigSetCommand.name: ConfigSetCommand,
+            ConfigSetEnvCommand.name: ConfigSetEnvCommand,
+            ConfigUnsetEnvCommand.name: ConfigUnsetEnvCommand,
+            ConfigListEnvCommand.name: ConfigListEnvCommand,
             ConfigBindCommand.name: ConfigBindCommand,
             ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
             ConfigApproveCommand.name: ConfigApproveCommand,
@@ -1420,6 +1503,7 @@ class ProjectRunCommand(Command):
         root, manifest, lock = selected.root, selected.manifest, selected.lock
         input_path, output_path = selected.checkout_path, selected.resolution_path
         checkout, resolved = selected.checkout, selected.resolution
+        managed_environment_args = environment_docker_args(input_path)
         # Capture before launching: a later session completion cannot certify
         # edits or a successor selection made while this session was running.
         captured_files = {input_path.name: input_path.read_bytes(), output_path.name: output_path.read_bytes()}
@@ -1593,7 +1677,7 @@ class ProjectRunCommand(Command):
                 ),
                 additional_environment=recursive_environment,
                 secret_environment=tuple(sorted(secret_environment.values())),
-                extra_docker_args=["--pull=never", *docker_options],
+                extra_docker_args=["--pull=never", *managed_environment_args, *docker_options],
                 project_state=None,
                 enable_host_browser=selected_host_browser,
                 display_transport=display_transport,

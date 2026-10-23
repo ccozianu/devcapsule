@@ -22,6 +22,24 @@ Own defects no open workstream covers and drive maintenance releases. This
 reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
+## Checkout environment slice — 2026-10-23
+
+Owner-directed work on `ws-maintenance/0.3.0-checkout-env`, from release tip
+`fb1970e`, targeting `release-0.3.0`. The owner explicitly authorized leaving
+the completed e2e_videos branch. The original checkout's IDE changes remain
+untouched. Accepted [work order](../../work-orders/2026-10-23-checkout-environment.md).
+Implementation ready for the Claude Fable 5.1 PR review loop. The full gate
+passed: 1732 unit tests, 36 deselected, one xfail and one xpass; 17 packaging
+tests; docs contract 188 pages; 293 webconsole tests. Follow-up focused checks
+passed (14 environment tests; 20 combined checks before the added CR case).
+A Docker probe against the existing recipe-11 base passed literal values,
+empty values and explicit --env precedence, using fake credentials only.
+No full IDE launch or real service credentials were used.
+Review brief: [implementation review](evidence/2026-10-23-checkout-env/review-brief.md).
+Next: open the PR, run the reviewer, assess its diff and repeat the gate. No merge from main is planned: this is a release slice based on
+the current release tip, whose workflow and approval changes are already
+present. The release branch is not synchronized or rewritten.
+
 ## Current State
 
 **2026-10-22, night: PR #250's review loop is settled; the slice awaits the
