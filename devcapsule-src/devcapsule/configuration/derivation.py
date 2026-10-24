@@ -140,7 +140,6 @@ class CheckoutState:
             base_display=base.contract.display if check_display and base is not None else None,
         )
         return Listing(listing.rows + tuple(deferred_rows(self.input_path, self.root)), listing.notes)
-        return Listing(listing.rows + tuple(deferred_rows(self.input_path, self.root)), listing.notes)
 
     def with_selection(self, selection: Selection, *, allow_unverified: bool = False,
                        checkout: Mapping[str, Any] | None = None) -> dict[str, Any]:

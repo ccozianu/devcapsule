@@ -7,24 +7,27 @@ writes the listing it computed at launch into the same directory, so
 inspection inside the capsule prints the truth with its time.
 
 The files are JSON and complete when visible: each is written as a
-temporary name in the directory, then renamed.
+temporary name in the directory, then published by rename (launcher) or
+exclusive hard link (console).
 
 - ``listing.json``, launcher to capsule, once, at launch: ``{"format": 1,
   "at": <ISO time>, "listing": <the config show --json document>}``.
-- ``NNNNNN-VERB.request.json``, console to launcher: ``{"format": 1,
+- ``NNNNNN-VERB-UUID.request.json``, console to launcher: ``{"format": 1,
   "requested": <ISO time>, "arguments": [<config tokens>]}``. The console
-  numbers the names; the launcher handles them in name order.
-- ``NNNNNN-VERB.result.json``, launcher to console, beside the request:
+  numbers the names and adds a random UUID; the launcher handles them in
+  name order. Legacy names without a UUID remain readable.
+- ``NNNNNN-VERB-UUID.result.json``, launcher to console, beside the request:
   ``{"format": 1, "status": "recorded" | "refused" | "deferred", "text":
   <what happened>, "at": <ISO time>}``.
 
 What the launcher does with a request depends on its verb. A verb that
 keeps the checkout's own choices, or narrows what the next launch reaches,
 is applied at once with the command's own validation: ``ide``, ``agent``,
-``tool``, ``set``, ``deny``, ``forget``, ``env set|unset``, ``unbind``,
+``tool``, ``set``, ``deny``, literal ``env set``, ``env unset``, ``unbind``,
 ``trust withdraw``, ``docker-args clear``. A verb that widens what the
 next launch may reach is deferred: ``authorize``, ``trust accept``,
-``bind``, ``docker-args set``. Anything running inside the capsule can
+``bind``, ``forget``, ``env set --from-host``, ``docker-args set``. Forgetting
+a vendor-download denial can restore workstation trust. Anything running inside the capsule can
 write to the mounted directory, not only the console, so a widening is
 never taken from it unconfirmed: the launcher keeps it as the console's
 request beside the checkout record, and the user confirms or discards it
@@ -47,6 +50,7 @@ from pathlib import Path
 import re
 import shlex
 import stat
+import tempfile
 from typing import Any, Mapping, Sequence
 
 from .file_formats import ProjectConfigurationError
@@ -59,15 +63,19 @@ CHANNEL_FORMAT = 1
 LISTING_FILE = "listing.json"
 REQUEST_SUFFIX = ".request.json"
 RESULT_SUFFIX = ".result.json"
-REQUEST_ID = re.compile(r"[0-9]{6}-[a-z][a-z0-9-]{0,39}")
+REQUEST_ID = re.compile(r"[0-9]{6}-[a-z][a-z0-9-]{0,39}(?:-[0-9a-f]{32})?")
 MAXIMUM_DOCUMENT_BYTES = 256 * 1024
 MAXIMUM_TOKENS = 64
 MAXIMUM_TOKEN_LENGTH = 4096
 
-APPLIED_VERBS = {"ide", "agent", "tool", "set", "deny", "forget", "unbind"}
+APPLIED_VERBS = {"ide", "agent", "tool", "set", "deny", "unbind"}
 APPLIED_SUBVERBS = {("env", "set"), ("env", "unset"), ("trust", "withdraw"), ("docker-args", "clear")}
-DEFERRED_VERBS = {"authorize", "bind"}
+DEFERRED_VERBS = {"authorize", "bind", "forget"}
 DEFERRED_SUBVERBS = {("trust", "accept"), ("docker-args", "set")}
+SECURE_AUTHORIZATIONS = {
+    "network": {"bridge", "none"}, "docker-daemon": {"none"},
+    "development-sudo": {"false", "none"}, "host-browser": {"false", "none"}, "host-x11": {"false", "none"},
+}
 READ_ONLY_VERBS = {"show", "list", "check", "console"}
 READ_ONLY_SUBVERBS = {("env", "list"), ("trust", "list"), ("docker-args", "list")}
 
@@ -84,8 +92,18 @@ def classify(arguments: Sequence[str]) -> tuple[Disposition, str]:
     """The disposition of the config tokens ``arguments`` and, for a refusal, the reason."""
     if not arguments:
         return Disposition.REFUSE, "an empty request names no command"
+    if (len(arguments) == 3 and arguments[0] == "authorize"
+            and arguments[2] in SECURE_AUTHORIZATIONS.get(arguments[1], set())):
+        return Disposition.APPLY, ""
     verb = arguments[0]
     pair = (verb, arguments[1]) if len(arguments) > 1 else (verb, "")
+    # Removing a denial can expose a workstation grant. Host environment
+    # bindings can expose secrets. Only a literal env value is safe here;
+    # argparse also accepts abbreviated options such as --from-h.
+    if pair == ("env", "set") and not (
+        len(arguments) == 4 and all(not token.startswith("-") for token in arguments[2:])
+    ):
+        return Disposition.DEFER, ""
     if verb in APPLIED_VERBS or pair in APPLIED_SUBVERBS:
         return Disposition.APPLY, ""
     if verb in DEFERRED_VERBS or pair in DEFERRED_SUBVERBS:
@@ -114,6 +132,8 @@ def listing_document(listing: Mapping[str, Any], at: str | None = None) -> dict[
 
 def result_document(status: str, text: str, at: str | None = None) -> dict[str, Any]:
     assert status in {"recorded", "refused", "deferred"}
+    if len(text) > 16384:
+        text = text[:16384] + "\n[Output truncated; inspect configuration on the host.]"
     return {"format": CHANNEL_FORMAT, "status": status, "text": text, "at": at or now()}
 
 
@@ -132,13 +152,26 @@ def parse_request(document: Any, name: str = "request") -> list[str]:
     """The config tokens of a request document, validated; the reason when they are not."""
     if not isinstance(document, dict) or document.get("format") != CHANNEL_FORMAT:
         raise ProjectConfigurationError(f"{name}: not a format-{CHANNEL_FORMAT} request document.")
+    requested = document.get("requested")
+    if requested is not None:
+        try:
+            if not isinstance(requested, str) or len(requested) > 64:
+                raise ValueError("not a time string")
+            if datetime.fromisoformat(requested).tzinfo is None:
+                raise ValueError("missing time zone")
+        except ValueError as exc:
+            raise ProjectConfigurationError(f"{name}: 'requested' must be an ISO time with a time zone.") from exc
     arguments = document.get("arguments")
     if not isinstance(arguments, list) or not arguments or len(arguments) > MAXIMUM_TOKENS:
         raise ProjectConfigurationError(f"{name}: 'arguments' must be a list of 1 to {MAXIMUM_TOKENS} tokens.")
     for token in arguments:
         if not isinstance(token, str) or not token or len(token) > MAXIMUM_TOKEN_LENGTH:
             raise ProjectConfigurationError(f"{name}: every token is a non-empty string of at most {MAXIMUM_TOKEN_LENGTH} characters.")
-        if "\0" in token or "\n" in token or "\r" in token:
+        try:
+            token.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise ProjectConfigurationError(f"{name}: every token must contain valid Unicode text.") from exc
+        if any(ord(character) < 0x20 for character in token):
             raise ProjectConfigurationError(f"{name}: a token holds no control characters.")
         if token == "--path":
             raise ProjectConfigurationError(f"{name}: the launcher names the project; '--path' is not a request's to give.")
@@ -214,9 +247,9 @@ def read_document(path: Path, limit: int = MAXIMUM_DOCUMENT_BYTES) -> Any:
 
 def write_complete(path: Path, document: Mapping[str, Any]) -> Path:
     """Write ``document`` so that ``path`` is only ever seen complete: a temporary name, then one rename."""
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    descriptor, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(name)
     data = json.dumps(dict(document), indent=2, sort_keys=True) + "\n"
-    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(data)
