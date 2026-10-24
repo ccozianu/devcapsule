@@ -17,19 +17,21 @@ version of that product in every project here.
 ## At launch
 
 ```text
-Trust Anthropic to supply Claude Code from downloads.claude.ai, verified by the SHA-256 the launcher pins, under https://www.anthropic.com/legal/commercial-terms, every version, for every project on this computer.
-Accept, once for this computer? [y/N]:
+Trust Anthropic to supply Claude Code from https://downloads.claude.ai, verified by the SHA-256 the launcher pins. Accept the terms at https://www.anthropic.com/legal/commercial-terms. This covers every version and every project for this OS user account on this computer. Anyone sharing this account uses this acceptance. Changed terms or a different channel require another decision.
+Accept for this user account on this computer? [y/N]:
 ```
 
-**y** records the channel in your computer's trust record, with your other
-answers, and the launch continues. **N** stops the launch; nothing is
-written, and the command that accepts later is printed. Without a terminal,
+**y** stages the acceptance with your other answers; it is saved in your
+account's trust record when every required answer is complete, and the
+launch continues. **N** stops the launch; nothing is written, and the
+command that accepts later is printed. Without a terminal,
 in a script or an agent's session, the launcher prints the statement and the
 command and stops with status 3; it never accepts on your behalf.
 
 The Antigravity CLI's origin is a bare Cloud Run host rather than a
-Google-owned domain; the statement says so, because trusting that channel
-is trusting that deployment.
+Google-owned domain; the statement says so: the trust applies to that
+deployment and its publishing credentials, and the URL alone does not prove
+Google owns it.
 
 ## From the command line
 
@@ -40,19 +42,23 @@ is trusting that deployment.
 ~/.local/bin/devcapsule project run --trust devcapsule-base
 ```
 
-`trust list` names the channels this project's software comes through,
-`devcapsule-base`, `claude-code`, `antigravity-cli`, and whether this computer
-trusts each; `--json` adds the record's path. `accept` and `--trust` record
+`trust list` names the channels this checkout's software comes through,
+`devcapsule-base`, `claude-code`, `antigravity-cli`, with their origins and
+integrity method, and whether this account trusts each; a channel accepted
+under other origins or terms is listed as not covered, with what was
+accepted; `--json` adds the record's path. `accept` and `--trust` record
 one; `withdraw` removes it, and the next launch that needs the channel asks
 again. The record is `trust.toml` under your DevCapsule configuration
 directory, yours and never the project's.
 
 ## What an acceptance is, and is not
 
-- It is your trust in the vendor's channel: that vendor, those origins, those
-  terms. A new origin or changed terms in a later lock is a new question.
-  Every download is still checked against the lock's checksum.
-- It is per computer, for every project and version. A checkout can still
+- It is your trust in the vendor's channel: that vendor, those origins, that
+  integrity method, those terms. A new origin or changed terms in a later
+  lock is a new question; accepting again keeps the origins you accepted
+  before. Every download is still checked against the lock's checksum.
+- It is per OS user account on this computer, for every project and version;
+  anyone sharing the account shares the trust. A checkout can still
   refuse a vendor's download, `config authorize claude-code-download false`, and the
   denial wins over the trust for that checkout.
 - It grants no host access, selects no base and chooses no agent; those are
