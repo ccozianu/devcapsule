@@ -316,9 +316,7 @@ mode = "single-stream"
 
 ## Part 3: The new experience, for the user
 
-This is a proposed experience, conditional on Part 5. The examples are not
-current commands. Review notes identify conflicts that still need an owner
-answer; they do not choose an alternative.
+This is the proposed experience, conditional on the decisions in Part 5.
 
 ### 3.1 A project that already has DevCapsule
 
@@ -339,17 +337,14 @@ For `ccozianu/ai-learning-bootstrap` as committed today, this is what you
 |---|---|---|
 | Which IDE | The project left it to each developer, and no secure default exists for an IDE | the prompt, or `--ide frontend-ide` |
 
-This assumes that the workstation already has D-0011's DevCapsule channel
-acceptance. D-0011 offers that trust once; it does not equate installation
-with a written acceptance record. A local image or a different channel
-still asks. The timing of the first acceptance is open in Part 5 item 21.
+After you accept DevCapsule's channel on this workstation, its pinned base
+asks nothing further. A local image or a different channel still asks.
 Host access asks nothing: the project recommends none,
 so the capsule gets bridge networking, no Docker socket, no sudo, the
 contained desktop (D-0012). If the project later recommends an IDE, this
 list is empty.
 
-With the hypothetical manifest in section 3.6, the list changes. Its
-required inputs remain proposals, subject to Part 5 item 9:
+With the manifest in section 3.6, the list changes:
 
 | You must specify | Why | How |
 |---|---|---|
@@ -381,8 +376,8 @@ acceptance per vendor product per user on the workstation. A changed terms
 URL or departure from the channel asks again; a version change alone does
 not. Vendor sign-in happens inside the capsule, with the vendor.
 
-Illustrative first `run` for the committed manifest, after workstation
-channel acceptance. This example does not use section 3.6's proposed inputs:
+Your first `run` for the committed manifest, after workstation channel
+acceptance:
 
 ```text
 Project: AI Learning (creator https://github.com/ccozianu; slug ai-learning)
@@ -404,12 +399,10 @@ Materializing frontend-ide on ubuntu-24.04@9 …
 Desktop: http://127.0.0.1:…/vnc.html?…
 ```
 
-The IDE versions above are the pins in `resolution_matrix.py:707–768`.
 The bootstrap repository is `https://github.com/ccozianu/ai-learning-bootstrap`;
 the manifest's creator and slug are an identity, not that repository URL.
-Its pinned base `ubuntu-24.04@9` has no web console, as the 0.3.0 changelog's
-candidate-1 correction records. The proposed console experience needs a
-console-capable base; this transcript cannot promise one on recipe 9.
+Its pinned base `ubuntu-24.04@9` has no web console. To use the console,
+you need a console-capable base.
 
 Later launches print the first block in one line each and no question,
 provided the inputs and required answers have not changed.
@@ -452,8 +445,7 @@ difference and asks only for what is new:
 - a new required tool or a new base: shown; no question, because both are
   DevCapsule-validated and published through the trusted channel;
 - a new version of vendor software you approved before: the one-line list
-  and one `y` in today's per-version approval flow, **not** under D-0011
-  for an unchanged trusted channel. Part 5 item 3 must resolve this conflict;
+  and one `y`;
 - a new or changed host-access recommendation: the question, with the
   project's justification, offering this run, this checkout, or deny;
 - an optional tool your launcher does not know: a warning naming it, and
@@ -478,7 +470,7 @@ devcapsule: the first launch of this checkout needs answers:
 Nothing was written. Answer on the command line or in a terminal.
 ```
 
-| Provisional exit code (next-pass scope) | Meaning |
+| Exit code | Meaning |
 |---|---|
 | 0 | the session ended normally |
 | 1 | the launch or session failed; the log paths are printed |
@@ -486,8 +478,6 @@ Nothing was written. Answer on the command line or in a terminal.
 | 3 | a decision is pending; the message names each with its flag |
 | 130 | interrupted from the terminal |
 
-The following flag-lifetime proposal conflicts with one meaning per flag
-and D-0001's run-once command-line layer; Part 5 item 12 asks the owner.
 Flags that answer a pending question are recorded, exactly as the prompt
 would record them. Flags that override an answer already recorded apply to
 this run only and say so on stderr. `--print-command` prints the plan and
@@ -520,7 +510,7 @@ devcapsule project config offer env SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD 
 devcapsule project config recommend memory 6G --because "the test suite builds a 4 GB index"
 ```
 
-Illustrative output excerpt (not the complete result of those commands):
+which writes, in shape:
 
 ```toml
 devcapsule-schema-version = 2
@@ -546,24 +536,17 @@ ide = "frontend-ide"
 memory = "6G"            # the test suite builds a 4 GB index
 ```
 
-The shape and properties are proposals for Part 5. The `psql` use and 6G
-recommendation above are examples, not established bootstrap requirements.
-The bootstrap README requires SMTP for password sign-in; it says only that
-installation, tests and schema generation send no email. Whether SMTP is
-optional for the intended development experience needs an owner answer
-under item 9. Keys are bare where TOML allows it. Every requirement and recommendation carries the owner's
-reason, and that reason is what the developer reads when asked. Nothing
-derived is in the file: no digest, no matrix version, no mount path, no
+Keys are bare where TOML allows it. Every requirement and recommendation
+carries the owner's reason, and that reason is what the developer reads when
+asked. Nothing derived is in the file: no digest, no matrix version, no mount path, no
 `[workflow]` table; what the launcher derives goes to the lock, and the
-lock is generated by the launcher and reviewed with the project. `init` creates the manifest and lock and the
-owner's own checkout, and ends with the owner's own first `run` ready.
-Successful legacy `init --need` does that today; policy `init --required`
-does not (item 22). A recommendation never grants anything; it names the value
-the next collaborator is asked about, with the reason they will read. One
+lock is generated by the launcher and committed with the project. `init`
+creates the manifest and lock and the owner's own checkout, and ends with
+the owner's own first `run` ready. A recommendation never grants anything;
+it names the value the next collaborator is asked about, with the reason
+they will read. One
 manifest form remains; `need` and `required`/`optional` are read and
-rewritten on the owner's next edit. That migration proposal must be resolved
-against R-CONFIG-001 in Part 5 item 19; it is not a settled writer rule.
-The workflow declaration's location is separately open in item 18.
+rewritten on the owner's next edit.
 
 An owner who asks for host access supplies a justification, as today
 through `init --authorize NODE VALUE JUSTIFICATION`. The proposed spelling is:
@@ -576,17 +559,9 @@ and an owner who wants the opposite enforced can say so: `config forbid
 docker-daemon --because "the owner supplies the database"` makes the
 `docker-daemon` row read `forbidden by the project` instead of a question.
 That controls host-daemon access; it does not by itself enforce "no PostgreSQL
-server". Part 5 item 10 distinguishes those scopes.
-Whether a project may forbid a local choice is for the owner to decide,
-Part 5.
+server".
 
 ### 3.7 The command tree, config and run only
-
-The tree is a proposal. It omits the `--env NAME` used in section 3.1, a
-workstation-default editing command, an SDK-major authoring command, and a
-reset for an ordinary value. It also leaves `codex` versus `codex-agent`
-and the consumer's `[JUSTIFICATION]` unsettled. Part 5 items 5, 6, 13 and 20
-ask for those decisions before this becomes a specification.
 
 ```text
 devcapsule project run [--ide NAME] [--agent NAME]... [--memory SIZE] [--authorize NODE VALUE]...
@@ -674,9 +649,9 @@ conflicts with a ruling or an accepted record, the question identifies it.
 3. **Must the new CLI release include D-0011 and D-0012?** Require both
    implementations before shipping, or stage the CLI with today's consent
    questions explicitly retained? Including D-0011 removes routine per-version
-   approvals within an accepted channel. Part 3.3's current one-`y` behavior
-   cannot also remain the ordinary rule. Changed terms and channel departures
-   still ask. D-0012 preserves recorded checkout answers and limits new host
+   approvals within an accepted channel. Part 3.3 proposes today's per-version
+   one-`y` behavior; it cannot also remain the ordinary rule under D-0011.
+   Changed terms and channel departures still ask. D-0012 preserves recorded checkout answers and limits new host
    questions; neither record currently names a release.
 4. **Should unanswered host X11 silently use the contained desktop?** Keep
    D-0012's existing explicit-choice behavior, including today's notice, or
@@ -685,20 +660,26 @@ conflicts with a ruling or an accepted record, the question identifies it.
 5. **Which command naming scheme should the specification use?** Adopt the
    proposed `ide`, `agent add|remove`, `tool omit|restore` and
    `require|offer|recommend` families, or retain a unified capability command
-   with explicit project and checkout scopes? The chosen scheme must also
-   place SDK-major editing and use one identifier for each tool. Today the
-   capability is `codex-agent`; `codex` is its component ID. Part 3 mixes them.
+   with explicit project and checkout scopes? The tree omits SDK-major
+   authoring. The chosen scheme must place it and use one identifier for each
+   tool. Today the capability is `codex-agent`; `codex` is its component ID.
+   Part 3 mixes them and leaves the consumer's `[JUSTIFICATION]` unsettled. The IDE versions in section 3.1 are the pins
+   in `resolution_matrix.py:707–768`.
 6. **Which resource values should the launcher own without project declarations?**
    Limit the initial set to memory, CPUs, shared memory and container name,
    or include other named values? State the additional names if selected.
    The specification must show how to edit their workstation defaults as
    well as checkout overrides; Part 3 currently shows only checkout editing.
+   Section 3.6's 6G recommendation and index-size reason are illustrative,
+   not established bootstrap requirements.
 7. **Which host process should accept the console's configuration changes?**
    Use the attached launcher as proposed, or a separate launcher-side service?
    D-0010's runtime refinement permits read-only introspection today.
    Principle 5 requires console decisions; the missing decision concerns their
    host-side writer. Either option must validate next-launch changes and
    preserve the user's host-access decisions. First-launch console setup remains outside this work order.
+   The console experience needs a console-capable base. The 0.3.0 changelog's
+   candidate-1 correction confirms that recipe 9 has no console.
 8. **Which release should carry the implementation?** Name a release after
    0.3.0 now, or leave it unassigned until the specification is accepted?
 9. **Should projects declare application environment requirements?** Adopt
@@ -708,8 +689,12 @@ conflicts with a ruling or an accepted record, the question identifies it.
    project secret declarations are the extension. A later specification must
    distinguish launching a workspace from running every application feature.
    The bootstrap can preview its UI without credentials, while password
-   sign-in needs SMTP. Its seven-variable example is not a complete application
-   contract. Schema sequencing is a separate question in item 19.
+   sign-in needs SMTP. Its README says only that installation, tests and
+   schema generation send no email. Whether SMTP is optional for the intended
+   development experience needs an owner answer. The seven-variable example
+   is not a complete application contract. The `psql` use in section 3.6 is
+   illustrative, not an established bootstrap requirement. Schema sequencing
+   is a separate question in item 19.
 10. **May a project forbid a personal host-access choice?** Allow an explicit
     project prohibition on a curated node, or retain principle 4's rule that
     host access remains personal? Denying `docker-daemon` does not enforce
@@ -719,12 +704,14 @@ conflicts with a ruling or an accepted record, the question identifies it.
     Require bare keys where valid and preserved descriptions and reasons, or
     retain the current serializer and improve explanatory listings instead?
     This is a writer-presentation choice. It does not decide schema migration
-    or relocation of the workflow declaration.
+    or relocation of the workflow declaration. The lock remains generated by
+    the launcher and reviewed with the project.
 12. **What lifetime should a `run` flag have?** Keep every override run-once,
     with an explicit save mechanism, or persist answers to pending questions
     while treating overrides of recorded answers as run-once? Part 3.4 proposes
-    the latter. It gives the same flag two effects based on hidden state and
-    departs from D-0001 section 1 and the V1 design's run-once carriers.
+    the latter. It gives the same flag two effects based on hidden state.
+    This conflicts with one meaning per flag and departs from D-0001 section 1
+    and the V1 design's run-once carriers.
 13. **What should resetting an ordinary value mean?** Follow the current
     project recommendation and workstation fallback dynamically, or copy the
     current effective default into the checkout as a fixed answer? The tree
@@ -740,6 +727,8 @@ conflicts with a ruling or an accepted record, the question identifies it.
     initialization, or refuse with the exact owner-side initialization command?
     Today it refuses and names `project init`. Define whether the one-command
     promise applies only to repositories that already carry DevCapsule.
+    Successful legacy `init --need` leaves the owner ready to run today;
+    policy `init --required` does not (Part 1 item 22).
 16. **How should in-capsule inspection report facts it cannot observe on the host?**
     Show recorded next-launch inputs with an explicit unknown or stale state,
     or obtain a fresh assessment through the launcher? Today runtime inspection
@@ -755,25 +744,30 @@ conflicts with a ruling or an accepted record, the question identifies it.
     manifest, or define a separate authored declaration and a coordinated
     migration? Its mode is a project choice, not a fact derivable from the
     runtime lock. WORKFLOW.md topic 4.1 currently requires the manifest table.
-    Part 4 cannot remove it without settling its replacement and readers.
+    Sections 3.6 and 4 cannot remove it without settling its replacement
+    and readers.
 19. **When should the new manifest vocabulary receive its schema version?**
     Extend the planned 0.3.0 schema-2 change before it ships, or assign this
     later redesign a later version? The changelog schedules schema 2 for the
     required/optional vocabulary, while this work order excludes 0.3.0.
     A writer must not silently rewrite every older representation on an
-    unrelated edit. R-CONFIG-001 requires compatible output and preservation
-    of unrelated and unknown optional declarations. Existing schema-1 readers
+    unrelated edit. Section 3.6 proposes rewriting on the owner's next edit;
+    that is not a settled writer rule. R-CONFIG-001 requires compatible output
+    and preservation of unrelated and unknown optional declarations. Existing schema-1 readers
     reject schema 2 (`configuration/file_formats.py:60–74`).
 20. **Does `--env NAME` save a value or bind a source?** Read and privately save
     the shell's current value, or record the variable name and retrieve its
     current value on each launch? Part 3.1 implies the former. Today's secret
     `bind ... host-environment:NAME` means the latter. The specification must
     state missing-source behavior and reflect the chosen spelling in the tree.
+    Section 3.1 uses `--env NAME`, but section 3.7 omits it.
 21. **Where should the first DevCapsule channel acceptance occur?** Offer it
     during launcher setup, or at the first launch that needs the channel?
     D-0011 requires an explicit workstation trust record and names the trusted
     origin and integrity method. Installation alone does not establish that
-    the record exists. Part 3.1 currently assumes it does.
+    the record exists. Part 3.1 assumes that acceptance has already occurred.
+    D-0011 offers that trust once; a local image or a different channel
+    still asks.
 22. **Should configuration inspection have any write side effects?** Make
     `config show` and `config check` strictly read-only even before registration,
     or allow disclosed creation of local records? Item 23 reproduces today's
