@@ -561,7 +561,7 @@ def test_init_without_an_ide_leaves_the_checkout_waiting_for_one(tmp_path: Path,
     assert cli.main([*prefix, "--ide", "python-ide"]) != 0  # no creator
     assert cli.main([*prefix, "--require", "python", "--creator", "mailto:owner@example.test"]) == 0
     out = capsys.readouterr().out
-    assert "no IDE and no agent selected yet" in out and "Choose your IDE" in out
+    assert "no IDE or personal capability selected yet" in out and "Choose your IDE" in out
     assert commands.check(root).startswith("Configuration contract valid")
     from devcapsule.configuration.operations import InitializeRequest, initialize_project
     with pytest.raises(ProjectConfigurationError, match="does not exist"):
