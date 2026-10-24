@@ -368,7 +368,18 @@ The loop, topic 9.11: the slice is the document itself, PRn on
 `ws-project-management/cli-ux-work-order` against `main`; the brief and
 any round brief are under
 [`evidence/2026-10-24-cli-ux-work-order/`](evidence/2026-10-24-cli-ux-work-order/).
-Rounds and outcome are recorded here as they happen.
+Rounds and outcome: PR258 is #258; the Codex gpt-6-astra pair opened
+PR258.1 as #259 at `bc3bf9b`, reproducing items 1 to 23 with 67 CLI
+invocations and no container. Its findings held: Node was declarable with
+`capabilities --required node` and the draft said the opposite; the lock
+carries no workflow table; the bootstrap writer uses bare keys; the
+transcript's IDE pins and the console on recipe 9 were wrong; two further
+first-day gaps, a policy `init` that leaves the owner unable to run and a
+`config list` that writes a placeholder; Part 5 grown from eleven to
+twenty-four questions, item 24 catching a conflict between section 3.2 and
+principle 1. One round, on the review's notes interleaved in Part 3, which
+the owner had asked to be written to the user; moved into Part 5 at
+`30ecdca`. Accepted and merged at `eab9ed6`. PR258 awaits the owner.
 
 ## Open Threads
 
