@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-24. Stage: **candidate 3 in preparation, by the owner's direction of 2026-10-24: it carries software approvals at launch and the saved Docker arguments, so development scenarios with environment variables and GPUs can be tested on a downloaded candidate; the pre-candidate pull request to `main` awaits the owner's merge, then the tag**.
+Updated: 2026-10-24. Stage: **candidate 3 published and verified as downloaded; it carries software approvals at launch, the saved Docker arguments and the regenerated lock; the owner's test of the saved Docker arguments and the approvals prompt on the download next**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -302,7 +302,22 @@ replacement.
   records' verification: the IDE smoke on a fresh project, the interrupted
   launch, the quiet terminal.
 
-### RC3 — in preparation, 2026-10-24
+### RC3 — tagged 2026-10-24
+
+- Tag `v0.3.0-rc3` on `a22a21585f353c269c566686fe348e99959a91cd`, the release
+  branch's tip at the pre-candidate merge (PR #257 from the throwaway copy
+  `4PR-4-release-0.3.0`, merged by the owner at `cf760b8`); the record
+  commits after it on the branch carry no source.
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc3`.
+- Backend run [40052369307](https://github.com/ccozianu/devcapsule/actions/runs/40052369307)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc3)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc3`:
+  the checksum file verifies the executable, SHA-256
+  `be739875ac75da0188f1330ebc6ca25805f2fb0257650ed986f2e9f7212c39bb`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; `devcapsule version` reports `0.3.0rc3` at `a22a215…`.
 
 - Carries, beyond rc2: software approvals at launch, the one y/n for new
   versions of software approved before and `project config approve`
@@ -314,11 +329,14 @@ replacement.
   Claude Code); the shared lock regenerated on matrix embedded-27, Codex
   0.163.0, Claude Code 2.1.302, Antigravity CLI 1.4.2 (`0c1a555`). Each
   slice was gated in full on its merged branch.
-- Full gate on the release tip before the pre-candidate merge: recorded
-  in the status file with the tag.
-- The pre-candidate merge: `4PR-4-release-0.3.0`, the throwaway copy with
-  the one commit keeping `main`'s version files, as PR #249 did for rc2;
-  the owner merges; the tag goes on the release branch's tip at the merge.
+- Full gate on the release tip before the pre-candidate merge: mypy clean
+  over 224 files, 1769 unit tests passed, 36 deselected, 2 xfailed,
+  packaging integration 17 passed, the documentation contract 188 pages,
+  the web console clean with its tests passed; posted on PR #257.
+- Next: the owner's test of the saved Docker arguments and of the
+  approvals prompt on the download; provider acceptance of the new agent
+  pins, which this candidate's lock makes possible; the network node's
+  check on a fresh project, still open from rc2.
 - Not in rc3: forced configuration, the diagnostics snapshot, the
   schema-version slice; see the direction of 2026-10-24 above.
 
