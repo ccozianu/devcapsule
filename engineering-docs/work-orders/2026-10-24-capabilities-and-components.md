@@ -29,8 +29,11 @@ its structure, today called the IDE. Nothing else is a kind.
 
 The reader of the manifest, the checkout record, `config show` and the
 documentation meets these words and no others: capability, component,
-required, offered, recommended, resolution, surface. The SDK major is
-gone, by the owner's ruling, not replaced.
+required, offered, recommended, resolution, surface, and a minimum
+version written on a requirement. The SDK major is gone, by the owner's
+ruling; the minimum is the owner's direction, and is not the SDK major
+under another name: it applies to every requirement alike and has no
+table.
 
 ## Part 1: The model, as agreed with the owner on 2026-10-24
 
@@ -88,7 +91,21 @@ gone, by the owner's ruling, not replaced.
    between, and it is not addressed by a replacement constraint syntax in
    this order: the owner's rule is removal, not a smaller concept. If the
    need arrives, it is designed then, against the catalog that creates it.
-10. **"No implicit coding agent" is preserved by the model, not by a
+10. **A requirement may carry a minimum version, by the owner's direction
+   of 2026-10-24.** The use case, exactly as stated: a project needs the
+   Python SDK 3.14 or newer, a capability with one provider and therefore
+   wearing the component's name; the Java SDK 21 or newer, a capability
+   that may be provided by more than one JDK; Playwright 1.21 or newer, a
+   component. All three are written the same way, in the manifest and at
+   the command line, as the name followed by `>=` and the version. One
+   relation, "or newer"; no upper bound, no exact pin, no range; the lock
+   is the exact pin. One comparator: dotted integers left to right,
+   `25.0.4+7` read as 25.0.4, `v22.23.1` as 22.23.1, prereleases
+   unsupported and said so. Every requirement may take a minimum the same
+   way, or none; there is no table, no SDK category and no name that is
+   treated differently. This is the SDK major's need met without the
+   concept.
+11. **"No implicit coding agent" is preserved by the model, not by a
    rule.** A capability the project does not offer is absent until the
    developer adds it. A project that offers `codex-agent` says so in its
    manifest, where every contributor reads it, and the contributor may
@@ -149,6 +166,23 @@ With source lines at `78a9c66`.
   documentation passages and six test files. The capabilities digest in
   `fingerprints.py` hashes the table, so its removal changes the digest a
   regenerated lock records.
+- **Nothing today lets a project say "3.14 or newer".** The only version
+  syntax is `TOOL=MAJOR`, which goes. The catalog's bases declare the
+  names they satisfy (`resolution_matrix.py:603, 642, 680`:
+  `python`, `docker-cli`, `node`, `java`, `maven`) and not the versions,
+  although the image builds them from pinned constants
+  (`images/tooling.py`: Node v22.23.1, Temurin 25.0.4+7, Maven 3.9.16)
+  and Ubuntu 24.04's Python 3.12. Resolution has no comparator.
+  `versions follow-project` and the D-0010 version-set check test
+  presence, not a minimum. `config show` and `check` have no column or
+  message for a requirement the catalog cannot meet by version. Against
+  today's catalog the use case resolves as: `python>=3.14` refused, since
+  the Ubuntu 24.04 bases supply 3.12 and no `python` component exists;
+  `java>=21` satisfied by the base's Temurin 25.0.4; `playwright>=1.21`
+  satisfied by the pinned 1.63.0. The Python refusal is the honest
+  outcome and shows how the need is met when real: a `python` component
+  delivering 3.14 becomes a second provider of the capability, with no
+  change to the manifest.
 - **The checkout record is already flat.** It stores `selected =
   ["claude-code-agent", "codex-agent", "frontend-ide"]` and `without = []`
   with no kinds; the embedded lock names the surface as
@@ -165,7 +199,8 @@ With source lines at `78a9c66`.
 
 ```sh
 devcapsule project config require cpp-compiler --because "the build"
-devcapsule project config require python
+devcapsule project config require 'python>=3.14' 'java>=21' --because "the build targets them"
+devcapsule project config require 'playwright>=1.21'
 devcapsule project config offer browser-automation --because "npm run test:ui"
 devcapsule project config offer codex-agent --because "the project's agent instructions assume it"
 devcapsule project config recommend ide frontend-ide
@@ -174,8 +209,11 @@ devcapsule project config recommend cpp-compiler clang --because "the sanitizer 
 devcapsule project config drop browser-automation
 ```
 
-`require`, `offer` and `drop` take capabilities; `tool` and `env` as
-sub-words go, `env` becoming `require env NAME` only where Part 5 keeps
+A minimum is part of the name string, in the manifest and on the command
+line, quoted at a shell because `>` redirects; `drop python` removes the
+requirement whatever its minimum; a second `require 'python>=3.15'`
+replaces the minimum. `require`, `offer` and `drop` take capabilities;
+`tool` and `env` as sub-words go, `env` becoming `require env NAME` only where Part 5 keeps
 the word. `recommend` takes either a recommendation name (`ide`, `memory`,
 `cpus`, a host access) or a capability followed by a provider; a provider
 the catalog does not list for that capability is refused before anything
@@ -183,7 +221,7 @@ is written. The manifest gains one table and loses none:
 
 ```toml
 [capabilities]
-required = ["cpp-compiler", "python"]
+required = ["cpp-compiler", "python>=3.14", "java>=21", "playwright>=1.21"]
 optional = ["browser-automation", "codex-agent"]
 
 [recommendations]
@@ -217,6 +255,17 @@ the platform can satisfy as the contract error it is today.
   declared number: the checkout's choice, else the project's recommended
   resolution, else the catalog's only or first provider. The surface is
   the capability with the surface role; exactly one is selected, as now.
+- A minimum narrows the candidates first: of a capability's providers and
+  the version the base supplies, only those at or above it remain; none
+  remaining is a refusal before any write, naming the versions that exist
+  ("no base supplies Python 3.14 or newer; the Ubuntu 24.04 bases supply
+  3.12"). The catalog therefore declares, per base, the version of each
+  capability the base supplies, from the same constants the image builds
+  with. `config show` prints the minimum beside the requirement and the
+  resolved version beside the provider; `check` reports an unmet minimum
+  as a contract error. A checkout's own version set (D-0010) must meet
+  the minimum as it must meet presence today: `run` stops with status 3
+  and names `versions follow-project --apply`.
 - The lock pins, per platform, the components of the project's required
   and offered capabilities, resolved by the project's recommendation
   where it has one, so a fresh clone resolves offline. A developer's
@@ -325,6 +374,11 @@ written file, a launch or a consent could silently change meaning.
   must still read as current for an unchanged manifest, or every adopter's
   first `run` after upgrading would report a shared edit nobody made. A
   fixture lock from the dry run proves it.
+- **A minimum refuses before it writes, and old locks still satisfy an
+  unchanged manifest.** The acceptance case is the owner's use case as
+  stated: `python>=3.14`, `java>=21`, `playwright>=1.21` in one manifest,
+  with the refusal message for Python naming 3.12, and the lock for the
+  other two pinning what the catalog supplies; a fixture proves each.
 - **No kind survives by accident.** The acceptance for the matrix slice
   is a grep: no `-agent` test, no `local_capabilities`, no
   `surface_capabilities`, no `ancillary_capabilities`, no `providers(…)[0]`
