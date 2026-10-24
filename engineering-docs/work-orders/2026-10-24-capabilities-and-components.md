@@ -24,12 +24,13 @@ components. The project requires, offers or recommends capabilities and
 may name the resolution it suggests; the developer takes or leaves what is
 offered, adds what the project did not mention, and chooses among
 providers where there is a choice. Exactly one capability per launch is
-the **session surface**, the component that opens the project and shows
-its structure, today called the IDE. Nothing else is a kind.
+the **IDE**, the component the capsule starts for the user: it opens the
+project, shows its structure, owns the container's lifetime and can make
+use of the display. Nothing else is a kind.
 
 The reader of the manifest, the checkout record, `config show` and the
 documentation meets these words and no others: capability, component,
-required, offered, recommended, resolution, surface, and a minimum
+required, offered, recommended, resolution, IDE, and a minimum
 version written on a requirement. The SDK major is gone, by the owner's
 ruling; the minimum is the owner's direction, and is not the SDK major
 under another name: it applies to every requirement alike and has no
@@ -47,7 +48,7 @@ table.
    checkout has it, and no local choice waives it (R-CONFIG-001).
    *Offered*: present unless the developer leaves it out. *Recommended*:
    a preference for a capability the developer could also do without; the
-   surface is the standing example.
+   IDE is the standing example.
 3. **The project may also recommend the resolution.** For a capability
    with several providers it may name the one it suggests, `frontend-ide`
    resolved by `codium`. A newcomer gets it without a question; a
@@ -58,21 +59,27 @@ table.
    (D-0011) or the per-checkout consent, as the base does today.
 4. **The developer speaks in the same words.** Omit an offered capability;
    add a capability the project did not mention; choose the provider of a
-   capability that has several; choose the surface capability itself when
+   capability that has several; choose the IDE capability itself when
    the project recommends none. Each is one command and then `run`. These
    are the checkout's, never the repository's, as the previous order ruled.
 5. **Every capability resolves to exactly one provider; there is no
    cardinality.** The owner struck it on 2026-10-24: nothing it would
    express is beyond the other features. "Several coding agents at once"
    is three capabilities, each present or absent. A project that wants
-   both `clang` and `g++` requires both by name. "Exactly one surface per
-   launch" is the surface role, below. Today's "one IDE, a set of agents"
+   both `clang` and `g++` requires both by name. "Exactly one IDE per
+   launch" is the IDE role, below. Today's "one IDE, a set of agents"
    is a name-suffix split and goes with it.
-6. **The surface is the one special role.** It owns the display, the
-   entry point and the container's runtime template. It is a role a
-   capability has, not a type a component is. The user-facing word stays
-   "IDE"; the owner finds it defensible, not ideal, and no better word was
-   offered.
+6. **The IDE is the one special role.** It is the component the capsule
+   starts for the user: it owns the lifetime of the container, which ends
+   when it exits; it can make use of the display, and today every IDE
+   does; the launcher gives it a log, the directories it persists and the
+   project path on its command line in the form it understands. It does
+   not own the display. It is a role a capability has, not a type a
+   component is. The command-line word stays `ide` for this order;
+   whether the role is renamed and generalized to the capsule's entry
+   point, with the display a declaration of the component, is tabled as
+   [D-0014](../decisions/product/d-0014-entry-point-generalizes-the-ide-role.md),
+   in scope for V1.
 7. **Components own their own concerns.** Channel, terms, consent,
    sign-in, seeds, managed directories, the materialization recipe. None
    of these is a property of a kind. Codex's `config.toml`, Claude Code's
@@ -139,10 +146,10 @@ With source lines at `78a9c66`.
 - **Three command families for one act.** `config ide NAME`, `config
   agent add|remove NAME` and `config tool omit|restore NAME` are three
   spellings of "this checkout selects or deselects a capability", the
-  surface role the only real difference. `run --ide` and
+  IDE role the only real difference. `run --ide` and
   `run --agent` repeat the split on the launch flags.
 - **`recommend ide frontend-ide` is two statements folded into one.** It
-  recommends the surface capability; it cannot recommend the provider.
+  recommends the IDE capability; it cannot recommend the provider.
   Since every rc4 capability has exactly one provider the loss is latent,
   but the manifest is not shaped for the second statement.
 - **Every capability has one provider, and the code assumes it.** The
@@ -187,7 +194,7 @@ With source lines at `78a9c66`.
   change to the manifest.
 - **The checkout record is already flat.** It stores `selected =
   ["claude-code-agent", "codex-agent", "frontend-ide"]` and `without = []`
-  with no kinds; the embedded lock names the surface as
+  with no kinds; the embedded lock names the IDE as
   `components.interactive-surface`. The record needs one new table for a
   chosen provider and nothing removed.
 - **Consent nodes are per component and stay.** `claude-code-download`
@@ -237,7 +244,7 @@ cpp-compiler = "clang"
 ### 3.2 For developers
 
 ```sh
-devcapsule project config ide frontend-ide                 # the surface capability; unchanged
+devcapsule project config ide frontend-ide                 # the IDE capability; unchanged
 devcapsule project config add claude-code-agent            # a capability the project did not offer
 devcapsule project config omit browser-automation          # an offered one, left out here
 devcapsule project config restore browser-automation
@@ -255,8 +262,8 @@ the platform can satisfy as the contract error it is today.
 
 - Derivation selects, for every capability in play, one provider: the
   checkout's choice, else the project's recommended
-  resolution, else the catalog's only or first provider. The surface is
-  the capability with the surface role; exactly one is selected, as now.
+  resolution, else the catalog's only or first provider. The IDE is
+  the capability with the IDE role; exactly one is selected, as now.
 - A minimum narrows the candidates first: of a capability's providers and
   the version the base supplies, only those at or above it remain; none
   remaining is a refusal before any write, naming the versions that exist
@@ -281,7 +288,7 @@ the platform can satisfy as the contract error it is today.
 - The `-agent` suffix as a test anywhere in the code; `local_capabilities`
   as a list of refused names; the `surface_capabilities` and
   `ancillary_capabilities` split in the catalog, replaced by one table of
-  capabilities, each with its providers and whether it is the surface.
+  capabilities, each with its providers and whether it is the IDE.
 - `config agent add|remove`, `config tool omit|restore`, `run --agent`,
   and the `tool` sub-word of `require|offer|drop`. Each retired spelling
   prints its replacement for one release, by the rc4 rule, unless Part 5
@@ -296,11 +303,11 @@ the platform can satisfy as the contract error it is today.
   conservative writers), and a lock whose digest was computed with the
   table is accepted as current until the project's next shared edit.
 - `recommend ide` as the only recommendation of a capability; it remains
-  as the recommendation of the surface, one case of the general form.
+  as the recommendation of the IDE, one case of the general form.
 - In the documentation, the three-way vocabulary "IDE, agents, tools":
   the capabilities page, the project-versus-personal page, the command
   reference and the candidate changelog say capability, component,
-  surface. The work on the documentation's language, booked with
+  IDE. The work on the documentation's language, booked with
   project-management the same day, is best done once, after this.
 
 ## Part 5: Decisions taken, each reversible by the owner's word
@@ -401,6 +408,8 @@ written file, a launch or a consent could silently change meaning.
 
 ## Out of scope here
 
+The generalization of the IDE role to the capsule's entry point, D-0014,
+tabled by the owner and in scope for V1.
 The documentation's language, booked with project-management; the
 minimum-DevCapsule declaration in configuration files; Node and other SDK
 majors; `init --regenerate` asking per-checkout consent despite

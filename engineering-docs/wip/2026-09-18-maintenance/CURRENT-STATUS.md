@@ -299,7 +299,11 @@ requirement; the SDK major is removed entirely by the owner's ruling. Its
 Part 5 asks the owner nothing: the implementation choices are taken by the
 agent within the rulings and the owner reverses any by a word; the two
 that change scope, deleting the rc4 aliases and targeting the final 0.3.0
-tag, are marked. The owner's complaint that every work order makes work
+tag, are marked. The owner struck cardinality from the model and tabled
+the renaming of the IDE role to the capsule's entry point as D-0014,
+proposed and in scope for V1; the order and the records say the IDE owns
+the container's lifetime and can make use of the display, never that it
+owns the display. The owner's complaint that every work order makes work
 for them is taken: an order is written as decisions taken, not as
 questions. Nothing is implemented.
 
