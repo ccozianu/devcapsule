@@ -188,6 +188,20 @@ trust record `trust.toml` under the launcher's config root, schema 1; the
 review's `trusted` status and `superseded` host answers; the `trust`
 decision, `--trust CHANNEL`, `config trust list|accept|withdraw`; its
 brief is [brief-pr266-1.md](evidence/2026-10-24-cli-ux/brief-pr266-1.md).
+Slice 5 is #268, `ws-maintenance/cli-ux-5-console`, delivered 2026-10-24:
+1993 unit tests, mypy clean, the console session 299 tests, mypy clean;
+21 new launcher tests and 6 console tests; the channel contract
+`devcapsule-webconsole/CONFIGURATION-CHANNEL.md`, the launcher's watcher
+and deferred requests, `config console list|apply|discard`, the in-capsule
+listing "At launch, <time>". One design choice the work order did not
+state, for the owner: a request from the capsule that widens the next
+launch (a grant, a trust, a mount, a Docker option) is deferred to the
+user's confirmation on the host, because anything inside the capsule can
+write the mounted directory. Its brief is
+[brief-pr268-1.md](evidence/2026-10-24-cli-ux/brief-pr268-1.md).
+The Codex pair's PR265.1 is #267; round 1 asked for the second derivation
+to carry a saved required consent (`run --save --authorize base-image
+default` exited 2 on the review branch and on its base).
 
 ## Current State
 
