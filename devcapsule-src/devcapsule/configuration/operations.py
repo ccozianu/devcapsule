@@ -30,6 +30,7 @@ from devcapsule.project import sanitize_name
 from devcapsule.platforms import Platform, UnsupportedPlatformError
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
+from .trust import WorkstationTrust
 from .authorization import (
     AuthorizationDeclaration,
     CURATED_HOST_RECOMMENDATIONS,
@@ -122,11 +123,22 @@ class CheckoutRecord:
 
     def __init__(self, manifest: Mapping[str, Any], root: Path) -> None:
         input_path, _resolution_path = checkout_record_paths(manifest, root)
-        self.input_path = input_path
-        self.document = (
+        document = (
             load_checkout(input_path, manifest, root) if input_path.is_file()
             else tomllib.loads(render_checkout(manifest, root, {}, {}))
         )
+        self._load(input_path, document)
+
+    @classmethod
+    def staged(cls, input_path: Path, document: Mapping[str, Any]) -> CheckoutRecord:
+        """Edit an owned copy without reading or writing a checkout record."""
+        record = cls.__new__(cls)
+        record._load(input_path, deepcopy(dict(document)))
+        return record
+
+    def _load(self, input_path: Path, document: dict[str, Any]) -> None:
+        self.input_path = input_path
+        self.document = document
         self._original = deepcopy(self.document)
         # Each editable collection belongs to the retained document. No
         # projection/serialization pair can drop an unrelated answer.
@@ -165,7 +177,8 @@ class CheckoutRecord:
             answer = {"value": value, "recommendation-digest": declaration.recommendation_digest}
         self.authorization[name] = answer
 
-    def write(self) -> None:
+    def export(self) -> dict[str, Any]:
+        """Return the document that write would publish, without new empty tables."""
         if self.omitted_values:
             self.document["configuration"]["omitted-values"] = sorted(self.omitted_values)
         else:
@@ -180,7 +193,10 @@ class CheckoutRecord:
                         continue
                 result[key] = item
             return result
-        atomic_write(self.input_path, render_toml(without_new_empty_tables(self.document, self._original)))
+        return without_new_empty_tables(self.document, self._original)
+
+    def write(self) -> None:
+        atomic_write(self.input_path, render_toml(self.export()))
 
 
 def resolve_checkout(start_path: Path) -> ResolveReport:
@@ -202,10 +218,12 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
     checkout = load_checkout(input_path, manifest, root)
-    configuration = Configuration(manifest, lock, checkout, load_workstation())
+    workstation = load_workstation()
+    configuration = Configuration(manifest, lock, checkout, workstation)
     configuration.review().require_ready(root)
     resolution = configuration.resolve()
-    base_selection = authorized_base_selection(lock, checkout) if "base" in lock else None
+    base_selection = (authorized_base_selection(lock, checkout, trust=WorkstationTrust.read(workstation))
+                      if "base" in lock else None)
     if base_selection is not None and base_selection.local_image_identity is not None:
         local_base = required_local_image(base_selection.reference)
         validate_base_image(local_base, platform=str(lock["platform"]),

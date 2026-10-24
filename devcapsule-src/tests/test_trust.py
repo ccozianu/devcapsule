@@ -122,14 +122,16 @@ def test_run_trust_flag_records_the_channel_before_the_questions(project: Path) 
     prepared = prepare_launch(project, RunFlags(ide="python-ide", trust=("devcapsule-base",)), interactive=False)
     assert prepared.selected.resolution["authorization"]["base-image"]["reference"].startswith("docker.io/mycodespaceai/devcapsule-base@")
     assert "devcapsule-base" in load_toml(trust_path())["channels"]
-    # With another decision pending and no terminal, the flag's acceptance stays recorded and the text says so.
+    assert "Accepted the channel devcapsule-base for this workstation." in prepared.notes
+    # Printing the command stages the acceptance for the plan and writes nothing.
     assert config(project, "trust", "withdraw", "devcapsule-base") == 0
-    with pytest.raises(DecisionPending, match="Accepted the channel devcapsule-base for this workstation.\n"
-                                              "Nothing else was written"):
+    prepare_launch(project, RunFlags(ide="python-ide", trust=("devcapsule-base",)), print_only=True)
+    assert not WorkstationTrust.read(load_trust()).channels
+    # With another decision pending and no terminal, the flag's acceptance is staged with the other answers: nothing is written.
+    with pytest.raises(DecisionPending, match="Nothing was written"):
         prepare_launch(project, RunFlags(trust=("devcapsule-base",)), interactive=False)  # the IDE is still unchosen
-    assert "devcapsule-base" in load_toml(trust_path())["channels"]
+    assert not WorkstationTrust.read(load_trust()).channels
     # Declined at the prompt: nothing recorded, the launch is still pending.
-    assert config(project, "trust", "withdraw", "devcapsule-base") == 0
     assert config(project, "ide", "python-ide") == 0
     prompts = io.StringIO()
     with pytest.raises(DecisionPending):
@@ -152,3 +154,18 @@ def test_a_trusted_vendor_covers_every_version_and_a_denial_still_wins(project: 
     capsys.readouterr()
     assert config(project, "trust", "list") == 0
     assert "Anthropic" in capsys.readouterr().out
+
+
+def test_a_real_run_launches_on_the_workstations_trust_alone(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every reader of the base selection takes the trust: the realization, the history, the plan."""
+    from tests.test_upgrade_recovery import install_external_fakes, invoke
+    launch = install_external_fakes(monkeypatch, [])
+    monkeypatch.setattr("sys.stdin", io.StringIO("python-ide\ny\n"))
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    assert invoke(project, "run", "--no-update-check") == 0
+    assert launch.call_count == 1
+    _root, manifest = manifest_for(project)
+    assert "base-image" not in load_toml(checkout_record_paths(manifest, project)[0]).get("authorization", {})
+    assert "devcapsule-base" in load_toml(trust_path())["channels"]
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    assert invoke(project, "run", "--no-update-check") == 0  # the second launch asks nothing
