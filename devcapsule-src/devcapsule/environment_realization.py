@@ -27,6 +27,7 @@ from devcapsule.configuration.authorization import (
     authorized_base_selection,
     review_authorizations,
 )
+from devcapsule.configuration.trust import WorkstationTrust
 from devcapsule.runtime_artifact import runtime_artifact
 from devcapsule.runtime_command import RuntimeCommand
 
@@ -62,6 +63,7 @@ def realize_environment(
     materialize: Materialize | None = None,
     report: Callable[[str], None] | None = None,
     prepare_base: Callable[[ImageDetails], None] | None = None,
+    trust: WorkstationTrust | None = None,
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
@@ -70,8 +72,8 @@ def realize_environment(
             raise CliError("A base override cannot establish the project's SDK-major guarantee; use its pinned compatible base.")
     locked = parse_locked_environment(selected.lock)
     from devcapsule.configuration.storage import load_workstation
-    from devcapsule.configuration.trust import WorkstationTrust
-    trust = WorkstationTrust.read(load_workstation())
+    if trust is None:
+        trust = WorkstationTrust.read(load_workstation())
     reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout, trust)
     problems = [
         item for item in reviews if item.problem is not None

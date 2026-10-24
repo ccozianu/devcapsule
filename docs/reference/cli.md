@@ -87,7 +87,7 @@ Read-only:
 | `check [--manifest FILE --lock FILE]` | Validate without writing or launching. On the host, exit 3 for pending checkout decisions. Candidate-file options check only the candidate contract. |
 | `env list` | This checkout's environment variables by name, never their values. |
 | `docker-args list` | The saved `docker run` options, environment values masked. |
-| `trust list` | Show channels from the shared lock and previously accepted channels, with their trust status. |
+| `trust list` | The channels this checkout's selected lock names and previously accepted channels, with their trust status. |
 | `console list` | The console's requests that widen the next launch, awaiting your confirmation. |
 
 Your checkout:
@@ -135,7 +135,7 @@ Tool-edit commands also accept `--unverified` for an unverified combination.
 
 `show`, `list`, `check`, `env list`, `docker-args list`, `trust list` and
 `console list` accept `--json`.
-For trust scope and personal-agent limitations, see
+For trust scope, see
 [Vendor software and trust](../configuration/software-approvals.md).
 For console permissions and snapshot limits, see
 [Project versus personal](../configuration/project-versus-personal.md#from-the-console).

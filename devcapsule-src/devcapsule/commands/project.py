@@ -690,6 +690,8 @@ def _load_checkout_documents(context: object | None) -> CheckoutDocuments | runt
 
 
 def _assess(documents: CheckoutDocuments) -> Listing:
+    from devcapsule.configuration.authorization import authorized_base_selection
+    from devcapsule.configuration.trust import WorkstationTrust
     from devcapsule.platforms import Platform
     from devcapsule.resolution_matrix import MATRICES, known_base_image
     matrix = MATRICES[Platform.current()]
@@ -697,6 +699,13 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     base_answer = answers.get("base-image", {}) if isinstance(answers, dict) else {}
     base_reference = base_answer.get("reference") if isinstance(base_answer, dict) else None
     base_reference = base_reference or documents.composed_lock.get("base", {}).get("reference")
+    try:
+        selection = authorized_base_selection(documents.composed_lock, documents.checkout, required=False,
+                                              trust=WorkstationTrust.read(documents.workstation))
+    except ProjectConfigurationError:
+        selection = None  # The listing reports an invalid or stale selection below.
+    if selection is not None:
+        base_reference = selection.reference
     base = known_base_image(str(base_reference))
     personal = matrix.local_capabilities()
     surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
@@ -1298,29 +1307,38 @@ class ConfigTrustListCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.storage import load_trust, recommendation_lock_for, trust_path
+        from devcapsule.configuration.derivation import load_state
+        from devcapsule.configuration.storage import load_trust, trust_path
         from devcapsule.configuration.trust import WorkstationTrust, channels_for
         root, manifest = manifest_for(_project_context(context).start_path())
-        _path, lock = recommendation_lock_for(root, manifest)
+        lock = load_state(root, manifest).composed_lock()
         trust = WorkstationTrust.read(load_trust())
         channels = channels_for(lock)
         rows: list[dict[str, Any]] = [
             {"channel": channel.id, "vendor": channel.vendor, "product": channel.product,
              "origins": list(channel.origins), "terms-url": channel.terms_url,
+             "integrity": channel.integrity, "accepted": trust.channels.get(channel.id),
              "trusted": trust.covers(channel), "note": channel.note} for channel in channels.values()]
         for channel_id, entry in trust.channels.items():
             if channel_id not in channels:
                 rows.append({"channel": channel_id, "vendor": entry["vendor"], "product": "", "origins": entry["origins"],
-                             "terms-url": entry["terms-url"], "trusted": True, "note": "not used by this project"})
+                             "terms-url": entry["terms-url"], "integrity": entry["integrity"], "accepted": entry,
+                             "trusted": bool(entry["integrity"]), "note": "not used by this checkout"})
         if arguments.as_json:
             print(json.dumps({"schema-version": 1, "path": str(trust_path()), "channels": rows}, indent=2, sort_keys=True))
             return 0
         print(f"Trust record: {trust_path()}")
+        print("Scope: this OS user account on this computer, across all projects. Shared accounts share this trust.")
         for row in rows:
-            state = "trusted" if row["trusted"] else "not yet"
+            state = "trusted" if row["trusted"] else ("not covered" if row["accepted"] else "not yet")
             origins = ", ".join(str(item) for item in row["origins"]) or "the lock"
             terms = f"; terms {row['terms-url']}" if row["terms-url"] else ""
-            print(f"{row['channel']:<18} {state:<9} {row['vendor']} — {row['product'] or '(no longer in this project)'}; from {origins}{terms}")
+            print(f"{row['channel']:<18} {state:<11} {row['vendor']} — {row['product'] or '(not used by this checkout)'}; "
+                  f"from {origins}; integrity {row['integrity'] or 'not recorded'}{terms}")
+            if row["accepted"] and not row["trusted"]:
+                entry = row["accepted"]
+                print(f"{'':<18} Accepted origins: {', '.join(entry['origins'])}; "
+                      f"integrity {entry['integrity'] or 'not recorded'}; terms {entry['terms-url'] or 'none'}")
             if row["note"]:
                 print(f"{'':<18} {row['note']}")
         return 0
@@ -1337,14 +1355,10 @@ class ConfigTrustAcceptCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.commands._run_flow import accept_channel
-        from devcapsule.configuration.storage import recommendation_lock_for
-        from devcapsule.configuration.trust import channels_for
+        from devcapsule.commands._run_flow import accept_channel, project_channel
         root, manifest = manifest_for(_project_context(context).start_path())
-        _path, lock = recommendation_lock_for(root, manifest)
-        channel = channels_for(lock).get(arguments.channel)
+        channel = project_channel(root, manifest, arguments.channel)
         path = accept_channel(root, manifest, arguments.channel)
-        assert channel is not None
         print(channel.statement())
         if channel.note:
             print(channel.note)
@@ -1355,7 +1369,7 @@ class ConfigTrustAcceptCommand(Command):
 class ConfigTrustWithdrawCommand(Command):
     name = "withdraw"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Withdraw this workstation's acceptance of a channel; the next launch that needs it asks again."
+    help = "Withdraw this account's channel trust for future launches; separate checkout consents remain valid."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -1368,6 +1382,7 @@ class ConfigTrustWithdrawCommand(Command):
         trust = WorkstationTrust.read(load_trust()).without(arguments.channel)
         path = write_trust(trust.document())
         print(f"Withdrew {arguments.channel} for this workstation: {path}")
+        print("Running capsules and saved plans are unchanged. The next launch reviews consent again; separate checkout consents remain valid.")
         return 0
 
 
@@ -2233,7 +2248,7 @@ class ProjectRunCommand(Command):
         parser.add_argument("--env", action="append", default=[], metavar="NAME[=VALUE]",
                             help="An environment variable for this launch: NAME=VALUE, or NAME taken from the host.")
         parser.add_argument("--trust", action="append", default=[], metavar="CHANNEL",
-                            help="Accept a vendor's or DevCapsule's channel once for this workstation: devcapsule-base, claude-code, antigravity-cli; repeatable.")
+                            help="Accept a channel for this user account across projects; saved when all required answers are complete. Repeatable; see config trust list.")
         parser.add_argument("--save", action="store_true", help="Save configuration flags after all required answers are complete, before launching.")
         parser.add_argument("--unverified", action="store_true", dest="allow_unverified", help=argparse.SUPPRESS)
         parser.add_argument(
@@ -2303,12 +2318,15 @@ class ProjectRunCommand(Command):
             # Saved flags are now record inputs. Reapply only launch overrides,
             # including terminal "once" answers, when checking the new selection.
             again = RunFlags(allow_unverified=flags.allow_unverified) if flags.save else flags
-            again = replace(again, save=False, authorize=tuple(
+            # Trust accepted the channel shown in the first review. Never
+            # replay that acceptance against a different channel after an upgrade.
+            again = replace(again, save=False, trust=(), authorize=tuple(
                 (name, render_authorization_value(value)) for name, value in prepared.host_overrides.items()
             ))
             prepared.selected = prepare_launch(start, again, interactive=False).selected
         selected = prepared.selected
-        review = review_configuration(selected.manifest, selected.lock, selected.checkout, load_workstation())
+        review = review_configuration(selected.manifest, selected.lock, selected.checkout,
+                                      prepared.workstation if command_report is not None else load_workstation())
         root, manifest, lock = selected.root, selected.manifest, selected.lock
         input_path, output_path = selected.checkout_path, selected.resolution_path
         checkout, resolved = selected.checkout, selected.resolution
@@ -2357,7 +2375,12 @@ class ProjectRunCommand(Command):
         if isinstance(lock.get("base"), dict) and isinstance(lock.get("materialization"), dict):
             while True:
                 try:
-                    realized = realize_environment(selected, report=print, prepare_base=prepare_display)
+                    if command_report is not None and flags.trust:
+                        from devcapsule.configuration.trust import WorkstationTrust
+                        realized = realize_environment(selected, report=print, prepare_base=prepare_display,
+                                                       trust=WorkstationTrust.read(prepared.workstation))
+                    else:
+                        realized = realize_environment(selected, report=print, prepare_base=prepare_display)
                     break
                 except ArtifactUnavailable as exc:
                     smaller = omit_unavailable_optional(selected, exc.url)

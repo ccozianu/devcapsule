@@ -100,7 +100,7 @@ def install_external_fakes(monkeypatch, events, *, contained=True):
         base = known_base_image(reference)
         return replace(base, contract=replace(base.contract, display="contained" if contained else "host-x11-only")) if base else None
     monkeypatch.setattr(derivation, "known_base_image", fake_base, raising=False)
-    def realize(selected, *, report, prepare_base):
+    def realize(selected, *, report, prepare_base, trust=None):
         def obtain(reference):
             events.append("obtain-base")
             return ImageDetails(reference, LOCAL_ID, {
@@ -115,7 +115,8 @@ def install_external_fakes(monkeypatch, events, *, contained=True):
             return "local/environment:test", False
         return realize_environment(selected, obtain_image=obtain, inspect_image=Mock(), build=Mock(),
             require_image=lambda ref: ImageDetails(ref, "sha256:environment", CONTAINED if contained else {}, "linux", "amd64"),
-            materialize=materialize, report=report, prepare_base=prepare)
+            materialize=materialize, report=report, prepare_base=prepare,
+            **({"trust": trust} if trust is not None else {}))
     launch = Mock(side_effect=lambda options: events.append(options) or 0)
     monkeypatch.setattr("devcapsule.commands.project.realize_environment", realize)
     monkeypatch.setattr("devcapsule.commands.project.run_pycharm", launch)

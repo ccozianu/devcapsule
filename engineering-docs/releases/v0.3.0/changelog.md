@@ -203,10 +203,9 @@ on 2026-10-24.
   terms across versions and projects, within the accepted origins.
   `config trust list|accept|withdraw` manages that record.
   Existing matching per-checkout consents remain valid, including after trust
-  withdrawal. Current trust commands read the shared lock; they cannot accept
-  a channel present only in a personal agent selection. Per-checkout consent
-  remains available for that case. Changed host recommendations do not replace
-  recorded answers. [Vendor software and trust](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/).
+  withdrawal. The channels come from the checkout's selected lock, so a
+  personally added agent's channel can be accepted. Changed host
+  recommendations do not replace recorded answers. [Vendor software and trust](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/).
 - **Console configuration requests.** A console-capable base shows the
   listing captured at launch, its timestamp, and later request results.
   The attached launcher validates and records supported requests for the next

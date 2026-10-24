@@ -20,9 +20,9 @@ provided their origins are within the accepted set.
 For a checkout without base consent, the published base asks:
 
 ```text
-Trust DevCapsule to supply the base images from docker.io/mycodespaceai/devcapsule-base, https://devcapsule.mycodespace.ai, verified by the SHA-256 digest the launcher pins, every version, for every project on this computer.
-  A launcher you downloaded already carries these digests; this makes the trust explicit.
-Accept, once for this computer? [y/N]:
+Trust DevCapsule to supply the base images from docker.io/mycodespaceai/devcapsule-base, https://devcapsule.mycodespace.ai, verified by the SHA-256 digest the launcher pins. This covers every version and every project for this OS user account on this computer. Anyone sharing this account uses this acceptance. Changed terms or a different channel require another decision.
+  A launcher you downloaded already carries these digests; this makes the trust explicit. You trust the ccozianu/devcapsule GitHub account and the mycodespaceai Docker Hub account.
+Accept for this user account on this computer? [y/N]:
 ```
 
 **y** stages acceptance with the other answers. The launcher saves them
@@ -34,8 +34,9 @@ become workstation trust. In particular, `init --ide` can ask for base consent
 and record it only for that checkout.
 
 The Antigravity CLI's origin is a bare Cloud Run host rather than a
-Google-owned domain; the statement says so, because trusting that channel
-is trusting that deployment.
+Google-owned domain; the statement says so: the trust applies to that
+deployment and its publishing credentials, and the URL alone does not prove
+Google owns it.
 
 ## From the command line
 
@@ -46,8 +47,11 @@ is trusting that deployment.
 ~/.local/bin/devcapsule project run --trust devcapsule-base
 ```
 
-`trust list` shows channels from the shared lock and previously accepted
-channels. Both text and JSON output give the trust record's path.
+`trust list` shows the channels this checkout's software comes through,
+`devcapsule-base`, `claude-code`, `antigravity-cli`, with their origins and
+integrity method, and previously accepted channels. A channel accepted under
+other origins or terms is listed as not covered, with what was accepted.
+Both text and JSON output give the trust record's path.
 `accept` records the named channel immediately.
 `run --trust` records it after the required review succeeds, even without `--save`.
 `withdraw` removes that workstation acceptance. A matching per-checkout
@@ -55,22 +59,19 @@ consent can still permit the software afterward.
 The record is `$XDG_CONFIG_HOME/devcapsule/trust.toml`, normally
 `~/.config/devcapsule/trust.toml`.
 
-There is a current limitation for personal agents. `config agent add
-claude-code-agent` adds Claude Code to the checkout's lock, not the shared lock.
-`trust accept claude-code` and `run --trust claude-code` currently look only
-in the shared lock and refuse when that channel is absent there.
-Use the per-checkout consent shown below in that case.
-The same limitation applies to a personally added Antigravity CLI.
-Codex has no separate vendor-download consent in this launcher.
+The channels come from the checkout's selected lock, so an agent you added
+with `config agent add` is listed and can be accepted. Codex has no separate
+vendor-download consent in this launcher.
 
 ## What an acceptance is, and is not
 
-- It is your trust in the vendor's channel: that vendor, those origins, those
-  terms. A new origin or changed terms in a later lock is a new question.
-  Every download is still checked against the lock's checksum.
-- It is per user on this workstation, for every project and version.
-  A checkout can still refuse a vendor download with
-  `config authorize claude-code-download false`.
+- It is your trust in the vendor's channel: that vendor, those origins, that
+  integrity method, those terms. A new origin or changed terms in a later
+  lock is a new question; accepting again keeps the origins you accepted
+  before. Every download is still checked against the lock's checksum.
+- It is per OS user account on this computer, for every project and version;
+  anyone sharing the account shares the trust. A checkout can still refuse a
+  vendor download with `config authorize claude-code-download false`.
   That denial wins over workstation trust for the checkout.
 - It grants no host access, selects no base and chooses no agent; those are
   separate decisions with their own commands.
