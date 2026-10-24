@@ -4,7 +4,7 @@ role: getting-started
 aliases:
   - /docs/guides/first-session/
 weight: 2
-updated: 2026-09-28
+updated: 2026-10-24
 ---
 # Your first session
 
@@ -21,7 +21,7 @@ In your computer's terminal:
 ```bash
 mkdir -p ~/hello-devcapsule
 cd ~/hello-devcapsule
-~/.local/bin/devcapsule project init --need frontend-ide --need node
+~/.local/bin/devcapsule project init --require node --ide frontend-ide
 ```
 
 This selects VSCodium, a VS Code-family IDE, and Node.js. Initialization asks
@@ -31,14 +31,16 @@ for a few decisions. For this exercise:
 |---|---|
 | Project creator | Your email address or a project URL. It identifies the project; it is not a sign-in. |
 | Select the default agent? | `no` for now. [Adding an agent](../working-with-ai/choose-an-agent.md) takes one command later. |
-| Recommend `docker-daemon`, `development-sudo` or `host-browser`? | Press Enter at each to keep `none`. The exercise needs no extra host access; [Containment](../containment/the-boundary.md) explains each. |
+| Recommend `docker-daemon`, `network`, `development-sudo` or `host-browser`? | Press Enter at each to keep `none`. The exercise needs no extra host access; [Containment](../containment/the-boundary.md) explains each. |
 | Authorize this checkout to execute the base image? | Press Enter to accept the displayed image. |
 
-The base image is named after the build that produced it, so the prompt can
-show an older build's release-candidate label. It is the same base that
-ships with this version, not a candidate download. If you mistype an option
-name, `init` says so before asking anything and suggests the right one; you
-lose no answers.
+The prompt identifies the base by its family and recipe, such as
+`ubuntu-24.04@9`, and its exact image digest. This initialization answer
+consents to that image for this checkout. It does not create workstation
+channel trust. [Vendor software and trust](../configuration/software-approvals.md)
+explains the two scopes.
+
+If you mistype an option name, `init` reports it before asking questions.
 
 Success ends with `Project initialized; 'devcapsule project run' starts it.`
 DevCapsule has written `.devcapsule/` in this folder, the part that belongs

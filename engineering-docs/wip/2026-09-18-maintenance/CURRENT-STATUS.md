@@ -242,6 +242,45 @@ the reviewer's gates 2091 unit tests and 320 console tests, mypy clean.
 For the owner, from the reviewer: a durable inbox for requests written
 after the launcher stops, and direct console approval of wider access,
 which a writable capsule directory cannot establish as the human's.
+Slice 6 is #269, `ws-maintenance/cli-ux-6-docs`, delivered 2026-10-24:
+five user pages rewritten, the command reference written, nine pages
+patched, the changelog's candidate-4 section; the website's content
+contract check against the checkout passed (188 pages); no code changed.
+The retired spellings stay hidden in the code, each answering with its
+replacement, because deleting them would rewrite the tests that use
+`config resolve` as a fixture step; the owner decides whether to delete
+them. Its brief is [brief-pr269-1.md](evidence/2026-10-24-cli-ux/brief-pr269-1.md).
+Its PR269.1 is #271, accepted at `b6f5124` without a round and merged at
+`4ab687a`, run from a second review worktree so it ran beside PR266.1:
+thirteen findings, every page measured against the executable (94 help
+paths, 62 focused cases); the pages now say what the launcher does. One
+limitation it documented was already gone with PR #270 (the trust lookup
+reads the checkout's selected lock) and was re-verified and removed in the
+merge. The reviewer's seven code gaps, for the owner, each documented as
+current behavior: `--print-command` can still materialize images and
+write caches (Part 3.4 promised a read-only preview); `init --ide` still
+asks for a per-checkout base consent instead of the channel trust, and
+refuses without a terminal; `init --less-pedantic` is still accepted
+silently and `run --force-config` fails as an unknown argument without
+the migration note (Part 4); a raw `--shm-size` is refused with no user
+setting (answer 6 named only memory and CPUs); `checkout register` cannot
+rename a registered checkout; `pycharm check-runtime --help` runs its
+checks. None of these is in the stack; each is a one-line direction.
+The stack to `release-0.3.0`, in order: #260, #261, #263, #265, #266,
+#268, #269, every slice with its review merged and merged forward; the
+tip of #269 carries everything. The owner merges it in that order, or
+merges #269 alone once the lower ones are reviewed as part of it.
+
+The owner read the stack on 2026-10-24 and accepted the code. On the
+documentation the owner found machine prose throughout, not only in the
+fifteen pages this stack changed, and a missing conceptual entry page per
+section, `docs/configuration/index.md` the named first case: what a
+configuration is before capabilities, IDEs, approvals and limits. A final
+review round of the documentation's language before 0.3.0 is the owner's
+direction; it went to `project-management` by mail at `9fcfdb8db440` as
+the booking, with the owner's words and the evidence, and is recorded in
+the release overview as a condition of the final tag. Maintenance does not
+begin the rewrite until project-management assigns it.
 
 ## Current State
 
