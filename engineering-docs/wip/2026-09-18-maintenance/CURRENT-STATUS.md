@@ -192,7 +192,10 @@ accepted there, merged at `1a22a17`; the reviewer's gate 2006 unit tests,
 mypy clean. Merged forward into slice 4, where the trust acceptance moved
 onto the staged model (written with the answers, never before) and the
 base selection takes the workstation trust at every reader: the
-realization, the version-set history, the legacy resolve.
+realization, the version-set history, the legacy resolve. The merged
+slice's gate: 2010 unit tests, 36 deselected, one xfail, one xpass, mypy
+clean (the merge commit's message overstates the count; this line is the
+record).
 Slice 4 is #266, `ws-maintenance/cli-ux-4-trust`, delivered 2026-10-24:
 1972 unit tests, mypy clean, 6 new tests in `tests/test_trust.py`; the
 trust record `trust.toml` under the launcher's config root, schema 1; the
