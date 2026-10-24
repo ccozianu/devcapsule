@@ -192,13 +192,29 @@ accepted there, merged at `1a22a17`; the reviewer's gate 2006 unit tests,
 mypy clean. Merged forward into slice 4, where the trust acceptance moved
 onto the staged model (written with the answers, never before) and the
 base selection takes the workstation trust at every reader: the
-realization, the version-set history, the legacy resolve.
+realization, the version-set history, the legacy resolve. The merged
+slice's gate: 2010 unit tests, 36 deselected, one xfail, one xpass, mypy
+clean (the merge commit's message overstates the count; this line is the
+record).
 Slice 4 is #266, `ws-maintenance/cli-ux-4-trust`, delivered 2026-10-24:
 1972 unit tests, mypy clean, 6 new tests in `tests/test_trust.py`; the
 trust record `trust.toml` under the launcher's config root, schema 1; the
 review's `trusted` status and `superseded` host answers; the `trust`
 decision, `--trust CHANNEL`, `config trust list|accept|withdraw`; its
 brief is [brief-pr266-1.md](evidence/2026-10-24-cli-ux/brief-pr266-1.md).
+Its PR266.1 is #270, accepted at `8975126` without a round and merged at
+`694dfe8`: the integrity method bound into the acceptance, HTTPS
+checksum-pinned origins only, re-acceptance keeping earlier origins; the
+composed lock as the channel's source; the trusted base reaching
+derivation, display inspection and realization over an older per-checkout
+consent; denials normalized before trust; the staged trust reaching the
+preview; the kept host answer disclosed with its new reason; the account
+scope in the statement; 23 regression cases; the reviewer's gate 2045 unit
+tests, mypy clean. One policy question for the owner from the reviewer:
+D-0011 kept Antigravity's bare Cloud Run origin on per-version consent;
+the slice lets the user trust that deployment explicitly, with the note
+that the URL alone does not prove Google's ownership; confirm or restore
+the exception.
 Slice 5 is #268, `ws-maintenance/cli-ux-5-console`, delivered 2026-10-24:
 1993 unit tests, mypy clean, the console session 299 tests, mypy clean;
 21 new launcher tests and 6 console tests; the channel contract

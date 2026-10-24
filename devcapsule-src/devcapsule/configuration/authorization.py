@@ -10,7 +10,7 @@ from devcapsule.images.contract import Provenance
 from devcapsule.components.catalog import COMPONENTS
 
 from .file_formats import AuthorizationScalar, ProjectConfigurationError, canonical_digest
-from .trust import BASE_CHANNEL, WorkstationTrust, channels_for
+from .trust import BASE_CHANNEL, Channel, WorkstationTrust, channels_for
 
 
 OCI_REPOSITORY_COMPONENT_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
@@ -445,7 +445,7 @@ def _authorization_choices(
     return tuple(choices)
 
 
-def _trusted_channel(declaration: AuthorizationDeclaration, channels: Mapping[str, Any], trust: WorkstationTrust | None) -> str | None:
+def _trusted_channel(declaration: AuthorizationDeclaration, channels: Mapping[str, Channel], trust: WorkstationTrust | None) -> str | None:
     """The accepted channel that answers a base or acquisition node, when the workstation trusts it."""
     if trust is None or not declaration.required:
         return None
@@ -487,9 +487,13 @@ def review_authorizations(
         superseded: str | None = None
         channel = _trusted_channel(declaration, channels, trust)
         local_override = name == "base-image" and isinstance(record, dict) and record.get("image-id") is not None
-        if channel is not None and not local_override and not (
-            isinstance(record, dict) and record.get("value") is False
-        ):
+        checkout_blocks_trust = name in records and not isinstance(record, dict)
+        if declaration.kind == "acquisition" and isinstance(record, dict):
+            try:
+                checkout_blocks_trust = normalize_authorization_value(declaration, record.get("value")) is False
+            except ProjectConfigurationError:
+                checkout_blocks_trust = True  # An invalid answer still needs repair.
+        if channel is not None and not local_override and not checkout_blocks_trust:
             # The workstation's acceptance answers it; a recorded per-checkout
             # denial of a vendor download still outranks (denial is a value).
             reviews.append(AuthorizationReview(
@@ -699,9 +703,11 @@ def authorized_base_selection(
         authorization_root.get("base-image") if isinstance(authorization_root, dict) else None
     )
     command = f"devcapsule project config authorize base-image {locked_reference}"
-    if not isinstance(authorization, dict) and trust is not None:
+    local_override = isinstance(authorization, dict) and authorization.get("image-id") is not None
+    if not local_override and trust is not None:
         # D-0011: the workstation trusts DevCapsule's base channel; the pinned
-        # digest is the selection, with no per-checkout record.
+        # digest is the selection, including when an earlier published base
+        # still has per-checkout consent. An explicit local override wins.
         channel = channels_for(lock).get(BASE_CHANNEL)
         if channel is not None and trust.covers(channel):
             return AuthorizedBaseSelection(reference=locked_reference, lock_digest=canonical_digest(lock))
