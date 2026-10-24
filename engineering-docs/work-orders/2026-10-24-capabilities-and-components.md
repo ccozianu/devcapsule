@@ -29,7 +29,8 @@ its structure, today called the IDE. Nothing else is a kind.
 
 The reader of the manifest, the checkout record, `config show` and the
 documentation meets these words and no others: capability, component,
-required, offered, recommended, resolution, surface.
+required, offered, recommended, resolution, surface. The SDK major is
+gone, by the owner's ruling, not replaced.
 
 ## Part 1: The model, as agreed with the owner on 2026-10-24
 
@@ -72,7 +73,22 @@ required, offered, recommended, resolution, surface.
    of these is a property of a kind. Codex's `config.toml`, Claude Code's
    settings, PyCharm's directories and Playwright's browsers are all
    component declarations, and remain so.
-8. **"No implicit coding agent" is preserved by the model, not by a
+8. **The owner's rule for this order: remove what can be removed.** Every
+   concept the user does not need lessens the conceptual load on the user,
+   the documentation to write, the lines of code, the special cases and
+   the moving parts. Where a concept can go entirely, it goes; it is not
+   replaced by a smaller one.
+9. **The SDK major goes entirely, by the owner's ruling of 2026-10-24.**
+   `require python=3` and `[capabilities.sdk-major]` express a constraint
+   no base can fail today: every base declares Python 3 and nothing else,
+   `python=4` is refused because nothing has it, and `node=22`, the one
+   constraint a real project asked for, is refused because no base
+   declares a Node major. The need behind it, a project wanting Node 22
+   rather than 24, becomes real only when the catalog has bases to choose
+   between, and it is not addressed by a replacement constraint syntax in
+   this order: the owner's rule is removal, not a smaller concept. If the
+   need arrives, it is designed then, against the catalog that creates it.
+10. **"No implicit coding agent" is preserved by the model, not by a
    rule.** A capability the project does not offer is absent until the
    developer adds it. A project that offers `codex-agent` says so in its
    manifest, where every contributor reads it, and the contributor may
@@ -122,6 +138,17 @@ With source lines at `78a9c66`.
   | `postgresql-client`, `browser-automation`, `dotnet` | `postgresql-client`, `playwright`, `dotnet-sdk` | ancillary, "tool" | the project; `config tool omit` |
   | `python`, `node`, `java`, `maven`, `docker-cli` | the base, no component | base-supplied | the project; SDK major for `python` only |
 
+- **The SDK major is a table, a syntax and 32 source lines for one
+  integer that cannot vary.** `sdk_major` and `sdk-major` appear in twelve
+  source files (`resolution_matrix.py`, `configuration/model.py`,
+  `capabilities.py`, `capability_commands.py`, `capability_selection.py`,
+  `fingerprints.py`, `manifest_document.py`, `operations.py`,
+  `owner_commands.py`, `storage.py`, `environment_realization.py`,
+  `commands/project.py`), the `TOOL[=MAJOR]` syntax on `init --require` and
+  `config require tool`, the `[capabilities.sdk-major]` table, three
+  documentation passages and six test files. The capabilities digest in
+  `fingerprints.py` hashes the table, so its removal changes the digest a
+  regenerated lock records.
 - **The checkout record is already flat.** It stores `selected =
   ["claude-code-agent", "codex-agent", "frontend-ide"]` and `without = []`
   with no kinds; the embedded lock names the surface as
@@ -138,7 +165,7 @@ With source lines at `78a9c66`.
 
 ```sh
 devcapsule project config require cpp-compiler --because "the build"
-devcapsule project config require python=3
+devcapsule project config require python
 devcapsule project config offer browser-automation --because "npm run test:ui"
 devcapsule project config offer codex-agent --because "the project's agent instructions assume it"
 devcapsule project config recommend ide frontend-ide
@@ -158,9 +185,6 @@ is written. The manifest gains one table and loses none:
 [capabilities]
 required = ["cpp-compiler", "python"]
 optional = ["browser-automation", "codex-agent"]
-
-[capabilities.sdk-major]
-python = 3
 
 [recommendations]
 ide = "frontend-ide"
@@ -214,6 +238,13 @@ the platform can satisfy as the contract error it is today.
   item 6 deletes the aliases outright.
 - The matrix's refusal of an agent in `require` and `offer`, and the
   grandfathering code that let schema-1 manifests keep one.
+- The SDK major: the `[capabilities.sdk-major]` table, the `TOOL[=MAJOR]`
+  syntax, the base's `sdk_majors` declaration, the major in the
+  capabilities digest, and every reader and writer of them. A manifest
+  that carries the table stays readable: the reader ignores it with one
+  note naming this change, the next owner write drops it (R-CONFIG-001,
+  conservative writers), and a lock whose digest was computed with the
+  table is accepted as current until the project's next shared edit.
 - `recommend ide` as the only recommendation of a capability; it remains
   as the recommendation of the surface, one case of the general form.
 - In the documentation, the three-way vocabulary "IDE, agents, tools":
@@ -266,12 +297,13 @@ owner's word; an answer the owner changes replaces the proposal.
    release that ships `config agent add` and retires it in 0.3.1 costs
    every adopter a rename and the documentation two rewrites. The owner
    rules whether the cycle tolerates it.
-8. **SDK majors beyond Python.** The dry run refused `node=22` because
-   the base declares a major for Python only. Not this order's subject,
-   but the capability table this order builds is where a base's majors
-   would be declared per capability. *Proposal:* leave it to the
-   sample-projects item of 2026-10-22 and shape the table so it can hold
-   the answer.
+8. **The SDK major is removed, not asked.** The owner ruled it on
+   2026-10-24 (Part 1, item 9). What remains to decide is only the
+   reading of old files, proposed in Part 4: ignore the table with a
+   note, drop it on the next owner write, accept the old digest. The
+   sample-projects item of 2026-10-22 on Node as a first-class SDK is
+   answered by this ruling: a project requires `node`; the base supplies
+   the Node it has; `package.json` says the rest, as it does today.
 9. **Who implements.** *Proposal:* maintenance, stacked slices with the
    Codex and gpt-6-astra reviewer loop as for the redesign; project-
    management records the model as a decision superseding the
@@ -288,6 +320,11 @@ written file, a launch or a consent could silently change meaning.
   `capability-providers`; the trust record. A test fixture of each,
   taken from the dry run, is read by the new code and derives the same
   launch, provider for provider.
+- **Old locks do not go stale by this change.** The capabilities digest
+  changes shape when the SDK-major table leaves it; a lock written by rc4
+  must still read as current for an unchanged manifest, or every adopter's
+  first `run` after upgrading would report a shared edit nobody made. A
+  fixture lock from the dry run proves it.
 - **No kind survives by accident.** The acceptance for the matrix slice
   is a grep: no `-agent` test, no `local_capabilities`, no
   `surface_capabilities`, no `ancillary_capabilities`, no `providers(…)[0]`
