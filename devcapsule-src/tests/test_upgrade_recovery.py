@@ -93,6 +93,13 @@ def change_project(project, *, lock=True, manifest=True):
 
 def install_external_fakes(monkeypatch, events, *, contained=True):
     """Keep real realization; substitute its external effects."""
+    # The fake base's catalog contract must agree with its daemon labels.
+    from devcapsule.configuration import derivation
+    from devcapsule.resolution_matrix import known_base_image
+    def fake_base(reference):
+        base = known_base_image(reference)
+        return replace(base, contract=replace(base.contract, display="contained" if contained else "host-x11-only")) if base else None
+    monkeypatch.setattr(derivation, "known_base_image", fake_base, raising=False)
     def realize(selected, *, report, prepare_base):
         def obtain(reference):
             events.append("obtain-base")

@@ -30,9 +30,8 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.configuration.operations import CheckoutRecord, resolve_checkout
 from devcapsule.configuration.storage import (
     checkout_record_paths,
+    find_checkout_record,
     interrupted_activation,
-    load_checkout,
-    lock_for,
     manifest_for,
 )
 
@@ -94,8 +93,14 @@ def pending_for(root: Path, manifest: dict[str, Any]) -> tuple[SoftwareApproval,
         raise ProjectConfigurationError(
             f"Interrupted activation; finish recovery before reviewing software approvals: {command}"
         )
-    _lock_path, lock = lock_for(root, manifest)
-    checkout = load_checkout(input_path, manifest, root)
+    from devcapsule.configuration.derivation import load_state
+    state = load_state(root, manifest)
+    lock, checkout = state.composed_lock(), state.checkout
+    # The old offer inspected authorizations only. An IDE, value or input
+    # question must join run's staged review before an approval is saved.
+    if any(decision.kind in {"ide", "env", "value", "secret"}
+           for decision in state.listing(check_display=False).decisions):
+        return None
     return pending_software_approvals(manifest, lock, checkout, previous_versions=previous_versions(root))
 
 
@@ -131,6 +136,8 @@ def offer_software_approvals(start: Path) -> bool:
     """
 
     root, manifest = manifest_for(start)
+    if find_checkout_record(manifest, root) is None:
+        return True  # A new path has its own decisions; run will register it.
     input_path, _output_path = checkout_record_paths(manifest, root)
     if interrupted_activation(input_path):
         # The ordinary launch loader owns recovery. Do not offer approvals
