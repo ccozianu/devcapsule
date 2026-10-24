@@ -170,6 +170,9 @@ extension values and left DEL unescaped; a manifest-only promotion rewrote
 the lock; owner edits dropped unknown fields; init wrote shared files before
 the consent batch failure; the rc3 flag mapping mishandled component aliases;
 64 regression cases; the reviewer's gate 1877 unit tests, mypy clean.
+Slice 2 is #263, `ws-maintenance/cli-ux-2-checkout`, delivered 2026-10-24:
+1899 unit tests, mypy clean, 33 new tests; its brief is
+[brief-pr263-1.md](evidence/2026-10-24-cli-ux/brief-pr263-1.md).
 
 ## Current State
 
