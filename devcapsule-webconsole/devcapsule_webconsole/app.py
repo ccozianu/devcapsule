@@ -196,7 +196,7 @@ def create_app(settings: Settings) -> FastAPI:
         """The requests written this run and the launcher's result for each, in order."""
         try:
             return JSONResponse({"channel": channel.available, "requests": [item.to_mapping() for item in channel.requests()]})
-        except ChannelError as error:
+        except (ChannelError, OSError) as error:
             return JSONResponse({"error": str(error)}, status_code=502)
 
     @app.post("/api/configuration/requests")

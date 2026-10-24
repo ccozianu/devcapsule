@@ -761,6 +761,12 @@ def _show_inside_capsule(loaded: runtime_configuration.RuntimeConfiguration, as_
         print(json.dumps(loaded.configuration_document(), indent=2, sort_keys=True) if as_json
               else loaded.configuration_report())
         return 0
+    checkout = view.listing.get("checkout")
+    identity = loaded.document["project"]
+    if (not isinstance(checkout, dict) or checkout.get("launcher-path") != loaded.document["launcher-root"]
+            or checkout.get("name") != loaded.checkout_name
+            or view.listing.get("project") != {key: identity[key] for key in ("creator", "slug")}):
+        raise ProjectConfigurationError("The channel listing belongs to another checkout; inspect configuration on the host.")
     command = loaded.launcher_command(["config", "show"])
     if as_json:
         print(json.dumps({**view.listing, "context": "running capsule: the launcher's listing at launch", "at": view.at,

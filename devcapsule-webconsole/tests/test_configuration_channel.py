@@ -60,21 +60,21 @@ def test_requests_are_complete_when_visible_and_numbered(channel: Path) -> None:
     assert store.available and store.listing() == {"at": LISTING["at"], "listing": LISTING["listing"]}
     first = store.write_request(["ide", "python-ide"])
     second = store.write_request(["authorize", "network", "host"])
-    assert (first.id, second.id) == ("000001-ide", "000002-authorize")
+    assert first.id.startswith("000001-ide-") and second.id.startswith("000002-authorize-")
     assert not [p for p in channel.iterdir() if p.name.endswith(".tmp")]
-    written = json.loads((channel / "000001-ide.request.json").read_text())
+    written = json.loads((channel / f"{first.id}.request.json").read_text())
     assert written == {"format": 1, "requested": first.requested, "arguments": ["ide", "python-ide"]}
-    (channel / "000001-ide.result.json").write_text(json.dumps(
+    (channel / f"{first.id}.result.json").write_text(json.dumps(
         {"format": 1, "status": "recorded", "text": "Your IDE for this checkout: python-ide", "at": "t"}))
     listed = store.requests()
-    assert [item.id for item in listed] == ["000001-ide", "000002-authorize"]
+    assert [item.id for item in listed] == [first.id, second.id]
     assert listed[0].result == {"format": 1, "status": "recorded", "text": "Your IDE for this checkout: python-ide", "at": "t"}
     assert listed[1].result is None and listed[1].to_mapping()["widening"] is True
     assert listed[0].to_mapping()["command"] == "config ide python-ide"
     # A planted symbolic link is never followed; a name outside the contract is ignored.
     (channel / "000003-x.request.json").symlink_to(channel / "listing.json")
     (channel / "notes.txt").write_text("x")
-    assert [item.id for item in store.requests()] == ["000001-ide", "000002-authorize", "000003-x"]
+    assert [item.id for item in store.requests()] == [first.id, second.id, "000003-x"]
     assert store.requests()[2].arguments == ()
 
 
@@ -102,9 +102,11 @@ def test_request_routes_write_and_list(channel_client: TestClient, channel: Path
     assert shape.status_code == 422
     created = channel_client.post("/api/configuration/requests", json={"command": "config ide python-ide"},
                                   headers={"Origin": "http://testserver"})
-    assert created.status_code == 201 and created.json()["request"]["id"] == "000001-ide"
-    assert (channel / "000001-ide.request.json").is_file()
-    (channel / "000001-ide.result.json").write_text(json.dumps({"format": 1, "status": "recorded", "text": "ok", "at": "t"}))
+    assert created.status_code == 201
+    identifier = created.json()["request"]["id"]
+    assert identifier.startswith("000001-ide-")
+    assert (channel / f"{identifier}.request.json").is_file()
+    (channel / f"{identifier}.result.json").write_text(json.dumps({"format": 1, "status": "recorded", "text": "ok", "at": "t"}))
     listed = channel_client.get("/api/configuration/requests").json()["requests"]
     assert listed[0]["result"]["status"] == "recorded" and listed[0]["command"] == "config ide python-ide"
 
@@ -119,3 +121,119 @@ def test_settings_name_the_channel(project: Path, tmp_path: Path) -> None:
     assert settings.configuration == tmp_path / "c"
     settings = settings_from_arguments(["--project", str(project), "--token-file", str(token), "--configuration", str(tmp_path / "d")], {})
     assert settings.configuration == tmp_path / "d"
+
+
+@pytest.mark.parametrize("kind", ["link", "fifo", "huge", "partial", "wrong-shape"])
+def test_unreadable_requests_and_results_do_not_break_listing(channel_client, channel, kind):
+    import os
+    request = ConfigurationChannel(channel).write_request(["ide", "python-ide"])
+    answer = channel / (request.id + ".result.json")
+    bad = channel / "000002-ide.request.json"
+    for path in (answer, bad):
+        if kind == "link":
+            path.symlink_to(channel / "listing.json")
+        elif kind == "fifo":
+            os.mkfifo(path)
+        elif kind == "huge":
+            path.write_bytes(b" " * (256 * 1024 + 1))
+        elif kind == "partial":
+            path.write_text('{"format":')
+        else:
+            path.write_text('{"format":1,"arguments":{},"status":[]}')
+    response = channel_client.get("/api/configuration/requests")
+    assert response.status_code == 200
+    rows = response.json()["requests"]
+    assert rows[0]["result"]["status"] == "unknown" and rows[0]["result"]["text"]
+    assert rows[1]["arguments"] == [] and rows[1]["widening"] is False
+
+
+def test_restart_and_concurrent_writers_never_replace_requests(channel, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    store = ConfigurationChannel(channel)
+    first = store.write_request(["ide", "python-ide"])
+    second = ConfigurationChannel(channel).write_request(["ide", "frontend-ide"])
+    assert first.id != second.id and second.id.startswith("000002-")
+    # Both processes observe the same directory before publishing.
+    barrier = threading.Barrier(2)
+    def stale_listing(self):
+        barrier.wait(timeout=5)
+        return []
+    with monkeypatch.context() as patcher:
+        patcher.setattr(ConfigurationChannel, "requests", stale_listing)
+        with ThreadPoolExecutor(2) as pool:
+            written = list(pool.map(lambda _: store.write_request(["deny", "network"]), range(2)))
+    assert written[0].id != written[1].id
+    assert len(store.requests()) == 4
+    assert json.loads((channel / (first.id + ".request.json")).read_text())["arguments"] == ["ide", "python-ide"]
+
+
+def test_request_is_complete_before_publication(channel, monkeypatch):
+    import os
+    original = os.link
+    observed = []
+    def publish(source, destination):
+        assert not destination.exists()
+        observed.append(json.loads(source.read_text())["arguments"])
+        original(source, destination)
+    monkeypatch.setattr(os, "link", publish)
+    ConfigurationChannel(channel).write_request(["env", "set", "X", "one two"])
+    assert observed == [["env", "set", "X", "one two"]]
+    assert not list(channel.glob("*.tmp"))
+
+
+def test_existing_directory_without_listing_cannot_accept_requests(channel_client, channel):
+    (channel / "listing.json").unlink()
+    response = channel_client.post("/api/configuration/requests", json={"command": "ide python-ide"},
+                                   headers={"Origin": "http://testserver"})
+    assert response.status_code == 422 and "did not mount" in response.text
+    assert not list(channel.glob("*.request.json"))
+
+
+@pytest.mark.parametrize("body", [[], None, 1, "ide python-ide", {"command": []}, {"command": "env set X ''"}, {"command": "ide \ud800"}])
+def test_json_that_is_not_a_request_is_refused(channel_client, channel, body):
+    response = channel_client.post("/api/configuration/requests", content=json.dumps(body),
+                                   headers={"Origin": "http://testserver"})
+    assert response.status_code == 422 and not list(channel.glob("*.request.json"))
+
+
+def test_route_requires_token_and_origin_and_bounds_body(channel_client, channel):
+    channel_client.cookies.clear()
+    channel_client.headers.pop("x-devcapsule-token", None)
+    response = channel_client.post("/api/configuration/requests", json={"command": "deny network"},
+                                   headers={"Origin": "http://testserver"})
+    assert response.status_code == 403 and "token" in response.text
+    with_token(channel_client)
+    response = channel_client.post("/api/configuration/requests", json={"command": "deny network"})
+    assert response.status_code == 403
+    response = channel_client.post("/api/configuration/requests", content=b"x" * (16 * 1024 + 1),
+                                   headers={"Origin": "http://testserver"})
+    assert response.status_code == 413 and not list(channel.glob("*.request.json"))
+
+
+@pytest.mark.parametrize("tokens", [["forget", "network"], ["env", "set", "SECRET", "--from-h"]])
+def test_console_explains_indirect_widening(tokens):
+    assert is_widening(tokens)
+
+
+def test_configuration_script_behaviour():
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node is a development-only script test dependency")
+    subprocess.run([node, str(Path(__file__).with_name("configuration-script.cjs"))], check=True)
+
+
+def test_explicit_secure_authorization_is_not_labelled_as_widening():
+    assert not is_widening(["authorize", "network", "bridge"])
+    assert is_widening(["authorize", "network", "host"])
+    assert is_widening(["authorize", "base-image", "default"])
+
+
+def test_sequence_exhaustion_is_an_explained_refusal(channel_client, channel):
+    (channel / "999999-ide.request.json").write_text(json.dumps({"format": 1, "arguments": ["ide", "python-ide"]}))
+    response = channel_client.post("/api/configuration/requests", json={"command": "deny network"},
+                                   headers={"Origin": "http://testserver"})
+    assert response.status_code == 422 and "exhausted" in response.text
+    assert len(list(channel.glob("*.request.json"))) == 1
