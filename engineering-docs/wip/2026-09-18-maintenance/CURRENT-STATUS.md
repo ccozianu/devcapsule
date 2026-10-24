@@ -132,11 +132,26 @@ direction and the changelog has its candidate-3 section. `main` is ahead
 of the release branch by PR #252, the AI Learning sample, and PR #256, the
 `.idea` rule; a test merge of the copy into `main` was clean, and `main`
 is not merged into the release branch this time, since nothing on it is
-release content and the owner gave no such direction. The full gate runs
-on the release tip while the copy is cut. Next: the throwaway copy
-`4PR-4-release-0.3.0` with the version-line commit, its pull request to
-`main`, the owner's merge, then the tag on the release tip, the backend
-run, the download, the records.
+release content and the owner gave no such direction. The full gate on
+the release tip `a22a215`: mypy clean over 224 files, 1769 unit tests
+passed, 36 deselected, 2 xfailed, packaging integration 17 passed, the
+documentation contract 188 pages, the web console clean and its tests
+passed. The throwaway copy `4PR-4-release-0.3.0`, the release tip plus the
+cherry-pick of `8b7fbc3` keeping `main`'s version files, is
+[PR #257](https://github.com/ccozianu/devcapsule/pull/257) into `main`, the
+gate posted on it. The session is interrupted here by the owner; the claim
+is released; nothing is uncommitted. On resumption, after the owner's
+merge: fetch and confirm the release tip `a22a215` is an ancestor of
+`main`; `git tag -a v0.3.0-rc3 a22a215 -m 'DevCapsule 0.3.0 candidate 3'`;
+from a detached checkout of the tag, `scripts/release-protocol.py
+v0.3.0-rc3 --output /opt/devcapsule-gate/rc3-release-protocol.json`,
+expecting `mainline`; `git push --atomic origin release-0.3.0 v0.3.0-rc3`;
+the backend run; download the three assets into
+`~/.cache/devcapsule-releases/v0.3.0-rc3`, verify the checksum and the
+version; record rc3 in the overview, the table and the changelog's
+candidate-3 date. Then the owner's test of the saved Docker arguments and
+of the approvals prompt on the download, provider acceptance of the new
+agent pins, and the network node's check on a fresh project.
 
 **2026-10-23: the repository's `.idea` rule reversed and executed,
 [PR #256](https://github.com/ccozianu/devcapsule/pull/256) into `main`.**
