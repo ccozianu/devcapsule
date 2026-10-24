@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 from .file_formats import canonical_digest, table, ProjectConfigurationError
 from .manifest import configuration_manifest
+from .workstation import WorkstationDefaults
 
 
 def resolution_source_digests(
@@ -19,11 +20,12 @@ def resolution_source_digests(
     has set no default.
     """
 
+    defaults = WorkstationDefaults.read(workstation or {}).values
     result = {
         "manifest": canonical_digest(configuration_manifest(manifest)),
         "platform-lock": canonical_digest(lock),
         "checkout-input": canonical_digest(checkout),
-        "workstation-config": canonical_digest(dict(workstation)) if workstation else "absent",
+        "workstation-config": canonical_digest(defaults) if defaults else "absent",
     }
 
     from .capabilities import CapabilityPolicy, LocalCapabilities

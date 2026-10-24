@@ -639,7 +639,9 @@ class CheckoutDocuments:
         if resolved.get("status") == "unresolved":
             return "missing"
         try:
-            stale = stale_resolution_inputs(self.manifest, self.composed_lock, self.checkout, resolved, self.workstation)
+            from devcapsule.configuration.capability_selection import effective_lock
+            selected = effective_lock(self.manifest, self.composed_lock, self.checkout, warn=False)
+            stale = stale_resolution_inputs(self.manifest, selected, self.checkout, resolved, self.workstation)
         except ProjectConfigurationError as exc:
             return f"unreadable ({exc})"
         return "stale: " + ", ".join(stale) if stale else "fresh"
@@ -656,7 +658,12 @@ def _load_checkout_documents(context: object | None) -> CheckoutDocuments | runt
     if runtime_context is not None:
         return runtime_context
     root, manifest = manifest_for(start)
-    from devcapsule.configuration.storage import composition_for, recommendation_lock_for
+    from devcapsule.configuration.storage import composition_for, recommendation_lock_for, interrupted_activation
+    record = find_checkout_record(manifest, root)
+    if record is not None and interrupted_activation(record):
+        raise ProjectConfigurationError(
+            "A checkout activation needs recovery; run 'devcapsule project config resolve'. Inspection writes nothing."
+        )
     lock_path, composed, checkout = composition_for(root, manifest)
     _shared_path, shared = recommendation_lock_for(root, manifest)
     record = find_checkout_record(manifest, root)
@@ -672,18 +679,20 @@ def _load_checkout_documents(context: object | None) -> CheckoutDocuments | runt
         resolution_path = resolved_record_path(record)
     saved: dict[str, str | None] = {}
     if record is not None:
-        try:
-            saved = read_environment(arguments_path(record))
-        except ProjectConfigurationError:
-            saved = {}
+        saved = read_environment(arguments_path(record))
     return CheckoutDocuments(root, manifest, root / ".devcapsule" / "devcapsule.toml", shared, lock_path, composed,
                              checkout, input_path, resolution_path, load_workstation(), saved)
 
 
 def _assess(documents: CheckoutDocuments) -> Listing:
     from devcapsule.platforms import Platform
-    from devcapsule.resolution_matrix import MATRICES
+    from devcapsule.resolution_matrix import MATRICES, known_base_image
     matrix = MATRICES[Platform.current()]
+    answers = documents.checkout.get("authorization", {})
+    base_answer = answers.get("base-image", {}) if isinstance(answers, dict) else {}
+    base_reference = base_answer.get("reference") if isinstance(base_answer, dict) else None
+    base_reference = base_reference or documents.composed_lock.get("base", {}).get("reference")
+    base = known_base_image(str(base_reference))
     personal = matrix.local_capabilities()
     surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
     agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
@@ -691,6 +700,7 @@ def _assess(documents: CheckoutDocuments) -> Listing:
         documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
         workstation=documents.workstation, saved_environment=documents.saved_environment,
         surfaces=surfaces, agents=agents, project=documents.root, registered=documents.registered,
+        base_display=base.contract.display if base is not None else None,
     )
 
 
@@ -754,18 +764,26 @@ def _set_value(record: CheckoutRecord, manifest: dict[str, Any], name: str, valu
             f"{name!r} is the project's old name for the memory limit; set it with 'devcapsule project config set memory SIZE'."
         )
     if name in LAUNCHER_VALUE_NAMES:
+        aliases = aliases if name == "memory" else ()
         if keyword == "default":
             record.values.pop(name, None)
+            record.omitted_values.discard(name)
             for alias in aliases:
                 record.values.pop(alias, None)
+                record.omitted_values.discard(alias)
             return f"Forgot {name} for this checkout; it follows the project's recommendation, then the workstation default."
         if keyword == "none":
             raise ProjectConfigurationError(f"{name} has no 'none'; 'default' forgets your answer, or set a value.")
-        record.values[name] = normalize_launcher_value(name, value)
+        record.set_value(name, normalize_launcher_value(name, value))
         for alias in aliases:
             record.values.pop(alias, None)
+            record.omitted_values.discard(alias)
         return f"Set {name} = {record.values[name]} for this checkout."
     declarations = configuration_value_declarations(manifest)
+    if name not in declarations and keyword == "default" and (name in record.values or name in record.omitted_values):
+        record.values.pop(name, None)
+        record.omitted_values.discard(name)
+        return f"Forgot the obsolete value {name} for this checkout."
     if name not in declarations:
         available = ", ".join(sorted((*LAUNCHER_VALUE_NAMES, *(key for key in declarations if key not in aliases)))) or "memory, cpus"
         close = difflib.get_close_matches(name, available.split(", "), n=1, cutoff=0.6)
@@ -810,7 +828,7 @@ class ConfigSetCommand(Command):
 
 class ConfigDefaultCommand(Command):
     name = "default"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = ("Set this workstation's default for memory or cpus, used by every project here unless the "
             "project recommends or the checkout sets another; 'none' removes it.")
 
@@ -875,7 +893,7 @@ class ConfigEnvSetCommand(Command):
         parser.add_argument("key", metavar="NAME")
         parser.add_argument("value", metavar="VALUE", nargs="?")
         parser.add_argument("--from-host", action="store_true", dest="from_host",
-                            help="Take the value from the host's environment at each launch; nothing is stored.")
+                            help="Save only the variable name; Docker reads its value from the host at each launch.")
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
@@ -1218,11 +1236,6 @@ class ConfigUnsetCommand(Command):
         declarations = configuration_value_declarations(manifest)
         if name in LAUNCHER_VALUE_NAMES or name in declarations:
             print("Note: 'config unset' is now 'config set NAME default'.", file=sys.stderr)
-            if name in declarations and declarations[name].get("required", False) and "recommended" not in declarations[name]:
-                raise ProjectConfigurationError(
-                    f"Configuration value {name!r} is mandatory: record a different answer with "
-                    f"'devcapsule project config set {name} VALUE' instead."
-                )
             print(_set_value(record, manifest, name, "default"))
             record.write()
         elif name in record.directory_bindings or name in record.environment_bindings or name in record.state:
@@ -1536,11 +1549,14 @@ class ConfigCheckCommand(Command):
         from devcapsule.configuration.capability_commands import check
         contract = check(_project_context(context).start_path(), manifest_path=arguments.manifest, lock_path=arguments.lock)
         if arguments.manifest is not None or arguments.lock is not None:
-            print(contract)
+            print(json.dumps({"contract": contract.splitlines()[0], "context": "candidate contract"})
+                  if arguments.as_json else contract)
             return 0
         loaded = _load_checkout_documents(context)
         if isinstance(loaded, runtime_configuration.RuntimeConfiguration):
-            print(contract)
+            note = "Host decisions cannot be assessed inside this capsule; run config check with the host launcher."
+            print(json.dumps({**loaded.configuration_document(), "contract": contract.splitlines()[0], "notes": [note]})
+                  if arguments.as_json else contract + "\n" + note)
             return 0
         listing = _assess(loaded)
         if arguments.as_json:

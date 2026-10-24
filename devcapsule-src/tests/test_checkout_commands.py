@@ -202,3 +202,251 @@ def test_every_config_leaf_is_listed_or_hidden_with_its_replacement() -> None:
         assert f"  {visible} " in listing, visible
     for hidden in ("set-env", "list-env", "unset-env", "set-extra-docker-args", "capabilities", "need", "unset"):
         assert f"  {hidden} " not in listing, hidden
+
+
+@pytest.mark.parametrize("verb", ["show", "check", "list"])
+def test_inspection_refuses_activation_without_recovery(project, capsys, verb):
+    from devcapsule.configuration.file_formats import render_toml
+    manifest = load_toml(paths(project)[0])
+    input_path, resolution = checkout_record_paths(manifest, project)
+    journal = input_path.with_suffix(".activation.toml")
+    journal.write_text(render_toml({"before-checkout": input_path.read_text(),
+                                  "after-checkout": "uncommitted", "before-resolution": "recovered", "after-resolution": "new"}))
+    before = {p: p.read_bytes() for p in (input_path, journal)}
+    assert run(project, verb) == 2
+    assert "config resolve" in capsys.readouterr().err
+    assert not resolution.exists()
+    assert {p: p.read_bytes() for p in before} == before
+
+
+@pytest.mark.parametrize("value", ["4", "default"])
+def test_cpu_edit_preserves_legacy_memory_and_other_answers(project, value):
+    from devcapsule.configuration.file_formats import render_toml
+    manifest_path = paths(project)[0]
+    manifest_path.write_text(manifest_path.read_text() + '\n[configuration.values."runtime.memory-limit"]\ntype = "memory-size"\nruntime-effect = "docker.memory-limit"\n')
+    manifest = load_toml(manifest_path)
+    input_path, _ = checkout_record_paths(manifest, project)
+    document = load_toml(input_path)
+    document["configuration"] = {"values": {"runtime.memory-limit": "3GiB", "cpus": 2}}
+    input_path.write_text(render_toml(document))
+    assert run(project, "set", "cpus", value) == 0
+    expected = {"runtime.memory-limit": "3GiB"}
+    if value != "default":
+        expected["cpus"] = 4
+    assert record(project)["configuration"]["values"] == expected
+
+
+@pytest.mark.parametrize("contents", ['defaults = "bad"', '[defaults]\ncpus = 0',
+                                      'devcapsule-workstation-schema-version = 99', '[defaults'])
+def test_malformed_workstation_is_refused_without_writes(project, tmp_path, capsys, contents):
+    from devcapsule.configuration.storage import workstation_path, load_workstation
+    from devcapsule.configuration.file_formats import ProjectConfigurationError
+    path = workstation_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(contents)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    with pytest.raises(ProjectConfigurationError):
+        load_workstation()
+    for verb in ("show", "check"):
+        assert run(project, verb) == 2
+        assert str(path) in capsys.readouterr().err
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+
+
+def test_check_candidate_json_keeps_contract(project, capsys):
+    capsys.readouterr()
+    assert run(project, "check", "--manifest", str(paths(project)[0]), "--json") == 0
+    assert json.loads(capsys.readouterr().out)["contract"].startswith("Configuration contract valid")
+
+
+def test_corrupt_saved_arguments_are_not_reported_as_empty(project, capsys):
+    assert run(project, "env", "set", "TOKEN", "private") == 0
+    path = arguments_path(checkout_record_paths(load_toml(paths(project)[0]), project)[0])
+    path.write_text('corrupt-private-sentinel')
+    capsys.readouterr()
+    for verb in ("show", "check"):
+        assert run(project, verb) == 2
+        output = capsys.readouterr()
+        assert "Invalid saved Docker arguments" in output.err
+        assert "corrupt-private-sentinel" not in output.out + output.err
+    assert path.read_text() == 'corrupt-private-sentinel'
+
+
+def test_pending_environment_remedy_is_executable(project, capsys, monkeypatch):
+    import shlex
+    manifest_path = paths(project)[0]
+    manifest_path.write_text(manifest_path.read_text() + '\n[environment.required.TOKEN]\nreason = "login"\n')
+    capsys.readouterr()
+    assert run(project, "check", "--json") == 3
+    output = json.loads(capsys.readouterr().out)
+    assert output["contract"].startswith("Configuration contract valid")
+    row = next(row for row in output["rows"] if row["name"] == "TOKEN")
+    command = shlex.split(row["command"])[1:]
+    assert command[-1] == "VALUE"
+    command[-1] = "private-sentinel"
+    assert cli.main(command) == 0
+    monkeypatch.delenv("TOKEN", raising=False)
+    assert run(project, "env", "set", "TOKEN", "--from-host") == 0
+    capsys.readouterr()
+    assert run(project, "check", "--json") == 3
+    row = next(row for row in json.loads(capsys.readouterr().out)["rows"] if row["name"] == "TOKEN")
+    assert row["effective"] == "unset" and "host" in row["pending"]
+    monkeypatch.setenv("TOKEN", "host-private-sentinel")
+    assert run(project, "show", "--json") == 0
+    output = capsys.readouterr().out
+    row = next(row for row in json.loads(output)["rows"] if row["name"] == "TOKEN")
+    assert not row["pending"] and "host-private-sentinel" not in output
+
+
+@pytest.mark.parametrize("name", ["base-image", "claude-code-download", "antigravity-download"])
+def test_deny_required_consent_never_writes(project, name, capsys):
+    from devcapsule.configuration.authorization import authorization_declarations
+    from devcapsule.configuration.storage import lock_for
+    assert run(project, "ide", "codium") == 0
+    assert run(project, "agent", "add", "claude-code", "antigravity-cli") == 0
+    manifest = load_toml(paths(project)[0])
+    assert authorization_declarations(manifest, lock_for(project, manifest)[1])[name].required
+    input_path = checkout_record_paths(load_toml(paths(project)[0]), project)[0]
+    before = input_path.read_bytes()
+    assert run(project, "deny", name) == 2
+    assert "not a host access that can be denied" in capsys.readouterr().err
+    assert input_path.read_bytes() == before
+
+
+def test_legacy_need_allows_agent_and_optional_tool_edits(project):
+    from devcapsule.configuration.file_formats import render_toml
+    from devcapsule.configuration.capability_selection import generate_lock
+    from devcapsule.configuration.capabilities import CapabilityPolicy
+    from devcapsule.platforms import Platform
+    from devcapsule.resolution_matrix import MATRICES
+    manifest_path, lock_path, _ = paths(project)
+    document = load_toml(manifest_path)
+    document["capabilities"] = {"need": ["node", "frontend-ide"], "optional": ["browser-automation"]}
+    manifest_path.write_text(render_toml(document))
+    lock_path.write_text(render_toml(generate_lock(CapabilityPolicy.read(document), MATRICES[Platform.current()])))
+    before = manifest_path.read_bytes(), lock_path.read_bytes()
+    assert run(project, "agent", "add", "codex") == 0
+    assert record(project)["capabilities"]["selected"] == ["codex-agent"]
+    assert run(project, "tool", "omit", "browser-automation") == 0
+    assert record(project)["capabilities"]["without"] == ["browser-automation"]
+    assert (manifest_path.read_bytes(), lock_path.read_bytes()) == before
+
+
+@pytest.fixture
+def runtime_project(project, tmp_path, monkeypatch):
+    """A real RuntimeConfiguration with separate project and read-only record mounts."""
+    import shutil
+    from devcapsule import runtime_configuration
+    assert run(project, "ide", "codium") == 0
+    manifest = load_toml(paths(project)[0])
+    input_path, _ = checkout_record_paths(manifest, project)
+    inside = tmp_path / "inside"
+    shutil.copytree(project, inside)
+    context_path = tmp_path / "launch-context.json"
+    context_path.write_text(json.dumps({
+        "format": 1, "launcher-root": str(project), "runtime-root": str(inside),
+        "checkout-file": input_path.name, "project": manifest["project"],
+        "running": {"identity": "fixture", "origin": "project recommendation", "base": {},
+                    "lock": load_toml(paths(project)[1])},
+    }))
+    monkeypatch.setattr(runtime_configuration, "CONTEXT_PATH", context_path)
+    monkeypatch.setattr(runtime_configuration, "CONFIGURATION_PATH", input_path.parent)
+    return inside
+
+
+@pytest.mark.parametrize("verb", ["show", "list", "check"])
+def test_runtime_inspection_uses_recorded_context_and_never_host_assessment(runtime_project, tmp_path, monkeypatch, capsys, verb):
+    from devcapsule.commands import project as commands
+    def forbidden(*args, **kwargs):
+        pytest.fail("Runtime inspection must not assess host inputs")
+    monkeypatch.setattr(commands, "_assess", forbidden)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    capsys.readouterr()
+    assert run(runtime_project, verb, "--json") == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["context"] == "running capsule (next launch, read-only)"
+    assert document["checkout"]["runtime-path"] == str(runtime_project)
+    assert document["checkout"]["record"]["capabilities"]["selected"] == ["frontend-ide"]
+    if verb == "check":
+        assert document["contract"].startswith("Configuration contract valid")
+        assert "Host decisions cannot be assessed" in document["notes"][0]
+    assert run(runtime_project, verb) == 0
+    text = capsys.readouterr().out
+    assert ("recorded choices" if verb != "check" else "Host decisions cannot be assessed") in text
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+
+
+ALIASES = [
+    ("set-env", ("env", "set"), ("TOKEN", "private")),
+    ("unset-env", ("env", "unset"), ("TOKEN",)),
+    ("list-env", ("env", "list"), ()),
+    ("set-extra-docker-args", ("docker-args", "set"), ("--", "--gpus", "all")),
+    ("list-extra-docker-args", ("docker-args", "list"), ()),
+    ("remove-extra-docker-args", ("docker-args", "clear"), ()),
+]
+
+
+@pytest.mark.parametrize("alias,replacement,arguments", ALIASES)
+def test_hidden_alias_success_and_error_status_match_replacement(project, capsys, alias, replacement, arguments):
+    manifest = load_toml(paths(project)[0])
+    path = arguments_path(checkout_record_paths(manifest, project)[0])
+    assert run(project, *replacement, *arguments) == 0
+    expected = path.read_bytes() if path.exists() else None
+    assert run(project, alias, *arguments) == 0
+    assert (path.read_bytes() if path.exists() else None) == expected
+    assert f"now 'config {' '.join(replacement)}'" in capsys.readouterr().err
+    assert run(project, alias, "--invalid-review-option") == run(project, *replacement, "--invalid-review-option") == 2
+
+
+@pytest.mark.parametrize("alias,replacement,arguments", ALIASES)
+def test_hidden_alias_capsule_refusal_matches_replacement(runtime_project, tmp_path, alias, replacement, arguments, capsys):
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    assert run(runtime_project, alias, *arguments) == run(runtime_project, *replacement, *arguments) == 2
+    assert "Run outside the capsule" in capsys.readouterr().err
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+
+
+def test_clear_memory_alias_and_undeclared_answers_preserves_other_choices(project):
+    from devcapsule.configuration.file_formats import render_toml
+    manifest_path = paths(project)[0]
+    manifest_path.write_text(manifest_path.read_text() + '\n[configuration.values."runtime.memory-limit"]\ntype = "memory-size"\nruntime-effect = "docker.memory-limit"\nrecommended = "2GiB"\n')
+    input_path, _ = checkout_record_paths(load_toml(manifest_path), project)
+    document = load_toml(input_path)
+    document["configuration"] = {"values": {"cpus": 3, "stray": "old"}, "omitted-values": ["runtime.memory-limit"]}
+    input_path.write_text(render_toml(document))
+    assert run(project, "set", "memory", "default") == 0
+    assert record(project)["configuration"]["values"] == {"cpus": 3, "stray": "old"}
+    assert "runtime.memory-limit" not in record(project)["configuration"].get("omitted-values", [])
+    assert run(project, "set", "stray", "default") == 0
+    assert record(project)["configuration"]["values"] == {"cpus": 3}
+
+
+def test_inspection_never_writes_in_registered_stale_or_unregistered_states(project, tmp_path, capsys):
+    import shutil
+    assert run(project, "ide", "codium") == 0
+    assert run(project, "authorize", "base-image", "default") == 0
+    assert run(project, "resolve") == 0
+    assert run(project, "set", "cpus", "2") == 0
+    second = tmp_path / "second-checkout"
+    shutil.copytree(project, second)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    for root, expected in ((project, 0), (second, 3)):
+        capsys.readouterr()
+        assert run(root, "show", "--json") == 0
+        document = json.loads(capsys.readouterr().out)
+        if root == project:
+            assert document["resolution"].startswith("stale"), document["resolution"]
+        else:
+            assert document["resolution"] == "missing", document["resolution"]
+        assert run(root, "check", "--json") == expected
+        checked = json.loads(capsys.readouterr().out)
+        assert bool(checked["pending"]) == (expected == 3)
+        assert checked["contract"].startswith("Configuration contract valid")
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+
+
+def test_workstation_default_requires_host_launcher(runtime_project, tmp_path, capsys):
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    assert run(runtime_project, "default", "cpus", "2") == 2
+    assert "Run outside the capsule" in capsys.readouterr().err
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
