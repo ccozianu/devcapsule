@@ -349,7 +349,45 @@ to the driver by [the release work order](../../work-orders/2026-10-18-release-0
 delivered by mail the same day. The proposal's decisions 1 and 5 are
 settled; 2, 3 and 4 stand as gates of the cycle.
 
+## 2026-10-24: The CLI UX Redesign Work Order
+
+While testing candidate 3 the owner asked for a challenge of the command
+surface's assumptions, then for a work order: the deficiencies, the
+principles as the owner ruled them on 2026-10-24, the config and run
+experience addressed to the user, and the decisions still open. The
+manifest a capable agent wrote for `ai-learning-bootstrap` on 2026-10-22
+is part of the evidence: it expresses one of the project's three needs.
+The draft is
+[the work order](../../work-orders/2026-10-24-cli-ux-redesign.md); the
+owner accepted the draft's last iteration and directed, the same day, that
+it go through the review-partner loop with the Codex, gpt-6-astra pair.
+Nothing in it is implemented; the owner named 0.3.0 rc4 as its release on
+2026-10-24, answering Part 5 item 8; Part 5 lists
+the eleven decisions for the owner.
+
+The loop, topic 9.11: the slice is the document itself, PRn on
+`ws-project-management/cli-ux-work-order` against `main`; the brief and
+any round brief are under
+[`evidence/2026-10-24-cli-ux-work-order/`](evidence/2026-10-24-cli-ux-work-order/).
+Rounds and outcome: PR258 is #258; the Codex gpt-6-astra pair opened
+PR258.1 as #259 at `bc3bf9b`, reproducing items 1 to 23 with 67 CLI
+invocations and no container. Its findings held: Node was declarable with
+`capabilities --required node` and the draft said the opposite; the lock
+carries no workflow table; the bootstrap writer uses bare keys; the
+transcript's IDE pins and the console on recipe 9 were wrong; two further
+first-day gaps, a policy `init` that leaves the owner unable to run and a
+`config list` that writes a placeholder; Part 5 grown from eleven to
+twenty-four questions, item 24 catching a conflict between section 3.2 and
+principle 1. One round, on the review's notes interleaved in Part 3, which
+the owner had asked to be written to the user; moved into Part 5 at
+`30ecdca`. Accepted and merged at `eab9ed6`. PR258 awaits the owner.
+
 ## Open Threads
+
+- The CLI UX redesign work order awaits the owner's decisions, Part 5,
+  items 1 to 11, after the review loop settles. The specification and the
+  implementation are two later work orders, in 0.3.0 rc4 by the owner's
+  answer to item 8.
 
 - Awaiting the human: the eleven user-docs proposal decisions, a gate of the
   0.3.0 cycle; the image-cleanup design review when maintenance reaches it.

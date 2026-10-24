@@ -21,6 +21,8 @@ from devcapsule.configuration.storage import ResolvedProject, checkout_name_for,
 
 CONTEXT_PATH = Path("/etc/devcapsule/launch-context.json")
 CONFIGURATION_PATH = Path("/etc/devcapsule/checkout")
+CHANNEL_PATH = Path("/run/devcapsule-configuration")
+"""The console's configuration channel, mounted writable for the run; :mod:`devcapsule.configuration.console_channel`."""
 
 
 class CapsuleAccess(Enum):
@@ -60,9 +62,12 @@ class CapsuleAccess(Enum):
 class LaunchConfiguration:
     directory: Path
     document: dict[str, Any]
+    # The listing ``run`` computed for this launch, written into the channel
+    # for the capsule's own ``config show``; absent for a legacy launch.
+    listing: dict[str, Any] | None = None
 
     @classmethod
-    def capture(cls, selected: ResolvedProject, identity: str) -> LaunchConfiguration:
+    def capture(cls, selected: ResolvedProject, identity: str, listing: dict[str, Any] | None = None) -> LaunchConfiguration:
         from devcapsule.project_information import configured_information
 
         checkout_name = checkout_name_for(selected.manifest, selected.checkout_path)
@@ -79,7 +84,7 @@ class LaunchConfiguration:
             "running": {"identity": identity, "lock": deepcopy(selected.lock),
                         "origin": "local selection" if selected_version_lock(selected.checkout) else "project recommendation",
                         "base": deepcopy(selected.checkout.get("authorization", {}).get("base-image", {}))},
-        })
+        }, listing)
 
 
 @dataclass(frozen=True)

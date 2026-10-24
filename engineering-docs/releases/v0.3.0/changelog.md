@@ -6,8 +6,9 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 2, tagged 2026-10-22; candidate 1 was tagged 2026-10-19 at
-`7016cdd` and candidate 0 on 2026-10-18 at `53ebc17`.
+Candidate 4 is in preparation; candidate 3 was tagged 2026-10-24 at `a22a215`; candidate 2 was tagged
+2026-10-22 at `e5b5a8b`, candidate 1 on 2026-10-19 at `7016cdd` and
+candidate 0 on 2026-10-18 at `53ebc17`.
 
 ## New
 
@@ -157,6 +158,81 @@ integration and end-to-end suites.
   approves from the command line and inside scripts. The page
   [Software approvals](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/)
   says what an approval by name leaves alone (2026-10-22).
+
+## New in candidate 4
+
+The CLI redesign separates project requirements from personal choices.
+The owner settled the scope in the
+[CLI UX redesign work order](../../work-orders/2026-10-24-cli-ux-redesign.md)
+on 2026-10-24.
+
+- **Shared declarations and personal tools.** `project init --require node
+  --offer browser-automation --ide frontend-ide --agent codex-agent` writes
+  tools to the shared manifest and lock. It records the IDE and agent in
+  the checkout. Initialization can still ask for per-checkout base consent.
+  Owner commands are `config require`, `offer` and `drop` for tools and
+  environment declarations, plus `recommend` for supported defaults.
+  Tool edits update the manifest and lock together. Environment declarations
+  and recommendations update only the manifest. The writer uses bare keys
+  where possible and omits empty tables. The workflow declaration stays in
+  the manifest. Schema-1 files remain readable; new schema-2 files need this
+  launcher. [Capabilities](https://devcapsule.mycodespace.ai/docs/current/configuration/capabilities/).
+- **Configuration inspection.** `config show` lists effective values,
+  sources and pending decisions without writing. On the host, `config check`
+  exits 3 for any pending decision. Candidate-file checks validate only
+  the candidate contract. Inside a capsule, host decisions cannot be assessed.
+- **Checkout commands and resource limits.** Personal commands cover IDEs,
+  agents, tool omissions, values, authorizations, environment variables and
+  bindings. `config env` and `config docker-args` edit the same private list.
+  Memory and CPUs need no project declaration. Their precedence is the run
+  flag, checkout answer, project recommendation, then workstation default.
+  With none set, DevCapsule imposes no limit. CPUs must be a positive integer.
+  Shared-memory size remains fixed by the IDE's runtime template.
+  [Resource limits](https://devcapsule.mycodespace.ai/docs/current/configuration/resource-limits/).
+- **Launch preparation.** `project run` derives the plan without a separate
+  resolve step. It asks for missing required answers at a terminal.
+  Without one, missing required answers produce status 3 before answers are saved.
+  Unanswered host recommendations use secure defaults instead.
+  IDE, agent, resource, environment and host-access flags apply to one launch.
+  `--save` records them after the required review succeeds.
+  `--trust` persists workstation acceptance without `--save`.
+  A second checkout gets a separate record with a directory-derived name.
+  Incompatible saved version sets require an explicit replacement.
+  A base without a contained desktop still requires explicit X11 consent.
+- **Workstation trust.** An accepted channel covers the same vendor and
+  terms across versions and projects, within the accepted origins.
+  `config trust list|accept|withdraw` manages that record.
+  Existing matching per-checkout consents remain valid, including after trust
+  withdrawal. The channels come from the checkout's selected lock, so a
+  personally added agent's channel can be accepted. Changed host
+  recommendations do not replace recorded answers. [Vendor software and trust](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/).
+- **Console configuration requests.** A console-capable base shows the
+  listing captured at launch, its timestamp, and later request results.
+  The attached launcher validates and records supported requests for the next
+  launch. Grants, trust acceptance, bindings and replacement Docker arguments
+  require host confirmation. `config console list|apply|discard` handles them.
+  Noninteractive launches leave those requests pending.
+  The console cannot edit shared declarations or workstation resource defaults.
+  Nothing reconfigures the running capsule.
+- **Compatibility spellings.** Most old spellings are hidden from parent
+  help, but several still execute and can write files. `config need` and the
+  old shared-policy flags refuse with replacements. `run --force` is ignored
+  with a note; `run --force-config` is an unrecognized argument.
+  `init --less-pedantic` remains accepted. The
+  [command reference](https://devcapsule.mycodespace.ai/docs/current/reference/cli/)
+  lists each retained form and its behavior.
+
+## Not in candidate 4
+
+The resolve step no longer needs a force option. Shared-memory passthrough
+and retirement of `init --less-pedantic` remain incomplete against the redesign.
+The `--print-command` path can still materialize images and write caches;
+use `config show` or `config check` for read-only inspection.
+
+Planned for later candidates: diagnostics snapshot and export, obsolete
+image and cache cleanup, and release-notes automation.
+Outside 0.3.0: installed-IDE reuse with an empty launcher cache, browser
+evidence for diagnostics, console materialized views, and ecosystem-aware bootstrap.
 
 ## Not in candidate 3
 

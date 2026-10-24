@@ -2,7 +2,7 @@
 
 [Release overview](README.md)
 
-Initial review: 2026-10-18 at the cut, `3c91183`; the console-link row added after the owner's rc0 launch the same day; reconciled 2026-10-21 after the owner's verification of rc1; the two C10 rows closed 2026-10-23 on the owner's verification of rc2. The linked records own
+Initial review: 2026-10-18 at the cut, `3c91183`; the console-link row added after the owner's rc0 launch the same day; reconciled 2026-10-21 after the owner's verification of rc1; the two C10 rows closed 2026-10-23 on the owner's verification of rc2; reconciled 2026-10-24 before candidate 4, no row changed. The linked records own
 status, severity, target, ownership and technical evidence; this table
 mirrors those fields for review and records the release's disposition and
 next action. Update the record and its row together; reconcile before each

@@ -60,7 +60,7 @@ def test_v0262_checkout_resumes_with_no_user_action(tmp_path: Path, capsys, monk
     with patch.dict(os.environ, env, clear=False):
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         output = capsys.readouterr().out
-        assert "fresh" in output
+        assert "Nothing is pending." in output
 
         assert cli.main(["project", "list"]) == 0
         assert "ready" in capsys.readouterr().out
@@ -78,10 +78,10 @@ def test_v0262_manifest_edit_never_blocks_inspection(tmp_path: Path, capsys) -> 
     )
     with patch.dict(os.environ, env, clear=False):
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert "fresh" in capsys.readouterr().out
+        assert "Nothing is pending." in capsys.readouterr().out
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert "fresh" in capsys.readouterr().out
+        assert "Nothing is pending." in capsys.readouterr().out
 
 
 def test_v026_formation_artifacts_are_inspectable_despite_manifest_digest(

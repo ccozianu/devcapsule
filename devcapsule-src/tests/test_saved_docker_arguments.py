@@ -43,7 +43,7 @@ def test_saved_args_replace_list_clear_and_share_hidden_env(project, tmp_path, c
     assert not path.exists()
     capsys.readouterr()
     assert config(project, 'list-extra-docker-args') == 0
-    assert 'No saved extra Docker arguments.' in capsys.readouterr().out
+    assert 'No saved Docker options.' in capsys.readouterr().out
 
 
 @pytest.mark.parametrize('args', [['--network=host'], ['--memory', '2g'], ['--user', 'root'], ['-m2g'], ['-u1000'], ['-dit']])
@@ -128,7 +128,8 @@ def test_env_conveniences_keep_adjacent_env_options_and_other_arguments(project)
     path = arguments_path(registered_checkouts()[0].record_path)
     saved = ['--env', 'A=1', '-eB=2', '--env=C=3', '-e', 'D=4', '--gpus', 'all', '--env', 'A=5', '-eE', '-eF=6']
     assert config(project, 'set-extra-docker-args', '--', *saved) == 0
-    assert read_environment(path) == {'A': '5', 'B': '2', 'C': '3', 'D': '4', 'E': '', 'F': '6'}
+    # -eE names no value: Docker passes the host's E through, which the store reports as None.
+    assert read_environment(path) == {'A': '5', 'B': '2', 'C': '3', 'D': '4', 'E': None, 'F': '6'}
     assert config(project, 'set-env', 'A', 'new') == 0  # first occurrence keeps its place, the repeat goes
     assert read_arguments(path) == ['--env', 'A=new', '-eB=2', '--env=C=3', '-e', 'D=4', '--gpus', 'all', '-eE', '-eF=6']
     assert config(project, 'unset-env', 'B') == 0
@@ -207,3 +208,21 @@ def test_overlapping_ambiguous_split_tokens_refuse_conveniences_and_launch_liter
     assert launch.call_args.args[0].extra_docker_args == ['--pull=never', *args]
     output = str(capsys.readouterr())
     assert 'hidden-real-sentinel' not in output and 'TOKEN=<redacted>' in output
+
+
+@pytest.mark.parametrize('tokens', [['--env', 'TOKEN'], ['-e', 'TOKEN'], ['--env=TOKEN'], ['-eTOKEN'], ['-e=TOKEN']])
+def test_pass_through_redaction_keeps_names_without_reading_host_values(tokens, monkeypatch):
+    monkeypatch.setenv('TOKEN', 'private-host-sentinel')
+    assert redact_environment(tokens) == tokens
+    assert redact_environment(tokens, {'TOKEN'}) == tokens
+
+
+@pytest.mark.parametrize('option', ['--cpus', '--cpus=2', '--cpu-shares', '--cpu-shares=128',
+                                   '--cpuset-cpus', '--cpuset-cpus=0', '-c', '-c128', '-tc128'])
+def test_cpu_docker_spellings_are_refused_without_writes(project, option, capsys):
+    assert config(project, 'docker-args', 'set', '--', '--gpus', 'all') == 0
+    path = arguments_path(registered_checkouts()[0].record_path)
+    before = path.read_bytes()
+    assert config(project, 'docker-args', 'set', '--', option) == 2
+    assert 'config set cpus N' in capsys.readouterr().err
+    assert path.read_bytes() == before

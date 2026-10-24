@@ -34,10 +34,11 @@ class Configuration:
     """
 
     def __init__(self, manifest: Mapping[str, Any], lock: Mapping[str, Any],
-                 checkout: Mapping[str, Any]) -> None:
+                 checkout: Mapping[str, Any], workstation: Mapping[str, Any] | None = None) -> None:
         self._manifest = deepcopy(dict(manifest))
         self._lock = deepcopy(dict(lock))
         self._checkout = deepcopy(dict(checkout))
+        self._workstation = deepcopy(dict(workstation or {}))
         validate_manifest(self._manifest, Path("manifest"))
         validate_file_format(self._lock, ConfigurationFileKind.lock, "platform lock")
         validate_file_format(self._checkout, ConfigurationFileKind.checkout, "checkout")
@@ -51,7 +52,7 @@ class Configuration:
         LocalCapabilities.read(self._checkout).validate(policy)
         if policy.sdk_major and table(self._checkout, "authorization", "base-image").get("image-id"):
             raise ProjectConfigurationError("A local base override cannot establish the project's SDK-major guarantee; select the pinned project base.")
-        self._review = review_configuration(self._manifest, self._lock, self._checkout)
+        self._review = review_configuration(self._manifest, self._lock, self._checkout, self._workstation)
 
     def review(self) -> ConfigurationReview:
         return deepcopy(self._review)
@@ -63,16 +64,16 @@ class Configuration:
         has_formation = "base" in self._lock and "materialization" in self._lock
         if component not in INTERACTIVE_SURFACES or (not image and not has_formation):
             raise ProjectConfigurationError(
-                "Choose a local IDE with 'devcapsule project config capabilities --local python-ide' "
-                "(or another IDE capability); a known interactive surface and image/formation are required."
+                "Choose your IDE for this checkout with 'devcapsule project config ide IDE'; "
+                "a known interactive surface and image/formation are required."
             )
         # require_ready is rendered by the file/CLI adapter with its actual path.
         return Resolution(tomllib.loads(render_resolution(
-            self._manifest, self._lock, self._checkout, self._review,
+            self._manifest, self._lock, self._checkout, self._review, self._workstation,
         )))
 
     def stale_inputs(self, resolution: Resolution) -> tuple[str, ...]:
-        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document())
+        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document(), self._workstation)
 
     def accept(self, resolution: Resolution, *, force: bool = False) -> tuple[str, ...]:
         """Admit a saved plan. Force waives freshness only, never validity.

@@ -14,7 +14,7 @@ from typing import Sequence
 
 import devcapsule.commands
 from devcapsule.commands import framework
-from devcapsule.compat import CliError
+from devcapsule.compat import CliError, DecisionPending
 
 
 PROJECT_NAME = "devcapsule"
@@ -34,6 +34,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if code is None:
             return 0
         return code if isinstance(code, int) else 1
+    except DecisionPending as exc:
+        print(f"{PROJECT_NAME}: {exc}", file=sys.stderr)
+        return DecisionPending.EXIT_STATUS
     except CliError as exc:
         print(f"{PROJECT_NAME}: {exc}", file=sys.stderr)
         return 2

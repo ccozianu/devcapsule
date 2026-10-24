@@ -1,7 +1,8 @@
 """The FastAPI application: pages, their JSON, records, monitoring, decisions and notifications.
 
-Writes stay in capsule state: decision answers and notifications read or
-dismissed through the runtime CLI. Every other route is ``GET``. The pages are static
+Writes stay in capsule state: decision answers, notifications read or
+dismissed through the runtime CLI, and configuration requests the launcher
+answers through its mounted channel. Every other route is ``GET``. The pages are static
 files that fetch their facts from the ``/api`` routes, which run the
 runtime CLI, read the capsule's processes and cgroup, read a file inside
 the project mount, or read the decisions directory. The records page
@@ -22,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__
 from . import monitor
 from .cli import CommandError, CommandRefused, RuntimeCli
+from .configuration import MAXIMUM_COMMAND_BYTES, ChannelError, ConfigurationChannel, parse_command, suggested_arguments
 from .decisions import (
     KEY_PATTERN, MAXIMUM_ANSWER_BYTES, Decision, DecisionError, DecisionStore, answer_from_mapping,
 )
@@ -170,9 +172,63 @@ def create_app(settings: Settings) -> FastAPI:
     def identity() -> JSONResponse:
         return document(lambda: compose_identity(cli.information(), cli.versions()))
 
+    channel = ConfigurationChannel(settings.configuration)
+
     @app.get("/api/configuration")
     def configuration() -> JSONResponse:
-        return document(cli.configuration)
+        """The listing: the runtime CLI's, which inside a capsule is the launcher's listing at launch.
+
+        Each pending row carries ``request``, the config tokens its host
+        command implies, for the page's prefilled form.
+        """
+        try:
+            listing = cli.configuration()
+        except CommandError as error:
+            return JSONResponse(error.to_document(), status_code=502)
+        for row in listing.get("rows", []) if isinstance(listing.get("rows"), list) else []:
+            if isinstance(row, dict) and row.get("pending") and isinstance(row.get("command"), str):
+                row["request"] = suggested_arguments(row["command"])
+        listing["channel"] = channel.available
+        return JSONResponse(listing)
+
+    @app.get("/api/configuration/requests")
+    def configuration_requests() -> JSONResponse:
+        """The requests written this run and the launcher's result for each, in order."""
+        try:
+            return JSONResponse({"channel": channel.available, "requests": [item.to_mapping() for item in channel.requests()]})
+        except (ChannelError, OSError) as error:
+            return JSONResponse({"error": str(error)}, status_code=502)
+
+    @app.post("/api/configuration/requests")
+    async def configuration_request(request: Request) -> Response:
+        """The console's write for the next launch: one request file the launcher answers.
+
+        Same origin only, as the decision answer. The body is ``{"command":
+        "<config tokens>"}``; the verb is checked here, the whole command by
+        the launcher, which records, refuses or defers it.
+        """
+        if not same_origin(request):
+            return PlainTextResponse("the request must come from the console's own origin\n", status_code=403)
+        body = bytearray()
+        async for chunk in request.stream():
+            if len(body) + len(chunk) > MAXIMUM_COMMAND_BYTES:
+                return PlainTextResponse("the request is too large\n", status_code=413)
+            body.extend(chunk)
+        try:
+            document = json.loads(body.decode("utf-8"))
+        except (ValueError, RecursionError) as error:
+            return PlainTextResponse(f"the request must be a JSON document: {error}\n", status_code=422)
+        command = document.get("command") if isinstance(document, dict) else None
+        if not isinstance(command, str):
+            return PlainTextResponse("the request names its command as a string\n", status_code=422)
+        try:
+            tokens = parse_command(command)
+            written = channel.write_request(tokens)
+        except ChannelError as error:
+            return PlainTextResponse(f"{error}\n", status_code=422)
+        except OSError as error:
+            return PlainTextResponse(f"cannot write the request: {error}\n", status_code=500)
+        return JSONResponse({"request": written.to_mapping()}, status_code=201)
 
     @app.get("/api/versions")
     def versions() -> JSONResponse:

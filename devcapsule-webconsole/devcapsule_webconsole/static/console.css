@@ -191,3 +191,11 @@ form.decision .note input, form.decision .note textarea { width: 100%; max-width
 form.decision button[type="submit"] { font: inherit; padding: 0.4rem 1rem; background: var(--brand); color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
 form.decision button[disabled] { opacity: 0.6; }
 .muted { color: var(--muted); }
+
+/* The configuration page's requests for the launcher. */
+form.request { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; align-items: center; margin: 0.6rem 0; }
+form.request label { flex-basis: 100%; }
+form.request input { font: inherit; padding: 0.25rem 0.5rem; border: 1px solid var(--line); border-radius: 4px; flex: 1 1 20rem; }
+form.request button { font: inherit; padding: 0.3rem 0.8rem; background: var(--brand); color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+form.request button[disabled] { opacity: 0.6; }
+.request-status { color: var(--muted, #555); }
