@@ -1540,6 +1540,7 @@ LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
     "--memory": "set it: 'devcapsule project config set memory SIZE'",
     "-m": "set it: 'devcapsule project config set memory SIZE'",
     "--cpus": "set it: 'devcapsule project config set cpus N'",
+    "-c": "set the CPU count instead: 'devcapsule project config set cpus N'",
     "--cpu-shares": "set the CPU count instead: 'devcapsule project config set cpus N'",
     "--cpuset-cpus": "set the CPU count instead: 'devcapsule project config set cpus N'",
     "--shm-size": "the surface declares shared-memory-size in its runtime template",

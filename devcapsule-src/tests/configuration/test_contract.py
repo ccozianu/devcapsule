@@ -394,3 +394,52 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     shown = capsys.readouterr().out
     assert 'Pending decisions:' in shown and 'config authorize base-image default' in shown
     assert invoke(project, 'config', 'check') == 3
+
+
+def test_workstation_defaults_stale_only_the_workstation_input(checkout):
+    from devcapsule.configuration.storage import load_workstation
+    from devcapsule.configuration.execution import ExecutionConfiguration
+    project, record, resolution = checkout
+    # This fixture contains a plan written by the released 0.2.11 launcher.
+    manifest = load_toml(project / '.devcapsule/devcapsule.toml')
+    lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
+    local, previous = load_toml(record), load_toml(resolution)
+    assert previous['sources']['workstation-config'] == 'absent'
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ()
+    assert invoke(project, 'config', 'default', 'cpus', '2') == 0
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ('workstation-config',)
+    assert invoke(project, 'config', 'resolve') == 0
+    current = ExecutionConfiguration.load(project).project.resolution
+    assert current['runtime']['cpus'] == 2
+    assert invoke(project, 'config', 'default', 'cpus', '3') == 0
+    assert stale_resolution_inputs(manifest, lock, load_toml(record), current, load_workstation()) == ('workstation-config',)
+    assert invoke(project, 'config', 'default', 'cpus', 'none') == 0
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ()
+
+
+def test_old_base_listing_reports_host_x11_without_changing_consent(checkout, capsys):
+    import json
+    project, record, resolution = checkout
+    before = record.read_bytes(), resolution.read_bytes()
+    assert invoke(project, 'config', 'show', '--json') == 0
+    rows = json.loads(capsys.readouterr().out)['rows']
+    x11 = next(row for row in rows if row['name'] == 'host-x11')
+    assert x11['effective'] == 'host X11'
+    assert x11['source'] == 'legacy base default (no contained desktop)'
+    assert not x11['pending']
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+
+
+def test_old_base_with_x11_denied_is_pending_in_listing(checkout, capsys):
+    import json
+    project, record, _ = checkout
+    assert invoke(project, 'config', 'deny', 'host-x11') == 0
+    before = record.read_bytes()
+    capsys.readouterr()
+    assert invoke(project, 'config', 'check', '--json') == 3
+    rows = json.loads(capsys.readouterr().out)['rows']
+    x11 = next(row for row in rows if row['name'] == 'host-x11')
+    assert x11['effective'] == 'unavailable'
+    assert 'no contained desktop' in x11['pending']
+    assert 'config authorize host-x11 true' in x11['command']
+    assert record.read_bytes() == before

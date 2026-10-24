@@ -208,3 +208,21 @@ def test_overlapping_ambiguous_split_tokens_refuse_conveniences_and_launch_liter
     assert launch.call_args.args[0].extra_docker_args == ['--pull=never', *args]
     output = str(capsys.readouterr())
     assert 'hidden-real-sentinel' not in output and 'TOKEN=<redacted>' in output
+
+
+@pytest.mark.parametrize('tokens', [['--env', 'TOKEN'], ['-e', 'TOKEN'], ['--env=TOKEN'], ['-eTOKEN'], ['-e=TOKEN']])
+def test_pass_through_redaction_keeps_names_without_reading_host_values(tokens, monkeypatch):
+    monkeypatch.setenv('TOKEN', 'private-host-sentinel')
+    assert redact_environment(tokens) == tokens
+    assert redact_environment(tokens, {'TOKEN'}) == tokens
+
+
+@pytest.mark.parametrize('option', ['--cpus', '--cpus=2', '--cpu-shares', '--cpu-shares=128',
+                                   '--cpuset-cpus', '--cpuset-cpus=0', '-c', '-c128', '-tc128'])
+def test_cpu_docker_spellings_are_refused_without_writes(project, option, capsys):
+    assert config(project, 'docker-args', 'set', '--', '--gpus', 'all') == 0
+    path = arguments_path(registered_checkouts()[0].record_path)
+    before = path.read_bytes()
+    assert config(project, 'docker-args', 'set', '--', option) == 2
+    assert 'config set cpus N' in capsys.readouterr().err
+    assert path.read_bytes() == before

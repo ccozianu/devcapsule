@@ -1318,12 +1318,10 @@ def test_set_none_records_an_explicit_omission(tmp_path: Path, capsys) -> None:
         assert "omitted-values" not in checkout.get("configuration", {})
 
 
-def test_unset_refuses_mandatory_nodes_and_removes_optional_ones(
+def test_unset_forgets_required_and_optional_value_answers(
     tmp_path: Path, capsys
 ) -> None:
-    """Owner ruling 2026-09-03: unset removes the name from the tree, so it
-    must refuse a mandatory node instead of deferring the failure to
-    resolve time."""
+    """The hidden alias now forgets answers, as set NAME default does."""
 
     project = tmp_path / "project"
     project.mkdir()
@@ -1352,17 +1350,17 @@ def test_unset_refuses_mandatory_nodes_and_removes_optional_ones(
             )
         capsys.readouterr()
 
-        # A declaration-required node refuses, naming the replacement verb;
-        # base-image travels the same node.required guard by construction.
+        # Forgetting leaves the required declaration intact and makes it pending.
         assert (
             cli.main(
                 ["project", "--path", str(project), "config", "unset", "registry.token-name"]
             )
-            == 2
+            == 0
         )
         message = capsys.readouterr().err
-        assert "mandatory" in message
-        assert "config set registry.token-name" in message
+        assert "config set NAME default" in message
+        assert cli.main(["project", "--path", str(project), "config", "check"]) == 3
+        assert "registry.token-name" in capsys.readouterr().err
 
         # An optional node still unsets — the name is removed from the tree.
         assert (
@@ -2322,7 +2320,10 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
     assert cli.main(['project', 'config', 'resolve']) == 0
     assert cli.main(['project', 'config', 'set-extra-docker-args', '--', '--gpus', 'all', '--volume', str(tmp_path / 'data dir') + ':/data:ro']) == 0
     assert cli.main(['project', 'config', 'set-env', 'APP_PASSWORD', 'managed-secret-sentinel']) == 0
+    assert cli.main(['project', 'config', 'set', 'cpus', '2']) == 0
+    assert cli.main(['project', 'config', 'resolve']) == 0
     selected = ExecutionConfiguration.load(project).project
+    assert selected.resolution['runtime']['cpus'] == 2
     locked = parse_locked_environment(selected.lock)
     realized = SimpleNamespace(image=SimpleNamespace(labels={'devcapsule.base.display': 'contained'},
                                  reference='devcapsule-local-' + surface + ':fixture'), created=False, locked=locked)
@@ -2361,7 +2362,8 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
                         lambda args, env: [arg.replace(str(tmp_path), '/daemon/fixture') for arg in args])
     capfd.readouterr()
     with patch.object(launcher.subprocess, 'run', side_effect=forbidden):
-        assert cli.main(['project', 'run', '--print-command']) == 0
+        assert cli.main(['project', 'run', '--print-command', '--set', 'cpus', '3']) == 0
+    assert captured['args'][captured['args'].index('--cpus') + 1] == '3'
     output = capfd.readouterr()
     assert 'Python preparation progress' in output.err
     assert 'Child-style preparation progress' in output.err

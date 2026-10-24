@@ -37,8 +37,6 @@ import shlex
 from typing import Any, Mapping
 
 from .authorization import (
-    CURATED_HOST_RECOMMENDATIONS,
-    WORKSTATION_CAPABILITY_DEFAULTS,
     authorization_declarations,
     authorization_deny_value,
     render_authorization_value,
@@ -47,10 +45,9 @@ from .authorization import (
 from .bindings import component_secret_inputs, configuration_binding_declarations
 from .capabilities import CapabilityPolicy, LocalCapabilities
 from .file_formats import ProjectConfigurationError, render_toml_scalar, table
-from .launcher_values import launcher_value_sources
+from .launcher_values import launcher_value_source
 from .manifest_document import EnvironmentPolicy, Recommendations
 from .values import (
-    LAUNCHER_VALUE_DESCRIPTIONS,
     LAUNCHER_VALUE_NAMES,
     configuration_value_declarations,
     legacy_memory_names,
@@ -134,6 +131,7 @@ def assess_checkout(
     agents: Mapping[str, str],
     project: Path | None = None,
     registered: bool = True,
+    base_display: str | None = None,
 ) -> Listing:
     """The listing of one checkout, from its documents, writing nothing.
 
@@ -144,7 +142,8 @@ def assess_checkout(
     variable name to its value, or ``None`` when it is bound to the host's
     variable; values are never shown. ``registered`` says whether the
     checkout has a record yet; an unregistered checkout is listed from an
-    empty record.
+    empty record. ``base_display`` is the catalog's display contract for
+    the selected base, or None when the host must inspect it at launch.
     """
     rows: list[ListingRow] = []
     notes: list[str] = []
@@ -153,7 +152,7 @@ def assess_checkout(
     recommendations = Recommendations.read(manifest)
     rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, agents, project))
     rows.extend(_launcher_value_rows(manifest, checkout, workstation, project))
-    rows.extend(_access_rows(manifest, composed_lock, checkout, project))
+    rows.extend(_access_rows(manifest, composed_lock, checkout, project, base_display))
     rows.extend(_environment_rows(manifest, saved_environment or {}, project))
     has_surface = bool(table(composed_lock, "components").get("interactive-surface"))
     if has_surface:
@@ -218,12 +217,13 @@ def _launcher_value_rows(
     manifest: Mapping[str, Any], checkout: Mapping[str, Any], workstation: Mapping[str, Any] | None, project: Path | None,
 ) -> list[ListingRow]:
     rows: list[ListingRow] = []
-    try:
-        sources = launcher_value_sources(manifest, checkout, workstation)
-    except ProjectConfigurationError as exc:
-        return [ListingRow("memory", "*", "invalid", str(exc), "repair the recorded value", _command(project, "set", "memory", "SIZE"))]
     for name in LAUNCHER_VALUE_NAMES:
-        value, source = sources[name]
+        try:
+            value, source = launcher_value_source(name, manifest, checkout, workstation)
+        except ProjectConfigurationError as exc:
+            rows.append(ListingRow(name, name, "unresolved", "invalid or missing value", str(exc),
+                                   _command(project, "set", name, "SIZE" if name == "memory" else "N")))
+            continue
         effective = "no limit" if value is None else str(value)
         rows.append(ListingRow(name, name, effective, source))
     return rows
@@ -231,6 +231,7 @@ def _launcher_value_rows(
 
 def _access_rows(
     manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None,
+    base_display: str | None,
 ) -> list[ListingRow]:
     try:
         reviews = {item.name: item for item in review_authorizations(manifest, lock, checkout)}
@@ -249,15 +250,37 @@ def _access_rows(
             deny = authorization_deny_value(declaration)
             rendered_deny = render_authorization_value(deny) if deny is not None else "false"
             recommended = render_authorization_value(declaration.recommended_value)
-            if review.value is not None and review.status != "stale":
+            legacy = table(checkout, "host").get(name)
+            if review.status in {"available", "missing-recommended"} and legacy is not None:
+                try:
+                    from .review import HostAccess
+                    HostAccess().overlay({name: legacy})
+                except ProjectConfigurationError as exc:
+                    pending = str(exc)
+                    command = _command(project, "forget", name)
+                    effective, source = "invalid", "checkout (legacy)"
+                else:
+                    effective, source = render_authorization_value(legacy), "checkout (legacy)"
+            elif review.value is not None and review.status not in {"stale", "invalid"}:
                 effective = render_authorization_value(review.value)
                 source = "checkout"
             else:
-                effective = rendered_deny if name != "host-x11" else "contained desktop"
+                effective = rendered_deny
                 source = "secure default"
+                if name == "host-x11":
+                    if base_display == "contained":
+                        effective = "contained desktop"
+                    elif base_display == "host-x11-only":
+                        effective, source = "host X11", "legacy base default (no contained desktop)"
+                    else:
+                        effective, source = "determined at launch", "base display support unknown"
+            if name == "host-x11" and base_display == "host-x11-only" and effective == "false":
+                effective = "unavailable"
+                pending = "this base has no contained desktop; select a newer base or authorize host X11"
+                command = _command(project, "authorize", "host-x11", "true")
             if declaration.project_recommended:
                 source += f"; project recommends {recommended}: {declaration.description}"
-                if review.recorded == "unanswered":
+                if review.recorded == "unanswered" and legacy is None:
                     pending = f"the project asks for {name} {recommended}; allow or deny"
                     command = _command(project, "authorize", name, recommended) + "  |  " + _command(project, "deny", name)
             if review.status == "stale":
@@ -276,6 +299,10 @@ def _access_rows(
             if review.value is not None and name == "base-image":
                 effective = str(review.value)
         rows.append(ListingRow("access", name, effective, source, pending, command))
+    for name in sorted(set(reviews) - set(declarations)):
+        review = reviews[name]
+        rows.append(ListingRow("access", name, "unused", "checkout", str(review.problem or "unsupported answer"),
+                               _command(project, "forget", name)))
     return rows
 
 
@@ -292,12 +319,17 @@ def _environment_rows(
                 rows.append(ListingRow("env", name, effective, "checkout; " + source))
             elif scope.endswith("(required)"):
                 rows.append(ListingRow("env", name, "unset", source, "the project needs a value from you",
-                                       _command(project, "env", name)))
+                                       _command(project, "env", "set", name, "VALUE")))
             else:
                 rows.append(ListingRow("env", name, "unset", source))
     for name in sorted(set(saved) - set(environment.names())):
         effective = "set" if saved[name] is not None else "from the host's variable"
         rows.append(ListingRow("env", name, effective, "checkout"))
+    for index, row in enumerate(rows):
+        if row.name in saved and saved[row.name] is None and row.name not in os.environ:
+            rows[index] = ListingRow("env", row.name, "unset", row.source,
+                                     "the bound host variable is missing in this shell",
+                                     _command(project, "env", "set", row.name, "VALUE"))
     return rows
 
 

@@ -33,7 +33,7 @@ def listing(document: dict, checkout: dict | None = None, *, workstation: dict |
     checkout = checkout or {"devcapsule-checkout-schema-version": 1}
     composed = compose_lock(document, shared, checkout)
     return assess_checkout(document, shared, composed, checkout, workstation=workstation, saved_environment=saved,
-                           surfaces=SURFACES, agents=AGENTS, project=Path("/p"))
+                           surfaces=SURFACES, agents=AGENTS, project=Path("/p"), base_display="contained")
 
 
 def rows(result, kind):
@@ -102,7 +102,8 @@ def test_host_access_rows_show_secure_defaults_and_ask_only_what_the_project_rec
     assert rows(result, "access")["network"].pending.startswith("the recommendation changed")
 
 
-def test_environment_rows_cover_required_offered_and_saved() -> None:
+def test_environment_rows_cover_required_offered_and_saved(monkeypatch) -> None:
+    monkeypatch.setenv("EXTRA", "private")
     document = manifest(environment={"required": {"POSTGRES_HOST": {"reason": "db"}}, "optional": {"SMTP_HOST": {}}})
     result = listing(document, saved={"POSTGRES_HOST": "x", "EXTRA": None})
     env = rows(result, "env")
@@ -111,7 +112,7 @@ def test_environment_rows_cover_required_offered_and_saved() -> None:
     assert env["EXTRA"].effective == "from the host's variable" and env["EXTRA"].source == "checkout"
     result = listing(document)
     assert rows(result, "env")["POSTGRES_HOST"].pending == "the project needs a value from you"
-    assert rows(result, "env")["POSTGRES_HOST"].command.endswith("config env POSTGRES_HOST")
+    assert rows(result, "env")["POSTGRES_HOST"].command.endswith("config env set POSTGRES_HOST VALUE")
 
 
 def test_bindings_and_secrets_appear_once_an_ide_is_chosen(tmp_path: Path) -> None:
@@ -124,7 +125,7 @@ def test_bindings_and_secrets_appear_once_an_ide_is_chosen(tmp_path: Path) -> No
     checkout = {"devcapsule-checkout-schema-version": 1,
                 "capabilities": {"selected": list(local.selected), "without": [], "lock": render_toml(pins)}}
     composed = compose_lock(document, shared, checkout)
-    result = assess_checkout(document, shared, composed, checkout, surfaces=SURFACES, agents=AGENTS, project=Path("/p"))
+    result = assess_checkout(document, shared, composed, checkout, surfaces=SURFACES, agents=AGENTS, project=Path("/p"), base_display="contained")
     assert rows(result, "ide")["frontend-ide"].effective.startswith("codium ")
     assert rows(result, "agent")["codex-agent"].effective.startswith("codex ")
     assert rows(result, "binding")["home"].effective == "managed directory"
@@ -164,3 +165,86 @@ def test_workstation_defaults_validate_and_render() -> None:
         WorkstationDefaults.read({"defaults": {"cpus": 0}})
     with pytest.raises(ProjectConfigurationError, match="schema version"):
         WorkstationDefaults.read({"devcapsule-workstation-schema-version": 2})
+
+
+@pytest.mark.parametrize("source,checkout,recommended,defaults,expected", [
+    ("none", {}, {}, {}, (None, None)),
+    ("workstation default", {}, {}, {"memory": "2g", "cpus": 2}, ("2GiB", 2)),
+    ("project recommendation", {}, {"memory": "3g", "cpus": 3}, {"memory": "2g", "cpus": 2}, ("3GiB", 3)),
+    ("checkout", {"memory": "4g", "cpus": 4}, {"memory": "3g", "cpus": 3}, {"memory": "2g", "cpus": 2}, ("4GiB", 4)),
+])
+def test_launcher_sources_and_runtime_effects_agree(source, checkout, recommended, defaults, expected):
+    from devcapsule.configuration.launcher_values import resolve_launcher_values
+    document = manifest(recommendations=recommended)
+    local = {"configuration": {"values": checkout}}
+    workstation = {"defaults": defaults}
+    sources = launcher_value_sources(document, local, workstation)
+    assert sources == {"memory": (expected[0], source), "cpus": (expected[1], source)}
+    values, effects = resolve_launcher_values(document, local, workstation)
+    if expected[0] is None:
+        assert values == effects == {}
+    else:
+        assert values == {"memory": expected[0], "cpus": expected[1]}
+        assert effects == {"memory-limit-bytes": expected[1] * 1024 ** 3, "cpus": expected[1]}
+
+
+def test_required_legacy_memory_stays_required_and_resolves_from_each_source():
+    from devcapsule.configuration.launcher_values import resolve_launcher_values
+    document = manifest(configuration={"values": {"runtime.memory-limit": {
+        "type": "memory-size", "runtime-effect": "docker.memory-limit", "required": True}}})
+    with pytest.raises(ProjectConfigurationError, match="Required value memory"):
+        resolve_launcher_values(document, {})
+    result = listing(document)
+    assert any(row.kind == "memory" and row.pending and "config set memory" in row.command for row in result.rows)
+    for recorded in ({"memory": "3g"}, {"runtime.memory-limit": "3GiB"}):
+        assert resolve_launcher_values(document, {"configuration": {"values": recorded}})[1] == {"memory-limit-bytes": 3 * 1024 ** 3}
+    assert resolve_launcher_values(document, {}, {"defaults": {"memory": "2g"}})[1] == {"memory-limit-bytes": 2 * 1024 ** 3}
+    document["configuration"]["values"]["runtime.memory-limit"]["recommended"] = "4GiB"
+    assert resolve_launcher_values(document, {})[1] == {"memory-limit-bytes": 4 * 1024 ** 3}
+
+
+def test_legacy_memory_omission_is_preserved_until_reset():
+    from devcapsule.configuration.launcher_values import resolve_launcher_values
+    document = manifest(configuration={"values": {"runtime.memory-limit": {
+        "type": "memory-size", "runtime-effect": "docker.memory-limit", "recommended": "2GiB"}}})
+    local = {"configuration": {"omitted-values": ["runtime.memory-limit"]}}
+    assert resolve_launcher_values(document, local) == ({}, {})
+    assert rows(listing(document, local), "memory")["memory"].source == "checkout (omitted)"
+    document["configuration"]["values"]["runtime.memory-limit"]["required"] = True
+    with pytest.raises(ProjectConfigurationError, match="cannot be omitted"):
+        resolve_launcher_values(document, local)
+
+
+@pytest.mark.parametrize("answer,stale,effective,pending", [
+    ("host", False, "host", False), ("bridge", False, "bridge", False),
+    ("host", True, "bridge", True), ("wrong", False, "bridge", True),
+])
+def test_host_access_effective_and_pending_follow_record_validity(answer, stale, effective, pending):
+    from devcapsule.configuration.authorization import authorization_declarations
+    document = manifest(host={"network": {"mode": {"recommended": {"value": "host", "justification": "ports"}}}})
+    shared = generate_lock(CapabilityPolicy.read(document), MATRIX)
+    digest = authorization_declarations(document, shared)["network"].recommendation_digest
+    local = {"authorization": {"network": {"value": answer, "recommendation-digest": "old" if stale else digest}}}
+    row = rows(listing(document, local), "access")["network"]
+    assert row.effective == effective and bool(row.pending) is pending
+    assert "project recommends host" in row.source
+
+
+def test_obsolete_authorization_is_pending_with_forget_remedy():
+    row = rows(listing(manifest(), {"authorization": {"removed-node": {"value": True}}}), "access")["removed-node"]
+    assert row.pending and row.command.endswith("config forget removed-node")
+
+
+def test_invalid_cpu_answer_keeps_memory_row_and_names_cpu_remedy():
+    result = listing(manifest(), {"configuration": {"values": {"memory": "2GiB", "cpus": 0}}})
+    memory = rows(result, "memory")["memory"]
+    cpu = rows(result, "cpus")["cpus"]
+    assert memory.effective == "2GiB" and not memory.pending
+    assert cpu.pending and cpu.command.endswith("config set cpus N")
+
+
+@pytest.mark.parametrize("recommended", [False, True])
+def test_legacy_host_answer_is_the_effective_value(recommended):
+    host = {"network": {"mode": {"recommended": {"value": "host", "justification": "ports"}}}} if recommended else {}
+    row = rows(listing(manifest(host=host), {"host": {"network": "host"}}), "access")["network"]
+    assert row.effective == "host" and row.source.startswith("checkout (legacy)") and not row.pending
