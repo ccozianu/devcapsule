@@ -127,13 +127,22 @@ def test_changed_security_questions_require_exactly_the_affected_decisions(
             "value": True, "justification": "Changed browser requirement.",
         }}}}
     changed = Configuration(manifest, lock, checkout)
-    expected = ({"base-image"} if change_base else set()) | ({"host-browser"} if change_browser else set())
+    # A moved base asks; a changed host recommendation does not: the recorded
+    # host answer is kept and disclosed as superseded (D-0012, answer 23 of
+    # the CLI UX work order).
+    expected = {"base-image"} if change_base else set()
 
-    assert {item.name for item in changed.review().authorizations if item.problem} == expected
-    with pytest.raises(ProjectConfigurationError, match="incomplete"):
-        changed.resolve()
-    with pytest.raises(ProjectConfigurationError, match="incomplete"):
-        changed.accept(Resolution(saved), force=True)
+    reviews = {item.name: item for item in changed.review().authorizations}
+    assert {name for name, item in reviews.items() if item.problem} == expected
+    if change_browser:
+        assert reviews["host-browser"].superseded and reviews["host-browser"].problem is None
+    if change_base:
+        with pytest.raises(ProjectConfigurationError, match="incomplete"):
+            changed.resolve()
+        with pytest.raises(ProjectConfigurationError, match="incomplete"):
+            changed.accept(Resolution(saved), force=True)
+    else:
+        assert changed.resolve().host_access.host_browser is reviews["host-browser"].value
 
 
 def test_force_waives_freshness_without_mutating_either_value(predecessor_documents):

@@ -35,6 +35,7 @@ from .capability_selection import compose_lock, effective_lock, local_pins
 from .file_formats import ProjectConfigurationError, render_checkout, render_toml
 from .listing import Listing, assess_checkout
 from .model import Configuration
+from .trust import WorkstationTrust
 from .storage import (
     ResolvedProject,
     atomic_write,
@@ -183,7 +184,8 @@ def derive_plan(state: CheckoutState, checkout: Mapping[str, Any] | None = None)
     configuration = Configuration(state.manifest, lock, document, state.workstation)
     configuration.review().require_ready(state.root)
     resolution = configuration.resolve()
-    base_selection = authorized_base_selection(lock, document) if "base" in lock else None
+    trust = WorkstationTrust.read(state.workstation)
+    base_selection = authorized_base_selection(lock, document, trust=trust) if "base" in lock else None
     if base_selection is not None and base_selection.local_image_identity is not None:
         # Looked up through the operations adapter, the one seam the launch
         # and its tests patch for the local daemon.

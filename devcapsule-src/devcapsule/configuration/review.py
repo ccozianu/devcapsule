@@ -17,6 +17,7 @@ from .bindings import resolve_configuration_bindings, resolve_secret_bindings
 from .file_formats import AuthorizationScalar, ConfigurationScalar, ProjectConfigurationError, table
 from .nodes import build_node_registry
 from .launcher_values import resolve_launcher_values
+from .trust import WorkstationTrust
 from .values import RuntimeEffects, resolve_configuration_values
 
 
@@ -168,7 +169,7 @@ def review_configuration(
     except ProjectConfigurationError as exc:
         problems.append(str(exc))
     try:
-        authorizations = review_authorizations(manifest, lock, checkout)
+        authorizations = review_authorizations(manifest, lock, checkout, WorkstationTrust.read(workstation or {}))
     except ProjectConfigurationError as exc:
         problems.append(str(exc))
     state = checkout.get("state", {})

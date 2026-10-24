@@ -9,7 +9,7 @@ PACKAGE = "devcapsule.configuration"
 ADAPTERS = {"storage", "execution", "operations", "history", "capability_commands", "capability_selection", "docker_arguments", "owner_commands", "derivation"}
 CORE = {"file_formats", "manifest", "values", "bindings", "authorization", "nodes",
         "review", "fingerprints", "resolution", "freshness", "model", "capabilities", "manifest_document",
-        "launcher_values", "listing", "workstation"}
+        "launcher_values", "listing", "workstation", "trust"}
 
 
 def dependencies():

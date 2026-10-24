@@ -14,9 +14,10 @@ The decisions come from the listing (:mod:`devcapsule.configuration.listing`),
 so what ``run`` asks is exactly what ``config check`` reports. The IDE, a
 required environment variable, a consent, a recorded host answer whose
 recommendation changed, a required value and a required secret block the
-launch until answered; a host access the project recommends and the
-developer never answered is asked, and "not now" launches with the secure
-default.
+launch until answered; so does a vendor's or DevCapsule's channel the
+workstation has not accepted yet (D-0011, once per computer); a host access
+the project recommends and the developer never answered is asked, and "not
+now" launches with the secure default.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from dataclasses import dataclass, field
 import getpass
 from pathlib import Path
 import sys
-from typing import Any, Callable, Mapping, TextIO
+from typing import Any, Callable, Mapping, Sequence, TextIO
 
 from devcapsule.compat import DecisionPending
 from devcapsule.configuration.authorization import authorization_declarations, normalize_authorization_value
@@ -41,7 +42,7 @@ from devcapsule.configuration.values import LAUNCHER_VALUE_NAMES, memory_size_by
 
 __all__ = ["Prepared", "RunFlags", "prepare_launch"]
 
-BLOCKING_KINDS = {"ide", "env", "renew", "consent", "value", "secret"}
+BLOCKING_KINDS = {"ide", "env", "renew", "trust", "consent", "value", "secret"}
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,7 @@ class RunFlags:
     cpus: str | None = None
     environment: tuple[str, ...] = ()  # NAME=VALUE saved for this run, or NAME taken from the host
     authorize: tuple[tuple[str, str], ...] = ()  # (node, value)
+    trust: tuple[str, ...] = ()  # channel ids accepted for this workstation, recorded at once
     save: bool = False
     allow_unverified: bool = False
 
@@ -91,6 +93,13 @@ def prepare_launch(
     state = load_state(root, manifest)
     prepared_notes: list[str] = []
 
+    if flags.trust and not print_only:
+        # A trust statement is the workstation's, not this launch's: recorded
+        # now, as ``--save`` records its flags, whatever the launch then asks.
+        for channel_id in flags.trust:
+            accept_channel(root, manifest, channel_id)
+            prepared_notes.append(f"Accepted the channel {channel_id} for this workstation.")
+        state = load_state(root, manifest)
     selection = Selection(LocalCapabilities.read(state.checkout), state.surfaces, state.agents)
     selection_changed = False
     if flags.ide is not None:
@@ -158,7 +167,7 @@ def prepare_launch(
     blocking = [decision for decision in decisions if decision.kind in BLOCKING_KINDS]
     soft = [decision for decision in decisions if decision.kind not in BLOCKING_KINDS]
     if blocking and (print_only or not interactive):
-        raise DecisionPending(_render_pending(blocking, root))
+        raise DecisionPending(_render_pending(blocking, root, prepared_notes))
     if decisions and not print_only and interactive:
         register_checkout(state)
         state, checkout, host_overrides = _settle(state, checkout, decisions, host_overrides, selection,
@@ -166,7 +175,7 @@ def prepare_launch(
         listing = state.listing(checkout)
         still = [d for d in listing.decisions if d.kind in BLOCKING_KINDS]
         if still:
-            raise DecisionPending(_render_pending(still, root))
+            raise DecisionPending(_render_pending(still, root, prepared_notes, answered=True))
     elif soft:
         for decision in soft:
             prepared_notes.append(
@@ -178,6 +187,21 @@ def prepare_launch(
     return Prepared(selected, host_overrides, memory_override, cpus_override, environment_tokens, prepared_notes)
 
 
+def accept_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Path:
+    """Record the user's acceptance of one channel for this workstation; return the record's path."""
+    from devcapsule.configuration.storage import load_trust, recommendation_lock_for, write_trust
+    from devcapsule.configuration.trust import WorkstationTrust, channels_for
+    _path, lock = recommendation_lock_for(root, manifest)
+    channels = channels_for(lock)
+    channel = channels.get(channel_id)
+    if channel is None:
+        raise ProjectConfigurationError(
+            f"No channel {channel_id!r} on this project; its channels: " + (", ".join(sorted(channels)) or "none") + "."
+        )
+    trust = WorkstationTrust.read(load_trust()).with_channel(channel)
+    return write_trust(trust.document())
+
+
 def _capability(value: str, names: Mapping[str, str], kind: str) -> str:
     candidate = value.strip()
     by_component = {component: name for name, component in names.items()}
@@ -187,14 +211,22 @@ def _capability(value: str, names: Mapping[str, str], kind: str) -> str:
     return candidate
 
 
-def _render_pending(decisions: list[Decision], root: Path) -> str:
+def _render_pending(decisions: list[Decision], root: Path, recorded: Sequence[str] = (), *, answered: bool = False) -> str:
+    """The status-3 text: each decision with its flag and command, then what was and was not written."""
     lines = ["the launch of this checkout needs answers:"]
     for decision in decisions:
         flag = {"ide": "--ide IDE", "env": f"--env {decision.name}=VALUE", "consent": f"--authorize {decision.name} {decision.value}",
-                "access": f"--authorize {decision.name} {decision.value}", "renew": "", "value": "", "secret": ""}[decision.kind]
+                "access": f"--authorize {decision.name} {decision.value}", "trust": f"--trust {decision.name}",
+                "renew": "", "value": "", "secret": ""}[decision.kind]
         lines.append(f"  {decision.kind} {decision.name}: {decision.description}" + (f"  ({decision.reason})" if decision.reason else ""))
         lines.append("      " + (f"{flag}  |  " if flag else "") + decision.command)
-    lines.append("Nothing was written. Answer on the command line or in a terminal.")
+    lines.extend(recorded)
+    if answered:
+        lines.append("The answers given were recorded; nothing else was written.")
+    elif recorded:
+        lines.append("Nothing else was written. Answer on the command line or in a terminal.")
+    else:
+        lines.append("Nothing was written. Answer on the command line or in a terminal.")
     return "\n".join(lines)
 
 
@@ -251,6 +283,16 @@ def _settle(
                 record.write()
             else:
                 output.write(f"Not answered; renew it later: {decision.command}\n")
+        elif decision.kind == "trust":
+            output.write(f"{decision.description}\n")
+            if decision.reason:
+                output.write(f"  {decision.reason}\n")
+            answer = _ask(output, reader, "Accept, once for this computer? [y/N]: ").lower()
+            if answer in {"y", "yes"}:
+                accept_channel(root, manifest, decision.name)
+                output.write(f"Recorded for this workstation. Withdraw: devcapsule project --path {root} config trust withdraw {decision.name}\n")
+            else:
+                output.write(f"Not accepted. Accept later: {decision.command}\n")
         elif decision.kind == "consent":
             output.write(f"{decision.description}\n")
             answer = _ask(output, reader, "Accept? [y/N]: ").lower()

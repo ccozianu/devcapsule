@@ -14,7 +14,7 @@ from devcapsule.commands._run_flow import RunFlags, prepare_launch
 from devcapsule.compat import DecisionPending
 from devcapsule.configuration.capability_commands import paths
 from devcapsule.configuration.docker_arguments import arguments_path, read_arguments
-from devcapsule.configuration.storage import checkout_record_paths, load_toml, registered_checkouts
+from devcapsule.configuration.storage import checkout_record_paths, load_toml, registered_checkouts, trust_path
 
 
 @pytest.fixture
@@ -85,10 +85,13 @@ def test_a_second_checkout_is_registered_under_its_directory_name(project: Path,
     (second / ".devcapsule").mkdir()
     for name in ("devcapsule.toml", "devcapsule.linux-amd64.lock"):
         (second / ".devcapsule" / name).write_bytes((project / ".devcapsule" / name).read_bytes())
-    with pytest.raises(DecisionPending):  # its own record: no IDE, no consent inherited
+    with pytest.raises(DecisionPending):  # its own record: no IDE; the base's channel is the workstation's question
         prepare_launch(second, RunFlags(), interactive=False)
+    prompts = io.StringIO()
     prepared = prepare_launch(second, RunFlags(ide="python-ide", authorize=()), interactive=True,
-                              input_stream=io.StringIO("y\n"), output_stream=io.StringIO())
+                              input_stream=io.StringIO("y\n"), output_stream=prompts)
+    assert "Accept, once for this computer?" in prompts.getvalue()
+    assert load_toml(trust_path())["channels"]["devcapsule-base"]["vendor"]
     names = {item.checkout_name: item.checkout_path for item in registered_checkouts()}
     assert names == {"default": project.resolve(), "second-copy": second.resolve()}
     assert prepared.selected.checkout_path.name == "second-copy.checkout.toml"
@@ -100,7 +103,7 @@ def test_interactive_questions_record_answers_where_the_config_family_would(proj
     assert config(project, "recommend", "docker-daemon", "host-socket", "--because", "compose") == 0
     capsys.readouterr()
     prompts = io.StringIO()
-    # In listing order: IDE by number; network: once; docker-daemon: deny; base consent: yes; env value.
+    # In listing order: IDE by number; network: once; docker-daemon: deny; the base's channel: yes; env value.
     answers = io.StringIO("3\no\nd\ny\ndb.example.org\n")
     prepared = prepare_launch(project, RunFlags(), interactive=True, input_stream=answers, output_stream=prompts)
     transcript = prompts.getvalue()
@@ -112,7 +115,8 @@ def test_interactive_questions_record_answers_where_the_config_family_would(proj
     assert saved["authorization"]["docker-daemon"]["value"] == "none"
     assert "network" not in saved["authorization"]
     assert prepared.host_overrides == {"network": "host"}
-    assert saved["authorization"]["base-image"]["reference"]
+    assert "base-image" not in saved.get("authorization", {})  # the channel is trusted for the workstation, not consented per checkout
+    assert "devcapsule-base" in load_toml(trust_path())["channels"]
     assert read_arguments(arguments_path(checkout_record_paths(load_toml(paths(project)[0]), project)[0])) == [
         "--env", "POSTGRES_HOST=db.example.org"]
     assert prepared.selected.resolution["runtime"]["component"] == "codium"

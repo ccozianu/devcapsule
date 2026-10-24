@@ -521,8 +521,8 @@ def test_project_config_list_reports_complete_and_stale_readiness(
 
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         output = capsys.readouterr().out
-        network_row = next(line for line in output.splitlines() if line.startswith("access   network") or re.match(r"^access\s+network\s", line))
-        assert "the recommendation changed" in network_row
+        network_row = next(line for line in output.splitlines() if re.match(r"^access\s+network\s", line))
+        assert "kept" in network_row  # the answer stands under the changed recommendation
 
 
 def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path: Path) -> None:
@@ -1626,8 +1626,8 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
             + "\n",
             encoding="utf-8",
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 3
-        assert "network" in capsys.readouterr().err
+        # The changed justification does not re-ask: the answer is kept (D-0012).
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
 
 
 def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id(
@@ -2216,15 +2216,15 @@ def test_network_answer_stales_when_recommendation_appears_and_disappears(
             write_formation_lock(project)
             before = record.read_bytes()
             capsys.readouterr()
-            assert cli.main([*command, "resolve"]) == 3
-            error = capsys.readouterr().err
-            assert "network" in error and "the recommendation changed since your answer" in error
-            assert "config deny network" in error
+            # The recorded answer is kept under the changed recommendation and
+            # disclosed; nothing is asked and nothing is written (D-0012, answer 23).
+            assert cli.main([*command, "resolve"]) == 0
             assert record.read_bytes() == before
+            capsys.readouterr()
             document, _ = _listing_document(project, capsys)
             network = next(row for row in document["rows"] if row["name"] == "network")
-            assert network["pending"].startswith("the recommendation changed")
-            assert "config deny network" in network["command"]
+            assert network["effective"] == value and not network["pending"]
+            assert "kept" in network["source"]
             assert cli.main([*command, "authorize", "network", value]) == 0
             digest = tomllib.loads(record.read_text())["authorization"]["network"]["recommendation-digest"]
             assert (digest == default_digest) == (source == "workstation default")

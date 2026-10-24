@@ -47,6 +47,7 @@ from .capabilities import CapabilityPolicy, LocalCapabilities
 from .file_formats import ProjectConfigurationError, render_toml_scalar, table
 from .launcher_values import launcher_value_source
 from .manifest_document import EnvironmentPolicy, Recommendations
+from .trust import WorkstationTrust, channels_for
 from .values import (
     LAUNCHER_VALUE_NAMES,
     configuration_value_declarations,
@@ -69,10 +70,12 @@ class Decision:
     component each selects), ``env`` (supply a value for ``name``, with the
     project's ``reason``), ``access`` (allow or deny the host access ``name``
     at ``value``, with the project's reason and ``deny`` as the deny value),
-    ``renew`` (a recorded host answer whose recommendation changed, to allow
-    or deny again), ``consent`` (accept the base or a vendor download
-    ``name``), ``value`` (a declared value the project requires) or
-    ``secret`` (a component's required secret input, bound to ``variable``).
+    ``renew`` (a recorded host answer that is invalid, to allow or deny
+    again), ``trust`` (accept the channel ``name`` of a vendor product or of
+    DevCapsule's base images once for this workstation, D-0011), ``consent``
+    (accept a base or download that no channel covers, per checkout),
+    ``value`` (a declared value the project requires) or ``secret`` (a
+    component's required secret input, bound to ``variable``).
     ``run`` records the answer where the config family would; ``check``
     prints ``command``.
     """
@@ -185,7 +188,7 @@ def assess_checkout(
     recommendations = Recommendations.read(manifest)
     rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, agents, project))
     rows.extend(_launcher_value_rows(manifest, checkout, workstation, project))
-    rows.extend(_access_rows(manifest, composed_lock, checkout, project, base_display))
+    rows.extend(_access_rows(manifest, composed_lock, checkout, project, base_display, workstation))
     rows.extend(_environment_rows(manifest, saved_environment or {}, project))
     has_surface = bool(table(composed_lock, "components").get("interactive-surface"))
     if has_surface:
@@ -266,13 +269,15 @@ def _launcher_value_rows(
 
 def _access_rows(
     manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None,
-    base_display: str | None,
+    base_display: str | None, workstation: Mapping[str, Any] | None = None,
 ) -> list[ListingRow]:
     try:
-        reviews = {item.name: item for item in review_authorizations(manifest, lock, checkout)}
+        trust = WorkstationTrust.read(workstation or {})
+        reviews = {item.name: item for item in review_authorizations(manifest, lock, checkout, trust)}
         declarations = authorization_declarations(manifest, lock)
     except ProjectConfigurationError as exc:
         return [ListingRow("access", "*", "invalid", str(exc), "repair the checkout record", "")]
+    channels = {channel.authorization: channel for channel in channels_for(lock).values()}
     rows: list[ListingRow] = []
     for name in (*HOST_ACCESS_NODES, *sorted(set(declarations) - set(HOST_ACCESS_NODES))):
         declaration = declarations.get(name)
@@ -300,6 +305,9 @@ def _access_rows(
             elif review.value is not None and review.status not in {"stale", "invalid"}:
                 effective = render_authorization_value(review.value)
                 source = "checkout"
+                if review.superseded:
+                    # D-0012, answer 23: the answer stands; the change is disclosed, never asked.
+                    source += f" (kept; {review.superseded})"
             else:
                 effective = rendered_deny
                 source = "secure default"
@@ -319,7 +327,7 @@ def _access_rows(
                     pending = "this base has no contained desktop; host X11 shows the IDE only with your consent"
                     command = _command(project, "authorize", "host-x11", "true")
                     decision = Decision("consent", "host-x11", declaration.description, command, value="true")
-            if declaration.project_recommended:
+            if declaration.project_recommended and not review.superseded:
                 source += f"; project recommends {recommended}: {declaration.description}"
                 if review.recorded == "unanswered" and legacy is None:
                     pending = f"the project asks for {name} {recommended}; allow or deny"
@@ -341,12 +349,22 @@ def _access_rows(
         effective = review.recorded if review.recorded != "unanswered" else "-"
         source = "checkout" if review.recorded != "unanswered" else "lock (recommended)"
         decision = None
-        if review.problem is not None:
+        channel = channels.get(name)
+        if review.trusted_channel is not None:
+            effective = str(review.value) if name == "base-image" else "trusted"
+            source = f"workstation trust ({review.trusted_channel})"
+        elif review.problem is not None and channel is not None and review.recorded == "unanswered":
+            # D-0011: one acceptance per channel per workstation, instead of a
+            # per-checkout consent.
+            pending = f"trust {channel.vendor}'s channel once for this workstation"
+            command = _command(project, "trust", "accept", channel.id)
+            decision = Decision("trust", channel.id, channel.statement(), command, reason=channel.note, value=name)
+        elif review.problem is not None:
             pending = review.problem
             value = "default" if name == "base-image" else "true"
             command = _command(project, "authorize", name, value)
             decision = Decision("consent", name, declaration.description, command, value=value)
-        if review.value is not None and name == "base-image":
+        if review.value is not None and name == "base-image" and review.trusted_channel is None:
             effective = str(review.value)
         rows.append(ListingRow("access", name, effective, source, pending, command, decision))
     for name in sorted(set(reviews) - set(declarations)):

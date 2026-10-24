@@ -1263,6 +1263,99 @@ class ConfigUnsetCommand(Command):
         return 0
 
 
+class ConfigTrustListCommand(Command):
+    name = "list"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
+    help = "The channels this project's software comes through and whether this workstation trusts each."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration.storage import load_trust, recommendation_lock_for, trust_path
+        from devcapsule.configuration.trust import WorkstationTrust, channels_for
+        root, manifest = manifest_for(_project_context(context).start_path())
+        _path, lock = recommendation_lock_for(root, manifest)
+        trust = WorkstationTrust.read(load_trust())
+        channels = channels_for(lock)
+        rows: list[dict[str, Any]] = [
+            {"channel": channel.id, "vendor": channel.vendor, "product": channel.product,
+             "origins": list(channel.origins), "terms-url": channel.terms_url,
+             "trusted": trust.covers(channel), "note": channel.note} for channel in channels.values()]
+        for channel_id, entry in trust.channels.items():
+            if channel_id not in channels:
+                rows.append({"channel": channel_id, "vendor": entry["vendor"], "product": "", "origins": entry["origins"],
+                             "terms-url": entry["terms-url"], "trusted": True, "note": "not used by this project"})
+        if arguments.as_json:
+            print(json.dumps({"schema-version": 1, "path": str(trust_path()), "channels": rows}, indent=2, sort_keys=True))
+            return 0
+        print(f"Trust record: {trust_path()}")
+        for row in rows:
+            state = "trusted" if row["trusted"] else "not yet"
+            origins = ", ".join(str(item) for item in row["origins"]) or "the lock"
+            terms = f"; terms {row['terms-url']}" if row["terms-url"] else ""
+            print(f"{row['channel']:<18} {state:<9} {row['vendor']} — {row['product'] or '(no longer in this project)'}; from {origins}{terms}")
+            if row["note"]:
+                print(f"{'':<18} {row['note']}")
+        return 0
+
+
+class ConfigTrustAcceptCommand(Command):
+    name = "accept"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Accept a channel once for this workstation: every version of that vendor's product, for every project here."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("channel", metavar="CHANNEL", help="devcapsule-base, claude-code, antigravity-cli, as 'trust list' names them.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.commands._run_flow import accept_channel
+        from devcapsule.configuration.storage import recommendation_lock_for
+        from devcapsule.configuration.trust import channels_for
+        root, manifest = manifest_for(_project_context(context).start_path())
+        _path, lock = recommendation_lock_for(root, manifest)
+        channel = channels_for(lock).get(arguments.channel)
+        path = accept_channel(root, manifest, arguments.channel)
+        assert channel is not None
+        print(channel.statement())
+        if channel.note:
+            print(channel.note)
+        print(f"Recorded for this workstation: {path}")
+        return 0
+
+
+class ConfigTrustWithdrawCommand(Command):
+    name = "withdraw"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Withdraw this workstation's acceptance of a channel; the next launch that needs it asks again."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("channel", metavar="CHANNEL")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration.storage import load_trust, write_trust
+        from devcapsule.configuration.trust import WorkstationTrust
+        trust = WorkstationTrust.read(load_trust()).without(arguments.channel)
+        path = write_trust(trust.document())
+        print(f"Withdrew {arguments.channel} for this workstation: {path}")
+        return 0
+
+
+class ConfigTrustGroup(Group):
+    name = "trust"
+    help = "What this workstation trusts, once per vendor and channel (D-0011): list, accept, withdraw."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {"list": ConfigTrustListCommand, "accept": ConfigTrustAcceptCommand, "withdraw": ConfigTrustWithdrawCommand}
+
+
 class ConfigUnbindCommand(Command):
     name = "unbind"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
@@ -1391,6 +1484,9 @@ class ConfigAuthorizeCommand(Command):
                 "This consent applies to the exact recorded image, by digest or by local image "
                 "identity, and stays valid while the lock recommends that image."
             )
+            if local_base_identity is None:
+                print("DevCapsule's published bases are trusted once for the whole workstation instead: "
+                      "'devcapsule project config trust accept devcapsule-base'.")
         print("The next 'devcapsule project run' uses it.")
         return 0
 
@@ -1786,6 +1882,7 @@ class ConfigGroup(Group):
             ConfigForgetCommand.name: ConfigForgetCommand,
             ConfigBindCommand.name: ConfigBindCommand,
             ConfigUnbindCommand.name: ConfigUnbindCommand,
+            ConfigTrustGroup.name: ConfigTrustGroup,
             ConfigEnvGroup.name: ConfigEnvGroup,
             ConfigDockerArgsGroup.name: ConfigDockerArgsGroup,
             ConfigApproveCommand.name: ConfigApproveCommand,
@@ -2028,6 +2125,8 @@ class ProjectRunCommand(Command):
         parser.add_argument("--cpus", metavar="N", help="The CPU count for this launch.")
         parser.add_argument("--env", action="append", default=[], metavar="NAME[=VALUE]",
                             help="An environment variable for this launch: NAME=VALUE, or NAME taken from the host.")
+        parser.add_argument("--trust", action="append", default=[], metavar="CHANNEL",
+                            help="Accept a vendor's or DevCapsule's channel once for this workstation: devcapsule-base, claude-code, antigravity-cli; repeatable.")
         parser.add_argument("--save", action="store_true", help="Record the flags given as this checkout's answers before launching.")
         parser.add_argument("--unverified", action="store_true", dest="allow_unverified", help=argparse.SUPPRESS)
         parser.add_argument(
@@ -2352,8 +2451,8 @@ def _run_flags(arguments: argparse.Namespace) -> tuple[RunFlags, dict[str, Any],
             print(f"Note: --set {answer.name} is --{name} now.", file=sys.stderr)
     flags = RunFlags(
         ide=arguments.ide, agents=tuple(arguments.agent), memory=memory, cpus=cpus,
-        environment=tuple(arguments.env), authorize=tuple(authorize), save=arguments.save,
-        allow_unverified=arguments.allow_unverified,
+        environment=tuple(arguments.env), authorize=tuple(authorize), trust=tuple(arguments.trust),
+        save=arguments.save, allow_unverified=arguments.allow_unverified,
     )
     return flags, {}, None, None
 

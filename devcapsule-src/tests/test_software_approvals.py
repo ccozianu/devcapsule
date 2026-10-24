@@ -100,7 +100,13 @@ def test_any_other_pending_decision_disqualifies_the_list(checkout, other: str) 
         manifest_path.write_text(manifest_path.read_text() + '\n[host.browser.host-open.recommended]\nvalue = true\njustification = "Open links on the host."\n')
         assert invoke(project, "config", "authorize", "host-browser", "true") == 0
         manifest_path.write_text(manifest_path.read_text().replace('"Open links on the host."', '"Open links on the host, changed."'))
-    assert pending(project, record) is None
+    if other == "stale-host-access":
+        # A host answer under a changed recommendation is kept, not pending
+        # (D-0012, answer 23): the approvals stay one question.
+        approvals = pending(project, record)
+        assert approvals is not None and [item.name for item in approvals] == ["claude-code-download"]
+    else:
+        assert pending(project, record) is None
 
 
 def test_the_previous_version_comes_from_the_newest_known_good_record(checkout) -> None:
@@ -211,10 +217,12 @@ def test_run_with_other_pending_decisions_refuses_as_before(checkout, monkeypatc
     assert invoke(project, "run", "--no-update-check") == 3
     captured = capsys.readouterr()
     assert "Approve all of them?" not in captured.out
-    assert "antigravity-download" in captured.err and "Nothing was written" in captured.err
+    # The download's channel is the workstation's question (D-0011), named by its channel.
+    assert "antigravity-cli" in captured.err and "Nothing was written" in captured.err
+    assert "--trust antigravity-cli" in captured.err
     assert invoke(project, "config", "resolve") == 3
     err = capsys.readouterr().err
-    assert "antigravity-download" in err
+    assert "antigravity-cli" in err
     assert launch.call_count == 0
 
 

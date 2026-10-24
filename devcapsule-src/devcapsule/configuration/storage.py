@@ -90,17 +90,52 @@ def workstation_path(env: Mapping[str, str] | None = None) -> Path:
     return config_root(env) / "workstation.toml"
 
 
-def load_workstation(env: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """The workstation's configuration document, validated; empty when the file does not exist."""
-    from .workstation import WorkstationDefaults
-    path = workstation_path(env)
+def trust_path(env: Mapping[str, str] | None = None) -> Path:
+    """Where this workstation keeps the channels its user trusts: ``$XDG_CONFIG_HOME/devcapsule/trust.toml``."""
+    return config_root(env) / "trust.toml"
+
+
+def load_trust(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The workstation's trust record, validated; empty when the file does not exist."""
+    from .trust import WorkstationTrust
+    path = trust_path(env)
     if not path.is_file():
         return {}
     document = load_toml(path)
     try:
-        WorkstationDefaults.read(document)
+        WorkstationTrust.read(document)
     except ProjectConfigurationError as exc:
         raise ProjectConfigurationError(f"{path}: {exc}") from exc
+    return document
+
+
+def write_trust(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
+    """Write the workstation's trust record atomically; return its path."""
+    from .trust import WorkstationTrust, render_trust
+    path = trust_path(env)
+    atomic_write(path, render_trust(WorkstationTrust.read(document)))
+    return path
+
+
+def load_workstation(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The workstation's configuration document, validated; empty when no file exists.
+
+    The defaults come from ``workstation.toml``; the trust record of
+    ``trust.toml`` rides along under ``trust`` so one document carries what
+    the review needs of the workstation.
+    """
+    from .workstation import WorkstationDefaults
+    path = workstation_path(env)
+    document: dict[str, Any] = {}
+    if path.is_file():
+        document = load_toml(path)
+        try:
+            WorkstationDefaults.read(document)
+        except ProjectConfigurationError as exc:
+            raise ProjectConfigurationError(f"{path}: {exc}") from exc
+    trust = load_trust(env)
+    if trust:
+        document = {**document, "trust": trust}
     return document
 
 

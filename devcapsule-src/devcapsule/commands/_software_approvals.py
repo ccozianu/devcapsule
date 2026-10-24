@@ -96,7 +96,9 @@ def pending_for(root: Path, manifest: dict[str, Any]) -> tuple[SoftwareApproval,
         )
     _lock_path, lock = lock_for(root, manifest)
     checkout = load_checkout(input_path, manifest, root)
-    return pending_software_approvals(manifest, lock, checkout, previous_versions=previous_versions(root))
+    from devcapsule.configuration.storage import load_workstation
+    return pending_software_approvals(manifest, lock, checkout, previous_versions=previous_versions(root),
+                                      trust=load_workstation())
 
 
 def approve(root: Path, manifest: dict[str, Any], approvals: tuple[SoftwareApproval, ...]) -> None:

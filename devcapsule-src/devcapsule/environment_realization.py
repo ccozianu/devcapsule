@@ -69,7 +69,10 @@ def realize_environment(
         if base_override != selected.lock.get("base", {}).get("reference"):
             raise CliError("A base override cannot establish the project's SDK-major guarantee; use its pinned compatible base.")
     locked = parse_locked_environment(selected.lock)
-    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout)
+    from devcapsule.configuration.storage import load_workstation
+    from devcapsule.configuration.trust import WorkstationTrust
+    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout,
+                                    WorkstationTrust.read(load_workstation()))
     problems = [
         item for item in reviews if item.problem is not None
         and not (item.name == "base-image" and base_override is not None)

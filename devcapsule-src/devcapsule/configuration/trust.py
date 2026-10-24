@@ -1,0 +1,182 @@
+"""The workstation's trust record: vendors and channels accepted once, per user, for every project.
+
+D-0011 (2026-10-01), as the owner refined it for 0.3.0 rc4 (answer 3 of
+the CLI UX redesign work order): the user accepts a vendor's terms and
+trusts its channel once per workstation, "in all its versions and
+incarnations", not per project, checkout or version. A channel is a vendor,
+an origin and an integrity method: DevCapsule's own base images from
+``docker.io/mycodespaceai/devcapsule-base``, content-addressed by the
+digest the launcher pins; each vendor product from the origins its locked
+artifacts name, verified by the pinned SHA-256. Anything resolved through
+an accepted channel is approved without a question; anything that leaves
+it asks: a local image, a different origin, changed terms.
+
+The record lives under the launcher's config root, ``trust.toml``, beside
+the checkout records; it is the user's, never the project's. Older clients
+never read it and keep their per-checkout consents, which remain honored.
+
+This module is pure: it defines channels from a lock and reads and renders
+the record. Reading and writing the file belongs to :mod:`storage`.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Mapping
+from urllib.parse import urlparse
+
+from devcapsule.components.catalog import COMPONENTS
+
+from .file_formats import ProjectConfigurationError, quote_toml, table
+
+__all__ = ["BASE_CHANNEL", "BASE_REPOSITORY", "Channel", "TRUST_SCHEMA_VERSION", "WorkstationTrust",
+           "channels_for", "render_trust"]
+
+TRUST_SCHEMA_VERSION = 1
+BASE_CHANNEL = "devcapsule-base"
+BASE_REPOSITORY = "docker.io/mycodespaceai/devcapsule-base"
+BASE_ORIGIN = "https://devcapsule.mycodespace.ai"
+
+
+@dataclass(frozen=True)
+class Channel:
+    """One vendor product and the way it reaches this workstation, as the lock names it."""
+
+    id: str
+    vendor: str
+    product: str
+    origins: tuple[str, ...]
+    integrity: str
+    terms_url: str = ""
+    # The authorization node this channel covers: ``base-image`` or a component's ``*-download``.
+    authorization: str = ""
+    note: str = ""
+
+    def statement(self) -> str:
+        """What the user is asked to accept, in one sentence."""
+        origins = ", ".join(self.origins) or "the origins the lock names"
+        terms = f", under {self.terms_url}" if self.terms_url else ""
+        return (f"Trust {self.vendor} to supply {self.product} from {origins}, verified by {self.integrity}{terms}, "
+                "every version, for every project on this computer.")
+
+
+def channels_for(lock: Mapping[str, Any]) -> dict[str, Channel]:
+    """The channels a lock's base and vendor components come through, keyed by channel id.
+
+    The base is a channel only when it is DevCapsule's published repository;
+    a local or foreign base is a departure that keeps asking per checkout.
+    A component's channel is its acquisition contract plus the hosts of its
+    locked artifact URLs on this platform.
+    """
+    channels: dict[str, Channel] = {}
+    base = lock.get("base")
+    reference = base.get("reference") if isinstance(base, dict) else None
+    if isinstance(reference, str) and reference.partition("@")[0] == BASE_REPOSITORY:
+        channels[BASE_CHANNEL] = Channel(
+            BASE_CHANNEL, "DevCapsule", "the base images", (BASE_REPOSITORY, BASE_ORIGIN),
+            "the SHA-256 digest the launcher pins", authorization="base-image",
+            note="A launcher you downloaded already carries these digests; this makes the trust explicit.",
+        )
+    components = lock.get("components", {})
+    platform = str(lock.get("platform", ""))
+    if not isinstance(components, dict):
+        return channels
+    for component_id, metadata in components.items():
+        definition = COMPONENTS.get(component_id) if isinstance(component_id, str) else None
+        if definition is None or not isinstance(metadata, dict):
+            continue
+        contract = definition.acquisition()
+        if contract is None:
+            continue
+        origins: list[str] = []
+        try:
+            for artifact in definition.locked_artifacts(metadata, platform):
+                host = urlparse(str(getattr(artifact, "url", ""))).netloc
+                if host and host not in origins:
+                    origins.append(host)
+        except Exception:  # noqa: BLE001 - an unreadable artifact table is reported by the lock's own validation
+            origins = []
+        note = ""
+        if component_id == "antigravity-cli":
+            note = ("The origin is a bare Cloud Run host, not a Google-owned domain; "
+                    "trusting it is trusting that deployment.")
+        channels[str(component_id)] = Channel(
+            str(component_id), contract.vendor, contract.display_name, tuple(origins),
+            "the SHA-256 the launcher pins", contract.terms_url, contract.authorization, note,
+        )
+    return channels
+
+
+@dataclass(frozen=True)
+class WorkstationTrust:
+    """The channels this workstation's user has accepted, by channel id."""
+
+    channels: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    @classmethod
+    def read(cls, document: Mapping[str, Any]) -> WorkstationTrust:
+        """Read ``trust.toml``'s mapping, or the ``trust`` table of the merged workstation document."""
+        source = document.get("trust", document) if "trust" in document else document
+        version = source.get("devcapsule-trust-schema-version", TRUST_SCHEMA_VERSION)
+        if type(version) is not int or version != TRUST_SCHEMA_VERSION:
+            raise ProjectConfigurationError(
+                f"The workstation trust record has an unsupported schema version {version!r}; this launcher reads {TRUST_SCHEMA_VERSION}."
+            )
+        channels = table(source, "channels")
+        result: dict[str, dict[str, Any]] = {}
+        for channel_id, entry in channels.items():
+            if not isinstance(channel_id, str) or not channel_id or not isinstance(entry, dict):
+                raise ProjectConfigurationError("The workstation trust record's channels must be tables keyed by channel id.")
+            vendor = entry.get("vendor")
+            origins = entry.get("origins", [])
+            if not isinstance(vendor, str) or not vendor:
+                raise ProjectConfigurationError(f"Trust channel {channel_id!r} must name its vendor.")
+            if not isinstance(origins, list) or not all(isinstance(item, str) for item in origins):
+                raise ProjectConfigurationError(f"Trust channel {channel_id!r} origins must be an array of strings.")
+            terms = entry.get("terms-url", "")
+            if not isinstance(terms, str):
+                raise ProjectConfigurationError(f"Trust channel {channel_id!r} terms-url must be a string.")
+            result[channel_id] = {"vendor": vendor, "origins": list(origins), "terms-url": terms,
+                                  "accepted": str(entry.get("accepted", ""))}
+        return cls(result)
+
+    def covers(self, channel: Channel) -> bool:
+        """Whether an acceptance on record covers ``channel``: same vendor, same terms, no new origin."""
+        entry = self.channels.get(channel.id)
+        if entry is None:
+            return False
+        if entry["vendor"] != channel.vendor or entry["terms-url"] != channel.terms_url:
+            return False
+        return set(channel.origins) <= set(entry["origins"])
+
+    def with_channel(self, channel: Channel, *, accepted_at: datetime | None = None) -> WorkstationTrust:
+        moment = (accepted_at or datetime.now(timezone.utc)).replace(microsecond=0).isoformat()
+        channels = dict(self.channels)
+        channels[channel.id] = {"vendor": channel.vendor, "origins": list(channel.origins),
+                                "terms-url": channel.terms_url, "accepted": moment}
+        return WorkstationTrust(channels)
+
+    def without(self, channel_id: str) -> WorkstationTrust:
+        if channel_id not in self.channels:
+            raise ProjectConfigurationError(f"No trust is recorded for {channel_id!r} on this workstation.")
+        channels = dict(self.channels)
+        del channels[channel_id]
+        return WorkstationTrust(channels)
+
+    def document(self) -> dict[str, Any]:
+        return {"devcapsule-trust-schema-version": TRUST_SCHEMA_VERSION,
+                "channels": {channel_id: dict(entry) for channel_id, entry in sorted(self.channels.items())}}
+
+
+def render_trust(trust: WorkstationTrust) -> str:
+    lines = [f"devcapsule-trust-schema-version = {TRUST_SCHEMA_VERSION}"]
+    for channel_id, entry in sorted(trust.channels.items()):
+        lines.extend(["", f"[channels.{quote_toml(channel_id) if not channel_id.replace('-', 'a').replace('_', 'a').isalnum() else channel_id}]"])
+        lines.append(f"vendor = {quote_toml(entry['vendor'])}")
+        lines.append("origins = [" + ", ".join(quote_toml(item) for item in entry["origins"]) + "]")
+        if entry.get("terms-url"):
+            lines.append(f"terms-url = {quote_toml(entry['terms-url'])}")
+        if entry.get("accepted"):
+            lines.append(f"accepted = {quote_toml(entry['accepted'])}")
+    return "\n".join(lines) + "\n"
