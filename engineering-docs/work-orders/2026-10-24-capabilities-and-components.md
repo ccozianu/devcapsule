@@ -61,11 +61,13 @@ table.
    capability that has several; choose the surface capability itself when
    the project recommends none. Each is one command and then `run`. These
    are the checkout's, never the repository's, as the previous order ruled.
-5. **Cardinality is a property of the capability.** The surface admits one
-   provider per launch. A capability such as a coding agent may admit
-   several at once. The project's own capability, `cpp-compiler`, is the
-   project's call. Today the code knows only "one IDE, a set of agents",
-   by a name suffix; the model knows a declared cardinality.
+5. **Every capability resolves to exactly one provider; there is no
+   cardinality.** The owner struck it on 2026-10-24: nothing it would
+   express is beyond the other features. "Several coding agents at once"
+   is three capabilities, each present or absent. A project that wants
+   both `clang` and `g++` requires both by name. "Exactly one surface per
+   launch" is the surface role, below. Today's "one IDE, a set of agents"
+   is a name-suffix split and goes with it.
 6. **The surface is the one special role.** It owns the display, the
    entry point and the container's runtime template. It is a role a
    capability has, not a type a component is. The user-facing word stays
@@ -123,7 +125,7 @@ With source lines at `78a9c66`.
   `commands/project.py` (338, 711, 712, 1814, 1815) and
   `configuration/owner_commands.py` (305): five files, twelve lines, each
   splitting one list into "the IDE" and "the agents". No behavior sits
-  behind the split beyond cardinality.
+  behind the split.
 - **The matrix refuses an agent in the shared contract.**
   `_split_tools` in `configuration/operations.py:951-964` and the owner
   commands reject `codex-agent` in `require` and `offer`, except where a
@@ -136,8 +138,8 @@ With source lines at `78a9c66`.
   that works with one agent cannot say so today except in `AGENTS.md`.
 - **Three command families for one act.** `config ide NAME`, `config
   agent add|remove NAME` and `config tool omit|restore NAME` are three
-  spellings of "this checkout selects or deselects a capability", with
-  the surface's cardinality the only real difference. `run --ide` and
+  spellings of "this checkout selects or deselects a capability", the
+  surface role the only real difference. `run --ide` and
   `run --agent` repeat the split on the launch flags.
 - **`recommend ide frontend-ide` is two statements folded into one.** It
   recommends the surface capability; it cannot recommend the provider.
@@ -251,8 +253,8 @@ the platform can satisfy as the contract error it is today.
 
 ### 3.3 What the launcher does with it
 
-- Derivation selects, for every capability in play, one provider or the
-  declared number: the checkout's choice, else the project's recommended
+- Derivation selects, for every capability in play, one provider: the
+  checkout's choice, else the project's recommended
   resolution, else the catalog's only or first provider. The surface is
   the capability with the surface role; exactly one is selected, as now.
 - A minimum narrows the candidates first: of a capability's providers and
@@ -279,8 +281,7 @@ the platform can satisfy as the contract error it is today.
 - The `-agent` suffix as a test anywhere in the code; `local_capabilities`
   as a list of refused names; the `surface_capabilities` and
   `ancillary_capabilities` split in the catalog, replaced by one table of
-  capabilities, each with its providers, its cardinality and whether it
-  is the surface.
+  capabilities, each with its providers and whether it is the surface.
 - `config agent add|remove`, `config tool omit|restore`, `run --agent`,
   and the `tool` sub-word of `require|offer|drop`. Each retired spelling
   prints its replacement for one release, by the rc4 rule, unless Part 5
@@ -317,11 +318,11 @@ the rest are implementation.
 2. **Run flags:** `--with CAPABILITY` repeatable in place of `--agent`;
    `--use CAPABILITY=COMPONENT` repeatable; `--ide` kept.
 3. **Three coding-agent capabilities,** `codex-agent`, `claude-code-agent`,
-   `antigravity-agent`, each with one provider and no limit between them.
-   They are not substitutes for one another as `clang` and `g++` are; a
-   project's agent instructions name one. A single `coding-agent` with
-   three providers would make "both Codex and Claude Code" a cardinality
-   exception on day one.
+   `antigravity-agent`, each with one provider, any of them present at
+   once. They are not substitutes for one another as `clang` and `g++`
+   are; a project's agent instructions name one. A single `coding-agent`
+   with three providers could not express "both Codex and Claude Code"
+   without the cardinality the owner struck.
 4. **The resolution lives in `[recommendations.resolution]`,** a table from
    capability to component beside `[recommendations]`, read by the rc4
    launcher as an unknown recommendation it warns about and ignores; the
