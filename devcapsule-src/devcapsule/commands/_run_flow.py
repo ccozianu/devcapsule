@@ -17,7 +17,8 @@ recommendation changed, a required value and a required secret block the
 launch until answered; so does a vendor's or DevCapsule's channel the
 workstation has not accepted yet (D-0011, once per computer); a host access
 the project recommends and the developer never answered is asked, and "not
-now" launches with the secure default.
+now" launches with the secure default; so is a widening the console asked
+for during an earlier run, kept until applied or discarded here.
 """
 
 from __future__ import annotations
@@ -178,13 +179,33 @@ def prepare_launch(
             raise DecisionPending(_render_pending(still, root, prepared_notes, answered=True))
     elif soft:
         for decision in soft:
-            prepared_notes.append(
-                f"The project asks for {decision.description} ({decision.reason}); not granted this run. "
-                f"Allow or deny: {decision.command}"
-            )
+            if decision.kind == "console":
+                prepared_notes.append(
+                    f"The console's request {decision.name} of {decision.reason} awaits your confirmation: "
+                    f"{decision.description}. Apply or discard: {decision.command}"
+                )
+            else:
+                prepared_notes.append(
+                    f"The project asks for {decision.description} ({decision.reason}); not granted this run. "
+                    f"Allow or deny: {decision.command}"
+                )
     register_checkout(state)
     selected = derive_plan(state, checkout)
     return Prepared(selected, host_overrides, memory_override, cpus_override, environment_tokens, prepared_notes)
+
+
+def launch_listing_document(selected: ResolvedProject) -> dict[str, Any]:
+    """The ``config show --json`` document of the launch's checkout, for the capsule's own inspection."""
+    from devcapsule.configuration.storage import checkout_name_for
+    listing = load_state(selected.root, selected.manifest).listing(selected.checkout)
+    identity = selected.manifest["project"]
+    return {
+        **listing.document(),
+        "context": "at launch",
+        "project": {"creator": identity["creator"], "slug": identity["slug"]},
+        "checkout": {"name": checkout_name_for(selected.manifest, selected.checkout_path),
+                     "launcher-path": str(selected.root), "input": str(selected.checkout_path)},
+    }
 
 
 def accept_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Path:
@@ -217,7 +238,7 @@ def _render_pending(decisions: list[Decision], root: Path, recorded: Sequence[st
     for decision in decisions:
         flag = {"ide": "--ide IDE", "env": f"--env {decision.name}=VALUE", "consent": f"--authorize {decision.name} {decision.value}",
                 "access": f"--authorize {decision.name} {decision.value}", "trust": f"--trust {decision.name}",
-                "renew": "", "value": "", "secret": ""}[decision.kind]
+                "renew": "", "value": "", "secret": "", "console": ""}[decision.kind]
         lines.append(f"  {decision.kind} {decision.name}: {decision.description}" + (f"  ({decision.reason})" if decision.reason else ""))
         lines.append("      " + (f"{flag}  |  " if flag else "") + decision.command)
     lines.extend(recorded)
@@ -283,6 +304,19 @@ def _settle(
                 record.write()
             else:
                 output.write(f"Not answered; renew it later: {decision.command}\n")
+        elif decision.kind == "console":
+            from devcapsule.commands._console_channel import apply_deferred, discard_deferred
+            assert state.input_path is not None
+            output.write(f"The console asked at {decision.reason}: {decision.description}\n")
+            answer = _ask(output, reader, "[a]pply it now, [d]iscard it, Enter = keep it for later: ").lower()
+            if answer in {"a", "apply"}:
+                status, text = apply_deferred(root, state.input_path, decision.name)
+                output.write((text or "Recorded.") + "\n")
+            elif answer in {"d", "discard"}:
+                discard_deferred(state.input_path, decision.name)
+                output.write("Discarded.\n")
+            else:
+                output.write(f"Kept. Apply or discard later: {decision.command}\n")
         elif decision.kind == "trust":
             output.write(f"{decision.description}\n")
             if decision.reason:

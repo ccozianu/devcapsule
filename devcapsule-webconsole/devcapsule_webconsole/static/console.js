@@ -72,6 +72,72 @@
     container.appendChild(node);
   }
 
+  // The configuration channel (answer 7 of the CLI UX work order): a request is
+  // the tokens of one `devcapsule project config` command, written for the
+  // launcher, which records it for the next launch, refuses it, or keeps it for
+  // the user's confirmation on the host when it widens what the capsule reaches.
+  function requestForms(pending) {
+    const list = el("div", { class: "requests" });
+    const note = el("p", { class: "notice",
+      text: "Each request is recorded for the next launch, never for this running capsule. A request that widens "
+        + "what the capsule reaches (an access, a trust, a mount, a Docker option) waits for your confirmation on the host." });
+    list.appendChild(note);
+    for (const row of pending) {
+      list.appendChild(requestForm(row.kind + " " + row.name + ": " + row.pending, row.request || ""));
+    }
+    list.appendChild(requestForm("Another change", ""));
+    return list;
+  }
+
+  function requestForm(label, prefilled) {
+    const input = el("input", { type: "text", name: "command", value: prefilled, size: "60",
+      placeholder: "config tokens, for example: ide python-ide" });
+    const button = el("button", { type: "submit", text: "Send to the launcher" });
+    const status = el("span", { class: "request-status" });
+    const form = el("form", { class: "request" }, [el("label", { text: label }), el("code", { text: "config " }), input, button, status]);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      button.disabled = true;
+      status.textContent = "sending…";
+      try {
+        const response = await fetch("/api/configuration/requests", {
+          method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command: input.value }),
+        });
+        if (!response.ok) {
+          status.textContent = "refused: " + (await response.text()).trim();
+          return;
+        }
+        const written = (await response.json()).request;
+        status.textContent = "sent as " + written.id + (written.widening ? "; waits for your confirmation on the host" : "");
+        const requests = document.getElementById("requests");
+        if (requests) await refreshRequests(requests);
+      } catch (error) {
+        status.textContent = "failed: " + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+    return form;
+  }
+
+  async function refreshRequests(container) {
+    const listing = await api("/api/configuration/requests");
+    container.replaceChildren();
+    if (!listing.requests.length) {
+      container.appendChild(el("p", { text: "Nothing asked on the console since launch." }));
+      return;
+    }
+    container.appendChild(table([
+      { key: "id", label: "Request" }, { key: "command", label: "Command" }, { key: "requested", label: "Asked" },
+      { key: (row) => row.result ? row.result.status : "waiting for the launcher", label: "Outcome" },
+      { key: (row) => row.result ? row.result.text : "", label: "What the launcher said" },
+    ], listing.requests));
+    if (listing.requests.some((row) => !row.result)) {
+      setTimeout(() => refreshRequests(container).catch(() => {}), 2000);
+    }
+  }
+
   const pages = {
     async home(container) {
       const identity = await api("/api/identity");
@@ -95,17 +161,27 @@
       const checkout = listing.checkout || {};
       container.replaceChildren();
       if (listing.rows) {
+        const atLaunch = listing.at ? "At launch, " + listing.at : null;
         container.appendChild(facts([
-          ["Context", listing.context],
+          ["Context", atLaunch || listing.context],
           ["Checkout", checkout.name],
           ["Launcher path", checkout["launcher-path"]],
           ["Checkout input", checkout.input],
-          ["Generated plan", checkout.resolution],
         ]));
-        section(container, "Recorded values, bindings, secrets, authorizations and the resolution", table([
-          { key: "kind", label: "Kind" }, { key: "name", label: "Name" }, { key: "status", label: "Status" },
-          { key: "source", label: "Source" }, { key: "value", label: "Value / recommendation" },
+        section(container, atLaunch ? "What the launcher derived at launch" : "What the next launch uses", table([
+          { key: "kind", label: "Kind" }, { key: "name", label: "Name" }, { key: "effective", label: "Effective" },
+          { key: "source", label: "Source" }, { key: "pending", label: "Pending" },
         ], listing.rows));
+        const pending = listing.rows.filter((row) => row.pending);
+        if (listing.channel) {
+          section(container, "Pending, next launch", requestForms(pending));
+          const requests = el("div", { id: "requests" });
+          section(container, "Asked on the console since launch", requests);
+          await refreshRequests(requests);
+        } else if (pending.length) {
+          section(container, "Pending, next launch", el("p", { class: "notice",
+            text: "Answer on the host, with the command each pending row names; this capsule has no configuration channel." }));
+        }
         return;
       }
       container.appendChild(el("p", { class: "notice",

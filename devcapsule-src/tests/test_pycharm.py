@@ -1326,7 +1326,8 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
 
 def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_only(tmp_path):
     import json
-    from devcapsule.runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
+    from devcapsule.launch.pycharm._launcher import channel_watcher, describe_run_command
+    from devcapsule.runtime_configuration import CHANNEL_PATH, CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
     project = tmp_path / "project"
     project.mkdir()
     records = tmp_path / "records"
@@ -1350,9 +1351,30 @@ def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_
         assert f"type=bind,src={records},dst={CONFIGURATION_PATH},ro" in args
         assert f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro" in args
         assert not any("src=" + str(records / "devcapsule.checkout.toml") in arg for arg in args)
+        # The console's channel: a private directory, mounted writable, with the launch listing when run computed one.
+        assert files.configuration_directory is not None and files.configuration_directory.stat().st_mode & 0o777 == 0o700
+        assert f"type=bind,src={files.configuration_directory},dst={CHANNEL_PATH}" in args
+        assert not (files.configuration_directory / "listing.json").exists()
+        watcher = channel_watcher(config, files)
+        assert watcher is not None and watcher.checkout_record == records / "devcapsule.checkout.toml" and watcher.root == project
     finally:
         cleanup_temp_runtime_files(files)
-    assert not files.launch_context_file.exists()
+    assert not files.launch_context_file.exists() and not files.configuration_directory.exists()
+    listing = {"schema-version": 2, "rows": [], "pending": [], "notes": []}
+    config = build_run_config(PycharmRunOptions(
+        project=project, project_mount="/workspace/project", docker_mode=DockerMode.none,
+        runtime_plan=external_runtime_plan(), use_image_process=True,
+        launch_configuration=LaunchConfiguration(records, document, listing),
+    ), env)
+    with patch("devcapsule.launch.pycharm._launcher.write_xauthority"), patch("devcapsule.launch.pycharm._launcher.write_user_files"):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.configuration_directory is not None
+        written = json.loads((files.configuration_directory / "listing.json").read_text())
+        assert written["format"] == 1 and written["listing"] == listing and written["at"]
+        assert "Temporary Configuration channel:" in describe_run_command(["docker", "run"], config, files)
+    finally:
+        cleanup_temp_runtime_files(files)
 
 
 def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_path: Path) -> None:

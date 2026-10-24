@@ -143,6 +143,22 @@ class Listing:
         return {"schema-version": LISTING_SCHEMA_VERSION, "rows": [row.document() for row in self.rows],
                 "pending": [row.name for row in self.pending], "notes": list(self.notes)}
 
+    @classmethod
+    def from_document(cls, document: Mapping[str, Any]) -> Listing:
+        """A listing read back from its ``document``, to render where it was not computed: inside a capsule."""
+        rows = document.get("rows")
+        if document.get("schema-version") != LISTING_SCHEMA_VERSION or not isinstance(rows, list):
+            raise ProjectConfigurationError(f"Not a schema-{LISTING_SCHEMA_VERSION} listing document.")
+        fields = ("kind", "name", "effective", "source", "pending", "command")
+        result = []
+        for row in rows:
+            if not isinstance(row, dict) or any(not isinstance(row.get(field, ""), str) for field in fields):
+                raise ProjectConfigurationError("A listing row has the six text columns.")
+            kind, name, effective, source, pending, command = (str(row.get(field, "")) for field in fields)
+            result.append(ListingRow(kind, name, effective, source, pending, command))
+        notes = document.get("notes", [])
+        return cls(tuple(result), tuple(str(note) for note in notes) if isinstance(notes, list) else ())
+
 
 def _command(project: Path | None, *arguments: str) -> str:
     context = ["--path", str(project)] if project is not None else []

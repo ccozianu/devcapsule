@@ -32,6 +32,7 @@ from .authorization import authorized_base_selection
 from .capabilities import CapabilityPolicy, LocalCapabilities
 from .capability_commands import pin_selection
 from .capability_selection import compose_lock, effective_lock, local_pins
+from .console_requests import deferred_rows
 from .file_formats import ProjectConfigurationError, render_checkout, render_toml
 from .listing import Listing, assess_checkout
 from .model import Configuration
@@ -118,11 +119,12 @@ class CheckoutState:
 
     def listing(self, checkout: Mapping[str, Any] | None = None) -> Listing:
         document = self.checkout if checkout is None else checkout
-        return assess_checkout(
+        listing = assess_checkout(
             self.manifest, self.shared_lock, self.composed_lock(document), document,
             workstation=self.workstation, saved_environment=self.saved_environment,
             surfaces=self.surfaces, agents=self.agents, project=self.root, registered=self.registered,
         )
+        return Listing(listing.rows + tuple(deferred_rows(self.input_path, self.root)), listing.notes)
 
     def with_selection(self, selection: Selection, *, allow_unverified: bool = False) -> dict[str, Any]:
         """A copy of the checkout document with ``selection`` pinned, for a run-once IDE or agent."""
