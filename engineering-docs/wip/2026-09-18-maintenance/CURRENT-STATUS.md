@@ -182,6 +182,12 @@ reviewer's gate 1964 unit tests, mypy clean.
 Slice 3 is #265, `ws-maintenance/cli-ux-3-run`, delivered 2026-10-24: 1967
 unit tests, mypy clean, 10 new tests; its brief is
 [brief-pr265-1.md](evidence/2026-10-24-cli-ux/brief-pr265-1.md).
+Slice 4 is #266, `ws-maintenance/cli-ux-4-trust`, delivered 2026-10-24:
+1972 unit tests, mypy clean, 6 new tests in `tests/test_trust.py`; the
+trust record `trust.toml` under the launcher's config root, schema 1; the
+review's `trusted` status and `superseded` host answers; the `trust`
+decision, `--trust CHANNEL`, `config trust list|accept|withdraw`; its
+brief is [brief-pr266-1.md](evidence/2026-10-24-cli-ux/brief-pr266-1.md).
 
 ## Current State
 
