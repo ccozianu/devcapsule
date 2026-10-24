@@ -1,7 +1,7 @@
 ---
 description: How the launcher tells you a newer DevCapsule exists, how to install it, and what does not change when you do.
 weight: 2
-updated: 2026-09-28
+updated: 2026-10-24
 ---
 # Launcher updates
 
@@ -16,5 +16,6 @@ An upgraded launcher keeps every project's lock and every checkout's
 recorded choices. It grants no new host access. If a project changed its own
 configuration in the meantime, the next launch asks what is pending, as
 [Project versus personal](../configuration/project-versus-personal.md#when-the-project-changes)
-describes. A checkout last launched by a much older client is asked once to trust
-each vendor's channel for this computer, which older clients did not record.
+describes. Existing per-checkout consents remain valid when they still match
+the selected software. A missing consent or channel acceptance can require
+an answer. An upgrade alone does not invalidate a matching consent.
