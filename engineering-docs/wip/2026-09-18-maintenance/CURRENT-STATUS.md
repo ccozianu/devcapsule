@@ -284,6 +284,31 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-24, evening: rc4 in preparation.** The owner merged the CLI UX
+stack, #260 to #269, the release tip at `3cc8a50`. The full `nox -s build`
+on it failed in the packaging integration: one test of seventeen expected
+`config check` to pass without the base channel trusted and the retired
+`--sdk-major` flag to resolve; the unit gates the slices ran never execute
+that suite. Fixed as a test-only change at `fe886ad`, pushed to the release
+branch directly as a release-blocking gate fix; the full gate on it passed
+(mypy 242 files, 2091 unit tests, packaging integration 17, the console
+session). The throwaway copy `4PR-5-release-0.3.0`, the release tip (this
+record's commit) plus the cherry-pick of `62fa063`, test-merged cleanly into `main` and is the pull
+request for the owner's merge. On that merge: confirm the release tip is
+an ancestor of `main`; `git tag -a v0.3.0-rc4 <tip> -m 'DevCapsule 0.3.0
+candidate 4'`; from a detached checkout of the tag,
+`scripts/release-protocol.py v0.3.0-rc4 --output
+/opt/devcapsule-gate/rc4-release-protocol.json`, expecting `mainline`;
+`git push --atomic origin release-0.3.0 v0.3.0-rc4`; the backend run;
+download into `~/.cache/devcapsule-releases/v0.3.0-rc4`, verify the
+checksum and the version; record rc4 in the overview and the changelog's
+candidate-4 line. The owner also asked for the AI Learning bootstrap
+project's optimal setup with the rc4 launcher; the dry run against a scratch
+clone found `init --regenerate` leaves the lock byte-identical on the
+unchanged matrix, the owner commands rewrite the manifest to schema 2, and
+non-interactive `init` still needs `--authorize base-image default` and the
+agent download consents despite workstation trust, the gap already recorded.
+
 **2026-10-24: rc3 tagged, published and verified.** The owner merged
 PR #257 at `cf760b8`; `a22a215` is an ancestor of `main`; `v0.3.0-rc3` on
 `a22a215`, the candidate gate `mainline` with no unintegrated commits from
