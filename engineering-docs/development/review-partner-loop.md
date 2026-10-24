@@ -296,5 +296,9 @@ scratchpads and are gone; their structure is the template above. From
   reasons; both go into the record.
 - A rebase of a stacked branch's base rewrites history the branches above
   it carry; merge commits keep a stack consistent.
+- A document has readers the way a module has callers. When the slice is a
+  document, the brief names each part's reader; a reviewer that writes its
+  notes into a part addressed to the user has changed that part's reader,
+  and the round is spent moving the notes to where the decider reads them.
 - A round took twenty to forty minutes of wall time, most of it the
   reviewer's own gate. Three rounds were enough every time.
